@@ -117,6 +117,58 @@ describe('ProtectApiClient against the fake console', () => {
 		expect(logged.join('\n')).not.toContain(FAKE_PROTECT_ALIAS);
 	});
 
+	it('creates a stream on the fake console and reads it back', async () => {
+		const client = build();
+		const [first] = await client.listCameras();
+
+		fake.setStreams(first.id, []);
+
+		const created = await client.createRtspsStreams(first.id, ['high', 'medium']);
+
+		expect(created.high).toContain('SENTINELALIAS');
+		expect(created.medium).toContain('SENTINELALIAS');
+		expect(created.low).toBeNull();
+		expect(created.package).toBeNull();
+		expect(await client.getRtspsStreams(first.id)).toEqual(created);
+		expect(fake.streamPosts).toEqual([{ cameraId: first.id, qualities: ['high', 'medium'] }]);
+		expect(fake.writes).toHaveLength(1);
+	});
+
+	it('keeps already enabled qualities when another quality is added', async () => {
+		const client = build();
+		const streams = await client.createRtspsStreams(CAMERA_ID, ['medium']);
+
+		expect(streams.high).not.toBeNull();
+		expect(streams.medium).not.toBeNull();
+	});
+
+	it('serves doorbells and single sensors and lights when configured', async () => {
+		const extra = await FakeProtectServer.start({ cameraFixtures: ['cameras.json', 'cameras-doorbell.json'] });
+		const client = new ProtectApiClient({
+			host: extra.host,
+			port: extra.port,
+			apiKey: FAKE_PROTECT_API_KEY,
+			tls: { mode: 'pinned', serverName: null, fingerprintSha256: PROTECT_TEST_TLS.fingerprints.selfSigned },
+		});
+
+		try {
+			expect(await client.listCameras()).toHaveLength(4);
+			expect((await client.getCamera('5f0000000000000000000a02')).hasPackageCamera).toBe(true);
+			expect((await client.getSensor('5f0000000000000000000b01')).raw._state as string).toBe(
+				'idle (closed, no motion, no leak, no tamper)',
+			);
+			expect((await client.getLight('5f0000000000000000000c01')).cameraId).toBe('600cefafd5f365d6f83c4ef3');
+			await expect(client.getSensor('missing')).rejects.toMatchObject({ category: 'not_found' });
+
+			const streams = await client.getRtspsStreams('5f0000000000000000000a01');
+
+			expect(streams).toEqual({ high: null, medium: null, low: null, package: null });
+		} finally {
+			client.close();
+			await extra.stop();
+		}
+	});
+
 	it('reads every endpoint the client offers', async () => {
 		const client = build();
 
@@ -289,11 +341,13 @@ describe('ProtectApiClient against the fake console', () => {
 				req.end();
 			});
 
-		expect(await send('POST', `${BASE}/cameras/${CAMERA_ID}/rtsps-stream`)).toBe(405);
+		// A POST of the stream endpoint is a real write now; without qualities it is a bad request, any other verb 405.
+		expect(await send('POST', `${BASE}/cameras/${CAMERA_ID}/rtsps-stream`)).toBe(400);
+		expect(await send('DELETE', `${BASE}/cameras/${CAMERA_ID}/rtsps-stream`)).toBe(405);
 		expect(await send('POST', `${BASE}/cameras/${CAMERA_ID}/disable-mic-permanently`)).toBe(405);
 		expect(await send('GET', '/proxy/protect/api')).toBe(401);
 		expect(await send('GET', `${BASE}/nothing`)).toBe(404);
-		expect(fake.writes).toHaveLength(2);
+		expect(fake.writes).toHaveLength(3);
 		expect(fake.forbiddenHits).toBe(1);
 	});
 

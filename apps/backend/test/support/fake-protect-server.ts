@@ -6,6 +6,11 @@ import * as net from 'net';
 import { join, resolve } from 'path';
 import { TLSSocket } from 'tls';
 
+import {
+	PROTECT_RTSPS_QUALITIES,
+	ProtectRtspsQuality,
+} from '../../src/plugins/devices-unifi-protect/devices-unifi-protect.constants';
+
 import { PROTECT_TEST_DIRECT_DOMAIN, protectTlsServerOptions } from './protect-tls';
 
 // TEST SUPPORT ONLY: a loopback HTTPS stand-in for a UniFi Protect console, serving the UP-0 fixtures with the
@@ -13,6 +18,10 @@ import { PROTECT_TEST_DIRECT_DOMAIN, protectTlsServerOptions } from './protect-t
 
 export const FAKE_PROTECT_API_KEY = 'PROTECT_SENTINEL_KEY_7f3a9c0d1e2b4a6f';
 export const FAKE_PROTECT_ALIAS = 'SENTINELALIASprotect0123456789';
+
+/** The alias of one quality; `high` keeps the alias that earlier tests know. */
+export const fakeProtectStreamAlias = (quality: ProtectRtspsQuality): string =>
+	quality === 'high' ? FAKE_PROTECT_ALIAS : `SENTINELALIAS${quality}0123456789`;
 
 export interface FakeProtectRequest {
 	method: string;
@@ -36,6 +45,8 @@ export interface FakeProtectServerOptions {
 	rateLimit: { quota: number; windowSeconds: number } | null;
 	/** Matching paths send their headers and never end the body. */
 	hangPaths: RegExp[];
+	/** Fixtures whose cameras the console lists, in order; the first entry of an id wins. */
+	cameraFixtures: string[];
 }
 
 interface RateLimitFixture {
@@ -50,6 +61,8 @@ const readFixture = (name: string): Buffer => readFileSync(join(FIXTURES, name))
 const readJson = <T>(name: string): T => JSON.parse(readFixture(name).toString('utf8')) as T;
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
+const MAX_POST_BYTES = 4 * 1024;
+const BAD_QUALITIES = { error: 'Invalid qualities', name: 'BAD_REQUEST' };
 const DEFAULT_RATE_LIMIT = { quota: 10, windowSeconds: 1 };
 
 const json = (status: number, value: unknown): FakeProtectResponse => ({
@@ -84,11 +97,13 @@ export class FakeProtectServer {
 	port = 0;
 	readonly requests: FakeProtectRequest[] = [];
 	readonly writes: FakeProtectRequest[] = [];
+	readonly streamPosts: { cameraId: string; qualities: string[] }[] = [];
 	forbiddenHits = 0;
 	rateLimited = 0;
 
 	private options: FakeProtectServerOptions;
-	private readonly queue: { match: RegExp; response: FakeProtectResponse }[] = [];
+	private readonly queue: { match: RegExp; response: FakeProtectResponse; method?: string }[] = [];
+	private readonly streams = new Map<string, Set<ProtectRtspsQuality>>();
 	private readonly windows = new Map<string, number[]>();
 	private readonly sockets = new Set<net.Socket>();
 	private readonly server: https.Server;
@@ -100,6 +115,7 @@ export class FakeProtectServer {
 			applicationVersion: null,
 			rateLimit: DEFAULT_RATE_LIMIT,
 			hangPaths: [],
+			cameraFixtures: ['cameras.json'],
 			...options,
 		};
 		this.server = https.createServer(protectTlsServerOptions(), (req, res) => this.handle(req, res));
@@ -120,14 +136,21 @@ export class FakeProtectServer {
 		this.options = { ...this.options, ...options };
 	}
 
-	/** Consumed once, before normal routing, by the first request whose path matches. */
-	enqueue(match: RegExp, response: FakeProtectResponse): void {
-		this.queue.push({ match, response });
+	/** Replaces the enabled stream qualities of a camera. */
+	setStreams(cameraId: string, qualities: ProtectRtspsQuality[]): void {
+		this.streams.set(cameraId, new Set(qualities));
+	}
+
+	/** Consumed once, before normal routing, by the first request whose path (and method, when given) matches. */
+	enqueue(match: RegExp, response: FakeProtectResponse, method?: string): void {
+		this.queue.push({ match, response, method });
 	}
 
 	reset(): void {
 		this.requests.length = 0;
 		this.writes.length = 0;
+		this.streamPosts.length = 0;
+		this.streams.clear();
 		this.queue.length = 0;
 		this.windows.clear();
 		this.forbiddenHits = 0;
@@ -142,6 +165,27 @@ export class FakeProtectServer {
 	}
 
 	private handle(req: http.IncomingMessage, res: http.ServerResponse): void {
+		if ((req.method ?? 'GET') !== 'POST') {
+			req.resume();
+			this.dispatch(req, res, Buffer.alloc(0));
+
+			return;
+		}
+
+		const chunks: Buffer[] = [];
+		let received = 0;
+
+		req.on('data', (chunk: Buffer) => {
+			received += chunk.length;
+
+			if (received <= MAX_POST_BYTES) {
+				chunks.push(chunk);
+			}
+		});
+		req.on('end', () => this.dispatch(req, res, received > MAX_POST_BYTES ? null : Buffer.concat(chunks)));
+	}
+
+	private dispatch(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer | null): void {
 		const url = new URL(req.url ?? '/', 'https://fake.invalid');
 		const path = url.pathname;
 		const method = req.method ?? 'GET';
@@ -155,8 +199,6 @@ export class FakeProtectServer {
 		};
 
 		this.requests.push(record);
-		req.resume();
-
 		if (method !== 'GET') {
 			this.writes.push(record);
 		}
@@ -165,12 +207,28 @@ export class FakeProtectServer {
 			this.forbiddenHits += 1;
 		}
 
-		const queuedIndex = this.queue.findIndex((entry) => entry.match.test(path));
+		const queuedIndex = this.queue.findIndex(
+			(entry) => entry.match.test(path) && (entry.method === undefined || entry.method === method),
+		);
 
 		if (queuedIndex >= 0) {
 			const [{ response }] = this.queue.splice(queuedIndex, 1);
 
 			this.send(res, response, this.rateHeaders.ok);
+
+			return;
+		}
+
+		if (method === 'POST') {
+			const keyedPost = path.startsWith('/proxy/protect/');
+
+			if (keyedPost && presentedKey !== this.options.apiKey) {
+				this.send(res, unauthorized(), this.rateHeaders.ok);
+
+				return;
+			}
+
+			this.send(res, this.routePost(path, body), this.rateHeaders.ok);
 
 			return;
 		}
@@ -259,6 +317,85 @@ export class FakeProtectServer {
 		};
 	}
 
+	private cameras(): { id: string; featureFlags?: { supportFullHdSnapshot?: boolean } }[] {
+		const seen = new Set<string>();
+		const union: { id: string; featureFlags?: { supportFullHdSnapshot?: boolean } }[] = [];
+
+		for (const fixture of this.options.cameraFixtures) {
+			for (const camera of readJson<{ id: string; featureFlags?: { supportFullHdSnapshot?: boolean } }[]>(fixture)) {
+				if (!seen.has(camera.id)) {
+					seen.add(camera.id);
+					union.push(camera);
+				}
+			}
+		}
+
+		return union;
+	}
+
+	/** Cameras of `cameras.json` start with `high`, all others with none, until `setStreams` or a POST changes it. */
+	private enabledStreams(cameraId: string): Set<ProtectRtspsQuality> {
+		let enabled = this.streams.get(cameraId);
+
+		if (enabled === undefined) {
+			const original = readJson<{ id: string }[]>('cameras.json').some((camera) => camera.id === cameraId);
+
+			enabled = new Set<ProtectRtspsQuality>(original ? ['high'] : []);
+			this.streams.set(cameraId, enabled);
+		}
+
+		return enabled;
+	}
+
+	private streamMap(cameraId: string): Record<ProtectRtspsQuality, string | null> {
+		const enabled = this.enabledStreams(cameraId);
+
+		return Object.fromEntries(
+			PROTECT_RTSPS_QUALITIES.map((quality) => [
+				quality,
+				enabled.has(quality) ? `rtsps://${this.host}:7441/${fakeProtectStreamAlias(quality)}?enableSrtp` : null,
+			]),
+		) as Record<ProtectRtspsQuality, string | null>;
+	}
+
+	private routePost(path: string, body: Buffer | null): FakeProtectResponse {
+		const segments = path.startsWith(BASE) ? path.slice(BASE.length).split('/').filter(Boolean) : [];
+
+		if (segments.length !== 3 || segments[0] !== 'cameras' || segments[2] !== 'rtsps-stream') {
+			return json(405, { error: 'Method not allowed', name: 'METHOD_NOT_ALLOWED' });
+		}
+
+		const cameraId = segments[1];
+
+		if (!this.cameras().some((camera) => camera.id === cameraId)) {
+			return notFound();
+		}
+
+		let qualities: unknown;
+
+		try {
+			qualities = body === null ? undefined : (JSON.parse(body.toString('utf8')) as { qualities?: unknown }).qualities;
+		} catch {
+			qualities = undefined;
+		}
+
+		if (
+			!Array.isArray(qualities) ||
+			qualities.length === 0 ||
+			new Set(qualities).size !== qualities.length ||
+			!qualities.every((quality) => (PROTECT_RTSPS_QUALITIES as readonly unknown[]).includes(quality))
+		) {
+			return json(400, BAD_QUALITIES);
+		}
+
+		const enabled = this.enabledStreams(cameraId);
+
+		(qualities as ProtectRtspsQuality[]).forEach((quality) => enabled.add(quality));
+		this.streamPosts.push({ cameraId, qualities: [...(qualities as string[])] });
+
+		return json(200, this.streamMap(cameraId));
+	}
+
 	private route(path: string, query: Record<string, string>): FakeProtectResponse {
 		if (!path.startsWith(BASE)) {
 			return notFound();
@@ -283,16 +420,23 @@ export class FakeProtectServer {
 		}
 
 		if (id === undefined) {
-			return json(200, readJson<unknown>(DEVICE_FIXTURES[resource]));
+			return json(200, resource === 'cameras' ? this.cameras() : readJson<unknown>(DEVICE_FIXTURES[resource]));
+		}
+
+		if (resource === 'sensors' || resource === 'lights') {
+			const entry =
+				segments.length === 2
+					? readJson<{ id: string }[]>(DEVICE_FIXTURES[resource]).find((e) => e.id === id)
+					: undefined;
+
+			return entry === undefined ? notFound() : json(200, entry);
 		}
 
 		if (resource !== 'cameras') {
 			return notFound();
 		}
 
-		const camera = readJson<{ id: string; featureFlags?: { supportFullHdSnapshot?: boolean } }[]>('cameras.json').find(
-			(entry) => entry.id === id,
-		);
+		const camera = this.cameras().find((entry) => entry.id === id);
 
 		if (camera === undefined) {
 			return notFound();
@@ -303,12 +447,7 @@ export class FakeProtectServer {
 		}
 
 		if (action === 'rtsps-stream') {
-			const body = readFixture('rtsps-stream.json')
-				.toString('utf8')
-				.replace('REDACTEDALIAS00000', FAKE_PROTECT_ALIAS)
-				.replace('192.0.2.10', this.host);
-
-			return { status: 200, headers: JSON_HEADERS, body };
+			return json(200, this.streamMap(id));
 		}
 
 		if (action === 'snapshot') {

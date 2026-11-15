@@ -55,6 +55,32 @@ describe('NodeProtectTransport', () => {
 		expect(server?.requests[0].headers['x-api-key']).toBe('k');
 	});
 
+	it('sends a POST body with content-type and content-length', async () => {
+		const received: Buffer[] = [];
+		const t = await open((req, res) => {
+			req.on('data', (chunk: Buffer) => received.push(chunk));
+			req.on('end', () => {
+				res.writeHead(200, { 'Content-Type': 'application/json' });
+				res.end('{}');
+			});
+		});
+		const body = Buffer.from('{"qualities":["high"]}');
+
+		await t.request({
+			method: 'POST',
+			path: '/x',
+			headers: { 'X-API-KEY': 'k', Accept: 'application/json' },
+			timeoutMs: 2000,
+			maxBytes: 1024,
+			body,
+		});
+
+		expect(server?.requests[0].method).toBe('POST');
+		expect(server?.requests[0].headers['content-type']).toBe('application/json');
+		expect(server?.requests[0].headers['content-length']).toBe(String(body.length));
+		expect(Buffer.concat(received).toString()).toBe('{"qualities":["high"]}');
+	});
+
 	it('does not follow redirects', async () => {
 		const t = await open((_req, res) => {
 			res.writeHead(302, { Location: 'https://192.0.2.1/elsewhere' });

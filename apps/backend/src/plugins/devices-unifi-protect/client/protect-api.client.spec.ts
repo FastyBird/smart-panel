@@ -107,7 +107,7 @@ describe('ProtectApiClient', () => {
 			expect(transport.requests[0].path).not.toContain(KEY);
 		});
 
-		it('builds the paths of all eight read-only methods and never a write or the forbidden endpoint', async () => {
+		it('builds the paths of all ten read methods as GET and never the forbidden endpoint', async () => {
 			const calls: [string, () => Promise<unknown>, string][] = [
 				['getMetaInfo', () => client.getMetaInfo(), `${BASE}/meta/info`],
 				['getNvr', () => client.getNvr(), `${BASE}/nvrs`],
@@ -115,6 +115,8 @@ describe('ProtectApiClient', () => {
 				['getCamera', () => client.getCamera('6541'), `${BASE}/cameras/6541`],
 				['listSensors', () => client.listSensors(), `${BASE}/sensors`],
 				['listLights', () => client.listLights(), `${BASE}/lights`],
+				['getSensor', () => client.getSensor('6541'), `${BASE}/sensors/6541`],
+				['getLight', () => client.getLight('6541'), `${BASE}/lights/6541`],
 				['getRtspsStreams', () => client.getRtspsStreams('6541'), `${BASE}/cameras/6541/rtsps-stream`],
 				['getSnapshot', () => client.getSnapshot('6541'), `${BASE}/cameras/6541/snapshot`],
 			];
@@ -124,13 +126,77 @@ describe('ProtectApiClient', () => {
 				await call().catch(() => undefined);
 			}
 
-			expect(calls).toHaveLength(8);
+			expect(calls).toHaveLength(10);
 			expect(transport.requests.map((r) => r.path)).toEqual(calls.map(([, , path]) => path));
 
 			for (const request of transport.requests) {
 				expect(request.method).toBe('GET');
 				expect(request.path).not.toContain('disable-mic-permanently');
 			}
+		});
+
+		it('createRtspsStreams posts the qualities as JSON to the stream endpoint', async () => {
+			transport.queue(200, JSON.stringify((json('rtsps-stream-post.json') as { response: unknown }).response));
+
+			const result = await client.createRtspsStreams('6541', ['high', 'medium']);
+			const [request] = transport.requests;
+
+			expect(request.method).toBe('POST');
+			expect(request.path).toBe(`${BASE}/cameras/6541/rtsps-stream`);
+			expect(JSON.parse(request.body.toString()) as unknown).toEqual({ qualities: ['high', 'medium'] });
+			expect(request.headers['X-API-KEY']).toBe(KEY);
+			expect(request.headers.Accept).toBe('application/json');
+			expect(result).toEqual((json('rtsps-stream-post.json') as { response: unknown }).response);
+		});
+
+		it.each([[[]], [['high', 'high']], [['ultra']]])(
+			'createRtspsStreams refuses %j without a request',
+			async (qualities) => {
+				await expect(client.createRtspsStreams('6541', qualities as never)).rejects.toMatchObject({
+					category: 'validation',
+					operation: 'cameras/{id}/rtsps-stream',
+				});
+				expect(transport.requests).toHaveLength(0);
+			},
+		);
+
+		it('createRtspsStreams retries a 429 but not a 500 or a 503', async () => {
+			transport.queue(429, '{}', { 'retry-after': '0' });
+			transport.queue(200, '{"high":null,"medium":null,"low":null,"package":null}');
+
+			await client.createRtspsStreams('6541', ['high']);
+
+			expect(transport.requests).toHaveLength(2);
+
+			transport.requests.length = 0;
+			transport.queue(500);
+			await expect(client.createRtspsStreams('6541', ['high'])).rejects.toMatchObject({ category: 'unavailable' });
+			expect(transport.requests).toHaveLength(1);
+
+			transport.requests.length = 0;
+			transport.queue(503);
+			await expect(client.createRtspsStreams('6541', ['high'])).rejects.toMatchObject({ category: 'unavailable' });
+			expect(transport.requests).toHaveLength(1);
+		});
+
+		it('createRtspsStreams maps 400 to bad_request and 409 to protocol', async () => {
+			transport.queue(400, '{"error":"Invalid qualities","name":"BAD_REQUEST"}');
+			await expect(client.createRtspsStreams('6541', ['high'])).rejects.toMatchObject({ category: 'bad_request' });
+
+			transport.queue(409, '{}');
+			await expect(client.createRtspsStreams('6541', ['high'])).rejects.toMatchObject({ category: 'protocol' });
+		});
+
+		it('getSensor and getLight parse the console object like the lists', async () => {
+			transport.queue(200, JSON.stringify((json('sensors.json') as unknown[])[0]));
+			transport.queue(200, JSON.stringify((json('lights.json') as unknown[])[0]));
+
+			const sensor = await client.getSensor('5f0000000000000000000b01');
+			const light = await client.getLight('5f0000000000000000000c01');
+
+			expect(sensor.id).toBe('5f0000000000000000000b01');
+			expect(sensor.raw._state as string).toMatch(/^idle/);
+			expect(light.cameraId).toBe('600cefafd5f365d6f83c4ef3');
 		});
 
 		it('asks for image/jpeg and the image cap on snapshots, with the quality and channel query', async () => {
@@ -711,6 +777,23 @@ describe('ProtectApiClient', () => {
 				await client.getCamera('6541').catch((e: unknown) => errors.push(e));
 				await client.getMetaInfo().catch((e: unknown) => errors.push(e));
 				await client.getSnapshot('6541').catch((e: unknown) => errors.push(e));
+
+				transport.queue(
+					200,
+					JSON.stringify({
+						high: `rtsps://127.0.0.1:7441/${ALIAS}?enableSrtp`,
+						medium: null,
+						low: null,
+						package: null,
+					}),
+				);
+				transport.queue(500, JSON.stringify({ error: `X-API-KEY: ${KEY}`, alias: ALIAS }));
+
+				const created = await client.createRtspsStreams('6541', ['high']);
+
+				expect(created.high).toContain(ALIAS);
+
+				await client.createRtspsStreams('6541', ['high']).catch((e: unknown) => errors.push(e));
 			} finally {
 				spies.forEach((spy) => spy.mockRestore());
 			}
@@ -729,7 +812,7 @@ describe('ProtectApiClient', () => {
 			expect(serialized).not.toContain('SENTINELALIAS');
 		});
 
-		it('logs only the endpoint template, status and duration', async () => {
+		it('logs the method with the endpoint template, status and duration', async () => {
 			const debug = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 
 			try {
@@ -742,6 +825,11 @@ describe('ProtectApiClient', () => {
 
 				expect(lines.some((l) => /GET cameras\/\{id\} 200 \d+ms/.test(l))).toBe(true);
 				expect(lines.some((l) => /GET cameras 200 \d+ms/.test(l))).toBe(true);
+
+				transport.queue(200, '{"high":null,"medium":null,"low":null,"package":null}');
+				await client.createRtspsStreams('6541', ['high']);
+
+				expect(debug.mock.calls.some((c) => /POST cameras\/\{id\}\/rtsps-stream 200/.test(String(c[0])))).toBe(true);
 				expect(lines.join('\n')).not.toContain('6541');
 			} finally {
 				debug.mockRestore();
