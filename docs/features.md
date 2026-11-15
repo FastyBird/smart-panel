@@ -15,7 +15,8 @@
 - [Climate Control](#climate-control)
 - [Media Control](#media-control)
 - [Energy Monitoring](#energy-monitoring)
-- [Scenes & Automation](#scenes--automation)
+- [Scenes](#scenes)
+- [Automations](#automations)
 - [Buddy AI Assistant](#buddy-ai-assistant)
 - [Weather Integration](#weather-integration)
 - [Security & Access Control](#security--access-control)
@@ -454,13 +455,14 @@ Track and visualize energy consumption and production across the smart home.
 
 ---
 
-## Scenes & Automation
+## Scenes
 
-Create automation sequences that control multiple devices with a single action.
+Create presets that control multiple devices with a single action. A scene runs only when somebody (or an automation)
+triggers it; it has no triggers or conditions of its own.
 
 ### Features
 
-- **Scene creation** - Define named automation sequences
+- **Scene creation** - Define named presets of device actions
 - **Action sequencing** - Execute multiple device property commands in sequence
 - **Device property actions** - Set any device property value as part of a scene
 - **Delay actions** - Add timed delays between actions
@@ -475,6 +477,44 @@ Create automation sequences that control multiple devices with a single action.
 - **Local execution** - Scenes run directly on the Smart Panel backend
 - **Atomic execution** - Rollback on partial failure
 - **Extensible** - Plugin-based platform for future remote execution
+
+---
+
+## Automations
+
+Let the home react on its own. An automation is a flow of **When / And / Then** cards drawn on a canvas in the admin
+and run by the backend. See the [user guide](https://smart-panel.fastybird.com/docs/admin-management/automations) and
+the [architecture reference](./automations-architecture.md).
+
+### Cards
+
+- **When (triggers)** - Device value changes (to / from / any, crossing a threshold with optional hysteresis,
+  optionally only after it stayed for a time), button pressed, device goes offline or online, time of day, sunrise
+  or sunset, scene was run, house mode changes, security state changes, space occupancy changes, space mode changes,
+  manual start
+- **And (conditions)** - Device value is, time is between (windows may cross midnight), day or night, house mode is,
+  alarm is armed, space is occupied, space mode is
+- **Then (actions)** - Set device values (grouped per device), run scene, send notification, set house mode, arm
+  alarm, set space mode, set space lighting, enable / disable / run another automation
+- **Flow control** - Delay and Wait until (up to one hour), Any, All (strict AND)
+- **Extension cards** - Plugins and installable extensions add cards through the extension SDK
+
+### Features
+
+- **Visual flow editor** - Vue Flow canvas with palette, configuration panel, undo / redo and conflict detection
+- **Run modes** - Restart (default), Single, Parallel (up to 10 overlapping runs)
+- **Test and run trace** - Run the saved flow by hand and follow it live; the last 50 runs per automation (30 days)
+  are kept with a trace of every block reached, the value each condition saw and what each action answered
+- **Safety policy** - Automations may lock, arm and close, but never unlock, disarm or open; checked on save and
+  before every action, including the contents of scenes they run
+- **Overload guard** - An automation starting more than 30 times a minute or 200 times an hour is suspended and a
+  notification is raised
+- **Self-checking status** - An automation whose device, scene, space or card disappears is marked invalid
+- **Templates** - Motion light, door open reminder, away heating setback, leak alarm; custom templates as YAML files
+- **Import / export** - Share or back up automations as YAML, with remapping of devices and scenes on import
+- **Panel** - Room overview lists the room's automations with an on / off switch
+- **Buddy and MCP** - `list_automations`, `run_automation` and `set_automation_enabled` tools
+- **Buddy suggestions** - Time-of-day routines are offered as ready-to-edit automations in the admin
 
 ---
 
@@ -517,7 +557,8 @@ An AI-powered smart home assistant that understands your home and helps you cont
 - **Proactive intelligence** - Automated suggestions and predictive notifications
 - **Context-aware responses** - Understands your home layout, devices, and preferences
 - **Multi-channel access** - Consistent experience across Telegram, WhatsApp, and Discord
-- **Automation suggestions** - Learns patterns and suggests scene automations
+- **Routine suggestions** - Learns patterns and suggests scenes, or automations for routines done at the same time
+  of day
 
 ---
 
@@ -810,6 +851,7 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 | Dashboard      | 8       | Page/tile/data source design and configuration                  |
 | Spaces         | 5       | Space organization, device assignment, climate/lighting targets |
 | Scenes         | 3       | Scene creation, action configuration, trigger management        |
+| Automations    | 4       | Automation list, flow editor, run history and trace, templates  |
 | Displays       | 3       | Display management, token generation                            |
 | Extensions     | 2       | Extension browsing, service monitoring, log viewing             |
 | Config         | 4       | Module and plugin configuration                                 |

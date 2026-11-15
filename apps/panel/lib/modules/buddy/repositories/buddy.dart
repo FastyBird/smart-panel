@@ -538,6 +538,8 @@ class BuddyRepository extends ChangeNotifier {
 						.map((json) => BuddySuggestionModel.fromJson(
 							json as Map<String, dynamic>,
 						))
+						// Applied in the admin only, where its draft opens in the editor
+						.where((suggestion) => !suggestion.type.isAdminOnly)
 						.toList();
 				}
 			}
@@ -616,6 +618,11 @@ class BuddyRepository extends ChangeNotifier {
 	void _handleSuggestionCreated(Map<String, dynamic> payload) {
 		try {
 			final suggestion = BuddySuggestionModel.fromJson(payload);
+
+			// Applied in the admin only, where its draft opens in the editor
+			if (suggestion.type.isAdminOnly) {
+				return;
+			}
 
 			// Avoid duplicates
 			if (!_suggestions.any((s) => s.id == suggestion.id)) {

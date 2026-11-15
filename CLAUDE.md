@@ -9,6 +9,7 @@ This is a monorepo for the FastyBird Smart Panel project:
 ## Architecture Reference
 
 These files contain detailed domain architecture documentation:
+- `docs/automations-architecture.md` - Automations module: graph model, trigger and run semantics, card contract, adding cards
 - `docs/climate-architecture.md` - Climate domain architecture
 - `docs/media-architecture.md` - Media domain architecture
 - `docs/optimistic-ui-architecture.md` - Panel optimistic UI patterns

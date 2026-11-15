@@ -133,6 +133,13 @@
 		v-if="isAutomationsListRoute || isLGDevice"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
+		<automation-suggestions
+			:suggestions="suggestions"
+			:answering="answeringSuggestions"
+			@open="onSuggestionOpen"
+			@dismiss="onSuggestionDismiss"
+		/>
+
 		<list-automations
 			v-model:filters="filters"
 			v-model:sort-by="sortBy"
@@ -243,13 +250,28 @@ import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { v4 as uuid } from 'uuid';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { AUTOMATION_DEFAULT_ICON, AUTOMATION_TEMPLATE_DRAFT_QUERY, RouteNames } from '../automations.constants';
-import { AutomationImportDialog, AutomationTemplateDialog, ListAutomations, ListAutomationsAdjust } from '../components/components';
-import { useAutomationExport, useAutomationSpaces, useAutomationsActions, useAutomationsDataSource } from '../composables/composables';
+import { stashAutomationDraft } from '../automations.drafts';
+import {
+	AutomationImportDialog,
+	AutomationSuggestions,
+	AutomationTemplateDialog,
+	ListAutomations,
+	ListAutomationsAdjust,
+} from '../components/components';
+import {
+	useAutomationExport,
+	useAutomationSpaces,
+	useAutomationSuggestions,
+	useAutomationsActions,
+	useAutomationsDataSource,
+} from '../composables/composables';
+import type { IAutomationSuggestion } from '../composables/types';
 import type { IAutomation } from '../store/automations.store.types';
 
 import type { IViewAutomationsProps } from './view-automations.types';
@@ -291,6 +313,8 @@ const { fetchSpaces } = useAutomationSpaces();
 const { updating, remove, setEnabled } = useAutomationsActions();
 
 const { exporting, exportAutomation } = useAutomationExport();
+
+const { suggestions, answering: answeringSuggestions, fetchSuggestions, dismiss: dismissSuggestion, toDraft } = useAutomationSuggestions();
 
 const exportingIds = computed<IAutomation['id'][]>((): IAutomation['id'][] =>
 	automations.value.filter((automation) => exporting(automation.id)).map((automation) => automation.id)
@@ -458,6 +482,26 @@ const onTemplateGenerated = (draftId: string): void => {
 	navigate(RouteNames.AUTOMATIONS_ADD, undefined, { [AUTOMATION_TEMPLATE_DRAFT_QUERY]: draftId });
 };
 
+// A suggested automation opens the way a template draft does: its draft waits under the id the new automation gets,
+// and nothing is created until the add form is saved
+const onSuggestionOpen = (suggestion: IAutomationSuggestion): void => {
+	mayReplaceForm().then((replace: boolean): void => {
+		if (!replace) {
+			return;
+		}
+
+		const draftId = uuid();
+
+		stashAutomationDraft(draftId, toDraft(suggestion));
+
+		navigate(RouteNames.AUTOMATIONS_ADD, undefined, { [AUTOMATION_TEMPLATE_DRAFT_QUERY]: draftId });
+	});
+};
+
+const onSuggestionDismiss = (suggestion: IAutomationSuggestion): void => {
+	void dismissSuggestion(suggestion.id);
+};
+
 const onAutomationExport = (id: IAutomation['id']): void => {
 	void exportAutomation(id);
 };
@@ -498,6 +542,9 @@ onBeforeMount((): void => {
 	fetchSpaces().catch((): void => {
 		// Spaces only name the column and the filter; the list works without them
 	});
+
+	// Never rejects: without Buddy there are simply no suggestions
+	void fetchSuggestions();
 
 	showDrawer.value = isDetailRouteOpen();
 });

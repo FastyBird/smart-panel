@@ -5,6 +5,12 @@ import { Callout, Steps } from 'nextra/components'
 Scenes let you trigger multiple device actions with a single tap. For example, a "Movie Night" scene could dim the
 lights, close the blinds, and turn on the TV — all at once.
 
+<Callout type="info">
+	A scene runs only when somebody triggers it. To make your home react on its own — to motion, time, sunset or a
+	sensor — use [Automations](/docs/admin-management/automations). An automation can run a scene as one of its
+	steps.
+</Callout>
+
 ---
 
 ## How Scenes Work
@@ -35,7 +41,7 @@ Scenes can be organized by category to make them easier to find:
 | Energy | Optimize power consumption |
 | Morning / Night | Daily routines |
 | Work / Relax / Party / Movie | Activity-based presets |
-| Home / Away | Presence-based automation |
+| Home / Away | Presence-based presets |
 | Custom / Generic | Anything else |
 
 ---
@@ -122,5 +128,6 @@ When a scene is triggered:
 ## What's Next?
 
 - Organize devices into [Spaces](/docs/admin-management/spaces) for better scene targeting
+- Run scenes automatically from [Automations](/docs/admin-management/automations)
 - Build your [Dashboard](/docs/admin-management/dashboard) to add scene triggers to your display
 - Explore the [API Reference](https://fastybird.stoplight.io/docs/smart-panel) for programmatic scene management

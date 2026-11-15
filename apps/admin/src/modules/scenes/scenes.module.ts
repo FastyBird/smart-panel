@@ -54,7 +54,7 @@ export default {
 		modulesManager.addModule(scenesAdminModuleKey, {
 			type: SCENES_MODULE_NAME,
 			name: 'Scenes',
-			description: 'Manage automation scenes for your smart home.',
+			description: 'Manage one-tap scenes for your smart home.',
 			elements: [
 				{
 					type: CONFIG_MODULE_MODULE_TYPE,

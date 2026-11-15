@@ -7,6 +7,7 @@
 	},
 	"testRegex": "\\.e2e-spec\\.ts$",
 	"testTimeout": 30000,
+	"workerIdleMemoryLimit": "2GB",
 	"transform": {
 		"^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": { "allowJs": true } }]
 	},

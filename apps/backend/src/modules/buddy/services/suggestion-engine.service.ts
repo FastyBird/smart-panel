@@ -11,6 +11,7 @@ import { SuggestionFeedback } from '../../spaces/spaces.constants';
 import {
 	BUDDY_MODULE_NAME,
 	EventType,
+	PATTERN_LOOKBACK_DAYS,
 	SUGGESTION_CLEANUP_INTERVAL_MS,
 	SUGGESTION_COOLDOWN_MS,
 	SUGGESTION_EXPIRY_MS,
@@ -21,6 +22,26 @@ import { BuddySuggestionEntity, SuggestionStatus } from '../entities/buddy-sugge
 
 import { EvaluatorResult } from './heartbeat.types';
 import { DetectedPattern, PatternDetectorService, patternToEvaluatorResult } from './pattern-detector.service';
+
+/**
+ * Suggestions that can be applied in the admin only: the draft they carry opens in the automation editor. They are
+ * not announced with `EventType.SUGGESTION_CREATED`, whose listeners (the panel, the messaging channels) offer
+ * an "accept" that could not do anything with them; the admin reads them from the suggestion list.
+ */
+export const ADMIN_ONLY_SUGGESTION_TYPES: ReadonlySet<SuggestionType> = new Set([
+	SuggestionType.PATTERN_AUTOMATION_CREATE,
+]);
+
+/** Suggestions about a routine: a new one is a duplicate only when it is about the same routine */
+const ROUTINE_SUGGESTION_TYPES: ReadonlySet<SuggestionType> = new Set([
+	SuggestionType.PATTERN_SCENE_CREATE,
+	SuggestionType.PATTERN_AUTOMATION_CREATE,
+]);
+
+/** Whether two routine suggestions are about the same routine, by the key their metadata carries */
+export const isSameRoutine = (a: Record<string, unknown>, b: Record<string, unknown>): boolean =>
+	(a.intentType !== undefined && a.intentType === b.intentType) ||
+	(a.sequenceHash !== undefined && a.sequenceHash === b.sequenceHash);
 
 export interface BuddySuggestion {
 	id: string;
@@ -271,6 +292,10 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 				continue;
 			}
 
+			if (await this.hasAnsweredRoutine(result.spaceId, result.type, result.metadata)) {
+				continue;
+			}
+
 			const entity = this.suggestionRepo.create({
 				id: uuid(),
 				type: result.type,
@@ -289,7 +314,9 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 
 			created.push(suggestion);
 
-			this.eventEmitter.emit(EventType.SUGGESTION_CREATED, suggestion);
+			if (!ADMIN_ONLY_SUGGESTION_TYPES.has(suggestion.type)) {
+				this.eventEmitter.emit(EventType.SUGGESTION_CREATED, suggestion);
+			}
 
 			this.logger.debug(`Created suggestion from evaluator id=${suggestion.id}: "${suggestion.reason}"`);
 		}
@@ -317,14 +344,8 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 		});
 
 		for (const suggestion of candidates) {
-			if (type === SuggestionType.PATTERN_SCENE_CREATE) {
-				const meta = suggestion.metadata ?? {};
-
-				if (meta.intentType !== undefined && meta.intentType === metadata.intentType) {
-					return true;
-				}
-
-				if (meta.sequenceHash !== undefined && meta.sequenceHash === metadata.sequenceHash) {
+			if (ROUTINE_SUGGESTION_TYPES.has(type)) {
+				if (isSameRoutine(suggestion.metadata ?? {}, metadata)) {
 					return true;
 				}
 
@@ -335,6 +356,32 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Whether an automation was already offered for this routine and accepted or dismissed while the routine can
+	 * still be seen in the action history. Accepted, the automation exists; dismissed, the administrator said no.
+	 * Either way, offering it again once the cooldown is over would only repeat the question.
+	 */
+	private async hasAnsweredRoutine(
+		spaceId: string,
+		type: SuggestionType,
+		metadata: Record<string, unknown>,
+	): Promise<boolean> {
+		if (type !== SuggestionType.PATTERN_AUTOMATION_CREATE) {
+			return false;
+		}
+
+		const answered = await this.suggestionRepo.find({
+			where: {
+				spaceId,
+				type,
+				status: In([SuggestionStatus.ACCEPTED, SuggestionStatus.DISMISSED]),
+				feedbackAt: MoreThan(new Date(Date.now() - PATTERN_LOOKBACK_DAYS * 24 * 60 * 60 * 1000)),
+			},
+		});
+
+		return answered.some((suggestion) => isSameRoutine(suggestion.metadata ?? {}, metadata));
 	}
 
 	/**
@@ -351,7 +398,13 @@ export class SuggestionEngineService implements OnModuleInit, OnModuleDestroy {
 			},
 		});
 
-		return candidates.some((s) => s.metadata && s.metadata.intentType === pattern.intentType);
+		// An automation offered for the same routine is a suggestion of another kind: the scene is still offered
+		return candidates.some(
+			(s) =>
+				s.type !== SuggestionType.PATTERN_AUTOMATION_CREATE &&
+				s.metadata &&
+				s.metadata.intentType === pattern.intentType,
+		);
 	}
 
 	/**

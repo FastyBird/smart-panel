@@ -50,7 +50,9 @@ export class SuggestionDataModel {
 	spaceId: string;
 
 	@ApiPropertyOptional({
-		description: 'Additional metadata about the detected pattern',
+		description:
+			'Additional metadata about the detected pattern. A pattern_automation_create suggestion carries the draft of ' +
+			'the automation under draft: its name, mode and graph (a time-of-day trigger and the observed device writes).',
 		type: 'object',
 		additionalProperties: true,
 		example: { intentType: 'space.lighting.off', occurrences: 5, confidence: 0.71 },

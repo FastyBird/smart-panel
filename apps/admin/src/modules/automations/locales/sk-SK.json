@@ -1115,6 +1115,26 @@
 				"notImported": "Automatizáciu sa nepodarilo importovať.",
 				"changed": "Súbor sa po kontrole zmenil. Pred importom ho skontrolujte znova."
 			}
+		},
+		"suggestions": {
+			"headings": {
+				"list": "Navrhnuté Buddym"
+			},
+			"texts": {
+				"list": "Buddy si všimol činnosti, ktoré opakujete v rovnakom čase dňa. Otvorte návrh a skontrolujte jeho tok v editore; nič sa nevytvorí, kým ho neuložíte.",
+				"addHint": "Tok navrhnutý Buddym sa otvorí v editore, keď bude automatizácia vytvorená. Uloží sa, až keď ho tam uložíte, a automatizácia zostane vypnutá, kým ju nezapnete."
+			},
+			"buttons": {
+				"open": {
+					"title": "Otvoriť v editore"
+				},
+				"dismiss": {
+					"title": "Zahodiť"
+				}
+			},
+			"messages": {
+				"notDismissed": "Návrh sa nepodarilo zahodiť."
+			}
 		}
 	}
 }

@@ -42,6 +42,49 @@ export interface DetectedSequencePattern {
 	occurrences: number;
 	/** Action details from the most recent session — used to populate scene actions. */
 	latestActions: SceneActionDetail[];
+	/**
+	 * Whether every action of the most recent session is in `latestActions`: each named at least one target and
+	 * every target named a property. An action that set no property (a space-wide intent) is left out of them.
+	 */
+	latestActionsComplete: boolean;
+}
+
+/**
+ * The part of the day a routine happens in ("Morning", "Evening"), as the time period labels of a pattern rule name
+ * it; the name of a scene or automation suggested for the routine is made from it.
+ */
+export function getTimePeriodLabel(hour: number, rule: ResolvedPatternRule | undefined): string {
+	const labels = rule?.timePeriodLabels;
+
+	if (labels && labels.length > 0) {
+		for (const entry of labels) {
+			if (entry.range && hour >= entry.range[0] && hour < entry.range[1] && entry.label) {
+				return entry.label;
+			}
+		}
+
+		// Return default label if defined
+		const defaultEntry = labels.find((l) => l.default && !l.range);
+
+		if (defaultEntry?.default) {
+			return defaultEntry.default;
+		}
+	}
+
+	// Hardcoded fallback
+	if (hour >= 5 && hour < 12) {
+		return 'Morning';
+	}
+
+	if (hour >= 12 && hour < 17) {
+		return 'Afternoon';
+	}
+
+	if (hour >= 17 && hour < 21) {
+		return 'Evening';
+	}
+
+	return 'Night';
 }
 
 @Injectable()
@@ -161,6 +204,10 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 						timeOfDay: cluster.timeOfDay,
 						occurrences: cluster.sessions.length,
 						latestActions,
+						latestActionsComplete: latestSession.actions.every(
+							(action) =>
+								(action.targets ?? []).length > 0 && (action.targets ?? []).every((target) => !!target.propertyId),
+						),
 					});
 				}
 			}
@@ -303,7 +350,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		spaceName: string,
 		rule: ResolvedPatternRule | undefined,
 	): EvaluatorResult {
-		const timeLabel = this.getTimePeriodLabel(pattern.timeOfDay.hour, rule);
+		const timeLabel = getTimePeriodLabel(pattern.timeOfDay.hour, rule);
 		const sceneName = `${spaceName} ${timeLabel}`;
 		const actionCount = pattern.sequence.intentTypes.length;
 
@@ -332,44 +379,6 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 				actions: pattern.latestActions,
 			},
 		};
-	}
-
-	private getTimePeriodLabel(hour: number, rule: ResolvedPatternRule | undefined): string {
-		const labels = rule?.timePeriodLabels;
-
-		if (labels && labels.length > 0) {
-			for (const entry of labels) {
-				if (entry.range && hour >= entry.range[0] && hour < entry.range[1] && entry.label) {
-					return entry.label;
-				}
-
-				if (entry.default && !entry.range) {
-					// default entry is used as fallback — continue checking ranges first
-				}
-			}
-
-			// Return default label if defined
-			const defaultEntry = labels.find((l) => l.default && !l.range);
-
-			if (defaultEntry?.default) {
-				return defaultEntry.default;
-			}
-		}
-
-		// Hardcoded fallback
-		if (hour >= 5 && hour < 12) {
-			return 'Morning';
-		}
-
-		if (hour >= 12 && hour < 17) {
-			return 'Afternoon';
-		}
-
-		if (hour >= 17 && hour < 21) {
-			return 'Evening';
-		}
-
-		return 'Night';
 	}
 }
 
