@@ -21,6 +21,11 @@ const sensors = read('sensors.json') as Raw[];
 const nvrs = read('nvrs.json') as Raw;
 const goldenCamera = read('expected/camera.json') as Raw;
 const goldenSensor = read('expected/sensor.json') as Raw;
+const goldenLeak = read('expected/sensor-leak.json') as Raw;
+const goldenDoorbell = read('expected/doorbell.json') as Raw;
+const eventLines = readFileSync(join(FIXTURES, 'ws-events.jsonl'), 'utf8')
+	.split('\n')
+	.filter((line) => line.trim() !== '');
 const deviceLines = readFileSync(join(FIXTURES, 'ws-devices.jsonl'), 'utf8')
 	.split('\n')
 	.filter((line) => line.trim() !== '');
@@ -30,6 +35,10 @@ const CAMERA_ID = cameras[0].id as string;
 const SENSOR_ID = sensors[0].id as string;
 const CAMERA_PANEL = '11111111-1111-4111-8111-111111111111';
 const SENSOR_PANEL = '22222222-2222-4222-8222-222222222222';
+const DOORBELL_PANEL = '33333333-3333-4333-8333-333333333333';
+const eventId = (suffix: string): string => `5f00000000000000000e${suffix}`;
+const eventFrame = (suffix: string, type: 'add' | 'update'): ProtectFrame =>
+	frameOf(eventLines.find((line) => line.includes(`"type":"${type}"`) && line.includes(`"id":"${eventId(suffix)}"`)));
 const REMOVAL_KEY = `device_removed:${SENSOR_ID}`;
 const FAILURE_TEXT = 'UniFi Protect property update failed';
 
@@ -60,6 +69,7 @@ describe('ProtectSynchronizerService', () => {
 	let connectivity: { trySetConnectionState: jest.Mock };
 	let propertyValue: { readLatestPersisted: jest.Mock };
 	let notifications: { notify: jest.Mock; resolve: jest.Mock };
+	let occurrences: { publishOccurrence: jest.Mock };
 	let logged: unknown[][];
 
 	const adopt = (
@@ -121,6 +131,7 @@ describe('ProtectSynchronizerService', () => {
 			readLatestPersisted: jest.fn((property: Raw) => Promise.resolve({ value: stored.get(property.id) ?? null })),
 		};
 		notifications = { notify: jest.fn(() => Promise.resolve(null)), resolve: jest.fn(() => Promise.resolve(true)) };
+		occurrences = { publishOccurrence: jest.fn(() => Promise.resolve({})) };
 
 		const loader = new ProtectMappingLoaderService();
 
@@ -132,6 +143,7 @@ describe('ProtectSynchronizerService', () => {
 			connectivity as never,
 			propertyValue as never,
 			notifications as never,
+			occurrences as never,
 		);
 	});
 
@@ -516,5 +528,320 @@ describe('ProtectSynchronizerService', () => {
 
 		expect(properties.update).not.toHaveBeenCalled();
 		expect(service.getCounters().framesIgnored).toBe(1);
+	});
+
+	describe('events', () => {
+		const flush = async (): Promise<void> => {
+			await service.idle();
+		};
+		const feed = async (frame: ProtectFrame): Promise<void> => {
+			service.enqueueFrame(IDENTITY, frame);
+			await flush();
+		};
+		const bellProperty = (): string => prop(DOORBELL_PANEL, 'doorbell', 'doorbell_event');
+		const values = (id: string): unknown[] =>
+			properties.update.mock.calls
+				.filter((call) => call[0] === id)
+				.map((call) => (call[1] as { value: unknown }).value);
+
+		beforeEach(() => {
+			jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
+		});
+
+		afterEach(() => {
+			service.reset();
+			jest.useRealTimers();
+		});
+
+		it('turns a recorded smoke alarm sound into smoke.detected and back', async () => {
+			const smoke = prop(CAMERA_PANEL, 'smoke', 'smoke_alarm_sound_detected');
+
+			await prime();
+			await feed(eventFrame('0005', 'add'));
+
+			expect(properties.update).toHaveBeenCalledWith(smoke, { type: DEVICES_UNIFI_PROTECT_TYPE, value: true });
+
+			await feed(eventFrame('0005', 'update'));
+
+			expect(values(smoke)).toEqual([true, false]);
+		});
+
+		it('writes leak detected and level together', async () => {
+			devices = [adopt(goldenLeak, SENSOR_PANEL)];
+			await feed(eventFrame('0011', 'add'));
+
+			expect(values(prop(SENSOR_PANEL, 'leak', 'leak_detected'))).toEqual([true]);
+			expect(values(prop(SENSOR_PANEL, 'leak', 'leak_level'))).toEqual(['high']);
+
+			await feed(eventFrame('0011', 'update'));
+
+			expect(values(prop(SENSOR_PANEL, 'leak', 'leak_detected'))).toEqual([true, false]);
+			expect(values(prop(SENSOR_PANEL, 'leak', 'leak_level'))).toEqual(['high', 'low']);
+		});
+
+		it('clears a detection 60 s after its last frame and re-arms on update', async () => {
+			const motion = prop(CAMERA_PANEL, 'motion', 'camera_motion_detected');
+			const update = frameFor('update', { id: eventId('0001'), modelKey: 'event' });
+
+			await feed(eventFrame('0001', 'add'));
+			await jest.advanceTimersByTimeAsync(59_999);
+			await flush();
+
+			expect(values(motion)).toEqual([true]);
+
+			await feed(update);
+			await jest.advanceTimersByTimeAsync(59_999);
+			await flush();
+
+			expect(values(motion)).toEqual([true]);
+
+			await jest.advanceTimersByTimeAsync(1);
+			await flush();
+
+			expect(values(motion)).toEqual([true, false]);
+		});
+
+		it('does not reset a detection on a snapshot while its event is open', async () => {
+			const motion = prop(CAMERA_PANEL, 'motion', 'camera_motion_detected');
+
+			await prime();
+			await feed(eventFrame('0001', 'add'));
+			properties.update.mockClear();
+			await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0]), entry('sensor', sensors[0])]));
+
+			expect(values(motion)).toEqual([]);
+		});
+
+		it('publishes a recorded ring once with the Protect event id', async () => {
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+			await feed(eventFrame('0007', 'add'));
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect(occurrences.publishOccurrence).toHaveBeenCalledWith({
+				deviceId: DOORBELL_PANEL,
+				channelId: `${DOORBELL_PANEL}|doorbell`,
+				propertyId: bellProperty(),
+				event: 'single_press',
+				nativeEventType: 'ring',
+				sourceOccurrenceId: '5f00000000000000000e0007',
+				sourceTimestamp: '2026-11-11T12:26:47.000Z',
+			});
+
+			await feed(eventFrame('0007', 'add'));
+			await feed(eventFrame('0007', 'update'));
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect(updatedIds()).not.toContain(bellProperty());
+		});
+
+		it('skips a ring for a camera without a doorbell channel', async () => {
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+			devices[0].channels = devices[0].channels.filter((channel: Raw) => channel.identifier !== 'doorbell');
+			await feed(eventFrame('0007', 'add'));
+
+			expect(occurrences.publishOccurrence).not.toHaveBeenCalled();
+			expect(service.getCounters().writesFailed).toBe(0);
+		});
+
+		it('counts unknown event and detection types', async () => {
+			await prime();
+			await feed(eventFrame('0019', 'add'));
+			await feed(eventFrame('0020', 'add'));
+
+			expect(service.getCounters().ignoredEventCount).toBe(2);
+			expect(Object.fromEntries(service.getCounters().ignoredEventTypes)).toEqual({
+				sensorExtremeValues: 1,
+				pet: 1,
+			});
+		});
+
+		it('bounds the ignored event names', async () => {
+			await prime();
+
+			for (let index = 0; index < 40; index++) {
+				await feed(
+					frameFor('add', {
+						id: `5f0000000000000000${String(index).padStart(6, '0')}`,
+						modelKey: 'event',
+						type: `unknownType${index}`,
+						start: 1,
+						device: SENSOR_ID,
+					}),
+				);
+			}
+
+			const types = service.getCounters().ignoredEventTypes;
+
+			expect(service.getCounters().ignoredEventCount).toBe(40);
+			expect(types.size).toBe(33);
+			expect(types.get('invalid')).toBe(8);
+		});
+
+		it('ignores events of devices that are not adopted', async () => {
+			await prime();
+			await feed(
+				frameFor('add', {
+					id: eventId('0030'),
+					modelKey: 'event',
+					type: 'sensorExtremeValues',
+					start: 1,
+					device: 'ffffffffffffffffffffffff',
+				}),
+			);
+			await feed(
+				frameFor('add', {
+					id: eventId('0031'),
+					modelKey: 'event',
+					type: 'motion',
+					start: 1,
+					device: 'ffffffffffffffffffffffff',
+				}),
+			);
+
+			expect(properties.update).not.toHaveBeenCalled();
+			expect(service.getCounters().ignoredEventCount).toBe(0);
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		it('does not count lightMotion or sensorBatteryLow as unknown', async () => {
+			await prime();
+			await feed(eventFrame('0013', 'add'));
+			await feed(eventFrame('0018', 'add'));
+
+			expect(service.getCounters().ignoredEventCount).toBe(0);
+			expect(properties.update).not.toHaveBeenCalled();
+		});
+
+		it('keeps timers alive across snapshots and clears them on reset', async () => {
+			await prime();
+			await feed(eventFrame('0001', 'add'));
+
+			expect(jest.getTimerCount()).toBe(1);
+
+			await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0]), entry('sensor', sensors[0])]));
+
+			expect(jest.getTimerCount()).toBe(1);
+
+			service.reset();
+
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		it('writes nothing from a timer that fires after a reset', async () => {
+			await prime();
+			await feed(eventFrame('0001', 'add'));
+			properties.update.mockClear();
+			service.reset();
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(properties.update).not.toHaveBeenCalled();
+		});
+
+		it('retries a failed smoke start on the next frame of that device and never re-emits successes', async () => {
+			const smoke = prop(CAMERA_PANEL, 'smoke', 'smoke_alarm_sound_detected');
+
+			await prime();
+			properties.update.mockRejectedValueOnce(new Error('SENTINEL detail'));
+			await feed(eventFrame('0005', 'add'));
+
+			expect(values(smoke)).toEqual([true]);
+			expect(service.getCounters().writesFailed).toBe(1);
+
+			await feed(eventFrame('0006', 'add'));
+
+			expect(values(smoke)).toEqual([true, true]);
+			expect(values(prop(CAMERA_PANEL, 'sound_detection.baby_cry', 'sound_detected'))).toEqual([true]);
+
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(values(smoke)).toEqual([true, true, false]);
+			expect(JSON.stringify(logged)).not.toContain('SENTINEL');
+		});
+
+		it('drops a queued start that a later end supersedes', async () => {
+			const smoke = prop(CAMERA_PANEL, 'smoke', 'smoke_alarm_sound_detected');
+
+			await prime();
+			properties.update.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0005', 'add'));
+			properties.update.mockClear();
+			properties.update.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0005', 'update'));
+			properties.update.mockClear();
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(values(smoke)).toEqual([]);
+		});
+
+		it('retries a failed ring from the queue timer and publishes it exactly once', async () => {
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+			occurrences.publishOccurrence.mockRejectedValueOnce(new Error('SENTINEL detail'));
+			await feed(eventFrame('0007', 'add'));
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect(service.getCounters().writesFailed).toBe(1);
+			expect(
+				logged.some((args) => args[0] === '[ProtectSynchronizerService] UniFi Protect ring could not be published'),
+			).toBe(true);
+
+			await jest.advanceTimersByTimeAsync(4999);
+			await flush();
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(1);
+			await flush();
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(2);
+			expect(occurrences.publishOccurrence.mock.calls[1][0].sourceOccurrenceId).toBe(eventId('0007'));
+
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(2);
+			expect(jest.getTimerCount()).toBe(0);
+			expect(JSON.stringify(logged)).not.toContain('SENTINEL');
+		});
+
+		it('gives up on a ring after three retries at 5, 15 and 45 seconds', async () => {
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+			occurrences.publishOccurrence.mockRejectedValue(new Error('down'));
+			await feed(eventFrame('0007', 'add'));
+
+			for (const [advance, calls] of [
+				[5000, 2],
+				[15_000, 3],
+				[45_000, 4],
+				[120_000, 4],
+			]) {
+				await jest.advanceTimersByTimeAsync(advance);
+				await flush();
+
+				expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(calls);
+			}
+
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		it('keeps at most 32 queued failures per device', () => {
+			for (let index = 0; index < 40; index++) {
+				(service as any).queueRetry('device', {
+					kind: 'write',
+					key: `key${index}`,
+					propertyId: `p${index}`,
+					value: true,
+					attempts: 0,
+					dueAt: 0,
+				});
+			}
+
+			const entries = ((service as any).retries as Map<string, { key: string }[]>).get('device');
+
+			expect(entries).toHaveLength(32);
+			expect(entries[0].key).toBe('key8');
+		});
 	});
 });

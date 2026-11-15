@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -21,7 +22,7 @@ import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service'
 import { PROTECT_MODEL_KEYS, ProtectMappingScalar, ProtectResolvedMappings } from '../mappings/mapping.types';
 
 import { ProtectConsoleIdentity } from './protect-connector.service';
-import { ProtectEventTracker } from './protect-event-tracker';
+import { ProtectEventEffect, ProtectEventTracker, ProtectTargetWrite } from './protect-event-tracker';
 import {
 	ProtectFrame,
 	diffMappedValues,
@@ -46,6 +47,7 @@ export interface ProtectSyncCounters {
 
 interface IndexedProperty {
 	id: string;
+	channelId: string;
 	channelIdentifier: string;
 	mappingName: string;
 }
@@ -58,8 +60,29 @@ interface IndexedDevice {
 	properties: Map<string, IndexedProperty>;
 }
 
+type RetryEntry =
+	| { kind: 'write'; key: string; propertyId: string; value: string | boolean; attempts: number; dueAt: number }
+	| {
+			kind: 'ring';
+			key: string;
+			deviceId: string;
+			channelId: string;
+			propertyId: string;
+			eventId: string;
+			startedAt: number | null;
+			attempts: number;
+			dueAt: number;
+	  };
+
 type SyncMode = 'snapshot' | 'frame';
 
+const RING_FAILURE_TEXT = 'UniFi Protect ring could not be published';
+const RETRY_DELAYS_MS: readonly number[] = [5000, 15000, 45000];
+const MAX_RETRY_ENTRIES = 32;
+const MAX_IGNORED_EVENT_NAMES = 32;
+const INVALID_EVENT_NAME = 'invalid';
+const DOORBELL_CHANNEL = 'doorbell';
+const DOORBELL_MAPPING = 'doorbell_event';
 const FAILURE_TEXT = 'UniFi Protect property update failed';
 const MAX_CACHED_DEVICES = 4096;
 const TAMPER_MAPPINGS: ReadonlySet<string> = new Set(['contact_tampered', 'sensor_motion_tampered']);
@@ -96,6 +119,11 @@ export class ProtectSynchronizerService {
 	private readonly lastWritten = new Map<string, ProtectMappingScalar>();
 	private readonly lastState = new Map<string, string>();
 	private readonly removed = new Set<string>();
+	/** Failed event effects per Protect device id, oldest first. */
+	private readonly retries = new Map<string, RetryEntry[]>();
+	private eventTimer: NodeJS.Timeout | null = null;
+	private retryTimer: NodeJS.Timeout | null = null;
+	private eventIdentity: ProtectConsoleIdentity | null = null;
 
 	private chain: Promise<void> = Promise.resolve();
 	private pending = 0;
@@ -119,6 +147,7 @@ export class ProtectSynchronizerService {
 		private readonly connectivity: DeviceConnectivityService,
 		private readonly propertyValue: PropertyValueService,
 		private readonly notifications: NotificationsService,
+		private readonly occurrences: ChannelInputOccurrencesService,
 	) {}
 
 	/** Serial; resolves when applied. Replaces the cache, diffs against stored values, reconciles removals. */
@@ -174,6 +203,10 @@ export class ProtectSynchronizerService {
 		this.lastState.clear();
 		this.removed.clear();
 		this.tracker.clear();
+		this.retries.clear();
+		this.eventIdentity = null;
+		this.clearTimer('eventTimer');
+		this.clearTimer('retryTimer');
 		this.lastFailureLogAt = null;
 		this.suppressedFailures = 0;
 	}
@@ -203,6 +236,13 @@ export class ProtectSynchronizerService {
 
 		if (value !== undefined) {
 			this.lastWritten.set(property.id, value);
+		}
+	}
+
+	private clearTimer(name: 'eventTimer' | 'retryTimer'): void {
+		if (this[name] !== null) {
+			clearTimeout(this[name]);
+			this[name] = null;
 		}
 	}
 
@@ -271,6 +311,12 @@ export class ProtectSynchronizerService {
 	}
 
 	private async applyFrameNow(identity: ProtectConsoleIdentity, frame: ProtectFrame): Promise<void> {
+		if (frame.modelKey === 'event') {
+			await this.applyEventFrame(identity, frame);
+
+			return;
+		}
+
 		if (!(PROTECT_MODEL_KEYS as readonly string[]).includes(frame.modelKey)) {
 			this.framesIgnored++;
 
@@ -315,6 +361,7 @@ export class ProtectSynchronizerService {
 		this.cache.set(key, raw);
 
 		if (device !== undefined) {
+			await this.retryDevice(device.protectDeviceId);
 			await this.syncDevice(
 				identity,
 				device,
@@ -325,6 +372,319 @@ export class ProtectSynchronizerService {
 				frame.action === 'add' ? null : frame.item,
 			);
 		}
+	}
+
+	private async applyEventFrame(identity: ProtectConsoleIdentity, frame: ProtectFrame): Promise<void> {
+		await this.ensureIndex(identity);
+
+		if (this.aborted()) {
+			return;
+		}
+
+		const eventDevice = frame.action === 'add' ? frame.item.device : undefined;
+
+		// Events of devices Smart Panel has not adopted are not tracked at all.
+		if (typeof eventDevice === 'string' && !this.index.has(eventDevice)) {
+			return;
+		}
+
+		this.eventIdentity = identity;
+
+		const outcome = this.tracker.apply(frame, Date.now());
+
+		for (const ignored of outcome.ignored) {
+			if (ignored.reason === 'unknown_type' || ignored.reason === 'unknown_detection_type') {
+				this.countIgnoredEvent(ignored.name);
+			} else if (ignored.reason === 'invalid' || ignored.reason === 'unknown_event') {
+				this.framesIgnored++;
+			}
+		}
+
+		await this.applyEffects(outcome.effects, typeof eventDevice === 'string' ? [eventDevice] : []);
+		this.scheduleEventTimer();
+	}
+
+	private countIgnoredEvent(name: string | null): void {
+		this.ignoredEventCount++;
+
+		const key =
+			name !== null && (this.ignoredEventTypes.has(name) || this.ignoredEventTypes.size < MAX_IGNORED_EVENT_NAMES)
+				? name
+				: INVALID_EVENT_NAME;
+
+		this.ignoredEventTypes.set(key, (this.ignoredEventTypes.get(key) ?? 0) + 1);
+	}
+
+	/** Retries earlier failures of the touched devices first, then applies the new effects. */
+	private async applyEffects(effects: readonly ProtectEventEffect[], extraDevices: readonly string[]): Promise<void> {
+		for (const protectDeviceId of new Set([...extraDevices, ...effects.map((effect) => effect.protectDeviceId)])) {
+			await this.retryDevice(protectDeviceId);
+		}
+
+		for (const effect of effects) {
+			if (this.aborted()) {
+				return;
+			}
+
+			const device = this.index.get(effect.protectDeviceId);
+
+			if (device === undefined) {
+				continue;
+			}
+
+			if (effect.kind === 'write') {
+				for (const entry of effect.writes) {
+					await this.applyTargetWrite(device, entry);
+				}
+			} else {
+				await this.publishRing(device, effect.eventId, effect.startedAt, null);
+			}
+		}
+	}
+
+	private async applyTargetWrite(device: IndexedDevice, target: ProtectTargetWrite): Promise<void> {
+		const key = propertyKey(target.channelIdentifier, target.mappingName);
+		const property = device.properties.get(key);
+
+		if (property === undefined) {
+			return;
+		}
+
+		// A newer value for the property supersedes a queued failure of an older one.
+		this.dropRetry(device.protectDeviceId, key);
+
+		if (this.lastWritten.get(property.id) === target.value) {
+			return;
+		}
+
+		if (!(await this.writeProperty(property.id, target.value)) && !this.aborted()) {
+			this.queueRetry(device.protectDeviceId, {
+				kind: 'write',
+				key,
+				propertyId: property.id,
+				value: target.value,
+				attempts: 0,
+				dueAt: 0,
+			});
+		}
+	}
+
+	/** `existing` is the retry entry being re-attempted, or null for a first attempt. */
+	private async publishRing(
+		device: IndexedDevice,
+		eventId: string,
+		startedAt: number | null,
+		existing: RetryEntry | null,
+	): Promise<boolean> {
+		const bell = device.properties.get(propertyKey(DOORBELL_CHANNEL, DOORBELL_MAPPING));
+
+		if (bell === undefined || this.aborted()) {
+			return true;
+		}
+
+		let sourceTimestamp: string | undefined;
+
+		try {
+			sourceTimestamp = startedAt === null ? undefined : new Date(startedAt).toISOString();
+		} catch {
+			sourceTimestamp = undefined;
+		}
+
+		try {
+			await this.occurrences.publishOccurrence({
+				deviceId: device.panelId,
+				channelId: bell.channelId,
+				propertyId: bell.id,
+				event: 'single_press',
+				nativeEventType: 'ring',
+				sourceOccurrenceId: eventId,
+				sourceTimestamp,
+			});
+
+			return true;
+		} catch {
+			if (this.aborted()) {
+				return false;
+			}
+
+			this.writesFailed++;
+			this.logger.warn(RING_FAILURE_TEXT);
+
+			if (existing === null) {
+				this.queueRetry(device.protectDeviceId, {
+					kind: 'ring',
+					key: `ring\u0000${eventId}`,
+					deviceId: device.panelId,
+					channelId: bell.channelId,
+					propertyId: bell.id,
+					eventId,
+					startedAt,
+					attempts: 0,
+					dueAt: 0,
+				});
+			}
+
+			return false;
+		}
+	}
+
+	private queueRetry(protectDeviceId: string, entry: RetryEntry): void {
+		const entries = this.retries.get(protectDeviceId) ?? [];
+
+		entry.dueAt = Date.now() + RETRY_DELAYS_MS[entry.attempts];
+		entries.push(entry);
+
+		while (entries.length > MAX_RETRY_ENTRIES) {
+			entries.shift();
+		}
+
+		this.retries.set(protectDeviceId, entries);
+		this.scheduleRetryTimer();
+	}
+
+	private dropRetry(protectDeviceId: string, key: string): void {
+		const entries = this.retries.get(protectDeviceId);
+
+		if (entries === undefined) {
+			return;
+		}
+
+		const kept = entries.filter((entry) => entry.key !== key);
+
+		if (kept.length === 0) {
+			this.retries.delete(protectDeviceId);
+		} else {
+			this.retries.set(protectDeviceId, kept);
+		}
+	}
+
+	/** Re-attempts the queued failures of one device (`onlyDue` limits it to the entries whose time has come). */
+	private async retryDevice(protectDeviceId: string, onlyDue = false): Promise<void> {
+		const entries = this.retries.get(protectDeviceId);
+
+		if (entries === undefined) {
+			return;
+		}
+
+		this.retries.delete(protectDeviceId);
+
+		const now = Date.now();
+		const survivors: RetryEntry[] = [];
+
+		for (const entry of entries) {
+			if (this.aborted()) {
+				return;
+			}
+
+			if (onlyDue && entry.dueAt > now) {
+				survivors.push(entry);
+				continue;
+			}
+
+			const device = this.index.get(protectDeviceId);
+			let done = device === undefined;
+
+			if (device !== undefined) {
+				if (entry.kind === 'write') {
+					done =
+						this.lastWritten.get(entry.propertyId) === entry.value ||
+						(await this.writeProperty(entry.propertyId, entry.value));
+				} else {
+					done = await this.publishRing(device, entry.eventId, entry.startedAt, entry);
+				}
+			}
+
+			if (this.aborted()) {
+				return;
+			}
+
+			if (!done) {
+				entry.attempts++;
+
+				if (entry.attempts < RETRY_DELAYS_MS.length) {
+					entry.dueAt = Date.now() + RETRY_DELAYS_MS[entry.attempts];
+					survivors.push(entry);
+				}
+			}
+		}
+
+		if (survivors.length > 0) {
+			// Entries queued meanwhile (a newer failure) keep their place after the survivors.
+			this.retries.set(
+				protectDeviceId,
+				[...survivors, ...(this.retries.get(protectDeviceId) ?? [])].slice(-MAX_RETRY_ENTRIES),
+			);
+		}
+
+		this.scheduleRetryTimer();
+	}
+
+	private scheduleRetryTimer(): void {
+		this.clearTimer('retryTimer');
+
+		let next: number | null = null;
+
+		for (const entries of this.retries.values()) {
+			for (const entry of entries) {
+				next = next === null ? entry.dueAt : Math.min(next, entry.dueAt);
+			}
+		}
+
+		if (next === null) {
+			return;
+		}
+
+		this.retryTimer = setTimeout(
+			() => {
+				this.retryTimer = null;
+				void this.run(async () => {
+					for (const protectDeviceId of [...this.retries.keys()]) {
+						await this.retryDevice(protectDeviceId, true);
+					}
+				});
+			},
+			Math.max(0, next - Date.now()),
+		);
+		this.retryTimer.unref();
+	}
+
+	private scheduleEventTimer(): void {
+		this.clearTimer('eventTimer');
+
+		const deadline = this.tracker.nextDeadline();
+
+		if (deadline === null) {
+			return;
+		}
+
+		this.eventTimer = setTimeout(
+			() => {
+				this.eventTimer = null;
+				void this.run(() => this.expireEvents());
+			},
+			Math.max(0, deadline - Date.now()),
+		);
+		this.eventTimer.unref();
+	}
+
+	/** Safety tick: closes events past their deadline and retries every queued failure. */
+	private async expireEvents(): Promise<void> {
+		const identity = this.eventIdentity;
+
+		if (identity === null) {
+			return;
+		}
+
+		await this.ensureIndex(identity);
+
+		if (this.aborted()) {
+			return;
+		}
+
+		const effects = this.tracker.expire(Date.now());
+
+		await this.applyEffects(effects, [...this.retries.keys()]);
+		this.scheduleEventTimer();
 	}
 
 	private adopted(frame: ProtectFrame): IndexedDevice | undefined {
@@ -621,6 +981,7 @@ export class ProtectSynchronizerService {
 
 					properties.set(propertyKey(channel.identifier, property.protectMappingName), {
 						id: property.id,
+						channelId: channel.id,
 						channelIdentifier: channel.identifier,
 						mappingName: property.protectMappingName,
 					});
