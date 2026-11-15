@@ -1,0 +1,609 @@
+import { Injectable } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
+
+import { createExtensionLogger } from '../../../common/logger';
+import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { NotificationKind, NotificationSeverity } from '../../../modules/notifications/notifications.constants';
+import { NotificationsService } from '../../../modules/notifications/services/notifications.service';
+import {
+	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+	DEVICES_UNIFI_PROTECT_TYPE,
+	PROTECT_FAILURE_LOG_INTERVAL_MS,
+	PROTECT_MAX_PENDING_FRAMES,
+} from '../devices-unifi-protect.constants';
+import { ProtectChannelPropertyEntity, ProtectDeviceEntity } from '../entities/devices-unifi-protect.entity';
+import { ProtectMappedDevice, evaluateProtectMapping, toProtectDeviceName } from '../mappings/mapping-evaluator';
+import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
+import { PROTECT_MODEL_KEYS, ProtectMappingScalar, ProtectResolvedMappings } from '../mappings/mapping.types';
+
+import { ProtectConsoleIdentity } from './protect-connector.service';
+import { ProtectEventTracker } from './protect-event-tracker';
+import {
+	ProtectFrame,
+	diffMappedValues,
+	mappedConnectionState,
+	mergeProtectItem,
+	syncableMappingNames,
+} from './protect-frame-merge';
+import { ProtectInventoryEntry } from './protect-inventory.service';
+
+export interface ProtectSnapshot {
+	/** True when all three console lists were read. */
+	complete: boolean;
+	entries: ProtectInventoryEntry[];
+}
+
+export interface ProtectSyncCounters {
+	framesIgnored: number;
+	writesFailed: number;
+	ignoredEventCount: number;
+	ignoredEventTypes: ReadonlyMap<string, number>;
+}
+
+interface IndexedProperty {
+	id: string;
+	channelIdentifier: string;
+	mappingName: string;
+}
+
+interface IndexedDevice {
+	panelId: string;
+	protectDeviceId: string;
+	modelKey: string | null;
+	name: string;
+	properties: Map<string, IndexedProperty>;
+}
+
+type SyncMode = 'snapshot' | 'frame';
+
+const FAILURE_TEXT = 'UniFi Protect property update failed';
+const MAX_CACHED_DEVICES = 4096;
+const TAMPER_MAPPINGS: ReadonlySet<string> = new Set(['contact_tampered', 'sensor_motion_tampered']);
+const STALE_DETECTIONS: ReadonlySet<string> = new Set([
+	'camera_motion_detected',
+	'object_detected',
+	'smoke_alarm_sound_detected',
+	'co_alarm_sound_detected',
+	'sound_detected',
+	'sensor_smoke_detected',
+	'leak_detected',
+]);
+
+const propertyKey = (channelIdentifier: string, mappingName: string): string =>
+	`${channelIdentifier}\u0000${mappingName}`;
+
+const cacheKey = (modelKey: string, id: string): string => `${modelKey}\u0000${id}`;
+
+const removalKey = (protectDeviceId: string): string => `device_removed:${protectDeviceId}`;
+
+@Injectable()
+export class ProtectSynchronizerService {
+	private readonly logger = createExtensionLogger(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, 'ProtectSynchronizerService');
+	private readonly tracker = new ProtectEventTracker();
+
+	private cache = new Map<string, Readonly<Record<string, unknown>>>();
+	private index = new Map<string, IndexedDevice>();
+	private indexNvrId: string | null = null;
+	private indexDirty = true;
+	private indexGeneration = 0;
+	private indexRefresh: Promise<void> | null = null;
+
+	/** Last successfully persisted value per property id. */
+	private readonly lastWritten = new Map<string, ProtectMappingScalar>();
+	private readonly lastState = new Map<string, string>();
+	private readonly removed = new Set<string>();
+
+	private chain: Promise<void> = Promise.resolve();
+	private pending = 0;
+	private generation = 0;
+
+	private syncable: { mappings: ProtectResolvedMappings; names: ReadonlySet<string> } | null = null;
+	private lastFailureLogAt: number | null = null;
+	private suppressedFailures = 0;
+
+	private framesIgnored = 0;
+	private writesFailed = 0;
+	private ignoredEventCount = 0;
+	private readonly ignoredEventTypes = new Map<string, number>();
+
+	constructor(
+		private readonly mappingLoader: ProtectMappingLoaderService,
+		private readonly devicesService: DevicesService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly connectivity: DeviceConnectivityService,
+		private readonly propertyValue: PropertyValueService,
+		private readonly notifications: NotificationsService,
+	) {}
+
+	/** Serial; resolves when applied. Replaces the cache, diffs against stored values, reconciles removals. */
+	applySnapshot(identity: ProtectConsoleIdentity, snapshot: ProtectSnapshot): Promise<void> {
+		return this.run(() => this.applySnapshotNow(identity, snapshot));
+	}
+
+	/** Enqueued on the serial queue; never throws. Returns false when the queue was full (caller re-primes). */
+	enqueueFrame(identity: ProtectConsoleIdentity, frame: ProtectFrame): boolean {
+		if (this.pending >= PROTECT_MAX_PENDING_FRAMES) {
+			return false;
+		}
+
+		void this.run(() => this.applyFrameNow(identity, frame));
+
+		return true;
+	}
+
+	/** Counts a frame the parser rejected. */
+	countIgnoredFrame(): void {
+		this.framesIgnored++;
+	}
+
+	/** Resolves when the queue is empty. */
+	async idle(): Promise<void> {
+		let tail: Promise<void>;
+
+		do {
+			tail = this.chain;
+			await tail;
+		} while (tail !== this.chain);
+	}
+
+	getCounters(): ProtectSyncCounters {
+		return {
+			framesIgnored: this.framesIgnored,
+			writesFailed: this.writesFailed,
+			ignoredEventCount: this.ignoredEventCount,
+			ignoredEventTypes: new Map(this.ignoredEventTypes),
+		};
+	}
+
+	/** Plugin stop: drops queue, caches and tracker; writes nothing. */
+	reset(): void {
+		this.generation++;
+		this.pending = 0;
+		this.cache = new Map();
+		this.index = new Map();
+		this.indexNvrId = null;
+		this.indexDirty = true;
+		this.indexGeneration++;
+		this.lastWritten.clear();
+		this.lastState.clear();
+		this.removed.clear();
+		this.tracker.clear();
+		this.lastFailureLogAt = null;
+		this.suppressedFailures = 0;
+	}
+
+	@OnEvent(EventType.DEVICE_CREATED)
+	@OnEvent(EventType.DEVICE_UPDATED)
+	@OnEvent(EventType.DEVICE_DELETED)
+	@OnEvent(EventType.CHANNEL_CREATED)
+	@OnEvent(EventType.CHANNEL_UPDATED)
+	@OnEvent(EventType.CHANNEL_DELETED)
+	@OnEvent(EventType.CHANNEL_PROPERTY_CREATED)
+	@OnEvent(EventType.CHANNEL_PROPERTY_UPDATED)
+	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
+	invalidateIndex(): void {
+		this.indexDirty = true;
+		this.indexGeneration++;
+	}
+
+	/** Keeps the written-value baseline in step with values other writers (adoption) persist. */
+	@OnEvent(EventType.CHANNEL_PROPERTY_VALUE_SET)
+	recordPersistedValue(property: ProtectChannelPropertyEntity): void {
+		if (property?.type !== DEVICES_UNIFI_PROTECT_TYPE || !this.lastWritten.has(property.id)) {
+			return;
+		}
+
+		const value = property.value?.value;
+
+		if (value !== undefined) {
+			this.lastWritten.set(property.id, value);
+		}
+	}
+
+	private run(task: () => Promise<void>): Promise<void> {
+		const generation = this.generation;
+
+		this.pending++;
+
+		const next = this.chain.then(async () => {
+			try {
+				if (generation === this.generation) {
+					await task();
+				}
+			} catch {
+				this.logger.warn('UniFi Protect synchronization step failed');
+			} finally {
+				if (generation === this.generation) {
+					this.pending = Math.max(0, this.pending - 1);
+				}
+			}
+		});
+
+		this.chain = next;
+
+		return next;
+	}
+
+	private async applySnapshotNow(identity: ProtectConsoleIdentity, snapshot: ProtectSnapshot): Promise<void> {
+		const previous = this.cache;
+		const next = new Map<string, Readonly<Record<string, unknown>>>();
+
+		for (const entry of snapshot.entries) {
+			const key = cacheKey(entry.modelKey, entry.id);
+
+			if (!next.has(key) && next.size < MAX_CACHED_DEVICES) {
+				next.set(key, mergeProtectItem({}, entry.raw));
+			}
+		}
+
+		this.cache = next;
+
+		await this.ensureIndex(identity);
+
+		for (const device of [...this.index.values()]) {
+			const key = device.modelKey === null ? null : cacheKey(device.modelKey, device.protectDeviceId);
+			const raw = key === null ? undefined : next.get(key);
+
+			if (raw !== undefined) {
+				await this.syncDevice(identity, device, raw, previous.get(key) ?? null, 'snapshot', null);
+			} else if (snapshot.complete) {
+				await this.markRemoved(device);
+			}
+		}
+	}
+
+	private async applyFrameNow(identity: ProtectConsoleIdentity, frame: ProtectFrame): Promise<void> {
+		if (!(PROTECT_MODEL_KEYS as readonly string[]).includes(frame.modelKey)) {
+			this.framesIgnored++;
+
+			return;
+		}
+
+		const key = cacheKey(frame.modelKey, frame.id);
+		const cached = this.cache.get(key) ?? null;
+
+		if (frame.action === 'update' && cached === null) {
+			this.framesIgnored++;
+
+			return;
+		}
+
+		if (frame.action === 'add' && cached === null && this.cache.size >= MAX_CACHED_DEVICES) {
+			this.framesIgnored++;
+
+			return;
+		}
+
+		await this.ensureIndex(identity);
+
+		const device = this.adopted(frame);
+
+		if (frame.action === 'remove') {
+			this.cache.delete(key);
+
+			if (device !== undefined) {
+				await this.markRemoved(device);
+			}
+
+			return;
+		}
+
+		const raw = mergeProtectItem(frame.action === 'add' ? {} : (cached as Record<string, unknown>), frame.item);
+
+		this.cache.set(key, raw);
+
+		if (device !== undefined) {
+			await this.syncDevice(
+				identity,
+				device,
+				raw,
+				cached,
+				frame.action === 'add' ? 'snapshot' : 'frame',
+				frame.action === 'add' ? null : frame.item,
+			);
+		}
+	}
+
+	private adopted(frame: ProtectFrame): IndexedDevice | undefined {
+		const device = this.index.get(frame.id);
+
+		return device !== undefined && (device.modelKey === null || device.modelKey === frame.modelKey)
+			? device
+			: undefined;
+	}
+
+	private async syncDevice(
+		identity: ProtectConsoleIdentity,
+		device: IndexedDevice,
+		raw: Readonly<Record<string, unknown>>,
+		previousRaw: Readonly<Record<string, unknown>> | null,
+		mode: SyncMode,
+		partial: Readonly<Record<string, unknown>> | null,
+	): Promise<void> {
+		const mappings = this.mappingLoader.getMappings();
+		const result = evaluateProtectMapping(mappings, {
+			nvr: { id: identity.nvrId, macKey: identity.nvrMacKey },
+			modelKey: device.modelKey as 'camera' | 'sensor' | 'light',
+			device: raw,
+			streams: null,
+		});
+
+		if (!result.ok) {
+			return;
+		}
+
+		const mapped = result.device;
+
+		await this.resolveRemoval(device);
+		await this.writeChanges(device, mapped, mappings);
+		await this.writeConnectionState(device, mapped);
+
+		const tamperCleared =
+			mode === 'snapshot' ? raw.tamperingDetectedAt === null : partial !== null && partial.tamperingDetectedAt === null;
+
+		if (tamperCleared) {
+			await this.clearMappings(device, TAMPER_MAPPINGS);
+		}
+
+		if (mode === 'snapshot') {
+			await this.resetStaleDetections(device);
+		}
+
+		await this.propagateRename(device, raw, previousRaw);
+	}
+
+	private async writeChanges(
+		device: IndexedDevice,
+		mapped: ProtectMappedDevice,
+		mappings: ProtectResolvedMappings,
+	): Promise<void> {
+		if (this.syncable?.mappings !== mappings) {
+			this.syncable = { mappings, names: syncableMappingNames(mappings) };
+		}
+
+		const stored = new Map<string, ProtectMappingScalar>();
+
+		for (const [key, property] of device.properties) {
+			const value = this.lastWritten.get(property.id);
+
+			if (value !== undefined && value !== null) {
+				stored.set(key, value);
+			}
+		}
+
+		for (const change of diffMappedValues(stored, mapped, this.syncable.names)) {
+			const property = device.properties.get(propertyKey(change.channelIdentifier, change.mappingName));
+
+			if (property !== undefined) {
+				await this.writeProperty(property.id, change.value);
+			}
+		}
+	}
+
+	private async writeConnectionState(device: IndexedDevice, mapped: ProtectMappedDevice): Promise<void> {
+		const state = mappedConnectionState(mapped);
+
+		if (state === null || !(Object.values(ConnectionState) as string[]).includes(state)) {
+			return;
+		}
+
+		await this.setConnectionState(device, state as ConnectionState);
+	}
+
+	private async setConnectionState(device: IndexedDevice, state: ConnectionState): Promise<boolean> {
+		if (this.lastState.get(device.panelId) === String(state)) {
+			return true;
+		}
+
+		const written = await this.connectivity.trySetConnectionState(device.panelId, { state }).catch(() => false);
+
+		if (written) {
+			this.lastState.set(device.panelId, String(state));
+		}
+
+		return written;
+	}
+
+	private async clearMappings(device: IndexedDevice, mappingNames: ReadonlySet<string>): Promise<void> {
+		for (const property of device.properties.values()) {
+			if (mappingNames.has(property.mappingName) && this.lastWritten.get(property.id) === true) {
+				await this.writeProperty(property.id, false);
+			}
+		}
+	}
+
+	private async resetStaleDetections(device: IndexedDevice): Promise<void> {
+		const open = this.tracker.openTargets(device.protectDeviceId);
+
+		for (const property of device.properties.values()) {
+			if (
+				!STALE_DETECTIONS.has(property.mappingName) ||
+				this.lastWritten.get(property.id) !== true ||
+				open.has(property.channelIdentifier)
+			) {
+				continue;
+			}
+
+			await this.writeProperty(property.id, false);
+
+			if (property.mappingName === 'leak_detected') {
+				const level = device.properties.get(propertyKey(property.channelIdentifier, 'leak_level'));
+
+				if (level !== undefined) {
+					await this.writeProperty(level.id, 'low');
+				}
+			}
+		}
+	}
+
+	private async propagateRename(
+		device: IndexedDevice,
+		raw: Readonly<Record<string, unknown>>,
+		previousRaw: Readonly<Record<string, unknown>> | null,
+	): Promise<void> {
+		if (previousRaw === null || device.modelKey === null) {
+			return;
+		}
+
+		const before = toProtectDeviceName(previousRaw, device.modelKey, device.protectDeviceId);
+		const after = toProtectDeviceName(raw, device.modelKey, device.protectDeviceId);
+
+		if (before === after || device.name !== before) {
+			return;
+		}
+
+		try {
+			await this.devicesService.update(device.panelId, { type: DEVICES_UNIFI_PROTECT_TYPE, name: after } as never);
+			device.name = after;
+		} catch {
+			this.logger.warn('UniFi Protect device rename failed');
+		}
+	}
+
+	private async markRemoved(device: IndexedDevice): Promise<void> {
+		if (this.removed.has(device.protectDeviceId)) {
+			return;
+		}
+
+		this.removed.add(device.protectDeviceId);
+
+		await this.setConnectionState(device, ConnectionState.DISCONNECTED);
+
+		await this.notifications.notify({
+			source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+			kind: NotificationKind.ISSUE,
+			key: removalKey(device.protectDeviceId),
+			severity: NotificationSeverity.WARNING,
+			title: 'UniFi Protect device removed',
+			message:
+				`${device.name} is no longer adopted on the UniFi Protect console. Smart Panel keeps the device and ` +
+				'shows it as disconnected; delete it in Smart Panel if it is no longer needed.',
+			data: { device_id: device.panelId, protect_device_id: device.protectDeviceId },
+		});
+	}
+
+	private async resolveRemoval(device: IndexedDevice): Promise<void> {
+		if (!this.removed.has(device.protectDeviceId)) {
+			return;
+		}
+
+		try {
+			await this.notifications.resolve(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, removalKey(device.protectDeviceId));
+			this.removed.delete(device.protectDeviceId);
+		} catch {
+			this.logger.warn('UniFi Protect removal notification could not be resolved');
+		}
+	}
+
+	/** Writes a console-read value; a failure keeps `lastWritten` so the next frame or snapshot retries it. */
+	private async writeProperty(propertyId: string, value: string | number | boolean): Promise<boolean> {
+		try {
+			await this.channelsPropertiesService.update(propertyId, { type: DEVICES_UNIFI_PROTECT_TYPE, value } as never);
+			this.lastWritten.set(propertyId, value);
+
+			return true;
+		} catch {
+			this.writesFailed++;
+			this.logWriteFailure();
+
+			return false;
+		}
+	}
+
+	private logWriteFailure(): void {
+		const now = Date.now();
+
+		if (this.lastFailureLogAt !== null && now - this.lastFailureLogAt < PROTECT_FAILURE_LOG_INTERVAL_MS) {
+			this.suppressedFailures++;
+
+			return;
+		}
+
+		this.logger.warn(
+			this.suppressedFailures > 0 ? `${FAILURE_TEXT} (${this.suppressedFailures} similar suppressed)` : FAILURE_TEXT,
+		);
+		this.lastFailureLogAt = now;
+		this.suppressedFailures = 0;
+	}
+
+	private async ensureIndex(identity: ProtectConsoleIdentity): Promise<void> {
+		if (this.indexNvrId !== identity.nvrId) {
+			this.indexDirty = true;
+		}
+
+		while (this.indexDirty) {
+			if (this.indexRefresh === null) {
+				this.indexRefresh = this.rebuildIndex(identity).finally(() => {
+					this.indexRefresh = null;
+				});
+			}
+
+			await this.indexRefresh;
+		}
+	}
+
+	private async rebuildIndex(identity: ProtectConsoleIdentity): Promise<void> {
+		const generation = this.indexGeneration;
+		const devices = await this.devicesService.findAll<ProtectDeviceEntity>(DEVICES_UNIFI_PROTECT_TYPE);
+		const index = new Map<string, IndexedDevice>();
+
+		for (const device of [...devices].sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))) {
+			if (
+				!device.enabled ||
+				device.protectNvrId !== identity.nvrId ||
+				typeof device.protectDeviceId !== 'string' ||
+				index.has(device.protectDeviceId)
+			) {
+				continue;
+			}
+
+			const properties = new Map<string, IndexedProperty>();
+
+			for (const channel of device.channels ?? []) {
+				for (const candidate of channel.properties ?? []) {
+					const property = candidate as ProtectChannelPropertyEntity;
+
+					if (typeof property.protectMappingName !== 'string') {
+						continue;
+					}
+
+					properties.set(propertyKey(channel.identifier, property.protectMappingName), {
+						id: property.id,
+						channelIdentifier: channel.identifier,
+						mappingName: property.protectMappingName,
+					});
+
+					if (!this.lastWritten.has(property.id)) {
+						await this.seed(property);
+					}
+				}
+			}
+
+			index.set(device.protectDeviceId, {
+				panelId: device.id,
+				protectDeviceId: device.protectDeviceId,
+				modelKey: device.protectModelKey,
+				name: device.name,
+				properties,
+			});
+		}
+
+		this.index = index;
+		this.indexNvrId = identity.nvrId;
+		this.indexDirty = this.indexGeneration !== generation;
+	}
+
+	private async seed(property: ProtectChannelPropertyEntity): Promise<void> {
+		try {
+			const state = await this.propertyValue.readLatestPersisted(property);
+
+			this.lastWritten.set(property.id, state?.value ?? null);
+		} catch {
+			// Unknown stored value: the next frame writes it.
+		}
+	}
+}
