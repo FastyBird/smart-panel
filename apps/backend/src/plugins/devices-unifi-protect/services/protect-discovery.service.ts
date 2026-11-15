@@ -15,6 +15,7 @@ import {
 	PROTECT_DISCOVERY_MAX_ADDRESSES,
 	PROTECT_DISCOVERY_MAX_CANDIDATES,
 	PROTECT_DISCOVERY_MAX_OTHER_DEVICES,
+	PROTECT_DISCOVERY_MAX_PROBE_ADDRESSES,
 	PROTECT_DISCOVERY_MULTICAST_ADDRESS,
 	PROTECT_DISCOVERY_PORT,
 	PROTECT_DISCOVERY_REQUEST_V1,
@@ -542,6 +543,30 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 		);
 	}
 
+	/**
+	 * Probes up to PROTECT_DISCOVERY_MAX_PROBE_ADDRESSES recorded addresses in order and stops at the first console.
+	 * Without one, the first address's result is classified and the host stays the first address.
+	 */
+	private async probeCandidate(candidate: Candidate): Promise<ProtectDiscoveryScanConsole> {
+		let first: ProtectProbeResult | undefined;
+
+		for (const address of candidate.addresses.slice(0, PROTECT_DISCOVERY_MAX_PROBE_ADDRESSES)) {
+			if (this.destroyed && first !== undefined) {
+				break;
+			}
+
+			const probe = await this.probeService.probe({ host: address, port: PROTECT_PROBE_DEFAULT_PORT });
+
+			first ??= probe;
+
+			if (probe.status === ProtectProbeStatus.CONSOLE) {
+				return { ...candidate, host: address, probe };
+			}
+		}
+
+		return { ...candidate, probe: first };
+	}
+
 	private async probeAll(candidates: Candidate[]): Promise<ProtectDiscoveryScanConsole[]> {
 		const results = new Array<ProtectDiscoveryScanConsole>(candidates.length);
 		let next = 0;
@@ -550,9 +575,8 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 			while (next < candidates.length && !this.destroyed) {
 				const index = next++;
 				const candidate = candidates[index];
-				const probe = await this.probeService.probe({ host: candidate.host, port: PROTECT_PROBE_DEFAULT_PORT });
 
-				results[index] = { ...candidate, probe };
+				results[index] = await this.probeCandidate(candidate);
 			}
 		};
 

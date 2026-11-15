@@ -74,7 +74,7 @@ export class ProtectDiscoveryController {
 		tags: [DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME],
 		summary: 'Scan the local network for UniFi Protect consoles',
 		description:
-			'Broadcasts a UniFi discovery request on the local network, probes the consoles that reply without credentials and returns the finished result. Concurrent requests share one scan. The call waits for the 5 second scan window plus the candidate probes (worst case about 21 seconds).',
+			'Broadcasts a UniFi discovery request on the local network, probes the consoles that reply without credentials and returns the finished result. Concurrent requests share one scan. The call waits for the 5 second scan window plus the candidate probes, each trying up to 3 of its addresses in turn (worst case about 53 seconds).',
 		operationId: 'scan-devices-unifi-protect-plugin-discovery',
 	})
 	@ApiSuccessResponse(ProtectDiscoveryResponseModel, 'UniFi Protect discovery scan completed')

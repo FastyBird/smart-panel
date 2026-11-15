@@ -21,6 +21,8 @@ export const PROTECT_DISCOVERY_MAX_OTHER_DEVICES = 256;
 export const PROTECT_PROBE_TIMEOUT_MS = 4000;
 export const PROTECT_PROBE_MAX_BODY_BYTES = 65536;
 export const PROTECT_PROBE_CONCURRENCY = 8;
+/** Addresses of one candidate probed in turn (host first) until one answers as a console. */
+export const PROTECT_DISCOVERY_MAX_PROBE_ADDRESSES = 3;
 export const PROTECT_PROBE_DEFAULT_PORT = PROTECT_DEFAULT_PORT;
 export const PROTECT_PROBE_SYSTEM_PATH = '/api/system';
 export const PROTECT_PROBE_PROTECT_PATH = '/proxy/protect/api';

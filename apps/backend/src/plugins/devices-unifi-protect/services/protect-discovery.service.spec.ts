@@ -282,6 +282,90 @@ describe('ProtectDiscoveryService', () => {
 		expect(scan.consoles[0].host).toBe('192.168.1.10');
 	});
 
+	describe('address fallback', () => {
+		const reply = (): Buffer => fixture('discovery-reply.bin');
+		const addresses = (count: number): [Buffer, string][] =>
+			Array.from({ length: count }, (_, n): [Buffer, string] => [reply(), `192.168.1.${10 + n}`]);
+		const failing = (hosts: string[]) => (target: { host: string; port: number }) =>
+			Promise.resolve(
+				hosts.includes(target.host)
+					? {
+							...probeResult(target, ProtectProbeStatus.UNREACHABLE),
+							failure: ProtectProbeFailure.CONNECTION_REFUSED,
+							protect: ProtectPresence.UNKNOWN,
+						}
+					: probeResult(target),
+			);
+
+		it('uses the second address as host when the first is refused', async () => {
+			probe.probe.mockImplementation(failing(['192.168.1.10']));
+
+			const scan = await scanWith(addresses(2));
+
+			expect(scan.consoles).toHaveLength(1);
+			expect(scan.consoles[0].host).toBe('192.168.1.11');
+			expect(scan.consoles[0].addresses).toEqual(['192.168.1.10', '192.168.1.11']);
+			expect(scan.consoles[0].probe.status).toBe('console');
+			expect(probe.probe).toHaveBeenCalledTimes(2);
+		});
+
+		it('uses the third address when the first two fail', async () => {
+			probe.probe.mockImplementation(failing(['192.168.1.10', '192.168.1.11']));
+
+			const scan = await scanWith(addresses(3));
+
+			expect(scan.consoles[0].host).toBe('192.168.1.12');
+			expect(probe.probe).toHaveBeenCalledTimes(3);
+		});
+
+		it('classifies from the first result and keeps the first host when all three fail', async () => {
+			probe.probe.mockImplementation((target) =>
+				Promise.resolve(
+					target.host === '192.168.1.10'
+						? probeResult(target, ProtectProbeStatus.NOT_CONSOLE)
+						: {
+								...probeResult(target, ProtectProbeStatus.UNREACHABLE),
+								failure: ProtectProbeFailure.TIMEOUT,
+							},
+				),
+			);
+
+			const scan = await scanWith(addresses(3));
+
+			expect(probe.probe).toHaveBeenCalledTimes(3);
+			expect(scan.consoles).toEqual([]);
+			expect(scan.otherUnifiDevices).toBe(1);
+		});
+
+		it('keeps the first host and its probe result when no address answers', async () => {
+			probe.probe.mockImplementation(failing(['192.168.1.10', '192.168.1.11', '192.168.1.12']));
+
+			const scan = await scanWith(addresses(3));
+
+			expect(scan.consoles).toHaveLength(1);
+			expect(scan.consoles[0].host).toBe('192.168.1.10');
+			expect(scan.consoles[0].probe.host).toBe('192.168.1.10');
+			expect(scan.consoles[0].probe.status).toBe('unreachable');
+		});
+
+		it('probes at most three addresses of a candidate with five', async () => {
+			probe.probe.mockImplementation(failing(addresses(5).map(([, address]) => address)));
+
+			const scan = await scanWith(addresses(5));
+
+			expect(probe.probe).toHaveBeenCalledTimes(3);
+			expect(scan.consoles[0].addresses).toHaveLength(5);
+			expect(scan.consoles[0].host).toBe('192.168.1.10');
+		});
+
+		it('probes once when the first probe is a console', async () => {
+			const scan = await scanWith(addresses(3));
+
+			expect(probe.probe).toHaveBeenCalledTimes(1);
+			expect(scan.consoles[0].host).toBe('192.168.1.10');
+		});
+	});
+
 	it('fills null fields from later replies for the same MAC', async () => {
 		const sparse = buildDiscoveryReply({
 			tlvs: [
