@@ -77,12 +77,13 @@ describe('parseDiscoveryReply', () => {
 	it('parses the sanitized v0 fixture and does not treat it as a console', () => {
 		const result = parseDiscoveryReply(fixture('discovery-reply-v0.bin'));
 
-		expect(result.ok).toBe(true);
-
-		if (result.ok) {
-			expect(result.reply.headerVersion).toBe(0);
-			expect(isProtectConsoleCandidate(result.reply)).toBe(false);
+		if ('reason' in result) {
+			throw new Error(`unexpected failure ${result.reason}`);
 		}
+
+		expect(result.reply.headerVersion).toBe(0);
+		expect(replyIdentityMac(result.reply)).not.toBeNull();
+		expect(isProtectConsoleCandidate(result.reply)).toBe(false);
 	});
 
 	it('accepts header versions 0 and 1 and rejects version 2', () => {
