@@ -10,16 +10,21 @@ import { UserRole } from '../../../modules/users/users.constants';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME } from '../devices-unifi-protect.constants';
 import { ProtectStatusResponseModel } from '../models/status.model';
 import { ProtectConnectorService } from '../services/protect-connector.service';
+import { ProtectRealtimeService } from '../services/protect-realtime.service';
 
 @ApiTags(DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME)
 @Controller('status')
 export class ProtectStatusController {
-	constructor(private readonly connectorService: ProtectConnectorService) {}
+	constructor(
+		private readonly connectorService: ProtectConnectorService,
+		private readonly realtime: ProtectRealtimeService,
+	) {}
 
 	@ApiOperation({
 		tags: [DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME],
 		summary: 'Get UniFi Protect provider status',
-		description: 'Returns the managed service and console connection state without exposing the API key.',
+		description:
+			'Returns the managed service, console connection and real-time synchronisation state without exposing the API key.',
 		operationId: 'get-devices-unifi-protect-plugin-status',
 	})
 	@ApiSuccessResponse(ProtectStatusResponseModel, 'UniFi Protect provider status retrieved successfully')
@@ -28,7 +33,7 @@ export class ProtectStatusController {
 	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	getStatus(): ProtectStatusResponseModel {
 		const response = new ProtectStatusResponseModel();
-		response.data = this.connectorService.getStatus();
+		response.data = this.realtime.decorateStatus(this.connectorService.getStatus());
 
 		return response;
 	}

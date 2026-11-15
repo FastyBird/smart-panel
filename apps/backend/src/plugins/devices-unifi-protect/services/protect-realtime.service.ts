@@ -1,21 +1,33 @@
 import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../../modules/notifications/notifications.constants';
+import { NotificationsService } from '../../../modules/notifications/services/notifications.service';
 import { ProtectApiClient } from '../client/protect-api.client';
 import { ProtectSubscription, ProtectSubscriptionHandlers } from '../client/protect-subscription';
 import {
+	DEVICES_UNIFI_PROTECT_CONNECTOR_SERVICE_ID,
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+	PROTECT_DEFAULT_POLL_INTERVAL_MS,
 	PROTECT_DEGRADED_AFTER_FAILURES,
 	PROTECT_MAX_BUFFERED_FRAMES,
 	PROTECT_MAX_RETRY_AFTER_MS,
 	PROTECT_SUBSCRIPTION_TOPICS,
 	PROTECT_WS_PING_INTERVAL_MS,
 	PROTECT_WS_PONG_TIMEOUT_MS,
+	ProtectConnectionState,
 	ProtectRealtimeState,
 	ProtectSubscriptionTopic,
 } from '../devices-unifi-protect.constants';
 import { ProtectApiError, ProtectErrorCategory, toProtectApiError } from '../errors/protect-api.error';
 import { ProtectModelKey } from '../mappings/mapping.types';
+import { ProtectConfigModel } from '../models/config.model';
+import { ProtectStatusModel } from '../models/status.model';
 
 import { ProtectConnectorService, ProtectSession, ProtectSessionEnd } from './protect-connector.service';
 import { ProtectFrame, parseProtectFrame } from './protect-frame-merge';
@@ -29,6 +41,11 @@ export interface ProtectRealtimeTimings {
 	degradedAfterFailures: number;
 	reconnectDelay(attempt: number): number;
 }
+
+export const PROTECT_REALTIME_NOTIFICATION_KEY = 'realtime';
+
+/** A streaming session that ends sooner than this after it started counts as a failed cycle. */
+const PROTECT_STABLE_STREAM_MS = 30_000;
 
 export const PROTECT_REALTIME_TIMINGS = Symbol('PROTECT_REALTIME_TIMINGS');
 
@@ -83,7 +100,12 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 
 	private unsubscribe: (() => void) | null = null;
 	private session: ProtectSession | null = null;
-	private state: ProtectRealtimeState = 'stopped';
+	private cycle: ProtectRealtimeState = 'stopped';
+	private polling = false;
+	private pollEpoch = 0;
+	private issueActive = false;
+	private streamingSince: number | null = null;
+	private pollTimer: NodeJS.Timeout | null = null;
 	private generation = 0;
 	private consecutiveFailures = 0;
 	private readonly sockets = new Map<ProtectSubscriptionTopic, ProtectSubscription>();
@@ -98,6 +120,8 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 	constructor(
 		private readonly connector: ProtectConnectorService,
 		private readonly synchronizer: ProtectSynchronizerService,
+		private readonly notifications: NotificationsService,
+		private readonly configService: ConfigService,
 		@Inject(PROTECT_REALTIME_TIMINGS) private readonly timings: ProtectRealtimeTimings,
 	) {}
 
@@ -112,7 +136,21 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	getState(): ProtectRealtimeState {
-		return this.state;
+		return this.polling ? 'polling' : this.cycle;
+	}
+
+	/** Applies the realtime view to the connector's status: degraded while polling, plus the realtime fields. */
+	decorateStatus(status: ProtectStatusModel): ProtectStatusModel {
+		const state = this.getState();
+
+		if (status.connectionState === ProtectConnectionState.CONNECTED && state === 'polling') {
+			status.connectionState = ProtectConnectionState.DEGRADED;
+		}
+
+		status.realtimeState = state;
+		status.ignoredEventCount = this.synchronizer.getCounters().ignoredEventCount;
+
+		return status;
 	}
 
 	/** Resolves when the current cycle step (open, prime, buffered apply) has finished (tests, e2e). */
@@ -134,6 +172,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		}
 
 		this.teardown();
+		this.stopPolling();
 		this.generation += 1;
 		this.session = session;
 		this.consecutiveFailures = 0;
@@ -144,12 +183,14 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 	private endSession(reason: ProtectSessionEnd): void {
 		this.generation += 1;
 		this.teardown();
+		this.stopPolling();
 		this.session = null;
 		this.consecutiveFailures = 0;
-		this.state = 'stopped';
+		this.cycle = 'stopped';
 
 		if (reason === 'stopped') {
 			this.synchronizer.reset();
+			void this.resolveIssue();
 		}
 	}
 
@@ -164,6 +205,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 
 		this.sockets.clear();
 		this.buffer = [];
+		this.streamingSince = null;
 		this.awaitingPong.clear();
 		this.clearTimer('reconnectTimer');
 		this.clearTimer('pingTimer');
@@ -199,7 +241,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		this.state = 'connecting';
+		this.cycle = 'connecting';
 		this.buffer = [];
 
 		const abort = new AbortController();
@@ -221,7 +263,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 				throw rejected.reason;
 			}
 
-			this.state = 'priming';
+			this.cycle = 'priming';
 
 			const snapshot = await readConsoleSnapshot(session.client);
 
@@ -245,14 +287,17 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 				const frame = this.buffer.shift();
 
 				if (!this.synchronizer.enqueueFrame(session.identity, frame)) {
-					this.restart(generation);
+					this.fail(generation, new ProtectApiError(ProtectErrorCategory.PROTOCOL, 'subscribe/events'));
 
 					return;
 				}
 			}
 
-			this.state = 'streaming';
-			this.consecutiveFailures = 0;
+			// consecutiveFailures is reset only by a session that streams for PROTECT_STABLE_STREAM_MS.
+			this.cycle = 'streaming';
+			this.streamingSince = Date.now();
+			this.stopPolling();
+			void this.resolveIssue();
 			this.schedulePing(generation);
 		} catch (error) {
 			if (!this.isStale(generation)) {
@@ -323,7 +368,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		if (this.state === 'streaming') {
+		if (this.cycle === 'streaming') {
 			if (!this.synchronizer.enqueueFrame(session.identity, parsed.frame)) {
 				this.restart(generation);
 			}
@@ -351,7 +396,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	private onClosed(failure: ProtectApiError, generation: number): void {
-		if (this.state === 'streaming') {
+		if (this.cycle === 'streaming') {
 			this.logger.warn(`UniFi Protect realtime socket closed (${failure.category})`);
 			this.restart(generation);
 
@@ -398,9 +443,18 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		);
 	}
 
-	/** A healthy session was lost (drop, missed pong, full queue): re-prime from attempt 0. */
+	/**
+	 * A streaming session was lost (drop, missed pong, full queue): re-prime from attempt 0 when it had streamed for
+	 * a while, otherwise it counts as a failed cycle so a flapping console reaches degraded polling.
+	 */
 	private restart(generation: number): void {
 		if (this.isStale(generation)) {
+			return;
+		}
+
+		if (this.streamingSince !== null && Date.now() - this.streamingSince < PROTECT_STABLE_STREAM_MS) {
+			this.fail(generation, new ProtectApiError(ProtectErrorCategory.UNAVAILABLE, 'subscribe/events'));
+
 			return;
 		}
 
@@ -422,6 +476,10 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		this.teardown();
 		this.consecutiveFailures += 1;
 
+		if (!this.polling && this.consecutiveFailures >= this.timings.degradedAfterFailures) {
+			this.startPolling();
+		}
+
 		let delay = this.timings.reconnectDelay(this.consecutiveFailures - 1);
 
 		if (apiError.category === ProtectErrorCategory.RATE_LIMITED && apiError.retryAfterMs !== null) {
@@ -435,7 +493,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 	private scheduleCycle(delay: number): void {
 		const generation = this.generation;
 
-		this.state = 'connecting';
+		this.cycle = 'connecting';
 		this.clearTimer('reconnectTimer');
 		this.reconnectTimer = this.unref(
 			setTimeout(() => {
@@ -448,7 +506,131 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		);
 	}
 
-	private clearTimer(name: 'reconnectTimer' | 'pingTimer' | 'pongTimer'): void {
+	private startPolling(): void {
+		this.polling = true;
+		this.pollEpoch += 1;
+		void this.raiseIssue();
+		this.schedulePoll(this.pollEpoch);
+	}
+
+	private stopPolling(): void {
+		this.polling = false;
+		this.pollEpoch += 1;
+		this.clearTimer('pollTimer');
+	}
+
+	private readPollInterval(): number {
+		try {
+			return (
+				this.configService.getPluginConfig<ProtectConfigModel>(DEVICES_UNIFI_PROTECT_PLUGIN_NAME).pollIntervalMs ??
+				PROTECT_DEFAULT_POLL_INTERVAL_MS
+			);
+		} catch {
+			return PROTECT_DEFAULT_POLL_INTERVAL_MS;
+		}
+	}
+
+	/** The interval is read every time a poll is scheduled, so a changed setting applies without a restart. */
+	private schedulePoll(epoch: number): void {
+		this.clearTimer('pollTimer');
+		this.pollTimer = this.unref(
+			setTimeout(() => {
+				this.pollTimer = null;
+
+				if (epoch === this.pollEpoch) {
+					void this.poll(epoch).finally(() => {
+						if (epoch === this.pollEpoch) {
+							this.schedulePoll(epoch);
+						}
+					});
+				}
+			}, this.readPollInterval()),
+		);
+	}
+
+	private async poll(epoch: number): Promise<void> {
+		const session = this.session;
+		const generation = this.generation;
+
+		if (session === null) {
+			return;
+		}
+
+		try {
+			const snapshot = await readConsoleSnapshot(session.client);
+
+			// A result is stale once the cycle restarted, streaming took over or polling stopped.
+			if (epoch !== this.pollEpoch || generation !== this.generation || this.cycle === 'streaming') {
+				return;
+			}
+
+			if (!snapshot.complete) {
+				this.logger.warn(
+					`UniFi Protect poll failed (${snapshot.failure?.category ?? ProtectErrorCategory.UNAVAILABLE})`,
+				);
+			}
+
+			await this.synchronizer.applySnapshot(session.identity, {
+				complete: snapshot.complete,
+				entries: snapshot.entries,
+			});
+		} catch {
+			this.logger.warn('UniFi Protect poll could not be applied');
+		}
+	}
+
+	/** Raises the `realtime` issue once; a no-op while it is already open. notify() never throws. */
+	private async raiseIssue(): Promise<void> {
+		if (this.issueActive) {
+			return;
+		}
+
+		this.issueActive = true;
+
+		await this.notifications.notify({
+			source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+			kind: NotificationKind.ISSUE,
+			key: PROTECT_REALTIME_NOTIFICATION_KEY,
+			severity: NotificationSeverity.WARNING,
+			title: 'UniFi Protect real-time updates unavailable',
+			message:
+				'Smart Panel cannot keep the UniFi Protect event connection open and is polling device state instead. ' +
+				'Motion, smart detections and doorbell rings are not received until the connection recovers.',
+			actions: [
+				{
+					type: NotificationActionType.SERVICE,
+					label: 'Restart service',
+					extension_kind: 'plugin',
+					extension_type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+					service_id: DEVICES_UNIFI_PROTECT_CONNECTOR_SERVICE_ID,
+					operation: 'restart',
+					primary: true,
+				},
+				{
+					type: NotificationActionType.LINK,
+					label: 'Open UniFi Protect settings',
+					url: `/extensions/${DEVICES_UNIFI_PROTECT_PLUGIN_NAME}`,
+				},
+			],
+		});
+	}
+
+	/** Idempotent. A rejected resolve keeps the flag so the next recovery or stop retries it (the HA rule). */
+	private async resolveIssue(): Promise<void> {
+		if (!this.issueActive) {
+			return;
+		}
+
+		try {
+			await this.notifications.resolve(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, PROTECT_REALTIME_NOTIFICATION_KEY);
+
+			this.issueActive = false;
+		} catch {
+			this.logger.warn('UniFi Protect real-time notification could not be resolved');
+		}
+	}
+
+	private clearTimer(name: 'reconnectTimer' | 'pingTimer' | 'pongTimer' | 'pollTimer'): void {
 		const timer = this[name];
 
 		if (timer !== null) {

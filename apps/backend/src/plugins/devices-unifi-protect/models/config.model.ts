@@ -156,7 +156,7 @@ export class ProtectConfigModel extends PluginConfigModel {
 	snapshotMinIntervalMs: number = PROTECT_DEFAULT_SNAPSHOT_MIN_INTERVAL_MS;
 
 	@ApiProperty({
-		description: 'Inventory poll interval in milliseconds',
+		description: 'Interval between device state refreshes while real-time updates are unavailable, in milliseconds',
 		example: PROTECT_DEFAULT_POLL_INTERVAL_MS,
 		minimum: PROTECT_MIN_POLL_INTERVAL_MS,
 		maximum: PROTECT_MAX_POLL_INTERVAL_MS,

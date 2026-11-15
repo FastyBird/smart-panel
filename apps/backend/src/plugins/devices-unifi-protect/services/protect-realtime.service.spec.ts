@@ -83,13 +83,23 @@ describe('ProtectRealtimeService', () => {
 		idle: jest.Mock;
 		reset: jest.Mock;
 		countIgnoredFrame: jest.Mock;
+		getCounters: jest.Mock;
 	};
+	let notifications: { notify: jest.Mock; resolve: jest.Mock };
+	let pollInterval: number;
+	let config: { getPluginConfig: jest.Mock };
 	let timings: ProtectRealtimeTimings;
 	let service: ProtectRealtimeService;
 	let sessionCounter: number;
 
 	const build = (sync: unknown = synchronizer): ProtectRealtimeService => {
-		const created = new ProtectRealtimeService(connector as never, sync as never, timings);
+		const created = new ProtectRealtimeService(
+			connector as never,
+			sync as never,
+			notifications as never,
+			config as never,
+			timings,
+		);
 
 		created.onModuleInit();
 
@@ -186,7 +196,14 @@ describe('ProtectRealtimeService', () => {
 			idle: jest.fn(() => Promise.resolve()),
 			reset: jest.fn(),
 			countIgnoredFrame: jest.fn(),
+			getCounters: jest.fn(() => ({ ignoredEventCount: 2 })),
 		};
+		notifications = {
+			notify: jest.fn(() => Promise.resolve(null)),
+			resolve: jest.fn(() => Promise.resolve(true)),
+		};
+		pollInterval = 5000;
+		config = { getPluginConfig: jest.fn(() => ({ pollIntervalMs: pollInterval })) };
 		timings = { ...PROTECT_DEFAULT_REALTIME_TIMINGS, reconnectDelay: (attempt) => 1000 * 2 ** attempt };
 		service = build();
 	});
@@ -196,6 +213,20 @@ describe('ProtectRealtimeService', () => {
 		jest.useRealTimers();
 		jest.restoreAllMocks();
 	});
+
+	const failCycles = async (count: number): Promise<void> => {
+		openError = {
+			devices: failure(ProtectErrorCategory.UNAVAILABLE),
+			events: failure(ProtectErrorCategory.UNAVAILABLE),
+		};
+		await connect();
+
+		for (let index = 1; index < count; index++) {
+			await jest.advanceTimersByTimeAsync(1000 * 2 ** (index - 1));
+			await service.settle();
+		}
+	};
+	const listReads = (): number => client.listCameras.mock.calls.length + client.listSensors.mock.calls.length;
 
 	it('starts stopped and listens to the connector until destroyed', () => {
 		expect(service.getState()).toBe('stopped');
@@ -652,6 +683,276 @@ describe('ProtectRealtimeService', () => {
 		push('events', 'rtsps://SENTINELALIAS');
 
 		expect(logged.join('\n')).not.toContain('SENTINEL');
+	});
+
+	describe('degraded polling', () => {
+		it('switches to polling after three failed cycles and notifies once', async () => {
+			await failCycles(2);
+
+			expect(service.getState()).toBe('connecting');
+			expect(notifications.notify).not.toHaveBeenCalled();
+
+			await jest.advanceTimersByTimeAsync(2000);
+			await service.settle();
+
+			expect(service.getState()).toBe('polling');
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.notify).toHaveBeenCalledWith({
+				source: 'devices-unifi-protect-plugin',
+				kind: 'issue',
+				key: 'realtime',
+				severity: 'warning',
+				title: 'UniFi Protect real-time updates unavailable',
+				message:
+					'Smart Panel cannot keep the UniFi Protect event connection open and is polling device state instead. ' +
+					'Motion, smart detections and doorbell rings are not received until the connection recovers.',
+				actions: [
+					expect.objectContaining({
+						type: 'service',
+						label: 'Restart service',
+						extension_kind: 'plugin',
+						extension_type: 'devices-unifi-protect-plugin',
+						service_id: 'connector',
+						operation: 'restart',
+						primary: true,
+					}),
+					expect.objectContaining({
+						type: 'link',
+						label: 'Open UniFi Protect settings',
+						url: '/extensions/devices-unifi-protect-plugin',
+					}),
+				],
+			});
+
+			await jest.advanceTimersByTimeAsync(4000);
+			await service.settle();
+
+			expect(opens('devices')).toBe(4);
+			expect(service.getState()).toBe('polling');
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+		});
+
+		it('polls the device lists at the configured interval', async () => {
+			await failCycles(3);
+			client.listCameras.mockClear();
+			client.listSensors.mockClear();
+			client.listLights.mockClear();
+			synchronizer.applySnapshot.mockClear();
+			openError = { devices: failure(ProtectErrorCategory.UNAVAILABLE) };
+
+			await jest.advanceTimersByTimeAsync(4999);
+
+			expect(listReads()).toBe(0);
+
+			await jest.advanceTimersByTimeAsync(1);
+
+			expect(client.listCameras).toHaveBeenCalledTimes(1);
+			expect(client.listSensors).toHaveBeenCalledTimes(1);
+			expect(client.listLights).toHaveBeenCalledTimes(1);
+			expect(synchronizer.applySnapshot).toHaveBeenCalledWith(IDENTITY, {
+				complete: true,
+				entries: expect.any(Array),
+			});
+
+			pollInterval = 10_000;
+			synchronizer.applySnapshot.mockClear();
+
+			await jest.advanceTimersByTimeAsync(5000);
+
+			expect(client.listCameras).toHaveBeenCalledTimes(2);
+			expect(synchronizer.applySnapshot).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(9999);
+
+			expect(client.listCameras).toHaveBeenCalledTimes(2);
+
+			await jest.advanceTimersByTimeAsync(1);
+
+			expect(client.listCameras).toHaveBeenCalledTimes(3);
+		});
+
+		it('keeps devices when a poll read fails', async () => {
+			await failCycles(3);
+			synchronizer.applySnapshot.mockClear();
+			listError.sensors = failure(ProtectErrorCategory.UNAVAILABLE);
+
+			await jest.advanceTimersByTimeAsync(5000);
+
+			const [, snapshot] = synchronizer.applySnapshot.mock.calls[0] as [unknown, { complete: boolean; entries: any[] }];
+
+			expect(snapshot.complete).toBe(false);
+			expect(snapshot.entries.some((entry) => entry.modelKey === 'camera')).toBe(true);
+			expect(snapshot.entries.some((entry) => entry.modelKey === 'light')).toBe(true);
+			expect(snapshot.entries.some((entry) => entry.modelKey === 'sensor')).toBe(false);
+			expect(logged.some((line) => line.includes('UniFi Protect poll failed (unavailable)'))).toBe(true);
+		});
+
+		it('resolves the notification and stops polling when the sockets recover', async () => {
+			await failCycles(3);
+
+			openError = null;
+			await jest.advanceTimersByTimeAsync(4000);
+			await service.settle();
+
+			expect(service.getState()).toBe('streaming');
+			expect(notifications.resolve).toHaveBeenCalledWith('devices-unifi-protect-plugin', 'realtime');
+
+			client.listCameras.mockClear();
+			await jest.advanceTimersByTimeAsync(5000);
+
+			expect(client.listCameras).not.toHaveBeenCalled();
+		});
+
+		it('retries a failed resolve on the next recovery', async () => {
+			await failCycles(3);
+			notifications.resolve.mockRejectedValueOnce(new Error('storage down'));
+			openError = null;
+			await jest.advanceTimersByTimeAsync(4000);
+			await service.settle();
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+			await jest.advanceTimersByTimeAsync(8000);
+			await service.settle();
+
+			expect(service.getState()).toBe('streaming');
+			expect(notifications.resolve).toHaveBeenCalledTimes(2);
+		});
+
+		it('resolves the notification when the connector stops', async () => {
+			await failCycles(3);
+			listener?.(null, 'stopped');
+			await Promise.resolve();
+
+			expect(notifications.resolve).toHaveBeenCalledWith('devices-unifi-protect-plugin', 'realtime');
+			expect(jest.getTimerCount()).toBe(0);
+
+			listener?.(null, 'stopped');
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+		});
+
+		it('stops polling when the session is lost', async () => {
+			await failCycles(3);
+			listener?.(null, 'lost');
+			client.listCameras.mockClear();
+			await jest.advanceTimersByTimeAsync(60_000);
+
+			expect(client.listCameras).not.toHaveBeenCalled();
+			expect(service.getState()).toBe('stopped');
+		});
+
+		it('discards a poll that finishes after the cycle reached streaming', async () => {
+			await failCycles(3);
+			synchronizer.applySnapshot.mockClear();
+
+			const stale = deferred<void>();
+
+			client.listSensors.mockImplementationOnce(async () => {
+				await stale.promise;
+
+				return sensors.map((item) => ({ id: item.id, raw: item }));
+			});
+
+			await jest.advanceTimersByTimeAsync(5000);
+
+			expect(client.listSensors).toHaveBeenCalled();
+
+			openError = null;
+			await jest.advanceTimersByTimeAsync(7000);
+			await service.settle();
+			synchronizer.applySnapshot.mockClear();
+			push('events', frameText());
+			stale.resolve();
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(service.getState()).toBe('streaming');
+			expect(synchronizer.applySnapshot).not.toHaveBeenCalled();
+		});
+
+		it('counts a streaming session that ends within 30 s as a failure', async () => {
+			await connect();
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+			await jest.advanceTimersByTimeAsync(1000);
+			await service.settle();
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+
+			expect(service.getState()).toBe('connecting');
+			expect(opens('devices')).toBe(2);
+
+			await jest.advanceTimersByTimeAsync(1999);
+
+			expect(opens('devices')).toBe(2);
+
+			await jest.advanceTimersByTimeAsync(1);
+			await service.settle();
+
+			expect(opens('devices')).toBe(3);
+
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+
+			expect(service.getState()).toBe('polling');
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+		});
+
+		it('restarts from attempt 0 after a session that streamed for 30 s', async () => {
+			await connect();
+			await jest.advanceTimersByTimeAsync(30_000);
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+			await jest.advanceTimersByTimeAsync(1000);
+			await service.settle();
+			await jest.advanceTimersByTimeAsync(30_000);
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+			await jest.advanceTimersByTimeAsync(1000);
+			await service.settle();
+
+			expect(service.getState()).toBe('streaming');
+			expect(notifications.notify).not.toHaveBeenCalled();
+		});
+
+		it('fails the cycle when the queue is full while draining the buffer', async () => {
+			listGate.lights = deferred<void>();
+			listener?.(session(), null);
+			await jest.advanceTimersByTimeAsync(0);
+			push('events', frameText());
+			synchronizer.enqueueFrame.mockReturnValueOnce(false);
+			listGate.lights.resolve();
+			await service.settle();
+
+			expect(
+				logged.some((line) => line.includes('UniFi Protect realtime cycle failed (protocol); retry in 1000 ms')),
+			).toBe(true);
+
+			await jest.advanceTimersByTimeAsync(1000);
+			await service.settle();
+			synchronizer.enqueueFrame.mockReturnValueOnce(false);
+			push('events', frameText());
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+			await jest.advanceTimersByTimeAsync(2000);
+			await service.settle();
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+
+			expect(service.getState()).toBe('polling');
+		});
+
+		it('decorates the status with the degraded state and the realtime fields', async () => {
+			const status = (state: string): any => ({ connectionState: state });
+
+			expect(service.decorateStatus(status('connected'))).toMatchObject({
+				connectionState: 'connected',
+				realtimeState: 'stopped',
+				ignoredEventCount: 2,
+			});
+
+			await failCycles(3);
+
+			expect(service.decorateStatus(status('connected'))).toMatchObject({
+				connectionState: 'degraded',
+				realtimeState: 'polling',
+			});
+			expect(service.decorateStatus(status('disconnected')).connectionState).toBe('disconnected');
+		});
 	});
 
 	it('exposes frozen defaults of 180 s, 30 s and three failures', () => {

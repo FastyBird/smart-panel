@@ -170,6 +170,8 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(metadata.readme).toContain('## Configuration');
 		expect(metadata.readme).toContain('## TLS');
 		expect(metadata.readme).toContain('## Boundaries');
+		expect(metadata.readme).toContain('## Real-time updates');
+		expect(metadata.readme).toContain('clear after 60 s');
 		expect(metadata.readme).toContain('There is no insecure mode');
 		expect(metadata.readme).toContain('never disables a camera microphone');
 		expect(metadata.readme).toContain('never deletes a stream');
