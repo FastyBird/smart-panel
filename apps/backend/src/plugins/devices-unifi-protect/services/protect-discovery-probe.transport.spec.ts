@@ -10,6 +10,10 @@ import { NodeProtectProbeTransport } from './protect-discovery-probe.transport';
 
 type Closable = { close: (cb?: () => void) => unknown; closeAllConnections?: () => void };
 
+// Generous budget for calls expected to finish; only the timeout tests use the short budget below.
+const BUDGET_MS = 5000;
+const TIMEOUT_MS = 200;
+
 describe('NodeProtectProbeTransport', () => {
 	const servers: Closable[] = [];
 	const transport = new NodeProtectProbeTransport();
@@ -44,7 +48,7 @@ describe('NodeProtectProbeTransport', () => {
 				}),
 			);
 
-			await expect(transport.get(target, '/api/system', 300)).resolves.toEqual({
+			await expect(transport.get(target, '/api/system', BUDGET_MS)).resolves.toEqual({
 				ok: true,
 				statusCode: 200,
 				body: '{"a":1}',
@@ -60,7 +64,7 @@ describe('NodeProtectProbeTransport', () => {
 				}),
 			);
 
-			await transport.get(target, '/api/system', 300);
+			await transport.get(target, '/api/system', BUDGET_MS);
 
 			expect(headers['authorization']).toBeUndefined();
 			expect(headers['x-api-key']).toBeUndefined();
@@ -76,7 +80,7 @@ describe('NodeProtectProbeTransport', () => {
 					res.end();
 				}),
 			);
-			const result = await transport.get(target, '/api/system', 300);
+			const result = await transport.get(target, '/api/system', BUDGET_MS);
 
 			expect(result).toMatchObject({ ok: true, statusCode: 302 });
 			expect(hits).toBe(1);
@@ -85,7 +89,7 @@ describe('NodeProtectProbeTransport', () => {
 		it('get fails with kind timeout when the server accepts and never answers', async () => {
 			const target = await listen(https.createServer(protectTlsServerOptions(), () => undefined));
 
-			await expect(transport.get(target, '/api/system', 200)).resolves.toMatchObject({
+			await expect(transport.get(target, '/api/system', TIMEOUT_MS)).resolves.toMatchObject({
 				ok: false,
 				kind: 'timeout',
 			});
@@ -101,7 +105,7 @@ describe('NodeProtectProbeTransport', () => {
 				}),
 			);
 
-			await expect(transport.get(target, '/api/system', 200)).resolves.toMatchObject({
+			await expect(transport.get(target, '/api/system', TIMEOUT_MS)).resolves.toMatchObject({
 				ok: false,
 				kind: 'timeout',
 			});
@@ -115,7 +119,7 @@ describe('NodeProtectProbeTransport', () => {
 			await new Promise<void>((resolve) => server.close(() => resolve()));
 			servers.pop();
 
-			await expect(transport.get(target, '/api/system', 300)).resolves.toMatchObject({
+			await expect(transport.get(target, '/api/system', BUDGET_MS)).resolves.toMatchObject({
 				ok: false,
 				kind: 'refused',
 			});
@@ -132,7 +136,7 @@ describe('NodeProtectProbeTransport', () => {
 				}),
 			);
 
-			await expect(transport.get(target, '/api/system', 300)).resolves.toEqual({
+			await expect(transport.get(target, '/api/system', BUDGET_MS)).resolves.toEqual({
 				ok: false,
 				kind: 'protocol',
 				code: 'body_too_large',
@@ -149,7 +153,7 @@ describe('NodeProtectProbeTransport', () => {
 				}),
 			);
 
-			await expect(transport.get(target, '/api/system', 300)).resolves.toMatchObject({ ok: false, kind: 'tls' });
+			await expect(transport.get(target, '/api/system', BUDGET_MS)).resolves.toMatchObject({ ok: false, kind: 'tls' });
 		});
 	});
 
@@ -157,7 +161,7 @@ describe('NodeProtectProbeTransport', () => {
 		it('checkCertificate is valid when the certificate is trusted and names the servername', async () => {
 			const target = await listen(https.createServer(protectTlsServerOptions()));
 			const trusting = new NodeProtectProbeTransport({ extraCa: PROTECT_TEST_TLS.ca });
-			const result = await trusting.checkCertificate(target, PROTECT_TEST_DIRECT_DOMAIN, 300);
+			const result = await trusting.checkCertificate(target, PROTECT_TEST_DIRECT_DOMAIN, BUDGET_MS);
 
 			expect(result).toMatchObject({ ok: true, valid: true, errorCode: null });
 			expect(result).toHaveProperty('validTo');
@@ -171,7 +175,7 @@ describe('NodeProtectProbeTransport', () => {
 		it('checkCertificate reports DEPTH_ZERO_SELF_SIGNED_CERT without extraCa', async () => {
 			const target = await listen(https.createServer(protectTlsServerOptions()));
 
-			await expect(transport.checkCertificate(target, 'other.test', 300)).resolves.toEqual({
+			await expect(transport.checkCertificate(target, 'other.test', BUDGET_MS)).resolves.toEqual({
 				ok: true,
 				valid: false,
 				errorCode: 'DEPTH_ZERO_SELF_SIGNED_CERT',
@@ -184,7 +188,7 @@ describe('NodeProtectProbeTransport', () => {
 			const target = await listen(https.createServer({ ...PROTECT_TEST_TLS.console }));
 			const trusting = new NodeProtectProbeTransport({ extraCa: PROTECT_TEST_TLS.ca });
 
-			await expect(trusting.checkCertificate(target, 'other.test', 300)).resolves.toEqual({
+			await expect(trusting.checkCertificate(target, 'other.test', BUDGET_MS)).resolves.toEqual({
 				ok: true,
 				valid: false,
 				errorCode: 'ERR_TLS_CERT_ALTNAME_INVALID',
@@ -199,7 +203,7 @@ describe('NodeProtectProbeTransport', () => {
 			await new Promise<void>((resolve) => server.close(() => resolve()));
 			servers.pop();
 
-			await expect(transport.checkCertificate(target, PROTECT_TEST_DIRECT_DOMAIN, 300)).resolves.toMatchObject({
+			await expect(transport.checkCertificate(target, PROTECT_TEST_DIRECT_DOMAIN, BUDGET_MS)).resolves.toMatchObject({
 				ok: false,
 				kind: 'refused',
 			});
@@ -213,7 +217,7 @@ describe('NodeProtectProbeTransport', () => {
 				accepted.push(connection);
 			});
 			const target = await listen(server);
-			const result = await transport.checkCertificate(target, PROTECT_TEST_DIRECT_DOMAIN, 200);
+			const result = await transport.checkCertificate(target, PROTECT_TEST_DIRECT_DOMAIN, TIMEOUT_MS);
 
 			expect(result).toEqual({ ok: false, kind: 'timeout', code: null });
 			expect(accepted).toHaveLength(1);
