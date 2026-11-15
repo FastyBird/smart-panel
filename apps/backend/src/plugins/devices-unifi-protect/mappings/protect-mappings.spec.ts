@@ -223,17 +223,25 @@ describe('built-in UniFi Protect mappings', () => {
 		expect(value(device, 'light', 'brightness')).toBe(100);
 	});
 
-	it('gives every channel a unique identifier and every property a unique identifier per channel', () => {
+	it('gives every channel a unique name and identifier and every property a unique name and identifier per channel', () => {
 		for (const golden of GOLDENS) {
 			const device = evaluate(golden);
 			const identifiers = device.channels.map((channel) => channel.identifier);
 
 			expect(new Set(identifiers).size).toBe(identifiers.length);
 
+			const channelNames = device.channels.map((channel) => channel.name);
+
+			expect(new Set(channelNames).size).toBe(channelNames.length);
+
 			for (const channel of device.channels) {
 				const properties = channel.properties.map((property) => property.identifier);
 
 				expect(new Set(properties).size).toBe(properties.length);
+
+				const propertyNames = channel.properties.map((property) => property.name);
+
+				expect(new Set(propertyNames).size).toBe(propertyNames.length);
 			}
 		}
 	});
