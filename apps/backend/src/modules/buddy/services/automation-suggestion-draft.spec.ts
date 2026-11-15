@@ -34,6 +34,8 @@ import {
 	buildAutomationSuggestionDraft,
 	formatDraftTime,
 	toDraftWrites,
+	toObservedWrites,
+	withObservedWrites,
 } from './automation-suggestion-draft';
 
 const PROPERTY_LOCK = '0d9f0a3e-6f5c-4d7e-9a43-1f1f0c00a001';
@@ -99,6 +101,32 @@ describe('toDraftWrites', () => {
 			[PROPERTY_NUMBER, 10],
 			[PROPERTY_BOOL, false],
 		]);
+	});
+});
+
+describe('toObservedWrites', () => {
+	it('keeps every observed write, in the order it was done', () => {
+		expect(
+			toObservedWrites([write(PROPERTY_BOOL, false), write(PROPERTY_NUMBER, 10), write(PROPERTY_BOOL, true)]).map(
+				(item) => [item.property_id, item.value],
+			),
+		).toEqual([
+			[PROPERTY_BOOL, false],
+			[PROPERTY_NUMBER, 10],
+			[PROPERTY_BOOL, true],
+		]);
+	});
+
+	it('puts every observed write into the action of the draft', () => {
+		const actions = [write(PROPERTY_BOOL, false), write(PROPERTY_BOOL, true)];
+		const draft = buildAutomationSuggestionDraft(routine({ actions }));
+
+		expect(draft?.graph.nodes[1].config).toEqual({ writes: [expect.objectContaining({ value: true })] });
+		expect(withObservedWrites(draft, actions).nodes[1].config).toEqual({
+			writes: [expect.objectContaining({ value: false }), expect.objectContaining({ value: true })],
+		});
+		// The trigger is the one of the draft
+		expect(withObservedWrites(draft, actions).nodes[0]).toEqual(draft?.graph.nodes[0]);
 	});
 });
 
@@ -268,6 +296,23 @@ describe('buildAutomationSuggestionDraft', () => {
 
 			expect(result.valid).toBe(false);
 			expect(result.issues.map((issue) => issue.code)).toContain(AutomationGraphIssueCode.SAFETY_REDUCING_ACTION);
+		});
+
+		it('is refused for every observed write, also one the draft folds away', async () => {
+			const actions = [write(PROPERTY_LOCK, false), write(PROPERTY_LOCK, true)];
+			const draft = buildAutomationSuggestionDraft(routine({ actions }));
+
+			// The draft keeps the lock only and would pass by itself ...
+			expect((await check(draft)).valid).toBe(true);
+
+			// ... but the routine unlocked on the way, which the observed writes show
+			const observed = await checkGraphForSave(withObservedWrites(draft, actions), lookup, {
+				enabled: false,
+				safety: safety as never,
+			});
+
+			expect(observed.valid).toBe(false);
+			expect(observed.issues.map((issue) => issue.code)).toContain(AutomationGraphIssueCode.SAFETY_REDUCING_ACTION);
 		});
 
 		it('is refused when a write names a property that can not be set', async () => {

@@ -15,6 +15,8 @@ import {
 	AutomationSuggestionDraft,
 	ObservedPropertyWrite,
 	buildAutomationSuggestionDraft,
+	toDraftWrites,
+	withObservedWrites,
 } from './automation-suggestion-draft';
 import { BuddyContext } from './buddy-context.service';
 import { EvaluatorResult, HeartbeatEvaluator } from './heartbeat.types';
@@ -58,20 +60,40 @@ const minutesApart = (a: { hour: number; minute: number }, b: { hour: number; mi
 	return Math.min(diff, 1440 - diff);
 };
 
-const sameWrite = (a: ObservedPropertyWrite, b: ObservedPropertyWrite): boolean =>
-	a.deviceId === b.deviceId && a.channelId === b.channelId && a.propertyId === b.propertyId && a.value === b.value;
+const sameWrite = (
+	a: { device_id: string; channel_id: string; property_id: string; value: unknown },
+	b: typeof a,
+): boolean =>
+	a.device_id === b.device_id &&
+	a.channel_id === b.channel_id &&
+	a.property_id === b.property_id &&
+	a.value === b.value;
+
+/** A routine offered as an automation, with the draft it is offered with */
+interface OfferedRoutine {
+	routine: Routine;
+	draft: AutomationSuggestionDraft;
+}
 
 /**
- * Whether a single repeated action is part of a routine of several actions: the same space, about the same time,
- * the same kind of action, and every value it sets is one the routine sets. Another light toggled half an hour after
- * a light-and-blinds routine is a routine of its own.
+ * Whether a single repeated action is part of a routine of several actions offered: the same space, about the same
+ * time, the same kind of action, and every value it sets is one the offered draft sets. What the draft sets is what
+ * a property was left with, not every value written on the way: a light switched on and off again within the routine
+ * is off in its draft, so switching it on later is a routine of its own. So is another light toggled half an hour
+ * after a light-and-blinds routine.
  */
-const covers = (sequence: Routine, single: Routine): boolean =>
-	sequence.spaceId === single.spaceId &&
-	single.intentTypes.every((type) => sequence.intentTypes.includes(type)) &&
-	minutesApart(sequence.timeOfDay, single.timeOfDay) <= ROUTINE_OVERLAP_MINUTES &&
-	single.actions.length > 0 &&
-	single.actions.every((write) => sequence.actions.some((observed) => sameWrite(observed, write)));
+const covers = ({ routine: sequence }: OfferedRoutine, single: Routine): boolean => {
+	const writes = toDraftWrites(single.actions);
+	const offeredWrites = toDraftWrites(sequence.actions);
+
+	return (
+		sequence.spaceId === single.spaceId &&
+		single.intentTypes.every((type) => sequence.intentTypes.includes(type)) &&
+		minutesApart(sequence.timeOfDay, single.timeOfDay) <= ROUTINE_OVERLAP_MINUTES &&
+		writes.length > 0 &&
+		writes.every((write) => offeredWrites.some((offered) => sameWrite(offered, write)))
+	);
+};
 
 /**
  * Offers an automation for a routine: the same writes done around the same time of day, as found by the detectors
@@ -109,7 +131,7 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 		const spaces = new Map(context.spaces.map((space) => [space.id, space.name]));
 		const { sequences, singles } = this.findRoutines(new Set(spaces.keys()));
 		const results: EvaluatorResult[] = [];
-		const offered: Routine[] = [];
+		const offered: OfferedRoutine[] = [];
 
 		// Routines of several actions first: a single action is left out only when a routine offered covers it
 		for (const routine of [...sequences, ...singles]) {
@@ -124,7 +146,7 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 				continue;
 			}
 
-			offered.push(routine);
+			offered.push({ routine, draft });
 			results.push(this.toResult(routine, draft, spaceName, rule));
 		}
 
@@ -150,7 +172,17 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 			actions: routine.actions,
 		});
 
-		return draft !== null && (await this.canBeSaved(draft)) ? draft : null;
+		if (draft === null) {
+			return null;
+		}
+
+		// Every write that was observed is judged by the safety policy, also one the draft folds away: a routine that
+		// unlocks and locks again contains an unlock. A graph that is only checked for safety need not be complete.
+		if (!(await this.canBeSaved(withObservedWrites(draft, routine.actions), false))) {
+			return null;
+		}
+
+		return (await this.canBeSaved(draft.graph, true)) ? draft : null;
 	}
 
 	/** The routines of the spaces asked about, by the detector that found them */
@@ -206,10 +238,13 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 		};
 	}
 
-	/** Whether the automations module would save the draft as an enabled automation, safety policy included */
-	private async canBeSaved(draft: AutomationSuggestionDraft): Promise<boolean> {
+	/**
+	 * Whether the automations module would save the graph, safety policy included: as an enabled automation, or as a
+	 * disabled one, for which only what is structural or reduces safety stops the save.
+	 */
+	private async canBeSaved(graph: AutomationSuggestionDraft['graph'], enabled: boolean): Promise<boolean> {
 		try {
-			const check = await this.automationsService.checkGraph(draft.graph, true);
+			const check = await this.automationsService.checkGraph(graph, enabled);
 
 			if (!check.valid) {
 				this.logger.debug(

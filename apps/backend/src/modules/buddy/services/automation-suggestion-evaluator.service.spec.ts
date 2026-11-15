@@ -26,6 +26,7 @@ const OTHER_LIGHT = {
 	channelId: 'channel-other-light',
 	propertyId: 'property-other-light-on',
 };
+const LOCK = { deviceId: 'device-lock', channelId: 'channel-lock', propertyId: 'property-lock-locked' };
 const BLINDS = { deviceId: DEVICE_BLINDS, channelId: 'channel-blinds', propertyId: 'property-blinds-position' };
 
 const context = (spaces = [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 2 }]) =>
@@ -290,6 +291,74 @@ describe('AutomationSuggestionEvaluator', () => {
 
 		expect(await evaluator.evaluate(context())).toEqual([]);
 		expect(checkGraph).not.toHaveBeenCalled();
+	});
+
+	it('does not offer a routine that unlocks on the way, although its draft only keeps the lock', async () => {
+		// Unlocked and locked again within the routine: the draft keeps the value the lock was left with
+		for (const at of onDays(3, 19)) {
+			record([
+				action(IntentType.DEVICE_SET_PROPERTY, LOCK, false, at),
+				action(IntentType.DEVICE_SET_PROPERTY, LOCK, true, new Date(at.getTime() + 5000)),
+			]);
+		}
+
+		// The safety policy refuses unlocking
+		const unlocks = (graph: AutomationSuggestionDraft['graph']): boolean =>
+			graph.nodes.some((node) =>
+				((node.config.writes ?? []) as { property_id: string; value: unknown }[]).some(
+					(write) => write.property_id === LOCK.propertyId && write.value === false,
+				),
+			);
+
+		checkGraph.mockImplementation((graph: AutomationSuggestionDraft['graph']) =>
+			Promise.resolve({ valid: !unlocks(graph), issues: [] }),
+		);
+
+		const results = await evaluator.evaluate(context());
+
+		expect(results.filter((result) => result.metadata.sequence === 'multi-action')).toEqual([]);
+		// Asked about every observed write, as a graph only checked for safety
+		expect(checkGraph).toHaveBeenCalledWith(
+			expect.objectContaining({
+				nodes: expect.arrayContaining([
+					expect.objectContaining({
+						config: {
+							writes: [
+								{ device_id: LOCK.deviceId, channel_id: LOCK.channelId, property_id: LOCK.propertyId, value: false },
+								{ device_id: LOCK.deviceId, channel_id: LOCK.channelId, property_id: LOCK.propertyId, value: true },
+							],
+						},
+					}),
+				]) as unknown,
+			}),
+			false,
+		);
+	});
+
+	it('compares a single action with what an offered routine leaves a property at, not with what it wrote on the way', async () => {
+		// On and off again within the routine, so the routine leaves the light off ...
+		for (const at of onDays(3, 19)) {
+			record([
+				action(IntentType.LIGHT_TOGGLE, LIGHT, true, at),
+				action(IntentType.LIGHT_TOGGLE, LIGHT, false, new Date(at.getTime() + 5000)),
+			]);
+		}
+
+		// ... and the light is switched on again half an hour later
+		record(onDays(3, 19, 30).map((at) => action(IntentType.LIGHT_TOGGLE, LIGHT, true, at)));
+
+		const results = await evaluator.evaluate(context());
+
+		const writes = (index: number) =>
+			(
+				(results[index].metadata.draft as AutomationSuggestionDraft).graph.nodes[1].config.writes as {
+					value: unknown;
+				}[]
+			).map((write) => write.value);
+
+		expect(results.map((result) => result.metadata.sequence)).toEqual(['multi-action', 'single']);
+		expect(writes(0)).toEqual([false]);
+		expect(writes(1)).toEqual([true]);
 	});
 
 	it('does not suggest a routine whose draft the automations module would not save', async () => {

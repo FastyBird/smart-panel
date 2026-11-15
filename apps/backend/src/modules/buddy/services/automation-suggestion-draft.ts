@@ -89,7 +89,9 @@ export const formatDraftTime = (hour: number, minute: number): string | null => 
 };
 
 /** Whether an automation can repeat an observed write: it names a device, a channel and a property, and a plain value */
-export const isRepeatableWrite = (action: ObservedPropertyWrite): boolean =>
+type RepeatableWrite = ObservedPropertyWrite & { channelId: string; propertyId: string; value: TrackedValue };
+
+export const isRepeatableWrite = (action: ObservedPropertyWrite): action is RepeatableWrite =>
 	isId(action.deviceId) && isId(action.channelId) && isId(action.propertyId) && isPropertyValue(action.value);
 
 /**
@@ -117,6 +119,35 @@ export const toDraftWrites = (actions: readonly ObservedPropertyWrite[]): DraftW
 
 	return [...writes.values()];
 };
+
+/**
+ * Every observed write as the action takes it, in the order it was done and without folding repeated writes into the
+ * value a property was left with. This is what the safety policy is asked about: a routine that unlocks a door and
+ * locks it again contains an unlock, although the draft only keeps the lock.
+ */
+export const toObservedWrites = (actions: readonly ObservedPropertyWrite[]): DraftWrite[] =>
+	actions.filter(isRepeatableWrite).map((action) => ({
+		device_id: action.deviceId,
+		channel_id: action.channelId,
+		property_id: action.propertyId,
+		value: action.value,
+	}));
+
+/**
+ * The graph of a draft with its action holding every observed write of the routine instead of the writes it keeps.
+ * Not a graph to save: two writes of one property are not valid in one action. Only its safety is checked.
+ */
+export const withObservedWrites = (
+	draft: AutomationSuggestionDraft,
+	actions: readonly ObservedPropertyWrite[],
+): AutomationSuggestionDraft['graph'] => ({
+	...draft.graph,
+	nodes: draft.graph.nodes.map((node) =>
+		node.id === AUTOMATION_SUGGESTION_ACTION_NODE_ID
+			? { ...node, config: { writes: toObservedWrites(actions) } }
+			: node,
+	),
+});
 
 const toDraftWeekdays = (weekdays: readonly number[] | undefined): number[] | null => {
 	if (weekdays === undefined) return null;
