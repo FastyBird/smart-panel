@@ -75,7 +75,8 @@ class-transformer, `@nestjs/swagger`, Jest, supertest. No migration, no config c
 - `GET https://<ip>/api/system` (no auth) → 200 JSON: `hardware.shortname` `UNVR`, `name` `Dream Machine Pro`, `mac`,
   `deviceState`, `directConnectDomain`. `GET /proxy/protect/api` (no auth) → 401. By IP the certificate is
   self-signed (`CN=unifi.local`); with SNI = `directConnectDomain` it is a valid Let's Encrypt certificate.
-- The V2 request `02 08 00 00` was **not** sent during the spike; nothing is known about V2 replies.
+- The V2 request `02 08 00 00` was not sent during the spike. Verified live later: a console answers it with header
+  version 2, command byte 9 and a TLV payload with the same layout as its V1 reply (same types, lengths and order).
 
 ### Interface assumptions (UP-5 and UP-0 are planned in parallel; Task 1 Step 1 and Task 3 Step 1 verify them)
 
@@ -193,8 +194,8 @@ Specs sit next to their source (`*.spec.ts`). Tasks are ordered so each ends wit
   (6 MAC + 4 IPv4 octets, dotted decimal); `0x03`, `0x0b`, `0x0c`, `0x30` are UTF-8 strings (`0x30` must also satisfy `isDnsHostname`, else `null`); `0x33` is the UUID as a 36-byte
   ASCII string (`8-4-4-4-12`, any case, output lowercased; anything not UUID-shaped is `null`). Any other length for those types drops that field (`null`, or the pair is
   skipped for `0x02`), it does not reject the reply. Unknown types are skipped. A scalar type seen twice keeps its
-  first value. Header: `>BBH` = version, command, length of the bytes after the header; versions 0 and 1 accepted,
-  any command byte accepted, bytes past the declared length ignored.
+  first value. Header: `>BBH` = version, command, length of the bytes after the header; versions 0, 1 and 2 accepted (3 and above are
+  `unsupported_version`; a V2 reply uses the same TLV rules as V1), any command byte accepted, bytes past the declared length ignored.
 
 - [ ] **Step 1: Verify the preconditions**
 
@@ -236,7 +237,7 @@ it('parses a hand-built v1 console reply', () => expect(parseDiscoveryReply(buil
 	uuid: '00112233-4455-6677-8899-aabbccddeeff' } }));
 it('parses the sanitized v1 fixture: header, length and fields', ...);   // fixture.length === 4 + fixture.readUInt16BE(2); headerVersion 1; firmware '6.0.17'; shortModel 'UNVR'; hostname 'Dream-Machine-Pro'; domain matches /^[0-9a-f]+\.id\.ui\.direct$/; hwaddr matches /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/; uuid matches the UUID regex; addresses.length >= 1; isProtectConsoleCandidate true
 it('parses the sanitized v0 fixture and does not treat it as a console', ...); // ok true; headerVersion 0; isProtectConsoleCandidate false
-it('accepts header versions 0 and 1 and rejects version 2', ...);            // 02 08 00 00 -> { ok:false, reason:'unsupported_version' }
+it('accepts header versions 0, 1 and 2 and rejects version 3', ...);          // version 3 and 0xff -> { ok:false, reason:'unsupported_version' }; the echoed request 02 08 00 00 parses ok with no identity MAC
 it('skips unknown TLV types and keeps them out of the model', ...);          // add 0x0a, 0x32 (JSON), 0x2f, 0xee; Object.keys(reply).sort() equals the 8 documented keys
 it('keeps the first value of a repeated scalar TLV and every 0x02 pair', ...);
 it.each([0,1,2,3])('rejects a %i byte datagram as truncated_header', ...);
@@ -843,7 +844,7 @@ payload). It awaits `scan()` and prints `status`, interface names and codes, per
 replaced by `***`. Run it twice: as is, and with the V1 datagrams dropped (V2 only).
 Expected as is: `completed`, at least one console with `model UNVR`, `protect present`, `certificate.valid true`,
 `other_unifi_devices >= 1`. The V2-only run is exploratory: record in the PR body whether any reply arrived and its
-`parseDiscoveryReply` outcome (`unsupported_version` is the expected answer); if a V2 reply parses differently than
+`parseDiscoveryReply` outcome (a V2 reply parses like a V1 reply with `headerVersion` 2); if a V2 reply parses differently than
 documented, file a follow-up issue, do not extend this PR. Do not commit the script or any capture.
 
 - [ ] **Step 6: Mark the issue done in the epic file**
@@ -878,7 +879,8 @@ then the line `🤖 Generated with [Claude Code](https://claude.com/claude-code)
    model, `0x15` product, `0x16` version, `0x2B` guid, `0x2F` primary address; live data shows `0x0c` is the short
    model, the GUID is `0x33`, and `0x14`/`0x15`/`0x16`/`0x2f` are unverified or mean something else. The host to
    probe is the datagram's source address instead of `0x2F`.
-3. V2 request is still sent (issue AC) but V2 replies are not parsed; nothing is known about them.
+3. V2 replies are parsed like V1 replies: live, a console answers the V2 request with header version 2, command 9 and
+   the same TLV layout as V1, so both requests drive the scan (header versions above 2 are `unsupported_version`).
 4. Probe addition beyond the issue: optional `port` (default 443) because the UP-5 config has a `port`; a
    `domain_resolves_to_host` check so `preferred_host` is never a name that cannot connect; non-unicast/link-local
    host rejection.
