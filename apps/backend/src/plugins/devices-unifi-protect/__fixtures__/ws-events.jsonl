@@ -24,3 +24,17 @@
 {"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0012","modelKey":"event","end":1794400020000}}
 {"_synthetic":true,"type":"add","item":{"id":"5f00000000000000000e0013","modelKey":"event","type":"lightMotion","start":1794400013000,"end":null,"device":"5f0000000000000000000c01"}}
 {"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0013","modelKey":"event","end":1794400021000}}
+{"_synthetic":true,"type":"add","item":{"id":"5f00000000000000000e0014","modelKey":"event","type":"smartDetectLoiterZone","start":1794400014000,"end":null,"device":"600cefafd5f365d6f83c4ef3","smartDetectTypes":["animal"]}}
+{"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0014","modelKey":"event","end":1794400030000}}
+{"_synthetic":true,"type":"add","item":{"id":"5f00000000000000000e0015","modelKey":"event","type":"smartDetectZone","start":1794400015000,"end":null,"device":"600cefafd5f365d6f83c4ef3","smartDetectTypes":["person","vehicle"]}}
+{"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0015","modelKey":"event","end":1794400031000}}
+{"_synthetic":true,"type":"add","item":{"id":"5f00000000000000000e0016","modelKey":"event","type":"smartAudioDetect","start":1794400016000,"end":null,"device":"600cefafd5f365d6f83c4ef3","smartDetectTypes":["alrmCmonx"]}}
+{"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0016","modelKey":"event","end":1794400032000}}
+{"_synthetic":true,"type":"add","item":{"id":"5f00000000000000000e0017","modelKey":"event","type":"sensorAlarm","start":1794400017000,"end":null,"device":"5f0000000000000000000b01"}}
+{"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0017","modelKey":"event","end":1794400033000}}
+{"_synthetic":true,"type":"add","item":{"id":"5f00000000000000000e0018","modelKey":"event","type":"sensorBatteryLow","start":1794400018000,"end":null,"device":"5f0000000000000000000b01"}}
+{"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0018","modelKey":"event","end":1794400034000}}
+{"_synthetic":true,"type":"add","item":{"id":"5f00000000000000000e0019","modelKey":"event","type":"sensorExtremeValues","start":1794400019000,"end":null,"device":"5f0000000000000000000b01"}}
+{"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0019","modelKey":"event","end":1794400035000}}
+{"_synthetic":true,"type":"add","item":{"id":"5f00000000000000000e0020","modelKey":"event","type":"smartDetectZone","start":1794400020000,"end":null,"device":"600cefafd5f365d6f83c4ef3","smartDetectTypes":["pet"]}}
+{"_synthetic":true,"type":"update","item":{"id":"5f00000000000000000e0020","modelKey":"event","end":1794400036000}}
