@@ -94,7 +94,8 @@ confirms them on real devices.
       AU-14, #1614, shows live and past runs on the canvas.)
 - [x] Deleting a referenced device, property, scene or space marks the automation invalid and shows the broken node.
       (Reference cleanup listener; the editor outlines the nodes the issues name.)
-- [x] Only `owner` and `admin` can create, edit or run automations. (Covered by the automations e2e suite.)
+- [x] Only `owner` and `admin` can create, edit or run automations. A display may only list automations and switch
+      one on or off through `PATCH /automations/:id/enabled` (AU-21). (Covered by the automations e2e suite.)
 - [x] Unit and e2e tests cover the engine semantics; the editor has a Playwright test for the reference scenario.
       (`apps/admin/e2e/automation-reference-scenario.spec.ts`, `automation-test-and-trace.spec.ts`.)
 - [x] User documentation is published. (AU-22, #1635: website page Admin Management → Automations and
