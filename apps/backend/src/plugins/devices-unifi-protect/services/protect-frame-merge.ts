@@ -131,7 +131,7 @@ const mergeAt = (
 			continue;
 		}
 
-		const exists = Object.keys(result).includes(key);
+		const exists = Object.hasOwn(result, key);
 
 		if (!exists && count >= MAX_KEYS) {
 			continue;
