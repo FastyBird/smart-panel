@@ -30,10 +30,11 @@ deviations A4, A10, A17–A20). Reference implementations: `apps/backend/src/plu
 
 ---
 
-## Decisions for approval
+## Decisions (approved)
 
 The issue, the design, the roadmap and the code disagree or leave these open. The plan is written for each
-recommendation; *cost if wrong* says what changes.
+recommendation; *cost if wrong* says what changes. The maintainer approved every recommendation below on 2026-11-15,
+unchanged, including R5's core change to `ChannelInputOccurrencesService`.
 
 **R1. WebSocket endpoints and who opens them.** The public Integration API has exactly the two sockets the roadmap names:
 `GET subscribe/devices` and `GET subscribe/events` (design §4.1 endpoint table; the spike opened both with `X-API-KEY` in
