@@ -51,3 +51,5 @@ export enum ProtectProbeFailure {
 }
 
 export type ProtectTransportErrorKind = 'timeout' | 'refused' | 'unreachable' | 'dns' | 'tls' | 'protocol';
+
+export const PROTECT_PROBE_TRANSPORT = Symbol('PROTECT_PROBE_TRANSPORT');
