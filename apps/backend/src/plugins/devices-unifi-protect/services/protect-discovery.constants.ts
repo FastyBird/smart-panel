@@ -53,3 +53,36 @@ export enum ProtectProbeFailure {
 export type ProtectTransportErrorKind = 'timeout' | 'refused' | 'unreachable' | 'dns' | 'tls' | 'protocol';
 
 export const PROTECT_PROBE_TRANSPORT = Symbol('PROTECT_PROBE_TRANSPORT');
+
+export enum ProtectDiscoveryStatus {
+	IDLE = 'idle',
+	SCANNING = 'scanning',
+	COMPLETED = 'completed',
+	FAILED = 'failed',
+}
+
+export enum ProtectDiscoveryFailureReason {
+	NO_USABLE_INTERFACE = 'no_usable_interface',
+	ALL_INTERFACES_FAILED = 'all_interfaces_failed',
+}
+
+export enum ProtectDiscoveryWarning {
+	SOME_INTERFACES_FAILED = 'some_interfaces_failed',
+	NO_REPLIES = 'no_replies',
+	CONTAINER_NETWORK_ISOLATED = 'container_network_isolated',
+	CANDIDATE_LIMIT_REACHED = 'candidate_limit_reached',
+}
+
+export enum ProtectInterfaceStatus {
+	OK = 'ok',
+	ERROR = 'error',
+}
+
+export enum ProtectInterfaceErrorCode {
+	PERMISSION_DENIED = 'permission_denied',
+	ADDRESS_UNAVAILABLE = 'address_unavailable',
+	NETWORK_UNREACHABLE = 'network_unreachable',
+	SOCKET_ERROR = 'socket_error',
+}
+
+export const PROTECT_DISCOVERY_ENVIRONMENT = Symbol('PROTECT_DISCOVERY_ENVIRONMENT');
