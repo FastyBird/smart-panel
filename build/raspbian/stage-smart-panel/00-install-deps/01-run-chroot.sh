@@ -33,9 +33,10 @@ fi
 
 echo "Installing Node.js v${NODE_VERSION} for ${NODE_ARCH}..."
 
-# Download and extract binary tarball
+# Keep extracted files and directories owned by root, not the tarball's build user.
+# Restoring archive ownership makes /usr/local/lib untrusted by the go2rtc installer.
 curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" \
-	| tar -xJ -C /usr/local --strip-components=1
+	| tar -xJ -C /usr/local --strip-components=1 --no-same-owner
 
 # Verify
 echo "Node.js version: $(node --version)"
