@@ -12,6 +12,7 @@ import { ProtectDiscoveryProbeService, ProtectProbeResult } from './protect-disc
 import { isProtectConsoleCandidate, parseDiscoveryReply, replyIdentityMac } from './protect-discovery-tlv';
 import {
 	PROTECT_DISCOVERY_ENVIRONMENT,
+	PROTECT_DISCOVERY_MAX_ADDRESSES,
 	PROTECT_DISCOVERY_MAX_CANDIDATES,
 	PROTECT_DISCOVERY_MAX_OTHER_DEVICES,
 	PROTECT_DISCOVERY_MULTICAST_ADDRESS,
@@ -483,7 +484,7 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 		const existing = candidates.get(mac);
 
 		if (existing) {
-			if (!existing.addresses.includes(source.address)) {
+			if (existing.addresses.length < PROTECT_DISCOVERY_MAX_ADDRESSES && !existing.addresses.includes(source.address)) {
 				existing.addresses.push(source.address);
 			}
 

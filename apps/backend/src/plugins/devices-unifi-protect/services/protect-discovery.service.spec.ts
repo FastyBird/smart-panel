@@ -9,6 +9,7 @@ import { ExtensionLoggerService } from '../../../common/logger/extension-logger.
 
 import { ProtectDiscoveryProbeService, ProtectProbeResult } from './protect-discovery-probe.service';
 import {
+	PROTECT_DISCOVERY_MAX_ADDRESSES,
 	PROTECT_DISCOVERY_REQUEST_V1,
 	PROTECT_DISCOVERY_REQUEST_V2,
 	ProtectDiscoveryFailureReason,
@@ -259,6 +260,16 @@ describe('ProtectDiscoveryService', () => {
 		expect(scan.consoles[0].host).toBe('192.168.1.10');
 		expect(scan.consoles[0].addresses).toEqual(['192.168.1.10', '192.168.1.11']);
 		expect(probe.probe).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps at most eight source addresses per candidate, host first', async () => {
+		const reply = fixture('discovery-reply.bin');
+		const scan = await scanWith(Array.from({ length: 12 }, (_, n): [Buffer, string] => [reply, `192.168.1.${10 + n}`]));
+
+		expect(scan.consoles).toHaveLength(1);
+		expect(scan.consoles[0].addresses).toHaveLength(PROTECT_DISCOVERY_MAX_ADDRESSES);
+		expect(scan.consoles[0].addresses).toEqual(Array.from({ length: 8 }, (_, n) => `192.168.1.${10 + n}`));
+		expect(scan.consoles[0].host).toBe('192.168.1.10');
 	});
 
 	it('fills null fields from later replies for the same MAC', async () => {

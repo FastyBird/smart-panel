@@ -33,11 +33,14 @@ export const computeBroadcastAddress = (address: string, netmask: string): strin
 	const hostMask = 0xffffffff - maskValue;
 
 	// A valid netmask has all host bits at the end; host bits must number at least two (not /31, /32).
-	if (hostMask < 3 || (hostMask & (hostMask + 1)) !== 0) {
+	if (hostMask < 3 || hostMask === 0xffffffff || (hostMask & (hostMask + 1)) !== 0) {
 		return null;
 	}
 
-	return ip.map((octet, index) => (octet | (~mask[index] & 0xff)) & 0xff).join('.');
+	const broadcast = ip.map((octet, index) => (octet | (~mask[index] & 0xff)) & 0xff).join('.');
+
+	// Never the limited broadcast address (it fails with EADDRNOTAVAIL on macOS and is not a subnet broadcast).
+	return broadcast === '255.255.255.255' ? null : broadcast;
 };
 
 export const selectScanInterfaces = (interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]>): ProtectScanInterface[] => {

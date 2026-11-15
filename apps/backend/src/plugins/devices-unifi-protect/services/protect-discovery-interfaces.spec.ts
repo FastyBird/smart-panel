@@ -26,6 +26,7 @@ describe('computeBroadcastAddress', () => {
 		['bad', '255.255.255.0'],
 		['10.0.0.1', 'nope'],
 		['10.0.0.1', '255.0.255.0'],
+		['10.0.0.1', '0.0.0.0'],
 		['10.0.0.256', '255.255.255.0'],
 	])('computeBroadcastAddress returns null for %s %s', (a, m) => expect(computeBroadcastAddress(a, m)).toBeNull());
 });
