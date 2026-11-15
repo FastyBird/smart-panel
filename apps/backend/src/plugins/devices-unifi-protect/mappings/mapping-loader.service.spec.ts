@@ -265,6 +265,66 @@ describe('ProtectMappingLoaderService', () => {
 			},
 		],
 		[
+			'two static channels with one identifier',
+			'duplicate channel identifier',
+			(d) => {
+				d.devices.mappings.push({ name: 'camera', match: { model_key: 'camera' }, device: { category: 'camera' } });
+				d.channels.mappings.push(
+					{
+						name: 'a',
+						devices: ['camera'],
+						channel: { identifier: 'object_detection.x', category: 'object_detection', name: 'S' },
+					},
+					{
+						name: 'b',
+						devices: ['camera'],
+						channel: { identifier: 'object_detection.x', category: 'object_detection', name: 'S' },
+					},
+				);
+			},
+		],
+		[
+			'a static identifier a for_each template can produce',
+			'duplicate channel identifier',
+			(d) => {
+				d.devices.mappings.push({ name: 'camera', match: { model_key: 'camera' }, device: { category: 'camera' } });
+				d.channels.mappings.push(
+					{
+						name: 'each',
+						devices: ['camera'],
+						for_each: { path: 'featureFlags.smartDetectTypes', values: { person: { key: 'person', name: 'Person' } } },
+						channel: { identifier: 'object_detection.{key}', category: 'object_detection', name: '{name}' },
+					},
+					{
+						name: 'fixed',
+						devices: ['camera'],
+						channel: { identifier: 'object_detection.person', category: 'object_detection', name: 'S' },
+					},
+				);
+			},
+		],
+		[
+			'two for_each templates that can overlap',
+			'duplicate channel identifier',
+			(d) => {
+				d.devices.mappings.push({ name: 'camera', match: { model_key: 'camera' }, device: { category: 'camera' } });
+				d.channels.mappings.push(
+					{
+						name: 'each_a',
+						devices: ['camera'],
+						for_each: { path: 'featureFlags.smartDetectTypes', values: { person: { key: 'person', name: 'Person' } } },
+						channel: { identifier: 'object_detection.{key}', category: 'object_detection', name: '{name}' },
+					},
+					{
+						name: 'each_b',
+						devices: ['camera'],
+						for_each: { path: 'featureFlags.smartDetectTypes', values: { person: { key: 'person', name: 'Person' } } },
+						channel: { identifier: 'object_detection.{key}', category: 'object_detection', name: '{name}' },
+					},
+				);
+			},
+		],
+		[
 			'a __proto__ path segment',
 			'path',
 			(d) => {

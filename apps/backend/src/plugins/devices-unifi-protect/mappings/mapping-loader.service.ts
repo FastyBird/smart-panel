@@ -311,6 +311,23 @@ export class ProtectMappingLoaderService implements OnModuleInit {
 			}
 		}
 
+		// Rule 6b: no two channel mappings of one device mapping may yield the same channel identifier.
+		for (const device of deviceDefinitions) {
+			const onDevice = channelDefinitions.filter((definition) => definition.devices.includes(device.name));
+
+			for (let second = 1; second < onDevice.length; second++) {
+				for (let first = 0; first < second; first++) {
+					if (this.identifiersCollide(onDevice[first], onDevice[second])) {
+						report(
+							channelsFile,
+							onDevice[second].name,
+							`duplicate channel identifier: '${onDevice[second].channel.identifier}' can collide with '${onDevice[first].channel.identifier}' of channel mapping '${onDevice[first].name}' on device mapping '${device.name}'`,
+						);
+					}
+				}
+			}
+		}
+
 		// Rules 7, 8 and 11: property mappings.
 		const resolvedProperties: ResolvedProtectPropertyMapping[] = [];
 		const identifiers = new Map<string, string>();
@@ -655,6 +672,43 @@ export class ProtectMappingLoaderService implements OnModuleInit {
 		if (!PATH_PATTERN.test(path) || path.split('.').some((segment) => FORBIDDEN_PATH_SEGMENTS.has(segment))) {
 			fail(`invalid path '${path}'`);
 		}
+	}
+
+	/** Whether two channel mappings can yield one identifier, decided from the identifier templates alone. */
+	private identifiersCollide(a: ProtectChannelMappingDefinition, b: ProtectChannelMappingDefinition): boolean {
+		const parse = (
+			definition: ProtectChannelMappingDefinition,
+		): { prefix: string; suffix: string; template: boolean } => {
+			const identifier = definition.channel.identifier;
+			const index = identifier.indexOf('{key}');
+
+			return definition.for_each !== undefined && index >= 0
+				? { prefix: identifier.slice(0, index), suffix: identifier.slice(index + 5), template: true }
+				: { prefix: identifier, suffix: '', template: false };
+		};
+
+		const left = parse(a);
+		const right = parse(b);
+
+		if (!left.template && !right.template) {
+			return left.prefix === right.prefix;
+		}
+
+		if (left.template && right.template) {
+			return (
+				(left.prefix.startsWith(right.prefix) || right.prefix.startsWith(left.prefix)) &&
+				(left.suffix.endsWith(right.suffix) || right.suffix.endsWith(left.suffix))
+			);
+		}
+
+		const [template, fixed] = left.template ? [left, right] : [right, left];
+		const key = fixed.prefix.slice(template.prefix.length, fixed.prefix.length - template.suffix.length);
+
+		return (
+			fixed.prefix.startsWith(template.prefix) &&
+			fixed.prefix.endsWith(template.suffix) &&
+			FOR_EACH_KEY_PATTERN.test(key)
+		);
 	}
 
 	private isEnumValue(enumType: Record<string, string>, value: string): boolean {

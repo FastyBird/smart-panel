@@ -69,6 +69,7 @@ export interface ProtectMappedDevice {
 
 export enum ProtectMappingWarningCode {
 	UNSUPPORTED_DETECTION_TYPE = 'unsupported_detection_type',
+	DUPLICATE_CHANNEL_IDENTIFIER = 'duplicate_channel_identifier',
 }
 
 export interface ProtectMappingWarning {
@@ -409,6 +410,14 @@ export const evaluateProtectMapping = (
 			);
 
 			for (const instance of expandChannel(channelMapping, input.device, warnings)) {
+				if (channels.some((channel) => channel.identifier === instance.identifier)) {
+					warnings.push({
+						code: ProtectMappingWarningCode.DUPLICATE_CHANNEL_IDENTIFIER,
+						identifier: instance.key !== null && WARNING_IDENTIFIER_PATTERN.test(instance.key) ? instance.key : null,
+					});
+					continue;
+				}
+
 				channels.push({
 					identifier: instance.identifier,
 					category: channelMapping.category,

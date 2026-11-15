@@ -104,6 +104,38 @@ describe('mapping evaluator', () => {
 		]);
 	});
 
+	it('keeps the first channel and warns when an expanded identifier repeats', () => {
+		const clone = structuredClone(mappings);
+		const detection = clone.channels.find((channel) => channel.name === 'object_detection');
+
+		if (detection?.forEach === null || detection?.forEach === undefined) {
+			throw new Error('object_detection mapping missing');
+		}
+
+		detection.forEach.values.animal = { key: 'person', name: 'Animal' };
+
+		const device = camera();
+		device.featureFlags.smartDetectTypes = ['person', 'animal'];
+
+		const result = evaluateProtectMapping(clone, {
+			nvr: NVR,
+			modelKey: device.modelKey as string,
+			device,
+			streams: null,
+		} as ProtectMappingInput);
+
+		if (!('device' in result)) {
+			throw new Error(`unexpected ${result.reason}`);
+		}
+
+		const identifiers = channelIdentifiers(result.device);
+
+		expect(identifiers.filter((id) => id === 'object_detection.person')).toHaveLength(1);
+		expect(new Set(identifiers).size).toBe(identifiers.length);
+		expect(result.device.channels.find((c) => c.identifier === 'object_detection.person')?.name).not.toBe('Animal');
+		expect(result.warnings).toEqual([{ code: 'duplicate_channel_identifier', identifier: 'person' }]);
+	});
+
 	it('skips an unknown detection type with a warning', () => {
 		const device = camera();
 		device.featureFlags.smartDetectTypes = ['person', 'pet'];
