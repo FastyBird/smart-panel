@@ -10,6 +10,7 @@ import {
 	ProtectStreamAvailability,
 	evaluateProtectMapping,
 	toNvrMacKey,
+	toProtectDeviceName,
 	toStreamAvailability,
 } from './mapping-evaluator';
 import { ProtectMappingLoaderService } from './mapping-loader.service';
@@ -391,5 +392,12 @@ describe('mapping evaluator', () => {
 		device.featureFlags = 'broken';
 
 		expect(() => evaluate(device)).not.toThrow();
+	});
+});
+
+describe('toProtectDeviceName', () => {
+	it('derives the device name from the console name or the fallback', () => {
+		expect(toProtectDeviceName({ name: ' Front ' }, 'camera', 'a')).toBe('Front');
+		expect(toProtectDeviceName({}, 'camera', 'a')).toBe('UniFi Protect camera a');
 	});
 });

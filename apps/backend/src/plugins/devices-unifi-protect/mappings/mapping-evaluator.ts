@@ -303,7 +303,11 @@ const evaluateValue = (
 	return fitsDataType(result, mapping.dataType) && withinFormat(result, mapping) ? result : null;
 };
 
-const toDeviceName = (device: Readonly<Record<string, unknown>>, modelKey: string, id: string): string => {
+export const toProtectDeviceName = (
+	device: Readonly<Record<string, unknown>>,
+	modelKey: string,
+	id: string,
+): string => {
 	const name = typeof device.name === 'string' ? device.name.trim() : '';
 
 	return name.length > 0 && name.length <= MAX_NAME_LENGTH && !CONTROL_CHARACTERS.test(name)
@@ -445,7 +449,7 @@ export const evaluateProtectMapping = (
 				mappingName: deviceMapping.name,
 				category: deviceMapping.category,
 				identifier: `${input.nvr.macKey}:${id}`,
-				name: toDeviceName(input.device, input.modelKey, id),
+				name: toProtectDeviceName(input.device, input.modelKey, id),
 				protectNvrId: input.nvr.id,
 				protectDeviceId: id,
 				protectModelKey: deviceMapping.modelKey,
