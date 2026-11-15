@@ -12,6 +12,7 @@ export default {
   },
   spaces: "Spaces & Rooms",
   scenes: "Scenes",
+  automations: "Automations",
   energy: "Energy Monitoring",
   "dashboard-management": {
     type: "separator",

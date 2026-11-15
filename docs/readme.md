@@ -8,6 +8,7 @@ This directory contains developer documentation for the Smart Panel project.
 docs/
 ├── README.md                          # This file
 ├── architecture.md                    # System architecture overview
+├── automations-architecture.md        # Automations module: graph, engine, cards
 ├── climate-domain.md                  # Climate domain implementation
 ├── device-simulator.md                # Device simulator plugin for testing
 ├── domains.md                         # Domain architecture (lights, climate, media, etc.)
@@ -30,6 +31,7 @@ docs/
 - [Development Guidelines](../.ai-rules/GUIDELINES.md) - Setup, build commands, coding style
 - [API Conventions](../.ai-rules/API_CONVENTIONS.md) - Backend API patterns
 - [Extensions System](./extensions.md) - How to build and register extensions
+- [Automations](./automations-architecture.md) - Automation graph model, run semantics and how to add cards
 - [Domain Architecture](./domains.md) - Domain definitions (lights, climate, media, security, sensors)
 - [Climate Domain](./climate-domain.md) - Climate domain implementation details
 - [Media Domain](./media-domain.md) - Media domain implementation details
