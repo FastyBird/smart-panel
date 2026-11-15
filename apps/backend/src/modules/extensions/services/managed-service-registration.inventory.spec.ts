@@ -16,6 +16,10 @@ describe('managed service registration inventory', () => {
 		],
 		['plugins/devices-homey/devices-homey.plugin.ts', 'this.managedServiceManager.register(this.homeyService)'],
 		[
+			'plugins/devices-unifi-protect/devices-unifi-protect.plugin.ts',
+			'this.managedServiceManager.register(this.protectConnectorService)',
+		],
+		[
 			'plugins/devices-reterminal/devices-reterminal.plugin.ts',
 			'this.managedServiceManager.register(this.reTerminalService)',
 		],
@@ -68,7 +72,7 @@ describe('managed service registration inventory', () => {
 	] as const;
 
 	it('keeps every expected owner registration wired to the manager', () => {
-		expect(registrations).toHaveLength(23);
+		expect(registrations).toHaveLength(24);
 
 		for (const [relativeFile, marker] of registrations) {
 			const source = readFileSync(resolve(__dirname, '../../../', relativeFile), 'utf8');

@@ -148,7 +148,7 @@ describe('AddDetectionCategories1000000000059', () => {
 		const target = 'AddDetectionCategories1000000000059';
 		const allFiles = fs
 			.readdirSync(path.resolve(__dirname, '..'))
-			.filter((f) => f.endsWith('.ts'))
+			.filter((f) => f.endsWith('.ts') && f < '1000000000060')
 			.sort()
 			.map((f) => path.resolve(__dirname, '..', f));
 		const filesUpTo058 = allFiles.filter((f) => path.basename(f) < '1000000000059');
