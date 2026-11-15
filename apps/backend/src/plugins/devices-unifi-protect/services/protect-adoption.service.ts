@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelCategory, ConnectionState } from '../../../modules/devices/devices.constants';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -13,7 +14,11 @@ import { DeviceCreationContext } from '../../../modules/devices/services/device-
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME, DEVICES_UNIFI_PROTECT_TYPE } from '../devices-unifi-protect.constants';
+import {
+	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+	DEVICES_UNIFI_PROTECT_TYPE,
+	ProtectStreamQuality,
+} from '../devices-unifi-protect.constants';
 import { CreateProtectChannelDto } from '../dto/create-channel.dto';
 import { CreateProtectDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
 import { CreateProtectDeviceChannelDto } from '../dto/create-device-channel.dto';
@@ -31,20 +36,28 @@ import {
 	ProtectDeviceNotFoundError,
 	ProtectUnsupportedDeviceError,
 } from '../errors/protect-adoption.error';
+import { ProtectErrorCategory } from '../errors/protect-api.error';
 import { ProtectMappedChannel, ProtectMappedDevice, ProtectMappedProperty } from '../mappings/mapping-evaluator';
 import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
 import { ProtectModelKey } from '../mappings/mapping.types';
+import { ProtectConfigModel } from '../models/config.model';
 import {
 	ProtectAdoptionFailureCode,
 	ProtectAdoptionResultModel,
 	ProtectAdoptionStatus,
+	ProtectAdoptionStreamModel,
 	ProtectAdoptionWarningCode,
+	ProtectStreamOutcome,
 } from '../models/protect-adoption.model';
 
 import { ProtectAdoptionLockService } from './protect-adoption-lock.service';
+import { ProtectAdoptionStreamsService, ProtectStreamEnablementResult } from './protect-adoption-streams.service';
 import { ProtectMappingPreviewService, ProtectPreparedMapping } from './protect-mapping-preview.service';
 
 const CONNECTION_STATE_IDENTIFIER = 'connection_state';
+const STATUS_IDENTIFIER = 'status';
+const STREAM_CHANNELS = ['camera.main', 'camera.package'] as const;
+const FALLBACK_STREAM_QUALITY: ProtectStreamQuality = 'medium';
 
 const FAILURE_MESSAGES: Record<ProtectAdoptionFailureCode, string> = {
 	[ProtectAdoptionFailureCode.UNAVAILABLE]: 'The UniFi Protect console is not connected',
@@ -114,6 +127,8 @@ export class ProtectAdoptionService {
 		private readonly lock: ProtectAdoptionLockService,
 		private readonly dataSource: DataSource,
 		private readonly mappingLoader: ProtectMappingLoaderService,
+		private readonly streams: ProtectAdoptionStreamsService,
+		private readonly configService: ConfigService,
 	) {}
 
 	/** Never rejects: every failure is an item result. */
@@ -160,7 +175,7 @@ export class ProtectAdoptionService {
 		);
 
 		if (existing !== null) {
-			return this.reconcileExisting(selection, device, existing);
+			return this.reconcileExisting(selection, prepared, existing);
 		}
 
 		const plan = this.createPlan(selection, device);
@@ -188,19 +203,20 @@ export class ProtectAdoptionService {
 				return this.failure(selection, ProtectAdoptionFailureCode.PERSISTENCE_FAILED);
 			}
 
-			return this.reconcileExisting(selection, device, winner);
+			return this.reconcileExisting(selection, prepared, winner);
 		}
 
 		const complete = await this.applyTerminalValues(plan.writes, device, plan.dto.id);
 
-		return this.success(selection, ProtectAdoptionStatus.CREATED, plan.dto.id, complete);
+		return this.finishWithStreams(selection, prepared, ProtectAdoptionStatus.CREATED, plan.dto.id, complete);
 	}
 
 	private async reconcileExisting(
 		selection: ProtectAdoptDeviceDto,
-		device: ProtectMappedDevice,
+		prepared: ProtectPreparedMapping,
 		existing: ProtectDeviceEntity,
 	): Promise<ProtectAdoptionResultModel> {
+		const device = prepared.device;
 		const journal: UndoOperation[] = [];
 		const deferredRemovals: DeferredRemoval[] = [];
 		const pendingValues: PendingValueWrite[] = [];
@@ -297,8 +313,9 @@ export class ProtectAdoptionService {
 
 		await this.structureLock.runExclusive(() => this.pruneStale(deferredRemovals));
 
-		return this.success(
+		return this.finishWithStreams(
 			selection,
+			prepared,
 			changed ? ProtectAdoptionStatus.UPDATED : ProtectAdoptionStatus.SKIPPED,
 			existing.id,
 			complete,
@@ -734,6 +751,29 @@ export class ProtectAdoptionService {
 		device: ProtectMappedDevice,
 		deviceId: string,
 	): Promise<boolean> {
+		let complete = await this.writeValues(writes);
+
+		const state = this.connectionState(device);
+
+		if (state !== null) {
+			try {
+				if (!(await this.connectivity.trySetConnectionState(deviceId, { state }))) {
+					complete = false;
+				}
+			} catch {
+				complete = false;
+			}
+
+			if (!complete) {
+				this.logger.warn('UniFi Protect connection state persistence was deferred until the next adoption');
+			}
+		}
+
+		return complete;
+	}
+
+	/** Strict, compare-and-set value writes; true when every write succeeded. */
+	private async writeValues(writes: readonly PendingValueWrite[]): Promise<boolean> {
 		let complete = true;
 
 		for (const pending of writes) {
@@ -750,22 +790,6 @@ export class ProtectAdoptionService {
 			} catch {
 				complete = false;
 				this.logger.warn('UniFi Protect current value persistence was deferred until the next adoption');
-			}
-		}
-
-		const state = this.connectionState(device);
-
-		if (state !== null) {
-			try {
-				if (!(await this.connectivity.trySetConnectionState(deviceId, { state }))) {
-					complete = false;
-				}
-			} catch {
-				complete = false;
-			}
-
-			if (!complete) {
-				this.logger.warn('UniFi Protect connection state persistence was deferred until the next adoption');
 			}
 		}
 
@@ -838,6 +862,136 @@ export class ProtectAdoptionService {
 		return succeeded;
 	}
 
+	/**
+	 * Enables the RTSPS streams after the device is saved (D9/P6). Never changes the adoption status: a failure is a
+	 * stream outcome. Only qualities and status values leave this method, never stream addresses.
+	 */
+	private async finishWithStreams(
+		selection: ProtectAdoptDeviceDto,
+		prepared: ProtectPreparedMapping,
+		status: ProtectAdoptionStatus,
+		panelDeviceId: string,
+		complete: boolean,
+	): Promise<ProtectAdoptionResultModel> {
+		const outcome = await this.enableStreams(selection, prepared, panelDeviceId);
+
+		return this.success(selection, status, panelDeviceId, complete && outcome.complete, outcome.stream);
+	}
+
+	private async enableStreams(
+		selection: ProtectAdoptDeviceDto,
+		prepared: ProtectPreparedMapping,
+		panelDeviceId: string,
+	): Promise<{ stream: ProtectAdoptionStreamModel | null; complete: boolean }> {
+		if (prepared.device.protectModelKey !== 'camera') {
+			return { stream: null, complete: true };
+		}
+
+		if (selection.stream?.enabled === false) {
+			return { stream: this.streamModel(ProtectStreamOutcome.NOT_REQUESTED, null, [], null), complete: true };
+		}
+
+		const quality = selection.stream?.quality ?? this.defaultQuality();
+		let result: ProtectStreamEnablementResult;
+
+		try {
+			result = await this.streams.ensureStreams(prepared.fresh.client, prepared.device.protectDeviceId, {
+				quality,
+				packageCamera: prepared.fresh.entry.raw.hasPackageCamera === true,
+			});
+		} catch {
+			this.logger.warn('RTSPS stream enablement finished (failed)');
+
+			return {
+				stream: this.streamModel(ProtectStreamOutcome.FAILED, quality, [], ProtectErrorCategory.UNAVAILABLE),
+				complete: true,
+			};
+		}
+
+		const stream = this.streamModel(result.outcome, result.quality, result.enabledQualities, result.failureCategory);
+		let complete = true;
+
+		if (result.availability !== null) {
+			try {
+				complete = await this.updateStreamStatuses(prepared, result.availability, panelDeviceId);
+			} catch {
+				complete = false;
+				this.logger.warn('UniFi Protect stream status persistence was deferred until the next adoption');
+			}
+		}
+
+		return { stream, complete };
+	}
+
+	/** Re-evaluates camera.main/camera.package status and writes only the values that changed. */
+	private async updateStreamStatuses(
+		prepared: ProtectPreparedMapping,
+		availability: Parameters<ProtectMappingPreviewService['toStatusValue']>[1],
+		deviceId: string,
+	): Promise<boolean> {
+		const next = this.preview.toStatusValue(prepared, availability);
+		const writes: PendingValueWrite[] = [];
+
+		for (const identifier of STREAM_CHANNELS) {
+			const desiredProperty = next.channels
+				.find((channel) => channel.identifier === identifier)
+				?.properties.find((property) => property.identifier === STATUS_IDENTIFIER);
+
+			if (desiredProperty === undefined || desiredProperty.value === null) {
+				continue;
+			}
+
+			const channel = await this.channelsService.findOneBy<ProtectChannelEntity>(
+				'identifier',
+				identifier,
+				deviceId,
+				DEVICES_UNIFI_PROTECT_TYPE,
+			);
+
+			if (channel === null) {
+				continue;
+			}
+
+			const property = (await this.channelsPropertiesService.findAll(channel.id, DEVICES_UNIFI_PROTECT_TYPE)).find(
+				(candidate): candidate is ProtectChannelPropertyEntity =>
+					candidate.type === DEVICES_UNIFI_PROTECT_TYPE &&
+					(candidate as ProtectChannelPropertyEntity).protectMappingName === desiredProperty.mappingName,
+			);
+
+			if (property === undefined) {
+				continue;
+			}
+
+			const previous = await this.propertyValueService.readLatestPersisted(property);
+
+			if (previous?.value !== desiredProperty.value) {
+				writes.push({ propertyId: property.id, value: desiredProperty.value, previous });
+			}
+		}
+
+		return this.writeValues(writes);
+	}
+
+	private defaultQuality(): ProtectStreamQuality {
+		try {
+			return (
+				this.configService.getPluginConfig<ProtectConfigModel>(DEVICES_UNIFI_PROTECT_PLUGIN_NAME)
+					.defaultStreamQuality ?? FALLBACK_STREAM_QUALITY
+			);
+		} catch {
+			return FALLBACK_STREAM_QUALITY;
+		}
+	}
+
+	private streamModel(
+		status: ProtectStreamOutcome,
+		quality: ProtectStreamQuality | null,
+		enabledQualities: ProtectAdoptionStreamModel['enabledQualities'],
+		failureCategory: ProtectErrorCategory | null,
+	): ProtectAdoptionStreamModel {
+		return Object.assign(new ProtectAdoptionStreamModel(), { status, quality, enabledQualities, failureCategory });
+	}
+
 	private codeForPrepareError(error: unknown): ProtectAdoptionFailureCode {
 		if (error instanceof ProtectDeviceNotFoundError) {
 			return ProtectAdoptionFailureCode.DEVICE_NOT_FOUND;
@@ -859,6 +1013,7 @@ export class ProtectAdoptionService {
 		status: ProtectAdoptionStatus,
 		panelDeviceId: string,
 		complete: boolean,
+		stream: ProtectAdoptionStreamModel | null = null,
 	): ProtectAdoptionResultModel {
 		return this.result(selection.deviceId, selection.modelKey, {
 			status,
@@ -866,6 +1021,7 @@ export class ProtectAdoptionService {
 			failureCode: null,
 			message: null,
 			warnings: complete ? [] : [ProtectAdoptionWarningCode.VALUES_INCOMPLETE],
+			stream,
 		});
 	}
 
@@ -876,6 +1032,7 @@ export class ProtectAdoptionService {
 			failureCode: code,
 			message: FAILURE_MESSAGES[code],
 			warnings: [],
+			stream: null,
 		});
 	}
 

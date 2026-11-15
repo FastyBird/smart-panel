@@ -52,6 +52,7 @@ import {
 import { ProtectMappingLoaderService } from './mappings/mapping-loader.service';
 import { ProtectConfigModel } from './models/config.model';
 import { ProtectAdoptionLockService } from './services/protect-adoption-lock.service';
+import { ProtectAdoptionStreamsService } from './services/protect-adoption-streams.service';
 import { ProtectAdoptionService } from './services/protect-adoption.service';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
 import { ProtectConnectionTestService } from './services/protect-connection-test.service';
@@ -87,6 +88,7 @@ import { ProtectMappingPreviewService } from './services/protect-mapping-preview
 		ProtectInventoryService,
 		ProtectMappingPreviewService,
 		ProtectAdoptionLockService,
+		ProtectAdoptionStreamsService,
 		ProtectAdoptionService,
 		ProtectConnectionTestService,
 		ProtectDiscoveryService,

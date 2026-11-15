@@ -3,6 +3,8 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { DataSource } from 'typeorm';
 
+import { Logger } from '@nestjs/common';
+
 import { ChannelCategory, ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
@@ -20,6 +22,7 @@ import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service'
 import { ProtectAdoptionStatus } from '../models/protect-adoption.model';
 
 import { ProtectAdoptionLockService } from './protect-adoption-lock.service';
+import { ProtectAdoptionStreamsService } from './protect-adoption-streams.service';
 import { ProtectAdoptionService } from './protect-adoption.service';
 import { ProtectMappingPreviewService } from './protect-mapping-preview.service';
 
@@ -73,9 +76,15 @@ const MESSAGES = [
 	'The device could not be saved and some changes could not be undone',
 ];
 
-const SELECTION = Object.assign(new ProtectAdoptDeviceDto(), {
+const ENABLING = Object.assign(new ProtectAdoptDeviceDto(), {
 	deviceId: '600cefafd5f365d6f83c4ef3',
 	modelKey: 'camera',
+}) as ProtectAdoptDeviceDto;
+
+/** Structure tests opt out of stream work; the stream tests use ENABLING. */
+const SELECTION = Object.assign(new ProtectAdoptDeviceDto(), {
+	...ENABLING,
+	stream: { enabled: false },
 }) as ProtectAdoptDeviceDto;
 
 /** In-memory stand-ins for the device services; `calls` records every mutation in order. */
@@ -350,9 +359,13 @@ class Fakes {
 describe('ProtectAdoptionService', () => {
 	let fakes: Fakes;
 	let loader: ProtectMappingLoaderService;
-	let preview: { prepare: jest.Mock };
+	let preview: { prepare: jest.Mock; toStatusValue: jest.Mock };
+	let client: { getRtspsStreams: jest.Mock; createRtspsStreams: jest.Mock };
+	let config: { getPluginConfig: jest.Mock };
+	let logged: unknown[][];
 	let service: ProtectAdoptionService;
 	let mapped: ProtectMappedDevice;
+	let rawCamera: Raw;
 	let contextRun: jest.SpyInstance;
 
 	const map = (raw: Raw): ProtectMappedDevice => {
@@ -371,13 +384,17 @@ describe('ProtectAdoptionService', () => {
 	};
 
 	const prepared = (device: ProtectMappedDevice, readyToAdopt = true) => ({
-		fresh: {},
+		fresh: { client, entry: { raw: rawCamera } },
 		device,
 		streams: { high: true, medium: false, low: false, package: false },
 		warnings: [],
 		readyToAdopt,
 		existing: null,
 	});
+
+	const url = (quality: string) => `rtsps://192.168.1.1:7441/SENTINELALIAS${quality}?enableSrtp`;
+	const urls = (...enabled: string[]) =>
+		Object.fromEntries(['high', 'medium', 'low', 'package'].map((q) => [q, enabled.includes(q) ? url(q) : null]));
 
 	const channel = (identifier: string): ProtectMappedChannel =>
 		mapped.channels.find((candidate) => candidate.identifier === identifier)!;
@@ -408,7 +425,37 @@ describe('ProtectAdoptionService', () => {
 		loader.onModuleInit();
 		mapped = map(cameras[0]);
 		fakes = new Fakes();
-		preview = { prepare: jest.fn(() => Promise.resolve(prepared(mapped))) };
+		rawCamera = cameras[0];
+		logged = [];
+
+		for (const level of ['log', 'warn', 'error', 'debug', 'verbose'] as const) {
+			jest.spyOn(Logger.prototype, level).mockImplementation((...args: unknown[]) => {
+				logged.push(args);
+			});
+		}
+
+		client = {
+			getRtspsStreams: jest.fn(() => Promise.resolve(urls())),
+			createRtspsStreams: jest.fn((_id: string, qualities: string[]) => Promise.resolve(urls(...qualities))),
+		};
+		config = { getPluginConfig: jest.fn(() => ({ defaultStreamQuality: 'medium' })) };
+		preview = {
+			prepare: jest.fn(() => Promise.resolve(prepared(mapped))),
+			toStatusValue: jest.fn((_prepared: unknown, availability: unknown) => {
+				const result = evaluateProtectMapping(loader.getMappings(), {
+					nvr: NVR,
+					modelKey: 'camera',
+					device: rawCamera,
+					streams: availability as never,
+				});
+
+				if (!result.ok) {
+					throw new Error('unmappable');
+				}
+
+				return result.device;
+			}),
+		};
 		service = new ProtectAdoptionService(
 			preview as unknown as ProtectMappingPreviewService,
 			fakes.devicesService as unknown as DevicesService,
@@ -420,6 +467,8 @@ describe('ProtectAdoptionService', () => {
 			new ProtectAdoptionLockService(),
 			{ transaction: (work: (manager: unknown) => Promise<unknown>) => work({}) } as unknown as DataSource,
 			loader,
+			new ProtectAdoptionStreamsService(),
+			config as never,
 		);
 	});
 
@@ -812,8 +861,150 @@ describe('ProtectAdoptionService', () => {
 
 		expect(results.map((result) => result.message).filter((message) => message !== null)).toEqual(MESSAGES.slice(0, 5));
 
-		const serialized = JSON.stringify([results, fakes.calls]);
+		const serialized = JSON.stringify([results, fakes.calls, logged]);
 
 		expect(serialized).not.toMatch(/SENTINELALIAS|PROTECT_SENTINEL_KEY|rtsps:\/\//);
+	});
+
+	describe('stream enablement', () => {
+		const statusOf = (channelIdentifier: string) =>
+			fakes.values.get(fakes.propertyId(channelIdentifier, 'status'))?.value;
+
+		it('enables the stream after the device is persisted and updates the camera status', async () => {
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(client.createRtspsStreams).toHaveBeenCalledWith('600cefafd5f365d6f83c4ef3', ['high', 'medium']);
+			expect(fakes.devicesService.create.mock.invocationCallOrder[0]).toBeLessThan(
+				client.createRtspsStreams.mock.invocationCallOrder[0],
+			);
+			expect(result).toMatchObject({
+				status: 'created',
+				warnings: [],
+				stream: { status: 'enabled', quality: 'medium', enabledQualities: ['high', 'medium'], failureCategory: null },
+			});
+			expect(statusOf('camera.main')).toBe('available');
+
+			const write = fakes.calls.filter((call) => call.op === 'property.value').pop()!;
+
+			expect(write.options).toMatchObject({ strictValuePersistence: true, comparePersistedValue: true });
+			expect(write.arg.value).toBe('available');
+		});
+
+		it('uses the configured default quality when the request names none', async () => {
+			config.getPluginConfig.mockReturnValue({ defaultStreamQuality: 'low' });
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			await service.adoptOne(ENABLING);
+
+			expect(client.createRtspsStreams).toHaveBeenCalledWith('600cefafd5f365d6f83c4ef3', ['high', 'low']);
+		});
+
+		it('falls back to medium when the configuration cannot be read and honours the request quality', async () => {
+			config.getPluginConfig.mockImplementation(() => {
+				throw new Error('no config');
+			});
+			await service.adoptOne(ENABLING);
+
+			expect(client.createRtspsStreams).toHaveBeenLastCalledWith('600cefafd5f365d6f83c4ef3', ['medium']);
+
+			const other = Object.assign(new ProtectAdoptDeviceDto(), {
+				...ENABLING,
+				stream: { quality: 'high' },
+			}) as ProtectAdoptDeviceDto;
+
+			client.getRtspsStreams.mockResolvedValue(urls());
+			await service.adoptOne(other);
+
+			expect(client.createRtspsStreams).toHaveBeenLastCalledWith('600cefafd5f365d6f83c4ef3', ['high']);
+		});
+
+		it('adds the package quality for a package camera', async () => {
+			rawCamera = { ...cameras[0], hasPackageCamera: true };
+			mapped = map(rawCamera);
+			preview.prepare.mockResolvedValue(prepared(mapped));
+
+			await service.adoptOne(ENABLING);
+
+			expect(client.createRtspsStreams).toHaveBeenCalledWith('600cefafd5f365d6f83c4ef3', ['medium', 'package']);
+		});
+
+		it('skips stream work when not requested', async () => {
+			const result = await service.adoptOne(
+				Object.assign(new ProtectAdoptDeviceDto(), { ...ENABLING, stream: { enabled: false } }),
+			);
+
+			expect(result.stream).toMatchObject({ status: 'not_requested', quality: null, enabledQualities: [] });
+			expect(client.getRtspsStreams).not.toHaveBeenCalled();
+			expect(client.createRtspsStreams).not.toHaveBeenCalled();
+		});
+
+		it('skips stream work for sensors and when persistence failed', async () => {
+			preview.prepare.mockResolvedValue(prepared({ ...mapped, protectModelKey: 'sensor' } as never));
+
+			const sensor = await service.adoptOne(ENABLING);
+
+			expect(sensor).toMatchObject({ status: 'created', stream: null });
+
+			fakes.failCreate = true;
+			preview.prepare.mockResolvedValue(prepared(mapped));
+
+			const failed = await service.adoptOne(ENABLING);
+
+			expect(failed).toMatchObject({ status: 'failed', stream: null });
+			expect(client.getRtspsStreams).not.toHaveBeenCalled();
+			expect(client.createRtspsStreams).not.toHaveBeenCalled();
+		});
+
+		it('reports a stream failure without failing the adoption', async () => {
+			client.createRtspsStreams.mockRejectedValue(new Error('console down'));
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({
+				status: 'created',
+				failureCode: null,
+				warnings: [],
+				stream: { status: 'failed', failureCategory: 'unavailable' },
+			});
+			expect(fakes.count('property.value')).toBeGreaterThan(0);
+			expect(statusOf('camera.main')).toBe('unavailable');
+		});
+
+		it('enables streams when re-adopting an existing device and updates the changed status', async () => {
+			fakes.seed(mapped);
+			client.getRtspsStreams.mockResolvedValue(urls());
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({ status: 'skipped', stream: { status: 'enabled' } });
+			expect(statusOf('camera.main')).toBe('available');
+		});
+
+		it('reports values_incomplete when the status write fails, without changing the status', async () => {
+			fakes.seed(mapped);
+			fakes.failValueFor.add(fakes.propertyId('camera.main', 'status'));
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({
+				status: 'skipped',
+				warnings: ['values_incomplete'],
+				stream: { status: 'enabled' },
+			});
+		});
+
+		it('keeps aliases out of the result and every log line', async () => {
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			const results = [await service.adoptOne(ENABLING), await service.adoptOne(ENABLING)];
+
+			client.createRtspsStreams.mockRejectedValue(new Error(url('high')));
+			results.push(await service.adoptOne({ ...ENABLING, deviceId: '600cefafd5f365d6f83c4ef4' } as never));
+
+			expect(logged.length).toBeGreaterThan(0);
+			expect(JSON.stringify([results, logged, fakes.calls])).not.toMatch(/SENTINELALIAS|rtsps/);
+		});
 	});
 });

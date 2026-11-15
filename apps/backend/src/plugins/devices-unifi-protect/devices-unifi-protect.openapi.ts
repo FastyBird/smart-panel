@@ -32,6 +32,7 @@ import { ProtectConfigModel, ProtectTlsConfigModel } from './models/config.model
 import {
 	ProtectAdoptionResponseModel,
 	ProtectAdoptionResultModel,
+	ProtectAdoptionStreamModel,
 	ProtectBatchAdoptionModel,
 	ProtectBatchAdoptionResponseModel,
 } from './models/protect-adoption.model';
@@ -118,6 +119,7 @@ export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ProtectBatchAdoptDevicesDto,
 	ProtectReqBatchAdoptDevicesDto,
 	ProtectAdoptionResultModel,
+	ProtectAdoptionStreamModel,
 	ProtectBatchAdoptionModel,
 	ProtectAdoptionResponseModel,
 	ProtectBatchAdoptionResponseModel,
