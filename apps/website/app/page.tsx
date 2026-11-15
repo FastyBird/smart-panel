@@ -610,7 +610,6 @@ export default function LandingPage() {
 					{[
 						{ title: "Matter support", desc: "A Matter plugin is in the works — bringing native support for the new smart home standard. Connect any Matter-compatible device directly, no bridge needed." },
 						{ title: "Room activity modes", desc: "Define modes like Movie Night, Sleep, or Work for each room. One tap switches the lights, climate, shading, and media to match — fully customizable in the Admin App." },
-						{ title: "Smart automations", desc: "Time-based scheduling, occupancy-aware triggers, and seasonal defaults. The panel will adjust your room automatically based on the time of day, who\u2019s home, and the season." },
 						{ title: "AI Buddy face", desc: "Give your AI assistant a visual personality. An animated face on the panel display that reacts to conversations, shows emotions, and makes Buddy feel more alive." },
 						{ title: "Desktop admin app", desc: "A standalone cross-platform desktop app for managing your panels locally — no browser needed, with a native feel on macOS, Windows, and Linux." },
 						{ title: "Custom hardware", desc: "A dedicated wall-mounted display designed from the ground up to run SmartPanel. Open hardware, purpose-built enclosure, ready out of the box." },
