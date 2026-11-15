@@ -100,6 +100,8 @@ export class ProtectSynchronizerService {
 	private chain: Promise<void> = Promise.resolve();
 	private pending = 0;
 	private generation = 0;
+	/** Generation of the task now running (tasks are serial); a mismatch with `generation` means a reset happened. */
+	private taskGeneration = 0;
 
 	private syncable: { mappings: ProtectResolvedMappings; names: ReadonlySet<string> } | null = null;
 	private lastFailureLogAt: number | null = null;
@@ -204,6 +206,10 @@ export class ProtectSynchronizerService {
 		}
 	}
 
+	private aborted(): boolean {
+		return this.generation !== this.taskGeneration;
+	}
+
 	private run(task: () => Promise<void>): Promise<void> {
 		const generation = this.generation;
 
@@ -212,6 +218,7 @@ export class ProtectSynchronizerService {
 		const next = this.chain.then(async () => {
 			try {
 				if (generation === this.generation) {
+					this.taskGeneration = generation;
 					await task();
 				}
 			} catch {
@@ -245,11 +252,18 @@ export class ProtectSynchronizerService {
 		await this.ensureIndex(identity);
 
 		for (const device of [...this.index.values()]) {
-			const key = device.modelKey === null ? null : cacheKey(device.modelKey, device.protectDeviceId);
-			const raw = key === null ? undefined : next.get(key);
+			if (this.aborted()) {
+				return;
+			}
 
-			if (raw !== undefined) {
-				await this.syncDevice(identity, device, raw, previous.get(key) ?? null, 'snapshot', null);
+			// A device without a stored model key is looked up under every model key.
+			const modelKey = ((device.modelKey === null ? PROTECT_MODEL_KEYS : [device.modelKey]) as readonly string[]).find(
+				(candidate) => next.has(cacheKey(candidate, device.protectDeviceId)),
+			);
+			const key = modelKey === undefined ? null : cacheKey(modelKey, device.protectDeviceId);
+
+			if (modelKey !== undefined && key !== null) {
+				await this.syncDevice(identity, device, modelKey, next.get(key), previous.get(key) ?? null, 'snapshot', null);
 			} else if (snapshot.complete) {
 				await this.markRemoved(device);
 			}
@@ -294,12 +308,17 @@ export class ProtectSynchronizerService {
 
 		const raw = mergeProtectItem(frame.action === 'add' ? {} : (cached as Record<string, unknown>), frame.item);
 
+		if (this.aborted()) {
+			return;
+		}
+
 		this.cache.set(key, raw);
 
 		if (device !== undefined) {
 			await this.syncDevice(
 				identity,
 				device,
+				frame.modelKey,
 				raw,
 				cached,
 				frame.action === 'add' ? 'snapshot' : 'frame',
@@ -319,6 +338,7 @@ export class ProtectSynchronizerService {
 	private async syncDevice(
 		identity: ProtectConsoleIdentity,
 		device: IndexedDevice,
+		modelKey: string,
 		raw: Readonly<Record<string, unknown>>,
 		previousRaw: Readonly<Record<string, unknown>> | null,
 		mode: SyncMode,
@@ -327,7 +347,7 @@ export class ProtectSynchronizerService {
 		const mappings = this.mappingLoader.getMappings();
 		const result = evaluateProtectMapping(mappings, {
 			nvr: { id: identity.nvrId, macKey: identity.nvrMacKey },
-			modelKey: device.modelKey as 'camera' | 'sensor' | 'light',
+			modelKey: modelKey as 'camera' | 'sensor' | 'light',
 			device: raw,
 			streams: null,
 		});
@@ -353,7 +373,7 @@ export class ProtectSynchronizerService {
 			await this.resetStaleDetections(device);
 		}
 
-		await this.propagateRename(device, raw, previousRaw);
+		await this.propagateRename(device, modelKey, raw, previousRaw);
 	}
 
 	private async writeChanges(
@@ -399,9 +419,13 @@ export class ProtectSynchronizerService {
 			return true;
 		}
 
+		if (this.aborted()) {
+			return false;
+		}
+
 		const written = await this.connectivity.trySetConnectionState(device.panelId, { state }).catch(() => false);
 
-		if (written) {
+		if (written && !this.aborted()) {
 			this.lastState.set(device.panelId, String(state));
 		}
 
@@ -442,15 +466,16 @@ export class ProtectSynchronizerService {
 
 	private async propagateRename(
 		device: IndexedDevice,
+		modelKey: string,
 		raw: Readonly<Record<string, unknown>>,
 		previousRaw: Readonly<Record<string, unknown>> | null,
 	): Promise<void> {
-		if (previousRaw === null || device.modelKey === null) {
+		if (previousRaw === null || this.aborted()) {
 			return;
 		}
 
-		const before = toProtectDeviceName(previousRaw, device.modelKey, device.protectDeviceId);
-		const after = toProtectDeviceName(raw, device.modelKey, device.protectDeviceId);
+		const before = toProtectDeviceName(previousRaw, modelKey, device.protectDeviceId);
+		const after = toProtectDeviceName(raw, modelKey, device.protectDeviceId);
 
 		if (before === after || device.name !== before) {
 			return;
@@ -458,20 +483,26 @@ export class ProtectSynchronizerService {
 
 		try {
 			await this.devicesService.update(device.panelId, { type: DEVICES_UNIFI_PROTECT_TYPE, name: after } as never);
-			device.name = after;
+			if (!this.aborted()) {
+				device.name = after;
+			}
 		} catch {
 			this.logger.warn('UniFi Protect device rename failed');
 		}
 	}
 
 	private async markRemoved(device: IndexedDevice): Promise<void> {
-		if (this.removed.has(device.protectDeviceId)) {
+		if (this.aborted() || this.removed.has(device.protectDeviceId)) {
 			return;
 		}
 
 		this.removed.add(device.protectDeviceId);
 
 		await this.setConnectionState(device, ConnectionState.DISCONNECTED);
+
+		if (this.aborted()) {
+			return;
+		}
 
 		await this.notifications.notify({
 			source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
@@ -487,12 +518,17 @@ export class ProtectSynchronizerService {
 	}
 
 	private async resolveRemoval(device: IndexedDevice): Promise<void> {
-		if (!this.removed.has(device.protectDeviceId)) {
+		if (this.aborted() || !this.removed.has(device.protectDeviceId)) {
 			return;
 		}
 
 		try {
 			await this.notifications.resolve(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, removalKey(device.protectDeviceId));
+
+			if (this.aborted()) {
+				return;
+			}
+
 			this.removed.delete(device.protectDeviceId);
 		} catch {
 			this.logger.warn('UniFi Protect removal notification could not be resolved');
@@ -501,12 +537,23 @@ export class ProtectSynchronizerService {
 
 	/** Writes a console-read value; a failure keeps `lastWritten` so the next frame or snapshot retries it. */
 	private async writeProperty(propertyId: string, value: string | number | boolean): Promise<boolean> {
+		if (this.aborted()) {
+			return false;
+		}
+
 		try {
 			await this.channelsPropertiesService.update(propertyId, { type: DEVICES_UNIFI_PROTECT_TYPE, value } as never);
-			this.lastWritten.set(propertyId, value);
+
+			if (!this.aborted()) {
+				this.lastWritten.set(propertyId, value);
+			}
 
 			return true;
 		} catch {
+			if (this.aborted()) {
+				return false;
+			}
+
 			this.writesFailed++;
 			this.logWriteFailure();
 
@@ -535,7 +582,7 @@ export class ProtectSynchronizerService {
 			this.indexDirty = true;
 		}
 
-		while (this.indexDirty) {
+		while (this.indexDirty && !this.aborted()) {
 			if (this.indexRefresh === null) {
 				this.indexRefresh = this.rebuildIndex(identity).finally(() => {
 					this.indexRefresh = null;
@@ -548,6 +595,7 @@ export class ProtectSynchronizerService {
 
 	private async rebuildIndex(identity: ProtectConsoleIdentity): Promise<void> {
 		const generation = this.indexGeneration;
+		const resetGeneration = this.generation;
 		const devices = await this.devicesService.findAll<ProtectDeviceEntity>(DEVICES_UNIFI_PROTECT_TYPE);
 		const index = new Map<string, IndexedDevice>();
 
@@ -578,7 +626,7 @@ export class ProtectSynchronizerService {
 					});
 
 					if (!this.lastWritten.has(property.id)) {
-						await this.seed(property);
+						await this.seed(property, resetGeneration);
 					}
 				}
 			}
@@ -592,16 +640,22 @@ export class ProtectSynchronizerService {
 			});
 		}
 
+		if (resetGeneration !== this.generation) {
+			return;
+		}
+
 		this.index = index;
 		this.indexNvrId = identity.nvrId;
 		this.indexDirty = this.indexGeneration !== generation;
 	}
 
-	private async seed(property: ProtectChannelPropertyEntity): Promise<void> {
+	private async seed(property: ProtectChannelPropertyEntity, resetGeneration: number): Promise<void> {
 		try {
 			const state = await this.propertyValue.readLatestPersisted(property);
 
-			this.lastWritten.set(property.id, state?.value ?? null);
+			if (resetGeneration === this.generation) {
+				this.lastWritten.set(property.id, state?.value ?? null);
+			}
 		} catch {
 			// Unknown stored value: the next frame writes it.
 		}

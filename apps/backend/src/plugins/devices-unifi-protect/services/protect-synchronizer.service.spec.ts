@@ -193,19 +193,39 @@ describe('ProtectSynchronizerService', () => {
 
 	it('never writes constants, templates or camera status from a frame', async () => {
 		await prime();
+
+		const guarded = [
+			prop(CAMERA_PANEL, 'motion', 'camera_motion_detected'),
+			prop(CAMERA_PANEL, 'camera.main', 'camera_main_source'),
+			prop(CAMERA_PANEL, 'camera.main', 'camera_main_status'),
+		];
+		const baselines = (service as any).lastWritten as Map<string, unknown>;
+
+		// Stored values that differ from what the constant, template and stream status would evaluate to.
+		baselines.set(guarded[0], true);
+		baselines.set(guarded[1], 'stale-source');
+		baselines.set(guarded[2], 'unavailable');
+
 		service.enqueueFrame(
 			IDENTITY,
-			frameFor('update', { id: CAMERA_ID, modelKey: 'camera', state: 'CONNECTED', name: 'Other' }),
+			frameFor('update', {
+				id: CAMERA_ID,
+				modelKey: 'camera',
+				state: 'CONNECTED',
+				name: 'Other',
+				isMotionDetected: true,
+				isSmartDetected: true,
+			}),
 		);
 		await service.idle();
 
+		expect(updatedIds().filter((id) => guarded.includes(id))).toEqual([]);
 		expect(properties.update).not.toHaveBeenCalled();
 	});
 
 	it('resets a stored detection without an open event on every snapshot', async () => {
 		const motion = prop(CAMERA_PANEL, 'motion', 'camera_motion_detected');
 
-		stored.set(motion, true);
 		devices = [adopt(goldenCamera, CAMERA_PANEL)];
 		stored.set(motion, true);
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
@@ -405,6 +425,67 @@ describe('ProtectSynchronizerService', () => {
 			type: DEVICES_UNIFI_PROTECT_TYPE,
 			value: true,
 		});
+	});
+
+	it('never marks a device without a stored model key removed while the console lists it', async () => {
+		devices = [adopt({ ...goldenSensor, protectModelKey: null }, SENSOR_PANEL)];
+		await service.applySnapshot(IDENTITY, snapshot([entry('sensor', sensors[0])]));
+
+		expect(notifications.notify).not.toHaveBeenCalled();
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalledWith(SENSOR_PANEL, {
+			state: ConnectionState.DISCONNECTED,
+		});
+
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
+	});
+
+	it('writes nothing after a reset that happens while a write is in flight', async () => {
+		let release: () => void = () => undefined;
+
+		properties.update.mockImplementationOnce(() => new Promise<void>((resolve) => (release = resolve)));
+
+		const pending = service.applySnapshot(
+			IDENTITY,
+			snapshot([entry('camera', { ...cameras[0], state: 'DISCONNECTED', ledSettings: { isEnabled: true } })]),
+		);
+
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(properties.update).toHaveBeenCalledTimes(1);
+
+		service.reset();
+		release();
+		await pending;
+		await service.idle();
+
+		expect(properties.update).toHaveBeenCalledTimes(1);
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
+		expect((service as any).lastWritten.size).toBe(0);
+		expect((service as any).lastState.size).toBe(0);
+	});
+
+	it('keeps no index after a reset that happens while the index is being built', async () => {
+		let release: (value: Raw[]) => void = () => undefined;
+
+		devicesService.findAll.mockImplementationOnce(() => new Promise<Raw[]>((resolve) => (release = resolve)));
+
+		const pending = service.applySnapshot(
+			IDENTITY,
+			snapshot([entry('camera', { ...cameras[0], state: 'DISCONNECTED' })]),
+		);
+
+		await new Promise((resolve) => setImmediate(resolve));
+		service.reset();
+		release(devices);
+		await pending;
+		await service.idle();
+
+		expect(properties.update).not.toHaveBeenCalled();
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
+		expect((service as any).index.size).toBe(0);
+		expect((service as any).indexNvrId).toBeNull();
+		expect((service as any).lastWritten.size).toBe(0);
 	});
 
 	it('refuses frames beyond the queue limit', async () => {
