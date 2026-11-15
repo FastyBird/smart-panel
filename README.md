@@ -88,7 +88,8 @@ Crafted with **Flutter**, the display app runs smoothly on Raspberry Pi and othe
 - **API-first Design** -- OpenAPI-documented REST API for easy third-party integration
 - **Multi-Display Support** -- Multiple displays showing different dashboards with role-based views
 - **Spaces & Rooms** -- Room-first control with domain-based device grouping (lights, climate, media, security)
-- **Scenes** -- Automations and scene presets for one-tap control
+- **Scenes** -- Presets for one-tap control of several devices at once
+- **Automations** -- When / And / Then flows drawn in the Admin App that let your home react on its own
 - **Energy Monitoring** -- Track consumption and production across devices and spaces
 - **AI Assistant (Buddy)** -- Built-in AI assistant with support for Claude, OpenAI, and local Ollama models
 - **Voice Control** -- Speech-to-text (Whisper) and text-to-speech (ElevenLabs, system TTS) support
