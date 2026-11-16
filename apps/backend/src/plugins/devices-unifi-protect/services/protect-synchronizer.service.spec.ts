@@ -1339,6 +1339,66 @@ describe('ProtectSynchronizerService', () => {
 				expect(values(contact)).toContain(true);
 				expect((service as any).lastWritten.get(contact)).toBe(true);
 			});
+
+			it('keeps a queued sensorOpened when the update carries only a channel-selection field', async () => {
+				const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+
+				await prime();
+				down(1);
+				await feed(eventFrame('0008', 'add'));
+				down(1);
+				await feed(update({ mountType: 'door' }));
+				properties.update.mockClear();
+				await jest.advanceTimersByTimeAsync(120_000);
+				await flush();
+
+				expect(values(contact)).toContain(true);
+				expect((service as any).lastWritten.get(contact)).toBe(true);
+			});
+
+			describe('event-owned values', () => {
+				const ownedContact = async (): Promise<string> => {
+					const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+
+					await prime();
+					down(1);
+					await feed(eventFrame('0008', 'add'));
+					await feed(update({ lastSeen: 1_700_000_000_000 }));
+
+					return contact;
+				};
+				const finalValue = (id: string): unknown => values(id).at(-1);
+
+				it('does not write a stale cached value back over a retried event write on an unrelated update', async () => {
+					const contact = await ownedContact();
+
+					expect((service as any).lastWritten.get(contact)).toBe(true);
+					expect(finalValue(contact)).toBe(true);
+
+					await feed(update({ lastSeen: 1_700_000_000_001 }));
+
+					expect(finalValue(contact)).toBe(true);
+					expect((service as any).lastWritten.get(contact)).toBe(true);
+				});
+
+				it('writes false when a later update carries isOpened false', async () => {
+					const contact = await ownedContact();
+
+					await feed(update({ isOpened: false }));
+
+					expect(finalValue(contact)).toBe(false);
+					expect((service as any).lastWritten.get(contact)).toBe(false);
+				});
+
+				it('writes false when a snapshot reports isOpened false', async () => {
+					const contact = await ownedContact();
+
+					await service.applySnapshot(IDENTITY, sensorSnapshot({ isOpened: false }));
+
+					expect(finalValue(contact)).toBe(false);
+					expect((service as any).lastWritten.get(contact)).toBe(false);
+				});
+			});
 		});
 
 		describe('ring retry deadlines', () => {

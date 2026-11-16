@@ -132,6 +132,8 @@ export class ProtectSynchronizerService {
 	private readonly removalChecked = new Set<string>();
 	/** Failed event effects per Protect device id, oldest first. */
 	private readonly retries = new Map<string, RetryEntry[]>();
+	/** Per device: property keys whose last successful write came from an event effect (start/end write or retry). */
+	private readonly eventOwned = new Map<string, Set<string>>();
 	private eventTimer: NodeJS.Timeout | null = null;
 	private retryTimer: NodeJS.Timeout | null = null;
 	/** Ids of events dropped for devices Smart Panel has not adopted (LRU), so their updates are not counted. */
@@ -146,6 +148,7 @@ export class ProtectSynchronizerService {
 	private taskGeneration = 0;
 
 	private syncable: { mappings: ProtectResolvedMappings; names: ReadonlySet<string> } | null = null;
+	private sources: { mappings: ProtectResolvedMappings; names: ReadonlyMap<string, ReadonlySet<string>> } | null = null;
 	private lastFailureLogAt: number | null = null;
 	private suppressedFailures = 0;
 
@@ -230,6 +233,7 @@ export class ProtectSynchronizerService {
 		this.removalChecked.clear();
 		this.tracker.clear();
 		this.retries.clear();
+		this.eventOwned.clear();
 		this.droppedEventIds.clear();
 		this.eventIdentity = null;
 		this.clearTimer('eventTimer');
@@ -517,7 +521,9 @@ export class ProtectSynchronizerService {
 			return;
 		}
 
-		if (!(await this.writeProperty(property.id, target.value)) && !this.aborted()) {
+		if (await this.writeProperty(property.id, target.value)) {
+			this.markEventOwned(device.protectDeviceId, key);
+		} else if (!this.aborted()) {
 			this.queueRetry(device.protectDeviceId, {
 				kind: 'write',
 				key,
@@ -648,10 +654,17 @@ export class ProtectSynchronizerService {
 			if (device !== undefined) {
 				if (entry.kind === 'write') {
 					// A property that left the index (channel removed) has nothing to write any more.
-					done =
-						device.properties.get(entry.key)?.id !== entry.propertyId ||
-						this.lastWritten.get(entry.propertyId) === entry.value ||
-						(await this.writeProperty(entry.propertyId, entry.value));
+					if (device.properties.get(entry.key)?.id !== entry.propertyId) {
+						done = true;
+					} else if (this.lastWritten.get(entry.propertyId) === entry.value) {
+						done = true;
+					} else {
+						done = await this.writeProperty(entry.propertyId, entry.value);
+
+						if (done) {
+							this.markEventOwned(protectDeviceId, entry.key);
+						}
+					}
 				} else {
 					done = await this.publishRing(device, entry.eventId, entry.startedAt, entry);
 				}
@@ -836,7 +849,7 @@ export class ProtectSynchronizerService {
 		} else if (result.ok && partial !== null) {
 			// An update is authoritative only for what it carries.
 			this.dropSupersededRetries(device, result.device, mappings, raw, {
-				carried: this.carriedProperties(modelKey, identity, mappings, raw, partial, result.device),
+				carried: this.carriedProperties(device, mappings, partial),
 				tamperCleared: partial.tamperingDetectedAt === null,
 			});
 		}
@@ -850,7 +863,7 @@ export class ProtectSynchronizerService {
 		const mapped = result.device;
 
 		await this.resolveRemoval(device);
-		await this.writeChanges(device, mapped, mappings);
+		await this.writeChanges(device, mapped, mappings, partial);
 		await this.writeConnectionState(device, mapped);
 
 		const tamperCleared =
@@ -867,48 +880,57 @@ export class ProtectSynchronizerService {
 		await this.propagateRename(device, modelKey, raw, previousRaw);
 	}
 
-	/** The property keys whose mapped value depends on a field the update frame carries. */
+	/** The property keys of a device whose value source reads a field the update frame carries. */
 	private carriedProperties(
-		modelKey: string,
-		identity: ProtectConsoleIdentity,
+		device: IndexedDevice,
 		mappings: ProtectResolvedMappings,
-		raw: Readonly<Record<string, unknown>>,
 		partial: Readonly<Record<string, unknown>>,
-		mapped: ProtectMappedDevice,
 	): ReadonlySet<string> {
-		const without: Record<string, unknown> = { ...raw };
-
-		for (const field of Object.keys(partial)) {
-			if (field !== 'id' && field !== 'modelKey') {
-				delete without[field];
-			}
-		}
-
-		const before = new Map<string, ProtectMappingScalar>();
-		const probe = evaluateProtectMapping(mappings, {
-			nvr: { id: identity.nvrId, macKey: identity.nvrMacKey },
-			modelKey: modelKey as 'camera' | 'sensor' | 'light',
-			device: without,
-			streams: null,
-		});
-
-		if (probe.ok) {
-			for (const change of diffMappedValues(null, probe.device, this.syncableNames(mappings))) {
-				before.set(propertyKey(change.channelIdentifier, change.mappingName), change.value);
-			}
-		}
-
+		const syncable = this.syncableNames(mappings);
+		const fields = this.sourceFields(mappings);
 		const carried = new Set<string>();
 
-		for (const change of diffMappedValues(null, mapped, this.syncableNames(mappings))) {
-			const key = propertyKey(change.channelIdentifier, change.mappingName);
+		for (const [key, property] of device.properties) {
+			if (!syncable.has(property.mappingName)) {
+				continue;
+			}
 
-			if (before.get(key) !== change.value) {
-				carried.add(key);
+			for (const field of fields.get(property.mappingName) ?? []) {
+				if (field in partial) {
+					carried.add(key);
+					break;
+				}
 			}
 		}
 
 		return carried;
+	}
+
+	/** Top-level device fields of the value source paths per mapping name (cached per loaded mappings). */
+	private sourceFields(mappings: ProtectResolvedMappings): ReadonlyMap<string, ReadonlySet<string>> {
+		if (this.sources?.mappings !== mappings) {
+			const names = new Map<string, Set<string>>();
+
+			for (const property of mappings.properties) {
+				if (property.value !== null && 'path' in property.value) {
+					const fields = names.get(property.name) ?? new Set<string>();
+
+					fields.add(property.value.path.split(/[.[]/)[0]);
+					names.set(property.name, fields);
+				}
+			}
+
+			this.sources = { mappings, names };
+		}
+
+		return this.sources.names;
+	}
+
+	private markEventOwned(protectDeviceId: string, key: string): void {
+		const owned = this.eventOwned.get(protectDeviceId) ?? new Set<string>();
+
+		owned.add(key);
+		this.eventOwned.set(protectDeviceId, owned);
 	}
 
 	/**
@@ -979,7 +1001,21 @@ export class ProtectSynchronizerService {
 		device: IndexedDevice,
 		mapped: ProtectMappedDevice,
 		mappings: ProtectResolvedMappings,
+		partial: Readonly<Record<string, unknown>> | null,
 	): Promise<void> {
+		// A snapshot or an add frame is authoritative; an update frame is so only for the fields it carries.
+		const owned = this.eventOwned.get(device.protectDeviceId);
+
+		if (owned !== undefined) {
+			if (partial === null) {
+				this.eventOwned.delete(device.protectDeviceId);
+			} else {
+				for (const key of this.carriedProperties(device, mappings, partial)) {
+					owned.delete(key);
+				}
+			}
+		}
+
 		const stored = new Map<string, ProtectMappingScalar>();
 
 		for (const [key, property] of device.properties) {
@@ -991,9 +1027,11 @@ export class ProtectSynchronizerService {
 		}
 
 		for (const change of diffMappedValues(stored, mapped, this.syncableNames(mappings))) {
-			const property = device.properties.get(propertyKey(change.channelIdentifier, change.mappingName));
+			const key = propertyKey(change.channelIdentifier, change.mappingName);
+			const property = device.properties.get(key);
 
-			if (property !== undefined) {
+			// An event wrote this value; the cached field it reads was not refreshed by this frame, so it is stale.
+			if (property !== undefined && !this.eventOwned.get(device.protectDeviceId)?.has(key)) {
 				await this.writeProperty(property.id, change.value);
 			}
 		}
