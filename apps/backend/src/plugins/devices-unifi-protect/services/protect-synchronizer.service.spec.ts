@@ -23,6 +23,8 @@ const goldenCamera = read('expected/camera.json') as Raw;
 const goldenSensor = read('expected/sensor.json') as Raw;
 const goldenLeak = read('expected/sensor-leak.json') as Raw;
 const goldenDoorbell = read('expected/doorbell.json') as Raw;
+const goldenFloodlight = read('expected/floodlight.json') as Raw;
+const lights = read('lights.json') as Raw[];
 const eventLines = readFileSync(join(FIXTURES, 'ws-events.jsonl'), 'utf8')
 	.split('\n')
 	.filter((line) => line.trim() !== '');
@@ -36,13 +38,19 @@ const SENSOR_ID = sensors[0].id as string;
 const CAMERA_PANEL = '11111111-1111-4111-8111-111111111111';
 const SENSOR_PANEL = '22222222-2222-4222-8222-222222222222';
 const DOORBELL_PANEL = '33333333-3333-4333-8333-333333333333';
+const LIGHT_PANEL = '44444444-4444-4444-8444-444444444444';
+const LIGHT_ID = lights[0].id as string;
 const eventId = (suffix: string): string => `5f00000000000000000e${suffix}`;
 const eventFrame = (suffix: string, type: 'add' | 'update'): ProtectFrame =>
 	frameOf(eventLines.find((line) => line.includes(`"type":"${type}"`) && line.includes(`"id":"${eventId(suffix)}"`)));
 const REMOVAL_KEY = `device_removed:${SENSOR_ID}`;
 const FAILURE_TEXT = 'UniFi Protect property update failed';
 
-const entry = (modelKey: 'camera' | 'sensor', raw: Raw): ProtectInventoryEntry => ({ modelKey, id: raw.id, raw });
+const entry = (modelKey: 'camera' | 'sensor' | 'light', raw: Raw): ProtectInventoryEntry => ({
+	modelKey,
+	id: raw.id,
+	raw,
+});
 const snapshot = (entries: ProtectInventoryEntry[], complete = true): ProtectSnapshot => ({ complete, entries });
 const frameOf = (line: string): ProtectFrame => {
 	const parsed = parseProtectFrame(line);
@@ -988,6 +996,285 @@ describe('ProtectSynchronizerService', () => {
 			await service.idle();
 
 			expect(properties.update).toHaveBeenCalledWith(contact(), { type: DEVICES_UNIFI_PROTECT_TYPE, value: true });
+		});
+	});
+
+	describe('command hooks', () => {
+		const OBSERVER_FAILURE_TEXT = 'UniFi Protect device observer failed';
+		const brightness = (): string => prop(LIGHT_PANEL, 'light', 'light_brightness');
+		const smoke = (): string => prop(CAMERA_PANEL, 'smoke', 'smoke_alarm_sound_detected');
+		const ledFrame = (): ProtectFrame => lineWith('"ledLevel":3');
+		const lightSnapshot = (): ProtectSnapshot => snapshot([entry('light', lights[0]), entry('camera', cameras[0])]);
+		const withLevel = (ledLevel: number): ProtectInventoryEntry =>
+			entry('light', { ...lights[0], lightDeviceSettings: { ...lights[0].lightDeviceSettings, ledLevel } });
+		const brightnessValues = (): unknown[] =>
+			properties.update.mock.calls
+				.filter((call) => call[0] === brightness())
+				.map((call) => (call[1] as { value: unknown }).value);
+
+		beforeEach(() => {
+			jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
+			devices = [adopt(goldenFloodlight, LIGHT_PANEL), adopt(goldenCamera, CAMERA_PANEL)];
+		});
+
+		afterEach(() => {
+			service.reset();
+			jest.useRealTimers();
+		});
+
+		const primeLight = async (): Promise<void> => {
+			await service.applySnapshot(IDENTITY, lightSnapshot());
+			properties.update.mockClear();
+			connectivity.trySetConnectionState.mockClear();
+		};
+
+		it('reports every cache write to observers after the device was stored', async () => {
+			const observer = jest.fn();
+			const writesSeen: number[] = [];
+
+			service.observeDevices((modelKey, id, raw) => {
+				writesSeen.push(properties.update.mock.calls.length);
+				observer(modelKey, id, raw);
+			});
+			await primeLight();
+			observer.mockClear();
+			writesSeen.length = 0;
+
+			service.enqueueFrame(IDENTITY, ledFrame());
+			await service.idle();
+
+			expect(observer).toHaveBeenCalledTimes(1);
+			expect(observer.mock.calls[0][0]).toBe('light');
+			expect(observer.mock.calls[0][1]).toBe(LIGHT_ID);
+			expect(observer.mock.calls[0][2].lightDeviceSettings.ledLevel).toBe(3);
+			// Notified after syncDevice: the brightness and indicator writes already happened.
+			expect(writesSeen).toEqual([2]);
+			expect(brightnessValues()).toEqual([50]);
+		});
+
+		it('reports snapshot entries and stops after unsubscribe', async () => {
+			const observer = jest.fn();
+			const unsubscribe = service.observeDevices(observer);
+
+			await service.applySnapshot(IDENTITY, lightSnapshot());
+
+			expect(observer.mock.calls.map((call) => `${call[0]}:${call[1]}`).sort()).toEqual(
+				[`camera:${CAMERA_ID}`, `light:${LIGHT_ID}`].sort(),
+			);
+
+			unsubscribe();
+			observer.mockClear();
+			service.enqueueFrame(IDENTITY, ledFrame());
+			await service.idle();
+
+			expect(observer).not.toHaveBeenCalled();
+		});
+
+		it('serves the cached object and its sequence', async () => {
+			await primeLight();
+
+			expect(service.getCachedDevice('light', LIGHT_ID)).toEqual(lights[0]);
+			expect(service.getDeviceSequence('light', LIGHT_ID)).toBe(1);
+
+			service.enqueueFrame(IDENTITY, ledFrame());
+			await service.idle();
+
+			expect(service.getDeviceSequence('light', LIGHT_ID)).toBe(2);
+			expect(service.getCachedDevice('light', LIGHT_ID)?.lightDeviceSettings).toMatchObject({ ledLevel: 3 });
+			expect(service.getCachedDevice('light', 'ffffffffffffffffffffffff')).toBeNull();
+			expect(service.getDeviceSequence('light', 'ffffffffffffffffffffffff')).toBe(0);
+		});
+
+		it('moves the sequence when a device is removed, so an older readback is discarded', async () => {
+			await primeLight();
+
+			const since = service.getDeviceSequence('light', LIGHT_ID);
+
+			service.enqueueFrame(IDENTITY, frameFor('remove', { id: LIGHT_ID, modelKey: 'light' }));
+			await service.idle();
+
+			expect(service.getCachedDevice('light', LIGHT_ID)).toBeNull();
+			expect(service.getDeviceSequence('light', LIGHT_ID)).not.toBe(since);
+			await expect(service.applyDeviceReadback(IDENTITY, withLevel(2), since)).resolves.toBe(false);
+			expect(service.getCachedDevice('light', LIGHT_ID)).toBeNull();
+		});
+
+		it('applies a device readback as an authoritative object', async () => {
+			const observer = jest.fn();
+
+			await primeLight();
+			service.observeDevices(observer);
+
+			const since = service.getDeviceSequence('light', LIGHT_ID);
+
+			await expect(service.applyDeviceReadback(IDENTITY, withLevel(2), since)).resolves.toBe(true);
+
+			expect(properties.update).toHaveBeenCalledWith(brightness(), { type: DEVICES_UNIFI_PROTECT_TYPE, value: 33 });
+			expect(observer).toHaveBeenCalledTimes(1);
+			expect(observer.mock.calls[0][2].lightDeviceSettings.ledLevel).toBe(2);
+			expect(service.getDeviceSequence('light', LIGHT_ID)).toBe(since + 1);
+		});
+
+		it('discards a readback older than a frame applied after it was requested', async () => {
+			const observer = jest.fn();
+
+			await primeLight();
+
+			const since = service.getDeviceSequence('light', LIGHT_ID);
+
+			service.enqueueFrame(IDENTITY, ledFrame());
+			service.observeDevices(observer);
+
+			await expect(service.applyDeviceReadback(IDENTITY, withLevel(2), since)).resolves.toBe(false);
+
+			expect(brightnessValues()).toEqual([50]);
+			expect(service.getCachedDevice('light', LIGHT_ID)?.lightDeviceSettings).toMatchObject({ ledLevel: 3 });
+			expect(observer).toHaveBeenCalledTimes(1);
+		});
+
+		it('only refreshes the cache for a readback of a device that is not adopted', async () => {
+			const observer = jest.fn();
+
+			devices = [adopt(goldenCamera, CAMERA_PANEL)];
+			service.observeDevices(observer);
+
+			await expect(service.applyDeviceReadback(IDENTITY, withLevel(2), 0)).resolves.toBe(true);
+
+			expect(properties.update).not.toHaveBeenCalled();
+			expect(service.getDeviceSequence('light', LIGHT_ID)).toBe(1);
+			expect(service.getCachedDevice('light', LIGHT_ID)?.lightDeviceSettings).toMatchObject({ ledLevel: 2 });
+			expect(observer).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps an open detection when a readback arrives', async () => {
+			await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+			await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+			properties.update.mockClear();
+			service.enqueueFrame(IDENTITY, eventFrame('0005', 'add'));
+			await service.idle();
+
+			expect(properties.update).toHaveBeenCalledWith(smoke(), { type: DEVICES_UNIFI_PROTECT_TYPE, value: true });
+			properties.update.mockClear();
+
+			const since = service.getDeviceSequence('camera', CAMERA_ID);
+
+			await expect(service.applyDeviceReadback(IDENTITY, entry('camera', cameras[0]), since)).resolves.toBe(true);
+
+			expect(properties.update.mock.calls.filter((call) => call[0] === smoke())).toEqual([]);
+		});
+
+		it('resets a stored detection that has no open event on a readback, like a snapshot', async () => {
+			stored.set(smoke(), true);
+			await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+			properties.update.mockClear();
+			(service as any).lastWritten.set(smoke(), true);
+
+			await service.applyDeviceReadback(
+				IDENTITY,
+				entry('camera', cameras[0]),
+				service.getDeviceSequence('camera', CAMERA_ID),
+			);
+
+			expect(properties.update).toHaveBeenCalledWith(smoke(), { type: DEVICES_UNIFI_PROTECT_TYPE, value: false });
+		});
+
+		it('keeps a poll that read before the readback from overwriting it', async () => {
+			await primeLight();
+
+			const before = service.getSnapshotSequence();
+
+			await service.applyDeviceReadback(IDENTITY, withLevel(2), service.getDeviceSequence('light', LIGHT_ID));
+
+			expect(service.getSnapshotSequence()).toBe(before + 1);
+		});
+
+		it('keeps working and logs once when an observer throws', async () => {
+			const healthy = jest.fn();
+
+			service.observeDevices(() => {
+				throw new Error('SENTINEL observer detail');
+			});
+			service.observeDevices(healthy);
+			await primeLight();
+
+			service.enqueueFrame(IDENTITY, ledFrame());
+			await service.idle();
+			service.enqueueFrame(IDENTITY, frameFor('update', { id: LIGHT_ID, modelKey: 'light', name: 'Again' }));
+			await service.idle();
+
+			expect(brightnessValues()).toEqual([50]);
+			expect(healthy).toHaveBeenCalledTimes(4);
+			expect(logged.filter((args) => args[0] === `[ProtectSynchronizerService] ${OBSERVER_FAILURE_TEXT}`)).toHaveLength(
+				1,
+			);
+			expect(JSON.stringify(logged)).not.toContain('SENTINEL');
+
+			await jest.advanceTimersByTimeAsync(60_000);
+			service.enqueueFrame(IDENTITY, frameFor('update', { id: LIGHT_ID, modelKey: 'light', name: 'Third' }));
+			await service.idle();
+
+			expect(
+				logged.some(
+					(args) => args[0] === `[ProtectSynchronizerService] ${OBSERVER_FAILURE_TEXT} (3 similar suppressed)`,
+				),
+			).toBe(true);
+		});
+
+		it('forgets cache and sequences on reset but keeps observers', async () => {
+			const observer = jest.fn();
+
+			service.observeDevices(observer);
+			await primeLight();
+			service.reset();
+
+			expect(service.getCachedDevice('light', LIGHT_ID)).toBeNull();
+			expect(service.getDeviceSequence('light', LIGHT_ID)).toBe(0);
+
+			observer.mockClear();
+			await service.applySnapshot(IDENTITY, lightSnapshot());
+
+			expect(observer).toHaveBeenCalledTimes(2);
+			expect(service.getDeviceSequence('light', LIGHT_ID)).toBe(1);
+		});
+
+		it('writes nothing and notifies nobody for a readback a reset overtook while queued', async () => {
+			const observer = jest.fn();
+
+			await primeLight();
+			service.observeDevices(observer);
+
+			const pending = service.applyDeviceReadback(IDENTITY, withLevel(2), service.getDeviceSequence('light', LIGHT_ID));
+
+			service.reset();
+
+			await expect(pending).resolves.toBe(false);
+			expect(properties.update).not.toHaveBeenCalled();
+			expect(observer).not.toHaveBeenCalled();
+		});
+
+		it('stops a readback that a reset overtook mid-write', async () => {
+			const observer = jest.fn();
+			let release: () => void = () => undefined;
+
+			await primeLight();
+			service.observeDevices(observer);
+			properties.update.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						release = () => resolve({});
+					}),
+			);
+
+			const pending = service.applyDeviceReadback(IDENTITY, withLevel(2), service.getDeviceSequence('light', LIGHT_ID));
+
+			await jest.advanceTimersByTimeAsync(0);
+			service.reset();
+			release();
+
+			await expect(pending).resolves.toBe(false);
+			expect(properties.update).toHaveBeenCalledTimes(1);
+			expect(observer).not.toHaveBeenCalled();
+			expect(service.getCachedDevice('light', LIGHT_ID)).toBeNull();
 		});
 	});
 
