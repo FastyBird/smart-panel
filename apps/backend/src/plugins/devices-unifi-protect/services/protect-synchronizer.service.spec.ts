@@ -1409,6 +1409,27 @@ describe('ProtectSynchronizerService', () => {
 					expect((service as any).lastWritten.get(contact)).toBe(true);
 				});
 
+				it('keeps a queued event value owned when another writer persisted it before the retry', async () => {
+					const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+
+					await prime();
+					down(1);
+					await feed(eventFrame('0008', 'add'));
+					expect((service as any).lastWritten.get(contact)).not.toBe(true);
+
+					service.recordPersistedValue({
+						id: contact,
+						type: DEVICES_UNIFI_PROTECT_TYPE,
+						value: { value: true },
+					} as never);
+					properties.update.mockClear();
+
+					await feed(update({ lastSeen: 1_700_000_000_003 }));
+
+					expect(values(contact)).not.toContain(false);
+					expect((service as any).lastWritten.get(contact)).toBe(true);
+				});
+
 				it('writes false when a snapshot reports isOpened false', async () => {
 					const contact = await ownedContact();
 

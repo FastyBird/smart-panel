@@ -660,7 +660,9 @@ export class ProtectSynchronizerService {
 					if (device.properties.get(entry.key)?.id !== entry.propertyId) {
 						done = true;
 					} else if (this.lastWritten.get(entry.propertyId) === entry.value) {
+						// Another writer persisted it, but the event is still the newest word: a stale cached field must not undo it.
 						done = true;
+						this.markEventOwned(protectDeviceId, entry.key);
 					} else {
 						done = await this.writeProperty(entry.propertyId, entry.value);
 
