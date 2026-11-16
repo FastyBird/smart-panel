@@ -187,8 +187,8 @@ describe('UnifiProtectDevicePlatform', () => {
 
 		client = {
 			patchDevice: jest.fn().mockResolvedValue(undefined),
-			getLight: jest.fn().mockResolvedValue(lightOn50()),
-			getCamera: jest.fn().mockResolvedValue(cameras[0]),
+			getLight: jest.fn().mockResolvedValue({ raw: lightOn50() }),
+			getCamera: jest.fn().mockResolvedValue({ raw: cameras[0] }),
 		};
 		connector = {
 			getClient: jest.fn(() => (consoleUp ? client : null)),
@@ -291,7 +291,7 @@ describe('UnifiProtectDevicePlatform', () => {
 	});
 
 	it('reports not_confirmed when the readback shows other values', async () => {
-		client.getLight.mockResolvedValue(light({}, 6, false));
+		client.getLight.mockResolvedValue({ raw: light({}, 6, false) });
 
 		const outcomes = platform.executeBatch([onUpdate(true), brightnessUpdate(50)]);
 
@@ -331,7 +331,7 @@ describe('UnifiProtectDevicePlatform', () => {
 		]);
 		expect(client.getLight).toHaveBeenCalledTimes(1);
 
-		client.getLight.mockResolvedValue(light({}, 6, false));
+		client.getLight.mockResolvedValue({ raw: light({}, 6, false) });
 
 		await expect(platform.executeBatch([onUpdate(true), brightnessUpdate(50)])).resolves.toEqual([
 			expect.objectContaining({ outcome: 'failed' }),
@@ -583,8 +583,8 @@ describe('UnifiProtectDevicePlatform', () => {
 		let finishGet: (raw: Raw) => void = () => undefined;
 
 		client.getLight.mockReturnValue(
-			new Promise<Raw>((resolve) => {
-				finishGet = resolve;
+			new Promise<{ raw: Raw }>((resolve) => {
+				finishGet = (raw: Raw) => resolve({ raw });
 			}),
 		);
 
@@ -601,7 +601,7 @@ describe('UnifiProtectDevicePlatform', () => {
 	});
 
 	it('never confirms from a match before the PATCH resolved that a later frame contradicted', async () => {
-		client.getLight.mockResolvedValue(light({}, 6));
+		client.getLight.mockResolvedValue({ raw: light({}, 6) });
 		client.patchDevice.mockImplementation(() => {
 			emit('light', LIGHT_ID, light({}, 3));
 			emit('light', LIGHT_ID, light({}, 5));
@@ -619,7 +619,7 @@ describe('UnifiProtectDevicePlatform', () => {
 
 	it('evaluates the stored state, not the readback, when the readback was discarded', async () => {
 		synchronizer.applyDeviceReadback.mockResolvedValue(false);
-		client.getLight.mockResolvedValue(light({}, 3));
+		client.getLight.mockResolvedValue({ raw: light({}, 3) });
 		seed('light', LIGHT_ID, light({}, 5));
 
 		const outcomes = platform.executeBatch([brightnessUpdate(50)]);
@@ -635,7 +635,7 @@ describe('UnifiProtectDevicePlatform', () => {
 
 			return Promise.resolve(false);
 		});
-		client.getLight.mockResolvedValue(light({}, 6));
+		client.getLight.mockResolvedValue({ raw: light({}, 6) });
 
 		const outcomes = platform.executeBatch([brightnessUpdate(50)]);
 
@@ -752,7 +752,7 @@ describe('UnifiProtectDevicePlatform', () => {
 
 	it('confirms from the stored state, never from a cache that runs ahead of it', async () => {
 		cache.set(LIGHT_KEY, light({}, 3));
-		client.getLight.mockResolvedValue(light({}, 6));
+		client.getLight.mockResolvedValue({ raw: light({}, 6) });
 
 		const outcomes = platform.executeBatch([brightnessUpdate(50)]);
 

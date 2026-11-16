@@ -489,7 +489,7 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 			return false;
 		}
 
-		const raw = read.value as Raw;
+		const raw = (read.value as { raw: Raw }).raw;
 		// Only a readback of the current session is applied; `live` returned null otherwise.
 		const applied = await this.live(
 			context,
