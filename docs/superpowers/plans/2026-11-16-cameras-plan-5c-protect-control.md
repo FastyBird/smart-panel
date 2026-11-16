@@ -999,6 +999,22 @@ then `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 
 ---
 
+## Amendments after review (they win over the task text)
+
+- **Command paths (Task 1).** Run Step 5's checks in a subshell (`(cd apps/backend && …)`) so Step 6's repository-relative
+  paths still resolve.
+- **Monotonic sequence tokens (Task 5).** A device's sequence never restarts: the per-device value is offset by a base that
+  rises whenever a device leaves the cache and is never lowered by `reset()`, so a `GET` that started before a deletion,
+  re-addition or reset can never pass the `sinceSequence` check against the new device. Test: delete and re-add a device
+  while a readback is pending; the readback is discarded.
+- **No confirmation from earlier observations (Tasks 6, 7).** Confirmation is never sticky from frames observed before
+  `patchDevice` resolved: on a 2xx, the platform first evaluates the current cached state; if it does not match, it waits
+  for a frame observed after that point. A match recorded earlier (for example while the request waited in the pacer)
+  that a later frame contradicted can never confirm. Test: matching frame before the request, contradicting frame, then
+  2xx → not confirmed.
+- **No confirmation from a discarded readback (Task 7).** When `applyDeviceReadback` returns `false` (a newer frame
+  arrived), the command is evaluated against the current cached state, not the readback's raw object. Test.
+
 ## Decisions recorded (for the PR body)
 
 1. `microphone.volume` became `rw` and `lighting` allows an optional `indicator` channel (spec change outside the issue's file
