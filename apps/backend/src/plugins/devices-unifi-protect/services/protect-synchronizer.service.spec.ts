@@ -1390,6 +1390,25 @@ describe('ProtectSynchronizerService', () => {
 					expect((service as any).lastWritten.get(contact)).toBe(false);
 				});
 
+				it('keeps an event value owned when it equals the persisted value after a failed snapshot write', async () => {
+					const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+
+					await prime();
+					await service.applySnapshot(IDENTITY, sensorSnapshot({ isOpened: true }));
+					expect((service as any).lastWritten.get(contact)).toBe(true);
+
+					down(1);
+					await service.applySnapshot(IDENTITY, sensorSnapshot({ isOpened: false }));
+					expect((service as any).lastWritten.get(contact)).toBe(true);
+					properties.update.mockClear();
+
+					await feed(eventFrame('0008', 'add'));
+					await feed(update({ lastSeen: 1_700_000_000_002 }));
+
+					expect(values(contact)).not.toContain(false);
+					expect((service as any).lastWritten.get(contact)).toBe(true);
+				});
+
 				it('writes false when a snapshot reports isOpened false', async () => {
 					const contact = await ownedContact();
 

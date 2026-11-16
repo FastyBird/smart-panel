@@ -518,6 +518,9 @@ export class ProtectSynchronizerService {
 		this.dropRetry(device.protectDeviceId, key);
 
 		if (this.lastWritten.get(property.id) === target.value) {
+			// Already persisted, but the event is still the newest word: a stale cached field must not undo it.
+			this.markEventOwned(device.protectDeviceId, key);
+
 			return;
 		}
 
