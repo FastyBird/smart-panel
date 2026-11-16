@@ -1339,6 +1339,12 @@ lighting:
       multiple: true
       description:
         en: Reports external probe or native helper temperature measurements in degrees Celsius.
+    indicator:
+      category: indicator
+      required: false
+      multiple: false
+      description:
+        en: Represents a status indicator LED output. Controls on/off state, brightness, and color of hardware indicator LEDs. Used for system status feedback on host devices or external indicator peripherals.
 
 outlet:
   category: outlet
