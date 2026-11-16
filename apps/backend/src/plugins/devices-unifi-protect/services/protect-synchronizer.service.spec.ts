@@ -1280,6 +1280,116 @@ describe('ProtectSynchronizerService', () => {
 			expect(written.get(motion)).toBe(false);
 		});
 
+		describe('device update frames', () => {
+			const down = (times: number): void => {
+				for (let index = 0; index < times; index++) {
+					properties.update.mockRejectedValueOnce(new Error('down'));
+				}
+			};
+			const update = (patch: Raw): ProtectFrame => frameFor('update', { id: SENSOR_ID, modelKey: 'sensor', ...patch });
+
+			it('drops a queued sensorOpened that an update reporting isOpened false contradicts', async () => {
+				const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+
+				await prime();
+				down(1);
+				await feed(eventFrame('0008', 'add'));
+				down(1);
+				properties.update.mockClear();
+				await feed(update({ isOpened: false }));
+				properties.update.mockClear();
+				await jest.advanceTimersByTimeAsync(120_000);
+				await flush();
+
+				expect(values(contact)).not.toContain(true);
+				expect((service as any).lastWritten.get(contact)).toBe(false);
+			});
+
+			it('drops a queued tamper latch that an update clearing tamperingDetectedAt contradicts', async () => {
+				const contact = prop(SENSOR_PANEL, 'contact', 'contact_tampered');
+				const motion = prop(SENSOR_PANEL, 'motion', 'sensor_motion_tampered');
+
+				await prime();
+				down(2);
+				await feed(eventFrame('0012', 'add'));
+				down(2);
+				await feed(update({ tamperingDetectedAt: null }));
+				properties.update.mockClear();
+				await jest.advanceTimersByTimeAsync(120_000);
+				await flush();
+
+				expect(values(contact)).not.toContain(true);
+				expect(values(motion)).not.toContain(true);
+				expect((service as any).lastWritten.get(contact)).toBe(false);
+				expect((service as any).lastWritten.get(motion)).toBe(false);
+			});
+
+			it('keeps a queued sensorOpened when the update does not carry isOpened', async () => {
+				const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+
+				await prime();
+				down(1);
+				await feed(eventFrame('0008', 'add'));
+				down(1);
+				await feed(update({ lastSeen: 1_700_000_000_000 }));
+				properties.update.mockClear();
+				await jest.advanceTimersByTimeAsync(120_000);
+				await flush();
+
+				expect(values(contact)).toContain(true);
+				expect((service as any).lastWritten.get(contact)).toBe(true);
+			});
+		});
+
+		describe('ring retry deadlines', () => {
+			const DOORBELL_ID = '5f0000000000000000000a01';
+			const doorbellFrame = (action: 'add' | 'update', patch: Raw = {}): ProtectFrame =>
+				frameFor(action, { id: DOORBELL_ID, modelKey: 'camera', ...patch });
+
+			it('does not retry a failed ring on frames that arrive before its first delay, then publishes it once', async () => {
+				devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+				await feed(doorbellFrame('add', { name: 'Door' }));
+				occurrences.publishOccurrence.mockRejectedValueOnce(new Error('down'));
+				await feed(eventFrame('0007', 'add'));
+
+				expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+
+				for (let index = 0; index < 5; index++) {
+					await jest.advanceTimersByTimeAsync(1000);
+					await feed(doorbellFrame('update', { name: `Door ${index}` }));
+					await feed(eventFrame('0007', 'update'));
+				}
+
+				expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+
+				await jest.advanceTimersByTimeAsync(1000);
+				await flush();
+
+				expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(2);
+
+				await jest.advanceTimersByTimeAsync(120_000);
+				await flush();
+
+				expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(2);
+			});
+
+			it('still retries a failed write on the next frame while a ring waits for its deadline', async () => {
+				devices = [adopt(goldenDoorbell, DOORBELL_PANEL), adopt(goldenSensor, SENSOR_PANEL)];
+				const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+
+				await prime();
+				occurrences.publishOccurrence.mockRejectedValueOnce(new Error('down'));
+				await feed(eventFrame('0007', 'add'));
+				properties.update.mockRejectedValueOnce(new Error('down'));
+				await feed(eventFrame('0008', 'add'));
+				properties.update.mockClear();
+				await feed(frameFor('update', { id: SENSOR_ID, modelKey: 'sensor', lastSeen: 1 }));
+
+				expect(values(contact)).toContain(true);
+				expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+			});
+		});
+
 		it('repairs a leak level that failed to reset on the next snapshot', async () => {
 			const detected = prop(SENSOR_PANEL, 'leak', 'leak_detected');
 			const level = prop(SENSOR_PANEL, 'leak', 'leak_level');

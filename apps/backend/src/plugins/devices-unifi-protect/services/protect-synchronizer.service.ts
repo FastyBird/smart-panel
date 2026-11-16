@@ -636,7 +636,8 @@ export class ProtectSynchronizerService {
 				return;
 			}
 
-			if (onlyDue && entry.dueAt > now) {
+			// A ring keeps its schedule on every path (an early retry would hit the core's de-dup window and look done).
+			if ((onlyDue || entry.kind === 'ring') && entry.dueAt > now) {
 				survivors.push(entry);
 				continue;
 			}
@@ -831,7 +832,13 @@ export class ProtectSynchronizerService {
 
 		if (result.ok && mode === 'snapshot') {
 			// A snapshot is authoritative: queued event values it contradicts must not be written after it.
-			this.dropSupersededRetries(device, result.device, mappings, raw);
+			this.dropSupersededRetries(device, result.device, mappings, raw, null);
+		} else if (result.ok && partial !== null) {
+			// An update is authoritative only for what it carries.
+			this.dropSupersededRetries(device, result.device, mappings, raw, {
+				carried: this.carriedProperties(modelKey, identity, mappings, raw, partial, result.device),
+				tamperCleared: partial.tamperingDetectedAt === null,
+			});
 		}
 
 		await this.retryDevice(device.protectDeviceId);
@@ -860,15 +867,61 @@ export class ProtectSynchronizerService {
 		await this.propagateRename(device, modelKey, raw, previousRaw);
 	}
 
+	/** The property keys whose mapped value depends on a field the update frame carries. */
+	private carriedProperties(
+		modelKey: string,
+		identity: ProtectConsoleIdentity,
+		mappings: ProtectResolvedMappings,
+		raw: Readonly<Record<string, unknown>>,
+		partial: Readonly<Record<string, unknown>>,
+		mapped: ProtectMappedDevice,
+	): ReadonlySet<string> {
+		const without: Record<string, unknown> = { ...raw };
+
+		for (const field of Object.keys(partial)) {
+			if (field !== 'id' && field !== 'modelKey') {
+				delete without[field];
+			}
+		}
+
+		const before = new Map<string, ProtectMappingScalar>();
+		const probe = evaluateProtectMapping(mappings, {
+			nvr: { id: identity.nvrId, macKey: identity.nvrMacKey },
+			modelKey: modelKey as 'camera' | 'sensor' | 'light',
+			device: without,
+			streams: null,
+		});
+
+		if (probe.ok) {
+			for (const change of diffMappedValues(null, probe.device, this.syncableNames(mappings))) {
+				before.set(propertyKey(change.channelIdentifier, change.mappingName), change.value);
+			}
+		}
+
+		const carried = new Set<string>();
+
+		for (const change of diffMappedValues(null, mapped, this.syncableNames(mappings))) {
+			const key = propertyKey(change.channelIdentifier, change.mappingName);
+
+			if (before.get(key) !== change.value) {
+				carried.add(key);
+			}
+		}
+
+		return carried;
+	}
+
 	/**
 	 * Drops the queued property writes whose value the snapshot contradicts: a syncable property whose snapshot value
 	 * differs, a tamper flag the console reports cleared, and a detection (with its leak level) without an open event.
+	 * An update frame (`scope`) contradicts only the properties it carries and the tamper flags it clears.
 	 */
 	private dropSupersededRetries(
 		device: IndexedDevice,
 		mapped: ProtectMappedDevice,
 		mappings: ProtectResolvedMappings,
 		raw: Readonly<Record<string, unknown>>,
+		scope: { carried: ReadonlySet<string>; tamperCleared: boolean } | null,
 	): void {
 		const entries = this.retries.get(device.protectDeviceId);
 
@@ -880,12 +933,21 @@ export class ProtectSynchronizerService {
 		const open = this.tracker.openTargets(device.protectDeviceId);
 
 		for (const change of diffMappedValues(null, mapped, this.syncableNames(mappings))) {
-			authoritative.set(propertyKey(change.channelIdentifier, change.mappingName), change.value);
+			const key = propertyKey(change.channelIdentifier, change.mappingName);
+
+			if (scope === null || scope.carried.has(key)) {
+				authoritative.set(key, change.value);
+			}
 		}
 
 		for (const [key, property] of device.properties) {
-			if (TAMPER_MAPPINGS.has(property.mappingName) && raw.tamperingDetectedAt === null) {
+			if (
+				TAMPER_MAPPINGS.has(property.mappingName) &&
+				(scope === null ? raw.tamperingDetectedAt === null : scope.tamperCleared)
+			) {
 				authoritative.set(key, false);
+			} else if (scope !== null) {
+				continue;
 			} else if (STALE_DETECTIONS.has(property.mappingName) && !open.has(property.channelIdentifier)) {
 				authoritative.set(key, false);
 			} else if (property.mappingName === 'leak_level' && !open.has(property.channelIdentifier)) {
