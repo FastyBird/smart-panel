@@ -131,6 +131,27 @@ describe('protect frame merge', () => {
 		expect(depth).toBeLessThanOrEqual(9);
 	});
 
+	it.each([
+		['an object', { value: true }],
+		['an array', [1, 2]],
+	])('keeps %s at the accepted depth limit through the parser and the merge', (_name, container) => {
+		const at8 = { a: { b: { c: { d: { e: { f: { g: container } } } } } } };
+		const text = JSON.stringify({ type: 'update', item: { id: 'a', modelKey: 'camera', ...at8 } });
+		const parsed = parseProtectFrame(text);
+
+		if (!('frame' in parsed)) {
+			throw new Error(`rejected ${parsed.rejected}`);
+		}
+
+		const merged = mergeProtectItem({}, parsed.frame.item) as Raw;
+
+		expect(merged.a.b.c.d.e.f.g).toEqual(container);
+		expect((mergeProtectItem(merged, { a: { b: { c: { d: { e: { f: { h: 1 } } } } } } }) as Raw).a.b.c.d.e.f).toEqual({
+			g: container,
+			h: 1,
+		});
+	});
+
 	it('diffs only syncable path values', () => {
 		const syncable = syncableMappingNames(mappings);
 		const baseline = map(sensor());

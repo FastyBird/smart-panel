@@ -99,11 +99,11 @@ export function parseProtectFrame(text: string): { frame: ProtectFrame } | { rej
 /** Copy with the safety limits applied; anything deeper than the limit is dropped. */
 const sanitize = (value: unknown, depth: number): unknown => {
 	if (Array.isArray(value)) {
-		return depth >= MAX_DEPTH ? [] : value.map((entry) => sanitize(entry, depth + 1));
+		return depth > MAX_DEPTH ? [] : value.map((entry) => sanitize(entry, depth + 1));
 	}
 
 	if (isPlainObject(value)) {
-		return depth >= MAX_DEPTH ? {} : mergeAt({}, value, depth);
+		return depth > MAX_DEPTH ? {} : mergeAt({}, value, depth);
 	}
 
 	return value;
