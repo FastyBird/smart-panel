@@ -14,6 +14,8 @@ describe('buildProtectPath', () => {
 			'/proxy/protect/integration/v1/cameras/6541/snapshot?highQuality=false&channel=main',
 		],
 		['cameras/{id}/rtsps-stream', { id: 'a_B-9' }, '/proxy/protect/integration/v1/cameras/a_B-9/rtsps-stream'],
+		['subscribe/devices', undefined, '/proxy/protect/integration/v1/subscribe/devices'],
+		['subscribe/events', undefined, '/proxy/protect/integration/v1/subscribe/events'],
 	])('builds %s', (endpoint, params, path) => {
 		expect(buildProtectPath(endpoint as ProtectEndpoint, params)).toBe(path);
 	});

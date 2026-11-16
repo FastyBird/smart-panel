@@ -418,6 +418,52 @@ describe('ChannelInputOccurrencesService', () => {
 		});
 	});
 
+	describe('doorbell channels', () => {
+		const doorbellChannel = Object.assign(new ChannelEntity(), {
+			id: 'ch-bell',
+			category: ChannelCategory.DOORBELL,
+			device: mockDevice,
+		});
+		const doorbellProperty = Object.assign(new ChannelPropertyEntity(), {
+			id: 'prop-bell',
+			category: PropertyCategory.EVENT,
+			dataType: DataTypeType.ENUM,
+			permissions: [PermissionType.READ_ONLY],
+			format: ['single_press', 'double_press', 'long_press'],
+			channel: doorbellChannel,
+		});
+
+		it('accepts a READ_ONLY event property on a doorbell channel', async () => {
+			channelsService.findOne.mockResolvedValue(doorbellChannel);
+			channelsPropertiesService.findOne.mockResolvedValue(doorbellProperty);
+
+			const result = await service.publishOccurrence({
+				deviceId: 'dev-1',
+				channelId: 'ch-bell',
+				propertyId: 'prop-bell',
+				event: 'single_press',
+				nativeEventType: 'ring',
+			});
+
+			expect(result).not.toBeNull();
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_INPUT_OCCURRENCE,
+				expect.objectContaining({ channelId: 'ch-bell', event: 'single_press' }),
+			);
+		});
+
+		it('reports a doorbell channel as an input in its capabilities', async () => {
+			channelsService.findOne.mockResolvedValue(
+				Object.assign(new ChannelEntity(), { ...doorbellChannel, properties: [doorbellProperty] }),
+			);
+
+			const result = await service.getInputCapabilities('ch-bell');
+
+			expect(result?.is_input).toBe(true);
+			expect(result?.supported_events).toContain('single_press');
+		});
+	});
+
 	describe('getInputCapabilities', () => {
 		it('returns null when channel does not exist', async () => {
 			channelsService.findOne.mockResolvedValue(null);

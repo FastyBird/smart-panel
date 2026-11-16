@@ -1,11 +1,17 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { ServiceState } from '../../../modules/extensions/services/managed-extension-service.interface';
-import { PROTECT_TLS_MODES, ProtectConnectionState, ProtectTlsMode } from '../devices-unifi-protect.constants';
+import {
+	PROTECT_REALTIME_STATES,
+	PROTECT_TLS_MODES,
+	ProtectConnectionState,
+	ProtectRealtimeState,
+	ProtectTlsMode,
+} from '../devices-unifi-protect.constants';
 import { ProtectErrorCategory } from '../errors/protect-api.error';
 
 @ApiSchema({ name: 'DevicesUnifiProtectPluginDataStatus' })
@@ -131,6 +137,25 @@ export class ProtectStatusModel {
 	@IsOptional()
 	@IsDateString()
 	nextRetryAt: string | null;
+
+	@ApiProperty({
+		description: 'Real-time synchronisation state',
+		enum: PROTECT_REALTIME_STATES,
+		name: 'realtime_state',
+	})
+	@Expose({ name: 'realtime_state' })
+	@IsIn(PROTECT_REALTIME_STATES)
+	realtimeState: ProtectRealtimeState = 'stopped';
+
+	@ApiProperty({
+		description: 'Protect events of unknown types ignored since the service started',
+		minimum: 0,
+		name: 'ignored_event_count',
+	})
+	@Expose({ name: 'ignored_event_count' })
+	@IsInt()
+	@Min(0)
+	ignoredEventCount: number = 0;
 }
 
 @ApiSchema({ name: 'DevicesUnifiProtectPluginResStatus' })

@@ -63,6 +63,12 @@ import { ProtectConnectorService } from './services/protect-connector.service';
 import { ProtectDiscoveryProbeService } from './services/protect-discovery-probe.service';
 import { ProtectDiscoveryService } from './services/protect-discovery.service';
 import { ProtectInventoryService } from './services/protect-inventory.service';
+import {
+	PROTECT_DEFAULT_REALTIME_TIMINGS,
+	PROTECT_REALTIME_TIMINGS,
+	ProtectRealtimeService,
+} from './services/protect-realtime.service';
+import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
 const SECRET_FIELDS = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];
 
@@ -164,6 +170,8 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(metadata.readme).toContain('## Configuration');
 		expect(metadata.readme).toContain('## TLS');
 		expect(metadata.readme).toContain('## Boundaries');
+		expect(metadata.readme).toContain('## Real-time updates');
+		expect(metadata.readme).toContain('clear after 60 s');
 		expect(metadata.readme).toContain('There is no insecure mode');
 		expect(metadata.readme).toContain('never disables a camera microphone');
 		expect(metadata.readme).toContain('never deletes a stream');
@@ -208,6 +216,11 @@ describe('DevicesUnifiProtectPlugin', () => {
 			ProtectAdoptionController,
 		]);
 		expect(providers).toContain(ProtectInventoryService);
+		expect(providers).toEqual(expect.arrayContaining([ProtectSynchronizerService, ProtectRealtimeService]));
+		expect(providers).toContainEqual({
+			provide: PROTECT_REALTIME_TIMINGS,
+			useValue: PROTECT_DEFAULT_REALTIME_TIMINGS,
+		});
 		expect(providers).toEqual(expect.arrayContaining([ProtectAdoptionLockService, ProtectAdoptionService]));
 		expect(exported).not.toContain(ProtectDiscoveryService);
 		expect(exported).toContain(ProtectConnectorService);

@@ -30,8 +30,8 @@ Two kinds of files exist:
 | `sensors.json` | synthetic | UP-Sense in idle, open, motion, leak, tamper and battery-low states |
 | `lights.json` | synthetic | UP Floodlight |
 | `chimes.json` | synthetic | chime |
-| `ws-devices.jsonl` | synthetic | `subscribe/devices` frames: camera state, doorbell LCD, sensor open/close/motion/leak/tamper/battery, light, add, remove |
-| `ws-events.jsonl` | synthetic | `subscribe/events` frames: motion, smartDetectZone person/vehicle, smartDetectLine, smartAudioDetect alrmSmoke/alrmBabyCry, ring, sensorOpened/Closed/Motion/WaterLeak/Tamper, lightMotion; each event is an `add` (`end: null`) followed by an `update` with `end` |
+| `ws-devices.jsonl` | synthetic | `subscribe/devices` frames: camera state, rename and LED change, doorbell LCD, sensor open/close/motion/leak/tamper/tamper clear/battery/light level, light, add, remove (camera and sensor) |
+| `ws-events.jsonl` | synthetic | `subscribe/events` frames: motion, smartDetectZone person/vehicle, smartDetectLine, smartAudioDetect alrmSmoke/alrmBabyCry, ring, sensorOpened/Closed/Motion/WaterLeak/Tamper, lightMotion, smartDetectLoiterZone animal, smartDetectZone person+vehicle, alrmCmonx, sensorAlarm, sensorBatteryLow, an unknown type (`sensorExtremeValues`) and an unknown detection type (`pet`); each event is an `add` (`end: null`) followed by an `update` with `end` |
 | `expected/` | derived | golden mapping output per device type (UP-7), regenerated only with `PROTECT_UPDATE_GOLDEN=1` |
 | `snapshot.jpg` | synthetic | 32x18 gradient JPEG generated for tests, not a camera image |
 

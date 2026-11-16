@@ -4,7 +4,9 @@ import * as https from 'https';
 import { AddressInfo } from 'net';
 import * as net from 'net';
 import { join, resolve } from 'path';
+import { Duplex } from 'stream';
 import { TLSSocket } from 'tls';
+import { WebSocket, WebSocketServer } from 'ws';
 
 import {
 	PROTECT_RTSPS_QUALITIES,
@@ -14,7 +16,7 @@ import {
 import { PROTECT_TEST_DIRECT_DOMAIN, protectTlsServerOptions } from './protect-tls';
 
 // TEST SUPPORT ONLY: a loopback HTTPS stand-in for a UniFi Protect console, serving the UP-0 fixtures with the
-// committed test certificates. Plan 5 adds the two WebSockets here.
+// committed test certificates, plus the two subscription WebSockets (`subscribe/devices`, `subscribe/events`).
 
 export const FAKE_PROTECT_API_KEY = 'PROTECT_SENTINEL_KEY_7f3a9c0d1e2b4a6f';
 export const FAKE_PROTECT_ALIAS = 'SENTINELALIASprotect0123456789';
@@ -30,6 +32,9 @@ export interface FakeProtectRequest {
 	hadApiKey: boolean;
 	servername: string | null;
 }
+
+export type FakeProtectTopic = 'devices' | 'events';
+export type FakeProtectDeviceResource = 'cameras' | 'sensors' | 'lights';
 
 export interface FakeProtectResponse {
 	status: number;
@@ -98,6 +103,9 @@ export class FakeProtectServer {
 	readonly requests: FakeProtectRequest[] = [];
 	readonly writes: FakeProtectRequest[] = [];
 	readonly streamPosts: { cameraId: string; qualities: string[] }[] = [];
+	/** Every upgrade attempt (accepted or refused); never part of `requests`. Cleared by `reset()`. */
+	readonly upgrades: FakeProtectRequest[] = [];
+	pingsReceived = 0;
 	forbiddenHits = 0;
 	rateLimited = 0;
 
@@ -107,6 +115,12 @@ export class FakeProtectServer {
 	private readonly windows = new Map<string, number[]>();
 	private readonly sockets = new Set<net.Socket>();
 	private readonly server: https.Server;
+	private readonly wss = new WebSocketServer({ noServer: true });
+	private readonly topicSockets: Record<FakeProtectTopic, Set<WebSocket>> = { devices: new Set(), events: new Set() };
+	private readonly overlays = new Map<string, Record<string, unknown>>();
+	private readonly removals = new Set<string>();
+	private upgradeRefusals: { status: number; headers?: Record<string, string> }[] = [];
+	private pongs = true;
 	private readonly rateHeaders = readJson<RateLimitFixture>('rate-limit-headers.json');
 
 	private constructor(options: Partial<FakeProtectServerOptions>) {
@@ -130,6 +144,113 @@ export class FakeProtectServer {
 			socket.on('error', () => undefined);
 		});
 		this.server.on('tlsClientError', () => undefined);
+		this.server.on('upgrade', (req: http.IncomingMessage, socket: Duplex, head: Buffer) =>
+			this.handleUpgrade(req, socket, head),
+		);
+	}
+
+	/** Open subscription sockets of a topic. */
+	subscriptionCount(topic: FakeProtectTopic): number {
+		return [...this.topicSockets[topic]].filter((socket) => socket.readyState === WebSocket.OPEN).length;
+	}
+
+	/** JSON.stringify of the frame to every open socket of the topic. */
+	sendFrame(topic: FakeProtectTopic, frame: unknown): void {
+		this.sendRaw(topic, JSON.stringify(frame));
+	}
+
+	sendRaw(topic: FakeProtectTopic, data: string | Buffer, binary = false): void {
+		this.topicSockets[topic].forEach((socket) => {
+			if (socket.readyState === WebSocket.OPEN) {
+				socket.send(data, { binary });
+			}
+		});
+	}
+
+	/** Terminates every open subscription socket. */
+	dropSubscriptions(): void {
+		Object.values(this.topicSockets).forEach((sockets) => sockets.forEach((socket) => socket.terminate()));
+	}
+
+	/** Each queued answer refuses one upgrade (before the key check); null clears the queue. */
+	refuseUpgrades(response: { status: number; headers?: Record<string, string> } | null): void {
+		this.upgradeRefusals = response === null ? [] : [...this.upgradeRefusals, response];
+	}
+
+	answerPings(enabled: boolean): void {
+		this.pongs = enabled;
+	}
+
+	/** Shallow overlay on the list and by-id reads of the resource. */
+	updateDevice(resource: FakeProtectDeviceResource, id: string, patch: Record<string, unknown>): void {
+		const key = `${resource}/${id}`;
+
+		this.overlays.set(key, { ...this.overlays.get(key), ...patch });
+	}
+
+	/** Hides the device from the list and by-id reads. */
+	removeDevice(resource: FakeProtectDeviceResource, id: string): void {
+		this.removals.add(`${resource}/${id}`);
+	}
+
+	private handleUpgrade(req: http.IncomingMessage, socket: Duplex, head: Buffer): void {
+		socket.on('error', () => undefined);
+
+		const url = new URL(req.url ?? '/', 'https://fake.invalid');
+		const presentedKey = req.headers['x-api-key'];
+		const topic = url.pathname.startsWith(BASE) ? url.pathname.slice(BASE.length) : '';
+		const reject = (response: { status: number; headers?: Record<string, string> }): void => {
+			const headers = { connection: 'close', 'content-length': '0', ...response.headers };
+
+			socket.end(
+				`HTTP/1.1 ${response.status} Refused\r\n${Object.entries(headers)
+					.map(([name, value]) => `${name}: ${value}`)
+					.join('\r\n')}\r\n\r\n`,
+			);
+		};
+
+		if ((req.method ?? 'GET') !== 'GET' || (topic !== 'subscribe/devices' && topic !== 'subscribe/events')) {
+			reject({ status: 404 });
+
+			return;
+		}
+
+		this.upgrades.push({
+			method: 'GET',
+			path: url.pathname,
+			query: Object.fromEntries(url.searchParams.entries()),
+			hadApiKey: typeof presentedKey === 'string' && presentedKey.length > 0,
+			servername: (req.socket as TLSSocket).servername || null,
+		});
+
+		const refusal = this.upgradeRefusals.shift();
+
+		if (refusal !== undefined) {
+			reject(refusal);
+
+			return;
+		}
+
+		if (presentedKey !== this.options.apiKey) {
+			reject({ status: 401 });
+
+			return;
+		}
+
+		const sockets = this.topicSockets[topic === 'subscribe/devices' ? 'devices' : 'events'];
+
+		this.wss.handleUpgrade(req, socket, head, (ws) => {
+			sockets.add(ws);
+			ws.on('error', () => undefined);
+			ws.on('close', () => sockets.delete(ws));
+			ws.on('ping', () => {
+				this.pingsReceived += 1;
+			});
+			ws.on('message', () => undefined);
+
+			// `ws` answers a ping while `_autoPong` is true; reading the flag live lets `answerPings` switch it per test.
+			Object.defineProperty(ws, '_autoPong', { get: () => this.pongs });
+		});
 	}
 
 	set(options: Partial<FakeProtectServerOptions>): void {
@@ -155,10 +276,18 @@ export class FakeProtectServer {
 		this.windows.clear();
 		this.forbiddenHits = 0;
 		this.rateLimited = 0;
+		this.upgrades.length = 0;
+		this.pingsReceived = 0;
+		this.overlays.clear();
+		this.removals.clear();
+		this.upgradeRefusals = [];
+		this.pongs = true;
 	}
 
 	stop(): Promise<void> {
 		return new Promise<void>((resolveStop) => {
+			this.dropSubscriptions();
+			this.wss.close();
 			this.sockets.forEach((socket) => socket.destroy());
 			this.server.close(() => resolveStop());
 		});
@@ -396,6 +525,13 @@ export class FakeProtectServer {
 		return json(200, this.streamMap(cameraId));
 	}
 
+	/** The list without removed devices, with the overlays applied. */
+	private visible<T extends { id: string }>(resource: FakeProtectDeviceResource, items: T[]): T[] {
+		return items
+			.filter((item) => !this.removals.has(`${resource}/${item.id}`))
+			.map((item) => ({ ...item, ...this.overlays.get(`${resource}/${item.id}`) }));
+	}
+
 	private route(path: string, query: Record<string, string>): FakeProtectResponse {
 		if (!path.startsWith(BASE)) {
 			return notFound();
@@ -420,7 +556,17 @@ export class FakeProtectServer {
 		}
 
 		if (id === undefined) {
-			return json(200, resource === 'cameras' ? this.cameras() : readJson<unknown>(DEVICE_FIXTURES[resource]));
+			if (resource === 'nvrs' || resource === 'chimes') {
+				return json(200, readJson<unknown>(DEVICE_FIXTURES[resource]));
+			}
+
+			return json(
+				200,
+				this.visible(
+					resource as FakeProtectDeviceResource,
+					resource === 'cameras' ? this.cameras() : readJson<{ id: string }[]>(DEVICE_FIXTURES[resource]),
+				),
+			);
 		}
 
 		if (resource === 'sensors' || resource === 'lights') {
@@ -429,18 +575,22 @@ export class FakeProtectServer {
 					? readJson<{ id: string }[]>(DEVICE_FIXTURES[resource]).find((e) => e.id === id)
 					: undefined;
 
-			return entry === undefined ? notFound() : json(200, entry);
+			return entry === undefined || this.removals.has(`${resource}/${id}`)
+				? notFound()
+				: json(200, { ...entry, ...this.overlays.get(`${resource}/${id}`) });
 		}
 
 		if (resource !== 'cameras') {
 			return notFound();
 		}
 
-		const camera = this.cameras().find((entry) => entry.id === id);
+		const found = this.cameras().find((entry) => entry.id === id);
 
-		if (camera === undefined) {
+		if (found === undefined || this.removals.has(`cameras/${id}`)) {
 			return notFound();
 		}
+
+		const camera = { ...found, ...this.overlays.get(`cameras/${id}`) };
 
 		if (action === undefined) {
 			return json(200, camera);

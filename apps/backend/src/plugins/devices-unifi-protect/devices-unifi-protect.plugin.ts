@@ -63,6 +63,12 @@ import { PROTECT_DISCOVERY_ENVIRONMENT, PROTECT_PROBE_TRANSPORT } from './servic
 import { ProtectDiscoveryService, createNodeDiscoveryEnvironment } from './services/protect-discovery.service';
 import { ProtectInventoryService } from './services/protect-inventory.service';
 import { ProtectMappingPreviewService } from './services/protect-mapping-preview.service';
+import {
+	PROTECT_DEFAULT_REALTIME_TIMINGS,
+	PROTECT_REALTIME_TIMINGS,
+	ProtectRealtimeService,
+} from './services/protect-realtime.service';
+import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
 @ApiTag({
 	tagName: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
@@ -87,6 +93,9 @@ import { ProtectMappingPreviewService } from './services/protect-mapping-preview
 		ProtectMappingLoaderService,
 		ProtectInventoryService,
 		ProtectMappingPreviewService,
+		ProtectSynchronizerService,
+		{ provide: PROTECT_REALTIME_TIMINGS, useValue: PROTECT_DEFAULT_REALTIME_TIMINGS },
+		ProtectRealtimeService,
 		ProtectAdoptionLockService,
 		ProtectAdoptionStreamsService,
 		ProtectAdoptionService,
@@ -204,6 +213,7 @@ Connects Smart Panel to a UniFi Protect console over its local Integration API. 
 
 - Cameras, doorbells, UP-Sense sensors and floodlights adopted as Smart Panel devices, with a mapping preview and RTSPS stream enablement per camera (on by default, opt out with \`stream.enabled: false\`)
 - A fully local integration with no UniFi cloud account and no hosted Smart Panel bridge
+- Live device state, detections and doorbell rings through the console's event WebSockets, with REST polling while they are unavailable
 - Certificate trust that never sends the API key over an unverified connection
 
 ## Setup
@@ -228,7 +238,15 @@ The API key is write-only: it is stored locally and never returned by the API.
 | \`stream_host_override\` | Host clients use to reach camera streams instead of the console host | — |
 | \`default_stream_quality\` | Preferred stream quality: \`high\`, \`medium\` or \`low\` | \`medium\` |
 | \`snapshot_min_interval_ms\` | Minimum interval between snapshots of one camera (500–60000) | \`2000 ms\` |
-| \`poll_interval_ms\` | Interval between inventory refreshes (5000–600000) | \`30000 ms\` |
+| \`poll_interval_ms\` | Interval between device state refreshes while real-time updates are unavailable (5000–600000) | \`30000 ms\` |
+
+## Real-time updates
+
+- Frames from the console's event WebSockets are applied within a second.
+- Detections without an end clear after 60 s.
+- Devices removed on the console are kept, shown disconnected and reported once.
+- Protect renames are copied unless the device was renamed in Smart Panel.
+- After three failed connection attempts, device state is polled every \`poll_interval_ms\` and one warning is raised until the connection recovers.
 
 ## TLS
 

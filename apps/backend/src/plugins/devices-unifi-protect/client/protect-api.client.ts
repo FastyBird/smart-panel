@@ -2,6 +2,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	PROTECT_MAX_ATTEMPTS,
+	PROTECT_MAX_FRAME_BYTES,
 	PROTECT_MAX_IMAGE_BYTES,
 	PROTECT_MAX_JSON_BYTES,
 	PROTECT_REQUEST_DEADLINE_MS,
@@ -10,6 +11,7 @@ import {
 	PROTECT_RTSPS_QUALITIES,
 	ProtectEndpoint,
 	ProtectRtspsQuality,
+	ProtectSubscriptionTopic,
 } from '../devices-unifi-protect.constants';
 import { ProtectApiError, ProtectErrorCategory, toProtectApiError } from '../errors/protect-api.error';
 
@@ -28,6 +30,12 @@ import { NodeProtectTransport, ProtectTransport, ProtectTransportResponse } from
 import { ProtectHttpsAgent } from './protect-https-agent';
 import { ProtectHeaders, ProtectRatePacer, parseRetryAfterMs, protectSleep } from './protect-rate-pacer';
 import { redactProtectText } from './protect-redaction';
+import {
+	NodeProtectSubscription,
+	ProtectSubscription,
+	ProtectSubscriptionHandlers,
+	protectSubscriptionEndpoint,
+} from './protect-subscription';
 import { ProtectTlsSettings } from './protect-tls-policy';
 
 export interface ProtectApiClientOptions {
@@ -237,6 +245,9 @@ function parseNvr(value: unknown): ProtectNvr | null {
 export class ProtectApiClient {
 	private readonly logger = createExtensionLogger(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, 'ApiClient');
 	private readonly apiKey: string;
+	private readonly host: string;
+	private readonly port: number;
+	private readonly subscriptions = new Set<ProtectSubscription>();
 	private readonly timeoutMs: number;
 	private readonly deadlineMs: number;
 	private readonly maxAttempts: number;
@@ -249,6 +260,8 @@ export class ProtectApiClient {
 
 	constructor(options: ProtectApiClientOptions) {
 		this.apiKey = options.apiKey;
+		this.host = options.host;
+		this.port = options.port;
 		this.timeoutMs = options.timeoutMs ?? PROTECT_REQUEST_TIMEOUT_MS;
 		this.deadlineMs = options.deadlineMs ?? PROTECT_REQUEST_DEADLINE_MS;
 		this.maxAttempts = options.maxAttempts ?? PROTECT_MAX_ATTEMPTS;
@@ -417,9 +430,86 @@ export class ProtectApiClient {
 		return { contentType: mediaType, data: response.body };
 	}
 
-	/** In-flight and later calls reject with `cancelled`. */
+	/**
+	 * Opens one of the two console WebSockets through this client's verified TLS agent, API key and pacer (one slot
+	 * per upgrade). Resolves once the upgrade succeeded; the failure operation is the endpoint template.
+	 */
+	async openSubscription(
+		topic: ProtectSubscriptionTopic,
+		handlers: ProtectSubscriptionHandlers,
+		options: ProtectCallOptions = {},
+	): Promise<ProtectSubscription> {
+		const endpoint = protectSubscriptionEndpoint(topic);
+		const cancelled = new ProtectApiError(ProtectErrorCategory.CANCELLED, endpoint);
+		const signal = options.signal ? AbortSignal.any([this.lifetime.signal, options.signal]) : this.lifetime.signal;
+
+		if (signal.aborted) {
+			throw cancelled;
+		}
+
+		if (this.agent === null) {
+			throw new ProtectApiError(ProtectErrorCategory.VALIDATION, endpoint);
+		}
+
+		const url = `wss://${this.host.includes(':') && !this.host.startsWith('[') ? `[${this.host}]` : this.host}:${this.port}${buildProtectPath(endpoint)}`;
+		const startedAt = Date.now();
+
+		try {
+			await this.pacer.acquire(signal);
+
+			const subscription = await NodeProtectSubscription.open({
+				url,
+				topic,
+				agent: this.agent,
+				apiKey: this.apiKey,
+				handshakeTimeoutMs: this.timeoutMs,
+				maxPayload: PROTECT_MAX_FRAME_BYTES,
+				signal,
+				handlers,
+				onRejected: (status, headers) => {
+					this.pacer.observe(headers);
+
+					const failure = mapProtectHttpStatus(endpoint, status, headers, Buffer.alloc(0));
+
+					if (status === 429) {
+						this.pacer.backOff(failure.retryAfterMs ?? PROTECT_RETRY_BASE_DELAY_MS);
+					}
+
+					return failure;
+				},
+				debug: (message) => this.logger.debug(redactProtectText(message, [this.apiKey])),
+				ended: (ended) => this.subscriptions.delete(ended),
+			});
+
+			if (this.lifetime.signal.aborted) {
+				subscription.close();
+
+				throw cancelled;
+			}
+
+			if (subscription.isSettled) {
+				// Ended between the upgrade and this continuation (for example an oversized first frame): never register it.
+				throw new ProtectApiError(ProtectErrorCategory.UNAVAILABLE, endpoint);
+			}
+
+			this.subscriptions.add(subscription);
+			this.logger.debug(redactProtectText(`WS ${endpoint} open ${Date.now() - startedAt}ms`, [this.apiKey]));
+
+			return subscription;
+		} catch (error) {
+			const failure = signal.aborted ? cancelled : this.withOperation(error, endpoint);
+
+			this.logger.debug(redactProtectText(`WS ${endpoint} failed (${failure.category})`, [this.apiKey]));
+
+			throw failure;
+		}
+	}
+
+	/** In-flight and later calls reject with `cancelled`; open subscriptions are terminated without `closed`. */
 	close(): void {
 		this.lifetime.abort();
+		[...this.subscriptions].forEach((subscription) => subscription.close());
+		this.subscriptions.clear();
 		this.transport.close();
 	}
 

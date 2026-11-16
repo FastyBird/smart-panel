@@ -12,3 +12,8 @@
 {"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000c01","modelKey":"light","isLightOn":false,"isPirMotionDetected":false}}
 {"_synthetic":true,"type":"add","item":{"id":"5f0000000000000000000a02","modelKey":"camera","state":"CONNECTING","name":"Synthetic doorbell with package camera","type":"UVC G4 Doorbell Pro PoE","mac":"0CEA1400A002"}}
 {"_synthetic":true,"type":"remove","item":{"id":"5f0000000000000000000a02","modelKey":"camera"}}
+{"_synthetic":true,"type":"update","item":{"id":"600cefafd5f365d6f83c4ef3","modelKey":"camera","name":"Front porch"}}
+{"_synthetic":true,"type":"update","item":{"id":"600cefafd5f365d6f83c4ef3","modelKey":"camera","ledSettings":{"isEnabled":true}}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","stats":{"light":{"value":8}}}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","tamperingDetectedAt":null}}
+{"_synthetic":true,"type":"remove","item":{"id":"5f0000000000000000000b01","modelKey":"sensor"}}

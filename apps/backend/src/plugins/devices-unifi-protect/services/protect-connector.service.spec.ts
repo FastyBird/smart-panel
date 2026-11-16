@@ -11,7 +11,7 @@ import {
 import { PROTECT_ERROR_MESSAGES, ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.error';
 import { ProtectConfigModel, ProtectTlsConfigModel } from '../models/config.model';
 
-import { ProtectConnectorService } from './protect-connector.service';
+import { ProtectConnectorService, ProtectSession, ProtectSessionEnd } from './protect-connector.service';
 
 const SENTINEL_KEY = 'PROTECT_SENTINEL_KEY_7f3a9c0d1e2b4a6f';
 const NVR: ProtectNvr = { id: 'nvr-1', name: 'Console', modelKey: 'nvr', mac: null, raw: {} };
@@ -926,5 +926,143 @@ describe('ProtectConnectorService', () => {
 
 		expect(service.getClient()).not.toBeNull();
 		expect(service.getConsoleIdentity()).toBeNull();
+	});
+
+	describe('session announcements', () => {
+		const IDENTIFIED_NVR: ProtectNvr = { ...NVR, id: '68b3ace392bf98c9fb76f70c', mac: '0CEA14003A69' };
+		const identified = (version: string | Error = '7.3.74'): FakeClient => {
+			const client = fakeClient(version);
+
+			client.getNvr.mockResolvedValue(IDENTIFIED_NVR);
+
+			return client;
+		};
+		let calls: [ProtectSession | null, ProtectSessionEnd | null][];
+
+		beforeEach(() => {
+			calls = [];
+			service.onSessionChange((session, reason) => {
+				calls.push([session, reason]);
+			});
+		});
+
+		it('announces a session when connected and its end when the console is lost', async () => {
+			const client = identified();
+
+			queue(client);
+			await service.start();
+			await service.settle();
+
+			expect(calls).toEqual([
+				[
+					{
+						generation: expect.any(Number) as number,
+						client,
+						identity: { nvrId: '68b3ace392bf98c9fb76f70c', nvrMacKey: '0cea14003a69' },
+					},
+					null,
+				],
+			]);
+
+			client.getMetaInfo.mockRejectedValue(apiError(ProtectErrorCategory.UNREACHABLE));
+			await jest.advanceTimersByTimeAsync(60_000);
+			await service.settle();
+
+			expect(calls).toHaveLength(2);
+			expect(calls[1]).toEqual([null, 'lost']);
+		});
+
+		it('announces a new session generation for every connect', async () => {
+			const first = identified();
+			const second = identified();
+
+			queue(first, second);
+			await service.start();
+			await service.settle();
+			first.getMetaInfo.mockRejectedValue(apiError(ProtectErrorCategory.UNREACHABLE));
+			await jest.advanceTimersByTimeAsync(60_000);
+			await jest.advanceTimersByTimeAsync(1000);
+			await service.settle();
+
+			const sessions = calls.filter(([session]) => session !== null).map(([session]) => session);
+
+			expect(sessions.map((session) => session.client)).toEqual([first, second]);
+			expect(sessions[1].generation).toBeGreaterThan(sessions[0].generation);
+		});
+
+		it('announces the end of a session as stopped on stop', async () => {
+			queue(identified());
+			await service.start();
+			await service.settle();
+			await service.stop();
+
+			expect(calls.map(([, reason]) => reason)).toEqual([null, 'stopped']);
+		});
+
+		it('announces stopped even when not connected', async () => {
+			await service.stop();
+
+			expect(calls).toEqual([[null, 'stopped']]);
+		});
+
+		it('announces stopped after the session was already lost', async () => {
+			const client = identified();
+
+			queue(client);
+			await service.start();
+			await service.settle();
+			client.getMetaInfo.mockRejectedValue(apiError(ProtectErrorCategory.UNREACHABLE));
+			await jest.advanceTimersByTimeAsync(60_000);
+			await service.settle();
+			await service.stop();
+
+			expect(calls.map(([, reason]) => reason)).toEqual([null, 'lost', 'stopped']);
+		});
+
+		it('announces nothing for a console without a usable identity', async () => {
+			queue(fakeClient());
+			await service.start();
+			await service.settle();
+
+			expect(service.getClient()).not.toBeNull();
+			expect(calls).toEqual([]);
+		});
+
+		it('emits nothing on a successful health check', async () => {
+			queue(identified());
+			await service.start();
+			await service.settle();
+			await jest.advanceTimersByTimeAsync(60_000);
+			await service.settle();
+
+			expect(calls).toHaveLength(1);
+		});
+
+		it('stops announcing to a listener that unsubscribed', async () => {
+			const other: unknown[] = [];
+			const unsubscribe = service.onSessionChange((session) => other.push(session));
+
+			unsubscribe();
+			queue(identified());
+			await service.start();
+			await service.settle();
+
+			expect(other).toEqual([]);
+			expect(calls).toHaveLength(1);
+		});
+
+		it('survives a listener that throws', async () => {
+			service.onSessionChange(() => {
+				throw new Error('listener SENTINEL detail');
+			});
+			queue(identified());
+			await service.start();
+			await service.settle();
+
+			expect(service.getStatus().connectionState).toBe('connected');
+			expect(calls).toHaveLength(1);
+			expect(logged.filter((line) => line.includes('UniFi Protect session listener failed'))).toHaveLength(1);
+			expect(logged.join('\n')).not.toContain('SENTINEL');
+		});
 	});
 });

@@ -18,6 +18,13 @@ import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DevicesService } from './devices.service';
 
+const INPUT_CHANNEL_CATEGORIES: readonly ChannelCategory[] = [
+	ChannelCategory.BUTTON,
+	ChannelCategory.DOORBELL,
+	ChannelCategory.BINARY_INPUT,
+	ChannelCategory.ANALOG_INPUT,
+];
+
 /**
  * Service for ingesting, validating, deduplicating, and dispatching hardware input occurrences.
  *
@@ -96,8 +103,7 @@ export class ChannelInputOccurrencesService {
 
 		// Validate channel category / input classification
 		const isInputChannel =
-			[ChannelCategory.BUTTON, ChannelCategory.BINARY_INPUT, ChannelCategory.ANALOG_INPUT].includes(channel.category) ||
-			property.permissions.includes(PermissionType.EVENT_ONLY);
+			INPUT_CHANNEL_CATEGORIES.includes(channel.category) || property.permissions.includes(PermissionType.EVENT_ONLY);
 		if (!isInputChannel) {
 			throw new DevicesValidationException(
 				`Channel ${channel.id} is not an input channel and property ${property.id} does not have EVENT_ONLY permission.`,
@@ -202,7 +208,7 @@ export class ChannelInputOccurrencesService {
 		);
 
 		const isInputChannel =
-			[ChannelCategory.BUTTON, ChannelCategory.BINARY_INPUT, ChannelCategory.ANALOG_INPUT].includes(channel.category) ||
+			INPUT_CHANNEL_CATEGORIES.includes(channel.category) ||
 			properties.some((p) => p.permissions.includes(PermissionType.EVENT_ONLY));
 
 		const supportedEvents = new Set<string>();
