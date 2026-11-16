@@ -701,4 +701,77 @@ describe('UnifiProtectDevicePlatform', () => {
 			true,
 		);
 	});
+
+	describe('session listeners', () => {
+		let addSpy: jest.SpyInstance;
+		let removeSpy: jest.SpyInstance;
+
+		const abortCalls = (spy: jest.SpyInstance): number =>
+			spy.mock.calls.filter((call: unknown[]) => call[0] === 'abort').length;
+
+		beforeEach(() => {
+			addSpy = jest.spyOn(AbortSignal.prototype, 'addEventListener');
+			removeSpy = jest.spyOn(AbortSignal.prototype, 'removeEventListener');
+		});
+
+		it('leaves no session listener behind after a confirmed command', async () => {
+			const result = platform.processBatch([brightnessUpdate(50)]);
+
+			await flush();
+			emit('light', LIGHT_ID, light({}, 3));
+			await expect(result).resolves.toBe(true);
+
+			expect(abortCalls(addSpy)).toBeGreaterThan(0);
+			expect(abortCalls(removeSpy)).toBe(abortCalls(addSpy));
+		});
+
+		it('leaves no session listener behind after a readback and after a failed command', async () => {
+			const readback = platform.processBatch([brightnessUpdate(50)]);
+
+			await jest.advanceTimersByTimeAsync(3000);
+			await expect(readback).resolves.toBe(true);
+
+			client.patchDevice.mockRejectedValue(apiError(ProtectErrorCategory.BAD_REQUEST));
+			await platform.executeBatch([brightnessUpdate(50)]);
+
+			expect(abortCalls(addSpy)).toBeGreaterThan(0);
+			expect(abortCalls(removeSpy)).toBe(abortCalls(addSpy));
+		});
+	});
+
+	it('ends an in-flight command when a new session is announced during the confirmation wait', async () => {
+		const result = platform.executeBatch([brightnessUpdate(50)]);
+
+		await jest.advanceTimersByTimeAsync(1000);
+		sessionListener?.({ generation: 2, client, identity: IDENTITY } as never, null);
+
+		await expect(result).resolves.toEqual([expect.objectContaining({ outcome: 'unavailable' })]);
+		await jest.advanceTimersByTimeAsync(5000);
+		expect(client.getLight).not.toHaveBeenCalled();
+	});
+
+	it('confirms from the stored state, never from a cache that runs ahead of it', async () => {
+		cache.set(LIGHT_KEY, light({}, 3));
+		client.getLight.mockResolvedValue(light({}, 6));
+
+		const outcomes = platform.executeBatch([brightnessUpdate(50)]);
+
+		await jest.advanceTimersByTimeAsync(3000);
+
+		await expect(outcomes).resolves.toEqual([expect.objectContaining({ outcome: 'not_confirmed' })]);
+	});
+
+	it('logs only the class name of an unexpected error', async () => {
+		class SocketBoom extends Error {}
+
+		client.patchDevice.mockRejectedValue(new SocketBoom('secret detail https://console/key'));
+
+		await platform.executeBatch([brightnessUpdate(50)]);
+
+		const failure = loggedLines().find((line) => line.includes('UniFi Protect command failed (failed)'));
+
+		expect(failure).toContain('error=SocketBoom');
+		expect(failure).not.toContain('secret detail');
+		expect(failure).not.toContain('https://');
+	});
 });

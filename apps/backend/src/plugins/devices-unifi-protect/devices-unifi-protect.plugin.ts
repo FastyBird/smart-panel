@@ -260,7 +260,8 @@ The API key is write-only: it is stored locally and never returned by the API.
 - A change counts as done only when the console confirms it, by its next device update or a read-back within a few seconds; otherwise the command fails and Smart Panel keeps showing the console's state.
 - Floodlight brightness has six levels on the console; a value between two levels is set to the nearest one.
 - Devices adopted before this version need to be adopted again to make the microphone volume and the floodlight status LED writable.
-- Known limit: room-level lighting intents are not forwarded to floodlights; control a floodlight through its own device.
+- Known limit: room-level lighting intents fail for floodlights; control a floodlight through its own device.
+- Known limit: a heavily queued command can exceed the core's 24 s command timeout and be reported as failed while it is later confirmed; the stored value stays correct because the console read-back is authoritative.
 
 ## TLS
 

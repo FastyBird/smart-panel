@@ -48,6 +48,8 @@ type ConfirmationSource = 'frame' | 'cache' | 'readback';
 interface CommandResult {
 	outcome: ProtectCommandOutcome;
 	source?: ConfirmationSource;
+	/** Class name of an unexpected (non-Protect) error; never its message. */
+	errorClass?: string;
 }
 
 /** What one batch holds on to: the session it started in. Any change of session ends the batch. */
@@ -55,7 +57,8 @@ interface SessionContext {
 	client: ProtectApiClient;
 	identity: ProtectConsoleIdentity;
 	generation: number;
-	ended: Promise<void>;
+	/** Aborted when the session ends; listeners are added per awaited call and removed when it settles. */
+	signal: AbortSignal;
 }
 
 type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
@@ -68,20 +71,6 @@ interface QueueEntry {
 interface DeviceQueue {
 	waiting: QueueEntry[];
 }
-
-interface SessionSignal {
-	promise: Promise<void>;
-	fire: () => void;
-}
-
-const createSignal = (): SessionSignal => {
-	let fire: () => void = () => undefined;
-	const promise = new Promise<void>((resolve) => {
-		fire = resolve;
-	});
-
-	return { promise, fire };
-};
 
 const FAILURE_OUTCOMES = new Set<ProtectCommandOutcome>([
 	'not_controllable',
@@ -129,6 +118,13 @@ const classifyPatchError = (error: unknown): ProtectCommandOutcome | 'ambiguous'
 	}
 };
 
+/** The constructor name only (never a message), and only when it is a plain identifier. */
+const errorClassOf = (error: unknown): string => {
+	const name = (error as { constructor?: { name?: unknown } } | null | undefined)?.constructor?.name;
+
+	return typeof name === 'string' && /^[A-Za-z0-9_$]{1,64}$/.test(name) ? name : 'unknown';
+};
+
 const mappingNameOf = (property: ChannelPropertyEntity): string | null =>
 	property instanceof ProtectChannelPropertyEntity && typeof property.protectMappingName === 'string'
 		? property.protectMappingName
@@ -145,7 +141,7 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 	/** A key is present while a command of that device holds its turn; its waiting entries are the FIFO. */
 	private readonly queues = new Map<string, DeviceQueue>();
 	private generation = 0;
-	private signal: SessionSignal = createSignal();
+	private session = new AbortController();
 	private unsubscribeObserver: (() => void) | null = null;
 	private unsubscribeSession: (() => void) | null = null;
 
@@ -199,8 +195,8 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 	async executeBatch(updates: IDevicePropertyData[]): Promise<ProtectPropertyOutcome[]> {
 		try {
 			return await this.execute(updates);
-		} catch {
-			this.logFailure('failed', updates[0]?.property.id ?? 'unknown', null);
+		} catch (error) {
+			this.logFailure('failed', updates[0]?.property.id ?? 'unknown', null, errorClassOf(error));
 
 			return updates.map((update) => ({
 				propertyId: update.property.id,
@@ -284,7 +280,7 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 			client,
 			identity,
 			generation: this.generation,
-			ended: this.signal.promise,
+			signal: this.session.signal,
 		};
 		const outcomes = new Map<string, ProtectCommandOutcome>();
 		let stopped = false;
@@ -314,6 +310,7 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 					result.outcome,
 					command.propertyIds[0],
 					command.mappingNames.get(command.propertyIds[0]) ?? null,
+					result.errorClass,
 				);
 			}
 		}
@@ -432,10 +429,12 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 			const verdict = classifyPatchError(sent.error);
 
 			if (verdict !== 'ambiguous') {
-				return { outcome: verdict };
+				return verdict === 'failed' && !(sent.error instanceof ProtectApiError)
+					? { outcome: verdict, errorClass: errorClassOf(sent.error) }
+					: { outcome: verdict };
 			}
 
-			const matched = await this.readback(command, context, waiter);
+			const matched = await this.readback(command, context);
 
 			if (matched === null) {
 				return { outcome: 'unavailable' };
@@ -462,7 +461,7 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 			return { outcome: 'confirmed', source: 'frame' };
 		}
 
-		const matched = await this.readback(command, context, waiter);
+		const matched = await this.readback(command, context);
 
 		if (matched === null) {
 			return { outcome: 'unavailable' };
@@ -472,11 +471,7 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 	}
 
 	/** True when the console shows the commanded values, null when the session ended meanwhile. */
-	private async readback(
-		command: ProtectDeviceCommand,
-		context: SessionContext,
-		waiter: ProtectConfirmationWaiter,
-	): Promise<boolean | null> {
+	private async readback(command: ProtectDeviceCommand, context: SessionContext): Promise<boolean | null> {
 		const sequence = this.synchronizer.getDeviceSequence(command.modelKey, command.protectDeviceId);
 		const options = { deadlineMs: PROTECT_COMMAND_READBACK_DEADLINE_MS };
 		const read = await this.live(
@@ -513,10 +508,6 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 			return false;
 		}
 
-		if (waiter.matched) {
-			return true;
-		}
-
 		// A discarded readback means a newer frame won: judge by what is stored now, never by the discarded object.
 		return protectFieldsMatch(
 			applied.value ? raw : this.synchronizer.getStoredDevice(command.modelKey, command.protectDeviceId),
@@ -530,7 +521,24 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 			(value): Settled<T> => ({ ok: true, value }),
 			(error: unknown): Settled<T> => ({ ok: false, error }),
 		);
-		const result = await Promise.race<Settled<T> | null>([settled, context.ended.then((): null => null)]);
+
+		if (context.signal.aborted) {
+			return null;
+		}
+
+		let onAbort: () => void = () => undefined;
+		const ended = new Promise<null>((resolve) => {
+			onAbort = () => resolve(null);
+			context.signal.addEventListener('abort', onAbort, { once: true });
+		});
+		let result: Settled<T> | null;
+
+		try {
+			result = await Promise.race<Settled<T> | null>([settled, ended]);
+		} finally {
+			// Nothing of this call may stay reachable from the session once it settled.
+			context.signal.removeEventListener('abort', onAbort);
+		}
 
 		return result !== null && this.generation === context.generation ? result : null;
 	}
@@ -584,8 +592,8 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 	/** Session end: every in-flight command ends as unavailable, nothing waiting for a turn is ever sent. */
 	private endSession(): void {
 		this.generation++;
-		this.signal.fire();
-		this.signal = createSignal();
+		this.session.abort();
+		this.session = new AbortController();
 		this.waiters.cancelAll();
 
 		for (const queue of this.queues.values()) {
@@ -596,7 +604,12 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 		}
 	}
 
-	private logFailure(outcome: ProtectCommandOutcome, propertyId: string, mappingName: string | null): void {
+	private logFailure(
+		outcome: ProtectCommandOutcome,
+		propertyId: string,
+		mappingName: string | null,
+		errorClass?: string,
+	): void {
 		if (!FAILURE_OUTCOMES.has(outcome)) {
 			return;
 		}
@@ -604,7 +617,7 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 		// Keyed by the outcome, a bounded set: one line per outcome and interval.
 		if (this.failureLog.consume(outcome).log) {
 			this.logger.warn(
-				`UniFi Protect command failed (${outcome}) property=${propertyId} mapping=${mappingName ?? 'unknown'}`,
+				`UniFi Protect command failed (${outcome}) property=${propertyId} mapping=${mappingName ?? 'unknown'}${errorClass === undefined ? '' : ` error=${errorClass}`}`,
 			);
 		}
 	}
