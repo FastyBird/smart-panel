@@ -417,7 +417,9 @@ describe('ProtectApiClient against the fake console', () => {
 
 		it('rejects a subscription that settled during the open handshake and never registers it', async () => {
 			const client = build();
-			const realOpen = NodeProtectSubscription.open.bind(NodeProtectSubscription);
+			const realOpen = NodeProtectSubscription.open.bind(
+				NodeProtectSubscription,
+			) as typeof NodeProtectSubscription.open;
 			const spy = jest.spyOn(NodeProtectSubscription, 'open').mockImplementationOnce(async (connection) => {
 				const opened = await realOpen(connection);
 
