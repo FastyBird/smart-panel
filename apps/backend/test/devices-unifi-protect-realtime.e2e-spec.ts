@@ -448,7 +448,16 @@ describe('UniFi Protect real-time sync (e2e)', () => {
 
 		fake.sendFrame('events', eventFrame(RING_EVENT, 'add'));
 		fake.sendFrame('events', eventFrame('5f00000000000000000e0001', 'add'));
-		await sleep(400);
+
+		// Frames of one subscription are applied in order: once this marker (a distinct baby-cry event) shows up,
+		// the replayed ring and motion frames before it have been processed too, so no timed wait is needed.
+		const marker = '5f00000000000000000e0006';
+		const babyCry = async (): Promise<unknown> => readValue(frontDoor, 'sound_detection.baby_cry', 'detected');
+
+		fake.sendFrame('events', eventFrame(marker, 'add'));
+		await eventually(async () => expect(await babyCry()).toBe(true), 2000);
+		fake.sendFrame('events', eventFrame(marker, 'update'));
+		await eventually(async () => expect(await babyCry()).toBe(false), 2000);
 
 		expect(publishSpy).toHaveBeenCalledTimes(1);
 		expect(occurrences()).toHaveLength(1);
