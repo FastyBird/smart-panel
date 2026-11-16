@@ -19,7 +19,6 @@ import { ChannelsPropertiesService } from '../src/modules/devices/services/chann
 import { ChannelsService } from '../src/modules/devices/services/channels.service';
 import { PropertyCommandService } from '../src/modules/devices/services/property-command.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
-import { UserRole } from '../src/modules/users/users.constants';
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	DEVICES_UNIFI_PROTECT_PLUGIN_PREFIX,
@@ -53,7 +52,6 @@ const colonUpper = (fingerprint: string): string => (fingerprint.match(/../g) ??
 describe('UniFi Protect control (e2e)', () => {
 	const api = '/api/v1';
 	const base = `${api}/plugins/${DEVICES_UNIFI_PROTECT_PLUGIN_PREFIX}`;
-	const statusUrl = `${base}/status`;
 	const configUrl = `${api}/modules/config/config/plugin/${DEVICES_UNIFI_PROTECT_PLUGIN_NAME}`;
 
 	let app: NestFastifyApplication;
@@ -163,7 +161,7 @@ describe('UniFi Protect control (e2e)', () => {
 	};
 
 	const propertyId = async (deviceId: string, channelIdentifier: string, propertyIdentifier: string) =>
-		(await channelProperty(deviceId, channelIdentifier, propertyIdentifier)).property?.id as string;
+		(await channelProperty(deviceId, channelIdentifier, propertyIdentifier)).property?.id;
 
 	const command = async (entries: [string, string, string, unknown][]) =>
 		app.get(PropertyCommandService).executePropertyCommands(
