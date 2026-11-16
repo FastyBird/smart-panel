@@ -487,6 +487,11 @@ export class ProtectApiClient {
 				throw cancelled;
 			}
 
+			if (subscription.isSettled) {
+				// Ended between the upgrade and this continuation (for example an oversized first frame): never register it.
+				throw new ProtectApiError(ProtectErrorCategory.UNAVAILABLE, endpoint);
+			}
+
 			this.subscriptions.add(subscription);
 			this.logger.debug(redactProtectText(`WS ${endpoint} open ${Date.now() - startedAt}ms`, [this.apiKey]));
 

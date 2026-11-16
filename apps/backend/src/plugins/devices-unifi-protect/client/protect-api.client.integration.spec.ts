@@ -20,6 +20,7 @@ import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.err
 
 import { ProtectApiClient, ProtectApiClientOptions } from './protect-api.client';
 import { fetchProtectConsoleSystem } from './protect-console-system';
+import { NodeProtectSubscription } from './protect-subscription';
 
 const CAMERA_ID = '600cefafd5f365d6f83c4ef3';
 const BASE = '/proxy/protect/integration/v1';
@@ -412,6 +413,29 @@ describe('ProtectApiClient against the fake console', () => {
 
 			expect(events.message).toHaveBeenCalledWith(line);
 			expect(devices.message).not.toHaveBeenCalled();
+		});
+
+		it('rejects a subscription that settled during the open handshake and never registers it', async () => {
+			const client = build();
+			const realOpen = NodeProtectSubscription.open.bind(NodeProtectSubscription);
+			const spy = jest.spyOn(NodeProtectSubscription, 'open').mockImplementationOnce(async (connection) => {
+				const opened = await realOpen(connection);
+
+				// An oversized frame processed between the upgrade and the caller's continuation ends the socket.
+				opened.close();
+
+				return opened;
+			});
+
+			try {
+				await expect(client.openSubscription('events', makeHandlers())).rejects.toMatchObject({
+					category: ProtectErrorCategory.UNAVAILABLE,
+					operation: 'subscribe/events',
+				});
+				expect((client as unknown as { subscriptions: Set<unknown> }).subscriptions.size).toBe(0);
+			} finally {
+				spy.mockRestore();
+			}
 		});
 
 		it('ignores binary frames and reports pongs', async () => {

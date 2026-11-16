@@ -122,6 +122,11 @@ export class NodeProtectSubscription implements ProtectSubscription {
 
 	private settled = false;
 
+	/** True once the socket ended or was closed; an opened subscription can already be settled (oversized first frame). */
+	get isSettled(): boolean {
+		return this.settled;
+	}
+
 	private constructor(
 		private readonly socket: WebSocket,
 		readonly topic: ProtectSubscriptionTopic,
