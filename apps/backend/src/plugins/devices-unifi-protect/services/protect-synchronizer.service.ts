@@ -401,15 +401,24 @@ export class ProtectSynchronizerService {
 			return;
 		}
 
-		if (frame.action === 'add' && cached === null && this.cache.size >= MAX_CACHED_DEVICES) {
-			this.framesIgnored++;
+		await this.ensureIndex(identity);
 
+		if (this.aborted()) {
 			return;
 		}
 
-		await this.ensureIndex(identity);
-
 		const device = this.adopted(frame);
+
+		if (frame.action === 'add' && cached === null && this.cache.size >= MAX_CACHED_DEVICES) {
+			// Adopted devices outrank unadopted ones at the cap, as in a snapshot; the excess is bounded by the index.
+			if (device === undefined) {
+				this.framesIgnored++;
+
+				return;
+			}
+
+			this.evictUnadopted();
+		}
 
 		if (frame.action === 'remove') {
 			this.cache.delete(key);
@@ -841,6 +850,19 @@ export class ProtectSynchronizerService {
 
 		await this.applyEffects(effects, [...this.retries.keys()]);
 		this.scheduleEventTimer();
+	}
+
+	private evictUnadopted(): void {
+		for (const key of this.cache.keys()) {
+			const [modelKey, id] = key.split('\u0000');
+			const device = this.index.get(id);
+
+			if (device === undefined || (device.modelKey !== null && device.modelKey !== modelKey)) {
+				this.cache.delete(key);
+
+				return;
+			}
+		}
 	}
 
 	private adopted(frame: ProtectFrame): IndexedDevice | undefined {

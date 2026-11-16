@@ -359,6 +359,46 @@ describe('ProtectSynchronizerService', () => {
 		expect(properties.update).toHaveBeenCalled();
 	});
 
+	describe('device add frames at the cache cap', () => {
+		const fullCache = async (): Promise<void> => {
+			const filler = Array.from({ length: 4096 }, (_, index) =>
+				entry('sensor', { ...sensors[0], id: `5f00000000000000ff${String(index).padStart(6, '0')}` }),
+			);
+
+			await service.applySnapshot(IDENTITY, snapshot(filler, false));
+
+			expect((service as any).cache.size).toBe(4096);
+		};
+
+		it('admits an adopted device by evicting an unadopted entry', async () => {
+			await fullCache();
+
+			service.enqueueFrame(IDENTITY, frameFor('add', sensors[0]));
+			await service.idle();
+
+			expect((service as any).cache.has(`sensor\u0000${SENSOR_ID}`)).toBe(true);
+			expect((service as any).cache.size).toBe(4096);
+
+			properties.update.mockClear();
+			service.enqueueFrame(IDENTITY, frameFor('update', { id: SENSOR_ID, modelKey: 'sensor', isOpened: true }));
+			await service.idle();
+
+			expect(properties.update).toHaveBeenCalled();
+		});
+
+		it('still discards an unadopted device', async () => {
+			await fullCache();
+
+			const id = '5f0000000000000000aaaa01';
+
+			service.enqueueFrame(IDENTITY, frameFor('add', { ...sensors[0], id }));
+			await service.idle();
+
+			expect((service as any).cache.has(`sensor\u0000${id}`)).toBe(false);
+			expect((service as any).cache.size).toBe(4096);
+		});
+	});
+
 	it('resolves the removal when the device reappears', async () => {
 		await prime();
 		service.enqueueFrame(IDENTITY, frameFor('remove', { id: SENSOR_ID, modelKey: 'sensor' }));
