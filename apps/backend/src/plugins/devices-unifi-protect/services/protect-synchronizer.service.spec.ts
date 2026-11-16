@@ -695,7 +695,30 @@ describe('ProtectSynchronizerService', () => {
 
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
 
+		// Re-asserted on every removal; the connectivity service drops the write when the stored state already matches.
+		expect(sensorCalls()).toHaveLength(3);
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
+	});
+
+	it('reasserts disconnected on every removal snapshot after another writer reconnects the device', async () => {
+		await prime();
+		const sensorCalls = (): unknown[] =>
+			connectivity.trySetConnectionState.mock.calls.filter((call) => call[0] === SENSOR_PANEL);
+		service.enqueueFrame(IDENTITY, frameFor('remove', { id: SENSOR_ID, modelKey: 'sensor' }));
+		await service.idle();
+
+		expect(sensorCalls()).toHaveLength(1);
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+		// Another writer (an in-flight adoption) sets the device connected; the persisted-state compare lives in the
+		// connectivity service, so the synchronizer has to ask again on every confirmed removal.
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
 		expect(sensorCalls()).toHaveLength(2);
+		expect(connectivity.trySetConnectionState).toHaveBeenLastCalledWith(SENSOR_PANEL, {
+			state: ConnectionState.DISCONNECTED,
+		});
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
 	});
 
 	it('retries a removal notification that failed on a later removal snapshot', async () => {

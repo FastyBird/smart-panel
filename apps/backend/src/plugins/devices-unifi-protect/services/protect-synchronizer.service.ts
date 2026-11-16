@@ -123,7 +123,6 @@ export class ProtectSynchronizerService {
 	/** Devices whose removal was handled (state write and notification attempted) since the last reset. */
 	private readonly removed = new Set<string>();
 	/** Removed devices whose `disconnected` write has not succeeded yet, and whose notification has not been sent. */
-	private readonly removalStatePending = new Set<string>();
 	private readonly removalNotifyPending = new Set<string>();
 	/** Last Protect name successfully propagated (or seen before any change) per device id; a failed rename retries. */
 	private readonly propagatedNames = new Map<string, string>();
@@ -225,7 +224,6 @@ export class ProtectSynchronizerService {
 		this.indexGeneration++;
 		this.lastWritten.clear();
 		this.removed.clear();
-		this.removalStatePending.clear();
 		this.removalNotifyPending.clear();
 		this.propagatedNames.clear();
 		this.removalChecked.clear();
@@ -1179,7 +1177,8 @@ export class ProtectSynchronizerService {
 
 	/**
 	 * Marks a device the console no longer lists: `disconnected` plus one issue. The state write and the notification
-	 * are separate steps; whichever failed is retried the next time the removal is seen (next snapshot or remove frame).
+	 * are separate steps; the state is re-asserted and a failed notification retried each time the removal is seen
+	 * (next snapshot or remove frame).
 	 */
 	private async markRemoved(device: IndexedDevice): Promise<void> {
 		const id = device.protectDeviceId;
@@ -1190,13 +1189,12 @@ export class ProtectSynchronizerService {
 
 		if (!this.removed.has(id)) {
 			this.removed.add(id);
-			this.removalStatePending.add(id);
 			this.removalNotifyPending.add(id);
 		}
 
-		if (this.removalStatePending.has(id) && (await this.setConnectionState(device, ConnectionState.DISCONNECTED))) {
-			this.removalStatePending.delete(id);
-		}
+		// Asserted on every confirmed removal: the connectivity service compares against the persisted state and writes
+		// nothing when equal, so this also undoes another writer (an in-flight adoption) reconnecting the device.
+		await this.setConnectionState(device, ConnectionState.DISCONNECTED);
 
 		if (this.aborted() || !this.removalNotifyPending.has(id)) {
 			return;
@@ -1249,7 +1247,6 @@ export class ProtectSynchronizerService {
 			}
 
 			this.removed.delete(id);
-			this.removalStatePending.delete(id);
 			this.removalNotifyPending.delete(id);
 			this.removalChecked.add(id);
 		} catch {
