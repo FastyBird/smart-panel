@@ -461,7 +461,7 @@
 					"name": "Volume",
 					"dataType": "uchar",
 					"permissions": [
-						"ro"
+						"rw"
 					],
 					"unit": "%",
 					"format": [
