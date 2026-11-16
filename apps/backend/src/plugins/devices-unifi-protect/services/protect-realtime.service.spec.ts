@@ -204,7 +204,7 @@ describe('ProtectRealtimeService', () => {
 			getCounters: jest.fn(() => ({ ignoredEventCount: 2 })),
 		};
 		notifications = {
-			notify: jest.fn(() => Promise.resolve(null)),
+			notify: jest.fn(() => Promise.resolve({ id: 'notification' })),
 			resolve: jest.fn(() => Promise.resolve(true)),
 		};
 		pollInterval = 5000;
@@ -541,6 +541,29 @@ describe('ProtectRealtimeService', () => {
 		expect(synchronizer.applySnapshot).not.toHaveBeenCalled();
 	});
 
+	it('keeps the rate-limit failure when the sibling open is cancelled first', async () => {
+		const events = failure(ProtectErrorCategory.RATE_LIMITED, 9000);
+
+		client.openSubscription.mockImplementation(
+			(topic: ProtectSubscriptionTopic, _handlers: ProtectSubscriptionHandlers, options: { signal: AbortSignal }) => {
+				order.push(`open:${topic}`);
+
+				if (topic === 'events') {
+					return Promise.reject(events);
+				}
+
+				return new Promise((_resolve, reject) => {
+					options.signal.addEventListener('abort', () =>
+						reject(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'subscribe/devices')),
+					);
+				});
+			},
+		);
+		await connect();
+
+		expect(logged.some((line) => line.includes('(rate_limited); retry in 9000 ms'))).toBe(true);
+	});
+
 	it('treats an incomplete console read as a failed cycle', async () => {
 		listError.sensors = new ProtectApiError(ProtectErrorCategory.UNAVAILABLE, 'sensors');
 		await connect();
@@ -837,6 +860,84 @@ describe('ProtectRealtimeService', () => {
 			expect(notifications.resolve).toHaveBeenCalledTimes(2);
 		});
 
+		it('retries the warning on the next failed cycle when notify returns null', async () => {
+			notifications.notify.mockResolvedValueOnce(null);
+			await failCycles(3);
+
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(4000);
+			await service.settle();
+
+			expect(service.getState()).toBe('polling');
+			expect(notifications.notify).toHaveBeenCalledTimes(2);
+
+			await jest.advanceTimersByTimeAsync(8000);
+			await service.settle();
+
+			expect(notifications.notify).toHaveBeenCalledTimes(2);
+		});
+
+		it('returns early for concurrent raises while notify is pending', async () => {
+			const gate = deferred<unknown>();
+
+			notifications.notify.mockImplementationOnce(() => gate.promise);
+			await failCycles(3);
+			await jest.advanceTimersByTimeAsync(4000);
+			await service.settle();
+
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+			gate.resolve({ id: 'notification' });
+			await jest.advanceTimersByTimeAsync(8000);
+
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+		});
+
+		it('raises the warning again when polling resumed while a slow resolve was pending', async () => {
+			await failCycles(3);
+
+			const gate = deferred<boolean>();
+
+			notifications.resolve.mockImplementationOnce(() => gate.promise);
+			openError = null;
+			await jest.advanceTimersByTimeAsync(4000);
+			await service.settle();
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+			openError = {
+				devices: failure(ProtectErrorCategory.UNAVAILABLE),
+				events: failure(ProtectErrorCategory.UNAVAILABLE),
+			};
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+
+			for (let index = 0; index < 8 && service.getState() !== 'polling'; index++) {
+				await jest.advanceTimersByTimeAsync(2000 * 2 ** index);
+				await service.settle();
+			}
+
+			expect(service.getState()).toBe('polling');
+			// The slow resolve is still pending, so the flag keeps the new outage from raising a second warning.
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+			gate.resolve(true);
+			await jest.advanceTimersByTimeAsync(0);
+			await service.settle();
+
+			expect(notifications.notify).toHaveBeenCalledTimes(2);
+
+			// The warning is now active again, so a later recovery resolves it a second time.
+			openError = null;
+			await jest.advanceTimersByTimeAsync(60_000);
+			await service.settle();
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(2);
+		});
+
 		it('keeps the issue raised once when the console drops again within 30 s of recovering', async () => {
 			await failCycles(3);
 			openError = null;
@@ -980,6 +1081,9 @@ describe('ProtectRealtimeService', () => {
 			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
 
 			expect(service.getState()).toBe('polling');
+
+			await jest.advanceTimersByTimeAsync(0);
+
 			expect(notifications.notify).toHaveBeenCalledTimes(1);
 		});
 

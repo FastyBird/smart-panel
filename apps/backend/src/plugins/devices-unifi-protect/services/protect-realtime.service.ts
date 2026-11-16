@@ -102,6 +102,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 	private polling = false;
 	private pollEpoch = 0;
 	private issueActive = false;
+	private issueChain: Promise<void> = Promise.resolve();
 	private streamingSince: number | null = null;
 	private pollTimer: NodeJS.Timeout | null = null;
 	private generation = 0;
@@ -257,7 +258,13 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 				return;
 			}
 
-			const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+			// The first failure aborts its sibling, which then rejects as cancelled: keep the original failure (and its
+			// Retry-After), and fall back to a cancellation only when every rejection is one.
+			const rejections = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+			const rejected =
+				rejections.find(
+					(result) => toProtectApiError(result.reason, 'system').category !== ProtectErrorCategory.CANCELLED,
+				) ?? rejections[0];
 
 			if (rejected !== undefined) {
 				throw rejected.reason;
@@ -492,6 +499,9 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 
 		if (!this.polling && this.consecutiveFailures >= this.timings.degradedAfterFailures) {
 			this.startPolling();
+		} else if (this.polling) {
+			// A warning that could not be stored is retried on every further failed cycle (no-op while it is active).
+			void this.raiseIssue();
 		}
 
 		let delay = this.timings.reconnectDelay(this.consecutiveFailures - 1);
@@ -598,54 +608,90 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	/** Raises the `realtime` issue once; a no-op while it is already open. notify() never throws. */
-	private async raiseIssue(): Promise<void> {
+	/**
+	 * Raises the `realtime` issue once; a no-op while it is already open. The flag is set before the await so concurrent
+	 * calls return early, and cleared again when the notification was not stored (notify() returns null) so the next
+	 * call retries. Raise and resolve run on one chain, so they never overlap.
+	 */
+	private raiseIssue(): Promise<void> {
 		if (this.issueActive) {
-			return;
+			return Promise.resolve();
 		}
 
 		this.issueActive = true;
 
-		await this.notifications.notify({
-			source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
-			kind: NotificationKind.ISSUE,
-			key: PROTECT_REALTIME_NOTIFICATION_KEY,
-			severity: NotificationSeverity.WARNING,
-			title: 'UniFi Protect real-time updates unavailable',
-			message:
-				'Smart Panel cannot keep the UniFi Protect event connection open and is polling device state instead. ' +
-				'Motion, smart detections and doorbell rings are not received until the connection recovers.',
-			actions: [
-				{
-					type: NotificationActionType.SERVICE,
-					label: 'Restart service',
-					extension_kind: 'plugin',
-					extension_type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
-					service_id: DEVICES_UNIFI_PROTECT_CONNECTOR_SERVICE_ID,
-					operation: 'restart',
-					primary: true,
-				},
-				{
-					type: NotificationActionType.LINK,
-					label: 'Open UniFi Protect settings',
-					url: `/extensions/${DEVICES_UNIFI_PROTECT_PLUGIN_NAME}`,
-				},
-			],
-		});
+		return this.enqueueIssue(() => this.sendIssue());
 	}
 
 	/** Idempotent. A rejected resolve keeps the flag so the next recovery or stop retries it (the HA rule). */
-	private async resolveIssue(): Promise<void> {
-		if (!this.issueActive) {
-			return;
-		}
+	private resolveIssue(): Promise<void> {
+		return this.enqueueIssue(async () => {
+			if (!this.issueActive) {
+				return;
+			}
 
+			try {
+				await this.notifications.resolve(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, PROTECT_REALTIME_NOTIFICATION_KEY);
+
+				this.issueActive = false;
+			} catch {
+				this.logger.warn('UniFi Protect real-time notification could not be resolved');
+
+				return;
+			}
+
+			// Polling may have resumed while the resolve was pending; that outage's raise returned early on the flag.
+			if (this.polling) {
+				this.issueActive = true;
+				await this.sendIssue();
+			}
+		});
+	}
+
+	private enqueueIssue(operation: () => Promise<void>): Promise<void> {
+		const next = this.issueChain.then(operation);
+
+		this.issueChain = next;
+
+		return next;
+	}
+
+	/** Never throws; the caller has already set `issueActive`. */
+	private async sendIssue(): Promise<void> {
 		try {
-			await this.notifications.resolve(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, PROTECT_REALTIME_NOTIFICATION_KEY);
+			const notification = await this.notifications.notify({
+				source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+				kind: NotificationKind.ISSUE,
+				key: PROTECT_REALTIME_NOTIFICATION_KEY,
+				severity: NotificationSeverity.WARNING,
+				title: 'UniFi Protect real-time updates unavailable',
+				message:
+					'Smart Panel cannot keep the UniFi Protect event connection open and is polling device state instead. ' +
+					'Motion, smart detections and doorbell rings are not received until the connection recovers.',
+				actions: [
+					{
+						type: NotificationActionType.SERVICE,
+						label: 'Restart service',
+						extension_kind: 'plugin',
+						extension_type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+						service_id: DEVICES_UNIFI_PROTECT_CONNECTOR_SERVICE_ID,
+						operation: 'restart',
+						primary: true,
+					},
+					{
+						type: NotificationActionType.LINK,
+						label: 'Open UniFi Protect settings',
+						url: `/extensions/${DEVICES_UNIFI_PROTECT_PLUGIN_NAME}`,
+					},
+				],
+			});
 
-			this.issueActive = false;
+			if (notification === null) {
+				this.issueActive = false;
+			}
 		} catch {
-			this.logger.warn('UniFi Protect real-time notification could not be resolved');
+			this.issueActive = false;
+			this.logger.warn('UniFi Protect real-time notification could not be raised');
 		}
 	}
 
