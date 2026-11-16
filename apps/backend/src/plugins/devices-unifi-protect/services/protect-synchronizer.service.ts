@@ -120,7 +120,6 @@ export class ProtectSynchronizerService {
 
 	/** Last successfully persisted value per property id. */
 	private readonly lastWritten = new Map<string, ProtectMappingScalar>();
-	private readonly lastState = new Map<string, string>();
 	/** Devices whose removal was handled (state write and notification attempted) since the last reset. */
 	private readonly removed = new Set<string>();
 	/** Removed devices whose `disconnected` write has not succeeded yet, and whose notification has not been sent. */
@@ -225,7 +224,6 @@ export class ProtectSynchronizerService {
 		this.indexDirty = true;
 		this.indexGeneration++;
 		this.lastWritten.clear();
-		this.lastState.clear();
 		this.removed.clear();
 		this.removalStatePending.clear();
 		this.removalNotifyPending.clear();
@@ -1095,21 +1093,13 @@ export class ProtectSynchronizerService {
 	}
 
 	private async setConnectionState(device: IndexedDevice, state: ConnectionState): Promise<boolean> {
-		if (this.lastState.get(device.panelId) === String(state)) {
-			return true;
-		}
-
+		// No local cache: the connectivity service compares against the persisted state and is a no-op when equal,
+		// so a state changed by another writer (e.g. re-adoption) is repaired by the next frame or snapshot.
 		if (this.aborted()) {
 			return false;
 		}
 
-		const written = await this.connectivity.trySetConnectionState(device.panelId, { state }).catch(() => false);
-
-		if (written && !this.aborted()) {
-			this.lastState.set(device.panelId, String(state));
-		}
-
-		return written;
+		return this.connectivity.trySetConnectionState(device.panelId, { state }).catch(() => false);
 	}
 
 	private async clearMappings(device: IndexedDevice, mappingNames: ReadonlySet<string>): Promise<void> {

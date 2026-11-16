@@ -177,6 +177,18 @@ describe('ProtectSynchronizerService', () => {
 		expect(updatedIds().some((id) => id.endsWith('connection_state'))).toBe(false);
 	});
 
+	it('re-asserts the connection state on every snapshot so a change by another writer is repaired', async () => {
+		const connected = snapshot([entry('camera', cameras[0])]);
+		await service.applySnapshot(IDENTITY, connected);
+		expect(connectivity.trySetConnectionState).toHaveBeenCalledWith(CAMERA_PANEL, { state: 'connected' });
+
+		// Another writer (e.g. re-adoption) persists `disconnected`; the next snapshot must still report `connected`.
+		connectivity.trySetConnectionState.mockClear();
+		await service.applySnapshot(IDENTITY, connected);
+
+		expect(connectivity.trySetConnectionState).toHaveBeenCalledWith(CAMERA_PANEL, { state: 'connected' });
+	});
+
 	it('applies a recorded device frame within the same tick of the queue', async () => {
 		await prime();
 
@@ -545,7 +557,6 @@ describe('ProtectSynchronizerService', () => {
 		expect(properties.update).toHaveBeenCalledTimes(1);
 		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
 		expect((service as any).lastWritten.size).toBe(0);
-		expect((service as any).lastState.size).toBe(0);
 	});
 
 	it('keeps no index after a reset that happens while the index is being built', async () => {
@@ -667,22 +678,24 @@ describe('ProtectSynchronizerService', () => {
 
 	it('retries a failed disconnected write for a removed device on the next snapshot, notifying once', async () => {
 		await prime();
+		const sensorCalls = (): unknown[] =>
+			connectivity.trySetConnectionState.mock.calls.filter((call) => call[0] === SENSOR_PANEL);
 		connectivity.trySetConnectionState.mockResolvedValueOnce(false);
 		service.enqueueFrame(IDENTITY, frameFor('remove', { id: SENSOR_ID, modelKey: 'sensor' }));
 		await service.idle();
 
-		expect(connectivity.trySetConnectionState).toHaveBeenCalledTimes(1);
+		expect(sensorCalls()).toHaveLength(1);
 		expect(notifications.notify).toHaveBeenCalledTimes(1);
 
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
 
-		expect(connectivity.trySetConnectionState).toHaveBeenCalledTimes(2);
+		expect(sensorCalls()).toHaveLength(2);
 		expect(connectivity.trySetConnectionState).toHaveBeenLastCalledWith(SENSOR_PANEL, { state: 'disconnected' });
 		expect(notifications.notify).toHaveBeenCalledTimes(1);
 
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
 
-		expect(connectivity.trySetConnectionState).toHaveBeenCalledTimes(2);
+		expect(sensorCalls()).toHaveLength(2);
 	});
 
 	it('retries a removal notification that failed on a later removal snapshot', async () => {
