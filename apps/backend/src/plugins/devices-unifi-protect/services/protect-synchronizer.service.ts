@@ -1364,9 +1364,43 @@ export class ProtectSynchronizerService {
 			return;
 		}
 
+		this.prune(index);
 		this.index = index;
 		this.indexNvrId = identity.nvrId;
 		this.indexDirty = this.indexGeneration !== generation;
+	}
+
+	/** Drops the bookkeeping of devices and properties that left the index (a removed-but-adopted device stays). */
+	private prune(index: Map<string, IndexedDevice>): void {
+		const propertyIds = new Set<string>();
+
+		for (const device of index.values()) {
+			for (const property of device.properties.values()) {
+				propertyIds.add(property.id);
+			}
+		}
+
+		for (const id of [...this.lastWritten.keys()]) {
+			if (!propertyIds.has(id)) {
+				this.lastWritten.delete(id);
+			}
+		}
+
+		for (const collection of [this.removed, this.removalNotifyPending, this.removalChecked]) {
+			for (const id of [...collection]) {
+				if (!index.has(id)) {
+					collection.delete(id);
+				}
+			}
+		}
+
+		for (const collection of [this.propagatedNames, this.eventOwned, this.retries]) {
+			for (const id of [...collection.keys()]) {
+				if (!index.has(id)) {
+					collection.delete(id);
+				}
+			}
+		}
 	}
 
 	private async seed(property: ProtectChannelPropertyEntity, resetGeneration: number): Promise<void> {

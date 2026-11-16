@@ -500,6 +500,53 @@ describe('ProtectSynchronizerService', () => {
 		expect(properties.update).toHaveBeenCalledTimes(2);
 	});
 
+	it('prunes the per-device and per-property bookkeeping of devices that left the index', async () => {
+		await prime();
+
+		const internals = service as any;
+		const gone = SENSOR_ID;
+		const kept = CAMERA_ID;
+		const retry = { propertyId: 'x', value: true };
+
+		for (const id of [gone, kept]) {
+			internals.propagatedNames.set(id, 'Name');
+			internals.eventOwned.set(id, new Set(['k']));
+			internals.removed.add(id);
+			internals.removalNotifyPending.add(id);
+			internals.removalChecked.add(id);
+			internals.retries.set(id, [retry]);
+		}
+
+		const goneProperty = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+		const keptProperty = prop(CAMERA_PANEL, 'indicator', 'camera_indicator_on');
+
+		internals.lastWritten.set(goneProperty, true);
+		internals.lastWritten.set(keptProperty, true);
+		internals.lastWritten.set('orphan-property', true);
+
+		devices = devices.filter((device) => device.id !== SENSOR_PANEL);
+		service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
+		await internals.ensureIndex(IDENTITY);
+
+		for (const name of [
+			'propagatedNames',
+			'eventOwned',
+			'removed',
+			'removalNotifyPending',
+			'removalChecked',
+			'retries',
+		]) {
+			const collection = internals[name] as Map<string, unknown> | Set<string>;
+
+			expect(collection.has(gone)).toBe(false);
+			expect(collection.has(kept)).toBe(true);
+		}
+
+		expect(internals.lastWritten.has(goneProperty)).toBe(false);
+		expect(internals.lastWritten.has('orphan-property')).toBe(false);
+		expect(internals.lastWritten.has(keptProperty)).toBe(true);
+	});
+
 	it('rebuilds the index after a device is created', async () => {
 		devices = [];
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
