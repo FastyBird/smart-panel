@@ -1309,6 +1309,45 @@ describe('ProtectSynchronizerService', () => {
 			expect(JSON.stringify(logged)).not.toContain('SENTINEL');
 		});
 
+		it('drops a queued ring whose doorbell property was recreated before the retry', async () => {
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+			occurrences.publishOccurrence.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0007', 'add'));
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+
+			for (const channel of devices[0].channels as Raw[]) {
+				if (channel.identifier === 'doorbell') {
+					for (const property of channel.properties as Raw[]) {
+						property.id = `${property.id}|recreated`;
+					}
+				}
+			}
+
+			service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect((service as any).retries.size).toBe(0);
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		it('drops a queued ring when the Protect device is re-adopted under another panel device', async () => {
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+			occurrences.publishOccurrence.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0007', 'add'));
+			devices = [adopt(goldenDoorbell, `${DOORBELL_PANEL}-readopted`)];
+			service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect((service as any).retries.size).toBe(0);
+		});
+
 		it('gives up on a ring after three retries at 6, 15 and 45 seconds', async () => {
 			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
 			occurrences.publishOccurrence.mockRejectedValue(new Error('down'));

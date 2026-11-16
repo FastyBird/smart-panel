@@ -694,7 +694,19 @@ export class ProtectSynchronizerService {
 						}
 					}
 				} else {
-					done = await this.publishRing(device, entry.eventId, entry.startedAt, entry);
+					const bell = device.properties.get(valueKey(DOORBELL_CHANNEL, DOORBELL_MAPPING));
+
+					// A recreated doorbell property or a re-adopted device is a different target: the old occurrence ends here.
+					if (
+						bell === undefined ||
+						device.panelId !== entry.deviceId ||
+						bell.channelId !== entry.channelId ||
+						bell.id !== entry.propertyId
+					) {
+						done = true;
+					} else {
+						done = await this.publishRing(device, entry.eventId, entry.startedAt, entry);
+					}
 				}
 			}
 
