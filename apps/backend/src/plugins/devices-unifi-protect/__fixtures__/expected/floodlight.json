@@ -120,6 +120,28 @@
 					"mappingName": "light_brightness"
 				}
 			]
+		},
+		{
+			"identifier": "indicator",
+			"category": "indicator",
+			"name": "Status LED",
+			"mappingName": "floodlight_indicator",
+			"properties": [
+				{
+					"identifier": "on",
+					"category": "on",
+					"name": "On",
+					"dataType": "bool",
+					"permissions": [
+						"rw"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": true,
+					"mappingName": "floodlight_indicator_on"
+				}
+			]
 		}
 	]
 }

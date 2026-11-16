@@ -165,6 +165,21 @@ describe('protect frame merge', () => {
 		expect(diffMappedValues(null, baseline, syncable).length).toBeGreaterThan(0);
 	});
 
+	it('diffs the floodlight control fields of a recorded frame', () => {
+		const syncable = syncableMappingNames(mappings);
+		const frame = lines('ws-devices.jsonl')
+			.map((line) => JSON.parse(line) as Raw)
+			.find((entry) => entry.item?.lightDeviceSettings?.isIndicatorEnabled === false);
+		const baselineRaw = structuredClone(fixture('lights.json')[0]);
+		const baseline = map(baselineRaw);
+		const next = map(mergeProtectItem(baselineRaw, frame?.item as Raw) as Raw);
+
+		expect(diffMappedValues(mappedValueMap(baseline), next, syncable)).toEqual([
+			{ channelIdentifier: 'light', mappingName: 'light_brightness', value: 50 },
+			{ channelIdentifier: 'indicator', mappingName: 'floodlight_indicator_on', value: false },
+		]);
+	});
+
 	it('never reports constants, templates, stream status or connection_state', () => {
 		const syncable = syncableMappingNames(mappings);
 
