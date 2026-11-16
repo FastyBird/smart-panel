@@ -187,7 +187,9 @@ export interface ProtectValueChange {
 	value: Exclude<ProtectMappingScalar, null>;
 }
 
-const valueKey = (channelIdentifier: string, mappingName: string): string => `${channelIdentifier}\u0000${mappingName}`;
+/** The one key of a channel property value, shared by the synchronizer's baseline and the diff lookup. */
+export const valueKey = (channelIdentifier: string, mappingName: string): string =>
+	`${channelIdentifier}\u0000${mappingName}`;
 
 export function mappedValueMap(device: ProtectMappedDevice): Map<string, ProtectMappingScalar> {
 	const values = new Map<string, ProtectMappingScalar>();

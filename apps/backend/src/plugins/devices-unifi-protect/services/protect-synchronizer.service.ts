@@ -29,6 +29,7 @@ import {
 	mappedConnectionState,
 	mergeProtectItem,
 	syncableMappingNames,
+	valueKey,
 } from './protect-frame-merge';
 import { ProtectInventoryEntry } from './protect-inventory.service';
 
@@ -98,9 +99,6 @@ const STALE_DETECTIONS: ReadonlySet<string> = new Set([
 	'sensor_smoke_detected',
 	'leak_detected',
 ]);
-
-const propertyKey = (channelIdentifier: string, mappingName: string): string =>
-	`${channelIdentifier}\u0000${mappingName}`;
 
 const cacheKey = (modelKey: string, id: string): string => `${modelKey}\u0000${id}`;
 
@@ -532,7 +530,7 @@ export class ProtectSynchronizerService {
 	}
 
 	private async applyTargetWrite(device: IndexedDevice, target: ProtectTargetWrite): Promise<void> {
-		const key = propertyKey(target.channelIdentifier, target.mappingName);
+		const key = valueKey(target.channelIdentifier, target.mappingName);
 		const property = device.properties.get(key);
 
 		if (property === undefined) {
@@ -570,7 +568,7 @@ export class ProtectSynchronizerService {
 		startedAt: number | null,
 		existing: RetryEntry | null,
 	): Promise<boolean> {
-		const bell = device.properties.get(propertyKey(DOORBELL_CHANNEL, DOORBELL_MAPPING));
+		const bell = device.properties.get(valueKey(DOORBELL_CHANNEL, DOORBELL_MAPPING));
 
 		if (bell === undefined || this.aborted()) {
 			return true;
@@ -999,7 +997,7 @@ export class ProtectSynchronizerService {
 		const open = this.tracker.openTargets(device.protectDeviceId);
 
 		for (const change of diffMappedValues(null, mapped, this.syncableNames(mappings))) {
-			const key = propertyKey(change.channelIdentifier, change.mappingName);
+			const key = valueKey(change.channelIdentifier, change.mappingName);
 
 			if (scope === null || scope.carried.has(key)) {
 				authoritative.set(key, change.value);
@@ -1071,7 +1069,7 @@ export class ProtectSynchronizerService {
 		}
 
 		for (const change of diffMappedValues(stored, mapped, this.syncableNames(mappings))) {
-			const key = propertyKey(change.channelIdentifier, change.mappingName);
+			const key = valueKey(change.channelIdentifier, change.mappingName);
 			const property = device.properties.get(key);
 
 			// An event wrote this value; the cached field it reads was not refreshed by this frame, so it is stale.
@@ -1264,9 +1262,12 @@ export class ProtectSynchronizerService {
 		try {
 			await this.channelsPropertiesService.update(propertyId, { type: DEVICES_UNIFI_PROTECT_TYPE, value } as never);
 
-			if (!this.aborted()) {
-				this.lastWritten.set(propertyId, value);
+			if (this.aborted()) {
+				// A reset overtook the write: it is not a success to build on (event ownership, bookkeeping).
+				return false;
 			}
+
+			this.lastWritten.set(propertyId, value);
 
 			return true;
 		} catch {
@@ -1339,7 +1340,7 @@ export class ProtectSynchronizerService {
 						continue;
 					}
 
-					properties.set(propertyKey(channel.identifier, property.protectMappingName), {
+					properties.set(valueKey(channel.identifier, property.protectMappingName), {
 						id: property.id,
 						channelId: channel.id,
 						channelIdentifier: channel.identifier,

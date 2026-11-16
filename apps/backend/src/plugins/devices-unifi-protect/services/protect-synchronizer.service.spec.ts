@@ -170,6 +170,28 @@ describe('ProtectSynchronizerService', () => {
 		});
 	});
 
+	it('writes nothing when the same unchanged snapshot is applied twice', async () => {
+		const unchanged = snapshot([entry('camera', cameras[0]), entry('sensor', sensors[0])]);
+
+		await service.applySnapshot(IDENTITY, unchanged);
+		properties.update.mockClear();
+		await service.applySnapshot(IDENTITY, unchanged);
+
+		expect(updatedIds()).toEqual([]);
+	});
+
+	it('writes nothing for an update frame that only moves lastSeen', async () => {
+		await prime();
+
+		service.enqueueFrame(
+			IDENTITY,
+			frameFor('update', { id: SENSOR_ID, modelKey: 'sensor', lastSeen: 1_700_000_000_000 }),
+		);
+		await service.idle();
+
+		expect(updatedIds()).toEqual([]);
+	});
+
 	it('sets the connection state through the connectivity service', async () => {
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', { ...cameras[0], state: 'DISCONNECTED' })]));
 
@@ -1197,6 +1219,48 @@ describe('ProtectSynchronizerService', () => {
 
 			expect(values(smoke)).toEqual([true, true, false]);
 			expect(JSON.stringify(logged)).not.toContain('SENTINEL');
+		});
+
+		it('keeps no event ownership when a reset happens during a successful event write', async () => {
+			await prime();
+
+			let release: () => void = () => undefined;
+
+			properties.update.mockImplementationOnce(() => new Promise<void>((resolve) => (release = resolve)));
+			service.enqueueFrame(IDENTITY, eventFrame('0008', 'add'));
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(properties.update).toHaveBeenCalledTimes(1);
+
+			service.reset();
+			release();
+			await flush();
+
+			expect((service as any).eventOwned.size).toBe(0);
+			expect((service as any).retries.size).toBe(0);
+		});
+
+		it('keeps no event ownership when a reset happens during a successful retry write', async () => {
+			await prime();
+			properties.update.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0008', 'add'));
+			expect((service as any).retries.size).toBe(1);
+
+			let release: () => void = () => undefined;
+
+			properties.update.mockImplementationOnce(() => new Promise<void>((resolve) => (release = resolve)));
+			service.enqueueFrame(
+				IDENTITY,
+				frameFor('update', { id: SENSOR_ID, modelKey: 'sensor', lastSeen: 1_700_000_000_000 }),
+			);
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(properties.update).toHaveBeenCalledTimes(2);
+
+			service.reset();
+			release();
+			await flush();
+
+			expect((service as any).eventOwned.size).toBe(0);
+			expect((service as any).retries.size).toBe(0);
 		});
 
 		it('drops a queued start that a later end supersedes', async () => {
