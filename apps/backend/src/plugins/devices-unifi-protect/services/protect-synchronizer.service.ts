@@ -328,17 +328,33 @@ export class ProtectSynchronizerService {
 		const previous = this.cache;
 		const next = new Map<string, Readonly<Record<string, unknown>>>();
 
-		for (const entry of snapshot.entries) {
-			const key = cacheKey(entry.modelKey, entry.id);
+		await this.ensureIndex(identity);
 
-			if (!next.has(key) && next.size < MAX_CACHED_DEVICES) {
-				next.set(key, mergeProtectItem({}, entry.raw));
+		// Removal reconciliation uses the snapshot's full membership; the bounded cache only limits memory.
+		const members = new Set<string>();
+
+		for (const entry of snapshot.entries) {
+			members.add(cacheKey(entry.modelKey, entry.id));
+		}
+
+		const isAdopted = (entry: ProtectInventoryEntry): boolean => {
+			const device = this.index.get(entry.id);
+
+			return device !== undefined && (device.modelKey === null || device.modelKey === entry.modelKey);
+		};
+
+		// Adopted devices are cached first so the cap can never evict a device the console lists.
+		for (const adoptedFirst of [true, false]) {
+			for (const entry of snapshot.entries) {
+				const key = cacheKey(entry.modelKey, entry.id);
+
+				if (isAdopted(entry) === adoptedFirst && !next.has(key) && (adoptedFirst || next.size < MAX_CACHED_DEVICES)) {
+					next.set(key, mergeProtectItem({}, entry.raw));
+				}
 			}
 		}
 
 		this.cache = next;
-
-		await this.ensureIndex(identity);
 
 		for (const device of [...this.index.values()]) {
 			if (this.aborted()) {
@@ -347,7 +363,7 @@ export class ProtectSynchronizerService {
 
 			// A device without a stored model key is looked up under every model key.
 			const modelKey = ((device.modelKey === null ? PROTECT_MODEL_KEYS : [device.modelKey]) as readonly string[]).find(
-				(candidate) => next.has(cacheKey(candidate, device.protectDeviceId)),
+				(candidate) => members.has(cacheKey(candidate, device.protectDeviceId)),
 			);
 			const key = modelKey === undefined ? null : cacheKey(modelKey, device.protectDeviceId);
 

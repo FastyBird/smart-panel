@@ -331,6 +331,34 @@ describe('ProtectSynchronizerService', () => {
 		expect(notifications.notify).toHaveBeenCalledTimes(1);
 	});
 
+	it('never treats the cache cap as a removal for an adopted device listed beyond the limit', async () => {
+		const filler = Array.from({ length: 4096 }, (_, index) =>
+			entry('sensor', { ...sensors[0], id: `5f00000000000000ff${String(index).padStart(6, '0')}` }),
+		);
+
+		await service.applySnapshot(
+			IDENTITY,
+			snapshot([...filler, entry('camera', cameras[0]), entry('sensor', sensors[0])]),
+		);
+
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalledWith(SENSOR_PANEL, {
+			state: ConnectionState.DISCONNECTED,
+		});
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalledWith(CAMERA_PANEL, {
+			state: ConnectionState.DISCONNECTED,
+		});
+		expect(notifications.notify).not.toHaveBeenCalled();
+		expect((service as any).cache.size).toBe(4096);
+		expect((service as any).cache.has(`sensor\u0000${SENSOR_ID}`)).toBe(true);
+		expect((service as any).cache.has(`camera\u0000${CAMERA_ID}`)).toBe(true);
+
+		properties.update.mockClear();
+		service.enqueueFrame(IDENTITY, frameFor('update', { id: SENSOR_ID, modelKey: 'sensor', isOpened: true }));
+		await service.idle();
+
+		expect(properties.update).toHaveBeenCalled();
+	});
+
 	it('resolves the removal when the device reappears', async () => {
 		await prime();
 		service.enqueueFrame(IDENTITY, frameFor('remove', { id: SENSOR_ID, modelKey: 'sensor' }));
