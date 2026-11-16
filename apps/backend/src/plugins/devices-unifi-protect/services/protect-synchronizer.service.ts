@@ -131,7 +131,7 @@ export class ProtectSynchronizerService {
 	/** Failed event effects per Protect device id, oldest first. */
 	private readonly retries = new Map<string, RetryEntry[]>();
 	/** Per device: property keys whose last successful write came from an event effect (start/end write or retry). */
-	private readonly eventOwned = new Map<string, Set<string>>();
+	private readonly eventOwned = new Map<string, Map<string, string>>();
 	private eventTimer: NodeJS.Timeout | null = null;
 	private retryTimer: NodeJS.Timeout | null = null;
 	/** Ids of events dropped for devices Smart Panel has not adopted (LRU), so their updates are not counted. */
@@ -544,13 +544,13 @@ export class ProtectSynchronizerService {
 
 		if (this.lastWritten.get(property.id) === target.value) {
 			// Already persisted, but the event is still the newest word: a stale cached field must not undo it.
-			this.markEventOwned(device.protectDeviceId, key);
+			this.markEventOwned(device.protectDeviceId, key, property.id);
 
 			return;
 		}
 
 		if (await this.writeProperty(property.id, target.value)) {
-			this.markEventOwned(device.protectDeviceId, key);
+			this.markEventOwned(device.protectDeviceId, key, property.id);
 		} else if (!this.aborted()) {
 			this.queueRetry(device.protectDeviceId, {
 				kind: 'write',
@@ -687,12 +687,12 @@ export class ProtectSynchronizerService {
 					} else if (this.lastWritten.get(entry.propertyId) === entry.value) {
 						// Another writer persisted it, but the event is still the newest word: a stale cached field must not undo it.
 						done = true;
-						this.markEventOwned(protectDeviceId, entry.key);
+						this.markEventOwned(protectDeviceId, entry.key, entry.propertyId);
 					} else {
 						done = await this.writeProperty(entry.propertyId, entry.value);
 
 						if (done) {
-							this.markEventOwned(protectDeviceId, entry.key);
+							this.markEventOwned(protectDeviceId, entry.key, entry.propertyId);
 						}
 					}
 				} else {
@@ -969,10 +969,11 @@ export class ProtectSynchronizerService {
 		return this.sources.names;
 	}
 
-	private markEventOwned(protectDeviceId: string, key: string): void {
-		const owned = this.eventOwned.get(protectDeviceId) ?? new Set<string>();
+	/** Records the property that owns the key, so a property replaced under the same key does not inherit ownership. */
+	private markEventOwned(protectDeviceId: string, key: string, propertyId: string): void {
+		const owned = this.eventOwned.get(protectDeviceId) ?? new Map<string, string>();
 
-		owned.add(key);
+		owned.set(key, propertyId);
 		this.eventOwned.set(protectDeviceId, owned);
 	}
 
@@ -1394,10 +1395,26 @@ export class ProtectSynchronizerService {
 			}
 		}
 
-		for (const collection of [this.propagatedNames, this.eventOwned, this.retries]) {
+		for (const collection of [this.propagatedNames, this.retries]) {
 			for (const id of [...collection.keys()]) {
 				if (!index.has(id)) {
 					collection.delete(id);
+				}
+			}
+		}
+
+		for (const [id, owned] of [...this.eventOwned]) {
+			const device = index.get(id);
+
+			if (device === undefined) {
+				this.eventOwned.delete(id);
+
+				continue;
+			}
+
+			for (const [key, ownerId] of [...owned]) {
+				if (device.properties.get(key)?.id !== ownerId) {
+					owned.delete(key);
 				}
 			}
 		}

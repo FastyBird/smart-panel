@@ -510,7 +510,7 @@ describe('ProtectSynchronizerService', () => {
 
 		for (const id of [gone, kept]) {
 			internals.propagatedNames.set(id, 'Name');
-			internals.eventOwned.set(id, new Set(['k']));
+			internals.eventOwned.set(id, new Map([['k', 'p']]));
 			internals.removed.add(id);
 			internals.removalNotifyPending.add(id);
 			internals.removalChecked.add(id);
@@ -1600,6 +1600,29 @@ describe('ProtectSynchronizerService', () => {
 
 					expect(values(contact)).not.toContain(false);
 					expect((service as any).lastWritten.get(contact)).toBe(true);
+				});
+
+				it('does not carry event ownership over to a property recreated on a retained device', async () => {
+					const contact = await ownedContact();
+					const recreated = 'recreated-contact-detected';
+
+					expect(finalValue(contact)).toBe(true);
+
+					for (const channel of devices[1].channels) {
+						for (const property of channel.properties) {
+							if (property.id === contact) {
+								property.id = recreated;
+							}
+						}
+					}
+
+					stored.set(recreated, true);
+					service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
+					properties.update.mockClear();
+
+					await feed(update({ lastSeen: 1_700_000_000_004 }));
+
+					expect(values(recreated)).toEqual([false]);
 				});
 
 				it('writes false when a snapshot reports isOpened false', async () => {
