@@ -8,7 +8,7 @@ import { ConnectionState, EventType } from '../../../modules/devices/devices.con
 import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME, DEVICES_UNIFI_PROTECT_TYPE } from '../devices-unifi-protect.constants';
 import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
 
-import { ProtectFrame, parseProtectFrame } from './protect-frame-merge';
+import { ProtectFrame, parseProtectFrame, valueKey } from './protect-frame-merge';
 import { ProtectInventoryEntry } from './protect-inventory.service';
 import { ProtectSnapshot, ProtectSynchronizerService } from './protect-synchronizer.service';
 
@@ -1188,6 +1188,80 @@ describe('ProtectSynchronizerService', () => {
 			expect(service.getSnapshotSequence()).toBe(before + 1);
 		});
 
+		it('marks a readback for polling when it is queued, not when it runs', async () => {
+			let release: () => void = () => undefined;
+
+			await primeLight();
+			properties.update.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						release = () => resolve({});
+					}),
+			);
+			service.enqueueFrame(IDENTITY, ledFrame());
+			await jest.advanceTimersByTimeAsync(0);
+
+			const before = service.getSnapshotSequence();
+			const pending = service.applyDeviceReadback(IDENTITY, withLevel(2), service.getDeviceSequence('light', LIGHT_ID));
+
+			// The queue is still held by the frame's write.
+			expect(service.getSnapshotSequence()).toBe(before + 1);
+
+			release();
+			await pending;
+		});
+
+		it('rejects a readback of an unknown model key without a cache write', async () => {
+			const observer = jest.fn();
+
+			service.observeDevices(observer);
+
+			await expect(
+				service.applyDeviceReadback(IDENTITY, { modelKey: 'event' as never, id: LIGHT_ID, raw: lights[0] }, 0),
+			).resolves.toBe(false);
+
+			expect(service.getCachedDevice('event', LIGHT_ID)).toBeNull();
+			expect(service.getDeviceSequence('event', LIGHT_ID)).toBe(0);
+			expect(observer).not.toHaveBeenCalled();
+		});
+
+		it('drops a queued event retry that the readback contradicts', async () => {
+			const key = valueKey('smoke', 'smoke_alarm_sound_detected');
+			const retries = (service as any).retries as Map<string, unknown[]>;
+
+			await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+			(service as any).queueRetry(CAMERA_ID, {
+				kind: 'write',
+				key,
+				propertyId: smoke(),
+				value: true,
+				attempts: 0,
+				dueAt: 0,
+			});
+
+			expect(retries.get(CAMERA_ID)).toHaveLength(1);
+
+			await service.applyDeviceReadback(
+				IDENTITY,
+				entry('camera', cameras[0]),
+				service.getDeviceSequence('camera', CAMERA_ID),
+			);
+
+			expect(retries.has(CAMERA_ID)).toBe(false);
+			expect(properties.update.mock.calls.filter((call) => call[0] === smoke())).toEqual([]);
+		});
+
+		it('catches an observer that rejects asynchronously and logs it through the limiter', async () => {
+			service.observeDevices((() => Promise.reject(new Error('SENTINEL async'))) as never);
+			await primeLight();
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(logged.filter((args) => args[0] === `[ProtectSynchronizerService] ${OBSERVER_FAILURE_TEXT}`)).toHaveLength(
+				1,
+			);
+			expect(JSON.stringify(logged)).not.toContain('SENTINEL');
+		});
+
 		it('keeps working and logs once when an observer throws', async () => {
 			const healthy = jest.fn();
 
@@ -1225,6 +1299,9 @@ describe('ProtectSynchronizerService', () => {
 
 			service.observeDevices(observer);
 			await primeLight();
+
+			const before = service.getDeviceSequence('light', LIGHT_ID);
+
 			service.reset();
 
 			expect(service.getCachedDevice('light', LIGHT_ID)).toBeNull();
@@ -1234,7 +1311,8 @@ describe('ProtectSynchronizerService', () => {
 			await service.applySnapshot(IDENTITY, lightSnapshot());
 
 			expect(observer).toHaveBeenCalledTimes(2);
-			expect(service.getDeviceSequence('light', LIGHT_ID)).toBe(1);
+			// A value captured before the reset can never equal one of the new session.
+			expect(service.getDeviceSequence('light', LIGHT_ID)).toBeGreaterThan(before);
 		});
 
 		it('writes nothing and notifies nobody for a readback a reset overtook while queued', async () => {

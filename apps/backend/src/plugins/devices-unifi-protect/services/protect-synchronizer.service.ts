@@ -116,7 +116,7 @@ export class ProtectSynchronizerService {
 	private readonly tracker = new ProtectEventTracker();
 
 	private cache = new Map<string, Readonly<Record<string, unknown>>>();
-	/** Per cache key: grows with every cache write. Pruned with the cache; `sequenceBase` keeps a pruned key from reusing a value. */
+	/** Per cache key: grows with every cache write. Pruned with the cache; `sequenceBase` keeps a pruned key (or a reset) from reusing a value. */
 	private sequences = new Map<string, number>();
 	private sequenceBase = 0;
 	/** Survive `reset()`: subscribed by the platform for the lifetime of the plugin, not of one session. */
@@ -229,13 +229,19 @@ export class ProtectSynchronizerService {
 	): Promise<boolean> {
 		let applied = false;
 
+		if (!(PROTECT_MODEL_KEYS as readonly string[]).includes(entry.modelKey)) {
+			return Promise.resolve(false);
+		}
+
+		// Marked when queued, as a snapshot is: a poll that read the console before this call must not queue its older
+		// snapshot behind the readback, however long the readback waits for the queue.
+		this.snapshotSequence++;
+
 		return this.run(async () => {
 			if (this.getDeviceSequence(entry.modelKey, entry.id) !== sinceSequence) {
 				return;
 			}
 
-			// A poll that read the console before this readback must not overwrite it with older data.
-			this.snapshotSequence++;
 			applied = (await this.applyDeviceObject(identity, entry.modelKey, entry.id, entry.raw, 'add')) === 'applied';
 		}).then(() => applied);
 	}
@@ -274,8 +280,9 @@ export class ProtectSynchronizerService {
 		this.generation++;
 		this.pending = 0;
 		this.cache = new Map();
+		// The base keeps rising: a sequence captured before the reset never equals one of the next session.
+		this.sequenceBase = Math.max(this.sequenceBase, ...this.sequences.values());
 		this.sequences = new Map();
-		this.sequenceBase = 0;
 		this.index = new Map();
 		this.indexNvrId = null;
 		this.indexDirty = true;
@@ -580,7 +587,10 @@ export class ProtectSynchronizerService {
 			}
 
 			try {
-				observer(modelKey, id, raw);
+				// An observer may return a promise despite its type; its rejection is a failure too.
+				void Promise.resolve(observer(modelKey, id, raw)).catch(() => {
+					this.logLimited(OBSERVER_FAILURE_TEXT);
+				});
 			} catch {
 				this.logLimited(OBSERVER_FAILURE_TEXT);
 			}
