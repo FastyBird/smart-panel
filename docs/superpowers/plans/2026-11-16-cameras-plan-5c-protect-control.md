@@ -28,10 +28,11 @@ interface below is verified on that commit.
 
 ---
 
-## Decisions for approval
+## Decisions (approved)
 
 The issue, the design, the roadmap, the UP-7/UP-8 plans and the code disagree or leave these open. The plan is written for
-each recommendation; *cost if wrong* says what changes.
+each recommendation; *cost if wrong* says what changes. The maintainer approved every recommendation below on 2026-11-16,
+unchanged.
 
 **C1. Writable properties, their Protect fields and transforms.** The issue lists five writes; the code adds one mapping
 that does not exist yet (C2). Allow-list, keyed by the persisted `protectMappingName`:
