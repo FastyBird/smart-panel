@@ -531,6 +531,27 @@ describe('ProtectSynchronizerService', () => {
 		expect((service as any).lastWritten.size).toBe(0);
 	});
 
+	it('drops a snapshot that a reset overtakes while the index is being read', async () => {
+		let release: (value: Raw[]) => void = () => undefined;
+
+		devicesService.findAll.mockImplementationOnce(() => new Promise<Raw[]>((resolve) => (release = resolve)));
+
+		const pending = service.applySnapshot(
+			IDENTITY,
+			snapshot([entry('camera', { ...cameras[0], state: 'DISCONNECTED' })]),
+		);
+
+		await new Promise((resolve) => setImmediate(resolve));
+		service.reset();
+		release(devices);
+		await pending;
+		await service.idle();
+
+		expect((service as any).cache.size).toBe(0);
+		expect(properties.update).not.toHaveBeenCalled();
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
+	});
+
 	it('refuses frames beyond the queue limit', async () => {
 		await prime();
 		properties.update.mockImplementation(() => new Promise(() => undefined));

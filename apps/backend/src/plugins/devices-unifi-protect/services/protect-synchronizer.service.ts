@@ -330,6 +330,10 @@ export class ProtectSynchronizerService {
 
 		await this.ensureIndex(identity);
 
+		if (this.aborted()) {
+			return;
+		}
+
 		// Removal reconciliation uses the snapshot's full membership; the bounded cache only limits memory.
 		const members = new Set<string>();
 
