@@ -130,7 +130,10 @@ describe('ProtectSynchronizerService', () => {
 		propertyValue = {
 			readLatestPersisted: jest.fn((property: Raw) => Promise.resolve({ value: stored.get(property.id) ?? null })),
 		};
-		notifications = { notify: jest.fn(() => Promise.resolve(null)), resolve: jest.fn(() => Promise.resolve(true)) };
+		notifications = {
+			notify: jest.fn(() => Promise.resolve({ id: 'notification-1' })),
+			resolve: jest.fn(() => Promise.resolve(true)),
+		};
 		occurrences = { publishOccurrence: jest.fn(() => Promise.resolve({})) };
 
 		const loader = new ProtectMappingLoaderService();
@@ -608,6 +611,70 @@ describe('ProtectSynchronizerService', () => {
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
 
 		expect(notifications.notify).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps the removal marker when notify returns null and retries on the next removal snapshot', async () => {
+		await prime();
+		notifications.notify.mockResolvedValueOnce(null);
+		service.enqueueFrame(IDENTITY, frameFor('remove', { id: SENSOR_ID, modelKey: 'sensor' }));
+		await service.idle();
+
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
+		expect(notifications.notify).toHaveBeenCalledTimes(2);
+
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
+		expect(notifications.notify).toHaveBeenCalledTimes(2);
+	});
+
+	it('retries a failed rename on the next frame until it lands', async () => {
+		await prime();
+		devicesService.update.mockRejectedValueOnce(new Error('db down'));
+		service.enqueueFrame(IDENTITY, lineWith('"name":"Front porch"'));
+		await service.idle();
+
+		expect(devicesService.update).toHaveBeenCalledTimes(1);
+
+		service.enqueueFrame(
+			IDENTITY,
+			frameFor('update', { id: CAMERA_ID, modelKey: 'camera', ledSettings: { isEnabled: true } }),
+		);
+		await service.idle();
+
+		expect(devicesService.update).toHaveBeenCalledTimes(2);
+		expect(devicesService.update).toHaveBeenLastCalledWith(CAMERA_PANEL, {
+			type: DEVICES_UNIFI_PROTECT_TYPE,
+			name: 'Front porch',
+		});
+
+		service.enqueueFrame(
+			IDENTITY,
+			frameFor('update', { id: CAMERA_ID, modelKey: 'camera', ledSettings: { isEnabled: false } }),
+		);
+		await service.idle();
+
+		expect(devicesService.update).toHaveBeenCalledTimes(2);
+	});
+
+	it('stops retrying a failed rename once the user renamed the device', async () => {
+		await prime();
+		devicesService.update.mockRejectedValueOnce(new Error('db down'));
+		service.enqueueFrame(IDENTITY, lineWith('"name":"Front porch"'));
+		await service.idle();
+
+		devices = [adopt(goldenCamera, CAMERA_PANEL, { name: 'My cam' })];
+		service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
+		devicesService.update.mockClear();
+		service.enqueueFrame(
+			IDENTITY,
+			frameFor('update', { id: CAMERA_ID, modelKey: 'camera', ledSettings: { isEnabled: true } }),
+		);
+		await service.idle();
+
+		expect(devicesService.update).not.toHaveBeenCalled();
 	});
 
 	it('does not rebuild the index for events of another plugin', async () => {

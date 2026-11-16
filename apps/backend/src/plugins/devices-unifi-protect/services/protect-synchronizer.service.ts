@@ -126,6 +126,8 @@ export class ProtectSynchronizerService {
 	/** Removed devices whose `disconnected` write has not succeeded yet, and whose notification has not been sent. */
 	private readonly removalStatePending = new Set<string>();
 	private readonly removalNotifyPending = new Set<string>();
+	/** Last Protect name successfully propagated (or seen before any change) per device id; a failed rename retries. */
+	private readonly propagatedNames = new Map<string, string>();
 	/** Devices whose `device_removed` issue was already settled since the last reset (bounded by adopted devices). */
 	private readonly removalChecked = new Set<string>();
 	/** Failed event effects per Protect device id, oldest first. */
@@ -224,6 +226,7 @@ export class ProtectSynchronizerService {
 		this.removed.clear();
 		this.removalStatePending.clear();
 		this.removalNotifyPending.clear();
+		this.propagatedNames.clear();
 		this.removalChecked.clear();
 		this.tracker.clear();
 		this.retries.clear();
@@ -997,14 +1000,23 @@ export class ProtectSynchronizerService {
 		raw: Readonly<Record<string, unknown>>,
 		previousRaw: Readonly<Record<string, unknown>> | null,
 	): Promise<void> {
-		if (previousRaw === null || this.aborted()) {
+		if (this.aborted()) {
 			return;
 		}
 
-		const before = toProtectDeviceName(previousRaw, modelKey, device.protectDeviceId);
-		const after = toProtectDeviceName(raw, modelKey, device.protectDeviceId);
+		const id = device.protectDeviceId;
+		const before =
+			this.propagatedNames.get(id) ?? (previousRaw === null ? null : toProtectDeviceName(previousRaw, modelKey, id));
+		const after = toProtectDeviceName(raw, modelKey, id);
 
-		if (before === after || device.name !== before) {
+		if (before === null || before === after) {
+			return;
+		}
+
+		if (device.name !== before) {
+			// The user's own name wins; stop tracking this change.
+			this.propagatedNames.set(id, after);
+
 			return;
 		}
 
@@ -1012,8 +1024,14 @@ export class ProtectSynchronizerService {
 			await this.devicesService.update(device.panelId, { type: DEVICES_UNIFI_PROTECT_TYPE, name: after } as never);
 			if (!this.aborted()) {
 				device.name = after;
+				this.propagatedNames.set(id, after);
 			}
 		} catch {
+			// The last propagated name stays, so the next frame or snapshot retries the rename.
+			if (!this.propagatedNames.has(id)) {
+				this.propagatedNames.set(id, before);
+			}
+
 			this.logger.warn('UniFi Protect device rename failed');
 		}
 	}
@@ -1043,8 +1061,10 @@ export class ProtectSynchronizerService {
 			return;
 		}
 
+		let stored: unknown;
+
 		try {
-			await this.notifications.notify({
+			stored = await this.notifications.notify({
 				source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 				kind: NotificationKind.ISSUE,
 				key: removalKey(id),
@@ -1062,8 +1082,9 @@ export class ProtectSynchronizerService {
 			return;
 		}
 
+		// `notify` returns null for rate limiting and storage failures: keep the marker so the next removal retries.
 		// A completion after a reset belongs to the previous session and must not touch the new state.
-		if (!this.aborted()) {
+		if (stored !== null && stored !== undefined && !this.aborted()) {
 			this.removalNotifyPending.delete(id);
 		}
 	}
