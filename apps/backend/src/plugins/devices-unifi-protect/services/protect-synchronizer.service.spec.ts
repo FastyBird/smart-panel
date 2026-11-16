@@ -677,6 +677,22 @@ describe('ProtectSynchronizerService', () => {
 		expect(devicesService.update).not.toHaveBeenCalled();
 	});
 
+	it('keeps the rename state cleared when a rename rejects after a reset', async () => {
+		await prime();
+		let reject: (error: Error) => void = () => undefined;
+
+		devicesService.update.mockImplementationOnce(() => new Promise<void>((_, rejectWrite) => (reject = rejectWrite)));
+		service.enqueueFrame(IDENTITY, lineWith('"name":"Front porch"'));
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(devicesService.update).toHaveBeenCalledTimes(1);
+
+		service.reset();
+		reject(new Error('db down'));
+		await service.idle();
+
+		expect((service as any).propagatedNames.size).toBe(0);
+	});
+
 	it('does not rebuild the index for events of another plugin', async () => {
 		devices = [];
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));

@@ -1027,6 +1027,10 @@ export class ProtectSynchronizerService {
 				this.propagatedNames.set(id, after);
 			}
 		} catch {
+			if (this.aborted()) {
+				return;
+			}
+
 			// The last propagated name stays, so the next frame or snapshot retries the rename.
 			if (!this.propagatedNames.has(id)) {
 				this.propagatedNames.set(id, before);
