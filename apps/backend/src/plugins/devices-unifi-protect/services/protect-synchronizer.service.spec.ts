@@ -593,6 +593,23 @@ describe('ProtectSynchronizerService', () => {
 		expect(connectivity.trySetConnectionState).toHaveBeenCalledTimes(2);
 	});
 
+	it('retries a removal notification that failed on a later removal snapshot', async () => {
+		await prime();
+		notifications.notify.mockRejectedValueOnce(new Error('storage down'));
+		service.enqueueFrame(IDENTITY, frameFor('remove', { id: SENSOR_ID, modelKey: 'sensor' }));
+		await service.idle();
+
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
+		expect(notifications.notify).toHaveBeenCalledTimes(2);
+
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
+		expect(notifications.notify).toHaveBeenCalledTimes(2);
+	});
+
 	it('does not rebuild the index for events of another plugin', async () => {
 		devices = [];
 		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
@@ -1093,33 +1110,133 @@ describe('ProtectSynchronizerService', () => {
 			expect(jest.getTimerCount()).toBe(0);
 		});
 
-		it('drains a queued event write before a snapshot reconciles the device', async () => {
+		it('drops a queued event write that a snapshot contradicts instead of draining it', async () => {
 			const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
 
 			await prime();
 			properties.update.mockRejectedValueOnce(new Error('down'));
 			await feed(eventFrame('0008', 'add'));
+			properties.update.mockClear();
 			await service.applySnapshot(IDENTITY, sensorSnapshot({ isOpened: false }));
 			await jest.advanceTimersByTimeAsync(120_000);
 			await flush();
 
-			expect(values(contact).at(-1)).toBe(false);
-			expect(stored.get(contact)).not.toBe(true);
+			expect(values(contact)).not.toContain(true);
+			expect((service as any).lastWritten.get(contact)).toBe(false);
 		});
 
-		it('drains a queued tamper latch before a snapshot that reports it cleared', async () => {
+		it('re-arms the expiry timer when the index rebuild fails inside it', async () => {
+			const motion = prop(CAMERA_PANEL, 'motion', 'camera_motion_detected');
+
+			await feed(eventFrame('0001', 'add'));
+			service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
+			devicesService.findAll.mockRejectedValueOnce(new Error('db down'));
+			await jest.advanceTimersByTimeAsync(60_000);
+			await flush();
+
+			expect(values(motion)).toEqual([true]);
+			// Re-armed with the minimum delay, so a past deadline cannot loop at zero delay.
+			expect(jest.getTimerCount()).toBe(1);
+
+			await jest.advanceTimersByTimeAsync(999);
+			await flush();
+
+			expect(values(motion)).toEqual([true]);
+
+			await jest.advanceTimersByTimeAsync(1);
+			await flush();
+
+			expect(values(motion)).toEqual([true, false]);
+		});
+
+		it('never lets a retried sensorOpened overwrite the false that a snapshot reported', async () => {
+			const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+			const written = (service as any).lastWritten as Map<string, unknown>;
+
+			await prime();
+			properties.update.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0008', 'add'));
+			properties.update.mockRejectedValueOnce(new Error('down'));
+			await jest.advanceTimersByTimeAsync(6000);
+			await flush();
+			properties.update.mockRejectedValueOnce(new Error('down'));
+			await service.applySnapshot(IDENTITY, sensorSnapshot({ isOpened: false }));
+			properties.update.mockClear();
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(values(contact)).not.toContain(true);
+			expect(written.get(contact)).toBe(false);
+		});
+
+		it('never lets a retried tamper latch overwrite the clear that a snapshot reported', async () => {
+			const contact = prop(SENSOR_PANEL, 'contact', 'contact_tampered');
+			const motion = prop(SENSOR_PANEL, 'motion', 'sensor_motion_tampered');
+			const written = (service as any).lastWritten as Map<string, unknown>;
+			const down = (times: number): void => {
+				for (let index = 0; index < times; index++) {
+					properties.update.mockRejectedValueOnce(new Error('down'));
+				}
+			};
+
+			await prime();
+			down(2);
+			await feed(eventFrame('0012', 'add'));
+			down(2);
+			await jest.advanceTimersByTimeAsync(6000);
+			await flush();
+			down(2);
+			await service.applySnapshot(IDENTITY, sensorSnapshot({ tamperingDetectedAt: null }));
+			properties.update.mockClear();
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(values(contact)).not.toContain(true);
+			expect(values(motion)).not.toContain(true);
+			expect(written.get(contact)).toBe(false);
+			expect(written.get(motion)).toBe(false);
+		});
+
+		it('repairs a leak level that failed to reset on the next snapshot', async () => {
+			const detected = prop(SENSOR_PANEL, 'leak', 'leak_detected');
+			const level = prop(SENSOR_PANEL, 'leak', 'leak_level');
+			const leak = (): ProtectSnapshot => snapshot([entry('sensor', sensors[3])]);
+
+			devices = [adopt(goldenLeak, SENSOR_PANEL)];
+			stored.set(detected, true);
+			stored.set(level, 'high');
+			properties.update.mockImplementation((id: string, body: { value: unknown }) =>
+				body.value === 'low' ? Promise.reject(new Error('down')) : Promise.resolve({}),
+			);
+			await service.applySnapshot(IDENTITY, leak());
+
+			expect(values(detected)).toEqual([false]);
+			expect(values(level)).toEqual(['low']);
+
+			properties.update.mockImplementation(() => Promise.resolve({}));
+			properties.update.mockClear();
+			await service.applySnapshot(IDENTITY, leak());
+
+			expect(values(detected)).toEqual([]);
+			expect(values(level)).toEqual(['low']);
+		});
+
+		it('drops a queued tamper latch that a snapshot reporting it cleared contradicts', async () => {
 			const contact = prop(SENSOR_PANEL, 'contact', 'contact_tampered');
 			const motion = prop(SENSOR_PANEL, 'motion', 'sensor_motion_tampered');
 
 			await prime();
 			properties.update.mockRejectedValueOnce(new Error('down')).mockRejectedValueOnce(new Error('down'));
 			await feed(eventFrame('0012', 'add'));
+			properties.update.mockClear();
 			await service.applySnapshot(IDENTITY, sensorSnapshot({ tamperingDetectedAt: null }));
 			await jest.advanceTimersByTimeAsync(120_000);
 			await flush();
 
-			expect(values(contact).at(-1)).toBe(false);
-			expect(values(motion).at(-1)).toBe(false);
+			expect(values(contact)).not.toContain(true);
+			expect(values(motion)).not.toContain(true);
+			expect((service as any).lastWritten.get(contact)).toBe(false);
+			expect((service as any).lastWritten.get(motion)).toBe(false);
 		});
 
 		it('does not count updates of events dropped for a device that is not adopted', async () => {

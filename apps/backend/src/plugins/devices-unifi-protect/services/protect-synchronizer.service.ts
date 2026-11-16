@@ -345,7 +345,6 @@ export class ProtectSynchronizerService {
 			const key = modelKey === undefined ? null : cacheKey(modelKey, device.protectDeviceId);
 
 			if (modelKey !== undefined && key !== null) {
-				await this.retryDevice(device.protectDeviceId);
 				await this.syncDevice(identity, device, modelKey, next.get(key), previous.get(key) ?? null, 'snapshot', null);
 			} else if (snapshot.complete) {
 				await this.markRemoved(device);
@@ -404,7 +403,6 @@ export class ProtectSynchronizerService {
 		this.cache.set(key, raw);
 
 		if (device !== undefined) {
-			await this.retryDevice(device.protectDeviceId);
 			await this.syncDevice(
 				identity,
 				device,
@@ -752,7 +750,7 @@ export class ProtectSynchronizerService {
 		this.retryTimer.unref();
 	}
 
-	private scheduleEventTimer(): void {
+	private scheduleEventTimer(minDelayMs = 0): void {
 		this.clearTimer('eventTimer');
 
 		const deadline = this.tracker.nextDeadline();
@@ -764,9 +762,21 @@ export class ProtectSynchronizerService {
 		this.eventTimer = setTimeout(
 			() => {
 				this.eventTimer = null;
-				void this.run(() => this.expireEvents());
+				void this.run(async () => {
+					try {
+						await this.expireEvents();
+					} catch (error) {
+						// A failed index rebuild must not leave open detections without a timer; the minimum delay keeps a
+						// past deadline from looping at zero delay.
+						if (!this.aborted()) {
+							this.scheduleEventTimer(RETRY_MIN_RESCHEDULE_MS);
+						}
+
+						throw error;
+					}
+				});
 			},
-			Math.max(0, deadline - Date.now()),
+			Math.max(minDelayMs, deadline - Date.now()),
 		);
 		this.eventTimer.unref();
 	}
@@ -816,6 +826,13 @@ export class ProtectSynchronizerService {
 			streams: null,
 		});
 
+		if (result.ok && mode === 'snapshot') {
+			// A snapshot is authoritative: queued event values it contradicts must not be written after it.
+			this.dropSupersededRetries(device, result.device, mappings, raw);
+		}
+
+		await this.retryDevice(device.protectDeviceId);
+
 		if (!result.ok) {
 			return;
 		}
@@ -840,15 +857,64 @@ export class ProtectSynchronizerService {
 		await this.propagateRename(device, modelKey, raw, previousRaw);
 	}
 
+	/**
+	 * Drops the queued property writes whose value the snapshot contradicts: a syncable property whose snapshot value
+	 * differs, a tamper flag the console reports cleared, and a detection (with its leak level) without an open event.
+	 */
+	private dropSupersededRetries(
+		device: IndexedDevice,
+		mapped: ProtectMappedDevice,
+		mappings: ProtectResolvedMappings,
+		raw: Readonly<Record<string, unknown>>,
+	): void {
+		const entries = this.retries.get(device.protectDeviceId);
+
+		if (entries === undefined) {
+			return;
+		}
+
+		const authoritative = new Map<string, ProtectMappingScalar>();
+		const open = this.tracker.openTargets(device.protectDeviceId);
+
+		for (const change of diffMappedValues(null, mapped, this.syncableNames(mappings))) {
+			authoritative.set(propertyKey(change.channelIdentifier, change.mappingName), change.value);
+		}
+
+		for (const [key, property] of device.properties) {
+			if (TAMPER_MAPPINGS.has(property.mappingName) && raw.tamperingDetectedAt === null) {
+				authoritative.set(key, false);
+			} else if (STALE_DETECTIONS.has(property.mappingName) && !open.has(property.channelIdentifier)) {
+				authoritative.set(key, false);
+			} else if (property.mappingName === 'leak_level' && !open.has(property.channelIdentifier)) {
+				authoritative.set(key, 'low');
+			}
+		}
+
+		const kept = entries.filter(
+			(entry) =>
+				entry.kind !== 'write' || !authoritative.has(entry.key) || authoritative.get(entry.key) === entry.value,
+		);
+
+		if (kept.length === 0) {
+			this.retries.delete(device.protectDeviceId);
+		} else if (kept.length !== entries.length) {
+			this.retries.set(device.protectDeviceId, kept);
+		}
+	}
+
+	private syncableNames(mappings: ProtectResolvedMappings): ReadonlySet<string> {
+		if (this.syncable?.mappings !== mappings) {
+			this.syncable = { mappings, names: syncableMappingNames(mappings) };
+		}
+
+		return this.syncable.names;
+	}
+
 	private async writeChanges(
 		device: IndexedDevice,
 		mapped: ProtectMappedDevice,
 		mappings: ProtectResolvedMappings,
 	): Promise<void> {
-		if (this.syncable?.mappings !== mappings) {
-			this.syncable = { mappings, names: syncableMappingNames(mappings) };
-		}
-
 		const stored = new Map<string, ProtectMappingScalar>();
 
 		for (const [key, property] of device.properties) {
@@ -859,7 +925,7 @@ export class ProtectSynchronizerService {
 			}
 		}
 
-		for (const change of diffMappedValues(stored, mapped, this.syncable.names)) {
+		for (const change of diffMappedValues(stored, mapped, this.syncableNames(mappings))) {
 			const property = device.properties.get(propertyKey(change.channelIdentifier, change.mappingName));
 
 			if (property !== undefined) {
@@ -908,21 +974,18 @@ export class ProtectSynchronizerService {
 		const open = this.tracker.openTargets(device.protectDeviceId);
 
 		for (const property of device.properties.values()) {
-			if (
-				!STALE_DETECTIONS.has(property.mappingName) ||
-				this.lastWritten.get(property.id) !== true ||
-				open.has(property.channelIdentifier)
-			) {
+			if (open.has(property.channelIdentifier)) {
 				continue;
 			}
 
-			await this.writeProperty(property.id, false);
+			if (STALE_DETECTIONS.has(property.mappingName) && this.lastWritten.get(property.id) === true) {
+				await this.writeProperty(property.id, false);
+			} else if (property.mappingName === 'leak_level') {
+				// Independent of `leak_detected`: a level whose write failed after the flag was cleared is repaired here.
+				const written = this.lastWritten.get(property.id);
 
-			if (property.mappingName === 'leak_detected') {
-				const level = device.properties.get(propertyKey(property.channelIdentifier, 'leak_level'));
-
-				if (level !== undefined) {
-					await this.writeProperty(level.id, 'low');
+				if (written !== undefined && written !== null && written !== 'low') {
+					await this.writeProperty(property.id, 'low');
 				}
 			}
 		}
@@ -980,19 +1043,29 @@ export class ProtectSynchronizerService {
 			return;
 		}
 
-		this.removalNotifyPending.delete(id);
+		try {
+			await this.notifications.notify({
+				source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+				kind: NotificationKind.ISSUE,
+				key: removalKey(id),
+				severity: NotificationSeverity.WARNING,
+				title: 'UniFi Protect device removed',
+				message:
+					`${device.name} is no longer adopted on the UniFi Protect console. Smart Panel keeps the device and ` +
+					'shows it as disconnected; delete it in Smart Panel if it is no longer needed.',
+				data: { device_id: device.panelId, protect_device_id: id },
+			});
+		} catch {
+			// The marker stays, so the next removal snapshot or remove frame retries the notification.
+			this.logger.warn('UniFi Protect removal notification could not be raised');
 
-		await this.notifications.notify({
-			source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
-			kind: NotificationKind.ISSUE,
-			key: removalKey(id),
-			severity: NotificationSeverity.WARNING,
-			title: 'UniFi Protect device removed',
-			message:
-				`${device.name} is no longer adopted on the UniFi Protect console. Smart Panel keeps the device and ` +
-				'shows it as disconnected; delete it in Smart Panel if it is no longer needed.',
-			data: { device_id: device.panelId, protect_device_id: id },
-		});
+			return;
+		}
+
+		// A completion after a reset belongs to the previous session and must not touch the new state.
+		if (!this.aborted()) {
+			this.removalNotifyPending.delete(id);
+		}
 	}
 
 	/**
