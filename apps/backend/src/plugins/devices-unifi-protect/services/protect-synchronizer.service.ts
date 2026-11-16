@@ -119,6 +119,8 @@ export class ProtectSynchronizerService {
 	/** Per cache key: grows with every cache write. Pruned with the cache; `sequenceBase` keeps a pruned key (or a reset) from reusing a value. */
 	private sequences = new Map<string, number>();
 	private sequenceBase = 0;
+	/** The device object last passed to the observers, i.e. stored (E2/E17); cleared with its cache entry and on reset. */
+	private stored = new Map<string, Readonly<Record<string, unknown>>>();
 	/** Survive `reset()`: subscribed by the platform for the lifetime of the plugin, not of one session. */
 	private readonly observers = new Set<ProtectDeviceObserver>();
 	private index = new Map<string, IndexedDevice>();
@@ -211,6 +213,11 @@ export class ProtectSynchronizerService {
 		return this.cache.get(cacheKey(modelKey, id)) ?? null;
 	}
 
+	/** The console object last passed to the observers (synchronized and stored), or null; never ahead of `syncDevice`. */
+	getStoredDevice(modelKey: string, id: string): Readonly<Record<string, unknown>> | null {
+		return this.stored.get(cacheKey(modelKey, id)) ?? null;
+	}
+
 	/** Grows with every cache write or removal of that device; 0 when it is not cached. */
 	getDeviceSequence(modelKey: string, id: string): number {
 		return this.sequences.get(cacheKey(modelKey, id)) ?? 0;
@@ -283,6 +290,7 @@ export class ProtectSynchronizerService {
 		// The base keeps rising: a sequence captured before the reset never equals one of the next session.
 		this.sequenceBase = Math.max(this.sequenceBase, ...this.sequences.values());
 		this.sequences = new Map();
+		this.stored = new Map();
 		this.index = new Map();
 		this.indexNvrId = null;
 		this.indexDirty = true;
@@ -572,6 +580,8 @@ export class ProtectSynchronizerService {
 
 	/** The key left the cache: the value moves the base so a later write under the key never repeats a value. */
 	private retireSequence(key: string): void {
+		this.stored.delete(key);
+
 		const sequence = this.sequences.get(key);
 
 		if (sequence !== undefined) {
@@ -581,6 +591,10 @@ export class ProtectSynchronizerService {
 	}
 
 	private notifyObservers(modelKey: string, id: string, raw: Readonly<Record<string, unknown>>): void {
+		if (!this.aborted()) {
+			this.stored.set(cacheKey(modelKey, id), raw);
+		}
+
 		for (const observer of [...this.observers]) {
 			if (this.aborted()) {
 				return;

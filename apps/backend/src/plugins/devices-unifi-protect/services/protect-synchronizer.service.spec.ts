@@ -1085,6 +1085,31 @@ describe('ProtectSynchronizerService', () => {
 			expect(service.getDeviceSequence('light', 'ffffffffffffffffffffffff')).toBe(0);
 		});
 
+		it('serves the object last passed to the observers and clears it with the cache entry', async () => {
+			expect(service.getStoredDevice('light', LIGHT_ID)).toBeNull();
+
+			await primeLight();
+
+			expect(service.getStoredDevice('light', LIGHT_ID)).toEqual(lights[0]);
+			expect(service.getStoredDevice('light', LIGHT_ID)).toBe(service.getCachedDevice('light', LIGHT_ID));
+
+			service.enqueueFrame(IDENTITY, ledFrame());
+			await service.idle();
+
+			expect(service.getStoredDevice('light', LIGHT_ID)?.lightDeviceSettings).toMatchObject({ ledLevel: 3 });
+
+			service.enqueueFrame(IDENTITY, frameFor('remove', { id: LIGHT_ID, modelKey: 'light' }));
+			await service.idle();
+
+			expect(service.getStoredDevice('light', LIGHT_ID)).toBeNull();
+
+			await primeLight();
+			expect(service.getStoredDevice('light', LIGHT_ID)).not.toBeNull();
+
+			service.reset();
+			expect(service.getStoredDevice('light', LIGHT_ID)).toBeNull();
+		});
+
 		it('moves the sequence when a device is removed, so an older readback is discarded', async () => {
 			await primeLight();
 

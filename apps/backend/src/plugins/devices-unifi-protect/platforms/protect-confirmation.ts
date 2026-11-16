@@ -7,6 +7,8 @@ type RawObject = Readonly<Record<string, unknown>>;
 export interface ProtectConfirmationWaiter {
 	/** True once an observation at/after the accepted point showed every field. */
 	readonly matched: boolean;
+	/** True when `cancelAll()` ended the waiter (session end); false for a timeout or dispose(). */
+	readonly cancelled: boolean;
 	/** Marks the PATCH as accepted (2xx) and evaluates the CURRENT cached device state first. Earlier observations never count. */
 	accept(current: RawObject | null): void;
 	/** Resolves true on a match (also one that happened before the call), false on timeout, cancelAll() or dispose(). */
@@ -18,6 +20,7 @@ class Waiter implements ProtectConfirmationWaiter {
 	private accepted = false;
 	private isMatched = false;
 	private settled = false;
+	private isCancelled = false;
 	private promise: Promise<boolean> | null = null;
 	private resolveWait: ((value: boolean) => void) | null = null;
 	private timer: NodeJS.Timeout | null = null;
@@ -29,6 +32,18 @@ class Waiter implements ProtectConfirmationWaiter {
 
 	get matched(): boolean {
 		return this.isMatched;
+	}
+
+	get cancelled(): boolean {
+		return this.isCancelled;
+	}
+
+	cancel(): void {
+		if (!this.settled) {
+			this.isCancelled = true;
+		}
+
+		this.finish(false);
 	}
 
 	accept(current: RawObject | null): void {
@@ -133,7 +148,7 @@ export class ProtectConfirmationWaiters {
 		this.count = 0;
 
 		for (const waiter of all) {
-			waiter.finish(false);
+			waiter.cancel();
 		}
 	}
 

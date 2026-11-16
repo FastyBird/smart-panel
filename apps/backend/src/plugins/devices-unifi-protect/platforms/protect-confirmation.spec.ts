@@ -146,4 +146,31 @@ describe('ProtectConfirmationWaiters', () => {
 		expect(jest.getTimerCount()).toBe(0);
 		expect(waiters.size).toBe(0);
 	});
+
+	it('marks a waiter ended by cancelAll() as cancelled, not one that timed out or was disposed', async () => {
+		const waiters = new ProtectConfirmationWaiters();
+		const cancelled = waiters.arm(KEY, fields);
+		const timedOut = waiters.arm(KEY, fields);
+		const disposed = waiters.arm(KEY, fields);
+
+		cancelled.accept(null);
+		timedOut.accept(null);
+		disposed.accept(null);
+
+		const pendingTimeout = timedOut.wait(1000);
+
+		jest.advanceTimersByTime(1000);
+		await expect(pendingTimeout).resolves.toBe(false);
+		disposed.dispose();
+
+		const pendingCancel = cancelled.wait(3000);
+
+		waiters.cancelAll();
+		await expect(pendingCancel).resolves.toBe(false);
+
+		expect(cancelled.cancelled).toBe(true);
+		expect(timedOut.cancelled).toBe(false);
+		expect(disposed.cancelled).toBe(false);
+		expect(jest.getTimerCount()).toBe(0);
+	});
 });
