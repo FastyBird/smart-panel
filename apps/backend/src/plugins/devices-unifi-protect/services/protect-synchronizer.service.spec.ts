@@ -1099,6 +1099,27 @@ describe('ProtectSynchronizerService', () => {
 			expect(service.getCachedDevice('light', LIGHT_ID)).toBeNull();
 		});
 
+		it('discards a readback requested before the device was removed and added again', async () => {
+			await primeLight();
+
+			const since = service.getDeviceSequence('light', LIGHT_ID);
+
+			service.enqueueFrame(IDENTITY, frameFor('remove', { id: LIGHT_ID, modelKey: 'light' }));
+			service.enqueueFrame(IDENTITY, frameFor('add', { ...lights[0], name: 'Re-added floodlight' }));
+			await service.idle();
+
+			const readded = service.getCachedDevice('light', LIGHT_ID);
+
+			expect(readded?.name).toBe('Re-added floodlight');
+			expect(service.getDeviceSequence('light', LIGHT_ID)).not.toBe(since);
+			properties.update.mockClear();
+
+			await expect(service.applyDeviceReadback(IDENTITY, withLevel(2), since)).resolves.toBe(false);
+
+			expect(service.getCachedDevice('light', LIGHT_ID)).toBe(readded);
+			expect(properties.update).not.toHaveBeenCalled();
+		});
+
 		it('applies a device readback as an authoritative object', async () => {
 			const observer = jest.fn();
 
