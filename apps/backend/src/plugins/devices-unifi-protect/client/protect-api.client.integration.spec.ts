@@ -142,6 +142,67 @@ describe('ProtectApiClient against the fake console', () => {
 		expect(fake.writes).toHaveLength(1);
 	});
 
+	describe('patchDevice', () => {
+		const LIGHT_ID = '5f0000000000000000000c01';
+		const lightFixture = (
+			JSON.parse(readFileSync(join(resolvePath(__dirname, '../__fixtures__'), 'lights.json'), 'utf8')) as {
+				lightDeviceSettings: Record<string, unknown>;
+			}[]
+		)[0];
+
+		it('patches a light and reads the merged object back', async () => {
+			const client = build();
+
+			await client.patchDevice('lights', LIGHT_ID, { lightDeviceSettings: { ledLevel: 3 } });
+
+			expect(fake.patches).toEqual([
+				{ resource: 'lights', id: LIGHT_ID, body: { lightDeviceSettings: { ledLevel: 3 } } },
+			]);
+			expect((await client.getLight(LIGHT_ID)).raw.lightDeviceSettings).toEqual({
+				...lightFixture.lightDeviceSettings,
+				ledLevel: 3,
+			});
+		});
+
+		it('echoes a patch as a device frame when enabled', async () => {
+			const client = build();
+			const frames: string[] = [];
+
+			fake.echoPatches(true);
+			await client.openSubscription('devices', {
+				message: (frame) => frames.push(frame),
+				pong: () => undefined,
+				closed: () => undefined,
+			});
+			await client.patchDevice('lights', LIGHT_ID, { isLightForceEnabled: true });
+
+			const startedAt = Date.now();
+
+			while (frames.length === 0 && Date.now() - startedAt < 5000) {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			}
+
+			expect(frames).toHaveLength(1);
+			expect((JSON.parse(frames[0]) as { type: string; item: unknown }).item).toEqual({
+				id: LIGHT_ID,
+				modelKey: 'light',
+				isLightForceEnabled: true,
+				isLightOn: true,
+			});
+		});
+
+		it('answers a queued PATCH failure', async () => {
+			const client = build();
+
+			fake.enqueue(/lights\//, { status: 400, headers: JSON_CT, body: '{"error":"x","name":"BAD_REQUEST"}' }, 'PATCH');
+
+			await expect(client.patchDevice('lights', LIGHT_ID, { isLightForceEnabled: true })).rejects.toMatchObject({
+				category: 'bad_request',
+			});
+			expect(fake.patches).toEqual([]);
+		});
+	});
+
 	it('keeps already enabled qualities when another quality is added', async () => {
 		const client = build();
 		const streams = await client.createRtspsStreams(CAMERA_ID, ['medium']);

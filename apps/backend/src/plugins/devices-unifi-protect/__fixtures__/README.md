@@ -27,6 +27,7 @@ Two kinds of files exist:
 | `discovery-reply-v0.bin` | captured (sanitized, Protect 7.3.74, UVC G5 Dome, 2026-11-14) | UDP 10001 reply of a non-console UniFi device, header version 0 (114 bytes) |
 | `cameras-doorbell.json` | synthetic | doorbell camera with `featureFlags.hasLcdScreen` and a variant with `hasPackageCamera` |
 | `rtsps-stream-post.json` | synthetic | `POST /v1/cameras/{id}/rtsps-stream` request and response |
+| `device-patch.json` | synthetic | PATCH cameras/{id} and lights/{id} request and response shapes (UP-9), unverified |
 | `sensors.json` | synthetic | UP-Sense in idle, open, motion, leak, tamper and battery-low states |
 | `lights.json` | synthetic | UP Floodlight |
 | `chimes.json` | synthetic | chime |

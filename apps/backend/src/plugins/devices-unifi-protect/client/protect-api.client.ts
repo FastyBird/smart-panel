@@ -28,6 +28,7 @@ import {
 import { buildProtectPath } from './protect-endpoints';
 import { NodeProtectTransport, ProtectTransport, ProtectTransportResponse } from './protect-http.transport';
 import { ProtectHttpsAgent } from './protect-https-agent';
+import { PROTECT_PATCH_RESOURCES, ProtectPatchResource, isAllowedProtectPatch } from './protect-patch';
 import { ProtectHeaders, ProtectRatePacer, parseRetryAfterMs, protectSleep } from './protect-rate-pacer';
 import { redactProtectText } from './protect-redaction';
 import {
@@ -57,11 +58,15 @@ export interface ProtectApiClientOptions {
 
 export interface ProtectCallOptions {
 	signal?: AbortSignal;
+	/** Shortens the call's overall deadline (never extends the 30 s default). */
+	deadlineMs?: number;
 }
 
 const RETRY_STATUSES: readonly number[] = [408, 429, 500, 502, 503, 504];
 // Creating a stream is idempotent (the body is the union of wanted qualities), but a 5xx may have half-applied.
 const STREAM_CREATE_RETRY_STATUSES: readonly number[] = [429];
+// A PATCH that failed with a 5xx may have been applied; only a rate limit proves the console did nothing.
+const PATCH_RETRY_STATUSES: readonly number[] = [429];
 // A snapshot 503 means the camera cannot deliver one right now; repeating it only queues more work on the console.
 const SNAPSHOT_RETRY_STATUSES: readonly number[] = [408, 429];
 
@@ -238,7 +243,7 @@ function parseNvr(value: unknown): ProtectNvr | null {
 }
 
 /**
- * Client of the Protect Integration API: reads, plus the one stream-creation POST; one retry policy, one rate pacer and one TLS
+ * Client of the Protect Integration API: reads, the stream-creation POST and allow-listed PATCHes; one retry policy, one rate pacer and one TLS
  * agent per console. The API key is sent as `X-API-KEY` and nowhere else; errors and logs carry endpoint templates,
  * statuses, durations and categories only.
  */
@@ -393,6 +398,37 @@ export class ProtectApiClient {
 		}
 
 		return parseRtspsStreams(parsed);
+	}
+
+	/**
+	 * Sends an allow-listed partial body as `PATCH <resource>/{id}`; resolves on 2xx and discards the answer. The body is
+	 * validated before any request and never logged. Only a 429 is retried: a repeated 5xx might apply a change twice.
+	 */
+	async patchDevice(
+		resource: ProtectPatchResource,
+		deviceId: string,
+		body: Readonly<Record<string, unknown>>,
+		options: ProtectCallOptions = {},
+	): Promise<void> {
+		// A resource outside the union can only come from a caller that dodged the types; it still gets the template.
+		const endpoint = `${resource}/{id}` as ProtectEndpoint;
+
+		if (!(PROTECT_PATCH_RESOURCES as readonly string[]).includes(resource) || !isAllowedProtectPatch(resource, body)) {
+			throw new ProtectApiError(ProtectErrorCategory.VALIDATION, endpoint);
+		}
+
+		await this.execute(
+			endpoint,
+			{ id: deviceId },
+			{
+				method: 'PATCH',
+				body: Buffer.from(JSON.stringify(body)),
+				accept: 'application/json',
+				maxBytes: PROTECT_MAX_JSON_BYTES,
+				retryStatuses: PATCH_RETRY_STATUSES,
+			},
+			options,
+		);
 	}
 
 	async getSnapshot(
@@ -558,7 +594,7 @@ export class ProtectApiClient {
 		endpoint: ProtectEndpoint,
 		params: { id?: string; query?: Record<string, string> },
 		request: {
-			method: 'GET' | 'POST';
+			method: 'GET' | 'POST' | 'PATCH';
 			body?: Buffer;
 			accept: string;
 			maxBytes: number;
@@ -575,12 +611,13 @@ export class ProtectApiClient {
 
 		const path = buildProtectPath(endpoint, params);
 		const startedAt = Date.now();
-		const deadlineAt = startedAt + this.deadlineMs;
+		const deadlineMs = Math.min(this.deadlineMs, options.deadlineMs ?? Infinity);
+		const deadlineAt = startedAt + deadlineMs;
 		const timedOut = new ProtectApiError(ProtectErrorCategory.TIMEOUT, endpoint);
 
 		// The deadline covers the whole call, so a long pacing pause or retry sleep ends it on time instead of after.
 		const deadline = new AbortController();
-		const deadlineTimer = setTimeout(() => deadline.abort(timedOut), this.deadlineMs);
+		const deadlineTimer = setTimeout(() => deadline.abort(timedOut), deadlineMs);
 
 		deadlineTimer.unref();
 
