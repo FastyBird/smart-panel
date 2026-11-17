@@ -18,13 +18,27 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 	return prototype === Object.prototype || prototype === null;
 };
 
-const isAllowedLeaf = (value: unknown): boolean =>
-	typeof value === 'boolean' ||
-	(typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 100);
+type LeafRule = (value: unknown) => boolean;
+
+const isBoolean: LeafRule = (value) => typeof value === 'boolean';
+
+const integerBetween =
+	(min: number, max: number): LeafRule =>
+	(value) =>
+		typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
+
+/** The value kind and range of every patchable leaf, keyed by its dotted path. */
+const LEAF_RULES: Readonly<Record<string, LeafRule>> = {
+	isLightForceEnabled: isBoolean,
+	'lightDeviceSettings.isIndicatorEnabled': isBoolean,
+	'ledSettings.isEnabled': isBoolean,
+	micVolume: integerBetween(0, 100),
+	'lightDeviceSettings.ledLevel': integerBetween(1, 6),
+};
 
 /**
  * True when the body is a non-empty plain object, depth at most 2, every leaf path is allow-listed for the resource and
- * every leaf is a boolean or a safe integer 0-100.
+ * every leaf has its field's kind and range. A top-level key containing a dot is refused.
  */
 export function isAllowedProtectPatch(resource: ProtectPatchResource, body: unknown): body is Record<string, unknown> {
 	if (!(PROTECT_PATCH_RESOURCES as readonly string[]).includes(resource) || !isPlainObject(body)) {
@@ -38,15 +52,22 @@ export function isAllowedProtectPatch(resource: ProtectPatchResource, body: unkn
 		return false;
 	}
 
+	const leafOk = (path: string, value: unknown): boolean =>
+		allowed.includes(path) && Object.hasOwn(LEAF_RULES, path) && LEAF_RULES[path](value);
+
 	return keys.every((key) => {
+		if (key.includes('.')) {
+			return false;
+		}
+
 		const value = body[key];
 
 		if (!isPlainObject(value)) {
-			return allowed.includes(key) && isAllowedLeaf(value);
+			return leafOk(key, value);
 		}
 
 		const inner = Object.keys(value);
 
-		return inner.length > 0 && inner.every((name) => allowed.includes(`${key}.${name}`) && isAllowedLeaf(value[name]));
+		return inner.length > 0 && inner.every((name) => leafOk(`${key}.${name}`, value[name]));
 	});
 }

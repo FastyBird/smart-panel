@@ -28,7 +28,7 @@ import {
 import { buildProtectPath } from './protect-endpoints';
 import { NodeProtectTransport, ProtectTransport, ProtectTransportResponse } from './protect-http.transport';
 import { ProtectHttpsAgent } from './protect-https-agent';
-import { PROTECT_PATCH_RESOURCES, ProtectPatchResource, isAllowedProtectPatch } from './protect-patch';
+import { ProtectPatchResource, isAllowedProtectPatch } from './protect-patch';
 import { ProtectHeaders, ProtectRatePacer, parseRetryAfterMs, protectSleep } from './protect-rate-pacer';
 import { redactProtectText } from './protect-redaction';
 import {
@@ -243,8 +243,8 @@ function parseNvr(value: unknown): ProtectNvr | null {
 }
 
 /**
- * Client of the Protect Integration API: reads, the stream-creation POST and allow-listed PATCHes; one retry policy, one rate pacer and one TLS
- * agent per console. The API key is sent as `X-API-KEY` and nowhere else; errors and logs carry endpoint templates,
+ * Client of the Protect Integration API: reads, the stream-creation POST and allow-listed PATCHes; one retry policy,
+ * one rate pacer and one TLS agent per console. The API key is sent as `X-API-KEY` and nowhere else; errors and logs carry endpoint templates,
  * statuses, durations and categories only.
  */
 export class ProtectApiClient {
@@ -413,7 +413,7 @@ export class ProtectApiClient {
 		// A resource outside the union can only come from a caller that dodged the types; it still gets the template.
 		const endpoint = `${resource}/{id}` as ProtectEndpoint;
 
-		if (!(PROTECT_PATCH_RESOURCES as readonly string[]).includes(resource) || !isAllowedProtectPatch(resource, body)) {
+		if (!isAllowedProtectPatch(resource, body)) {
 			throw new ProtectApiError(ProtectErrorCategory.VALIDATION, endpoint);
 		}
 
@@ -664,8 +664,9 @@ export class ProtectApiClient {
 						throw cancelled;
 					}
 
-					// A pooled keep-alive socket the console already closed: one immediate retry on a fresh socket.
-					if (attempt === 1 && (error as { code?: unknown } | null)?.code === 'ECONNRESET') {
+					// A pooled keep-alive socket the console already closed: one immediate retry on a fresh socket. Never for a
+					// PATCH: the first request may have been applied, so the caller settles it by readback.
+					if (attempt === 1 && request.method !== 'PATCH' && (error as { code?: unknown } | null)?.code === 'ECONNRESET') {
 						this.logger.debug(`${request.method} ${endpoint} connection reset, retrying once`);
 
 						continue;

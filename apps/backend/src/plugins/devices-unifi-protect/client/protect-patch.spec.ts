@@ -39,6 +39,16 @@ describe('isAllowedProtectPatch', () => {
 		['lights', { lightDeviceSettings: { ledLevel: 3, pirSensitivity: 50 } }],
 		['lights', { name: 'x' }],
 		['sensors', { mountType: 'door' }],
+		['lights', { isLightForceEnabled: 7 }],
+		['lights', { isLightForceEnabled: 1 }],
+		['cameras', { micVolume: true }],
+		['cameras', { ledSettings: { isEnabled: 1 } }],
+		['lights', { lightDeviceSettings: { ledLevel: 0 } }],
+		['lights', { lightDeviceSettings: { ledLevel: 7 } }],
+		['lights', { lightDeviceSettings: { ledLevel: true } }],
+		['lights', { lightDeviceSettings: { isIndicatorEnabled: 1 } }],
+		['cameras', { 'ledSettings.isEnabled': true }],
+		['lights', { 'lightDeviceSettings.ledLevel': 3 }],
 		['lights', JSON.parse('{"__proto__":{"isLightForceEnabled":true}}') as unknown],
 	] as const)('refuses %s %j', (resource, body) => {
 		expect(isAllowedProtectPatch(resource as never, body)).toBe(false);

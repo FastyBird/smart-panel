@@ -211,6 +211,16 @@ describe('ProtectApiClient', () => {
 				expect(transport.requests).toHaveLength(0);
 			});
 
+			it('sends a PATCH once on a reset connection and throws', async () => {
+				transport.queueError(reset());
+				transport.queue(200, '{}');
+
+				await expect(client.patchDevice('lights', LIGHT, { isLightForceEnabled: true })).rejects.toMatchObject({
+					category: ProtectErrorCategory.UNREACHABLE,
+				});
+				expect(transport.requests).toHaveLength(1);
+			});
+
 			it('retries a PATCH 429 but not a 408, 500 or 503', async () => {
 				transport.queue(429, '{}', rateHeaders.rate_limited);
 				transport.queue(200, '{}');
