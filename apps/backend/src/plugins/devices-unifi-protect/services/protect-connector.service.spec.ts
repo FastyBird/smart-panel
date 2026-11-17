@@ -919,6 +919,43 @@ describe('ProtectConnectorService', () => {
 		expect(service.getConsoleIdentity()).toBeNull();
 	});
 
+	it('exposes the stream TLS target of the running session only while connected', async () => {
+		config = makeConfig(
+			{ streamHostOverride: 'streams.example' },
+			{ mode: 'pinned', serverName: 'console.id.ui.direct', fingerprintSha256: 'AB'.repeat(32) },
+		);
+
+		expect(service.getStreamTlsTarget()).toBeNull();
+
+		await service.start();
+		await service.settle();
+
+		const target = service.getStreamTlsTarget();
+
+		expect(target).toEqual({
+			consoleHost: 'protect.example.com',
+			tls: { mode: 'pinned', serverName: 'console.id.ui.direct', fingerprintSha256: 'AB'.repeat(32) },
+		});
+
+		// A saved change that waits for a restart does not alter the running session's target.
+		config = makeConfig({ host: 'other.example.com' }, { mode: 'verify' });
+
+		expect(service.getStreamTlsTarget()).toEqual(target);
+
+		await service.stop();
+
+		expect(service.getStreamTlsTarget()).toBeNull();
+	});
+
+	it('reports no stream TLS target while the console is not connected', async () => {
+		queue(fakeClient(apiError(ProtectErrorCategory.UNREACHABLE)));
+		await service.start();
+		await service.settle();
+
+		expect(service.getStatus().connectionState).not.toBe('connected');
+		expect(service.getStreamTlsTarget()).toBeNull();
+	});
+
 	it('reports no console identity when the NVR has no usable MAC', async () => {
 		queue(fakeClient());
 		await service.start();

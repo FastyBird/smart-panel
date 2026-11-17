@@ -6,6 +6,7 @@ import { BaseManagedExtensionService } from '../../../modules/extensions/service
 import { ConfigChangeResult } from '../../../modules/extensions/services/managed-extension-service.interface';
 import { PROTECT_API_CLIENT_FACTORY, ProtectApiClientFactory } from '../client/protect-api-client.factory';
 import { ProtectApiClient } from '../client/protect-api.client';
+import { ProtectTlsSettings } from '../client/protect-tls-policy';
 import { isSupportedProtectVersion } from '../client/protect-version';
 import {
 	DEVICES_UNIFI_PROTECT_CONNECTOR_SERVICE_ID,
@@ -41,6 +42,12 @@ export interface ProtectSession {
 }
 
 export type ProtectSessionEnd = 'lost' | 'stopped';
+
+/** What a stream connection to this console must verify: the API session's host and TLS settings, never the override. */
+export interface ProtectStreamTlsTarget {
+	consoleHost: string;
+	tls: ProtectTlsSettings;
+}
 
 export type ProtectSessionListener = (session: ProtectSession | null, reason: ProtectSessionEnd | null) => void;
 
@@ -205,6 +212,28 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		return this.isConnected() && this.nvrId !== null && this.nvrMacKey !== null
 			? { nvrId: this.nvrId, nvrMacKey: this.nvrMacKey }
 			: null;
+	}
+
+	/**
+	 * Host and TLS settings of the running session (the config it connected with, not a saved change awaiting a
+	 * restart); null unless connected. A stream connection plans its TLS from this, so SNI, name check and pin are the
+	 * API's whatever host the stream goes to.
+	 */
+	getStreamTlsTarget(): ProtectStreamTlsTarget | null {
+		const config = this.startedConfig;
+
+		if (!this.isConnected() || config === null || typeof config.host !== 'string') {
+			return null;
+		}
+
+		return {
+			consoleHost: config.host,
+			tls: {
+				mode: config.tls.mode,
+				serverName: config.tls.serverName,
+				fingerprintSha256: config.tls.fingerprintSha256,
+			},
+		};
 	}
 
 	/**
