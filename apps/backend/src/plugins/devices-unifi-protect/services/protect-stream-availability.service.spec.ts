@@ -223,15 +223,17 @@ describe('ProtectStreamAvailabilityService', () => {
 	});
 
 	it('serves a stale entry at once and refreshes it in the background', async () => {
-		await service.getAvailability('cam1');
-		expect(getRtspsStreams).toHaveBeenCalledTimes(1);
-
-		await settle(PROTECT_STREAM_AVAILABILITY_TTL_MS - 1);
-		await service.getAvailability('cam1');
+		frame('cam1', 'CONNECTED');
 		await settle(10);
 		expect(getRtspsStreams).toHaveBeenCalledTimes(1);
 
+		await settle(PROTECT_STREAM_AVAILABILITY_TTL_MS - 10 - 1);
+		await service.getAvailability('cam1');
+		await settle(0);
+		expect(getRtspsStreams).toHaveBeenCalledTimes(1);
+
 		await settle(1);
+
 		const hang = deferred<ProtectRtspsStreams>();
 
 		getRtspsStreams.mockReturnValue(hang.promise);
@@ -239,11 +241,21 @@ describe('ProtectStreamAvailabilityService', () => {
 		const stale = await service.getAvailability('cam1');
 
 		expect(stale?.availability.high).toBe(true);
-		await settle(10);
+		await settle(0);
 		expect(getRtspsStreams).toHaveBeenCalledTimes(2);
 
 		hang.resolve(streams());
 		await settle(0);
+	});
+
+	it('does not refresh a stale entry of a camera that is not connected', async () => {
+		store.set('cam1', { high: true, medium: false, low: false, package: false }, Date.now() - 5 * 60_000);
+		frame('cam1', 'DISCONNECTED');
+
+		expect((await service.getAvailability('cam1'))?.availability.high).toBe(true);
+		await settle(10);
+
+		expect(getRtspsStreams).not.toHaveBeenCalled();
 	});
 
 	it('joins a read already in flight', async () => {
@@ -269,10 +281,173 @@ describe('ProtectStreamAvailabilityService', () => {
 		await expect(service.getAvailability('cam1')).resolves.toBeNull();
 
 		store.set('cam2', { high: true, medium: false, low: false, package: false }, Date.now() - 3 * 60_000);
+		frame('cam2', 'CONNECTED');
+
 		const entry = await service.getAvailability('cam2');
 
 		expect(entry?.availability.high).toBe(true);
 		await settle(10);
+
+		expect(getRtspsStreams.mock.calls.map((call: unknown[]) => call[0])).toEqual(['cam1', 'cam2']);
+		expect(logs.filter((line) => line.includes('read failed (timeout)'))).toHaveLength(1);
+		expect(store.get('cam2')?.availability.high).toBe(true);
+	});
+
+	it('a failed read is not repeated by listings within 60 s', async () => {
+		getRtspsStreams.mockRejectedValue(new ProtectApiError(ProtectErrorCategory.TIMEOUT, 'cameras/{id}/rtsps-stream'));
+
+		await expect(service.getAvailability('cam1')).resolves.toBeNull();
+		await expect(service.getAvailability('cam1')).resolves.toBeNull();
+		await settle(PROTECT_STREAM_AVAILABILITY_TTL_MS - 1);
+		await expect(service.getAvailability('cam1')).resolves.toBeNull();
+
+		expect(getRtspsStreams).toHaveBeenCalledTimes(1);
+
+		await settle(1);
+		await expect(service.getAvailability('cam1')).resolves.toBeNull();
+
+		expect(getRtspsStreams).toHaveBeenCalledTimes(2);
+	});
+
+	it('logs only the class of an unexpected foreground failure', async () => {
+		getRtspsStreams.mockRejectedValue(new TypeError('boom rtsps://127.0.0.1:7441/SENTINELALIASleak0123456789'));
+
+		await service.getAvailability('cam1');
+
+		expect(logs).toEqual([
+			'[ProtectStreamAvailabilityService] UniFi Protect stream availability read failed (TypeError)',
+		]);
+	});
+
+	it('never extends the read deadline', async () => {
+		await service.readStreams('cam1', { deadlineMs: 20_000 });
+		await service.readStreams('cam1', { deadlineMs: 3_000 });
+		await service.readStreams('cam1');
+
+		expect(getRtspsStreams.mock.calls.map((call: unknown[]) => (call[1] as { deadlineMs: number }).deadlineMs)).toEqual(
+			[8_000, 3_000, 8_000],
+		);
+	});
+
+	it('lets an aborted caller give up alone while the shared read continues', async () => {
+		const hang = deferred<ProtectRtspsStreams>();
+		const controller = new AbortController();
+
+		getRtspsStreams.mockReturnValue(hang.promise);
+
+		const aborted = service.getAvailability('cam1', { signal: controller.signal });
+		const joiner = service.getAvailability('cam1');
+
+		await settle(0);
+		controller.abort();
+
+		await expect(aborted).resolves.toBeNull();
+		const used = (getRtspsStreams.mock.calls[0] as [string, { signal: AbortSignal }])[1].signal;
+
+		expect(used).not.toBe(controller.signal);
+		expect(used.aborted).toBe(false);
+
+		hang.resolve(streams());
+
+		expect((await joiner)?.availability.high).toBe(true);
+		expect(getRtspsStreams).toHaveBeenCalledTimes(1);
+		expect(store.get('cam1')?.availability.high).toBe(true);
+	});
+
+	it('does not mark a camera as failed when its initiator gives up', async () => {
+		const controller = new AbortController();
+
+		getRtspsStreams.mockImplementation(
+			(_id: string, options: { signal: AbortSignal }) =>
+				new Promise((_resolve, reject) => {
+					options.signal.addEventListener('abort', () =>
+						reject(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'cameras/{id}/rtsps-stream')),
+					);
+				}),
+		);
+
+		const direct = service.readStreams('cam1', { signal: controller.signal });
+
+		controller.abort();
+		await expect(direct).rejects.toMatchObject({ category: ProtectErrorCategory.CANCELLED });
+
+		getRtspsStreams.mockResolvedValue(streams());
+		frame('cam1', 'CONNECTED');
+		await settle(10);
+
+		expect(getRtspsStreams).toHaveBeenCalledTimes(2);
+		expect(store.get('cam1')).not.toBeNull();
+	});
+
+	it('retries a status refresh that did not happen on the next read', async () => {
+		refreshDevice.mockResolvedValueOnce(false).mockRejectedValueOnce(new Error('queue'));
+
+		await service.readStreams('cam1');
+		await settle(0);
+		expect(refreshDevice).toHaveBeenCalledTimes(1);
+
+		await service.readStreams('cam1');
+		await settle(0);
+		expect(refreshDevice).toHaveBeenCalledTimes(2);
+
+		await service.readStreams('cam1');
+		await settle(0);
+		expect(refreshDevice).toHaveBeenCalledTimes(3);
+
+		await service.readStreams('cam1');
+		await settle(0);
+		expect(refreshDevice).toHaveBeenCalledTimes(3);
+	});
+
+	it('forgets a pending status refresh when the session ends', async () => {
+		refreshDevice.mockResolvedValueOnce(false);
+		await service.readStreams('cam1');
+		await settle(0);
+
+		sessionListener(null, 'lost');
+		await service.readStreams('cam1');
+		await settle(0);
+		await service.readStreams('cam1');
+		await settle(0);
+
+		expect(refreshDevice).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not read a flapping camera again within 10 s of a failed read', async () => {
+		getRtspsStreams.mockRejectedValueOnce(
+			new ProtectApiError(ProtectErrorCategory.TIMEOUT, 'cameras/{id}/rtsps-stream'),
+		);
+
+		frame('cam1', 'CONNECTED');
+		await settle(10);
+		frame('cam1', 'DISCONNECTED');
+		await settle(1_000);
+		frame('cam1', 'CONNECTED');
+		await settle(5_000);
+
+		expect(getRtspsStreams).toHaveBeenCalledTimes(1);
+
+		await settle(4_100);
+		expect(getRtspsStreams).toHaveBeenCalledTimes(2);
+	});
+
+	it('restarts the background reads after a session change', async () => {
+		const hang = deferred<ProtectRtspsStreams>();
+
+		getRtspsStreams.mockReturnValueOnce(hang.promise);
+		frame('cam1', 'CONNECTED');
+		await settle(0);
+
+		sessionListener(null, 'lost');
+		frame('cam2', 'CONNECTED');
+		await settle(10);
+
+		expect(getRtspsStreams.mock.calls.map((call: unknown[]) => call[0])).toEqual(['cam1', 'cam2']);
+		expect(store.get('cam2')).not.toBeNull();
+
+		hang.resolve(streams());
+		await settle(0);
+		expect(store.get('cam1')).toBeNull();
 	});
 
 	it('throws a sanitized error without a client', async () => {

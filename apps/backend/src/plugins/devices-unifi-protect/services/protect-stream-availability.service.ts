@@ -39,6 +39,15 @@ const toPorts = (streams: ProtectRtspsStreams): ProtectStreamPorts => {
 	return Object.freeze(ports);
 };
 
+/** A category or an error class name: never a message, which can carry an address. */
+const describeFailure = (error: unknown): string => {
+	if (error instanceof ProtectApiError) {
+		return error.category;
+	}
+
+	return error instanceof Error && /^\w{1,64}$/.test(error.constructor.name) ? error.constructor.name : 'unknown';
+};
+
 /**
  * Which RTSPS streams each adopted camera has enabled. Reads go through the paced client; only booleans reach the store
  * and only ports are kept next to them (never an address or alias). One background read at a time, never a retry storm.
@@ -62,6 +71,8 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 	private readonly waiting: string[] = [];
 	private readonly tracked = new Set<string>();
 	private readonly deferred = new Map<string, NodeJS.Timeout>();
+	/** Cameras whose status refresh did not happen after a presence change; retried on their next read. */
+	private readonly needsRefresh = new Set<string>();
 	private pumping = false;
 
 	private unsubscribeObserver: (() => void) | null = null;
@@ -91,10 +102,14 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 	}
 
 	/**
-	 * SECRET result. One paced GET `rtsps-stream` (deadline 8 000 ms, the caller's signal); stores the booleans and ports
-	 * and, when the presence changed, queues a status refresh. Throws ProtectApiError (`unavailable` without a client).
+	 * SECRET result. One paced GET `rtsps-stream` (deadline at most 8 000 ms, the caller's signal); stores the booleans
+	 * and ports and, when the presence changed, queues a status refresh. Throws ProtectApiError (`unavailable` without a
+	 * client).
 	 */
-	async readStreams(cameraId: string, options: { signal?: AbortSignal } = {}): Promise<ProtectRtspsStreams> {
+	async readStreams(
+		cameraId: string,
+		options: { signal?: AbortSignal; deadlineMs?: number } = {},
+	): Promise<ProtectRtspsStreams> {
 		const client = this.connector.getClient();
 
 		if (client === null) {
@@ -102,13 +117,25 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		}
 
 		const generation = this.generation;
+		const previousAttempt = this.attemptedAt.get(cameraId);
 
 		this.attemptedAt.set(cameraId, Date.now());
 
-		const streams = await client.getRtspsStreams(cameraId, {
-			signal: options.signal ?? this.sessionAbort.signal,
-			deadlineMs: PROTECT_STREAM_READ_DEADLINE_MS,
-		});
+		let streams: ProtectRtspsStreams;
+
+		try {
+			streams = await client.getRtspsStreams(cameraId, {
+				signal: options.signal ?? this.sessionAbort.signal,
+				deadlineMs: Math.min(options.deadlineMs ?? PROTECT_STREAM_READ_DEADLINE_MS, PROTECT_STREAM_READ_DEADLINE_MS),
+			});
+		} catch (error) {
+			// A caller that gave up says nothing about the camera.
+			if (error instanceof ProtectApiError && error.category === ProtectErrorCategory.CANCELLED) {
+				this.restoreAttempt(generation, cameraId, previousAttempt);
+			}
+
+			throw error;
+		}
 
 		this.record(generation, cameraId, streams);
 
@@ -127,16 +154,26 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 			const entry = this.store.get(cameraId);
 
 			if (entry !== null) {
-				if (Date.now() - entry.readAt >= PROTECT_STREAM_AVAILABILITY_TTL_MS && !this.attemptedRecently(cameraId)) {
+				if (
+					this.lastState.get(cameraId) === 'CONNECTED' &&
+					Date.now() - entry.readAt >= PROTECT_STREAM_AVAILABILITY_TTL_MS &&
+					!this.attemptedRecently(cameraId)
+				) {
 					this.enqueue(cameraId);
 				}
 
 				return entry;
 			}
 
-			await this.read(cameraId, options.signal);
-		} catch {
-			// The failure is the caller's "no availability"; nothing of it is kept.
+			// A camera that just failed is not read again by every listing; a read in flight is joined.
+			if (this.inflight.has(`${this.generation}:${cameraId}`) || !this.attemptedRecently(cameraId)) {
+				await this.waitFor(this.read(cameraId), options.signal);
+			}
+		} catch (error) {
+			// A caller's own abort is not the camera's failure; a failed read is the caller's "no availability".
+			if (!(error instanceof ProtectApiError)) {
+				this.logLimited(`UniFi Protect stream availability read failed (${describeFailure(error)})`);
+			}
 		}
 
 		return this.store.get(cameraId);
@@ -171,7 +208,9 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 	}
 
 	private onReconnect(id: string, entry: ProtectStreamAvailabilityEntry | null): void {
-		const age = entry === null ? Infinity : Date.now() - entry.readAt;
+		// A read that failed counts like one that worked: the camera is not read again within the window.
+		const lastRead = Math.max(entry?.readAt ?? -Infinity, this.attemptedAt.get(id) ?? -Infinity);
+		const age = Date.now() - lastRead;
 
 		if (age >= RECONNECT_MIN_ENTRY_AGE_MS) {
 			this.enqueue(id);
@@ -239,9 +278,7 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 					await this.read(id);
 				} catch (error) {
 					if (generation === this.generation) {
-						const category = error instanceof ProtectApiError ? error.category : 'unknown';
-
-						this.logLimited(`UniFi Protect stream availability read failed (${category})`);
+						this.logLimited(`UniFi Protect stream availability read failed (${describeFailure(error)})`);
 					}
 				}
 
@@ -257,13 +294,14 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 	}
 
 	/** One read per camera and session, joined by every caller; rejects with the read's error. */
-	private read(cameraId: string, signal?: AbortSignal): Promise<void> {
+	private read(cameraId: string): Promise<void> {
 		const key = `${this.generation}:${cameraId}`;
 		let pending = this.inflight.get(key);
 
 		if (pending === undefined) {
 			// Reduced to booleans and ports inside readStreams; nothing secret leaves it through this promise.
-			pending = this.readStreams(cameraId, { signal }).then((): void => undefined);
+			// The shared read runs on the session's signal only: no caller's abort can fail the others.
+			pending = this.readStreams(cameraId).then((): void => undefined);
 			this.inflight.set(key, pending);
 
 			const forget = (): void => {
@@ -278,6 +316,39 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		return pending;
 	}
 
+	/** Resolves with the promise; rejects alone when the caller's signal aborts first. */
+	private waitFor(promise: Promise<void>, signal?: AbortSignal): Promise<void> {
+		if (signal === undefined) {
+			return promise;
+		}
+
+		return new Promise<void>((resolve, reject) => {
+			const onAbort = (): void =>
+				reject(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'cameras/{id}/rtsps-stream'));
+
+			if (signal.aborted) {
+				onAbort();
+
+				return;
+			}
+
+			signal.addEventListener('abort', onAbort, { once: true });
+			promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+		});
+	}
+
+	private restoreAttempt(generation: number, cameraId: string, previous: number | undefined): void {
+		if (generation !== this.generation) {
+			return;
+		}
+
+		if (previous === undefined) {
+			this.attemptedAt.delete(cameraId);
+		} else {
+			this.attemptedAt.set(cameraId, previous);
+		}
+	}
+
 	private record(generation: number, cameraId: string, streams: ProtectRtspsStreams): void {
 		if (generation !== this.generation) {
 			return;
@@ -287,16 +358,32 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 
 		this.ports.set(cameraId, toPorts(streams));
 
-		if (!changed) {
+		if (!changed && !this.needsRefresh.has(cameraId)) {
 			return;
 		}
 
 		const identity = this.connector.getConsoleIdentity();
 
-		if (identity !== null) {
-			// A false answer does not say why (not adopted yet, queue full, write failed); the next frame re-syncs.
-			this.synchronizer.refreshDevice(identity, 'camera', cameraId).catch(() => undefined);
+		if (identity === null) {
+			this.needsRefresh.add(cameraId);
+
+			return;
 		}
+
+		// A false answer does not say why (not adopted yet, queue full, write failed): try again on the next read.
+		const settled = (done: boolean): void => {
+			if (generation !== this.generation) {
+				return;
+			}
+
+			if (done) {
+				this.needsRefresh.delete(cameraId);
+			} else {
+				this.needsRefresh.add(cameraId);
+			}
+		};
+
+		this.synchronizer.refreshDevice(identity, 'camera', cameraId).then(settled, () => settled(false));
 	}
 
 	private endSession(): void {
@@ -310,6 +397,7 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		this.inflight.clear();
 		this.waiting.length = 0;
 		this.tracked.clear();
+		this.needsRefresh.clear();
 		this.pumping = false;
 
 		for (const timer of this.deferred.values()) {
