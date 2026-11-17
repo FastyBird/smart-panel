@@ -500,7 +500,14 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			return target.consoleHost;
 		}
 
-		return isValidProtectHost(override) ? override : null;
+		if (isValidProtectHost(override)) {
+			return override;
+		}
+
+		// Here, the one place every caller goes through (prepare, accepted connections, the provider's lookups).
+		this.logLimited('UniFi Protect stream host override is invalid', 'warn');
+
+		return null;
 	}
 
 	/** Races `work` against the caller's deadline and signal; the work itself keeps running for other joiners. */

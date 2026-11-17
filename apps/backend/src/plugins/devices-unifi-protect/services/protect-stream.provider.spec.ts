@@ -193,6 +193,28 @@ describe('UnifiProtectStreamProvider', () => {
 			expect(byId.medium).toMatchObject({ available: false, unavailableReason: 'stream_tls_unverified' });
 		});
 
+		it('reports camera_offline when the synchronizer has no copy of the camera', async () => {
+			synchronizer.getCachedDevice.mockReturnValue(null);
+
+			const profiles = await provider.listProfiles(makeDevice());
+
+			expect(profiles.every((p) => !p.available && p.unavailableReason === 'camera_offline')).toBe(true);
+			expect(availability.getAvailability).not.toHaveBeenCalled();
+		});
+
+		it('reports stream_tls_unverified for the package profile by its own port', async () => {
+			availability.getStreamPorts.mockReturnValue({ high: 7441, package: 7443 });
+			bridge.getVerification.mockImplementation(({ port }: { port: number }) =>
+				port === 7443 ? 'unverified' : 'unknown',
+			);
+
+			const profiles = await provider.listProfiles(makeDevice({ packageChannel: true }));
+			const byId = Object.fromEntries(profiles.map((p) => [p.id, p]));
+
+			expect(byId.package).toMatchObject({ available: false, unavailableReason: 'stream_tls_unverified' });
+			expect(byId.high.available).toBe(true);
+		});
+
 		it('never defaults a profile without a known port to 7441', async () => {
 			availability.getStreamPorts.mockReturnValue(null);
 			bridge.getVerification.mockReturnValue('unverified');
@@ -282,9 +304,10 @@ describe('UnifiProtectStreamProvider', () => {
 			expect(overrideRead).not.toHaveBeenCalled();
 		});
 
-		it('verifies the console name, not the override name', async () => {
-			// The provider hands the bridge a port only. The bridge plans TLS from the session's console host (R8), so
-			// an override can neither widen nor change what the certificate is checked against.
+		it('passes only the port to the bridge', async () => {
+			// The bridge plans TLS from the session's console host, not the override (R8); that is asserted in
+			// protect-stream-bridge.service.spec.ts ("the stream goes to the override, but the TLS plan stays the session's").
+			// What the provider owes is to name no host: verification is looked up under the bridge's own upstream host.
 			bridge.getUpstreamHost.mockReturnValue('streams.example');
 			bridge.getVerification.mockReturnValue('unverified');
 
@@ -292,13 +315,61 @@ describe('UnifiProtectStreamProvider', () => {
 
 			expect(bridge.getVerification).toHaveBeenCalledWith({ host: 'streams.example', port: 7441 });
 			expect(profiles.every((p) => p.unavailableReason === 'stream_tls_unverified')).toBe(true);
-			expect(overrideRead).not.toHaveBeenCalled();
 
 			bridge.getVerification.mockReturnValue('unknown');
 			await provider.resolveSource(makeDevice(), 'high');
 
 			expect(Object.keys(callArg<Record<string, unknown>>(bridge.prepare, 0))).toEqual(['port']);
-			expect(connector).not.toHaveProperty('getStreamTlsTarget');
+			expect(overrideRead).not.toHaveBeenCalled();
+		});
+
+		it('logs a bridge TLS failure by category only', async () => {
+			bridge.prepare.mockRejectedValue(new ProtectApiError(ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH, 'tls'));
+
+			await expect(provider.resolveSource(makeDevice(), 'high')).rejects.toBeInstanceOf(
+				CameraProfileUnavailableException,
+			);
+			await expect(provider.resolveSource(makeDevice(), 'high')).rejects.toBeInstanceOf(
+				CameraProfileUnavailableException,
+			);
+
+			const lines = logged.map((args) => (args[0] as string).replace('[UnifiProtectStreamProvider] ', ''));
+
+			expect(lines).toEqual(['UniFi Protect stream request failed (tls_fingerprint_mismatch)']);
+			expect(JSON.stringify(logged)).not.toMatch(/SENTINELALIAS|rtsp|192\.168|127\.0/i);
+		});
+
+		it('logs a failed console read by category and an unknown error by class name', async () => {
+			availability.readStreams.mockRejectedValueOnce(new ProtectApiError(ProtectErrorCategory.TIMEOUT, 'tls'));
+			availability.readStreams.mockRejectedValueOnce(new TypeError(URL_OF('high')));
+
+			await expect(provider.resolveSource(makeDevice(), 'high')).rejects.toBeInstanceOf(CameraUpstreamException);
+			await expect(provider.resolveSource(makeDevice(), 'high')).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			expect(logged.map((args) => (args[0] as string).replace('[UnifiProtectStreamProvider] ', ''))).toEqual([
+				'UniFi Protect stream request failed (timeout)',
+				'UniFi Protect stream request failed (TypeError)',
+			]);
+			expect(JSON.stringify(logged)).not.toMatch(/SENTINELALIAS|rtsp|192\.0/i);
+		});
+
+		it('does not log a cancelled call', async () => {
+			availability.readStreams.mockRejectedValueOnce(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'tls'));
+			bridge.prepare.mockRejectedValueOnce(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'tls'));
+
+			await expect(provider.resolveSource(makeDevice(), 'high')).rejects.toBeInstanceOf(CameraUpstreamException);
+			await expect(provider.resolveSource(makeDevice(), 'high')).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			expect(logged).toEqual([]);
+		});
+
+		it('treats a known profile the console answered with undefined as not enabled', async () => {
+			availability.readStreams.mockResolvedValue({});
+
+			await expect(provider.resolveSource(makeDevice(), 'high')).rejects.toBeInstanceOf(
+				CameraProfileUnavailableException,
+			);
+			expect(bridge.prepare).not.toHaveBeenCalled();
 		});
 
 		it('fails closed on an invalid stored override', async () => {

@@ -533,6 +533,25 @@ describe('ProtectStreamBridgeService', () => {
 			expect(upstreams).toHaveLength(1);
 		});
 
+		it('warns once per interval that the stored override is invalid, without the value', () => {
+			pluginConfig.streamHostOverride = 'rtsps://SENTINELHOST/x';
+
+			expect(service.getUpstreamHost()).toBeNull();
+			expect(service.getUpstreamHost()).toBeNull();
+
+			const warning = 'UniFi Protect stream host override is invalid';
+
+			expect(linesWith(logged, warning)).toHaveLength(1);
+			expect(logged.join('\n')).not.toContain('SENTINELHOST');
+
+			const now = Date.now();
+
+			jest.spyOn(Date, 'now').mockReturnValue(now + 61_000);
+			service.getUpstreamHost();
+
+			expect(linesWith(logged, warning)).toHaveLength(2);
+		});
+
 		it('closes the listener when the relay generation changes', async () => {
 			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);

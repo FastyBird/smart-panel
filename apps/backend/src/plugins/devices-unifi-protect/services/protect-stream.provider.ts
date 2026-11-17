@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import {
 	CameraOfflineException,
 	CameraProfileUnavailableException,
@@ -14,6 +15,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { buildBridgeStreamUrl, parseProtectStreamUrl } from '../client/protect-stream-url';
 import {
+	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	DEVICES_UNIFI_PROTECT_TYPE,
 	PROTECT_RTSPS_QUALITIES,
 	PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS,
@@ -27,6 +29,7 @@ import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.err
 
 import { ProtectConnectorService } from './protect-connector.service';
 import { readDefaultStreamQuality } from './protect-default-stream-quality';
+import { ProtectFailureLogLimiter } from './protect-failure-log-limiter';
 import { ProtectStreamAvailabilityService } from './protect-stream-availability.service';
 import { ProtectStreamBridgeService } from './protect-stream-bridge.service';
 import { toCameraProviderError } from './protect-stream-errors';
@@ -54,6 +57,9 @@ interface ProtectCameraChannels {
  */
 @Injectable()
 export class UnifiProtectStreamProvider implements ICameraStreamProvider {
+	private readonly logger = createExtensionLogger(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, 'UnifiProtectStreamProvider');
+	private readonly failureLog = new ProtectFailureLogLimiter();
+
 	constructor(
 		private readonly connector: ProtectConnectorService,
 		private readonly synchronizer: ProtectSynchronizerService,
@@ -84,10 +90,7 @@ export class UnifiProtectStreamProvider implements ICameraStreamProvider {
 
 		// A listing the core gave up on says nothing about the camera: no reason is reported and nothing is logged.
 		if (options.signal?.aborted === true) {
-			throw toCameraProviderError(
-				new ProtectApiError(ProtectErrorCategory.CANCELLED, 'cameras/{id}/rtsps-stream'),
-				'source',
-			);
+			throw new CameraUpstreamException('Camera did not respond');
 		}
 
 		const host = this.bridge.getUpstreamHost();
@@ -135,6 +138,8 @@ export class UnifiProtectStreamProvider implements ICameraStreamProvider {
 
 			consoleUrl = streams[profileId as ProtectRtspsQuality];
 		} catch (error) {
+			this.logFailure(error);
+
 			throw toCameraProviderError(error, 'source');
 		}
 
@@ -162,6 +167,8 @@ export class UnifiProtectStreamProvider implements ICameraStreamProvider {
 
 			url = buildBridgeStreamUrl(endpoint, parsed.alias);
 		} catch (error) {
+			this.logFailure(error);
+
 			throw toCameraProviderError(error, 'bridge');
 		}
 
@@ -175,6 +182,28 @@ export class UnifiProtectStreamProvider implements ICameraStreamProvider {
 	/** Task 7. */
 	getSnapshot(): Promise<never> {
 		return Promise.reject(new CameraUpstreamException('Camera did not respond'));
+	}
+
+	/** A category or an error class name, never a message or an address; a cancelled call is not a failure. */
+	private logFailure(error: unknown): void {
+		let what: string;
+
+		if (error instanceof ProtectApiError) {
+			if (error.category === ProtectErrorCategory.CANCELLED) {
+				return;
+			}
+
+			what = error.category;
+		} else {
+			what = error instanceof Error && /^\w{1,64}$/.test(error.constructor.name) ? error.constructor.name : 'unknown';
+		}
+
+		const text = `UniFi Protect stream request failed (${what})`;
+		const decision = this.failureLog.consume(text);
+
+		if (decision.log) {
+			this.logger.warn(decision.suppressed > 0 ? `${text} (${decision.suppressed} similar suppressed)` : text);
+		}
 	}
 
 	private toCamera(device: DeviceEntity): ProtectCameraChannels | null {
