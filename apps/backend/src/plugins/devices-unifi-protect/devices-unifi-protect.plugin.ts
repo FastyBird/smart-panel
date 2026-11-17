@@ -258,9 +258,11 @@ The API key is write-only: it is stored locally and never returned by the API.
 
 - Each change becomes one partial update per Protect device, sent through the same request pacing as every other console request.
 - A change counts as done only when the console confirms it, by its next device update or a read-back within a few seconds; otherwise the command fails and Smart Panel keeps showing the console's state.
+- In polling mode each command's read-back advances the snapshot sequence, so during a burst of commands an overlapping poll can be discarded and other devices refresh at the next poll.
 - Floodlight brightness has six levels on the console; a value between two levels is set to the nearest one.
 - Devices adopted before this version need to be adopted again to make the microphone volume and the floodlight status LED writable.
 - Known limit: room-level lighting intents fail for floodlights; control a floodlight through its own device.
+- Known limit: switching \`light.on\` off on a floodlight lit by motion clears only the forced-on state, so the command is confirmed while the light stays lit until the motion timer ends.
 - Known limit: a heavily queued command can exceed the core's 24 s command timeout and be reported as failed while it is later confirmed; the stored value stays correct because the console read-back is authoritative.
 
 ## TLS
