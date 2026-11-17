@@ -574,6 +574,8 @@ describe('UnifiProtectStreamProvider', () => {
 		};
 
 		it('takes a main snapshot without a channel parameter', async () => {
+			jest.useFakeTimers({ now: 1_000_000 });
+
 			for (const channelId of [undefined, 'ch-main']) {
 				client.getSnapshot.mockClear();
 
@@ -585,6 +587,8 @@ describe('UnifiProtectStreamProvider', () => {
 		});
 
 		it('takes a package snapshot', async () => {
+			jest.useFakeTimers({ now: 1_000_000 });
+
 			await provider.getSnapshot(makeDevice({ packageChannel: true }), { channelId: 'ch-pkg', signal });
 
 			expect(client.getSnapshot).toHaveBeenCalledWith('cam-1', {
