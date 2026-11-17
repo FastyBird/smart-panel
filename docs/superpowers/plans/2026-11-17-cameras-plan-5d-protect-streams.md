@@ -216,8 +216,9 @@ Decisions:
   opens); any other peer is destroyed before an upstream connection exists. If that address cannot be learnt, the bridge
   is `unavailable` (fail closed). Relay state comes from the exported `Go2rtcService` (`getStatus()`, `getClient()?.baseUrl`,
   `subscribe()`; `modules/cameras/services/go2rtc.service.ts:232-287`).
-- **Port.** OS-assigned (`listen(0)`), one listener per key `<relay mode, relay generation, bind address>` (R1); no
-  configured port. The upstream is not part of the key: each accepted connection reads it at accept time.
+- **Port.** OS-assigned (`listen(0)`), one listener per key `<relay mode, relay generation, bind address, upstream port>`
+  (R1); no configured port. The upstream host and TLS are not part of the key: each accepted connection reads them at
+  accept time; the upstream port is the listener's own.
 - **Access control and secrets.** No per-session path token: the bridge is a transparent pipe to one fixed upstream, it
   adds no capability (the console still requires the alias, which only go2rtc holds), and a token would mean rewriting
   RTSP request lines. The alias in the go2rtc URL stays the only secret, protected by the core's redaction (the URL and
@@ -837,8 +838,9 @@ git commit -m "feat(backend): bridge UniFi Protect camera streams over verified 
      a channel `camera.main`. Otherwise `listProfiles` → `[]`, `resolveSource` → `CameraProfileUnavailableException`.
   2. *Upstream host*: stored `streamHostOverride` when non-null and `isValidProtectHost` (non-null and invalid → no host,
      limited warning) else `getConsoleHost()`.
-  3. *Profiles*: order and reasons per D5; `stream_tls_unverified` when `bridge.getVerification({ host, port:
-     PROTECT_RTSPS_DEFAULT_PORT })` is `unverified` (the port of the last resolved URL is used when known in this session).
+  3. *Profiles*: order and reasons per D5; `stream_tls_unverified` when `bridge.getVerification({ host, port })` is
+     `unverified`, where `port` is that camera's last resolved upstream port in this session, else
+     `PROTECT_RTSPS_DEFAULT_PORT` (R5).
   4. *Source*: unknown profile → `CameraProfileUnavailableException`; console unavailable or camera not `CONNECTED` →
      `CameraOfflineException`; `availability.readStreams` error → `toCameraProviderError(e, 'source')`; URL null →
      `CameraProfileUnavailableException`; `parseProtectStreamUrl` null or no upstream host → `CameraUpstreamException`;
