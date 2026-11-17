@@ -1,7 +1,9 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../common/logger/extension-logger.service';
 import { CamerasModule } from '../../modules/cameras/cameras.module';
+import { CameraStreamProviderRegistryService } from '../../modules/cameras/services/camera-stream-provider.registry.service';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -74,6 +76,7 @@ import {
 import { ProtectStreamAvailabilityService } from './services/protect-stream-availability.service';
 import { ProtectStreamAvailabilityStore } from './services/protect-stream-availability.store';
 import { ProtectStreamBridgeService } from './services/protect-stream-bridge.service';
+import { UnifiProtectStreamProvider } from './services/protect-stream.provider';
 import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
 @ApiTag({
@@ -104,6 +107,7 @@ import { ProtectSynchronizerService } from './services/protect-synchronizer.serv
 		ProtectStreamAvailabilityStore,
 		ProtectStreamAvailabilityService,
 		ProtectStreamBridgeService,
+		UnifiProtectStreamProvider,
 		ProtectSynchronizerService,
 		UnifiProtectDevicePlatform,
 		{ provide: PROTECT_REALTIME_TIMINGS, useValue: PROTECT_DEFAULT_REALTIME_TIMINGS },
@@ -126,7 +130,11 @@ import { ProtectSynchronizerService } from './services/protect-synchronizer.serv
 	],
 	exports: [ProtectConnectorService],
 })
-export class DevicesUnifiProtectPlugin implements OnModuleInit {
+export class DevicesUnifiProtectPlugin implements OnModuleInit, OnModuleDestroy {
+	private readonly logger = createExtensionLogger(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, 'DevicesUnifiProtectPlugin');
+
+	private streamProviderRegistration: Readonly<{ dispose: () => void }> | null = null;
+
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly devicesMapper: DevicesTypeMapperService,
@@ -140,6 +148,8 @@ export class DevicesUnifiProtectPlugin implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly platformRegistry: PlatformRegistryService,
 		private readonly unifiProtectDevicePlatform: UnifiProtectDevicePlatform,
+		private readonly cameraStreamProviders: CameraStreamProviderRegistryService,
+		private readonly unifiProtectStreamProvider: UnifiProtectStreamProvider,
 	) {}
 
 	onModuleInit(): void {
@@ -228,6 +238,7 @@ Connects Smart Panel to a UniFi Protect console over its local Integration API. 
 - Cameras, doorbells, UP-Sense sensors and floodlights adopted as Smart Panel devices, with a mapping preview and RTSPS stream enablement per camera (on by default, opt out with \`stream.enabled: false\`)
 - A fully local integration with no UniFi cloud account and no hosted Smart Panel bridge
 - Live device state, detections and doorbell rings through the console's event WebSockets, with REST polling while they are unavailable
+- Live view and snapshots of cameras and doorbells through the cameras module, with camera status that follows the console
 - Control of floodlight light, brightness and status LED, and camera and doorbell status LED and microphone volume
 - Certificate trust that never sends the API key over an unverified connection
 
@@ -250,7 +261,7 @@ The API key is write-only: it is stored locally and never returned by the API.
 | \`tls.mode\` | Certificate trust mode: \`verify\` or \`pinned\` | \`verify\` |
 | \`tls.server_name\` | Name used for SNI and certificate verification | — |
 | \`tls.fingerprint_sha256\` | SHA-256 fingerprint of the console certificate, required for \`pinned\` | — |
-| \`stream_host_override\` | Host clients use to reach camera streams instead of the console host | — |
+| \`stream_host_override\` | Host Smart Panel connects to for camera streams instead of the console host | — |
 | \`default_stream_quality\` | Preferred stream quality: \`high\`, \`medium\` or \`low\` | \`medium\` |
 | \`snapshot_min_interval_ms\` | Minimum interval between snapshots of one camera (500–60000) | \`2000 ms\` |
 | \`poll_interval_ms\` | Interval between device state refreshes while real-time updates are unavailable (5000–600000) | \`30000 ms\` |
@@ -274,6 +285,31 @@ The API key is write-only: it is stored locally and never returned by the API.
 - Known limit: switching \`light.on\` off on a floodlight lit by motion clears only the forced-on state, so the command is confirmed while the light stays lit until the motion timer ends.
 - Known limit: a heavily queued command can exceed the core's 24 s command timeout and be reported as failed while it is later confirmed; the stored value stays correct because the console read-back is authoritative.
 
+## Streams and snapshots
+
+- Each adopted camera offers the \`high\`, \`medium\` and \`low\` stream qualities, plus \`package\` on doorbells with a package camera; \`default_stream_quality\` is listed first. A quality that is not enabled on the console is listed as unavailable (\`stream_not_enabled\`): enable it in Protect, or adopt the camera again with streams enabled. The plugin never enables or deletes a stream on its own.
+- A quality can also be unavailable for these reasons: \`console_unavailable\` (no console session), \`camera_offline\` (the camera is not connected), \`stream_state_unknown\` (the console has not been read yet or did not answer) and \`stream_tls_unverified\` (see below).
+- Live streams reach the console through a small bridge in Smart Panel that checks the console certificate exactly like the API connection (\`tls.mode\`). go2rtc reads plain RTSP from a loopback listener of the bridge; the bridge opens the TLS connection to the console's stream port and verifies it before it forwards a single byte. There is no \`rtsps\` shortcut around the bridge and no unverified path: if the stream port presents a certificate that does not pass, live view stays unavailable (\`stream_tls_unverified\`) and the stream fails closed. The bridge also drops any RTSP redirect from the console.
+- Stream addresses are read from the console each time a live stream starts and are kept only in memory: they are never stored, logged or returned by the API.
+- \`stream_host_override\` replaces the host Smart Panel connects to for camera streams, for consoles that report an address Smart Panel cannot reach. The console's certificate is still verified against its own name (\`host\` or \`tls.server_name\`) and \`tls.mode\`, never against the override. An invalid override is never replaced by the console host: live view stays unavailable, with one warning in the log, until it is fixed or cleared.
+- Snapshots use the same request pacing as every other console request, at most one per camera every \`snapshot_min_interval_ms\`. Full-HD snapshots are requested only from cameras that support them.
+- Camera status follows the console: \`offline\` while a camera is disconnected, \`initializing\` while it connects, \`available\` when a stream quality is enabled and \`unavailable\` when none is.
+
+### External relay
+
+- With the managed go2rtc the bridge listens on loopback only. With an external go2rtc on another host, the listener binds only the local address on the route to the relay, and it accepts only the relay's addresses (the peer the relay answered from plus its resolved addresses); any other peer is refused.
+- The hop from go2rtc to the bridge is not encrypted. Use an external relay only on a network you trust.
+- A relay in a container on the same host, reached through \`localhost\` or published ports, cannot reach the loopback bridge. A relay reached through the host's LAN IP connects from a bridge-network address that is not in the allow-list and is refused. Both fail closed.
+- The allow-list is learnt once per relay generation. If the relay's DNS name or DHCP address changes, the old address stays allowed until the relay changes (restart, or a different relay URL).
+
+### Known limits
+
+- While a listener is closed (plugin disabled, shutdown, or the relay seen as not running) and go2rtc still holds its stream URL, a local process that binds the freed port can receive the stream alias.
+- When the console rotates a stream alias, that stream fails at the console until it is registered again.
+- The bridge allows at most 16 concurrent connections and 32 new connections per 10 s; local connection exhaustion or a flood of connections can block live view until it passes. Idle connections close after 60 s.
+- Stream data is synthetic until UP-20 verifies the bridge against a real console.
+- The certificate presented on the stream port (7441) has not been measured on a real console yet (D1b); until then a console whose stream port does not pass \`tls.mode\` stays unavailable.
+
 ## TLS
 
 - \`verify\` checks the certificate chain and name. Set \`tls.server_name\` to the console's direct-connect domain, which serves a valid public certificate, or use a host name the certificate covers.
@@ -294,6 +330,17 @@ Adoption is API-only until the admin wizard (UP-12) ships. Provider settings are
 
 		this.managedServiceManager.register(this.protectConnectorService);
 		this.platformRegistry.register(this.unifiProtectDevicePlatform);
+
+		this.streamProviderRegistration = this.cameraStreamProviders.register(this.unifiProtectStreamProvider);
+
+		if (this.streamProviderRegistration === null) {
+			this.logger.warn('UniFi Protect stream provider was not registered');
+		}
+	}
+
+	onModuleDestroy(): void {
+		this.streamProviderRegistration?.dispose();
+		this.streamProviderRegistration = null;
 	}
 
 	private registerDiscriminator(

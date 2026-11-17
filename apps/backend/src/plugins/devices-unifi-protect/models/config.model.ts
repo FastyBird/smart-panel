@@ -122,7 +122,8 @@ export class ProtectConfigModel extends PluginConfigModel {
 	tls: ProtectTlsConfigModel = new ProtectTlsConfigModel();
 
 	@ApiPropertyOptional({
-		description: 'Host name or IP address clients use to reach the camera streams instead of the console host',
+		description:
+			"Host name or IP address Smart Panel connects to for the console's camera streams instead of the console host",
 		nullable: true,
 		maxLength: MAX_PROTECT_HOST_LENGTH,
 		name: 'stream_host_override',
