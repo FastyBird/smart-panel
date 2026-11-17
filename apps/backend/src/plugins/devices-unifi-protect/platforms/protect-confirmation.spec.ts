@@ -12,6 +12,49 @@ describe('ProtectConfirmationWaiters', () => {
 	beforeEach(() => jest.useFakeTimers());
 	afterEach(() => jest.useRealTimers());
 
+	it('keeps the slot count right when a waiter is disposed after cancelAll', async () => {
+		const waiters = new ProtectConfirmationWaiters({ maxWaiters: 1 });
+		const waiter = waiters.arm(KEY, fields);
+
+		waiter?.accept(null);
+
+		const pending = waiter?.wait(3000);
+
+		waiters.cancelAll();
+		await expect(pending).resolves.toBe(false);
+		expect(waiter?.cancelled).toBe(true);
+		expect(waiters.size).toBe(0);
+
+		waiter?.dispose();
+		waiter?.dispose();
+		expect(waiters.size).toBe(0);
+		expect(waiters.arm(KEY, fields)).not.toBeNull();
+		expect(waiters.arm(KEY, fields)).toBeNull();
+	});
+
+	it('arms again after cancelAll and the old waiter no longer holds a slot', () => {
+		const waiters = new ProtectConfirmationWaiters({ maxWaiters: 2 });
+		const first = waiters.arm(KEY, fields);
+		const second = waiters.arm('light\u0000L2', fields);
+
+		expect(waiters.arm(KEY, fields)).toBeNull();
+		waiters.cancelAll();
+
+		const rearmed = [waiters.arm(KEY, fields), waiters.arm('light\u0000L2', fields)];
+
+		expect(rearmed.every((waiter) => waiter !== null)).toBe(true);
+		expect(waiters.arm(KEY, fields)).toBeNull();
+
+		first?.dispose();
+		second?.dispose();
+		expect(waiters.size).toBe(2);
+
+		waiters.observe(KEY, full);
+		expect(rearmed[0]?.cancelled).toBe(false);
+		rearmed.forEach((waiter) => waiter?.dispose());
+		expect(waiters.size).toBe(0);
+	});
+
 	it('resolves true on a matching observation and false on timeout', async () => {
 		const waiters = new ProtectConfirmationWaiters();
 		const a = waiters.arm(KEY, fields);

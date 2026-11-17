@@ -27,10 +27,11 @@ describe('ProtectFailureLogLimiter', () => {
 	it('tracks a bounded number of keys', () => {
 		const limiter = new ProtectFailureLogLimiter();
 
-		for (let index = 0; index < 100; index++) {
-			limiter.consume(`key${index}`, 0);
+		for (let index = 0; index < 33; index++) {
+			expect(limiter.consume(`key${index}`, 0)).toEqual({ log: true, suppressed: 0 });
 		}
 
-		expect((limiter as unknown as { failures: Map<string, unknown> }).failures.size).toBe(32);
+		// The 33rd key evicted the first: it logs again inside the interval instead of being remembered forever.
+		expect(limiter.consume('key0', 1)).toEqual({ log: true, suppressed: 0 });
 	});
 });

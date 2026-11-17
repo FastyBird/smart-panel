@@ -172,6 +172,9 @@ describe('protect frame merge', () => {
 			.find((entry) => entry.item?.lightDeviceSettings?.isIndicatorEnabled === false);
 		const baselineRaw = structuredClone(fixture('lights.json')[0]);
 		const baseline = map(baselineRaw);
+
+		expect(frame).toBeDefined();
+
 		const next = map(mergeProtectItem(baselineRaw, frame?.item as Raw) as Raw);
 
 		expect(diffMappedValues(mappedValueMap(baseline), next, syncable)).toEqual([

@@ -9,7 +9,7 @@ export interface ProtectConfirmationWaiter {
 	readonly matched: boolean;
 	/** True when `cancelAll()` ended the waiter (session end); false for a timeout or dispose(). */
 	readonly cancelled: boolean;
-	/** Marks the PATCH as accepted (2xx) and evaluates the CURRENT cached device state first. Earlier observations never count. */
+	/** Marks the PATCH as accepted (2xx) and checks the current device state; earlier observations never count. */
 	accept(current: RawObject | null): void;
 	/** Resolves true on a match (also one that happened before the call), false on timeout, cancelAll() or dispose(). */
 	wait(timeoutMs: number): Promise<boolean>;

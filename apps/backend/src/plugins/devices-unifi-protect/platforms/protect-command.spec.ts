@@ -243,6 +243,41 @@ describe('protect command planner', () => {
 		expect(planProtectCommands([input({ mappingName: 'light_brightness', value: 0 })]).ok).toBe(true);
 	});
 
+	it('reports the first refused entry and skips every other', () => {
+		const plan = planProtectCommands([
+			input({ mappingName: 'light_on' }),
+			input({ mappingName: 'light_brightness', value: 'bright' }),
+			input({ mappingName: 'light_on', cached: null, propertyId: 'late' }),
+		]);
+
+		expect(plan).toEqual({
+			ok: false,
+			outcomes: [
+				{ propertyId: 'p-light_on', mappingName: 'light_on', outcome: 'skipped' },
+				{ propertyId: 'p-light_brightness', mappingName: 'light_brightness', outcome: 'invalid_value' },
+				{ propertyId: 'late', mappingName: 'light_on', outcome: 'skipped' },
+			],
+		});
+	});
+
+	it('leaves its inputs untouched', () => {
+		const inputs = [
+			input({ mappingName: 'light_on' }),
+			input({ mappingName: 'light_brightness', value: 50 }),
+			input({ mappingName: 'microphone_volume', value: 20 }),
+		];
+		const before = structuredClone(inputs);
+
+		expect(planProtectCommands(inputs)).toMatchObject({ ok: true });
+		expect(inputs).toEqual(before);
+
+		const refused = [...inputs, input({ mappingName: 'light_on', value: 'x' })];
+		const refusedBefore = structuredClone(refused);
+
+		planProtectCommands(refused);
+		expect(refused).toEqual(refusedBefore);
+	});
+
 	it('collapses duplicates and refuses conflicts', () => {
 		const same = planProtectCommands([
 			input({ mappingName: 'light_on', value: true }),

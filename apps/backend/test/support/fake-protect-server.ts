@@ -587,7 +587,7 @@ export class FakeProtectServer {
 			...this.overlays.get(key),
 			...Object.fromEntries(touched.map((name) => [name, merged[name]])),
 		});
-		this.patches.push({ resource, id: id, body: parsed as Record<string, unknown> });
+		this.patches.push({ resource, id, body: parsed as Record<string, unknown> });
 
 		if (this.echo) {
 			this.sendFrame('devices', {

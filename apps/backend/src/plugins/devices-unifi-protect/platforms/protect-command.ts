@@ -279,7 +279,7 @@ export function planProtectCommands(inputs: readonly ProtectCommandInput[]): Pro
 		const previousValue = requested.get(propertyKey);
 
 		if (command.propertyIds.includes(entry.propertyId)) {
-			if (previousValue !== value || entry.mappingName === null) {
+			if (previousValue !== value) {
 				return fail(inputs, index, 'conflict');
 			}
 
