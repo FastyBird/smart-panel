@@ -19,6 +19,7 @@ import {
 	ProtectRealtimeService,
 	ProtectRealtimeTimings,
 } from './protect-realtime.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 import { ProtectSynchronizerService } from './protect-synchronizer.service';
 
 type Raw = Record<string, any>;
@@ -1202,6 +1203,7 @@ describe('ProtectRealtimeService', () => {
 				} as never,
 				{ notify: jest.fn(() => Promise.resolve(null)), resolve: jest.fn(() => Promise.resolve(true)) } as never,
 				occurrences as never,
+				new ProtectStreamAvailabilityStore(),
 			);
 			service.onModuleDestroy();
 			service = build(real);

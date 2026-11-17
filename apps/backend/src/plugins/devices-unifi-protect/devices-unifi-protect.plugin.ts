@@ -70,6 +70,7 @@ import {
 	PROTECT_REALTIME_TIMINGS,
 	ProtectRealtimeService,
 } from './services/protect-realtime.service';
+import { ProtectStreamAvailabilityStore } from './services/protect-stream-availability.store';
 import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
 @ApiTag({
@@ -95,6 +96,7 @@ import { ProtectSynchronizerService } from './services/protect-synchronizer.serv
 		ProtectMappingLoaderService,
 		ProtectInventoryService,
 		ProtectMappingPreviewService,
+		ProtectStreamAvailabilityStore,
 		ProtectSynchronizerService,
 		UnifiProtectDevicePlatform,
 		{ provide: PROTECT_REALTIME_TIMINGS, useValue: PROTECT_DEFAULT_REALTIME_TIMINGS },

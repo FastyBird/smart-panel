@@ -10,6 +10,7 @@ import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service'
 
 import { ProtectFrame, parseProtectFrame, valueKey } from './protect-frame-merge';
 import { ProtectInventoryEntry } from './protect-inventory.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 import { ProtectSnapshot, ProtectSynchronizerService } from './protect-synchronizer.service';
 
 type Raw = Record<string, any>;
@@ -23,6 +24,8 @@ const goldenCamera = read('expected/camera.json') as Raw;
 const goldenSensor = read('expected/sensor.json') as Raw;
 const goldenLeak = read('expected/sensor-leak.json') as Raw;
 const goldenDoorbell = read('expected/doorbell.json') as Raw;
+const goldenPackage = read('expected/doorbell-package.json') as Raw;
+const doorbells = read('cameras-doorbell.json') as Raw[];
 const goldenFloodlight = read('expected/floodlight.json') as Raw;
 const lights = read('lights.json') as Raw[];
 const eventLines = readFileSync(join(FIXTURES, 'ws-events.jsonl'), 'utf8')
@@ -79,6 +82,7 @@ describe('ProtectSynchronizerService', () => {
 	let notifications: { notify: jest.Mock; resolve: jest.Mock };
 	let occurrences: { publishOccurrence: jest.Mock };
 	let logged: unknown[][];
+	let streamStore: ProtectStreamAvailabilityStore;
 
 	const adopt = (
 		golden: Raw,
@@ -147,6 +151,7 @@ describe('ProtectSynchronizerService', () => {
 		const loader = new ProtectMappingLoaderService();
 
 		loader.onModuleInit();
+		streamStore = new ProtectStreamAvailabilityStore();
 		service = new ProtectSynchronizerService(
 			loader,
 			devicesService as never,
@@ -155,6 +160,7 @@ describe('ProtectSynchronizerService', () => {
 			propertyValue as never,
 			notifications as never,
 			occurrences as never,
+			streamStore,
 		);
 	});
 
@@ -278,6 +284,137 @@ describe('ProtectSynchronizerService', () => {
 
 		expect(updatedIds().filter((id) => guarded.includes(id))).toEqual([]);
 		expect(properties.update).not.toHaveBeenCalled();
+	});
+
+	describe('camera stream status', () => {
+		const MAIN = prop(CAMERA_PANEL, 'camera.main', 'camera_main_status');
+		const baselines = (): Map<string, unknown> => (service as any).lastWritten as Map<string, unknown>;
+		const statusFrame = (state: string): ProtectFrame =>
+			frameFor('update', { id: CAMERA_ID, modelKey: 'camera', state });
+		const writtenValue = (id: string): unknown =>
+			properties.update.mock.calls.find((call) => call[0] === id)?.[1]?.value;
+
+		it('writes offline when a camera disconnects', async () => {
+			await prime();
+			service.enqueueFrame(IDENTITY, statusFrame('DISCONNECTED'));
+			await service.idle();
+
+			expect(properties.update).toHaveBeenCalledWith(MAIN, { type: DEVICES_UNIFI_PROTECT_TYPE, value: 'offline' });
+			expect(streamStore.get(CAMERA_ID)).toBeNull();
+		});
+
+		it('writes initializing while a camera connects', async () => {
+			await prime();
+			service.enqueueFrame(IDENTITY, statusFrame('CONNECTING'));
+			await service.idle();
+
+			expect(properties.update).toHaveBeenCalledWith(MAIN, {
+				type: DEVICES_UNIFI_PROTECT_TYPE,
+				value: 'initializing',
+			});
+		});
+
+		it('keeps the stored stream status while availability is unknown', async () => {
+			await prime();
+			baselines().set(MAIN, 'offline');
+			service.enqueueFrame(IDENTITY, statusFrame('CONNECTED'));
+			await service.idle();
+
+			expect(updatedIds()).not.toContain(MAIN);
+		});
+
+		it('writes available and unavailable from known availability', async () => {
+			await prime();
+			baselines().set(MAIN, 'offline');
+			streamStore.set(CAMERA_ID, { high: true, medium: false, low: false, package: false });
+
+			await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(true);
+			expect(writtenValue(MAIN)).toBe('available');
+
+			properties.update.mockClear();
+			streamStore.set(CAMERA_ID, { high: false, medium: false, low: false, package: false });
+			await service.refreshDevice(IDENTITY, 'camera', CAMERA_ID);
+
+			expect(writtenValue(MAIN)).toBe('unavailable');
+			expect(service.getDeviceSequence('camera', CAMERA_ID)).toBe(1);
+		});
+
+		it('does not notify observers or write the cache on a refresh', async () => {
+			const observer = jest.fn();
+
+			await prime();
+			service.observeDevices(observer);
+			baselines().set(MAIN, 'offline');
+			streamStore.set(CAMERA_ID, { high: true, medium: false, low: false, package: false });
+			const before = service.getCachedDevice('camera', CAMERA_ID);
+			await service.refreshDevice(IDENTITY, 'camera', CAMERA_ID);
+
+			expect(observer).not.toHaveBeenCalled();
+			expect(service.getCachedDevice('camera', CAMERA_ID)).toBe(before);
+		});
+
+		it('writes the package status from the package stream', async () => {
+			const packageId = doorbells[1].id as string;
+			const packageMain = prop(DOORBELL_PANEL, 'camera.main', 'camera_main_status');
+			const packagePackage = prop(DOORBELL_PANEL, 'camera.package', 'camera_package_status');
+
+			devices = [adopt(goldenPackage, DOORBELL_PANEL)];
+			await service.applySnapshot(IDENTITY, snapshot([entry('camera', doorbells[1])]));
+			properties.update.mockClear();
+			baselines().set(packageMain, 'offline');
+			baselines().set(packagePackage, 'offline');
+			streamStore.set(packageId, { high: false, medium: true, low: false, package: false });
+
+			await service.refreshDevice(IDENTITY, 'camera', packageId);
+
+			expect(writtenValue(packageMain)).toBe('available');
+			expect(writtenValue(packagePackage)).toBe('unavailable');
+		});
+
+		it('never writes the source template', async () => {
+			const source = prop(CAMERA_PANEL, 'camera.main', 'camera_main_source');
+
+			await prime();
+			baselines().set(source, 'stale-source');
+			baselines().set(MAIN, 'offline');
+			streamStore.set(CAMERA_ID, { high: true, medium: true, low: true, package: true });
+			await service.refreshDevice(IDENTITY, 'camera', CAMERA_ID);
+			service.enqueueFrame(IDENTITY, statusFrame('DISCONNECTED'));
+			await service.idle();
+
+			expect(updatedIds()).not.toContain(source);
+		});
+
+		it('does not notify observers when a status write fails', async () => {
+			const observer = jest.fn();
+
+			await prime();
+			service.observeDevices(observer);
+			properties.update.mockRejectedValue(new Error('write failed'));
+			service.enqueueFrame(IDENTITY, statusFrame('DISCONNECTED'));
+			await service.idle();
+
+			expect(observer).not.toHaveBeenCalled();
+		});
+
+		it('refreshes nothing for an unadopted or uncached device', async () => {
+			await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(false);
+
+			await prime();
+			properties.update.mockClear();
+
+			await expect(service.refreshDevice(IDENTITY, 'camera', 'ffffffffffffffffffffffff')).resolves.toBe(false);
+			await expect(service.refreshDevice(IDENTITY, 'light', CAMERA_ID)).resolves.toBe(false);
+			expect(properties.update).not.toHaveBeenCalled();
+		});
+
+		it('reports adoption', async () => {
+			await prime();
+
+			expect(service.isAdopted('camera', CAMERA_ID)).toBe(true);
+			expect(service.isAdopted('camera', 'ffffffffffffffffffffffff')).toBe(false);
+			expect(service.isAdopted('light', CAMERA_ID)).toBe(false);
+		});
 	});
 
 	it('resets a stored detection without an open event on every snapshot', async () => {

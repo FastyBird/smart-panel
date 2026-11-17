@@ -54,6 +54,7 @@ import { ProtectAdoptionLockService } from './protect-adoption-lock.service';
 import { ProtectAdoptionStreamsService, ProtectStreamEnablementResult } from './protect-adoption-streams.service';
 import { readDefaultStreamQuality } from './protect-default-stream-quality';
 import { ProtectMappingPreviewService, ProtectPreparedMapping } from './protect-mapping-preview.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 
 const CONNECTION_STATE_IDENTIFIER = 'connection_state';
 const STATUS_IDENTIFIER = 'status';
@@ -129,6 +130,7 @@ export class ProtectAdoptionService {
 		private readonly mappingLoader: ProtectMappingLoaderService,
 		private readonly streams: ProtectAdoptionStreamsService,
 		private readonly configService: ConfigService,
+		private readonly streamAvailability: ProtectStreamAvailabilityStore,
 	) {}
 
 	/** Never rejects: every failure is an item result. */
@@ -902,6 +904,8 @@ export class ProtectAdoptionService {
 		}
 
 		if (selection.stream?.enabled === false) {
+			this.recordAvailability(prepared, prepared.streams);
+
 			return {
 				stream: this.streamModel(
 					ProtectStreamOutcome.NOT_REQUESTED,
@@ -923,6 +927,7 @@ export class ProtectAdoptionService {
 			});
 		} catch {
 			this.logger.warn('RTSPS stream enablement finished (failed)');
+			this.recordAvailability(prepared, prepared.streams);
 
 			return {
 				stream: this.streamModel(
@@ -939,6 +944,8 @@ export class ProtectAdoptionService {
 		let complete = true;
 
 		if (result.availability !== null) {
+			this.recordAvailability(prepared, result.availability);
+
 			try {
 				complete = await this.updateStreamStatuses(prepared, result.availability, panelDeviceId);
 			} catch {
@@ -948,6 +955,13 @@ export class ProtectAdoptionService {
 		}
 
 		return { stream, complete };
+	}
+
+	/** Shares what the console reported with the synchronizer (booleans only), before any status write. */
+	private recordAvailability(prepared: ProtectPreparedMapping, availability: ProtectPreparedMapping['streams']): void {
+		if (availability !== null) {
+			this.streamAvailability.set(prepared.device.protectDeviceId, availability);
+		}
 	}
 
 	/** Re-evaluates camera.main/camera.package status and writes only the values that changed. */

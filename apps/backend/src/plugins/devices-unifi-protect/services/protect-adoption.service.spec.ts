@@ -25,6 +25,7 @@ import { ProtectAdoptionLockService } from './protect-adoption-lock.service';
 import { ProtectAdoptionStreamsService } from './protect-adoption-streams.service';
 import { ProtectAdoptionService } from './protect-adoption.service';
 import { ProtectMappingPreviewService } from './protect-mapping-preview.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 
 type Raw = Record<string, any>;
 
@@ -364,6 +365,7 @@ describe('ProtectAdoptionService', () => {
 	let config: { getPluginConfig: jest.Mock };
 	let logged: unknown[][];
 	let service: ProtectAdoptionService;
+	let streamStore: ProtectStreamAvailabilityStore;
 	let mapped: ProtectMappedDevice;
 	let rawCamera: Raw;
 	let contextRun: jest.SpyInstance;
@@ -455,6 +457,7 @@ describe('ProtectAdoptionService', () => {
 				return result.device;
 			}),
 		};
+		streamStore = new ProtectStreamAvailabilityStore();
 		service = new ProtectAdoptionService(
 			preview as unknown as ProtectMappingPreviewService,
 			fakes.devicesService as unknown as DevicesService,
@@ -468,6 +471,7 @@ describe('ProtectAdoptionService', () => {
 			loader,
 			new ProtectAdoptionStreamsService(),
 			config as never,
+			streamStore,
 		);
 	});
 
@@ -912,6 +916,30 @@ describe('ProtectAdoptionService', () => {
 	describe('stream enablement', () => {
 		const statusOf = (channelIdentifier: string) =>
 			fakes.values.get(fakes.propertyId(channelIdentifier, 'status'))?.value;
+
+		it('records stream availability for the synchronizer', async () => {
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			await service.adoptOne(ENABLING);
+
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')?.availability).toEqual({
+				high: true,
+				medium: true,
+				low: false,
+				package: false,
+			});
+		});
+
+		it('records the prepared availability when stream enablement is declined', async () => {
+			await service.adoptOne(SELECTION);
+
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')?.availability).toEqual({
+				high: true,
+				medium: false,
+				low: false,
+				package: false,
+			});
+		});
 
 		it('enables the stream after the device is persisted and updates the camera status', async () => {
 			client.getRtspsStreams.mockResolvedValue(urls('high'));
