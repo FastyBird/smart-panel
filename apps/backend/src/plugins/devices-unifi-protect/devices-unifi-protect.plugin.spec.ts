@@ -4,6 +4,7 @@ import { resolve } from 'path';
 import { Logger } from '@nestjs/common';
 
 import { CamerasModule } from '../../modules/cameras/cameras.module';
+import { ICameraStreamProvider } from '../../modules/cameras/platforms/camera-stream.provider';
 import { CameraStreamProviderRegistryService } from '../../modules/cameras/services/camera-stream-provider.registry.service';
 import { ConfigSecretsService } from '../../modules/config/services/config-secrets.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -322,7 +323,21 @@ describe('DevicesUnifiProtectPlugin', () => {
 
 		expect(streamProviders.register).toHaveBeenCalledTimes(1);
 		expect(streamProviders.register).toHaveBeenCalledWith(streamProvider);
-		expect(streamProvider.getType()).toBe(DEVICES_UNIFI_PROTECT_TYPE);
+	});
+
+	it('serves the provider from the real registry until destroy', () => {
+		const { plugin, streamProviders, streamProvider } = build();
+		const registry = new CameraStreamProviderRegistryService();
+
+		streamProviders.register.mockImplementation((provider: ICameraStreamProvider) => registry.register(provider));
+
+		plugin.onModuleInit();
+
+		expect(registry.get({ type: DEVICES_UNIFI_PROTECT_TYPE })).toBe(streamProvider);
+
+		plugin.onModuleDestroy();
+
+		expect(registry.get({ type: DEVICES_UNIFI_PROTECT_TYPE })).toBeNull();
 	});
 
 	it('releases the stream provider on destroy', () => {

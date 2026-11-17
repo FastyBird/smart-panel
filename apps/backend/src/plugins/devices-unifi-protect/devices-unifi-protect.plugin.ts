@@ -287,17 +287,18 @@ The API key is write-only: it is stored locally and never returned by the API.
 
 ## Streams and snapshots
 
-- Each adopted camera offers the \`high\`, \`medium\` and \`low\` stream qualities, plus \`package\` on doorbells with a package camera; \`default_stream_quality\` is listed first. A quality that is not enabled on the console is listed as unavailable (\`stream_not_enabled\`): enable it in Protect, or adopt the camera again with streams enabled. The plugin never enables or deletes a stream on its own.
-- A quality can also be unavailable for these reasons: \`console_unavailable\` (no console session), \`camera_offline\` (the camera is not connected), \`stream_state_unknown\` (the console has not been read yet or did not answer) and \`stream_tls_unverified\` (see below).
-- Live streams reach the console through a small bridge in Smart Panel that checks the console certificate exactly like the API connection (\`tls.mode\`). go2rtc reads plain RTSP from a loopback listener of the bridge; the bridge opens the TLS connection to the console's stream port and verifies it before it forwards a single byte. There is no \`rtsps\` shortcut around the bridge and no unverified path: if the stream port presents a certificate that does not pass, live view stays unavailable (\`stream_tls_unverified\`) and the stream fails closed. The bridge also drops any RTSP redirect from the console.
-- Stream addresses are read from the console each time a live stream starts and are kept only in memory: they are never stored, logged or returned by the API.
-- \`stream_host_override\` replaces the host Smart Panel connects to for camera streams, for consoles that report an address Smart Panel cannot reach. The console's certificate is still verified against its own name (\`host\` or \`tls.server_name\`) and \`tls.mode\`, never against the override. An invalid override is never replaced by the console host: live view stays unavailable, with one warning in the log, until it is fixed or cleared.
+- Each adopted camera offers the \`high\`, \`medium\` and \`low\` stream qualities, plus \`package\` on doorbells with a package camera; \`default_stream_quality\` is listed first. A quality that is not enabled on the console is listed as unavailable (\`stream_not_enabled\`): enable it in Protect, or adopt the camera again with streams enabled. Beyond adoption's opt-out stream enablement, the plugin never enables or deletes a stream on its own.
+- A quality can also be unavailable for these reasons: \`console_unavailable\` (no console session, or the camera belongs to another console), \`camera_offline\` (the camera is not connected, or Smart Panel has not seen it yet), \`stream_state_unknown\` (the console has not been read yet or did not answer) and \`stream_tls_unverified\` (see below).
+- Live streams reach the console through a small bridge in Smart Panel that checks the console certificate exactly like the API connection (\`tls.mode\`). go2rtc reads plain RTSP from a loopback listener of the bridge; the bridge opens the TLS connection to the console's stream port and verifies it before it forwards a single byte. There is no \`rtsps\` shortcut around the bridge and no unverified path: if the stream port presents a certificate that does not pass, live view stays unavailable (\`stream_tls_unverified\`) and the stream fails closed. The bridge also drops any RTSP redirect from the console. The \`stream_tls_unverified\` reason appears only after a stream handshake has failed in the current session; it is not a proactive check. It is forgotten after 60 s and when the console session changes, the quality is then offered again and the check repeats, and playback itself fails closed on every attempt.
+- Listing a camera's qualities also reads the console in the background, paced like every other request, to learn which qualities are enabled; only the enabled flags and the stream ports are kept. Stream addresses are read from the console each time a live stream starts and are kept only in memory: they are never stored, logged or returned by the API.
+- \`stream_host_override\` replaces the host Smart Panel connects to for camera streams, for a stream endpoint that differs from the API host. The address in the console's stream URL is never used: Smart Panel connects to \`host\` or to the override. The console's certificate is still verified against its own name (\`host\` or \`tls.server_name\`) and \`tls.mode\`, never against the override. An invalid override is never replaced by the console host: live view stays unavailable, with one warning in the log, until it is fixed or cleared.
 - Snapshots use the same request pacing as every other console request, at most one per camera every \`snapshot_min_interval_ms\`. Full-HD snapshots are requested only from cameras that support them.
 - Camera status follows the console: \`offline\` while a camera is disconnected, \`initializing\` while it connects, \`available\` when a stream quality is enabled and \`unavailable\` when none is.
 
 ### External relay
 
 - With the managed go2rtc the bridge listens on loopback only. With an external go2rtc on another host, the listener binds only the local address on the route to the relay, and it accepts only the relay's addresses (the peer the relay answered from plus its resolved addresses); any other peer is refused.
+- An external go2rtc on the same host, reached through a loopback URL, gets a loopback listener with no allow-list, like the managed one.
 - The hop from go2rtc to the bridge is not encrypted. Use an external relay only on a network you trust.
 - A relay in a container on the same host, reached through \`localhost\` or published ports, cannot reach the loopback bridge. A relay reached through the host's LAN IP connects from a bridge-network address that is not in the allow-list and is refused. Both fail closed.
 - The allow-list is learnt once per relay generation. If the relay's DNS name or DHCP address changes, the old address stays allowed until the relay changes (restart, or a different relay URL).
@@ -307,8 +308,11 @@ The API key is write-only: it is stored locally and never returned by the API.
 - While a listener is closed (plugin disabled, shutdown, or the relay seen as not running) and go2rtc still holds its stream URL, a local process that binds the freed port can receive the stream alias.
 - When the console rotates a stream alias, that stream fails at the console until it is registered again.
 - The bridge allows at most 16 concurrent connections and 32 new connections per 10 s; local connection exhaustion or a flood of connections can block live view until it passes. Idle connections close after 60 s.
-- Stream data is synthetic until UP-20 verifies the bridge against a real console.
-- The certificate presented on the stream port (7441) has not been measured on a real console yet (D1b); until then a console whose stream port does not pass \`tls.mode\` stays unavailable.
+- Streams have not yet been verified against a real console.
+- The certificate presented on the stream port (7441) has not been measured on a real console yet; until then a console whose stream port does not pass \`tls.mode\` stays unavailable.
+- While a listener is open, any local process can connect to it. It cannot reach a stream without the alias, but it can trigger console TLS handshakes within the 32-per-10-s budget.
+- At most 8 listeners are open at once (one per console stream port).
+- The bridge also closes a connection when the console sends a malformed or oversized RTSP message, not only on a redirect.
 
 ## TLS
 
@@ -339,6 +343,7 @@ Adoption is API-only until the admin wizard (UP-12) ships. Provider settings are
 	}
 
 	onModuleDestroy(): void {
+		// Destroy order: the bridge may already be destroyed, so a late `prepare` rejects and this window is safe.
 		this.streamProviderRegistration?.dispose();
 		this.streamProviderRegistration = null;
 	}
