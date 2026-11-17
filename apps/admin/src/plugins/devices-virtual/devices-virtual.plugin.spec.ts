@@ -173,8 +173,8 @@ describe('devicesVirtualPlugin', () => {
 		DevicesVirtualPlugin.install({} as App, createOptions([]));
 		const element = mocks.addPlugin.mock.calls[0]?.[1].elements[0];
 		expect(element.components.deviceWizard.variants.map((variant: { id: string }) => variant.id)).toEqual([
-			'projection',
 			'aggregate',
+			'projection',
 			'transform',
 			'dewPoint',
 			'group',

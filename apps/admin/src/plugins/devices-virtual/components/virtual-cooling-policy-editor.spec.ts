@@ -1,6 +1,6 @@
 import { reactive } from 'vue';
 
-import { ElSwitch } from 'element-plus';
+import { ElInputNumber, ElSwitch } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -18,16 +18,18 @@ import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 describe('separate cooling protection authoring', () => {
-	it('requires explicit thresholds and creates per-member dependencies on role changes without creating qualification', async () => {
+	it('prefills editable thresholds and creates per-member dependencies on role changes without creating qualification', async () => {
 		const draft = reactive(emptyThermostatDraft());
 		draft.actuators.push({ role: DevicesVirtualPluginThermostatActuatorRole.heating, source_property: 'relay', lease_seconds: 5 });
 		const wrapper = mount(VirtualCoolingPolicyEditor, { props: { draft, disabled: false } });
 		wrapper.findComponent(ElSwitch).vm.$emit('change', true);
 		await flushPromises();
-		expect(draft.policy.cooling).toMatchObject({ marginC: null, recoveryHysteresisC: null, absoluteMinimumC: null });
+		expect(draft.policy.cooling).toMatchObject({ marginC: 2, recoveryHysteresisC: 1, absoluteMinimumC: 18 });
 		expect(draft.actuators[0].cooling_protection).toBeUndefined();
+		wrapper.findAllComponents(ElInputNumber)[0].vm.$emit('update:modelValue', 3);
 		draft.actuators[0].role = DevicesVirtualPluginThermostatActuatorRole.cooling;
 		await flushPromises();
+		expect(draft.policy.cooling!.marginC).toBe(3);
 		expect(draft.actuators[0].cooling_protection).toEqual({
 			schemaVersion: 1,
 			purpose: 'cooled_surface',
