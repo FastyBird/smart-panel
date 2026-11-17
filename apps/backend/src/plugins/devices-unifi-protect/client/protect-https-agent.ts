@@ -28,7 +28,8 @@ export interface ProtectAgentOptions {
 
 const DEFAULT_KEEP_ALIVE_INITIAL_DELAY_MS = 30_000;
 
-const withExtraCa = (trustedCa: string | Buffer | undefined): (string | Buffer)[] | undefined =>
+/** System roots plus the extra trusted CA (tests only); undefined keeps Node's default store. */
+export const withExtraCa = (trustedCa: string | Buffer | undefined): (string | Buffer)[] | undefined =>
 	trustedCa === undefined ? undefined : [...tls.rootCertificates, trustedCa];
 
 /**

@@ -131,6 +131,9 @@ export const PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS = 16;
 /** Below go2rtc's own 5 s RTSP read deadline, so the bridge fails before go2rtc gives up. */
 export const PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS = 4_000;
 export const PROTECT_STREAM_BRIDGE_IDLE_TIMEOUT_MS = 60_000;
+/** Accepted connections that may start an upstream handshake per window, across every bridge listener. */
+export const PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES = 32;
+export const PROTECT_STREAM_BRIDGE_HANDSHAKE_WINDOW_MS = 10_000;
 export const PROTECT_RTSP_MAX_HEADER_BYTES = 16 * 1024;
 export const PROTECT_RTSP_MAX_BODY_BYTES = 64 * 1024;
 

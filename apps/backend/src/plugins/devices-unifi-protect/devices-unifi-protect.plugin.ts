@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { CamerasModule } from '../../modules/cameras/cameras.module';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -72,6 +73,7 @@ import {
 } from './services/protect-realtime.service';
 import { ProtectStreamAvailabilityService } from './services/protect-stream-availability.service';
 import { ProtectStreamAvailabilityStore } from './services/protect-stream-availability.store';
+import { ProtectStreamBridgeService } from './services/protect-stream-bridge.service';
 import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
 @ApiTag({
@@ -86,6 +88,8 @@ import { ProtectSynchronizerService } from './services/protect-synchronizer.serv
 		ConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
+		// Provides the relay state (`Go2rtcService`) to the stream bridge.
+		CamerasModule,
 	],
 	providers: [
 		ProtectConfigValidatorService,
@@ -99,6 +103,7 @@ import { ProtectSynchronizerService } from './services/protect-synchronizer.serv
 		ProtectMappingPreviewService,
 		ProtectStreamAvailabilityStore,
 		ProtectStreamAvailabilityService,
+		ProtectStreamBridgeService,
 		ProtectSynchronizerService,
 		UnifiProtectDevicePlatform,
 		{ provide: PROTECT_REALTIME_TIMINGS, useValue: PROTECT_DEFAULT_REALTIME_TIMINGS },

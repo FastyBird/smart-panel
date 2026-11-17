@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
+import { CamerasModule } from '../../modules/cameras/cameras.module';
 import { ConfigSecretsService } from '../../modules/config/services/config-secrets.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
@@ -70,6 +71,7 @@ import {
 	PROTECT_REALTIME_TIMINGS,
 	ProtectRealtimeService,
 } from './services/protect-realtime.service';
+import { ProtectStreamBridgeService } from './services/protect-stream-bridge.service';
 import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
 const SECRET_FIELDS = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];
@@ -329,12 +331,15 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(JSON.stringify(projected)).not.toContain('PROTECT_SENTINEL_KEY_7f3a9c0d1e2b4a6f');
 	});
 
-	it('provides the config validator and imports the device, config and extension modules', () => {
+	it('provides the config validator and imports the device, config, extension and cameras modules', () => {
 		const providers = Reflect.getMetadata('providers', DevicesUnifiProtectPlugin) as unknown[];
 		const imports = Reflect.getMetadata('imports', DevicesUnifiProtectPlugin) as unknown[];
 
 		expect(providers).toContain(ProtectConfigValidatorService);
-		expect(imports).toHaveLength(5);
+		expect(providers).toContain(ProtectStreamBridgeService);
+		expect(imports).toHaveLength(6);
+		// The stream bridge needs the relay's state (`Go2rtcService`), which the cameras module exports.
+		expect(imports).toContain(CamerasModule);
 	});
 
 	it('is wired into the application router', () => {
