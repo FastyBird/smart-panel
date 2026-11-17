@@ -1145,6 +1145,88 @@ describe('ProtectSynchronizerService', () => {
 			expect(properties.update).not.toHaveBeenCalled();
 		});
 
+		describe('a failed property write', () => {
+			const previousLight = (): Raw => lights[0];
+
+			it('neither stores nor announces an add frame for an adopted device', async () => {
+				const observer = jest.fn();
+
+				await primeLight();
+				service.observeDevices(observer);
+				properties.update.mockRejectedValueOnce(new Error('down'));
+
+				service.enqueueFrame(IDENTITY, frameFor('add', withLevel(2).raw));
+				await service.idle();
+
+				expect(properties.update).toHaveBeenCalledTimes(1);
+				expect(observer).not.toHaveBeenCalled();
+				expect(service.getStoredDevice('light', LIGHT_ID)).toEqual(previousLight());
+			});
+
+			it('neither stores nor announces an update frame for an adopted device', async () => {
+				const observer = jest.fn();
+
+				await primeLight();
+				service.observeDevices(observer);
+				properties.update.mockRejectedValueOnce(new Error('down'));
+
+				service.enqueueFrame(IDENTITY, ledFrame());
+				await service.idle();
+
+				expect(properties.update).toHaveBeenCalled();
+				expect(observer).not.toHaveBeenCalled();
+				expect(service.getStoredDevice('light', LIGHT_ID)).toEqual(previousLight());
+			});
+
+			it('skips only the failed adopted device in a snapshot and still announces an unadopted one', async () => {
+				const observer = jest.fn();
+
+				await primeLight();
+				service.observeDevices(observer);
+				properties.update.mockRejectedValueOnce(new Error('down'));
+
+				await service.applySnapshot(
+					IDENTITY,
+					snapshot([withLevel(2), entry('camera', cameras[0]), entry('sensor', sensors[0])]),
+				);
+
+				const announced = observer.mock.calls.map((call) => `${call[0]}:${call[1]}`);
+
+				expect(announced).not.toContain(`light:${LIGHT_ID}`);
+				expect(announced).toContain(`sensor:${SENSOR_ID}`);
+				expect(service.getStoredDevice('light', LIGHT_ID)).toEqual(previousLight());
+			});
+
+			it('resolves a device readback false', async () => {
+				await primeLight();
+
+				const since = service.getDeviceSequence('light', LIGHT_ID);
+
+				properties.update.mockRejectedValueOnce(new Error('down'));
+
+				await expect(service.applyDeviceReadback(IDENTITY, withLevel(2), since)).resolves.toBe(false);
+				expect(service.getStoredDevice('light', LIGHT_ID)).toEqual(previousLight());
+			});
+
+			it('writes the value and announces the device on a later sync carrying the same value', async () => {
+				const observer = jest.fn();
+
+				await primeLight();
+				service.observeDevices(observer);
+				properties.update.mockRejectedValueOnce(new Error('down'));
+				service.enqueueFrame(IDENTITY, frameFor('add', withLevel(2).raw));
+				await service.idle();
+				properties.update.mockClear();
+
+				service.enqueueFrame(IDENTITY, frameFor('add', withLevel(2).raw));
+				await service.idle();
+
+				expect(brightnessValues()).toEqual([33]);
+				expect(observer).toHaveBeenCalledTimes(1);
+				expect(service.getStoredDevice('light', LIGHT_ID)).toEqual(withLevel(2).raw);
+			});
+		});
+
 		it('applies a device readback as an authoritative object', async () => {
 			const observer = jest.fn();
 

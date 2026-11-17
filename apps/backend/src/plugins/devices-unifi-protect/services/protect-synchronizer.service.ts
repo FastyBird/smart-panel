@@ -80,7 +80,7 @@ type RetryEntry =
 type SyncMode = 'snapshot' | 'frame';
 
 /** `ignored`: the object was not stored (an update for an unknown device, a full cache); `aborted`: a reset intervened. */
-type DeviceApplyOutcome = 'applied' | 'ignored' | 'aborted';
+type DeviceApplyOutcome = 'applied' | 'ignored' | 'aborted' | 'unwritten';
 
 const RING_FAILURE_TEXT = 'UniFi Protect ring could not be published';
 /** The first retry lies outside the core's 5 s duplicate window, so a retried ring is never swallowed as a duplicate. */
@@ -452,9 +452,23 @@ export class ProtectSynchronizerService {
 			const key = modelKey === undefined ? null : cacheKey(modelKey, device.protectDeviceId);
 
 			if (modelKey !== undefined && key !== null) {
-				await this.syncDevice(identity, device, modelKey, next.get(key), previous.get(key) ?? null, 'snapshot', null);
+				const written = await this.syncDevice(
+					identity,
+					device,
+					modelKey,
+					next.get(key),
+					previous.get(key) ?? null,
+					'snapshot',
+					null,
+				);
+
 				notified.add(key);
-				this.notifyObservers(modelKey, device.protectDeviceId, next.get(key));
+
+				// A failed write leaves the persisted property behind the object: it is not stored (nor announced) until a
+				// later sync writes it.
+				if (written) {
+					this.notifyObservers(modelKey, device.protectDeviceId, next.get(key));
+				}
 			} else if (snapshot.complete) {
 				await this.markRemoved(device);
 			}
@@ -558,7 +572,7 @@ export class ProtectSynchronizerService {
 		this.bumpSequence(key);
 
 		if (device !== undefined) {
-			await this.syncDevice(
+			const written = await this.syncDevice(
 				identity,
 				device,
 				modelKey,
@@ -567,6 +581,12 @@ export class ProtectSynchronizerService {
 				action === 'add' ? 'snapshot' : 'frame',
 				action === 'add' ? null : item,
 			);
+
+			if (!written) {
+				// The persisted properties still hold the old values: neither stored nor announced, so nothing confirms
+				// from this object.
+				return this.aborted() ? 'aborted' : 'unwritten';
+			}
 		}
 
 		this.notifyObservers(modelKey, id, raw);
@@ -1054,7 +1074,7 @@ export class ProtectSynchronizerService {
 		previousRaw: Readonly<Record<string, unknown>> | null,
 		mode: SyncMode,
 		partial: Readonly<Record<string, unknown>> | null,
-	): Promise<void> {
+	): Promise<boolean> {
 		const mappings = this.mappingLoader.getMappings();
 		const result = evaluateProtectMapping(mappings, {
 			nvr: { id: identity.nvrId, macKey: identity.nvrMacKey },
@@ -1077,13 +1097,15 @@ export class ProtectSynchronizerService {
 		await this.retryDevice(device.protectDeviceId);
 
 		if (!result.ok) {
-			return;
+			return true;
 		}
 
 		const mapped = result.device;
 
 		await this.resolveRemoval(device);
-		await this.writeChanges(device, mapped, mappings, partial);
+
+		const written = await this.writeChanges(device, mapped, mappings, partial);
+
 		await this.writeConnectionState(device, mapped);
 
 		const tamperCleared =
@@ -1098,6 +1120,8 @@ export class ProtectSynchronizerService {
 		}
 
 		await this.propagateRename(device, modelKey, raw, previousRaw);
+
+		return written;
 	}
 
 	/** The property keys of a device whose value source reads a field the update frame carries. */
@@ -1223,7 +1247,9 @@ export class ProtectSynchronizerService {
 		mapped: ProtectMappedDevice,
 		mappings: ProtectResolvedMappings,
 		partial: Readonly<Record<string, unknown>> | null,
-	): Promise<void> {
+	): Promise<boolean> {
+		let allWritten = true;
+
 		// A snapshot or an add frame is authoritative; an update frame is so only for the fields it carries.
 		const owned = this.eventOwned.get(device.protectDeviceId);
 
@@ -1253,9 +1279,14 @@ export class ProtectSynchronizerService {
 
 			// An event wrote this value; the cached field it reads was not refreshed by this frame, so it is stale.
 			if (property !== undefined && !this.eventOwned.get(device.protectDeviceId)?.has(key)) {
-				await this.writeProperty(property.id, change.value);
+				// A write skipped by a reset is not a failure; the aborted() checks stop the processing.
+				if (!(await this.writeProperty(property.id, change.value)) && !this.aborted()) {
+					allWritten = false;
+				}
 			}
 		}
+
+		return allWritten;
 	}
 
 	private async writeConnectionState(device: IndexedDevice, mapped: ProtectMappedDevice): Promise<void> {
