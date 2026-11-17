@@ -35,6 +35,19 @@ describe('protect-stream-url', () => {
 		['rtsps://h:7441/AAAAAAAAAA#x'],
 		['rtsps://h:0/AAAAAAAAAA'],
 		['rtsps://h:7441/%41AAAAAAAAA'],
+		['rtsps://h/a/../AAAAAAAAAA'],
+		['rtsps://h/./AAAAAAAAAA'],
+		['rtsps://h/%2e%2e/AAAAAAAAAA'],
+		['rtsps://h/AAAA\nAAAAAA'],
+		['rtsps://h/AAAA\tAAAAAA'],
+		[' rtsps://h/AAAAAAAAAA'],
+		['rtsps://h/AAAAAAAAAA '],
+		['rtsps://h/AAAAAAAAAA\n'],
+		['rtsps://@h/AAAAAAAAAA'],
+		['rtsps://:@h/AAAAAAAAAA'],
+		['rtsps://h\\x/AAAAAAAAAA'],
+		['rtsps:///AAAAAAAAAA'],
+		['rtsps://h/AAAAAAAAAA/'],
 		[''],
 		[null],
 		[42],
@@ -68,9 +81,26 @@ describe('protect-stream-url', () => {
 		expect(redactProtectText(`failed ${url}`, [])).not.toContain(FAKE_PROTECT_ALIAS);
 	});
 
-	it('never echoes the alias when it refuses', () => {
-		expect(JSON.stringify(parseProtectStreamUrl(`rtsps://h:0/${FAKE_PROTECT_ALIAS}`))).not.toContain(
-			FAKE_PROTECT_ALIAS,
-		);
+	it('drops the console host and query', () => {
+		const result = parseProtectStreamUrl(`rtsps://h:7441/${FAKE_PROTECT_ALIAS}?enableSrtp&x=1`);
+
+		expect(result).toEqual({ port: 7441, alias: FAKE_PROTECT_ALIAS });
+
+		const text = JSON.stringify(result);
+
+		expect(text).not.toContain('enableSrtp');
+		expect(text).not.toContain('x=1');
+		expect(text).not.toContain('rtsps');
+	});
+
+	it('accepts a bracketed IPv6 console host and drops it', () => {
+		const result = parseProtectStreamUrl(`rtsps://[fd00::1]:7441/${FAKE_PROTECT_ALIAS}`);
+
+		expect(result).toEqual({ port: 7441, alias: FAKE_PROTECT_ALIAS });
+		expect(JSON.stringify(result)).not.toContain('fd00');
+	});
+
+	it('refuses an IPv6 zone id as a bridge host', () => {
+		expect(buildBridgeStreamUrl({ host: 'fe80::1%en0', port: 40123 }, ALIAS)).toBeNull();
 	});
 });
