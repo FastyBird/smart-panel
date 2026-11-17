@@ -389,6 +389,7 @@ describe('ProtectAdoptionService', () => {
 		fresh: { client, entry: { raw: rawCamera } },
 		device,
 		streams: { high: true, medium: false, low: false, package: false },
+		streamsObservedAt: 1_000,
 		warnings: [],
 		readyToAdopt,
 	});
@@ -940,6 +941,18 @@ describe('ProtectAdoptionService', () => {
 				medium: false,
 				low: false,
 				package: false,
+			});
+		});
+
+		it('does not overwrite a newer read with the stale prepared availability', async () => {
+			// A read requested after the prepare saw the stream disabled while adoption was persisting.
+			streamStore.set('600cefafd5f365d6f83c4ef3', { high: false, medium: false, low: false, package: false }, 2_000);
+
+			await service.adoptOne(SELECTION);
+
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')).toMatchObject({
+				availability: { high: false, medium: false, low: false, package: false },
+				observedAt: 2_000,
 			});
 		});
 

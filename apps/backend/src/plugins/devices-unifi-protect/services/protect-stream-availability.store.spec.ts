@@ -8,11 +8,11 @@ describe('ProtectStreamAvailabilityStore', () => {
 		const input = { high: true, medium: false, low: false, package: false };
 
 		expect(store.get(ID)).toBeNull();
-		expect(store.set(ID, input, 10)).toBe(true);
+		expect(store.set(ID, input, 10, 10)).toBe(true);
 		const latest = { ...input };
 
-		expect(store.set(ID, latest, 20)).toBe(false);
-		expect(store.get(ID)).toEqual({ availability: input, readAt: 20 });
+		expect(store.set(ID, latest, 20, 20)).toBe(false);
+		expect(store.get(ID)).toEqual({ availability: input, readAt: 20, observedAt: 20 });
 
 		// The caller keeps mutating the very object it passed last; the store holds its own copy.
 		latest.high = false;
@@ -20,6 +20,23 @@ describe('ProtectStreamAvailabilityStore', () => {
 
 		expect(store.get(ID)?.availability).toEqual(input);
 		expect(store.set(ID, { ...input, package: true })).toBe(true);
+	});
+
+	it('ignores an observation older than the stored one, but keeps an equal or newer one', () => {
+		const store = new ProtectStreamAvailabilityStore();
+		const off = { high: false, medium: false, low: false, package: false };
+		const on = { ...off, high: true };
+
+		expect(store.set(ID, off, 100, 150)).toBe(true);
+
+		// Requested before the stored one: neither the booleans nor the age change, and nothing counts as changed.
+		expect(store.accepts(ID, 99)).toBe(false);
+		expect(store.set(ID, on, 99, 200)).toBe(false);
+		expect(store.get(ID)).toEqual({ availability: off, readAt: 150, observedAt: 100 });
+
+		expect(store.set(ID, on, 101, 210)).toBe(true);
+		expect(store.get(ID)).toEqual({ availability: on, readAt: 210, observedAt: 101 });
+		expect(store.set(ID, off, 101, 220)).toBe(true);
 	});
 
 	it('forgets everything on clear', () => {

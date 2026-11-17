@@ -66,6 +66,8 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 	private readonly lastState = new Map<string, unknown>();
 	private readonly attemptedAt = new Map<string, number>();
 	private readonly ports = new Map<string, ProtectStreamPorts>();
+	/** Last observation time handed out; strictly increasing so two reads never share one. */
+	private lastObservation = 0;
 	/** Keyed `<generation>:<camera>`; joined by every caller of that camera in that session. */
 	private readonly inflight = new Map<string, Promise<void>>();
 	private readonly waiting: string[] = [];
@@ -122,6 +124,8 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		const previousAttempt = this.attemptedAt.get(cameraId);
 
 		const stamp = Date.now();
+		// The request start orders reads: a response that completes after a newer request's must not replace it.
+		const observedAt = (this.lastObservation = Math.max(stamp, this.lastObservation + 1));
 
 		this.attemptedAt.set(cameraId, stamp);
 
@@ -141,7 +145,7 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 			throw error;
 		}
 
-		this.record(generation, cameraId, streams);
+		this.record(generation, cameraId, streams, observedAt);
 
 		return streams;
 	}
@@ -366,12 +370,13 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		}
 	}
 
-	private record(generation: number, cameraId: string, streams: ProtectRtspsStreams): void {
-		if (generation !== this.generation) {
+	private record(generation: number, cameraId: string, streams: ProtectRtspsStreams, observedAt: number): void {
+		// A newer observation (a later request, or adoption's) already holds the camera: this one is history.
+		if (generation !== this.generation || !this.store.accepts(cameraId, observedAt)) {
 			return;
 		}
 
-		const changed = this.store.set(cameraId, toStreamAvailability(streams));
+		const changed = this.store.set(cameraId, toStreamAvailability(streams), observedAt);
 
 		this.ports.set(cameraId, toPorts(streams));
 

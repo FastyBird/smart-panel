@@ -249,7 +249,12 @@ describe('ProtectStreamAvailabilityService', () => {
 	});
 
 	it('does not refresh a stale entry of a camera that is not connected', async () => {
-		store.set('cam1', { high: true, medium: false, low: false, package: false }, Date.now() - 5 * 60_000);
+		store.set(
+			'cam1',
+			{ high: true, medium: false, low: false, package: false },
+			Date.now() - 5 * 60_000,
+			Date.now() - 5 * 60_000,
+		);
 		frame('cam1', 'DISCONNECTED');
 
 		expect((await service.getAvailability('cam1'))?.availability.high).toBe(true);
@@ -259,7 +264,12 @@ describe('ProtectStreamAvailabilityService', () => {
 	});
 
 	it('refreshes a stale entry of a camera adopted after its last frame', async () => {
-		store.set('cam1', { high: false, medium: false, low: false, package: false }, Date.now() - 5 * 60_000);
+		store.set(
+			'cam1',
+			{ high: false, medium: false, low: false, package: false },
+			Date.now() - 5 * 60_000,
+			Date.now() - 5 * 60_000,
+		);
 
 		expect((await service.getAvailability('cam1'))?.availability.high).toBe(false);
 		await settle(10);
@@ -290,7 +300,12 @@ describe('ProtectStreamAvailabilityService', () => {
 		getRtspsStreams.mockRejectedValue(failure);
 		await expect(service.getAvailability('cam1')).resolves.toBeNull();
 
-		store.set('cam2', { high: true, medium: false, low: false, package: false }, Date.now() - 3 * 60_000);
+		store.set(
+			'cam2',
+			{ high: true, medium: false, low: false, package: false },
+			Date.now() - 3 * 60_000,
+			Date.now() - 3 * 60_000,
+		);
 		frame('cam2', 'CONNECTED');
 
 		const entry = await service.getAvailability('cam2');
@@ -608,6 +623,42 @@ describe('ProtectStreamAvailabilityService', () => {
 
 		expect(service.getStreamPorts('cam1')).toEqual({ high: 7441, medium: 7442 });
 		expect(JSON.stringify(store.get('cam1'))).not.toContain('SENTINELALIAS');
+	});
+
+	it('keeps the newer response when an older request completes last', async () => {
+		const first = deferred<ProtectRtspsStreams>();
+		const second = deferred<ProtectRtspsStreams>();
+
+		getRtspsStreams.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+
+		// Both start in the same millisecond (frozen clock), so only the request order tells them apart.
+		const older = service.readStreams('cam1');
+		const newer = service.readStreams('cam1');
+
+		second.resolve(streams({ high: null, medium: 'rtsps://127.0.0.1:7442/SENTINELALIASmed0123456789?enableSrtp' }));
+		await newer;
+		first.resolve(streams());
+		await older;
+
+		expect(store.get('cam1')?.availability).toEqual({ high: false, medium: true, low: false, package: false });
+		expect(service.getStreamPorts('cam1')).toEqual({ medium: 7442 });
+		// Only the newer response changed the presence; the discarded one must not trigger a second refresh.
+		expect(refreshDevice).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not let a read overwrite an entry observed after the read was requested', async () => {
+		const slow = deferred<ProtectRtspsStreams>();
+
+		getRtspsStreams.mockReturnValueOnce(slow.promise);
+
+		const read = service.readStreams('cam1');
+
+		store.set('cam1', { high: false, medium: false, low: false, package: false }, Date.now() + 5);
+		slow.resolve(streams());
+		await read;
+
+		expect(store.get('cam1')?.availability.high).toBe(false);
+		expect(service.getStreamPorts('cam1')).toBeNull();
 	});
 
 	it('unsubscribes and stops timers on destroy', async () => {

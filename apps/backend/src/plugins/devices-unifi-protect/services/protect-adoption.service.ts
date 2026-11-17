@@ -904,7 +904,7 @@ export class ProtectAdoptionService {
 		}
 
 		if (selection.stream?.enabled === false) {
-			this.recordAvailability(prepared, prepared.streams);
+			this.recordAvailability(prepared, prepared.streams, prepared.streamsObservedAt);
 
 			return {
 				stream: this.streamModel(
@@ -918,6 +918,7 @@ export class ProtectAdoptionService {
 		}
 
 		const quality = selection.stream?.quality ?? readDefaultStreamQuality(this.configService);
+		const enablementStartedAt = Date.now();
 		let result: ProtectStreamEnablementResult;
 
 		try {
@@ -927,7 +928,7 @@ export class ProtectAdoptionService {
 			});
 		} catch {
 			this.logger.warn('RTSPS stream enablement finished (failed)');
-			this.recordAvailability(prepared, prepared.streams);
+			this.recordAvailability(prepared, prepared.streams, prepared.streamsObservedAt);
 
 			return {
 				stream: this.streamModel(
@@ -945,9 +946,9 @@ export class ProtectAdoptionService {
 
 		if (result.availability === null) {
 			// A failed enablement: the console state read before it is the best knowledge there is.
-			this.recordAvailability(prepared, prepared.streams);
+			this.recordAvailability(prepared, prepared.streams, prepared.streamsObservedAt);
 		} else {
-			this.recordAvailability(prepared, result.availability);
+			this.recordAvailability(prepared, result.availability, enablementStartedAt);
 
 			try {
 				complete = await this.updateStreamStatuses(prepared, result.availability, panelDeviceId);
@@ -961,9 +962,14 @@ export class ProtectAdoptionService {
 	}
 
 	/** Shares what the console reported with the synchronizer (booleans only), before any status write. */
-	private recordAvailability(prepared: ProtectPreparedMapping, availability: ProtectPreparedMapping['streams']): void {
+	private recordAvailability(
+		prepared: ProtectPreparedMapping,
+		availability: ProtectPreparedMapping['streams'],
+		observedAt: number | null,
+	): void {
 		if (availability !== null) {
-			this.streamAvailability.set(prepared.device.protectDeviceId, availability);
+			// `observedAt` is when the console was asked, so a read recorded meanwhile is never overwritten by this one.
+			this.streamAvailability.set(prepared.device.protectDeviceId, availability, observedAt ?? Date.now());
 		}
 	}
 
