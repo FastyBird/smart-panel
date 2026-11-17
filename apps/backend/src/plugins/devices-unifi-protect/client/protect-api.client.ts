@@ -666,7 +666,11 @@ export class ProtectApiClient {
 
 					// A pooled keep-alive socket the console already closed: one immediate retry on a fresh socket. Never for a
 					// PATCH: the first request may have been applied, so the caller settles it by readback.
-					if (attempt === 1 && request.method !== 'PATCH' && (error as { code?: unknown } | null)?.code === 'ECONNRESET') {
+					if (
+						attempt === 1 &&
+						request.method !== 'PATCH' &&
+						(error as { code?: unknown } | null)?.code === 'ECONNRESET'
+					) {
 						this.logger.debug(`${request.method} ${endpoint} connection reset, retrying once`);
 
 						continue;
