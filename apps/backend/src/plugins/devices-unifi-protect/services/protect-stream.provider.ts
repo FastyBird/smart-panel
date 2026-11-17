@@ -7,6 +7,7 @@ import {
 	CameraUpstreamException,
 } from '../../../modules/cameras/cameras.exceptions';
 import {
+	CameraSnapshot,
 	CameraStreamProfile,
 	CameraStreamSource,
 	ICameraStreamProvider,
@@ -17,7 +18,11 @@ import { buildBridgeStreamUrl, parseProtectStreamUrl } from '../client/protect-s
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	DEVICES_UNIFI_PROTECT_TYPE,
+	PROTECT_DEFAULT_SNAPSHOT_MIN_INTERVAL_MS,
+	PROTECT_MAX_SNAPSHOT_MIN_INTERVAL_MS,
+	PROTECT_MIN_SNAPSHOT_MIN_INTERVAL_MS,
 	PROTECT_RTSPS_QUALITIES,
+	PROTECT_SNAPSHOT_DEADLINE_MS,
 	PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS,
 	PROTECT_STREAM_QUALITIES,
 	PROTECT_STREAM_READ_DEADLINE_MS,
@@ -26,6 +31,7 @@ import {
 	ProtectRtspsQuality,
 } from '../devices-unifi-protect.constants';
 import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.error';
+import { ProtectConfigModel } from '../models/config.model';
 
 import { ProtectConnectorService } from './protect-connector.service';
 import { readDefaultStreamQuality } from './protect-default-stream-quality';
@@ -180,8 +186,93 @@ export class UnifiProtectStreamProvider implements ICameraStreamProvider {
 	}
 
 	/** Task 7. */
-	getSnapshot(): Promise<never> {
-		return Promise.reject(new CameraUpstreamException('Camera did not respond'));
+	/**
+	 * D6, D8. Snapshots go through the API client and its pacer, never the bridge. The camera is skipped without a
+	 * request only when its cached state is known and not `CONNECTED`; a camera missing from the cache is requested.
+	 */
+	async getSnapshot(
+		device: DeviceEntity,
+		options: { channelId?: string; highQuality?: boolean; signal?: AbortSignal },
+	): Promise<CameraSnapshot> {
+		const camera = this.toCamera(device);
+
+		if (camera === null) {
+			throw new CameraProfileUnavailableException('Stream profile is not available');
+		}
+
+		let channel: 'package' | undefined;
+
+		if (options.channelId === undefined || options.channelId === camera.mainChannelId) {
+			channel = undefined;
+		} else if (camera.packageChannelId !== null && options.channelId === camera.packageChannelId) {
+			channel = 'package';
+		} else {
+			throw new CameraProfileUnavailableException('Stream profile is not available');
+		}
+
+		const identity = this.connector.getConsoleIdentity();
+		const client = this.connector.getClient();
+		const cached = this.synchronizer.getCachedDevice('camera', camera.cameraId);
+
+		if (
+			client === null ||
+			identity === null ||
+			identity.nvrId !== camera.nvrId ||
+			(cached !== null && cached.state !== 'CONNECTED')
+		) {
+			throw new CameraOfflineException('Camera is offline');
+		}
+
+		const flags = cached?.featureFlags as { supportFullHdSnapshot?: unknown } | null | undefined;
+		const startedAt = Date.now();
+		const request = (highQuality: boolean) =>
+			client.getSnapshot(camera.cameraId, {
+				highQuality,
+				...(channel === undefined ? {} : { channel }),
+				signal: options.signal,
+				// M2: the full HD attempt and its fallback share one deadline.
+				deadlineMs: Math.max(1, PROTECT_SNAPSHOT_DEADLINE_MS - (Date.now() - startedAt)),
+			});
+		const wantHighQuality = options.highQuality === true && flags?.supportFullHdSnapshot === true;
+
+		try {
+			try {
+				return await request(wantHighQuality);
+			} catch (error) {
+				if (
+					wantHighQuality &&
+					error instanceof ProtectApiError &&
+					error.category === ProtectErrorCategory.UNSUPPORTED
+				) {
+					return await request(false);
+				}
+
+				throw error;
+			}
+		} catch (error) {
+			this.logFailure(error);
+
+			throw toCameraProviderError(error, 'snapshot');
+		}
+	}
+
+	/** M3: the configured minimum interval between snapshots, clamped to the allowed range. */
+	getSnapshotMinIntervalMs(_device: DeviceEntity): number {
+		let value: unknown;
+
+		try {
+			value = this.configService.getPluginConfig<ProtectConfigModel>(
+				DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+			).snapshotMinIntervalMs;
+		} catch {
+			return PROTECT_DEFAULT_SNAPSHOT_MIN_INTERVAL_MS;
+		}
+
+		if (typeof value !== 'number' || !Number.isFinite(value)) {
+			return PROTECT_DEFAULT_SNAPSHOT_MIN_INTERVAL_MS;
+		}
+
+		return Math.min(PROTECT_MAX_SNAPSHOT_MIN_INTERVAL_MS, Math.max(PROTECT_MIN_SNAPSHOT_MIN_INTERVAL_MS, value));
 	}
 
 	/** A category or an error class name, never a message or an address; a cancelled call is not a failure. */

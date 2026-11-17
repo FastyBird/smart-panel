@@ -34,6 +34,8 @@ const availabilityOf = (enabled: string[]) => ({
 	readAt: Date.now(),
 });
 
+const IMAGE = { contentType: 'image/jpeg', data: Buffer.from([0xff, 0xd8, 0xff]) };
+
 const makeDevice = (options: { packageChannel?: boolean; type?: string; nvrId?: string | null } = {}) => {
 	const channels = [{ id: 'ch-main', identifier: 'camera.main' }];
 
@@ -53,7 +55,8 @@ const makeDevice = (options: { packageChannel?: boolean; type?: string; nvrId?: 
 
 describe('UnifiProtectStreamProvider', () => {
 	let provider: UnifiProtectStreamProvider;
-	let connector: { getConsoleIdentity: jest.Mock };
+	let connector: { getConsoleIdentity: jest.Mock; getClient: jest.Mock };
+	let client: { getSnapshot: jest.Mock };
 	let synchronizer: { getCachedDevice: jest.Mock };
 	let availability: { getAvailability: jest.Mock; readStreams: jest.Mock; getStreamPorts: jest.Mock };
 	let bridge: { getUpstreamHost: jest.Mock; getVerification: jest.Mock; prepare: jest.Mock };
@@ -73,7 +76,11 @@ describe('UnifiProtectStreamProvider', () => {
 			});
 		}
 
-		connector = { getConsoleIdentity: jest.fn(() => ({ nvrId: 'nvr-1', nvrMacKey: 'AABBCC' })) };
+		client = { getSnapshot: jest.fn().mockResolvedValue(IMAGE) };
+		connector = {
+			getConsoleIdentity: jest.fn(() => ({ nvrId: 'nvr-1', nvrMacKey: 'AABBCC' })),
+			getClient: jest.fn(() => client),
+		};
 		synchronizer = { getCachedDevice: jest.fn(() => ({ state: 'CONNECTED' })) };
 		availability = {
 			getAvailability: jest.fn().mockResolvedValue(availabilityOf(['high', 'medium', 'low', 'package'])),
@@ -554,6 +561,189 @@ describe('UnifiProtectStreamProvider', () => {
 				expect(callArg<{ signal: unknown }>(availability.readStreams, 1).signal).toBe(controller.signal);
 				expect(callArg<{ signal: unknown }>(bridge.prepare, 1).signal).toBe(controller.signal);
 			});
+		});
+	});
+
+	describe('getSnapshot', () => {
+		const signal = new AbortController().signal;
+		const hqCapable = (flag: boolean) => {
+			synchronizer.getCachedDevice.mockReturnValue({
+				state: 'CONNECTED',
+				featureFlags: { supportFullHdSnapshot: flag },
+			});
+		};
+
+		it('takes a main snapshot without a channel parameter', async () => {
+			for (const channelId of [undefined, 'ch-main']) {
+				client.getSnapshot.mockClear();
+
+				const image = await provider.getSnapshot(makeDevice(), { channelId, signal });
+
+				expect(image).toEqual(IMAGE);
+				expect(client.getSnapshot).toHaveBeenCalledWith('cam-1', { highQuality: false, signal, deadlineMs: 8000 });
+			}
+		});
+
+		it('takes a package snapshot', async () => {
+			await provider.getSnapshot(makeDevice({ packageChannel: true }), { channelId: 'ch-pkg', signal });
+
+			expect(client.getSnapshot).toHaveBeenCalledWith('cam-1', {
+				highQuality: false,
+				channel: 'package',
+				signal,
+				deadlineMs: 8000,
+			});
+		});
+
+		it('refuses an unknown channel without a request', async () => {
+			await expect(provider.getSnapshot(makeDevice(), { channelId: 'ch-pkg' })).rejects.toBeInstanceOf(
+				CameraProfileUnavailableException,
+			);
+			await expect(provider.getSnapshot(makeDevice(), { channelId: 'nope' })).rejects.toBeInstanceOf(
+				CameraProfileUnavailableException,
+			);
+			expect(client.getSnapshot).not.toHaveBeenCalled();
+		});
+
+		it('refuses a device that is not a Protect camera', async () => {
+			await expect(provider.getSnapshot(makeDevice({ type: 'other' }), {})).rejects.toBeInstanceOf(
+				CameraProfileUnavailableException,
+			);
+		});
+
+		it('requests full HD only when the camera supports it', async () => {
+			hqCapable(false);
+			await provider.getSnapshot(makeDevice(), { highQuality: true });
+			expect(callArg<{ highQuality: boolean }>(client.getSnapshot, 1, 0).highQuality).toBe(false);
+
+			hqCapable(true);
+			await provider.getSnapshot(makeDevice(), { highQuality: true });
+			expect(callArg<{ highQuality: boolean }>(client.getSnapshot, 1, 1).highQuality).toBe(true);
+
+			await provider.getSnapshot(makeDevice(), {});
+			expect(callArg<{ highQuality: boolean }>(client.getSnapshot, 1, 2).highQuality).toBe(false);
+		});
+
+		it('falls back once, within one shared deadline, when the console refuses full HD', async () => {
+			hqCapable(true);
+			jest.useFakeTimers({ now: 1_000_000 });
+			client.getSnapshot
+				.mockImplementationOnce(() => {
+					jest.setSystemTime(1_003_000);
+
+					return Promise.reject(new ProtectApiError(ProtectErrorCategory.UNSUPPORTED, 'cameras/{id}/snapshot'));
+				})
+				.mockResolvedValueOnce(IMAGE);
+
+			await expect(provider.getSnapshot(makeDevice(), { highQuality: true })).resolves.toEqual(IMAGE);
+
+			expect(client.getSnapshot).toHaveBeenCalledTimes(2);
+			expect(callArg<Record<string, unknown>>(client.getSnapshot, 1, 0)).toMatchObject({
+				highQuality: true,
+				deadlineMs: 8000,
+			});
+			expect(callArg<Record<string, unknown>>(client.getSnapshot, 1, 1)).toMatchObject({
+				highQuality: false,
+				deadlineMs: 5000,
+			});
+		});
+
+		it('fails when the fallback is refused too', async () => {
+			hqCapable(true);
+			client.getSnapshot.mockRejectedValue(
+				new ProtectApiError(ProtectErrorCategory.UNSUPPORTED, 'cameras/{id}/snapshot'),
+			);
+
+			await expect(provider.getSnapshot(makeDevice(), { highQuality: true })).rejects.toBeInstanceOf(
+				CameraUpstreamException,
+			);
+			expect(client.getSnapshot).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not retry an unsupported answer to a request that was not full HD', async () => {
+			client.getSnapshot.mockRejectedValue(
+				new ProtectApiError(ProtectErrorCategory.UNSUPPORTED, 'cameras/{id}/snapshot'),
+			);
+
+			await expect(provider.getSnapshot(makeDevice(), {})).rejects.toBeInstanceOf(CameraUpstreamException);
+			expect(client.getSnapshot).toHaveBeenCalledTimes(1);
+		});
+
+		it('answers offline without a request', async () => {
+			connector.getClient.mockReturnValue(null);
+			await expect(provider.getSnapshot(makeDevice(), {})).rejects.toBeInstanceOf(CameraOfflineException);
+
+			connector.getClient.mockReturnValue(client);
+			synchronizer.getCachedDevice.mockReturnValue({ state: 'DISCONNECTED' });
+			await expect(provider.getSnapshot(makeDevice(), {})).rejects.toBeInstanceOf(CameraOfflineException);
+
+			connector.getConsoleIdentity.mockReturnValue(null);
+			await expect(provider.getSnapshot(makeDevice(), {})).rejects.toBeInstanceOf(CameraOfflineException);
+
+			expect(client.getSnapshot).not.toHaveBeenCalled();
+		});
+
+		it('still requests a camera that is missing from the cache', async () => {
+			synchronizer.getCachedDevice.mockReturnValue(null);
+
+			await expect(provider.getSnapshot(makeDevice(), {})).resolves.toEqual(IMAGE);
+		});
+
+		it.each([
+			['unavailable', CameraOfflineException],
+			['not_found', CameraOfflineException],
+			['rate_limited', CameraRateLimitedException],
+			['timeout', CameraUpstreamException],
+		])('maps a snapshot failure %s', async (category, expected) => {
+			client.getSnapshot.mockRejectedValue(
+				new ProtectApiError(category as ProtectErrorCategory, 'cameras/{id}/snapshot'),
+			);
+
+			await expect(provider.getSnapshot(makeDevice(), {})).rejects.toBeInstanceOf(expected);
+		});
+
+		it('logs a failure as a category only', async () => {
+			client.getSnapshot.mockRejectedValue(new Error('https://192.0.2.10/SENTINELALIAS'));
+
+			await expect(provider.getSnapshot(makeDevice(), {})).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			expect(JSON.stringify(logged)).toContain('Error');
+			expect(JSON.stringify(logged)).not.toMatch(/SENTINELALIAS|192\.0|https/);
+		});
+
+		it('does not log a cancelled snapshot', async () => {
+			client.getSnapshot.mockRejectedValue(
+				new ProtectApiError(ProtectErrorCategory.CANCELLED, 'cameras/{id}/snapshot'),
+			);
+
+			await expect(provider.getSnapshot(makeDevice(), {})).rejects.toBeInstanceOf(CameraUpstreamException);
+			expect(logged).toEqual([]);
+		});
+
+		it('reports the configured snapshot interval', () => {
+			const set = (value: unknown) => configService.getPluginConfig.mockReturnValue({ snapshotMinIntervalMs: value });
+
+			set(5000);
+			expect(provider.getSnapshotMinIntervalMs(makeDevice())).toBe(5000);
+			set(undefined);
+			expect(provider.getSnapshotMinIntervalMs(makeDevice())).toBe(2000);
+			set(100);
+			expect(provider.getSnapshotMinIntervalMs(makeDevice())).toBe(500);
+			set(999999);
+			expect(provider.getSnapshotMinIntervalMs(makeDevice())).toBe(60000);
+			set('x');
+			expect(provider.getSnapshotMinIntervalMs(makeDevice())).toBe(2000);
+			configService.getPluginConfig.mockImplementation(() => {
+				throw new Error('no config');
+			});
+			expect(provider.getSnapshotMinIntervalMs(makeDevice())).toBe(2000);
+		});
+
+		it('never uses the bridge for snapshots', async () => {
+			await provider.getSnapshot(makeDevice(), {});
+
+			expect(bridge.prepare).not.toHaveBeenCalled();
+			expect(availability.readStreams).not.toHaveBeenCalled();
 		});
 	});
 
