@@ -12,12 +12,14 @@ import { Go2rtcRelayStatus, Go2rtcService } from '../../../modules/cameras/servi
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ProtectVerifiedTlsOptions, connectVerifiedProtectTls } from '../client/protect-tls-connect';
 import {
+	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	PROTECT_STREAM_AVAILABILITY_TTL_MS,
 	PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS,
 	PROTECT_STREAM_BRIDGE_HANDSHAKE_WINDOW_MS,
 	PROTECT_STREAM_BRIDGE_IDLE_TIMEOUT_MS,
 	PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS,
 	PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES,
+	PROTECT_STREAM_BRIDGE_MAX_LISTENERS,
 } from '../devices-unifi-protect.constants';
 import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.error';
 
@@ -50,6 +52,8 @@ const createServerMock = net.createServer as unknown as jest.Mock<net.Server>;
 const PIN = 'AB'.repeat(32);
 const CONSOLE_HOST = '192.168.1.1';
 const UPSTREAM = { host: CONSOLE_HOST, port: 7441 };
+/** `prepare()` derives the host itself (M2): callers name only the console port. */
+const PORT = { port: 7441 };
 const ALIAS = 'SENTINELALIAShigh0123456789';
 const OPTIONS_REQUEST = `OPTIONS rtsp://127.0.0.1:1/${ALIAS} RTSP/1.0\r\nCSeq: 1\r\n\r\n`;
 const OK_ANSWER = 'RTSP/1.0 200 OK\r\nCSeq: 1\r\n\r\n';
@@ -248,7 +252,7 @@ describe('ProtectStreamBridgeService', () => {
 
 	describe('listener address', () => {
 		it('binds loopback for a managed relay', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 
 			expect(endpoint.host).toBe('127.0.0.1');
 			expect(openServers()).toHaveLength(1);
@@ -261,7 +265,7 @@ describe('ProtectStreamBridgeService', () => {
 			go2rtc.status = { ...go2rtc.status, mode: 'external' };
 			go2rtc.baseUrl = 'http://127.0.0.1:1984';
 
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 
 			expect(endpoint.host).toBe('127.0.0.1');
 			expect((openServers()[0].address() as AddressInfo).address).toBe('127.0.0.1');
@@ -288,7 +292,7 @@ describe('ProtectStreamBridgeService', () => {
 			});
 			lookupMock.mockResolvedValue([{ address: '192.0.2.50', family: 4 }]);
 
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 
 			expect(netConnectMock).toHaveBeenCalledWith(expect.objectContaining({ host: 'relay.lan', port: 1984 }));
 			expect(lookupMock).toHaveBeenCalledWith('relay.lan', { all: true });
@@ -299,9 +303,12 @@ describe('ProtectStreamBridgeService', () => {
 			const stranger = fakePeer('192.0.2.51');
 
 			server.emit('connection', stranger.bridgeEnd);
+
+			// Checked synchronously, in the same tick as `connection`: nothing else ran for this peer.
+			expect(stranger.bridgeEnd.destroyed).toBe(true);
+
 			await tick();
 
-			expect(stranger.bridgeEnd.destroyed).toBe(true);
 			expect(upstreams).toHaveLength(preflights);
 			expect(linesWith(logged, 'UniFi Protect stream bridge refused a connection (peer)')).not.toHaveLength(0);
 
@@ -337,7 +344,7 @@ describe('ProtectStreamBridgeService', () => {
 				return probe;
 			});
 
-			await expect(service.prepare(UPSTREAM)).rejects.toMatchObject({ category: 'unavailable' });
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unavailable' });
 			expect(netConnectMock).toHaveBeenCalledWith(expect.objectContaining({ host: 'relay.lan', port: 443 }));
 		});
 
@@ -352,7 +359,7 @@ describe('ProtectStreamBridgeService', () => {
 				return probe;
 			});
 
-			await expect(service.prepare(UPSTREAM)).rejects.toMatchObject({ category: 'unavailable' });
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unavailable' });
 			expect(openServers()).toHaveLength(0);
 			expect(connectMock).not.toHaveBeenCalled();
 		});
@@ -366,7 +373,7 @@ describe('ProtectStreamBridgeService', () => {
 
 			netConnectMock.mockImplementationOnce(() => probe);
 
-			const result = service.prepare(UPSTREAM).catch((error: unknown) => error);
+			const result = service.prepare(PORT).catch((error: unknown) => error);
 
 			await tick();
 			jest.advanceTimersByTime(GO2RTC_HTTP_TIMEOUT_MS);
@@ -394,7 +401,7 @@ describe('ProtectStreamBridgeService', () => {
 			});
 			lookupMock.mockReturnValue(new Promise(() => undefined));
 
-			const result = service.prepare(UPSTREAM, { deadlineMs: 1500 }).catch((error: unknown) => error);
+			const result = service.prepare(PORT, { deadlineMs: 1500 }).catch((error: unknown) => error);
 
 			await waitFor(() => lookupMock.mock.calls.length > 0);
 			jest.advanceTimersByTime(1500);
@@ -406,19 +413,19 @@ describe('ProtectStreamBridgeService', () => {
 		it('refuses while the relay is not running', async () => {
 			go2rtc.status = { ...go2rtc.status, state: 'starting' };
 
-			await expect(service.prepare(UPSTREAM)).rejects.toMatchObject({ category: 'unavailable' });
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unavailable' });
 			expect(servers()).toHaveLength(0);
 
 			go2rtc.status = { ...go2rtc.status, mode: 'disabled', state: 'running' };
 
-			await expect(service.prepare(UPSTREAM)).rejects.toMatchObject({ category: 'unavailable' });
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unavailable' });
 			expect(servers()).toHaveLength(0);
 		});
 
 		it('refuses without a session', async () => {
 			connector.target = null;
 
-			await expect(service.prepare(UPSTREAM)).rejects.toMatchObject({ category: 'unavailable' });
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unavailable' });
 			expect(servers()).toHaveLength(0);
 			expect(connectMock).not.toHaveBeenCalled();
 		});
@@ -426,27 +433,27 @@ describe('ProtectStreamBridgeService', () => {
 
 	describe('listener lifetime', () => {
 		it('reuses one listener per relay and upstream port', async () => {
-			const first = await service.prepare(UPSTREAM);
-			const second = await service.prepare(UPSTREAM);
+			const first = await service.prepare(PORT);
+			const second = await service.prepare(PORT);
 
 			expect(second).toEqual(first);
 			expect(servers()).toHaveLength(1);
 
-			const other = await service.prepare({ host: CONSOLE_HOST, port: 7442 });
+			const other = await service.prepare({ port: 7442 });
 
 			expect(other.port).not.toBe(first.port);
 			expect(openServers()).toHaveLength(2);
 		});
 
 		it('opens one listener for concurrent prepares', async () => {
-			const [first, second] = await Promise.all([service.prepare(UPSTREAM), service.prepare(UPSTREAM)]);
+			const [first, second] = await Promise.all([service.prepare(PORT), service.prepare(PORT)]);
 
 			expect(second).toEqual(first);
 			expect(servers()).toHaveLength(1);
 		});
 
 		it('keeps the port across a session restart and reaches the new upstream', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);
 
 			await waitFor(() => upstreams.length === 2);
@@ -461,7 +468,7 @@ describe('ProtectStreamBridgeService', () => {
 				tls: { mode: 'verify', serverName: 'console.id.ui.direct', fingerprintSha256: null },
 			});
 
-			const again = await service.prepare({ host: '192.168.1.2', port: 7441 });
+			const again = await service.prepare({ port: 7441 });
 
 			expect(again).toEqual(endpoint);
 
@@ -476,7 +483,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('destroys connections while no session exists without an upstream connect', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 
 			connector.endSession();
 
@@ -490,14 +497,14 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('closes connections but keeps the listener when the upstream changes', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);
 
 			await waitFor(() => upstreams.length === 2);
 
 			pluginConfig.streamHostOverride = 'streams.example';
 
-			const again = await service.prepare({ host: 'streams.example', port: 7441 });
+			const again = await service.prepare({ port: 7441 });
 
 			expect(again).toEqual(endpoint);
 			await waitFor(() => client.closed);
@@ -515,7 +522,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('refuses a connection while the stored override is invalid', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 
 			pluginConfig.streamHostOverride = 'rtsps://x';
 
@@ -527,7 +534,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('closes the listener when the relay generation changes', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);
 
 			await waitFor(() => upstreams.length === 2);
@@ -537,7 +544,7 @@ describe('ProtectStreamBridgeService', () => {
 
 			expect(openServers()).toHaveLength(0);
 
-			const next = await service.prepare(UPSTREAM);
+			const next = await service.prepare(PORT);
 
 			expect(openServers()).toHaveLength(1);
 			expect(next.port).not.toBe(0);
@@ -546,7 +553,7 @@ describe('ProtectStreamBridgeService', () => {
 		it.each(['starting', 'unavailable', 'error', 'disabled'] as const)(
 			'closes the listener when the relay turns %s',
 			async (state) => {
-				await service.prepare(UPSTREAM);
+				await service.prepare(PORT);
 
 				go2rtc.update({ state });
 				await waitFor(() => openServers().length === 0);
@@ -554,7 +561,7 @@ describe('ProtectStreamBridgeService', () => {
 		);
 
 		it('closes the listener when the relay mode changes', async () => {
-			await service.prepare(UPSTREAM);
+			await service.prepare(PORT);
 
 			go2rtc.update({ mode: 'external' });
 			await waitFor(() => openServers().length === 0);
@@ -579,7 +586,7 @@ describe('ProtectStreamBridgeService', () => {
 				return server;
 			});
 
-			const result = service.prepare(UPSTREAM).catch((error: unknown) => error);
+			const result = service.prepare(PORT).catch((error: unknown) => error);
 
 			await waitFor(() => servers().length === 1);
 			connector.endSession();
@@ -590,8 +597,227 @@ describe('ProtectStreamBridgeService', () => {
 			expect(connectMock).not.toHaveBeenCalled();
 		});
 
+		it('keeps a listener another prepare handed out when a stale prepare ends', async () => {
+			const preflightA = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const [bridgeEndA] = duplexPair();
+
+			// A opens the listener in generation 1 and is still in its pre-flight.
+			connectMock.mockImplementationOnce(() => preflightA.promise);
+
+			const a = service.prepare(PORT).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1);
+
+			// The session is lost and comes back; the plugin stays enabled.
+			const target = connector.target;
+
+			connector.endSession();
+			connector.startSession(target);
+
+			// B, in the new session, reuses the listener and hands its port out.
+			const b = await service.prepare(PORT);
+
+			preflightA.resolve({ socket: bridgeEndA as unknown as tls.TLSSocket, fingerprint: PIN });
+
+			await expect(a).resolves.toMatchObject({ category: 'unavailable' });
+			expect(openServers()).toHaveLength(1);
+			expect((openServers()[0].address() as AddressInfo).port).toBe(b.port);
+
+			const client = await connectClient(b.port);
+
+			await waitFor(() => upstreams.length === 2);
+			client.socket.write(OPTIONS_REQUEST);
+			await waitFor(() => verifiedUpstream().received.length > 0);
+
+			expect(client.closed).toBe(false);
+		});
+
+		it('never returns a listener that closed during the pre-flight', async () => {
+			const preflight = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const [bridgeEnd] = duplexPair();
+
+			connectMock.mockImplementationOnce(() => preflight.promise);
+
+			const result = service.prepare(PORT).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1);
+			openServers()[0].emit('error', Object.assign(new Error('boom'), { code: 'EMFILE' }));
+			preflight.resolve({ socket: bridgeEnd as unknown as tls.TLSSocket, fingerprint: PIN });
+
+			await expect(result).resolves.toMatchObject({ category: 'unavailable' });
+			await waitFor(() => openServers().length === 0);
+		});
+
+		it('closes a listener nobody was handed when its pre-flight fails', async () => {
+			connectMock.mockImplementationOnce(() =>
+				Promise.reject(new ProtectApiError(ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH, 'tls')),
+			);
+
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'tls_fingerprint_mismatch' });
+			await waitFor(() => openServers().length === 0);
+		});
+
+		it('keeps a handed-out listener when a later pre-flight fails', async () => {
+			const endpoint = await service.prepare(PORT);
+
+			connectMock.mockImplementationOnce(() =>
+				Promise.reject(new ProtectApiError(ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH, 'tls')),
+			);
+
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'tls_fingerprint_mismatch' });
+			expect(openServers()).toHaveLength(1);
+			expect((openServers()[0].address() as AddressInfo).port).toBe(endpoint.port);
+		});
+
+		it('caps the number of listeners', async () => {
+			for (let index = 0; index < PROTECT_STREAM_BRIDGE_MAX_LISTENERS; index += 1) {
+				await service.prepare({ port: 7441 + index });
+			}
+
+			const preflights = connectMock.mock.calls.length;
+
+			await expect(service.prepare({ port: 7441 + PROTECT_STREAM_BRIDGE_MAX_LISTENERS })).rejects.toMatchObject({
+				category: 'unavailable',
+			});
+			expect(openServers()).toHaveLength(PROTECT_STREAM_BRIDGE_MAX_LISTENERS);
+			expect(connectMock.mock.calls.length).toBe(preflights);
+
+			// An existing listener is still reused at the cap.
+			await expect(service.prepare(PORT)).resolves.toMatchObject({ host: '127.0.0.1' });
+		});
+
+		it('closes connections when a config change moves the upstream host', async () => {
+			const endpoint = await service.prepare(PORT);
+			const client = await connectClient(endpoint.port);
+
+			await waitFor(() => upstreams.length === 2);
+
+			// Another extension's change, or one that keeps the host, closes nothing.
+			service.handleConfigUpdated({ source: 'devices-other-plugin', type: 'plugin' });
+			service.handleConfigUpdated({ source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, type: 'plugin' });
+
+			for (let round = 0; round < 10; round += 1) {
+				await tick();
+			}
+
+			expect(client.closed).toBe(false);
+
+			pluginConfig.streamHostOverride = 'streams.example';
+			service.handleConfigUpdated({ source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, type: 'plugin' });
+
+			await waitFor(() => client.closed);
+
+			expect(openServers()).toHaveLength(1);
+			expect(service.getUpstreamHost()).toBe('streams.example');
+		});
+
+		it('closes every connection when a config change makes the override invalid', async () => {
+			const endpoint = await service.prepare(PORT);
+			const client = await connectClient(endpoint.port);
+
+			await waitFor(() => upstreams.length === 2);
+
+			pluginConfig.streamHostOverride = 'rtsps://x';
+			service.handleConfigUpdated();
+
+			await waitFor(() => client.closed);
+
+			expect(service.getUpstreamHost()).toBeNull();
+		});
+
+		it('derives the upstream host itself and records verification under it', async () => {
+			expect(service.getUpstreamHost()).toBe(CONSOLE_HOST);
+
+			pluginConfig.streamHostOverride = 'streams.example';
+
+			await service.prepare(PORT);
+
+			expect(upstreams[0].options.host).toBe('streams.example');
+			expect(service.getVerification({ host: 'streams.example', port: 7441 })).toBe('verified');
+			expect(service.getVerification(UPSTREAM)).toBe('unknown');
+
+			pluginConfig.streamHostOverride = 'rtsps://x';
+
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unavailable' });
+			expect(connectMock).toHaveBeenCalledTimes(1);
+
+			connector.target = null;
+
+			expect(service.getUpstreamHost()).toBeNull();
+		});
+
+		it('cancels in-flight pre-flights on module destroy', async () => {
+			connectMock.mockImplementationOnce(
+				(options) =>
+					new Promise((_resolve, reject) => {
+						options.signal?.addEventListener('abort', () =>
+							reject(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'tls')),
+						);
+					}),
+			);
+
+			const result = service.prepare(PORT).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1);
+			await service.onModuleDestroy();
+
+			expect(connectMock.mock.calls[0][0].signal?.aborted).toBe(true);
+			await expect(result).resolves.toBeInstanceOf(ProtectApiError);
+			expect(openServers()).toHaveLength(0);
+		});
+
+		it('cancels the external probe on module destroy', async () => {
+			go2rtc.status = { ...go2rtc.status, mode: 'external' };
+			go2rtc.baseUrl = 'http://relay.lan:1984';
+
+			const probe = Object.assign(new EventEmitter(), { destroy: jest.fn(), setTimeout: jest.fn() });
+
+			netConnectMock.mockImplementationOnce(() => probe);
+
+			const result = service.prepare(PORT).catch((error: unknown) => error);
+
+			await waitFor(() => netConnectMock.mock.calls.length === 1);
+			await service.onModuleDestroy();
+
+			expect(probe.destroy).toHaveBeenCalled();
+			await expect(result).resolves.toMatchObject({ category: 'cancelled' });
+			expect(servers()).toHaveLength(0);
+		});
+
+		it('closes a listener whose bind completes after module destroy', async () => {
+			const listening = deferred<void>();
+			const realCreate = jest.requireActual<typeof net>('net').createServer;
+
+			createServerMock.mockImplementationOnce((...args: Parameters<typeof net.createServer>) => {
+				const server = realCreate(...args);
+				const listen = (port: number, host: string, callback: () => void): net.Server =>
+					net.Server.prototype.listen.call(server, port, host, callback) as net.Server;
+
+				(server as unknown as { listen: (port: number, host: string, callback: () => void) => net.Server }).listen = (
+					port,
+					host,
+					callback,
+				) => listen(port, host, () => void listening.promise.then(callback));
+
+				return server;
+			});
+
+			const result = service.prepare(PORT).catch((error: unknown) => error);
+
+			await waitFor(() => servers().length === 1 && servers()[0].listening);
+
+			const destroying = service.onModuleDestroy();
+
+			listening.resolve();
+			await destroying;
+
+			expect(openServers()).toHaveLength(0);
+			await expect(result).resolves.toMatchObject({ category: 'unavailable' });
+			expect(connectMock).not.toHaveBeenCalled();
+		});
+
 		it('closes the listeners when the plugin is disabled', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);
 
 			await waitFor(() => upstreams.length === 2);
@@ -603,7 +829,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('releases every listener and connection on module destroy', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);
 
 			await waitFor(() => upstreams.length === 2);
@@ -612,11 +838,11 @@ describe('ProtectStreamBridgeService', () => {
 			expect(client.closed || (await waitFor(() => client.closed), true)).toBe(true);
 			expect(openServers()).toHaveLength(0);
 			expect(service.connectionCount).toBe(0);
-			await expect(service.prepare(UPSTREAM)).rejects.toMatchObject({ category: 'unavailable' });
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unavailable' });
 		});
 
 		it('closes the listener when the server fails', async () => {
-			await service.prepare(UPSTREAM);
+			await service.prepare(PORT);
 
 			openServers()[0].emit('error', Object.assign(new Error('boom'), { code: 'EMFILE' }));
 
@@ -628,7 +854,7 @@ describe('ProtectStreamBridgeService', () => {
 		it('verifies every connection with the session plan and the handshake timeout', async () => {
 			service = build('TEST-CA-PEM');
 
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 
 			await connectClient(endpoint.port);
 			await waitFor(() => upstreams.length === 2);
@@ -646,13 +872,13 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('passes no CA without a trusted test CA', async () => {
-			await service.prepare(UPSTREAM);
+			await service.prepare(PORT);
 
 			expect(upstreams[0].options.ca).toBeUndefined();
 		});
 
 		it('refuses the seventeenth connection', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const open: { closed: boolean }[] = [];
 
 			for (let index = 0; index < PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS; index += 1) {
@@ -673,7 +899,7 @@ describe('ProtectStreamBridgeService', () => {
 		it('limits the handshake rate', async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
 
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const [server] = openServers();
 
 			connectMock.mockImplementation(() =>
@@ -708,7 +934,7 @@ describe('ProtectStreamBridgeService', () => {
 		it('closes an idle connection after 60 s', async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
 
-			await service.prepare(UPSTREAM);
+			await service.prepare(PORT);
 
 			const peer = fakePeer('127.0.0.1');
 
@@ -742,7 +968,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('reads nothing from go2rtc before the upstream is verified', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
 			const [bridgeEnd, consoleEnd] = duplexPair();
 			const received: Buffer[] = [];
@@ -773,7 +999,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('never forwards a byte when a connection fails verification', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 
 			connectMock.mockImplementationOnce(() =>
 				Promise.reject(new ProtectApiError(ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH, 'tls')),
@@ -791,7 +1017,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('closes both sides on a redirect from the console', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);
 
 			await waitFor(() => upstreams.length === 2);
@@ -810,7 +1036,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('ends both sides when go2rtc closes its side', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);
 
 			await waitFor(() => upstreams.length === 2);
@@ -821,7 +1047,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('ends both sides when the console closes its side', async () => {
-			const endpoint = await service.prepare(UPSTREAM);
+			const endpoint = await service.prepare(PORT);
 			const client = await connectClient(endpoint.port);
 
 			await waitFor(() => upstreams.length === 2);
@@ -836,7 +1062,7 @@ describe('ProtectStreamBridgeService', () => {
 		it('reports verification per upstream', async () => {
 			expect(service.getVerification(UPSTREAM)).toBe('unknown');
 
-			await service.prepare(UPSTREAM);
+			await service.prepare(PORT);
 
 			expect(service.getVerification(UPSTREAM)).toBe('verified');
 			expect(service.getVerification({ host: CONSOLE_HOST, port: 7442 })).toBe('unknown');
@@ -845,7 +1071,7 @@ describe('ProtectStreamBridgeService', () => {
 				Promise.reject(new ProtectApiError(ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH, 'tls')),
 			);
 
-			await expect(service.prepare({ host: CONSOLE_HOST, port: 7442 })).rejects.toMatchObject({
+			await expect(service.prepare({ port: 7442 })).rejects.toMatchObject({
 				category: 'tls_fingerprint_mismatch',
 			});
 
@@ -859,7 +1085,7 @@ describe('ProtectStreamBridgeService', () => {
 				Promise.reject(new ProtectApiError(ProtectErrorCategory.UNREACHABLE, 'tls')),
 			);
 
-			await expect(service.prepare(UPSTREAM)).rejects.toMatchObject({ category: 'unreachable' });
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unreachable' });
 			expect(service.getVerification(UPSTREAM)).toBe('unknown');
 		});
 
@@ -869,7 +1095,7 @@ describe('ProtectStreamBridgeService', () => {
 				Promise.reject(new ProtectApiError(ProtectErrorCategory.TLS_UNTRUSTED, 'tls')),
 			);
 
-			await expect(service.prepare(UPSTREAM)).rejects.toMatchObject({ category: 'tls_untrusted' });
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'tls_untrusted' });
 
 			jest.advanceTimersByTime(PROTECT_STREAM_AVAILABILITY_TTL_MS - 1);
 
@@ -881,7 +1107,7 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('forgets every result when the session ends', async () => {
-			await service.prepare(UPSTREAM);
+			await service.prepare(PORT);
 
 			connector.endSession();
 
@@ -889,20 +1115,23 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('bounds the pre-flight by the remaining source budget', async () => {
-			await service.prepare(UPSTREAM, { deadlineMs: 1200 });
+			await service.prepare(PORT, { deadlineMs: 1200 });
 
 			expect(upstreams[0].options.handshakeTimeoutMs).toBeLessThanOrEqual(1200);
 			expect(upstreams[0].options.handshakeTimeoutMs).toBeGreaterThan(0);
 
 			const controller = new AbortController();
 
-			await service.prepare(UPSTREAM, { signal: controller.signal });
+			await service.prepare(PORT, { signal: controller.signal });
 
-			expect(upstreams[1].options.signal).toBe(controller.signal);
+			// The caller's signal, joined with the bridge's own lifetime (module destroy cancels too).
+			expect(upstreams[1].options.signal?.aborted).toBe(false);
+			controller.abort();
+			expect(upstreams[1].options.signal?.aborted).toBe(true);
 		});
 
 		it('rejects at once when no budget is left', async () => {
-			await expect(service.prepare(UPSTREAM, { deadlineMs: 0 })).rejects.toMatchObject({ category: 'timeout' });
+			await expect(service.prepare(PORT, { deadlineMs: 0 })).rejects.toMatchObject({ category: 'timeout' });
 			expect(connectMock).not.toHaveBeenCalled();
 		});
 
@@ -912,7 +1141,7 @@ describe('ProtectStreamBridgeService', () => {
 
 			connectMock.mockImplementationOnce(() => verification.promise);
 
-			const result = service.prepare(UPSTREAM).catch((error: unknown) => error);
+			const result = service.prepare(PORT).catch((error: unknown) => error);
 
 			await waitFor(() => connectMock.mock.calls.length === 1);
 			connector.endSession();
@@ -925,7 +1154,7 @@ describe('ProtectStreamBridgeService', () => {
 	});
 
 	it('never logs an address, a request line or an alias', async () => {
-		const endpoint = await service.prepare(UPSTREAM);
+		const endpoint = await service.prepare(PORT);
 		const client = await connectClient(endpoint.port);
 
 		await waitFor(() => upstreams.length === 2);

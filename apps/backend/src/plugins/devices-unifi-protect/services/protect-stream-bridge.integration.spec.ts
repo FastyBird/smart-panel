@@ -147,7 +147,7 @@ describe('ProtectStreamBridgeService (loopback integration)', () => {
 
 	it('pipes a verified pinned session byte for byte', async () => {
 		const bridge = build(PINNED);
-		const endpoint = await bridge.prepare({ host: '127.0.0.1', port: fake.rtspsPort });
+		const endpoint = await bridge.prepare({ port: fake.rtspsPort });
 
 		expect(endpoint.host).toBe('127.0.0.1');
 		expect(bridge.getVerification({ host: '127.0.0.1', port: fake.rtspsPort })).toBe('verified');
@@ -166,7 +166,7 @@ describe('ProtectStreamBridgeService (loopback integration)', () => {
 
 	it('pipes a verified session in verify mode', async () => {
 		const bridge = build(VERIFY, PROTECT_TEST_TLS.ca);
-		const endpoint = await bridge.prepare({ host: '127.0.0.1', port: fake.rtspsPort });
+		const endpoint = await bridge.prepare({ port: fake.rtspsPort });
 		const client = await connect(endpoint);
 
 		await waitFor(() => Buffer.concat(client.received).toString().endsWith('\r\n\r\n'));
@@ -180,11 +180,13 @@ describe('ProtectStreamBridgeService (loopback integration)', () => {
 		const bridge = build(PINNED);
 		const upstream = { host: '127.0.0.1', port: fake.rtspsPort };
 		// The listener outlives a failed verification (go2rtc keeps re-dialling its URL); open it while the pin matches.
-		const endpoint = await bridge.prepare(upstream);
+		const endpoint = await bridge.prepare({ port: upstream.port });
 
 		fake.set({ rtspsCertificate: 'console' });
 
-		await expect(bridge.prepare(upstream)).rejects.toMatchObject({ category: 'tls_fingerprint_mismatch' });
+		await expect(bridge.prepare({ port: upstream.port })).rejects.toMatchObject({
+			category: 'tls_fingerprint_mismatch',
+		});
 		expect(bridge.getVerification(upstream)).toBe('unverified');
 
 		fake.rtspsBytesReceived.length = 0;
@@ -202,12 +204,12 @@ describe('ProtectStreamBridgeService (loopback integration)', () => {
 	it('fails closed on an untrusted certificate in verify mode', async () => {
 		const bridge = build(PINNED);
 		const upstream = { host: '127.0.0.1', port: fake.rtspsPort };
-		const endpoint = await bridge.prepare(upstream);
+		const endpoint = await bridge.prepare({ port: upstream.port });
 
 		// A new session in verify mode, without the test CA: the console certificate does not chain to a trusted root.
 		target = { consoleHost: '127.0.0.1', tls: VERIFY };
 
-		await expect(bridge.prepare(upstream)).rejects.toMatchObject({ category: 'tls_untrusted' });
+		await expect(bridge.prepare({ port: upstream.port })).rejects.toMatchObject({ category: 'tls_untrusted' });
 		expect(bridge.getVerification(upstream)).toBe('unverified');
 
 		fake.rtspsBytesReceived.length = 0;
@@ -218,13 +220,13 @@ describe('ProtectStreamBridgeService (loopback integration)', () => {
 
 		expect(client.received).toHaveLength(0);
 		expect(fake.rtspRequestLines).toHaveLength(0);
-		// The handshake never completed, so not even an empty secure connection reached the console.
-		expect(fake.rtspsBytesReceived.every((bytes) => bytes === 0)).toBe(true);
+		// The bridge refused the chain before finishing the handshake: the console never saw a secure connection.
+		expect(fake.rtspsBytesReceived).toEqual([]);
 	});
 
 	it('closes both sides on a redirect from the console', async () => {
 		const bridge = build(PINNED);
-		const endpoint = await bridge.prepare({ host: '127.0.0.1', port: fake.rtspsPort });
+		const endpoint = await bridge.prepare({ port: fake.rtspsPort });
 
 		fake.rtspAnswer('RTSP/1.0 302 Found\r\nCSeq: 1\r\nLocation: rtsps://127.0.0.1:7441/x\r\n\r\n');
 
@@ -239,7 +241,7 @@ describe('ProtectStreamBridgeService (loopback integration)', () => {
 
 	it('releases everything on module destroy', async () => {
 		const bridge = build(PINNED);
-		const endpoint = await bridge.prepare({ host: '127.0.0.1', port: fake.rtspsPort });
+		const endpoint = await bridge.prepare({ port: fake.rtspsPort });
 		const open = await connect(endpoint);
 
 		await waitFor(() => open.received.length > 0);

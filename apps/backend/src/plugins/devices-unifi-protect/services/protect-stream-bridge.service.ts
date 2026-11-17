@@ -4,10 +4,12 @@ import { AddressInfo, isIP } from 'net';
 import { Duplex, Transform, pipeline } from 'stream';
 
 import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { GO2RTC_HTTP_TIMEOUT_MS, Go2rtcMode } from '../../../modules/cameras/cameras.constants';
 import { Go2rtcRelayStatus, Go2rtcService } from '../../../modules/cameras/services/go2rtc.service';
+import { EventType as ConfigEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { withExtraCa } from '../client/protect-https-agent';
 import { connectVerifiedProtectTls } from '../client/protect-tls-connect';
@@ -20,6 +22,7 @@ import {
 	PROTECT_STREAM_BRIDGE_IDLE_TIMEOUT_MS,
 	PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS,
 	PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES,
+	PROTECT_STREAM_BRIDGE_MAX_LISTENERS,
 	PROTECT_TRUSTED_CA,
 } from '../devices-unifi-protect.constants';
 import { ProtectApiError, ProtectErrorCategory, toProtectApiError } from '../errors/protect-api.error';
@@ -75,6 +78,10 @@ interface BridgeListener {
 	/** 0 until listening. */
 	port: number;
 	connections: Set<BridgeConnection>;
+	/** True once a `prepare()` returned this port: go2rtc may hold it, so only the relay, disable and destroy close it. */
+	handedOut: boolean;
+	/** `prepare()` calls currently working with this listener. */
+	claims: number;
 	closed: boolean;
 }
 
@@ -197,6 +204,8 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 
 	private sessionGeneration = 0;
 	private destroyed = false;
+	/** Aborted by `onModuleDestroy`: cancels pre-flights and the external relay probe still in flight. */
+	private lifetime = new AbortController();
 	private unsubscribeSession: (() => void) | null = null;
 	private unsubscribeRelay: (() => void) | null = null;
 
@@ -215,12 +224,18 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 
 	onModuleInit(): void {
 		this.destroyed = false;
+
+		if (this.lifetime.signal.aborted) {
+			this.lifetime = new AbortController();
+		}
+
 		this.unsubscribeSession ??= this.connector.onSessionChange((session) => this.onSessionChange(session === null));
 		this.unsubscribeRelay ??= this.go2rtc.subscribe((status) => this.onRelayStatus(status));
 	}
 
 	async onModuleDestroy(): Promise<void> {
 		this.destroyed = true;
+		this.lifetime.abort();
 		this.unsubscribeSession?.();
 		this.unsubscribeSession = null;
 		this.unsubscribeRelay?.();
@@ -232,6 +247,8 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		this.verification.clear();
 		this.handshakes.length = 0;
 
+		// A bind still in flight sees `destroyed` when it completes and closes its listener at once.
+		await Promise.allSettled([...this.opening.values()]);
 		await Promise.all([...this.closing]);
 	}
 
@@ -239,13 +256,13 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 	 * Opens or reuses the listener for (relay, upstream port) and runs one verified pre-flight handshake to `upstream`.
 	 * The pre-flight only reports (it writes nothing): every accepted connection is verified on its own. Rejects
 	 * ProtectApiError: tls_untrusted / tls_fingerprint_mismatch (verification failed), unavailable (no session, relay not
-	 * running, bind failure, external relay address unknown, or the session or relay changed meanwhile), timeout,
-	 * unreachable, cancelled.
+	 * running, invalid stored override, bind failure, listener cap, external relay address unknown, or the session or
+	 * relay changed meanwhile), timeout, unreachable, cancelled (caller's signal or module destroy).
+	 *
+	 * The upstream host is not the caller's to choose (M2): it is `getUpstreamHost()`, the rule every accepted connection
+	 * uses, and verification is recorded under it. The caller names only the console stream port.
 	 */
-	async prepare(
-		upstream: { host: string; port: number },
-		options: ProtectBridgePrepareOptions = {},
-	): Promise<ProtectBridgeEndpoint> {
+	async prepare(upstream: { port: number }, options: ProtectBridgePrepareOptions = {}): Promise<ProtectBridgeEndpoint> {
 		const { signal } = options;
 		const budget = new PrepareBudget(options.deadlineMs);
 
@@ -257,14 +274,16 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			throw bridgeError(ProtectErrorCategory.TIMEOUT);
 		}
 
-		if (this.destroyed || !isValidPort(upstream.port) || typeof upstream.host !== 'string' || upstream.host === '') {
+		if (this.destroyed || !isValidPort(upstream.port)) {
 			throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 		}
 
 		const target = this.connector.getStreamTlsTarget();
 		const relay = this.currentRelay();
+		// The same rule as every accepted connection (M2): the caller names only the console port.
+		const host = target === null ? null : this.resolveUpstreamHost(target);
 
-		if (target === null || relay === null) {
+		if (target === null || relay === null || host === null) {
 			throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 		}
 
@@ -274,28 +293,50 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		const isCurrent = (): boolean =>
 			!this.destroyed && this.sessionGeneration === sessionGeneration && this.isRelayCurrent(relay);
 
-		const route = await this.withBudget(this.routeFor(relay), budget, signal);
+		const cancel = signal === undefined ? this.lifetime.signal : AbortSignal.any([signal, this.lifetime.signal]);
+		const route = await this.withBudget(this.routeFor(relay), budget, cancel);
 
 		if (!isCurrent()) {
 			throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 		}
 
-		const { listener, opened } = await this.acquireListener(relay, route, upstream.port);
-		const abandon = (): ProtectApiError => {
-			// Whatever this call opened goes again; a listener others already use stays theirs.
-			if (opened && listener.connections.size === 0) {
-				this.closeListener(listener);
+		const listener = await this.acquireListener(relay, route, upstream.port);
+
+		listener.claims += 1;
+
+		try {
+			if (!isCurrent() || listener.closed) {
+				throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 			}
 
-			return bridgeError(ProtectErrorCategory.UNAVAILABLE);
-		};
+			this.closeOtherUpstreams(listener, host);
 
-		if (!isCurrent() || listener.closed) {
-			throw abandon();
+			await this.preflight(host, upstream.port, plan, budget, cancel, sessionGeneration);
+
+			// A stale call only rejects; the listener may already be in someone else's hands (I1). A listener that
+			// failed or closed meanwhile is never handed out.
+			if (!isCurrent() || listener.closed) {
+				throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
+			}
+
+			listener.handedOut = true;
+
+			return { host: route.bindAddress, port: listener.port };
+		} finally {
+			listener.claims -= 1;
+			this.releaseIfUnused(listener);
 		}
+	}
 
-		this.closeOtherUpstreams(listener, upstream.host);
-
+	/** One verified handshake that only reports: the socket is destroyed at once, nothing is written. */
+	private async preflight(
+		host: string,
+		port: number,
+		plan: ProtectTlsConnectPlan,
+		budget: PrepareBudget,
+		signal: AbortSignal,
+		sessionGeneration: number,
+	): Promise<void> {
 		const handshakeTimeoutMs = budget.remaining(PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS);
 
 		if (handshakeTimeoutMs <= 0) {
@@ -305,33 +346,60 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		let verified: Awaited<ReturnType<typeof connectVerifiedProtectTls>>;
 
 		try {
-			verified = await connectVerifiedProtectTls({
-				host: upstream.host,
-				port: upstream.port,
-				plan,
-				ca: this.ca,
-				handshakeTimeoutMs,
-				signal,
-			});
+			verified = await connectVerifiedProtectTls({ host, port, plan, ca: this.ca, handshakeTimeoutMs, signal });
 		} catch (error) {
 			const failure = toProtectApiError(error, 'tls');
 
 			if (TLS_FAILURES.has(failure.category)) {
-				this.record(upstream.host, upstream.port, 'unverified', sessionGeneration);
+				this.record(host, port, 'unverified', sessionGeneration);
 			}
 
 			throw failure;
 		}
 
 		verified.socket.destroy();
+		this.record(host, port, 'verified', sessionGeneration);
+	}
 
-		if (!isCurrent()) {
-			throw abandon();
+	/**
+	 * Closes a listener nobody holds: never handed out, no `prepare()` still working with it and no connection. Covers a
+	 * failed pre-flight on a new port and a stale call that opened it (M3, R11); a handed-out listener is never touched.
+	 */
+	private releaseIfUnused(listener: BridgeListener): void {
+		if (!listener.handedOut && listener.claims === 0 && listener.connections.size === 0) {
+			this.closeListener(listener);
+		}
+	}
+
+	/**
+	 * Host the bridge connects to right now: a valid `stream_host_override`, else the session's console host. Null
+	 * without a session or with an invalid stored override. `getVerification` results are recorded under this host.
+	 */
+	getUpstreamHost(): string | null {
+		const target = this.connector.getStreamTlsTarget();
+
+		return target === null ? null : this.resolveUpstreamHost(target);
+	}
+
+	/**
+	 * The event that also drives the connector's `onConfigChanged` (via the managed service manager). A new
+	 * `stream_host_override` changes the upstream at once: every connection to another host closes (M1); an invalid
+	 * override closes them all. Listeners stay.
+	 */
+	@OnEvent(ConfigEventType.CONFIG_UPDATED)
+	handleConfigUpdated(payload?: { source: string; type: 'plugin' | 'module' | 'section' }): void {
+		if (
+			payload?.type === 'module' ||
+			(payload?.type === 'plugin' && payload.source !== DEVICES_UNIFI_PROTECT_PLUGIN_NAME)
+		) {
+			return;
 		}
 
-		this.record(upstream.host, upstream.port, 'verified', sessionGeneration);
+		const host = this.getUpstreamHost();
 
-		return { host: route.bindAddress, port: listener.port };
+		for (const listener of [...this.listeners.values()]) {
+			this.closeOtherUpstreams(listener, host);
+		}
 	}
 
 	/**
@@ -530,7 +598,7 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 
 		// M6: a URL without a port reaches the relay on its scheme's port.
 		const port = url.port !== '' ? Number(url.port) : url.protocol === 'https:' ? 443 : 80;
-		const probe = await this.probeRelay(host, port);
+		const probe = await this.probeRelay(host, port, this.lifetime.signal);
 		const addresses = await this.lookupRelay(host);
 		const allowedPeers = new Set<string>([probe.remote]);
 
@@ -545,21 +613,32 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		return Object.freeze({ bindAddress: probe.local, allowedPeers });
 	}
 
-	private probeRelay(host: string, port: number): Promise<{ local: string; remote: string }> {
+	private probeRelay(host: string, port: number, lifetime: AbortSignal): Promise<{ local: string; remote: string }> {
 		return new Promise((resolve, reject) => {
+			if (lifetime.aborted) {
+				reject(bridgeError(ProtectErrorCategory.CANCELLED));
+
+				return;
+			}
+
 			let settled = false;
 			const socket = net.connect({ host, port });
-			const finish = (result: { local: string; remote: string } | null): void => {
+			const onAbort = (): void => finish(null, ProtectErrorCategory.CANCELLED);
+			const finish = (
+				result: { local: string; remote: string } | null,
+				category = ProtectErrorCategory.UNAVAILABLE,
+			): void => {
 				if (settled) {
 					return;
 				}
 
 				settled = true;
 				clearTimeout(timer);
+				lifetime.removeEventListener('abort', onAbort);
 				socket.destroy();
 
 				if (result === null) {
-					reject(bridgeError(ProtectErrorCategory.UNAVAILABLE));
+					reject(bridgeError(category));
 				} else {
 					resolve(result);
 				}
@@ -567,6 +646,7 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			const timer = setTimeout(() => finish(null), GO2RTC_HTTP_TIMEOUT_MS);
 
 			timer.unref();
+			lifetime.addEventListener('abort', onAbort, { once: true });
 			socket.on('error', () => finish(null));
 			socket.once('connect', () => {
 				const local = normalizeAddress(socket.localAddress);
@@ -595,22 +675,22 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		});
 	}
 
-	private async acquireListener(
-		relay: RelayRef,
-		route: BridgeRoute,
-		upstreamPort: number,
-	): Promise<{ listener: BridgeListener; opened: boolean }> {
+	private async acquireListener(relay: RelayRef, route: BridgeRoute, upstreamPort: number): Promise<BridgeListener> {
 		const key = `${this.relayKey(relay)}|${route.bindAddress}|${upstreamPort}`;
 		const existing = this.listeners.get(key);
 
 		if (existing !== undefined) {
-			return { listener: existing, opened: false };
+			return existing;
 		}
 
 		const pending = this.opening.get(key);
 
 		if (pending !== undefined) {
-			return { listener: await pending, opened: false };
+			return pending;
+		}
+
+		if (this.listeners.size + this.opening.size >= PROTECT_STREAM_BRIDGE_MAX_LISTENERS) {
+			throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 		}
 
 		const opening = this.openListener(key, relay, route, upstreamPort).finally(() => {
@@ -619,7 +699,7 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 
 		this.opening.set(key, opening);
 
-		return { listener: await opening, opened: true };
+		return opening;
 	}
 
 	private async openListener(
@@ -638,6 +718,8 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			server,
 			port: 0,
 			connections: new Set(),
+			handedOut: false,
+			claims: 0,
 			closed: false,
 		};
 
@@ -918,8 +1000,8 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 	}
 
 	/** R1: a connection to another upstream host than the current one is closed; the listener stays. */
-	private closeOtherUpstreams(listener: BridgeListener, host: string): void {
-		const current = host.toLowerCase();
+	private closeOtherUpstreams(listener: BridgeListener, host: string | null): void {
+		const current = host?.toLowerCase() ?? null;
 
 		[...listener.connections]
 			.filter((connection) => connection.host.toLowerCase() !== current)

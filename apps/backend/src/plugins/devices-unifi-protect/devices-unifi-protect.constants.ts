@@ -134,6 +134,8 @@ export const PROTECT_STREAM_BRIDGE_IDLE_TIMEOUT_MS = 60_000;
 /** Accepted connections that may start an upstream handshake per window, across every bridge listener. */
 export const PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES = 32;
 export const PROTECT_STREAM_BRIDGE_HANDSHAKE_WINDOW_MS = 10_000;
+/** Bridge listeners open at once (one per relay and console stream port); a console has very few stream ports. */
+export const PROTECT_STREAM_BRIDGE_MAX_LISTENERS = 8;
 export const PROTECT_RTSP_MAX_HEADER_BYTES = 16 * 1024;
 export const PROTECT_RTSP_MAX_BODY_BYTES = 64 * 1024;
 
