@@ -163,5 +163,11 @@
 		"accept": "Accept uncertainty override",
 		"advisory": "Ordering was overridden by an operator. This is not drain proof or command completion.",
 		"unavailable": "Recovery unavailable; reload the current context and review the refusal"
+	},
+	"detailTab": "Shelly",
+	"wizard": {
+		"selection": {
+			"description": "Shelly Gen 2 and newer devices on your network."
+		}
 	}
 }

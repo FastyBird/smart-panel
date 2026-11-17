@@ -163,5 +163,11 @@
 		"accept": "Prijať výnimku z neistého poradia",
 		"advisory": "Obsluha potvrdila výnimku z nevyriešeného poradia. Nejde o dôkaz vyprázdnenia frontu ani dokončenia príkazu.",
 		"unavailable": "Obnovenie nie je dostupné; načítajte aktuálny kontext a skontrolujte dôvod odmietnutia"
+	},
+	"detailTab": "Shelly",
+	"wizard": {
+		"selection": {
+			"description": "Zariadenia Shelly Gen 2 a novšie vo vašej sieti."
+		}
 	}
 }

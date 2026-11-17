@@ -6,8 +6,9 @@
 			animated
 		/>
 
-		<el-empty
+		<empty-state
 			v-else-if="actions.length === 0"
+			icon="mdi:puzzle-outline"
 			:description="t('extensionsModule.actions.messages.noActions')"
 		/>
 
@@ -166,7 +167,12 @@
 									<el-alert
 										v-if="actionResults[action.id]"
 										:type="actionResults[action.id]!.success ? 'success' : 'error'"
-										:title="actionResults[action.id]!.message || (actionResults[action.id]!.success ? t('extensionsModule.actions.messages.success') : t('extensionsModule.actions.messages.error'))"
+										:title="
+											actionResults[action.id]!.message ||
+											(actionResults[action.id]!.success
+												? t('extensionsModule.actions.messages.success')
+												: t('extensionsModule.actions.messages.error'))
+										"
 										show-icon
 										closable
 										class="mb-2"
@@ -189,7 +195,12 @@
 													:class="record.success ? 'text-green-500' : 'text-red-500'"
 													class="w-4 h-4 shrink-0"
 												/>
-												<span class="truncate flex-1">{{ record.message || (record.success ? t('extensionsModule.actions.messages.success') : t('extensionsModule.actions.messages.error')) }}</span>
+												<span class="truncate flex-1">
+													{{
+														record.message ||
+														(record.success ? t('extensionsModule.actions.messages.success') : t('extensionsModule.actions.messages.error'))
+													}}
+												</span>
 												<span class="shrink-0">{{ record.duration_ms }}ms</span>
 												<span class="shrink-0">{{ formatTimestamp(record.timestamp) }}</span>
 											</div>
@@ -257,11 +268,11 @@ import {
 	ElCard,
 	ElCollapse,
 	ElCollapseItem,
-	ElEmpty,
 	ElForm,
 	ElFormItem,
 	ElInput,
 	ElInputNumber,
+	ElMessageBox,
 	ElOption,
 	ElSelect,
 	ElSkeleton,
@@ -269,11 +280,11 @@ import {
 	ElTag,
 	ElText,
 	ElTooltip,
-	ElMessageBox,
 } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import EmptyState from '../../../common/components/empty-state.vue';
 import type { IActionHistoryRecord, IActionResult, IExtensionActionDescriptor } from '../composables/useActions';
 import { useActionsInjection } from '../composables/useActions';
 
@@ -421,15 +432,11 @@ const onExecute = async (action: IExtensionActionDescriptor): Promise<void> => {
 	// Confirm dangerous actions
 	if (action.dangerous) {
 		try {
-			await ElMessageBox.confirm(
-				t('extensionsModule.actions.messages.confirmDangerous'),
-				action.label,
-				{
-					confirmButtonText: t('extensionsModule.actions.buttons.confirm'),
-					cancelButtonText: t('extensionsModule.actions.buttons.cancel'),
-					type: 'warning',
-				},
-			);
+			await ElMessageBox.confirm(t('extensionsModule.actions.messages.confirmDangerous'), action.label, {
+				confirmButtonText: t('extensionsModule.actions.buttons.confirm'),
+				cancelButtonText: t('extensionsModule.actions.buttons.cancel'),
+				type: 'warning',
+			});
 		} catch {
 			return; // User canceled
 		}
@@ -448,12 +455,16 @@ const onExecute = async (action: IExtensionActionDescriptor): Promise<void> => {
 };
 
 // Initialize form defaults and load history when actions change
-watch(actions, () => {
-	initFormDefaults();
+watch(
+	actions,
+	() => {
+		initFormDefaults();
 
-	// Load existing history for all actions
-	for (const action of actions.value) {
-		void refreshHistory(action.id);
-	}
-}, { immediate: true });
+		// Load existing history for all actions
+		for (const action of actions.value) {
+			void refreshHistory(action.id);
+		}
+	},
+	{ immediate: true }
+);
 </script>

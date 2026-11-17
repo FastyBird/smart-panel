@@ -50,8 +50,9 @@
 			data-test-id="modbus-endpoints-devices-failed"
 		/>
 
-		<el-empty
+		<empty-state
 			v-if="!loadError && !loading && endpoints.length === 0"
+			icon="mdi:lan-connect"
 			:description="t('devicesModbusPlugin.endpoints.empty')"
 		/>
 
@@ -105,9 +106,10 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDialog, ElEmpty, ElMessageBox, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElDialog, ElMessageBox, vLoading } from 'element-plus';
 
 import { AppBreadcrumbs, ViewHeader, injectStoresManager, useFlashMessage } from '../../../common';
+import EmptyState from '../../../common/components/empty-state.vue';
 import { RouteNames as DevicesRouteNames, type IDevice } from '../../../modules/devices';
 import { devicesStoreKey } from '../../../modules/devices/store/keys';
 import ModbusEndpointForm from '../components/endpoints/modbus-endpoint-form.vue';

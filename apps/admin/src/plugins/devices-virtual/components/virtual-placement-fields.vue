@@ -18,6 +18,10 @@
 				:value="item.value"
 			/>
 		</el-select>
+		<p class="text-xs text-gray-500 mt-1 w-full">
+			{{ t('devicesModule.fields.devices.room.hint') }}
+			<template v-if="suggestSources">{{ t('devicesVirtualPlugin.wizard.layout.roomHint') }}</template>
+		</p>
 	</el-form-item>
 	<el-form-item :label="t('devicesModule.fields.devices.zones.title')">
 		<el-select
@@ -39,6 +43,10 @@
 				:value="item.value"
 			/>
 		</el-select>
+		<p class="text-xs text-gray-500 mt-1 w-full">
+			{{ t('devicesModule.fields.devices.zones.hint') }}
+			<template v-if="suggestSources">{{ t('devicesVirtualPlugin.wizard.layout.zonesHint') }}</template>
+		</p>
 	</el-form-item>
 </template>
 
@@ -61,7 +69,7 @@ defineOptions({
 // Where a new virtual device lives: its room and the zones it belongs to. Shared by every kind that
 // is authored by a single editor, so they offer the same two inputs the projection wizard's details
 // step has. Floor zones follow from the room and cannot be assigned directly, so they are not offered.
-defineProps<{ roomId: string | null; zoneIds: string[]; disabled?: boolean }>();
+defineProps<{ roomId: string | null; zoneIds: string[]; disabled?: boolean; suggestSources?: boolean }>();
 const emit = defineEmits<{ 'update:roomId': [value: string | null]; 'update:zoneIds': [value: string[]] }>();
 
 const { t } = useI18n();

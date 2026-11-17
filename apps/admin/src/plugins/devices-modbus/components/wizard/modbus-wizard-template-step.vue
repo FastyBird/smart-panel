@@ -1,6 +1,13 @@
 <template>
 	<div class="flex flex-col gap-4">
 		<el-alert
+			v-if="fieldError('template')"
+			:title="fieldError('template')"
+			type="error"
+			:closable="false"
+			show-icon
+		/>
+		<el-alert
 			v-if="loadError"
 			type="error"
 			:closable="false"
@@ -12,7 +19,38 @@
 			{{ t('devicesModbusPlugin.wizard.template.loading') }}
 		</div>
 
-		<div class="grid gap-3 lt-sm:grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+		<el-card
+			shadow="hover"
+			class="cursor-pointer"
+			:class="{ 'border-[var(--el-color-primary)]!': wizard.state.startedEmpty, 'opacity-50 pointer-events-none': wizard.applyingTemplate.value }"
+			role="button"
+			:tabindex="wizard.applyingTemplate.value ? -1 : 0"
+			:aria-pressed="wizard.state.startedEmpty"
+			:aria-disabled="wizard.applyingTemplate.value"
+			data-test-id="template-start-empty"
+			@click="wizard.startEmpty()"
+			@keydown.enter.self.prevent="onStartEmptyKey"
+			@keydown.space.self.prevent="onStartEmptyKey"
+		>
+			<div class="font-bold">
+				{{ t('devicesModbusPlugin.wizard.template.startEmpty.title') }}
+			</div>
+			<div class="text-sm">
+				{{ t('devicesModbusPlugin.wizard.template.startEmpty.description') }}
+			</div>
+		</el-card>
+		<el-button
+			:disabled="loading || wizard.applyingTemplate.value"
+			data-test-id="template-browse"
+			@click="showTemplates = !showTemplates"
+		>
+			{{ t('devicesModbusPlugin.wizard.template.browse') }}
+		</el-button>
+
+		<div
+			v-if="showTemplates"
+			class="grid gap-3 lt-sm:grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+		>
 			<el-card
 				v-for="template in templates"
 				:key="template.id"
@@ -54,27 +92,6 @@
 				</div>
 				<div class="text-xs mt-2">
 					{{ t('devicesModbusPlugin.wizard.template.counts', { channels: template.channelCount, points: template.pointCount }) }}
-				</div>
-			</el-card>
-
-			<el-card
-				shadow="hover"
-				class="cursor-pointer"
-				:class="{ 'border-[var(--el-color-primary)]!': wizard.state.startedEmpty, 'opacity-50 pointer-events-none': wizard.applyingTemplate.value }"
-				role="button"
-				:tabindex="wizard.applyingTemplate.value ? -1 : 0"
-				:aria-pressed="wizard.state.startedEmpty"
-				:aria-disabled="wizard.applyingTemplate.value"
-				data-test-id="template-start-empty"
-				@click="wizard.startEmpty()"
-				@keydown.enter.self.prevent="onStartEmptyKey"
-				@keydown.space.self.prevent="onStartEmptyKey"
-			>
-				<div class="font-bold">
-					{{ t('devicesModbusPlugin.wizard.template.startEmpty.title') }}
-				</div>
-				<div class="text-sm">
-					{{ t('devicesModbusPlugin.wizard.template.startEmpty.description') }}
 				</div>
 			</el-card>
 		</div>
@@ -124,9 +141,10 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElCard, ElTag } from 'element-plus';
+import { ElAlert, ElButton, ElCard, ElTag } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
+import { useWizardFieldError } from '../../../../modules/devices/components/wizard/use-wizard-validation';
 import { modbusTemplatesStoreKey } from '../../store/keys';
 import type { IModbusTemplateSummary } from '../../store/templates.types';
 
@@ -139,11 +157,13 @@ defineOptions({
 const props = defineProps<IModbusWizardTemplateStepProps>();
 
 const { t } = useI18n();
+const fieldError = useWizardFieldError();
 const flashMessage = useFlashMessage();
 
 const templatesStore = injectStoresManager().getStore(modbusTemplatesStoreKey);
 
 const loading = ref<boolean>(false);
+const showTemplates = ref(props.wizard.state.template !== null);
 const loadError = ref<string | null>(null);
 
 const templates = computed<IModbusTemplateSummary[]>(() => templatesStore.catalog?.templates ?? []);

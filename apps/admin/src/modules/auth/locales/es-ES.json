@@ -37,6 +37,7 @@
     "yourProfile": "Tu perfil"
   },
   "messages": {
+    "sessionExpired": "Su sesión ya no es válida. Inicie sesión de nuevo.",
     "invalidCredentials": "El nombre de usuario o la contraseña son incorrectos.",
     "signInRateLimited": "Demasiados intentos de inicio de sesión. Inténtalo de nuevo más tarde.",
     "signInRetryAfter": "Demasiados intentos de inicio de sesión. Espera {seconds} segundos antes de volver a intentarlo.",

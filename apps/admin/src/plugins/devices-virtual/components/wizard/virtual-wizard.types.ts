@@ -1,5 +1,3 @@
-import type { InjectionKey, Ref } from 'vue';
-
 import type { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 
 /**
@@ -20,8 +18,7 @@ export interface IVirtualSlotMapping {
 }
 
 /**
- * The construction wizard's state, carried across all four steps (category, mapping, details,
- * review) and read/written by each. Owned by the wizard shell (`view-virtual-device-wizard.vue`)
+ * The construction wizard's state, carried across all three steps (device, mapping, review) and read/written by each. Owned by the wizard shell (`view-virtual-device-wizard.vue`)
  * and passed down to whichever step is active.
  */
 export interface IVirtualWizardState {
@@ -30,7 +27,5 @@ export interface IVirtualWizardState {
 	name: string;
 	roomId: string | null;
 	zoneIds: string[];
+	optionalChannels?: DevicesModuleChannelCategory[];
 }
-
-// CSS selector of the element in the wizard shell's chrome that step navigation is teleported into.
-export const virtualWizardActionsKey: InjectionKey<Ref<string>> = Symbol('virtual-wizard-actions');

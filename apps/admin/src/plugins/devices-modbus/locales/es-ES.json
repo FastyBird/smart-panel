@@ -92,9 +92,10 @@
 			"counts": "{channels} channels, {points} points",
 			"fileErrors": "Some template files could not be loaded",
 			"startEmpty": {
-				"title": "Start empty",
-				"description": "Define the points yourself."
-			}
+				"title": "Configurar tu dispositivo",
+				"description": "Define los registros y funciones de tu dispositivo."
+			},
+			"browse": "Usar una plantilla de dispositivo"
 		},
 		"points": {
 			"customNotice": "The points differ from the template, so the device will be created as a custom device.",
@@ -282,6 +283,9 @@
 			"save": "Save points",
 			"saved": "The points of \"{name}\" were saved.",
 			"saveFailed": "The points could not be saved"
+		},
+		"selection": {
+			"description": "Pasarelas Modbus TCP con registros asignados a dispositivos."
 		}
 	},
 	"endpoints": {

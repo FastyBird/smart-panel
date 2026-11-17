@@ -409,7 +409,7 @@
 			"noActiveMedia": "No hay ninguna actividad multimedia activa que detener.",
 			"noTargets": "No hay dispositivos compatibles disponibles en este espacio."
 		},
-		"title": "Modos de actividad",
+		"title": "Modos",
 		"description": "Elige qué hace cada modo de actividad en este espacio.",
 		"enabled": "Activado",
 		"disabled": "Desactivado",
@@ -494,7 +494,10 @@
 			"gaming": "Jugar",
 			"background": "De fondo",
 			"off": "Apagado"
-		}
+		},
+		"leaveUnchanged": "Sin cambios",
+		"apply": "Configurar",
+		"noChanges": "Sin cambios en dispositivos"
 	},
 	"schedules": {
 		"title": "Programaciones horarias",
@@ -690,5 +693,11 @@
 			"spaceType": "Este espacio no es una habitación ni una zona; el bloque solo actúa sobre habitaciones y zonas.",
 			"required": "Este valor es necesario."
 		}
+	},
+	"modesLayout": {
+		"configure": "Configurar",
+		"scheduleDescription": "Elige cuándo cambian automáticamente los modos del espacio.",
+		"presenceTitle": "Según la presencia",
+		"presenceDescription": "Elige cómo responde el espacio cuando llegan o se van personas."
 	}
 }

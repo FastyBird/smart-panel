@@ -20,7 +20,7 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.name.title')"
 			prop="name"
-			:error="fieldErrors.name"
+			:error="fieldErrors.name || fieldError('endpoint.name')"
 		>
 			<el-input
 				v-model="model.name"
@@ -31,7 +31,7 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.host.title')"
 			prop="host"
-			:error="fieldErrors.host"
+			:error="fieldErrors.host || fieldError('endpoint.host')"
 		>
 			<el-input
 				v-model="model.host"
@@ -42,7 +42,8 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.port.title')"
 			prop="port"
-			:error="fieldErrors.port"
+			required
+			:error="fieldErrors.port || fieldError('endpoint.port')"
 		>
 			<el-input-number
 				v-model="model.port"
@@ -55,7 +56,8 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.framing.title')"
 			prop="framing"
-			:error="fieldErrors.framing"
+			required
+			:error="fieldErrors.framing || fieldError('endpoint.framing')"
 		>
 			<el-select
 				:model-value="model.framing"
@@ -74,7 +76,8 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.connectTimeoutMs.title')"
 			prop="connectTimeoutMs"
-			:error="fieldErrors.connectTimeoutMs"
+			required
+			:error="fieldErrors.connectTimeoutMs || fieldError('endpoint.connectTimeoutMs')"
 		>
 			<el-input-number
 				v-model="model.connectTimeoutMs"
@@ -87,7 +90,8 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.requestTimeoutMs.title')"
 			prop="requestTimeoutMs"
-			:error="fieldErrors.requestTimeoutMs"
+			required
+			:error="fieldErrors.requestTimeoutMs || fieldError('endpoint.requestTimeoutMs')"
 		>
 			<el-input-number
 				v-model="model.requestTimeoutMs"
@@ -100,7 +104,8 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.interRequestDelayMs.title')"
 			prop="interRequestDelayMs"
-			:error="fieldErrors.interRequestDelayMs"
+			required
+			:error="fieldErrors.interRequestDelayMs || fieldError('endpoint.interRequestDelayMs')"
 		>
 			<el-input-number
 				v-model="model.interRequestDelayMs"
@@ -113,7 +118,8 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.maxInFlight.title')"
 			prop="maxInFlight"
-			:error="fieldErrors.maxInFlight"
+			required
+			:error="fieldErrors.maxInFlight || fieldError('endpoint.maxInFlight')"
 		>
 			<el-input-number
 				v-model="model.maxInFlight"
@@ -133,7 +139,7 @@
 		<el-form-item
 			:label="t('devicesModbusPlugin.endpoints.form.enabled.title')"
 			prop="enabled"
-			:error="fieldErrors.enabled"
+			:error="fieldErrors.enabled || fieldError('endpoint.enabled')"
 		>
 			<el-switch v-model="model.enabled" />
 		</el-form-item>
@@ -146,6 +152,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
 
+import { useWizardFieldError } from '../../../../modules/devices/components/wizard/use-wizard-validation';
 import { DevicesModbusPluginFraming } from '../../../../openapi.constants';
 import { useModbusEndpointForm } from '../../composables/useModbusEndpointForm';
 import type { IModbusEndpoint } from '../../store/endpoints.types';
@@ -164,6 +171,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const fieldError = useWizardFieldError();
 
 const { model, fieldErrors, formAlert, maxInFlightDisabled, setFraming, submit } = props.form ?? useModbusEndpointForm(props.endpoint);
 
@@ -176,9 +184,32 @@ const framingOptions = computed(() => [
 
 const required = (key: string) => ({ required: true, message: t(key), trigger: 'change' as const });
 
+const numberRange = (minimum: number, maximum: number) => ({
+	required: true,
+	type: 'integer' as const,
+	min: minimum,
+	max: maximum,
+	message: t('devicesModule.wizard.validation.numberRange', { minimum, maximum }),
+	trigger: 'change' as const,
+});
+
 const rules = reactive<FormRules>({
 	name: [required('devicesModbusPlugin.endpoints.form.name.required')],
 	host: [required('devicesModbusPlugin.endpoints.form.host.required')],
+	port: [numberRange(1, 65535)],
+	framing: [
+		{
+			required: true,
+			enum: Object.values(DevicesModbusPluginFraming),
+			type: 'enum',
+			message: t('devicesModule.wizard.validation.invalidValue'),
+			trigger: 'change',
+		},
+	],
+	connectTimeoutMs: [numberRange(1, 60000)],
+	requestTimeoutMs: [numberRange(1, 60000)],
+	interRequestDelayMs: [numberRange(0, 60000)],
+	maxInFlight: [numberRange(1, 64)],
 });
 
 // Locked before the validation is awaited, so a second Save click while validating does not start a second save. The

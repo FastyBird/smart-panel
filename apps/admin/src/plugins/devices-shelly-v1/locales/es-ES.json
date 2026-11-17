@@ -138,5 +138,10 @@
 				"title": "Añadir"
 			}
 		}
+	},
+	"wizard": {
+		"selection": {
+			"description": "Dispositivos Shelly de primera generación en su red."
+		}
 	}
 }

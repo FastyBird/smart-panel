@@ -45,6 +45,9 @@
 			"details": "Details",
 			"created": "Created",
 			"failed": "Failed"
+		},
+		"selection": {
+			"description": "Generate devices for testing without physical hardware."
 		}
 	},
 	"headings": {

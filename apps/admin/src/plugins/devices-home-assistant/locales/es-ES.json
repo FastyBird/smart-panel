@@ -263,9 +263,16 @@
       "channelsCount": "{count} canales",
       "warningsCount": "{count} avisos de mapeo"
     },
-    "kinds": { "device": "Dispositivo", "helper": "Ayudante" },
-    "statuses": { "needsAttention": "Revisión manual" },
-    "actions": { "refresh": "Actualizar inventario" },
+    "kinds": {
+      "device": "Dispositivo",
+      "helper": "Ayudante"
+    },
+    "statuses": {
+      "needsAttention": "Revisión manual"
+    },
+    "actions": {
+      "refresh": "Actualizar inventario"
+    },
     "manualReview": {
       "title": "{count} elementos necesitan revisión manual",
       "message": "Estos elementos no están seleccionados para la importación masiva. Use el formulario controlado existente para revisar su categoría, canales y propiedades.",
@@ -278,6 +285,9 @@
     "messages": {
       "sessionNotStarted": "No se pudieron preparar los dispositivos de Home Assistant para la importación masiva.",
       "adoptionFailed": "No se pudieron añadir los dispositivos de Home Assistant seleccionados."
+    },
+    "selection": {
+      "description": "Importe dispositivos de su instancia de Home Assistant."
     }
   }
 }

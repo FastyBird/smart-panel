@@ -42,8 +42,9 @@
 				</template>
 			</el-result>
 
-			<el-empty
+			<empty-state
 				v-else-if="templates.length === 0"
+				icon="mdi:graph-outline"
 				:description="t('automations.templates.texts.empty')"
 				data-test-id="templates-empty"
 			/>
@@ -242,11 +243,12 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElDialog, ElEmpty, ElForm, ElFormItem, ElInput, ElInputNumber, ElResult, ElText, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElInputNumber, ElResult, ElText, vLoading } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 
 import { Icon } from '@iconify/vue';
 
+import EmptyState from '../../../../common/components/empty-state.vue';
 import type { IChannelProperty } from '../../../devices/store/channels.properties.store.types';
 import { AUTOMATION_DEFAULT_ICON, AutomationTemplateParameterType } from '../../automations.constants';
 import { stashAutomationDraft } from '../../automations.drafts';

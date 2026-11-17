@@ -1,11 +1,10 @@
+import { defineAsyncComponent } from 'vue';
 import type { App } from 'vue';
-import type { RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
-import { type IPlugin, type PluginInjectionKey, injectPluginsManager, injectStoresManager } from '../../common';
-import { configPluginsStoreKey } from '../../modules/config/store/keys';
+import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import {
 	DEVICES_MODULE_NAME,
 	RouteNames as DevicesRouteNames,
@@ -20,7 +19,7 @@ import {
 
 import { VirtualDeviceAddForm, VirtualDeviceEditForm } from './components/components';
 import VirtualDeviceSources from './components/virtual-device-sources.vue';
-import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE, RouteNames, VIRTUAL_WIZARD_KINDS } from './devices-virtual.constants';
+import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from './devices-virtual.constants';
 import { locales } from './locales';
 import { PluginRoutes } from './router';
 import { VirtualDeviceAddFormSchema, VirtualDeviceEditFormSchema } from './schemas/devices.schemas';
@@ -57,25 +56,7 @@ export default {
 		const devicesRoute = options.router.getRoutes().find((route) => route.name === DevicesRouteNames.DEVICES);
 
 		if (devicesRoute) {
-			PluginRoutes.forEach((route: RouteRecordRaw): void => {
-				options.router.addRoute(DevicesRouteNames.DEVICES, {
-					...route,
-					beforeEnter: async () => {
-						// Resolve at navigation time: plugin installation precedes async config hydration.
-						const configPluginsStore = injectStoresManager(app).getStore(configPluginsStoreKey);
-
-						try {
-							if (!configPluginsStore.firstLoadFinished()) {
-								await configPluginsStore.fetch();
-							}
-						} catch {
-							return { name: DevicesRouteNames.DEVICES };
-						}
-
-						return configPluginsStore.findByType(DEVICES_VIRTUAL_PLUGIN_NAME)?.enabled === true ? true : { name: DevicesRouteNames.DEVICES };
-					},
-				});
-			});
+			PluginRoutes.forEach((route) => options.router.addRoute(DevicesRouteNames.DEVICES, route));
 		}
 
 		pluginsManager.addPlugin(devicesVirtualPluginKey, {
@@ -94,7 +75,53 @@ export default {
 					components: {
 						deviceAddForm: VirtualDeviceAddForm,
 						deviceEditForm: VirtualDeviceEditForm,
-						deviceDetailSection: VirtualDeviceSources,
+						deviceDetailTabs: [
+							{ id: 'virtual', label: 'devicesVirtualPlugin.detailTab', icon: 'mdi:source-branch', component: VirtualDeviceSources },
+						],
+						deviceWizard: {
+							selection: {
+								kind: 'section',
+								order: 10,
+								section: { label: 'devicesVirtualPlugin.wizard.selection.heading', description: 'devicesVirtualPlugin.wizard.selection.description' },
+							},
+							variants: [
+								{
+									id: 'aggregate',
+									icon: 'mdi:sigma',
+									component: defineAsyncComponent(() => import('./views/view-virtual-measurement-wizard.vue')),
+									props: { mode: 'sensor_aggregate' },
+								},
+								{ id: 'projection', icon: 'mdi:call-split', component: defineAsyncComponent(() => import('./views/view-virtual-device-wizard.vue')) },
+								{
+									id: 'transform',
+									icon: 'mdi:function-variant',
+									component: defineAsyncComponent(() => import('./views/view-virtual-measurement-wizard.vue')),
+									props: { mode: 'sensor_transform' },
+								},
+								{
+									id: 'dewPoint',
+									icon: 'mdi:water-thermometer-outline',
+									component: defineAsyncComponent(() => import('./views/view-virtual-measurement-wizard.vue')),
+									props: { mode: 'sensor_transform', dewPoint: true },
+								},
+								{ id: 'group', icon: 'mdi:lightbulb-group', component: defineAsyncComponent(() => import('./views/view-light-group-wizard.vue')) },
+								{
+									id: 'thermostat',
+									icon: 'mdi:thermostat',
+									component: defineAsyncComponent(() => import('./views/view-virtual-thermostat-wizard.vue')),
+								},
+								{
+									id: 'nativeThermostat',
+									icon: 'mdi:thermostat-box',
+									component: defineAsyncComponent(() => import('./views/view-virtual-thermostat-wizard.vue')),
+									props: { native: true },
+								},
+							].map((variant) => ({
+								...variant,
+								label: `devicesVirtualPlugin.wizard.kinds.${variant.id}.title`,
+								description: `devicesVirtualPlugin.wizard.kinds.${variant.id}.description`,
+							})),
+						},
 					},
 					schemas: {
 						deviceSchema: VirtualDeviceSchema,
@@ -115,20 +142,6 @@ export default {
 					},
 				},
 			],
-			...(devicesRoute
-				? {
-						routes: {
-							wizard: {
-								label: 'devicesVirtualPlugin.wizard.title',
-								icon: 'mdi:call-split',
-								to: { name: RouteNames.WIZARD },
-								testId: 'virtual-device-wizard',
-								optionsTitle: 'devicesVirtualPlugin.wizard.selectKind',
-								options: VIRTUAL_WIZARD_KINDS,
-							},
-						},
-					}
-				: {}),
 			modules: [DEVICES_MODULE_NAME],
 			isCore: true,
 		});

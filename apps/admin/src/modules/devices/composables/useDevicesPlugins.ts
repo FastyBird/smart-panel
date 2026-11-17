@@ -5,7 +5,7 @@ import { orderBy } from 'natural-orderby';
 import { type IPlugin, type IPluginElement, injectPluginsManager } from '../../../common';
 import { useConfigPlugins } from '../../config';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
-import type { IDevicePluginRoutes, IDevicePluginsComponents, IDevicePluginsSchemas, IDeviceWizardRouteLauncher } from '../devices.types';
+import type { IDevicePluginRoutes, IDevicePluginsComponents, IDevicePluginsSchemas, IDeviceWizardDefinition } from '../devices.types';
 
 import type { IUseDevicesPlugins } from './types';
 
@@ -14,7 +14,7 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 
 	const { enabled } = useConfigPlugins();
 
-	const pluginComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm', 'deviceWizardAdapter', 'deviceDetailSection'];
+	const pluginComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm', 'deviceWizard', 'deviceDetailTabs'];
 	const typeOptionComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm'];
 
 	const pluginSchemas: (keyof IDevicePluginsSchemas)[] = [
@@ -24,7 +24,6 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 		'deviceCreateReqSchema',
 		'deviceUpdateReqSchema',
 	];
-	const pluginRoutes: (keyof IDevicePluginRoutes)[] = ['wizard'];
 
 	const plugins = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes>[]>(() => {
 		return pluginsManager.getPlugins().filter((plugin) => {
@@ -32,12 +31,6 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 
 			if (!pluginModuleEligible) {
 				return false;
-			}
-
-			const hasRoute = pluginRoutes.some((key) => plugin.routes && key in plugin.routes);
-
-			if (hasRoute) {
-				return true;
 			}
 
 			return (plugin.elements ?? []).some((el) => {
@@ -63,10 +56,9 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 				return (plugin.elements ?? [])
 					.filter((el) => el.modules === undefined || el.modules.includes(DEVICES_MODULE_NAME))
 					.filter((el) => {
-						// Devices created only through a wizard (an adoption adapter, or an exclusive route launcher) cannot be
-						// created by the generic form, so they are not offered here.
-						const hasExclusiveWizard = !!el.components?.deviceWizardAdapter || plugin.routes?.wizard?.exclusive === true;
-						const isWizardOnly = hasExclusiveWizard && !el.components?.deviceAddForm;
+						// Wizard-only devices cannot be created by the generic form unless the plugin explicitly supports it.
+						const hasExclusiveWizard = !!el.components?.deviceWizard;
+						const isWizardOnly = hasExclusiveWizard && !el.components?.deviceAddForm && !el.components?.deviceWizard?.capabilities?.manual;
 
 						if (isWizardOnly) {
 							return false;
@@ -91,9 +83,7 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 	const wizardOptions = computed<{ value: IPlugin['type']; label: string; description: string; disabled: boolean }[]>(() => {
 		const flat = plugins.value
 			.filter((plugin) =>
-				(plugin.elements ?? []).some(
-					(el) => (el.modules === undefined || el.modules.includes(DEVICES_MODULE_NAME)) && !!el.components?.deviceWizardAdapter
-				)
+				(plugin.elements ?? []).some((el) => (el.modules === undefined || el.modules.includes(DEVICES_MODULE_NAME)) && !!el.components?.deviceWizard)
 			)
 			.map((plugin) => ({
 				value: plugin.type,
@@ -105,29 +95,15 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 		return orderBy(flat, [(o) => o.label], ['asc']);
 	});
 
-	const wizardRouteOptions = computed<(IDeviceWizardRouteLauncher & { value: IPlugin['type']; disabled: boolean })[]>(() => {
-		const flat = plugins.value.flatMap((plugin) => {
-			const launcher = plugin.routes?.wizard;
-
-			return launcher
-				? [
-						{
-							value: plugin.type,
-							...launcher,
-							disabled: !enabled(plugin.type),
-						},
-					]
-				: [];
-		});
-
-		return orderBy(flat, [(o) => o.label], ['asc']);
-	});
-
 	const getByPluginType = (type: IPlugin['type']): IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
 	};
 
 	const getByName = getByPluginType;
+	const getWizard = (type: IPlugin['type']): IDeviceWizardDefinition | undefined =>
+		getByPluginType(type)?.elements.find(
+			(element) => (element.modules === undefined || element.modules.includes(DEVICES_MODULE_NAME)) && element.components?.deviceWizard
+		)?.components?.deviceWizard;
 
 	const getByType = (type: IPluginElement['type']): IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined => {
 		return plugins.value.find((plugin) =>
@@ -153,7 +129,7 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 		plugins,
 		options,
 		wizardOptions,
-		wizardRouteOptions,
+		getWizard,
 		getByPluginType,
 		getByName,
 		getByType,

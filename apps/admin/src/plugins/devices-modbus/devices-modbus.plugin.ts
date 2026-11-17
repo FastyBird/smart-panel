@@ -1,3 +1,4 @@
+import { defineAsyncComponent } from 'vue';
 import type { App } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
 
@@ -21,7 +22,7 @@ import {
 
 import ModbusConfigForm from './components/modbus-config-form.vue';
 import ModbusDeviceSection from './components/modbus-device-section.vue';
-import { DEVICES_MODBUS_PLUGIN_NAME, DEVICES_MODBUS_TYPE, RouteNames } from './devices-modbus.constants';
+import { DEVICES_MODBUS_PLUGIN_NAME, DEVICES_MODBUS_TYPE } from './devices-modbus.constants';
 import { locales } from './locales';
 import { PluginRoutes } from './router';
 import { ModbusConfigEditFormSchema } from './schemas/config.schemas';
@@ -118,7 +119,18 @@ export default {
 					// `deviceAddForm`.
 					type: DEVICES_MODBUS_TYPE,
 					components: {
-						deviceDetailSection: ModbusDeviceSection,
+						deviceDetailTabs: [
+							{ id: 'modbus', label: 'devicesModbusPlugin.section.heading', icon: 'mdi:lan-connect', component: ModbusDeviceSection },
+						],
+						deviceWizard: {
+							selection: {
+								kind: 'integration',
+								icon: 'mdi:server-network-outline',
+								order: 60,
+								description: 'devicesModbusPlugin.wizard.selection.description',
+							},
+							component: defineAsyncComponent(() => import('./views/view-modbus-wizard.vue')),
+						},
 					},
 					schemas: {
 						deviceSchema: ModbusDeviceSchema,
@@ -134,20 +146,6 @@ export default {
 					modules: [DEVICES_MODULE_NAME],
 				},
 			],
-			...(devicesRoute
-				? {
-						routes: {
-							wizard: {
-								label: 'devicesModbusPlugin.wizard.title',
-								icon: 'mdi:lan-connect',
-								to: { name: RouteNames.WIZARD },
-								testId: 'modbus-device-wizard',
-								// Endpoint and unit ID are collected only by the wizard; the generic form cannot create a device.
-								exclusive: true,
-							},
-						},
-					}
-				: {}),
 			modules: [DEVICES_MODULE_NAME, CONFIG_MODULE_NAME],
 			isCore: true,
 		});

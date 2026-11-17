@@ -62,7 +62,10 @@
 			</ul>
 		</div>
 
-		<div class="flex justify-end">
+		<div
+			v-if="props.showCreateAction !== false"
+			class="flex justify-end"
+		>
 			<el-button
 				type="primary"
 				:disabled="!canCreate"
@@ -85,6 +88,7 @@ import { ElAlert, ElButton, ElDescriptions, ElDescriptionsItem } from 'element-p
 
 import { injectStoresManager, useFlashMessage, useLogger } from '../../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../../modules/devices';
+import { useDeviceWizardComplete } from '../../../../modules/devices/components/wizard/device-wizard-flow';
 import { devicesStoreKey } from '../../../../modules/devices/store/keys';
 import { spacesStoreKey } from '../../../../modules/spaces/store/keys';
 import { formatAddress } from '../../lib/address-notation';
@@ -97,7 +101,7 @@ defineOptions({
 	name: 'ModbusWizardReviewStep',
 });
 
-const props = defineProps<IModbusWizardReviewStepProps>();
+const props = withDefaults(defineProps<IModbusWizardReviewStepProps>(), { showCreateAction: true });
 
 const { t } = useI18n();
 const logger = useLogger();
@@ -110,6 +114,7 @@ const endpointsStore = storesManager.getStore(modbusEndpointsStoreKey);
 const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const wizard = props.wizard;
+const complete = useDeviceWizardComplete();
 
 const editing = computed<boolean>((): boolean => wizard.mode.value === 'edit');
 
@@ -206,6 +211,7 @@ const onCreate = async (): Promise<void> => {
 
 	try {
 		id = await wizard.submit();
+		complete();
 	} catch (error: unknown) {
 		logger.error(editing.value ? 'Failed to update the Modbus device points' : 'Failed to create the Modbus device', error);
 

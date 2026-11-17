@@ -41,6 +41,25 @@ function editor(outputId?: string) {
 }
 beforeEach(() => vi.resetAllMocks());
 describe('dedicated dew point authoring lifecycle', () => {
+	it('reads a background draft without granting save permission or replacing primary errors', async () => {
+		const { authoring: a, wrapper } = editor();
+		Object.assign(a.model, { name: 'Dew point', dryBulb: 't', humidity: 'rh' });
+		a.error.value = 'preview';
+		a.reason.value = 'Keep primary reason';
+		const signal = new AbortController().signal;
+		client.POST.mockResolvedValueOnce({ data: { data: state() } });
+		await expect(a.evaluateDraft(signal)).resolves.toEqual(state());
+		expect(client.POST.mock.calls[0][1].signal).toBe(signal);
+		expect(a.preview.value).toBeNull();
+		expect(a.canSave.value).toBe(false);
+		expect(a.busy.value).toBe(false);
+		expect(a.error.value).toBe('preview');
+		expect(a.reason.value).toBe('Keep primary reason');
+		client.POST.mockResolvedValueOnce({ error: { error: { details: { reason: 'Background refused' } } } });
+		await expect(a.evaluateDraft()).rejects.toThrow('dewPointPreview');
+		expect(a.reason.value).toBe('Keep primary reason');
+		wrapper.unmount();
+	});
 	it('preserves missing identities and exact output on repair, using current revisions without promoting preview quality', async () => {
 		client.GET.mockResolvedValue({ data: { data: state() } });
 		const { authoring: a, wrapper } = editor('retained-output');

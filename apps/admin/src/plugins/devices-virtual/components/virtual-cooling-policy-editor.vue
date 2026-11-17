@@ -1,43 +1,74 @@
 <template>
-	<section data-test-id="cooling-policy-editor">
-		<h3>{{ t('devicesVirtualPlugin.dewPoint.cooling') }}</h3>
+	<virtual-wizard-card
+		data-test-id="cooling-policy-editor"
+		icon="mdi:snowflake"
+		class="mb-4"
+	>
+		<template #header>
+			<div class="flex items-center justify-between gap-3">
+				<strong>{{ t('devicesVirtualPlugin.dewPoint.cooling') }}</strong>
+				<el-switch
+					:model-value="!!draft.policy.cooling"
+					:aria-label="t('devicesVirtualPlugin.dewPoint.cooling')"
+					:disabled="disabled || retained"
+					class="cooling-policy__toggle"
+					@change="toggle"
+				/>
+			</div>
+		</template>
 		<el-alert
 			:title="t('devicesVirtualPlugin.dewPoint.installation')"
 			type="warning"
 			:closable="false"
 		/>
-		<el-switch
-			:model-value="!!draft.policy.cooling"
-			:disabled="disabled || retained"
-			@change="toggle"
-		/>
+		<el-button
+			v-if="guided && draft.policy.cooling"
+			class="mt-3"
+			size="small"
+			@click="emit('selectSources')"
+		>
+			{{ t('devicesVirtualPlugin.thermostat.wizard.selectCoolingSources') }}
+		</el-button>
 		<template v-if="draft.policy.cooling">
-			<el-form-item :label="t('devicesVirtualPlugin.dewPoint.margin')">
-				<el-input-number
-					v-model="draft.policy.cooling.marginC"
-					:disabled="disabled"
-					:min="0.01"
-					:max="60"
-				/>
-			</el-form-item>
-			<el-form-item :label="t('devicesVirtualPlugin.dewPoint.hysteresis')">
-				<el-input-number
-					v-model="draft.policy.cooling.recoveryHysteresisC"
-					:disabled="disabled"
-					:min="0.01"
-					:max="60"
-				/>
-			</el-form-item>
-			<el-form-item :label="t('devicesVirtualPlugin.dewPoint.absoluteMinimum')">
-				<el-input-number
-					v-model="draft.policy.cooling.absoluteMinimumC"
-					:disabled="disabled"
-					:min="-44.99"
-					:max="60"
-				/>
-			</el-form-item>
+			<div class="cooling-policy__fields mt-4">
+				<el-form-item
+					:error="fieldError('coolingPolicy')"
+					:label="t('devicesVirtualPlugin.dewPoint.margin')"
+					required
+				>
+					<el-input-number
+						v-model="draft.policy.cooling.marginC"
+						:disabled="disabled"
+						:min="0.01"
+						:max="60"
+					/>
+				</el-form-item>
+				<el-form-item
+					:error="fieldError('coolingPolicy')"
+					:label="t('devicesVirtualPlugin.dewPoint.hysteresis')"
+					required
+				>
+					<el-input-number
+						v-model="draft.policy.cooling.recoveryHysteresisC"
+						:disabled="disabled"
+						:min="0.01"
+						:max="60"
+					/>
+				</el-form-item>
+				<el-form-item
+					:error="fieldError('coolingMinimum')"
+					:label="t('devicesVirtualPlugin.dewPoint.absoluteMinimum')"
+				>
+					<el-input-number
+						v-model="draft.policy.cooling.absoluteMinimumC"
+						:disabled="disabled"
+						:min="-44.99"
+						:max="60"
+					/>
+				</el-form-item>
+			</div>
 			<section
-				v-for="member in draft.actuators.filter((m) => m.role === 'cooling')"
+				v-for="member in guided ? [] : draft.actuators.filter((m) => m.role === 'cooling')"
 				:key="member.retained?.id ?? member.source_property ?? ''"
 			>
 				<strong>{{ member.retained?.physical_identity ?? member.source_property }}</strong>
@@ -48,7 +79,11 @@
 					{{ reason }}
 				</p>
 				<template v-if="member.cooling_protection">
-					<el-form-item :label="t('devicesVirtualPlugin.dewPoint.title')">
+					<el-form-item
+						:error="fieldError('coolingDependencies')"
+						:label="t('devicesVirtualPlugin.dewPoint.title')"
+						required
+					>
 						<el-input
 							v-model="member.cooling_protection.dew_point_property"
 							data-test-id="cooling-dew-point"
@@ -58,7 +93,11 @@
 					<p v-if="member.retained?.cooling_protection">
 						{{ t('devicesVirtualPlugin.dewPoint.retained') }}: {{ member.retained.cooling_protection.dew_point_identity }}
 					</p>
-					<el-form-item :label="t('devicesVirtualPlugin.dewPoint.surface')">
+					<el-form-item
+						:error="fieldError('coolingDependencies')"
+						:label="t('devicesVirtualPlugin.dewPoint.surface')"
+						required
+					>
 						<el-input
 							v-model="member.cooling_protection.surface_property"
 							data-test-id="cooling-surface"
@@ -68,7 +107,11 @@
 					<p v-if="member.retained?.cooling_protection">
 						{{ t('devicesVirtualPlugin.dewPoint.retained') }}: {{ member.retained.cooling_protection.surface_identity }}
 					</p>
-					<el-form-item :label="t('devicesVirtualPlugin.measurement.maximumAge')">
+					<el-form-item
+						:error="fieldError('coolingDependencies')"
+						:label="t('devicesVirtualPlugin.measurement.maximumAge')"
+						required
+					>
 						<el-input-number
 							v-model="member.cooling_protection.maximum_age_seconds"
 							:min="1"
@@ -79,24 +122,33 @@
 				</template>
 			</section>
 		</template>
-	</section>
+	</virtual-wizard-card>
 </template>
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElFormItem, ElInput, ElInputNumber, ElSwitch } from 'element-plus';
+import { ElAlert, ElButton, ElFormItem, ElInput, ElInputNumber, ElSwitch } from 'element-plus';
 
+import { useWizardFieldError } from '../../../modules/devices/components/wizard/use-wizard-validation';
 import { DevicesVirtualPluginConfigureDewPointSchema_version, DevicesVirtualPluginCoolingDependencyPurpose } from '../../../openapi';
-import type { ThermostatActuator, ThermostatDraft } from '../services/thermostat-authoring';
+import { type ThermostatActuator, type ThermostatDraft, recommendedCoolingPolicy } from '../services/thermostat-authoring';
 
-const props = defineProps<{ disabled: boolean }>();
+import VirtualWizardCard from './virtual-wizard-card.vue';
+
+const props = defineProps<{ disabled: boolean; guided?: boolean }>();
+const emit = defineEmits<{ selectSources: [] }>();
 const draft = defineModel<ThermostatDraft>('draft', { required: true });
 const { t } = useI18n();
+const fieldError = useWizardFieldError();
 const retained = computed(() => draft.value.actuators.some((m) => !!m.retained?.cooling_protection));
 function toggle(value: string | number | boolean) {
 	if (props.disabled || retained.value) return;
-	draft.value.policy.cooling = value === true ? { schemaVersion: 1, marginC: null, recoveryHysteresisC: null, absoluteMinimumC: null } : null;
+	draft.value.policy.cooling = value === true ? recommendedCoolingPolicy() : null;
+	if (value !== true) {
+		if (props.guided) draft.value.coolingSources = [];
+		for (const member of draft.value.actuators) if (!member.retained) delete member.cooling_protection;
+	}
 }
 watch(
 	() => [!!draft.value.policy.cooling, draft.value.actuators.map((member) => [member.role, member.source_property])],
@@ -114,3 +166,17 @@ watch(
 	{ immediate: true }
 );
 </script>
+
+<style scoped>
+.cooling-policy__toggle {
+	margin-block: -6px;
+}
+.cooling-policy__fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+	column-gap: 16px;
+}
+.cooling-policy__fields :deep(.el-input-number) {
+	width: 100%;
+}
+</style>

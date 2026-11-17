@@ -62,7 +62,7 @@
 			},
 			"nativeThermostat": {
 				"title": "Regler für einen vorhandenen Thermostat",
-				"description": "Setzt einen Smart-Panel-Regler auf ein Thermostatgerät, das Sie bereits haben. Unterstützt: Thermostate aus Home Assistant und Zigbee2MQTT."
+				"description": "Erstellen Sie einen virtuellen Regler für ein physisches Thermostatgerät, das bereits mit Smart Panel verbunden ist."
 			}
 		},
 		"subtitle": "Erstellen Sie ein Gerät aus den Kanälen eines anderen Geräts",
@@ -84,9 +84,7 @@
 		},
 		"category": {
 			"heading": "Kategorie wählen",
-			"description": "Wählen Sie die Art des Geräts, das Sie erstellen. Sie bestimmt, welche Kanäle und Eigenschaften im nächsten Schritt zugeordnet werden müssen.",
-			"blockedHeading": "In dieser Version nicht verfügbar",
-			"blockedReason": "benötigt einen Regler — für eine spätere Version geplant"
+			"description": "Wählen Sie die Art des Geräts, das Sie erstellen. Sie bestimmt, welche Kanäle und Eigenschaften im nächsten Schritt zugeordnet werden müssen."
 		},
 		"mapping": {
 			"heading": "Eigenschaften verknüpfen",
@@ -97,6 +95,7 @@
 			"channelRequired": "Erforderlich",
 			"channelOptional": "Optional",
 			"propertyRequired": "Erforderlich",
+			"propertyOptional": "Optional",
 			"showOptional": "{count} weitere optionale Eigenschaften anzeigen",
 			"hideOptional": "Leere optionale Eigenschaften ausblenden",
 			"source": {
@@ -154,6 +153,82 @@
 				"hideFailedFlash": "{device} wurde nicht ausgeblendet: Die Anfrage ist fehlgeschlagen. Sie können es später über die Geräteliste ausblenden.",
 				"zonesFailed": "{count} Zone(n) konnten nicht zugewiesen werden. Sie können sie später über die Geräteliste hinzufügen."
 			}
+		},
+		"selection": {
+			"heading": "Virtuelles Gerät erstellen",
+			"description": "Teilen oder kombinieren Sie Kanäle und Eigenschaften von Geräten, die bereits in Smart Panel vorhanden sind."
+		},
+		"layout": {
+			"summary": "Zusammenfassung",
+			"unnamed": "Neues virtuelles Gerät",
+			"edit": "Bearbeiten",
+			"reviewTitle": "Gerät vor dem Erstellen prüfen",
+			"reviewDescription": "Sie können vor dem Erstellen zu jedem Abschnitt zurückkehren.",
+			"outputDescription": "Wählen Sie die Ausgabe und den Standort des Geräts.",
+			"sourcesDescription": "Wählen Sie Geräte oder Messwerte. Offline-Quellen können ebenfalls eingerichtet werden.",
+			"processingDescription": "Passen Sie die Verarbeitung der gewählten Quellen an.",
+			"searchSources": "Nach Gerät, Kanal oder Raum suchen",
+			"addSource": "Quelle hinzufügen",
+			"selectedSources": "Gewählte Quellen",
+			"suggested": "Vorschläge aus {room}",
+			"otherRooms": "Andere Räume",
+			"noSources": "Keine passenden Quellen",
+			"add": "Hinzufügen",
+			"livePreview": "Live-Vorschau",
+			"previewHint": "Wählen Sie Quellen für eine Berechnungsvorschau.",
+			"previewError": "Vorschau konnte nicht geladen werden. Versuchen Sie es erneut oder fahren Sie mit der Einrichtung fort.",
+			"recalculate": "Neu berechnen",
+			"refreshing": "Vorschau wird aktualisiert…",
+			"currentValue": "Wert",
+			"lastReport": "Letzte Meldung",
+			"unknownSampleTime": "Unbekannt",
+			"unknownSampleTimeHint": "Letzter bekannter Wert. Der Messzeitpunkt ist unbekannt, daher bestätigt er keinen aktuellen Eingang für die Berechnung.",
+			"state": "Status",
+			"online": "Online",
+			"offline": "Offline",
+			"selectedCount": "{count} Quellen gewählt",
+			"outputTitle": "Was soll das neue Gerät melden?",
+			"sourcesTitle": "Welche Sensoren sollen kombiniert werden?",
+			"processingTitle": "Wie sollen die Messwerte kombiniert werden?",
+			"offlineHelp": "Offline-Quellen verhindern das Erstellen nicht. Sie werden wieder verwendet, sobald sie gültige Werte senden.",
+			"noRoom": "Kein Raum",
+			"roomHint": "Geräte aus diesem Raum werden bei der Quellenauswahl zuerst vorgeschlagen.",
+			"zonesHint": "Geräte aus diesen Zonen werden nach Geräten aus dem gewählten Raum vorgeschlagen.",
+			"roomSources": "Aus dem gewählten Raum",
+			"zoneSources": "Aus den gewählten Zonen",
+			"otherSources": "Andere Geräte",
+			"availableSources": "Verfügbare Geräte",
+			"unitSourcesHint": "Im nächsten Schritt werden nur kompatible Quellen mit dieser Einheit angeboten.",
+			"measurementDescription": "Benennen Sie das Gerät und wählen Sie die Messgröße. Sie bestimmt die verfügbaren Quellen im nächsten Schritt."
+		},
+		"projection": {
+			"deviceTitle": "Welche Art von Gerät erstellen Sie?",
+			"structureTitle": "Kanäle in diesem Gerät",
+			"mustHave": "Erforderlich",
+			"canHave": "Optional",
+			"optionalChannels": "Optionale Kanäle zum Hinzufügen",
+			"channelsTitle": "Kanäle in diesem Gerät",
+			"toFix": "{count} zu korrigieren",
+			"mappedCount": "{mapped} von {total} Eigenschaften zugeordnet",
+			"optionalChannelHelp": "Ein optionaler Kanal gehört erst nach dem Hinzufügen und Zuordnen zum Gerät. Die übrigen können Sie weglassen.",
+			"mappingDescription": "Verknüpfen Sie jede Eigenschaft mit einer Eigenschaft eines realen Geräts. Quellen können aus verschiedenen Geräten stammen. Es werden nur geprüfte kompatible Quellen angeboten.",
+			"fillDescription": "Leere Eigenschaften aus einem Quellkanal ausfüllen",
+			"fillEmpty": "Leere Eigenschaften ausfüllen",
+			"sourceColumn": "Quellgerät › Kanal › Eigenschaft",
+			"statusColumn": "Status",
+			"needsAttention": "Prüfung erforderlich",
+			"checking": "Wird geprüft…",
+			"mapped": "Zugeordnet",
+			"notMapped": "Nicht zugeordnet",
+			"optional": "Optional",
+			"unmappedOptional": "{count} optionale Eigenschaften sind nicht zugeordnet.",
+			"chooseChannel": "Fügen Sie links einen Kanal hinzu, um seine Eigenschaften zuzuordnen.",
+			"selectedSource": "Ausgewählte Quelle",
+			"reviewDescription": "Es werden nur zugeordnete Kanäle und Eigenschaften angezeigt. Sie können jeden Abschnitt vor dem Erstellen bearbeiten.",
+			"mappingSummary": "{channels} Kanäle · {properties} Eigenschaften · {devices} Quellgeräte",
+			"moreCategories": "{count} weitere Kategorien anzeigen",
+			"fewerCategories": "Häufige Kategorien anzeigen",
+			"loadingSources": "Weitere kompatible Quellen werden geladen…"
 		}
 	},
 	"sources": {
@@ -307,7 +382,40 @@
 		"extensionOperator": "Operator einer vertrauenswürdigen Erweiterung",
 		"measurementOperatorMissing": "Der gespeicherte Operatorvertrag oder die Version ist nicht verfügbar. Die Konfiguration bleibt erhalten; wählen Sie zur Reparatur eine verfügbare Version.",
 		"measurementOperatorParameter": "Der Zahlenparameter liegt außerhalb des unterstützten Bereichs.",
-		"resetOperatorDefinition": "Auf Operatordefinition zurücksetzen"
+		"resetOperatorDefinition": "Auf Operatordefinition zurücksetzen",
+		"help": {
+			"unitTitle": "Einheit: {unit}",
+			"legacyPrecision": "Die Temperatur behält die für die Ausgabeeigenschaft festgelegte Genauigkeit bei.",
+			"precision": "Das Ergebnis wird in Schritten von {step} {unit} gerundet.",
+			"quorum": "So viele Eingänge müssen nach dem Ausschluss unbrauchbarer Werte gültig und aktuell bleiben. Sind es weniger, ist das Ergebnis nicht verfügbar. Ein Minimum von 2 erlaubt beispielsweise einer Gruppe von 3 Sensoren weiterzuarbeiten, wenn einer keine Werte mehr meldet.",
+			"filter": "Wenn aktiviert, werden Werte ausgeschlossen, deren Abstand vom mittleren Wert (Median) die maximale Abweichung überschreitet. Die Abweichung wird in der gewählten Einheit angegeben. Für den Vergleich sind mindestens 3 gültige, aktuelle Sensoren nötig. Danach muss die Mindestanzahl an Eingängen übrig bleiben.",
+			"maximumAge": "Werte, die älter als diese Anzahl Sekunden sind, werden ignoriert. Wählen Sie den Grenzwert so, dass Ihre Sensoren rechtzeitig die nächste Messung senden können.",
+			"previewTitle": "Berechnungsvorschau",
+			"previewDescription": "Die Berechnung verwendet die zum angegebenen Zeitpunkt verfügbaren Messwerte. Offline-Sensoren oder fehlende Messwerte verhindern das Speichern der Konfiguration nicht. Nach dem Erstellen berechnet das Gerät Werte aus neuen Sensormeldungen.",
+			"reviewLoading": "Einstellungen werden geprüft und die Vorschau berechnet…",
+			"result": "Ergebnis",
+			"quality": "Messqualität",
+			"diagnostics": "Details",
+			"evaluatedAt": "Berechnet am",
+			"expiresAt": "Messwerte gültig bis",
+			"inputStatus": "In Berechnung verwendet",
+			"sampleAge": "Alter des Messwerts",
+			"included": "Einbezogen",
+			"enabled": "Aktiviert",
+			"disabled": "Deaktiviert",
+			"operators": {
+				"mean": "Addiert die nutzbaren Werte und teilt durch ihre Anzahl. Jeder Sensor hat den gleichen Einfluss.",
+				"median": "Verwendet den mittleren Wert nach dem Sortieren. Bei einer geraden Anzahl wird der Durchschnitt der beiden mittleren Werte gebildet. Dadurch wirken sich Extremwerte weniger aus.",
+				"min": "Verwendet den niedrigsten nutzbaren Wert.",
+				"max": "Verwendet den höchsten nutzbaren Wert.",
+				"weighted_mean": "Berechnet den Durchschnitt anhand der relativen Sensorgewichte. Ein Sensor mit Gewicht 2 hat doppelt so viel Einfluss wie einer mit Gewicht 1.",
+				"any": "Meldet eine Erkennung, wenn mindestens ein nutzbarer Eingang sie meldet. Keine Erkennung lässt sich nur bestätigen, wenn alle konfigurierten Eingänge nutzbar sind und keine Erkennung melden.",
+				"all": "Meldet eine Erkennung nur, wenn alle konfigurierten Eingänge nutzbar sind und eine Erkennung melden. Ein nutzbarer Eingang ohne Erkennung reicht aus, um eine Erkennung auszuschließen."
+			},
+			"processingTitle": "So richten Sie die Berechnung ein",
+			"processingAdvice": "Beginnen Sie mit den Standardwerten. Wählen Sie das maximale Alter etwas länger als das übliche Meldeintervall Ihrer Sensoren. Senken Sie das Minimum, wenn Berechnungen mit weniger verfügbaren Sensoren zulässig sein sollen."
+		},
+		"loadingCatalog": "Einstellungen und verfügbare Messquellen werden geladen…"
 	},
 	"lightGroup": {
 		"apply": "Anwenden",
@@ -361,6 +469,39 @@
 			"outlet": "Steckdose",
 			"fan": "Ventilator",
 			"cover": "Beschattung"
+		},
+		"wizard": {
+			"detailsTitle": "Was soll die Gruppe steuern?",
+			"detailsDescription": "Eine Gruppe fasst mehrere Geräte derselben Art zu einem Gerät zusammen. Wählen Sie zuerst die Art; sie bestimmt, welche Geräte Sie hinzufügen können.",
+			"membersTitle": "Welche Geräte gehören zur Gruppe?",
+			"membersDescription": "Eine Funktion ist nur verfügbar, wenn alle Mitglieder sie unterstützen. Die Tabelle zeigt die Funktionen der Geräte und der Gruppe.",
+			"reviewTitle": "Gruppe vor dem Erstellen prüfen",
+			"reviewDescription": "Änderungen an der Gruppe werden auf alle Mitglieder angewendet. Die Geräte bleiben auch einzeln verfügbar.",
+			"groupOf": "Gerätegruppe",
+			"profileHelp": "Pflichtfunktionen gehören immer zur Gruppe. Weitere Funktionen ergeben sich aus den ausgewählten Geräten.",
+			"membersControls": "Mitglieder und Funktionen",
+			"groupControls": "Funktionen der Gruppe",
+			"controlsHint": "Deaktivieren Sie optionale Funktionen, die Sie nicht benötigen.",
+			"controlsAdvice": "Alle Mitglieder müssen eine kompatible Funktion mit passender Einheit und passendem Bereich unterstützen. Pflichtfunktionen können nicht deaktiviert werden.",
+			"addMembers": "Geräte hinzufügen",
+			"controls": "Funktionen",
+			"onOff": "Ein / aus",
+			"yes": "Ja",
+			"no": "Nein",
+			"missingControl": "Kompatible Funktion fehlt: {control}.",
+			"incompatibleMember": "Die Einstellungen dieses Geräts sind mit der ausgewählten Gruppe nicht kompatibel.",
+			"removesControls": "Entfernt {count} Funktionen",
+			"keepsControls": "Behält alle {count} Funktionen",
+			"membersLater": "Auswahl in Schritt 2",
+			"controlsLater": "Ergeben sich aus den Mitgliedern",
+			"groupNames": {
+				"light": "Leuchten",
+				"switch": "Schalter",
+				"outlet": "Steckdosen",
+				"fan": "Ventilatoren",
+				"cover": "Rollläden und Jalousien"
+			},
+			"coverHelp": "Alle Rollläden oder Jalousien in einer Gruppe müssen denselben konfigurierten Typ haben. Die Gruppe bietet nur Steuerelemente an, die jedes Mitglied unterstützt."
 		}
 	},
 	"comfort": {
@@ -427,7 +568,7 @@
 		"latched": "Schutz verriegelt",
 		"lease": "Maximale EIN-Frist (Sekunden)",
 		"legacyProfile": "Die bisherige Einzeleinrichtung bleibt erhalten. Vor dem neuen Format eine lokale Schutzbindung zuweisen.",
-		"localProtection": "Expliziter lokaler Bodenschutz",
+		"localProtection": "Lokaler Bodenschutz",
 		"localSource": "Geeignete lokale Celsiusquelle",
 		"mandatory": "Pflichtmitglied",
 		"mandatoryHelp": "Alle Mitglieder folgen einem Raumbedarf. Ein Fehler sperrt den gesamten Zweig.",
@@ -468,7 +609,8 @@
 		"qualification": "Schutzqualifikation beim Serverabruf",
 		"qualificationHelp": "Prüft nur den installierten Schutz und das aktuelle Ziel. Bestätigt weder die Reglerbereitschaft noch die Sicherheit physischer Geräte.",
 		"activitySample": "Beobachtete Relaisprobe",
-		"activityExpiry": "Beobachtung gültig bis"
+		"activityExpiry": "Beobachtung gültig bis",
+		"selectedFloorRequired": "Wählen Sie im Schritt Sensoren einen kompatiblen Bodenfühler. Der lokale Schutz benötigt einen Sensor am selben Gerät wie das Relais."
 	},
 	"dewPoint": {
 		"title": "Taupunkt",
@@ -482,7 +624,7 @@
 		"hysteresis": "Strikte Rückkehrhysterese (°C)",
 		"absoluteMinimum": "Optionales absolutes Oberflächenminimum (°C)",
 		"surface": "UUID des lokalen gekühlten Oberflächenfühlers",
-		"installation": "Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt.",
+		"installation": "Die Kühlung benötigt einen Taupunktwert, einen Sensor der gekühlten Oberfläche und ein geprüftes Schutzprofil des Relais. Bis diese Voraussetzungen erfüllt sind, bleibt die geschützte Kühlung gesperrt.",
 		"errors": {
 			"reload": "Konfiguration neu laden.",
 			"inputs": "Beide Eingänge auswählen.",
@@ -491,6 +633,24 @@
 			"coolingPolicy": "Geben Sie einen positiven Kühlabstand und eine Rückkehrhysterese von höchstens 60 °C ein.",
 			"coolingMinimum": "Geben Sie ein endliches optionales Oberflächenminimum über −45 °C und höchstens 60 °C ein.",
 			"coolingDependencies": "Jedes Kühlmitglied benötigt Taupunkt, einen lokalen Fühler der gekühlten Oberfläche und ein gültiges Quellenalter."
+		},
+		"description": "Berechnet die Taupunkttemperatur aus Lufttemperatur und relativer Luftfeuchtigkeit. Es ist ein berechneter Messwert, kein weiterer Lufttemperatursensor.",
+		"sourcesDescription": "Wählen Sie je eine Quelle für Lufttemperatur und relative Luftfeuchtigkeit in derselben Umgebung. Eine weitere Quelle ersetzt die des gleichen Typs. Offline-Quellen können ebenfalls eingerichtet werden.",
+		"processingHelp": "Das maximale Alter begrenzt das Alter jedes Messwerts. Die maximale Zeitabweichung begrenzt den Abstand zwischen Temperatur- und Feuchtigkeitsmessung, damit alte und neue Werte nicht kombiniert werden. Wählen Sie Grenzen passend zum Meldeintervall Ihrer Sensoren.",
+		"requiredRole": "Wählen Sie eine Quelle für {role}.",
+		"diagnostics": {
+			"stale_or_unavailable": "Messwert abgelaufen oder nicht verfügbar",
+			"quality": "Messwertqualität nicht verfügbar",
+			"lineage": "Warten auf gültige Quelldaten",
+			"awaiting_fresh_input": "Warten auf einen neuen Messwert",
+			"skew": "Quellmessungen liegen zeitlich zu weit auseinander",
+			"domain": "Wert außerhalb des unterstützten Bereichs",
+			"invalid_policy": "Ungültige Berechnungseinstellungen",
+			"incompatible_output": "Inkompatible Ausgangsmessgröße",
+			"output_disabled": "Ausgang ist deaktiviert",
+			"graph_ineligible": "Quellabhängigkeiten sind nicht verfügbar",
+			"missing_input_role": "Wählen Sie beide erforderlichen Quelltypen",
+			"graph_validation_pending": "Quellabhängigkeiten werden geprüft"
 		}
 	},
 	"nativeThermostat": {
@@ -531,9 +691,9 @@
 		"releaseHelp": "Smart-Panel-Reservierung freigeben? Laufende Operationen werden abgewartet, aber kein AUS-Befehl gesendet. Der physische Thermostat kann weiter regeln.",
 		"wizard": {
 			"intro": "Dieser Regler arbeitet mit einem echten Thermostatgerät. Das Gerät regelt die Temperatur weiterhin selbst; Smart Panel sendet ihm den gewünschten Modus und die Sollwerte und zeigt, was es zurückmeldet.",
-			"supported": "Derzeit werden nur Thermostate aus Home Assistant und Zigbee2MQTT unterstützt. Geräte aus anderen Integrationen werden nicht aufgelistet.",
+			"supported": "Verfügbare Geräte und Steuerungsmöglichkeiten hängen von den gemeldeten Fähigkeiten des physischen Thermostats ab.",
 			"unitPlaceholder": "Thermostatgerät auswählen",
-			"noCandidates": "Es wurde kein unterstütztes Thermostatgerät gefunden. Fügen Sie zuerst einen Thermostat aus Home Assistant oder Zigbee2MQTT hinzu.",
+			"noCandidates": "Es wurde kein geeignetes physisches Thermostat gefunden. Fügen Sie Ihr Gerät zu Smart Panel hinzu und prüfen Sie seine Konfiguration.",
 			"providers": {
 				"home-assistant": "Home Assistant",
 				"zigbee2mqtt": "Zigbee2MQTT"
@@ -550,6 +710,37 @@
 		}
 	},
 	"thermostat": {
+		"wizard": {
+			"detailsTitle": "Was soll der Thermostat steuern?",
+			"detailsDescription": "Benennen Sie den Thermostat und wählen Sie Raum und Zonen.",
+			"sourcesTitle": "Welche Sensoren soll der Thermostat verwenden?",
+			"sourcesDescription": "Wählen Sie für jeden Messwert Raum-, Boden- oder Kühlflächentemperatur. Fügen Sie für den Kühlschutz auch den Messwert eines virtuellen Taupunktgeräts hinzu. Fenster- oder Türkontakte benötigen einen booleschen Kontaktsensor.",
+			"actuatorsTitle": "Welche Relais sollen Heizen und Kühlen steuern?",
+			"actuatorsDescription": "Fügen Sie Relaisausgänge hinzu und wählen Sie für jeden Heizen oder Kühlen.",
+			"policyHelpTitle": "So funktionieren diese Einstellungen",
+			"policyHelp": "Sollwerte legen die gewünschte Raumtemperatur fest. Toleranzen vermeiden häufiges Schalten um diesen Wert. Die Mindest-AUS-Zeit bestimmt die Pause vor dem erneuten Einschalten eines Relais, die Umschaltzeit die Pause zwischen Heizen und Kühlen. Der Bodenschutz begrenzt die Bodentemperatur. Kontaktverzögerungen filtern kurze Fensteröffnungen; die Temperaturtrenderkennung kann die Regelung bei einem plötzlichen Temperaturabfall pausieren.",
+			"previewTitle": "Konfigurationsprüfung",
+			"configurationTitle": "Wie soll der Thermostat die Temperatur regeln?",
+			"configurationDescription": "Konfigurieren Sie Temperaturen, Messwertalter, Verzögerungen und Schutz für die gewählten Sensoren und Relais.",
+			"role": "Verwenden als",
+			"sourceLimit": "Jede Rolle kann einmal, Kühlflächenfühler können bis zu achtmal ausgewählt werden.",
+			"actuatorLimit": "Es können bis zu acht Relaisausgänge ausgewählt werden.",
+			"addActuator": "Relais hinzufügen",
+			"openValue": "Sensorzustand bei geöffnetem Kontakt",
+			"closedValue": "Sensorzustand bei geschlossenem Kontakt",
+			"roles": {
+				"ambient": "Raumtemperatur",
+				"floor": "Bodentemperatur",
+				"contact": "Fenster- oder Türkontakt",
+				"heating": "Heizen",
+				"cooling": "Kühlen",
+				"dew_point": "Taupunkt",
+				"cooled_surface": "Temperatur der Kühlfläche"
+			},
+			"configurationStep": "Konfiguration",
+			"selectCoolingSources": "Kühlsensoren auswählen",
+			"coolingSurfaceRequired": "Wählen Sie unter Sensoren einen Kühlflächenfühler, der am selben Gerät wie dieses Relais angeschlossen ist."
+		},
 		"title": {
 			"create": "Virtuellen Thermostat erstellen",
 			"edit": "Thermostatkonfiguration"
@@ -650,16 +841,16 @@
 			"coldTolerance": "Geben Sie eine nicht negative Kältetoleranz ein.",
 			"hotTolerance": "Geben Sie eine nicht negative Wärmetoleranz ein.",
 			"neutralMargin": "Geben Sie eine positive neutrale Zone ein.",
-			"minimumOff": "Geben Sie die minimale Ausschaltzeit in Millisekunden ein.",
-			"changeover": "Geben Sie das Umschaltintervall in Millisekunden ein.",
+			"minimumOff": "Geben Sie eine ganze Zahl von 0 bis 86400000 ms ein.",
+			"changeover": "Geben Sie eine ganze Zahl von 0 bis 86400000 ms ein.",
 			"floorPolicy": "Geben Sie die Bodengrenze und eine positive Freigabehysterese in Celsius ein.",
 			"trendIncomplete": "Füllen Sie alle aktivierten Trendeinstellungen aus.",
-			"contactDebounce": "Geben Sie beide Entprellzeiten des Kontakts in Millisekunden ein.",
+			"contactDebounce": "Geben Sie Öffnungs- und Schließverzögerungen als ganze Zahlen von 0 bis 86400000 ms ein.",
 			"ambientSource": "Konfigurieren Sie genau eine Raumtemperaturquelle.",
 			"retainFloorPolicy": "Behalten Sie für den vorhandenen globalen Schutz eine gemeinsame Bodenrichtlinie bei.",
 			"floorProtectionSource": "Der Bodenschutz erfordert eine globale Quelle oder einen ausdrücklichen lokalen Schutz für jedes Heizmitglied.",
 			"contactSourceLimit": "Konfigurieren Sie höchstens eine Kontaktquelle.",
-			"sourceAge": "Geben Sie ein positives Höchstalter für die Quelle ein: {role}.",
+			"sourceAge": "Geben Sie ein Höchstalter von 1 bis 86400 Sekunden für {role} ein.",
 			"sourceSelect": "Wählen Sie eine Quelle: {role}.",
 			"contactValues": "Ordnen Sie beide Kontaktwerte für offen und geschlossen zu.",
 			"contactValuesDiffer": "Die Kontaktwerte für offen und geschlossen müssen sich unterscheiden.",
@@ -670,11 +861,13 @@
 			"retainedClaim": "Reparieren Sie den beibehaltenen Anspruch {id}; seine Zuordnung bleibt erhalten.",
 			"sharedFloorPolicy": "Geben Sie die gemeinsame Bodengrenze und Hysterese für den lokalen Schutz ein.",
 			"localProtection": "Jedes Heizmitglied benötigt eine ausdrückliche lokale Schutzquelle.",
-			"protectionAge": "Geben Sie ein positives Höchstalter für die Schutzquelle ein.",
+			"protectionAge": "Geben Sie ein Alter für den lokalen Schutz von 1 bis 86400 Sekunden ein.",
 			"actuatorRepair": "Reparieren Sie den Aktor vor dem Speichern: {role}.",
 			"lease": "Geben Sie eine positive Einschaltdauer für den Aktor ein: {role}.",
 			"settingUnique": "Jede lokale Einstellungsrolle darf nur einmal registriert werden.",
-			"settingProperty": "Wählen Sie für jede Einstellung eine lokale Eigenschaft."
+			"settingProperty": "Wählen Sie für jede Einstellung eine lokale Eigenschaft.",
+			"coolingDewPointSource": "Wählen Sie unter Sensoren den Messwert eines virtuellen Taupunktgeräts.",
+			"coolingSurfaceSource": "Wählen Sie unter Sensoren einen separaten Temperaturfühler für die Kühlfläche."
 		},
 		"settingRoles": {
 			"heating_setpoint": "Heiz-Sollwert",
@@ -682,6 +875,53 @@
 			"heating_enabled": "Heizen aktiviert",
 			"cooling_enabled": "Kühlen aktiviert",
 			"locked": "Gesperrt"
+		}
+	},
+	"detailTab": "Virtuelles Gerät",
+	"conversion": {
+		"inputRange": "Eingangsbereich",
+		"outputRange": "Ausgangsbereich",
+		"coefficients": "Koeffizienten",
+		"calibration": "Kalibrierpunkte",
+		"operatorRanges": "Operatorbereiche",
+		"sourceCompatibility": "Quellenkompatibilität",
+		"backendCheck": "Konfigurationsprüfung",
+		"processingTitle": "So richten Sie die Umrechnung ein",
+		"calibrationInput": "Punkt {index}: gemessener Eingang (X)",
+		"calibrationOutput": "Punkt {index}: entsprechender Ausgang (Y)",
+		"parameterBounds": "Zulässig: {minimum} bis {maximum}",
+		"rangesHelp": "Die Eingangs- und Ausgangsgrenzen bestimmen den gültigen Bereich. Geben Sie beide Grenzen an. Werte außerhalb werden abgelehnt und nicht auf die nächste Grenze gesetzt.",
+		"sampleHelp": "Der Testeingang ist optional. Geben Sie einen Wert im Eingangsbereich ein, um die berechnete Ausgabe zu sehen. Ohne Testwert werden nur die Einstellungen geprüft.",
+		"pointsHelp": "Jeder Kalibrierpunkt verbindet einen gemessenen Eingang X mit dem bekannten korrekten Ausgang Y. Zum Beispiel beschreiben 0 → 0 und 10 → 100 eine Skalierung. Fügen Sie mindestens zwei Punkte mit steigendem X hinzu. Dazwischen wird linear interpoliert; außerhalb der Endpunkte wird nicht gerechnet.",
+		"thermistorHelp": "Verwenden Sie die tatsächlichen Schaltungs- und Sondendaten: Vref ist die Versorgungsspannung des Teilers, Rfixed der Festwiderstand und Rnom der Sondenwiderstand bei Tnom. Beta oder A/B/C stammen aus dem Datenblatt. Wählen Sie den Anschluss der Sonde an Masse oder Versorgung. Diese Werte werden nicht geschätzt.",
+		"thermistorRequirement": "NTC beta und Steinhart–Hart benötigen eine physische Rohspannungsquelle in V und eine Temperaturausgabe in °C. Ein Sensor, der bereits °C meldet, benötigt keine Thermistorumrechnung; für eine Korrektur verwenden Sie die affine Umrechnung.",
+		"operators": {
+			"affine": "Affin berechnet Ausgang = Faktor × Eingang + Versatz. Der Faktor skaliert den Messwert, der Versatz fügt eine Korrektur hinzu, etwa für eine Sensorabweichung.",
+			"piecewise_linear": "Die stückweise lineare Umrechnung nutzt bekannte Kalibrierpaare und berechnet Werte zwischen benachbarten Punkten.",
+			"ntc_beta": "NTC beta rechnet die Rohspannung des Teilers anhand von Nennwiderstand, Nenntemperatur und Beta der Sonde in °C um.",
+			"steinhart_hart": "Steinhart–Hart rechnet die Rohspannung anhand der Sondenkoeffizienten A, B und C in °C um.",
+			"extension": "Eine Erweiterung stellt die Umrechnung bereit. Wählen Sie ihre Definition und tragen Sie die Pflichtparameter innerhalb der angegebenen Grenzen ein."
+		},
+		"validation": {
+			"requiredNumber": "Geben Sie eine Zahl ein.",
+			"positiveNumber": "Geben Sie eine Zahl größer als null ein.",
+			"absoluteTemperature": "Geben Sie eine Temperatur über −273,15 °C ein.",
+			"rangeOrder": "Das Minimum darf das Maximum nicht überschreiten.",
+			"rangeRequired": "Geben Sie beide Bereichsgrenzen ein.",
+			"pointCount": "Fügen Sie 2 bis 256 Kalibrierpunkte hinzu.",
+			"pointOrder": "Geben Sie Zahlenpaare X/Y mit eindeutigen, aufsteigenden X-Werten ein.",
+			"pointCoverage": "Die Kalibrierpunkte müssen den gesamten Eingangsbereich abdecken.",
+			"coefficientsNonzero": "Mindestens ein Koeffizient darf nicht null sein.",
+			"dividerRequired": "Wählen Sie den Sondenanschluss im Teiler.",
+			"operatorMissing": "Wählen Sie eine verfügbare Operatordefinition.",
+			"parameterBounds": "Füllen Sie die Pflichtparameter innerhalb der Operatorgrenzen aus.",
+			"operatorRanges": "Halten Sie die vom Operator festgelegten Bereiche ein.",
+			"ageBounds": "Geben Sie ganze Sekunden von 1 bis 86400 ein.",
+			"sampleOptional": "Kein Testwert: Nur die Konfiguration wird geprüft.",
+			"sampleBounds": "Verwenden Sie einen Testwert im Eingangsbereich; die Thermistorspannung muss zwischen null und Vref liegen.",
+			"sourceRequired": "Wählen Sie eine Eingangsquelle.",
+			"checking": "Prüfung läuft…",
+			"notChecked": "Korrigieren Sie die markierten Einstellungen und prüfen Sie erneut."
 		}
 	}
 }

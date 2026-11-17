@@ -263,9 +263,16 @@
 			"channelsCount": "Počet kanálů: {count}",
 			"warningsCount": "Počet upozornění mapování: {count}"
 		},
-		"kinds": { "device": "Zařízení", "helper": "Pomocná entita" },
-		"statuses": { "needsAttention": "Ruční kontrola" },
-		"actions": { "refresh": "Obnovit inventář" },
+		"kinds": {
+			"device": "Zařízení",
+			"helper": "Pomocná entita"
+		},
+		"statuses": {
+			"needsAttention": "Ruční kontrola"
+		},
+		"actions": {
+			"refresh": "Obnovit inventář"
+		},
 		"manualReview": {
 			"title": "Položky vyžadující ruční kontrolu: {count}",
 			"message": "Tyto položky nejsou vybrány pro hromadný import. Pro kontrolu kategorie, kanálů a vlastností použijte stávající řízené přidání.",
@@ -278,6 +285,9 @@
 		"messages": {
 			"sessionNotStarted": "Zařízení Home Assistant se nepodařilo připravit pro hromadný import.",
 			"adoptionFailed": "Vybraná zařízení Home Assistant se nepodařilo přidat."
+		},
+		"selection": {
+			"description": "Importujte zařízení ze své instance Home Assistant."
 		}
 	}
 }

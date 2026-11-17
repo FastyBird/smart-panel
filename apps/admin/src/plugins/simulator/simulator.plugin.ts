@@ -1,3 +1,4 @@
+import { defineAsyncComponent } from 'vue';
 import type { App } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
 
@@ -23,7 +24,7 @@ import { locales } from './locales';
 import { PluginRoutes } from './router';
 import { SimulatorConfigEditFormSchema } from './schemas/config.schemas';
 import { SimulatorDeviceAddFormSchema, SimulatorDeviceEditFormSchema } from './schemas/devices.schemas';
-import { RouteNames, SIMULATOR_PLUGIN_NAME, SIMULATOR_TYPE } from './simulator.constants';
+import { SIMULATOR_PLUGIN_NAME, SIMULATOR_TYPE } from './simulator.constants';
 import { SimulatorChannelPropertySchema } from './store/channels.properties.store.schemas';
 import { SimulatorChannelSchema } from './store/channels.store.schemas';
 import { SimulatorConfigSchema, SimulatorConfigUpdateReqSchema } from './store/config.store.schemas';
@@ -81,6 +82,13 @@ export default {
 				},
 				{
 					type: SIMULATOR_TYPE,
+					components: {
+						deviceWizard: {
+							selection: { kind: 'integration', icon: 'mdi:flask-outline', order: 70, description: 'simulatorPlugin.wizard.selection.description' },
+							component: defineAsyncComponent(() => import('./views/view-simulator-device-wizard.vue')),
+							capabilities: { batch: true, manual: true },
+						},
+					},
 					schemas: {
 						deviceSchema: SimulatorDeviceSchema,
 						deviceAddFormSchema: SimulatorDeviceAddFormSchema,
@@ -92,18 +100,6 @@ export default {
 					},
 				},
 			],
-			...(devicesRoute
-				? {
-						routes: {
-							wizard: {
-								label: 'simulatorPlugin.wizard.title',
-								icon: 'mdi:test-tube',
-								to: { name: RouteNames.WIZARD },
-								testId: 'simulator-device-wizard',
-							},
-						},
-					}
-				: {}),
 			modules: [DEVICES_MODULE_NAME, CONFIG_MODULE_NAME],
 			isCore: false,
 		});

@@ -62,7 +62,7 @@
 			},
 			"nativeThermostat": {
 				"title": "Controller for an existing thermostat",
-				"description": "Put a Smart Panel controller on top of a thermostat device you already have. Supported: Home Assistant and Zigbee2MQTT thermostats."
+				"description": "Create a virtual controller for a physical thermostat already connected to Smart Panel."
 			}
 		},
 		"subtitle": "Build a device from another device's channels",
@@ -84,9 +84,7 @@
 		},
 		"category": {
 			"heading": "Choose a category",
-			"description": "Pick the kind of device you are creating. It determines which channels and properties the next step will ask you to map.",
-			"blockedHeading": "Not available in this release",
-			"blockedReason": "needs a controller — planned for a later release"
+			"description": "Pick the kind of device you are creating. It determines which channels and properties the next step will ask you to map."
 		},
 		"mapping": {
 			"heading": "Wire up the properties",
@@ -97,6 +95,7 @@
 			"channelRequired": "Required",
 			"channelOptional": "Optional",
 			"propertyRequired": "Required",
+			"propertyOptional": "Optional",
 			"showOptional": "Show {count} more optional properties",
 			"hideOptional": "Hide empty optional properties",
 			"source": {
@@ -154,6 +153,82 @@
 				"hideFailedFlash": "{device} was not hidden: the request failed. You can hide it later from the device list.",
 				"zonesFailed": "{count} zone(s) could not be assigned. You can add them later from the device list."
 			}
+		},
+		"selection": {
+			"heading": "Build a virtual device",
+			"description": "Made by splitting or combining channels and properties of devices that are already in Smart Panel."
+		},
+		"layout": {
+			"summary": "Summary",
+			"unnamed": "New virtual device",
+			"edit": "Edit",
+			"reviewTitle": "Check the device before creating it",
+			"reviewDescription": "You can go back to edit any section before creating the device.",
+			"outputDescription": "Choose the output and where the device belongs.",
+			"sourcesDescription": "Choose the devices or readings this virtual device uses. Offline sources can also be configured.",
+			"processingDescription": "Adjust how the selected sources are used.",
+			"searchSources": "Search by device, channel or room",
+			"addSource": "Add a source",
+			"selectedSources": "Selected sources",
+			"suggested": "Suggested from {room}",
+			"otherRooms": "Other rooms",
+			"noSources": "No matching sources",
+			"add": "Add",
+			"livePreview": "Live preview",
+			"previewHint": "Choose the sources to see a calculation preview.",
+			"previewError": "Preview could not be loaded. You can retry or continue configuring the device.",
+			"recalculate": "Recalculate",
+			"refreshing": "Refreshing preview…",
+			"currentValue": "Value",
+			"lastReport": "Last report",
+			"unknownSampleTime": "Unknown",
+			"unknownSampleTimeHint": "Last known value. Its measurement time is unknown, so it does not confirm a fresh input for the calculation.",
+			"state": "State",
+			"online": "Online",
+			"offline": "Offline",
+			"selectedCount": "{count} sources selected",
+			"outputTitle": "What should the new device report?",
+			"sourcesTitle": "Which sensors should be combined?",
+			"processingTitle": "How should the readings be combined?",
+			"offlineHelp": "Offline sources do not prevent creation. They are used again when they send valid readings.",
+			"noRoom": "No room",
+			"roomHint": "Devices from this room are suggested first when choosing sources.",
+			"zonesHint": "Devices from these zones are suggested after devices from the selected room.",
+			"roomSources": "From the selected room",
+			"zoneSources": "From the selected zones",
+			"otherSources": "Other devices",
+			"availableSources": "Available devices",
+			"unitSourcesHint": "Only compatible sources reporting this unit are offered in the next step.",
+			"measurementDescription": "Name the device and choose what it measures. The measurement determines which sources you can choose next."
+		},
+		"projection": {
+			"deviceTitle": "What kind of device are you building?",
+			"structureTitle": "Channels in this device",
+			"mustHave": "Must have",
+			"canHave": "Can have",
+			"optionalChannels": "Optional channels you can add",
+			"channelsTitle": "Channels in this device",
+			"toFix": "{count} to fix",
+			"mappedCount": "{mapped} of {total} properties mapped",
+			"optionalChannelHelp": "An optional channel only appears in the device once you add and map it. Leave the rest out.",
+			"mappingDescription": "Connect each property to a property of a real device. Sources can come from different devices. Only verified compatible sources are offered.",
+			"fillDescription": "Fill empty properties from a source channel",
+			"fillEmpty": "Fill empty properties",
+			"sourceColumn": "Source device › channel › property",
+			"statusColumn": "Status",
+			"needsAttention": "Needs attention",
+			"checking": "Checking…",
+			"mapped": "Mapped",
+			"notMapped": "Not mapped",
+			"optional": "Optional",
+			"unmappedOptional": "{count} optional properties are not mapped.",
+			"chooseChannel": "Add a channel on the left to start mapping its properties.",
+			"selectedSource": "Selected source",
+			"reviewDescription": "Only mapped channels and properties are listed. You can edit any section before creating the device.",
+			"mappingSummary": "{channels} channels · {properties} properties · {devices} source devices",
+			"moreCategories": "Show {count} more categories",
+			"fewerCategories": "Show common categories",
+			"loadingSources": "Loading more compatible sources…"
 		}
 	},
 	"sources": {
@@ -307,7 +382,40 @@
 		"extensionOperator": "Trusted extension operator",
 		"measurementOperatorMissing": "The saved operator contract or version is unavailable. The stored policy is preserved; select an available version to repair it.",
 		"measurementOperatorParameter": "Numeric parameter is outside its supported domain.",
-		"resetOperatorDefinition": "Reset to operator definition"
+		"resetOperatorDefinition": "Reset to operator definition",
+		"help": {
+			"unitTitle": "Unit: {unit}",
+			"legacyPrecision": "Temperature keeps the precision defined by its output property.",
+			"precision": "The result is rounded to steps of {step} {unit}.",
+			"quorum": "This many inputs must remain valid and recent after exclusions. If fewer are available, the result is unavailable. For example, a minimum of 2 lets a group of 3 sensors keep working when one stops reporting.",
+			"filter": "When enabled, readings farther from the middle value (median) than the maximum deviation are ignored. The deviation uses the selected unit. At least 3 valid, recent sensors are needed for comparison, and enough inputs must remain to meet the minimum.",
+			"maximumAge": "Readings older than this many seconds are ignored. Choose a limit that leaves enough time for your sensors to send their next measurement.",
+			"previewTitle": "Calculation preview",
+			"previewDescription": "This calculation uses readings available at the time shown below. Offline sensors or unavailable readings do not prevent saving the configuration. After creation, the device calculates values from new sensor reports.",
+			"reviewLoading": "Checking the configuration and calculating the preview…",
+			"result": "Result",
+			"quality": "Reading quality",
+			"diagnostics": "Details",
+			"evaluatedAt": "Calculated at",
+			"expiresAt": "Readings valid until",
+			"inputStatus": "Used in calculation",
+			"sampleAge": "Reading age",
+			"included": "Included",
+			"enabled": "Enabled",
+			"disabled": "Disabled",
+			"operators": {
+				"mean": "Adds the usable readings and divides by their count. Every sensor has the same influence.",
+				"median": "Uses the middle reading after sorting them. With an even number of readings, it averages the two middle values. This reduces the influence of extreme readings.",
+				"min": "Uses the lowest usable reading.",
+				"max": "Uses the highest usable reading.",
+				"weighted_mean": "Calculates an average using the relative weight of each sensor. A sensor with weight 2 has twice the influence of one with weight 1.",
+				"any": "Reports detected when at least one usable input reports detection. No detection can be confirmed only when every configured input is usable and reports no detection.",
+				"all": "Reports detected only when every configured input is usable and reports detection. One usable input reporting no detection is enough to rule out detection."
+			},
+			"processingTitle": "How to configure the calculation",
+			"processingAdvice": "Start with the defaults. Set the maximum age a little longer than your sensors’ usual reporting interval. Lower the minimum if you want to allow calculations using fewer available sensors."
+		},
+		"loadingCatalog": "Loading settings and available measurement sources…"
 	},
 	"lightGroup": {
 		"apply": "Apply",
@@ -361,6 +469,39 @@
 			"outlet": "Outlet",
 			"fan": "Fan",
 			"cover": "Cover"
+		},
+		"wizard": {
+			"detailsTitle": "What should the group control?",
+			"detailsDescription": "A group turns several actuators of the same kind into one device. Pick the kind first; it decides which devices you can add.",
+			"membersTitle": "Which devices belong to the group?",
+			"membersDescription": "A control is available only when every member supports it. The table shows each member and the controls the group will expose.",
+			"reviewTitle": "Check the group before creating it",
+			"reviewDescription": "Changing a control on the group changes it on every member. Members remain available as separate devices.",
+			"groupOf": "Group of",
+			"profileHelp": "Required controls are always included. Additional controls follow from the devices you select.",
+			"membersControls": "Members and controls",
+			"groupControls": "The group controls",
+			"controlsHint": "Untick optional controls you do not want on the group.",
+			"controlsAdvice": "Every member must support a compatible control, including its unit and range. Required controls cannot be turned off.",
+			"addMembers": "Add devices",
+			"controls": "Controls",
+			"onOff": "On / off",
+			"yes": "Yes",
+			"no": "No",
+			"missingControl": "Missing a compatible control: {control}.",
+			"incompatibleMember": "This device does not have compatible settings for the selected group.",
+			"removesControls": "Removes {count} controls",
+			"keepsControls": "Keeps all {count} controls",
+			"membersLater": "Chosen in step 2",
+			"controlsLater": "Follow from the members",
+			"groupNames": {
+				"light": "Lights",
+				"switch": "Switches",
+				"outlet": "Outlets",
+				"fan": "Fans",
+				"cover": "Covers"
+			},
+			"coverHelp": "All covers in a group must have the same configured type, such as blinds or shutters. The group only offers controls supported by every member."
 		}
 	},
 	"comfort": {
@@ -427,7 +568,7 @@
 		"latched": "Protection latched",
 		"lease": "Maximum ON lease (seconds)",
 		"legacyProfile": "Legacy singleton setup is retained. Adopt an explicit local binding before staging the member format.",
-		"localProtection": "Explicit local floor protection",
+		"localProtection": "Local floor protection",
 		"localSource": "Qualified local Celsius source",
 		"mandatory": "Mandatory member",
 		"mandatoryHelp": "All members follow one room demand. One member fault inhibits the whole branch.",
@@ -468,7 +609,8 @@
 		"qualification": "Guard qualification at server read",
 		"qualificationHelp": "Checks the installed guard and current target only. It does not establish controller readiness or certify physical equipment.",
 		"activitySample": "Observed relay sample",
-		"activityExpiry": "Observation valid until"
+		"activityExpiry": "Observation valid until",
+		"selectedFloorRequired": "Select a compatible floor sensor in the Sensors step. Local protection requires a sensor connected to the same relay device."
 	},
 	"dewPoint": {
 		"title": "Dew point",
@@ -482,7 +624,7 @@
 		"hysteresis": "Strict recovery hysteresis (°C)",
 		"absoluteMinimum": "Optional absolute surface minimum (°C)",
 		"surface": "Local cooled-surface probe UUID",
-		"installation": "Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification.",
+		"installation": "Cooling needs a dew point reading, a cooled-surface sensor and a verified protective relay profile. Until these requirements are met, protected cooling stays blocked.",
 		"errors": {
 			"reload": "Reload configuration and retry.",
 			"inputs": "Select both input roles.",
@@ -491,6 +633,24 @@
 			"coolingPolicy": "Enter an explicit positive cooling margin and recovery hysteresis of at most 60 °C.",
 			"coolingMinimum": "Enter a finite optional surface minimum above −45 °C and at most 60 °C.",
 			"coolingDependencies": "Every cooling member requires dew point, a local cooled-surface probe and a valid source age."
+		},
+		"description": "Calculates the dew-point temperature from air temperature and relative humidity. It is a calculated measurement, not another air-temperature sensor.",
+		"sourcesDescription": "Choose one air-temperature source and one relative-humidity source for the same environment. Adding another source replaces the one of that type. Offline sources can also be configured.",
+		"processingHelp": "Maximum sample age sets how old each reading may be. Maximum timestamp skew limits the time difference between the temperature and humidity readings, so an old reading is not combined with a new one. Choose limits that match how often your sensors report.",
+		"requiredRole": "Choose a source for {role}.",
+		"diagnostics": {
+			"stale_or_unavailable": "Reading expired or unavailable",
+			"quality": "Reading quality is unavailable",
+			"lineage": "Waiting for valid source evidence",
+			"awaiting_fresh_input": "Waiting for a fresh report",
+			"skew": "Source measurements are too far apart in time",
+			"domain": "Value outside the supported range",
+			"invalid_policy": "Invalid calculation settings",
+			"incompatible_output": "Incompatible output measurement",
+			"output_disabled": "Output is disabled",
+			"graph_ineligible": "Source dependency graph is unavailable",
+			"missing_input_role": "Select both required source types",
+			"graph_validation_pending": "Source dependency graph is being checked"
 		}
 	},
 	"nativeThermostat": {
@@ -531,9 +691,9 @@
 		"releaseHelp": "Release the Smart Panel reservation? This waits for issued work but sends no OFF command. The physical thermostat may continue regulating.",
 		"wizard": {
 			"intro": "This controller works with a real thermostat device. The device keeps regulating the temperature; Smart Panel sends it the requested mode and setpoints and shows what it reports back.",
-			"supported": "Only thermostats from Home Assistant and Zigbee2MQTT are supported for now. Devices from other integrations are not listed.",
+			"supported": "Available devices and controls depend on the capabilities reported by the physical thermostat.",
 			"unitPlaceholder": "Select a thermostat device",
-			"noCandidates": "No supported thermostat device was found. Add a Home Assistant or Zigbee2MQTT thermostat first.",
+			"noCandidates": "No suitable physical thermostat was found. Add your device to Smart Panel and check its configuration.",
 			"providers": {
 				"home-assistant": "Home Assistant",
 				"zigbee2mqtt": "Zigbee2MQTT"
@@ -550,6 +710,37 @@
 		}
 	},
 	"thermostat": {
+		"wizard": {
+			"detailsTitle": "What should the thermostat control?",
+			"detailsDescription": "Name the thermostat and choose its room and zones.",
+			"sourcesTitle": "Which sensors should the thermostat use?",
+			"sourcesDescription": "Choose room, floor or cooled-surface temperature for each reading. For cooling protection, also add a virtual Dew point reading. A window or door contact must be a boolean contact sensor.",
+			"actuatorsTitle": "Which relays should control heating and cooling?",
+			"actuatorsDescription": "Add relay outputs and choose whether each controls heating or cooling.",
+			"policyHelpTitle": "How these settings work",
+			"policyHelp": "Setpoints are the target room temperatures. Tolerances reduce frequent switching around the target. Minimum OFF sets the pause before a relay can turn on again; changeover sets the pause between heating and cooling. Floor protection limits the floor temperature. Contact delays filter brief window openings, and temperature trend detection can pause regulation after a sudden temperature drop.",
+			"previewTitle": "Configuration check",
+			"configurationTitle": "How should the thermostat regulate temperature?",
+			"configurationDescription": "Set temperatures, sample limits, delays and protection for the sensors and relays you selected.",
+			"role": "Use as",
+			"sourceLimit": "Choose each role once; up to eight cooled-surface sensors can be selected.",
+			"actuatorLimit": "Up to eight relay outputs can be selected.",
+			"addActuator": "Add a relay",
+			"openValue": "Sensor state when open",
+			"closedValue": "Sensor state when closed",
+			"roles": {
+				"ambient": "Room temperature",
+				"floor": "Floor temperature",
+				"contact": "Window or door contact",
+				"heating": "Heating",
+				"cooling": "Cooling",
+				"dew_point": "Dew point",
+				"cooled_surface": "Cooled surface temperature"
+			},
+			"configurationStep": "Configuration",
+			"selectCoolingSources": "Choose cooling sensors",
+			"coolingSurfaceRequired": "Choose a cooled-surface sensor in Sensors that is connected to this relay device."
+		},
 		"title": {
 			"create": "Create virtual thermostat",
 			"edit": "Thermostat configuration"
@@ -650,16 +841,16 @@
 			"coldTolerance": "Enter a nonnegative cold tolerance.",
 			"hotTolerance": "Enter a nonnegative hot tolerance.",
 			"neutralMargin": "Enter a positive neutral margin.",
-			"minimumOff": "Enter the minimum OFF interval in milliseconds.",
-			"changeover": "Enter the changeover interval in milliseconds.",
+			"minimumOff": "Enter a whole number from 0 to 86400000 ms.",
+			"changeover": "Enter a whole number from 0 to 86400000 ms.",
 			"floorPolicy": "Enter the floor limit and positive recovery hysteresis in Celsius.",
 			"trendIncomplete": "Complete every enabled trend setting.",
-			"contactDebounce": "Enter both contact debounce intervals in milliseconds.",
+			"contactDebounce": "Enter opening and closing delays as whole numbers from 0 to 86400000 ms.",
 			"ambientSource": "Configure exactly one ambient source.",
 			"retainFloorPolicy": "Retain a common floor policy for the existing global guard.",
 			"floorProtectionSource": "Floor protection requires a global source or an explicit local guard for every heating member.",
 			"contactSourceLimit": "Configure at most one contact source.",
-			"sourceAge": "Enter a positive maximum age for the source: {role}.",
+			"sourceAge": "Enter a maximum age from 1 to 86400 seconds for {role}.",
 			"sourceSelect": "Select a source: {role}.",
 			"contactValues": "Map both contact open and closed values.",
 			"contactValuesDiffer": "Contact open and closed values must differ.",
@@ -670,11 +861,13 @@
 			"retainedClaim": "Repair retained claim {id}; its ownership is preserved.",
 			"sharedFloorPolicy": "Enter the shared floor limit and hysteresis for local protection.",
 			"localProtection": "Every heating member requires an explicit local protective source.",
-			"protectionAge": "Enter a positive protective source maximum age.",
+			"protectionAge": "Enter a local protection age from 1 to 86400 seconds.",
 			"actuatorRepair": "Repair the actuator before saving: {role}.",
 			"lease": "Enter a positive ON lease for the actuator: {role}.",
 			"settingUnique": "Each local setting role may be registered once.",
-			"settingProperty": "Select a local property for each setting."
+			"settingProperty": "Select a local property for each setting.",
+			"coolingDewPointSource": "Select a virtual Dew point reading in Sensors.",
+			"coolingSurfaceSource": "Select a separate cooled-surface temperature in Sensors."
 		},
 		"settingRoles": {
 			"heating_setpoint": "Heating setpoint",
@@ -682,6 +875,53 @@
 			"heating_enabled": "Heating enabled",
 			"cooling_enabled": "Cooling enabled",
 			"locked": "Locked"
+		}
+	},
+	"detailTab": "Virtual device",
+	"conversion": {
+		"inputRange": "Input range",
+		"outputRange": "Output range",
+		"coefficients": "Coefficients",
+		"calibration": "Calibration points",
+		"operatorRanges": "Operator ranges",
+		"sourceCompatibility": "Source compatibility",
+		"backendCheck": "Configuration check",
+		"processingTitle": "How to configure the conversion",
+		"calibrationInput": "Point {index}: measured input (X)",
+		"calibrationOutput": "Point {index}: corresponding output (Y)",
+		"parameterBounds": "Allowed: {minimum} to {maximum}",
+		"rangesHelp": "Input and output limits define where this conversion is valid. Enter both limits; values outside them are rejected, not forced to the nearest limit.",
+		"sampleHelp": "The test input is optional. Enter a value inside the input range to see its calculated output. Leaving it blank checks the settings without a test calculation.",
+		"pointsHelp": "Each calibration point pairs a measured input X with its known correct output Y. For example, 0 → 0 and 10 → 100 describe a scale. Add at least two points in increasing X order. The conversion follows straight lines between them and never extends beyond the first or last point.",
+		"thermistorHelp": "Use the actual circuit and probe data: Vref is the divider supply voltage, Rfixed its fixed resistor, Rnom the probe resistance at Tnom, and beta or A/B/C come from the probe data sheet. Choose whether the probe is connected to ground or supply. These values are not guessed.",
+		"thermistorRequirement": "NTC beta and Steinhart–Hart require a physical raw voltage source in V and a temperature output in °C. A sensor already reporting °C needs no thermistor conversion; use affine calibration if it needs an adjustment.",
+		"operators": {
+			"affine": "Affine applies output = scale × input + offset. Scale changes the size of a reading; offset adds a correction, such as subtracting a sensor bias.",
+			"piecewise_linear": "Piecewise linear conversion uses known calibration pairs and calculates values between neighbouring points.",
+			"ntc_beta": "NTC beta converts raw divider voltage to Celsius using the probe’s nominal resistance, nominal temperature and beta coefficient.",
+			"steinhart_hart": "Steinhart–Hart converts raw divider voltage to Celsius using the probe’s A, B and C coefficients.",
+			"extension": "An extension supplies the conversion. Select its definition and enter the required parameters within their shown bounds."
+		},
+		"validation": {
+			"requiredNumber": "Enter a numeric value.",
+			"positiveNumber": "Enter a number greater than zero.",
+			"absoluteTemperature": "Enter a temperature above −273.15 °C.",
+			"rangeOrder": "The minimum must not exceed the maximum.",
+			"rangeRequired": "Enter both range limits.",
+			"pointCount": "Add between 2 and 256 calibration points.",
+			"pointOrder": "Enter numeric X/Y pairs with unique X values in increasing order.",
+			"pointCoverage": "Calibration points must cover the entire input range.",
+			"coefficientsNonzero": "At least one coefficient must be nonzero.",
+			"dividerRequired": "Choose the probe’s divider connection.",
+			"operatorMissing": "Select an available operator definition.",
+			"parameterBounds": "Fill in required parameters within their declared bounds.",
+			"operatorRanges": "Stay inside the ranges declared by the operator.",
+			"ageBounds": "Enter a whole number of seconds from 1 to 86400.",
+			"sampleOptional": "No test value: only the configuration will be checked.",
+			"sampleBounds": "Use a test value inside the input range; thermistor voltage must also be between zero and Vref.",
+			"sourceRequired": "Choose an input source.",
+			"checking": "Checking…",
+			"notChecked": "Fix the highlighted settings, then check again."
 		}
 	}
 }

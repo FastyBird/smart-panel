@@ -21,7 +21,7 @@ import type {
 	IDevicePluginRoutes,
 	IDevicePluginsComponents,
 	IDevicePluginsSchemas,
-	IDeviceWizardRouteLauncher,
+	IDeviceWizardDefinition,
 } from '../devices.types';
 import type { IChannelPropertyAddForm, IChannelPropertyEditForm } from '../schemas/channels.properties.types';
 import type { IChannelAddForm, IChannelEditForm } from '../schemas/channels.types';
@@ -282,7 +282,7 @@ export interface IUseDevicesPlugins {
 	plugins: ComputedRef<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes>[]>;
 	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
 	wizardOptions: ComputedRef<{ value: IPlugin['type']; label: string; description: string; disabled: boolean }[]>;
-	wizardRouteOptions: ComputedRef<(IDeviceWizardRouteLauncher & { value: IPlugin['type']; disabled: boolean })[]>;
+	getWizard: (type: IPlugin['type']) => IDeviceWizardDefinition | undefined;
 	getByPluginType: (type: IPlugin['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined;
 	getByName: (type: IPlugin['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined;

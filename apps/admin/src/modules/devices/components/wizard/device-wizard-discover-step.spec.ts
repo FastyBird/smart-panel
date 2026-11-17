@@ -74,6 +74,31 @@ describe('DeviceWizardDiscoverStep', () => {
 		expect(wrapper.text()).toContain('Found 3 devices');
 	});
 
+	it('validates required manual fields and accepts an empty optional password', async () => {
+		const handler = vi.fn().mockResolvedValue(undefined);
+		const wrapper = mountStep([
+			{
+				type: 'form',
+				id: 'manual',
+				fields: [
+					{ key: 'hostname', label: 'Hostname', required: true },
+					{ key: 'password', label: 'Password', secret: true },
+				],
+				submitLabel: 'Add',
+				submitDisabled: false,
+				handler,
+			},
+		]);
+		await wrapper.get('[data-test-id="wizard-control-manual"] form').trigger('submit');
+		await flushPromises();
+		expect(handler).not.toHaveBeenCalled();
+		await vi.waitFor(() => expect(wrapper.text()).toContain('devicesModule.wizard.validation.required'));
+		await wrapper.get('[data-test-id="wizard-control-manual"] input[name="hostname"]').setValue('shelly.local');
+		await wrapper.get('[data-test-id="wizard-control-manual"] form').trigger('submit');
+		await flushPromises();
+		expect(handler).toHaveBeenCalledWith({ hostname: 'shelly.local', password: '' });
+		wrapper.unmount();
+	});
 	it('submits a form control with its field values and clears them on success', async () => {
 		const handler = vi.fn().mockResolvedValue(undefined);
 		const wrapper = mountStep([
@@ -222,9 +247,7 @@ describe('DeviceWizardDiscoverStep', () => {
 	});
 
 	it('preserves the current page when live discovery grows', async () => {
-		const rows = Array.from({ length: 30 }, (_, index) =>
-			row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}` })
-		);
+		const rows = Array.from({ length: 30 }, (_, index) => row({ key: `device-${index}`, identifier: `device-${index}`, label: `Device ${index}` }));
 		const wrapper = mountStep([], rows);
 
 		await flushPromises();

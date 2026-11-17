@@ -163,5 +163,11 @@
 		"accept": "Aceptar la excepción por incertidumbre",
 		"advisory": "Un operador ha anulado el bloqueo de orden sin resolver. Esto no demuestra que la cola esté vacía ni que la orden haya terminado.",
 		"unavailable": "Recuperación no disponible; vuelva a cargar el contexto actual y revise el motivo del rechazo"
+	},
+	"detailTab": "Shelly",
+	"wizard": {
+		"selection": {
+			"description": "Dispositivos Shelly Gen 2 y posteriores en su red."
+		}
 	}
 }

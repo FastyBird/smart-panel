@@ -92,9 +92,10 @@
 			"counts": "{channels} channels, {points} points",
 			"fileErrors": "Some template files could not be loaded",
 			"startEmpty": {
-				"title": "Start empty",
-				"description": "Define the points yourself."
-			}
+				"title": "Configure your own device",
+				"description": "Define the registers and capabilities of your device."
+			},
+			"browse": "Use a device template"
 		},
 		"points": {
 			"customNotice": "The points differ from the template, so the device will be created as a custom device.",
@@ -282,6 +283,9 @@
 			"save": "Save points",
 			"saved": "The points of \"{name}\" were saved.",
 			"saveFailed": "The points could not be saved"
+		},
+		"selection": {
+			"description": "Modbus TCP gateways, with registers mapped to devices."
 		}
 	},
 	"endpoints": {

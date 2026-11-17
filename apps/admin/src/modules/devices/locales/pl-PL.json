@@ -399,12 +399,12 @@
 			},
 			"room": {
 				"title": "Pokój",
-				"placeholder": "Wybierz pokój (opcjonalnie)",
+				"placeholder": "Wybierz pokój",
 				"hint": "Przypisz to urządzenie do fizycznej lokalizacji pokoju"
 			},
 			"zones": {
 				"title": "Strefy",
-				"placeholder": "Wybierz strefy (opcjonalnie)",
+				"placeholder": "Wybierz strefy",
 				"hint": "Przypisz to urządzenie do logicznych stref (np. Bezpieczeństwo, Na zewnątrz). Członkostwo w strefie piętra wynika z przypisania pokoju."
 			},
 			"validation": {
@@ -705,6 +705,9 @@
 		},
 		"back": {
 			"title": "Wróć"
+		},
+		"manual": {
+			"title": "Konfiguracja ręczna"
 		}
 	},
 	"labels": {
@@ -1048,6 +1051,37 @@
 			"noSelection": "Nie wybrano żadnych urządzeń",
 			"resultsSuccess": "Wszystkie wybrane urządzenia zostały pomyślnie dodane",
 			"resultsFailed": "Niektórych urządzeń nie udało się dodać"
+		},
+		"variant": "Wybierz wariant",
+		"loadFailed": "Nie udało się wczytać wtyczek.",
+		"retry": "Spróbuj ponownie",
+		"discardChanges": "Odrzucić niezapisane zmiany?",
+		"noPlugins": "Brak dostępnych kreatorów. Włącz obsługiwaną wtyczkę w ustawieniach.",
+		"review": {
+			"setting": "Ustawienie",
+			"value": "Wartość",
+			"status": "Stan",
+			"details": "Szczegóły",
+			"success": "Poprawne",
+			"error": "Wymaga poprawy",
+			"info": "Informacja"
+		},
+		"validation": {
+			"required": "Uzupełnij to pole.",
+			"invalidValue": "Wybierz prawidłową wartość.",
+			"minimumItems": "Wybierz co najmniej {count} elementy.",
+			"numberRange": "Wpisz liczbę całkowitą od {minimum} do {maximum}."
+		},
+		"selection": {
+			"title": "Co chcesz dodać?",
+			"description": "Wybierz integrację do podłączenia urządzeń fizycznych lub utwórz urządzenie wirtualne z już istniejących.",
+			"integrations": "Podłącz integrację",
+			"integrationsDescription": "Wyszukaj urządzenia lub skonfiguruj ich połączenie, a następnie wybierz, co dodać.",
+			"search": "Szukaj",
+			"searchPlaceholder": "Integracja lub typ urządzenia",
+			"noResults": "Brak pasujących integracji lub typów urządzeń.",
+			"clearSearch": "Wyczyść wyszukiwanie",
+			"manualHint": "Wolisz wprowadzić konfigurację ręcznie?"
 		}
 	},
 	"diagnostics": {

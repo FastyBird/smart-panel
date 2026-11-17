@@ -285,6 +285,9 @@
 		"messages": {
 			"sessionNotStarted": "Home Assistant-Geräte konnten nicht für den Sammelimport vorbereitet werden.",
 			"adoptionFailed": "Die ausgewählten Home Assistant-Geräte konnten nicht hinzugefügt werden."
+		},
+		"selection": {
+			"description": "Importieren Sie Geräte aus Ihrer Home-Assistant-Instanz."
 		}
 	}
 }

@@ -138,5 +138,10 @@
         "title": "Hinzufügen"
       }
     }
+  },
+  "wizard": {
+    "selection": {
+      "description": "Shelly-Geräte der ersten Generation in Ihrem Netzwerk."
+    }
   }
 }

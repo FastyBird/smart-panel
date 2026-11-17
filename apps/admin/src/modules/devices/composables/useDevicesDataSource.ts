@@ -7,7 +7,7 @@ import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
 import { DevicesModuleDeviceConnectionStatus, DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME, RouteNames } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { devicesStoreKey, devicesValidationStoreKey } from '../store/keys';
 
@@ -58,6 +58,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 			},
 		},
 		syncQuery: true,
+		queryRoute: RouteNames.DEVICES,
 		version: 1,
 	});
 

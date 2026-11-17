@@ -138,5 +138,10 @@
         "title": "Add"
       }
     }
+  },
+  "wizard": {
+    "selection": {
+      "description": "First-generation Shelly devices on your network."
+    }
   }
 }

@@ -14,6 +14,7 @@ import {
 	type IDevicePluginsComponents,
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
+import DeviceWizard from '../../modules/devices/components/wizard/device-wizard.vue';
 
 import { Zigbee2mqttConfigForm, Zigbee2mqttDeviceAddFormMultiStep, Zigbee2mqttDeviceEditForm } from './components/components';
 import { useDevicesWizard } from './composables/composables';
@@ -85,7 +86,12 @@ export default {
 					components: {
 						deviceAddForm: Zigbee2mqttDeviceAddFormMultiStep,
 						deviceEditForm: Zigbee2mqttDeviceEditForm,
-						deviceWizardAdapter: useDevicesWizard,
+						deviceWizard: {
+							selection: { kind: 'integration', icon: 'mdi:zigbee', order: 40, description: 'devicesZigbee2mqttPlugin.wizard.selection.description' },
+							component: DeviceWizard,
+							props: { adapterFactory: useDevicesWizard },
+							capabilities: { discovery: true, batch: true },
+						},
 					},
 					schemas: {
 						deviceSchema: Zigbee2mqttDeviceSchema,

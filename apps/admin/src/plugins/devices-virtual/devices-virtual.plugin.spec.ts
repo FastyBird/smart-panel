@@ -117,44 +117,6 @@ describe('devicesVirtualPlugin', () => {
 		expect(options.router.addRoute).toHaveBeenCalledWith(DevicesRouteNames.DEVICES, expect.any(Object));
 	});
 
-	it('registers a route resolvable by the wizard route name, with the wizard view as its component', async () => {
-		const options = createOptions([{ name: DevicesRouteNames.DEVICES }]);
-
-		DevicesVirtualPlugin.install({} as App, options);
-
-		const registeredRoute = (
-			(options.router.addRoute as ReturnType<typeof vi.fn>).mock.calls as [string, { name: string; component: () => unknown }][]
-		).find(([, route]) => route.name === VirtualRouteNames.WIZARD)?.[1];
-
-		expect(registeredRoute).toBeDefined();
-		if (!registeredRoute) throw new Error('Virtual device wizard route was not registered');
-		// The route's component is a lazy import — resolving it proves it points at the wizard view
-		// this task creates rather than at a placeholder.
-		await expect(registeredRoute.component()).resolves.toMatchObject({ default: expect.objectContaining({ name: 'ViewVirtualDeviceWizard' }) });
-	});
-
-	it.each([
-		[VirtualRouteNames.MEASUREMENT_WIZARD, '/devices/devices-virtual/measurements/new'],
-		[VirtualRouteNames.LIGHT_GROUP_WIZARD, '/devices/devices-virtual/light-groups/new'],
-		[VirtualRouteNames.THERMOSTAT_WIZARD, '/devices/devices-virtual/thermostats/new'],
-	])('registers the combined capability route %s with an executable view and plugin gate', async (name, path) => {
-		const router = createRouter({
-			history: createMemoryHistory(),
-			routes: [{ path: '/devices', name: DevicesRouteNames.DEVICES, component: { template: '<div />' } }],
-		});
-		const options = createOptions([]);
-		options.router = router;
-		DevicesVirtualPlugin.install({} as App, options);
-		expect(router.resolve({ name }).path).toBe(path);
-		await router.push({ name });
-		await router.isReady();
-		expect(router.currentRoute.value.name).toBe(name);
-		mocks.configStore.findByType.mockReturnValue({ enabled: false });
-		await router.push({ name: DevicesRouteNames.DEVICES });
-		await router.push({ name });
-		expect(router.currentRoute.value.name).toBe(DevicesRouteNames.DEVICES);
-	});
-
 	it('registers the plugin even when the devices list route is not present yet', () => {
 		const options = createOptions([{ name: 'root' }]);
 
@@ -204,134 +166,41 @@ describe('devicesVirtualPlugin', () => {
 
 		const element = mocks.addPlugin.mock.calls[0]?.[1].elements[0];
 		expect(element.type).toBe('virtual');
-		expect(element.components.deviceDetailSection).toBe(VirtualDeviceSources);
+		expect(element.components.deviceDetailTabs[0].component).toBe(VirtualDeviceSources);
 	});
 
-	it('registers its bespoke wizard as route-based launcher metadata when the route is available', () => {
-		const options = createOptions([{ name: DevicesRouteNames.DEVICES }]);
-
-		DevicesVirtualPlugin.install({} as App, options);
-
-		expect(mocks.addPlugin).toHaveBeenCalledWith(
-			expect.any(Symbol),
-			expect.objectContaining({
-				routes: {
-					wizard: {
-						label: 'devicesVirtualPlugin.wizard.title',
-						icon: 'mdi:call-split',
-						to: { name: VirtualRouteNames.WIZARD },
-						testId: 'virtual-device-wizard',
-						optionsTitle: 'devicesVirtualPlugin.wizard.selectKind',
-						// One entry per kind, chosen in the Devices view before the wizard starts.
-						options: [
-							expect.objectContaining({ value: 'projection', to: { name: VirtualRouteNames.WIZARD } }),
-							expect.objectContaining({
-								value: 'aggregate',
-								to: { name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_aggregate' } },
-							}),
-							expect.objectContaining({
-								value: 'transform',
-								to: { name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform' } },
-							}),
-							expect.objectContaining({
-								value: 'dewPoint',
-								to: { name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform', kind: 'dew_point' } },
-							}),
-							expect.objectContaining({ value: 'group', to: { name: VirtualRouteNames.LIGHT_GROUP_WIZARD } }),
-							expect.objectContaining({ value: 'thermostat', to: { name: VirtualRouteNames.THERMOSTAT_WIZARD } }),
-							expect.objectContaining({
-								value: 'nativeThermostat',
-								to: { name: VirtualRouteNames.THERMOSTAT_WIZARD, query: { strategy: 'native_unit' } },
-							}),
-						],
-					},
-				},
-			})
-		);
+	it('registers all virtual kinds as variants of the common wizard', () => {
+		DevicesVirtualPlugin.install({} as App, createOptions([]));
+		const element = mocks.addPlugin.mock.calls[0]?.[1].elements[0];
+		expect(element.components.deviceWizard.variants.map((variant: { id: string }) => variant.id)).toEqual([
+			'projection',
+			'aggregate',
+			'transform',
+			'dewPoint',
+			'group',
+			'thermostat',
+			'nativeThermostat',
+		]);
+		expect(mocks.addPlugin.mock.calls[0]?.[1].routes).toBeUndefined();
 	});
 
-	describe('route reachability against a real router', () => {
-		// The tests above assert install() *calls* addRoute correctly against a hand-rolled fake
-		// router. This one runs the same install() against vue-router's real implementation, so the
-		// path join, name resolution and navigation are the library's own — not a mock's approximation
-		// of them — proving the wizard route is actually navigable, not merely "addRoute was called".
-		it('makes the wizard route resolvable and navigable once installed under the real devices route', async () => {
-			const router = createRouter({
-				history: createMemoryHistory(),
-				routes: [
-					{
-						path: '/devices',
-						name: DevicesRouteNames.DEVICES,
-						component: { template: '<div />' },
-					},
-				],
-			});
-
-			const options = {
-				i18n: {
-					global: {
-						getLocaleMessage: vi.fn(() => ({})),
-						setLocaleMessage: vi.fn(),
-					},
-				},
-				router,
-			} as unknown as IPluginOptions;
-
-			DevicesVirtualPlugin.install({} as App, options);
-
-			const resolved = router.resolve({ name: VirtualRouteNames.WIZARD });
-
-			expect(resolved.name).toBe(VirtualRouteNames.WIZARD);
-			expect(resolved.path).toBe('/devices/devices-virtual/wizard');
-
-			await router.push({ name: VirtualRouteNames.WIZARD });
-			await router.isReady();
-
-			expect(router.currentRoute.value.name).toBe(VirtualRouteNames.WIZARD);
-		});
-	});
-});
-
-describe('virtual wizard direct navigation gate', () => {
-	const navigate = async () => {
+	it('redirects old direct links into the common wizard with their selected variant', async () => {
 		const router = createRouter({
 			history: createMemoryHistory(),
-			routes: [{ path: '/devices', name: DevicesRouteNames.DEVICES, component: { template: '<div />' } }],
+			routes: [
+				{
+					path: '/devices',
+					name: DevicesRouteNames.DEVICES,
+					component: { template: '<div />' },
+					children: [{ path: 'wizard/:type', name: 'devices_module-devices_wizard', component: { template: '<div />' } }],
+				},
+			],
 		});
 		const options = createOptions([]);
 		options.router = router;
 		DevicesVirtualPlugin.install({} as App, options);
-		await router.push('/devices/devices-virtual/wizard');
-		await router.isReady();
-		return router.currentRoute.value.name;
-	};
-
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mocks.configStore.firstLoadFinished.mockReturnValue(true);
-		mocks.configStore.fetch.mockResolvedValue(undefined);
-	});
-
-	it.each([false, undefined])('redirects disabled or absent plugin state %s to the devices list', async (enabled) => {
-		mocks.configStore.findByType.mockReturnValue(enabled === undefined ? null : { enabled });
-		expect(await navigate()).toBe(DevicesRouteNames.DEVICES);
-		expect(mocks.configStore.fetch).not.toHaveBeenCalled();
-	});
-
-	it('waits for first hydration before allowing an enabled plugin', async () => {
-		mocks.configStore.firstLoadFinished.mockReturnValue(false);
-		mocks.configStore.findByType.mockReturnValue(null);
-		mocks.configStore.fetch.mockImplementation(async () => {
-			mocks.configStore.findByType.mockReturnValue({ enabled: true });
-		});
-		expect(await navigate()).toBe(VirtualRouteNames.WIZARD);
-		expect(mocks.configStore.fetch).toHaveBeenCalledTimes(1);
-	});
-
-	it('redirects when config cannot be hydrated', async () => {
-		mocks.configStore.firstLoadFinished.mockReturnValue(false);
-		mocks.configStore.findByType.mockReturnValue(null);
-		mocks.configStore.fetch.mockRejectedValue(new Error('Offline'));
-		expect(await navigate()).toBe(DevicesRouteNames.DEVICES);
+		await router.push({ name: VirtualRouteNames.THERMOSTAT_WIZARD, query: { strategy: 'native_unit' } });
+		expect(router.currentRoute.value.name).toBe('devices_module-devices_wizard');
+		expect(router.currentRoute.value.query.variant).toBe('nativeThermostat');
 	});
 });

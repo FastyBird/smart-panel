@@ -136,6 +136,9 @@
 			"rescanFailed": "Nie udało się ponownie uruchomić wykrywania WLED.",
 			"probeFailed": "Nie udało się połączyć z urządzeniem WLED.",
 			"adoptionFailed": "Nie udało się przyjąć wybranych urządzeń WLED."
+		},
+		"selection": {
+			"description": "Kontrolery adresowalnych diod LED z WLED."
 		}
 	}
 }

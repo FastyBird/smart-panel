@@ -1,70 +1,77 @@
 <template>
 	<div class="space-y-4">
-		<el-alert
-			type="info"
-			:title="t('devicesVirtualPlugin.wizard.review.heading')"
-			:description="t('devicesVirtualPlugin.wizard.review.description')"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-descriptions
-			:column="1"
-			border
-			data-test-id="review-summary"
+		<virtual-wizard-review-section
+			:title="t('devicesVirtualPlugin.wizard.steps.details')"
+			:disabled="submitState === 'submitting'"
+			:editable="submitState !== 'created'"
+			@edit="emit('editDetails')"
 		>
-			<el-descriptions-item :label="t('devicesVirtualPlugin.fields.devices.category.title')">
-				{{ categoryLabel }}
-			</el-descriptions-item>
-			<el-descriptions-item :label="t('devicesVirtualPlugin.fields.devices.name.title')">
-				{{ name }}
-			</el-descriptions-item>
-			<el-descriptions-item :label="t('devicesModule.fields.devices.room.title')">
-				{{ roomLabel }}
-			</el-descriptions-item>
-			<el-descriptions-item :label="t('devicesModule.fields.devices.zones.title')">
-				{{ zonesLabel }}
-			</el-descriptions-item>
-		</el-descriptions>
-
-		<el-alert
-			v-if="rows.length === 0"
-			type="warning"
-			:title="t('devicesVirtualPlugin.wizard.review.noMappings')"
-			:closable="false"
-			show-icon
-			data-test-id="review-no-mappings"
-		/>
-
-		<el-table
-			v-else
-			:data="rows"
-			data-test-id="review-rows"
+			<virtual-wizard-descriptions
+				:column="2"
+				data-test-id="review-summary"
+			>
+				<el-descriptions-item :label="t('devicesModule.fields.devices.name.title')">{{ name }}</el-descriptions-item>
+				<el-descriptions-item :label="t('devicesModule.fields.devices.category.title')">{{ categoryLabel }}</el-descriptions-item>
+				<el-descriptions-item :label="t('devicesModule.fields.devices.room.title')">{{ roomLabel }}</el-descriptions-item>
+				<el-descriptions-item :label="t('devicesModule.fields.devices.zones.title')">{{ zonesLabel }}</el-descriptions-item>
+			</virtual-wizard-descriptions>
+		</virtual-wizard-review-section>
+		<virtual-wizard-review-section
+			:title="t('devicesVirtualPlugin.wizard.steps.mapping')"
+			:description="mappingSummary"
+			:disabled="submitState === 'submitting'"
+			:editable="submitState !== 'created'"
+			@edit="emit('editMapping')"
 		>
-			<el-table-column :label="t('devicesVirtualPlugin.wizard.review.columns.property')">
-				<template #default="{ row }: { row: IVirtualReviewRow }">
-					<strong>{{ t(`devicesModule.categories.channels.${row.specChannel}`) }}</strong>
-					·
-					{{ t(`devicesModule.categories.channelsProperties.${row.specProperty}`) }}
-				</template>
-			</el-table-column>
-			<el-table-column
-				:label="t('devicesVirtualPlugin.wizard.review.columns.sourceDevice')"
-				prop="sourceDevice"
+			<el-alert
+				v-if="!rows.length"
+				type="warning"
+				:title="t('devicesVirtualPlugin.wizard.review.noMappings')"
+				:closable="false"
+				data-test-id="review-no-mappings"
+				class="m-4 w-auto!"
 			/>
-			<el-table-column
-				:label="t('devicesVirtualPlugin.wizard.review.columns.sourceChannel')"
-				prop="sourceChannel"
-			/>
-			<el-table-column
-				:label="t('devicesVirtualPlugin.wizard.review.columns.sourceProperty')"
-				prop="sourceProperty"
-			/>
-		</el-table>
+			<div
+				v-for="group in rowGroups"
+				:key="group.channel"
+				class="projection-review-channel"
+			>
+				<strong class="block p-4">{{ t(`devicesModule.categories.channels.${group.channel}`) }}</strong>
+				<el-table
+					:data="group.rows"
+					data-test-id="review-rows"
+				>
+					<el-table-column
+						:label="t('devicesVirtualPlugin.wizard.review.columns.property')"
+						:min-width="140"
+					>
+						<template #default="{ row }: { row: IVirtualReviewRow }">
+							<strong>{{ t(`devicesModule.categories.channelsProperties.${row.specProperty}`) }}</strong>
+						</template>
+					</el-table-column>
+					<el-table-column
+						:label="t('devicesVirtualPlugin.wizard.review.columns.sourceDevice')"
+						prop="sourceDevice"
+						:min-width="220"
+					/>
+					<el-table-column
+						:label="t('devicesVirtualPlugin.wizard.review.columns.sourceChannel')"
+						prop="sourceChannel"
+						:min-width="180"
+					/>
+					<el-table-column
+						:label="t('devicesVirtualPlugin.wizard.review.columns.sourceProperty')"
+						prop="sourceProperty"
+						:min-width="140"
+					/>
+				</el-table>
+			</div>
+		</virtual-wizard-review-section>
 
-		<template v-if="canHideSource && submitState !== 'created'">
+		<template v-if="(canHideSource || (submitState === 'submitting' && hideRequested)) && submitState !== 'created'">
 			<el-checkbox
 				v-model="hideRequested"
+				:disabled="submitState === 'submitting'"
 				data-test-id="hide-source-checkbox"
 			>
 				{{ t('devicesVirtualPlugin.wizard.review.hideSource.label', { device: sourceDevice?.name ?? '' }) }}
@@ -75,15 +82,6 @@
 			</div>
 		</template>
 
-		<el-alert
-			v-if="submitState === 'error'"
-			type="error"
-			:title="createError ?? ''"
-			:closable="false"
-			show-icon
-			data-test-id="create-error"
-		/>
-
 		<template v-if="submitState === 'created'">
 			<el-alert
 				type="success"
@@ -93,25 +91,17 @@
 				data-test-id="create-success"
 			/>
 
-			<el-alert
+			<el-button
 				v-if="hideState === 'failed'"
-				type="warning"
-				:title="hideError ?? ''"
-				:closable="false"
-				show-icon
-				data-test-id="hide-error"
+				size="small"
+				data-test-id="retry-hide"
+				@click="onRetryHide"
 			>
-				<el-button
-					size="small"
-					data-test-id="retry-hide"
-					@click="onRetryHide"
-				>
-					{{ t('devicesVirtualPlugin.wizard.review.hideSource.retry') }}
-				</el-button>
-			</el-alert>
+				{{ t('devicesVirtualPlugin.wizard.review.hideSource.retry') }}
+			</el-button>
 
 			<el-alert
-				v-else-if="hideState === 'hidden'"
+				v-if="hideState === 'hidden'"
 				type="success"
 				:title="t('devicesVirtualPlugin.wizard.review.hideSource.success', { device: sourceDevice?.name ?? '' })"
 				:closable="false"
@@ -137,7 +127,7 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElDescriptions, ElDescriptionsItem, ElTable, ElTableColumn } from 'element-plus';
+import { ElAlert, ElButton, ElCheckbox, ElDescriptionsItem, ElTable, ElTableColumn } from 'element-plus';
 
 import { MODULES_PREFIX } from '../../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../../common';
@@ -158,6 +148,8 @@ import {
 } from '../../../../openapi.constants';
 import { channelsSchema } from '../../../../spec/channels';
 import { DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
+import VirtualWizardDescriptions from '../virtual-wizard-descriptions.vue';
+import VirtualWizardReviewSection from '../virtual-wizard-review-section.vue';
 
 import type { IVirtualReviewRow, IVirtualWizardReviewCreatedPayload, IVirtualWizardReviewStepProps } from './virtual-wizard-review-step.types';
 import type { IVirtualSlotMapping } from './virtual-wizard.types';
@@ -176,6 +168,8 @@ const emit = defineEmits<{
 	// unmounted the moment the user goes Back — the shell renders steps with `v-if` — and its request
 	// carries on regardless, so nothing it knows about its own state survives to stop a second one.
 	(e: 'submitting', value: boolean): void;
+	(e: 'editDetails'): void;
+	(e: 'editMapping'): void;
 }>();
 
 const { t } = useI18n();
@@ -249,6 +243,20 @@ const rows = computed<IVirtualReviewRow[]>(() =>
 			sourceChannel: resolved.channelName,
 			sourceProperty: resolved.propertyName,
 		};
+	})
+);
+
+const rowGroups = computed(() =>
+	[...new Set(rows.value.map((row) => row.specChannel))].map((channel) => ({
+		channel,
+		rows: rows.value.filter((row) => row.specChannel === channel),
+	}))
+);
+const mappingSummary = computed(() =>
+	t('devicesVirtualPlugin.wizard.projection.mappingSummary', {
+		channels: rowGroups.value.length,
+		properties: rows.value.length,
+		devices: new Set(resolvedSources.value.flatMap((source) => (source.deviceId ? [source.deviceId] : []))).size,
 	})
 );
 
@@ -534,10 +542,19 @@ const onCreate = async (): Promise<void> => {
 	// in devices-virtual.plugin.ts for the remap dialog, see virtual-device-remap-dialog.spec.ts). Posting
 	// the raw payload here is what avoids a third instance of the same bug.
 	try {
-		const { data: responseData, error } = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
+		const {
+			data: responseData,
+			error,
+			response,
+		} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
 			body: { data: payload },
 		});
 
+		if (response?.status === 401) {
+			submitState.value = 'idle';
+			emit('submitting', false);
+			return;
+		}
 		if (!responseData) {
 			createError.value = error
 				? getErrorReason<DevicesModuleCreateDeviceOperation>(error, t('devicesVirtualPlugin.wizard.review.errors.createFailed'))
@@ -552,8 +569,6 @@ const onCreate = async (): Promise<void> => {
 		}
 
 		const created = responseData.data;
-
-		submitState.value = 'created';
 
 		// `submitting` is deliberately still set here. The device exists, but hydration, zone assignment
 		// and the source hide are all still to come, and `createdDevice` on the shell stays null until the
@@ -587,6 +602,7 @@ const onCreate = async (): Promise<void> => {
 		// shell that navigates away the instant it hears `created` does so only after any hide-failure
 		// warning is already on screen — and after the toast for it has already fired. The navigation lock
 		// is released in the same breath, for the same reason: nothing is in flight any more.
+		submitState.value = 'created';
 		emit('submitting', false);
 
 		emit('created', { id: created.id, name: created.name });
@@ -615,3 +631,9 @@ defineExpose({
 	onRetryHide,
 });
 </script>
+
+<style scoped>
+.projection-review-channel + .projection-review-channel {
+	border-top: 1px solid var(--el-border-color-lighter);
+}
+</style>

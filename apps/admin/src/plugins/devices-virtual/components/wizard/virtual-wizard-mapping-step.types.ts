@@ -53,4 +53,5 @@ export interface IVirtualMappingProgress {
 export interface IVirtualWizardMappingStepProps {
 	category: DevicesModuleDeviceCategory | null;
 	modelValue: IVirtualSlotMapping[];
+	optionalChannels?: DevicesModuleChannelCategory[];
 }

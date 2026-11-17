@@ -137,14 +137,6 @@
 			:device="device"
 		/>
 
-		<!-- Existing devices retain plugin diagnostics even when their integration is disabled. -->
-		<component
-			:is="deviceDetailSection"
-			v-if="device && deviceDetailSection"
-			:key="device.id"
-			:device="device"
-		/>
-
 		<!-- Tabs -->
 		<el-tabs
 			v-model="activeTab"
@@ -324,6 +316,28 @@
 					:refresh-logs="sharedDeviceLogs.refreshLogs"
 				/>
 			</el-tab-pane>
+			<el-tab-pane
+				v-for="tab in deviceDetailTabs"
+				:key="tab.id"
+				:name="`plugin:${tab.id}`"
+				lazy
+				class="h-full overflow-hidden"
+			>
+				<template #label>
+					<div class="flex items-center gap-2 px-4">
+						<icon :icon="tab.icon" />
+						{{ t(tab.label) }}
+					</div>
+				</template>
+				<el-scrollbar class="h-full">
+					<component
+						:is="tab.component"
+						v-if="device && activeTab === `plugin:${tab.id}`"
+						:key="device.id"
+						:device="device"
+					/>
+				</el-scrollbar>
+			</el-tab-pane>
 		</el-tabs>
 	</div>
 
@@ -477,7 +491,11 @@ const deviceId = computed(() => props.id);
 
 const { device, isLoading, fetchDevice } = useDevice({ id: deviceId });
 const { getElement: getDevicePluginElement } = useDevicesPlugins();
-const deviceDetailSection = computed(() => (device.value ? getDevicePluginElement(device.value.type)?.components?.deviceDetailSection : undefined));
+const deviceDetailTabs = computed(() =>
+	device.value
+		? (getDevicePluginElement(device.value.type)?.components?.deviceDetailTabs ?? []).filter((tab) => !tab.visible || tab.visible(device.value!))
+		: []
+);
 const { issues: validationIssues, fetchValidation } = useDeviceValidation({ id: deviceId });
 
 // Single shared logs composable — used for both the alert badge and the device-logs component
@@ -506,7 +524,18 @@ const showDrawer = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
 // Tabs state
-const activeTab = ref<string>('overview');
+const availableTabs = computed(() => [
+	'overview',
+	'logs',
+	...(validationIssues.value.length ? ['validation'] : []),
+	...deviceDetailTabs.value.map((tab) => `plugin:${tab.id}`),
+]);
+const activeTab = computed<string>({
+	get: () => (typeof route.query?.tab === 'string' && availableTabs.value.includes(route.query.tab) ? route.query.tab : 'overview'),
+	set: (tab) => {
+		void router.replace({ query: { ...route.query, tab: tab === 'overview' ? undefined : tab } });
+	},
+});
 const logsLive = ref<boolean>(false);
 
 // Fall back to 'overview' if the active tab becomes unavailable

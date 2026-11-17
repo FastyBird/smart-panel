@@ -409,7 +409,7 @@
 			"noActiveMedia": "Es ist keine Medienaktivität aktiv, die beendet werden könnte.",
 			"noTargets": "In diesem Raum sind keine kompatiblen Geräte verfügbar."
 		},
-		"title": "Aktivitätsmodi",
+		"title": "Modi",
 		"description": "Wählen Sie, was jeder Aktivitätsmodus in diesem Raum bewirkt.",
 		"enabled": "Aktiviert",
 		"disabled": "Deaktiviert",
@@ -494,7 +494,10 @@
 			"gaming": "Spielen",
 			"background": "Hintergrund",
 			"off": "Aus"
-		}
+		},
+		"leaveUnchanged": "Unverändert lassen",
+		"apply": "Festlegen",
+		"noChanges": "Keine Geräteänderungen"
 	},
 	"schedules": {
 		"title": "Zeitpläne",
@@ -690,5 +693,11 @@
 			"spaceType": "Dieser Bereich ist weder ein Raum noch eine Zone; der Block wirkt nur auf Räume und Zonen.",
 			"required": "Dieser Wert wird benötigt."
 		}
+	},
+	"modesLayout": {
+		"configure": "Konfigurieren",
+		"scheduleDescription": "Festlegen, wann die Raummodi automatisch wechseln.",
+		"presenceTitle": "Nach Anwesenheit",
+		"presenceDescription": "Festlegen, wie der Raum auf Ankunft und Verlassen reagiert."
 	}
 }

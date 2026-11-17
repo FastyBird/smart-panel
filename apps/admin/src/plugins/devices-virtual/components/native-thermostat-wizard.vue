@@ -1,149 +1,171 @@
 <template>
-	<virtual-wizard-steps
+	<device-wizard-steps
 		v-model="step"
 		:steps="stepLabels"
-		:can-advance="canAdvance"
+		:can-advance="!busy"
+		:before-next="validation.validate"
+		:final-actions="wizardFinalActions"
+		:dirty="step > 0 || !!source || !!name.trim()"
 		:disabled="busy"
 		enabled
 	>
-		<el-alert
-			v-if="error"
-			:title="error"
-			type="error"
-			:closable="false"
-			class="mb-3"
-			data-test-id="native-wizard-error"
-		/>
-		<el-button
-			v-if="error"
-			:disabled="busy"
-			class="mb-3"
-			data-test-id="native-wizard-refresh"
-			@click="load"
+		<virtual-wizard-layout
+			:compact="step < 2"
+			enabled
+			:review="step === 2"
+			:title="step === 2 ? t('devicesVirtualPlugin.wizard.layout.reviewTitle') : stepLabels[step]"
+			:description="
+				t(`devicesVirtualPlugin.wizard.layout.${step === 2 ? 'reviewDescription' : step === 0 ? 'sourcesDescription' : 'outputDescription'}`)
+			"
 		>
-			{{ label('refresh') }}
-		</el-button>
-
-		<div v-show="step === 0">
-			<el-alert
-				:title="tt('intro')"
-				:description="tt('supported')"
-				type="info"
-				:closable="false"
-				show-icon
-				class="mb-3"
-			/>
-			<el-form label-position="top">
-				<el-form-item :label="label('unit')">
-					<el-select
-						v-model="source"
-						:disabled="busy"
-						:loading="loading"
-						:placeholder="tt('unitPlaceholder')"
-						filterable
-						class="w-full"
-						data-test-id="native-wizard-unit"
-						@change="onSource"
-					>
-						<el-option-group
-							v-for="group in groups"
-							:key="group.provider"
-							:label="providerLabel(group.provider)"
-						>
-							<el-option
-								v-for="candidate in group.candidates"
-								:key="candidate.device"
-								:value="candidate.device"
-								:disabled="candidate.reasons.length > 0"
-								:label="candidate.reasons.length ? `${candidate.name} — ${reasonLabel(candidate.reasons[0]!)}` : candidate.name"
-							/>
-						</el-option-group>
-					</el-select>
-				</el-form-item>
-			</el-form>
-			<el-empty
-				v-if="!loading && !error && !candidates.length"
-				:description="tt('noCandidates')"
-				data-test-id="native-wizard-empty"
-			/>
-		</div>
-
-		<div v-show="step === 1">
-			<el-form label-position="top">
-				<el-form-item :label="label('name')">
-					<el-input
-						v-model="name"
-						:disabled="busy"
-						data-test-id="native-wizard-name"
-					/>
-				</el-form-item>
-			</el-form>
-			<el-alert
-				:title="label('delegation')"
-				type="info"
-				:closable="false"
-			/>
-		</div>
-
-		<div v-show="step === 2">
-			<el-descriptions
-				:column="1"
-				border
-				class="mb-3"
-				data-test-id="native-wizard-summary"
-			>
-				<el-descriptions-item :label="label('name')">{{ name }}</el-descriptions-item>
-				<el-descriptions-item :label="label('unit')">{{ selected?.name ?? '—' }}</el-descriptions-item>
-				<el-descriptions-item :label="tt('summary.provider')">{{ selected ? providerLabel(selected.provider) : '—' }}</el-descriptions-item>
-				<el-descriptions-item :label="tt('summary.modes')">
-					{{ selected?.capabilities.modes.map((mode) => t(`devicesVirtualPlugin.thermostat.modes.${mode}`)).join(', ') || '—' }}
-				</el-descriptions-item>
-				<el-descriptions-item :label="label('heating')">{{ rangeLabel(selected?.capabilities.heating) }}</el-descriptions-item>
-				<el-descriptions-item :label="label('cooling')">{{ rangeLabel(selected?.capabilities.cooling) }}</el-descriptions-item>
-			</el-descriptions>
-			<el-alert
-				:title="label('acceptance')"
-				type="info"
-				:closable="false"
-			/>
-		</div>
-
-		<template #final>
 			<el-button
-				type="primary"
-				:loading="creating"
-				:disabled="busy || !name.trim() || !selected || selected.reasons.length > 0"
-				data-test-id="native-wizard-create"
-				@click="create"
+				v-if="error"
+				:disabled="busy"
+				class="mb-3"
+				data-test-id="native-wizard-refresh"
+				@click="load"
 			>
-				{{ label('create') }}
+				{{ label('refresh') }}
 			</el-button>
-		</template>
-	</virtual-wizard-steps>
+
+			<div v-show="step === 0">
+				<el-alert
+					:title="tt('intro')"
+					:description="tt('supported')"
+					type="info"
+					:closable="false"
+					show-icon
+					class="mb-3"
+				/>
+				<el-form
+					label-position="top"
+					status-icon
+				>
+					<el-form-item
+						:error="validation.error('source')"
+						:label="label('unit')"
+						required
+					>
+						<el-select
+							v-model="source"
+							:disabled="busy"
+							:loading="loading"
+							:placeholder="tt('unitPlaceholder')"
+							filterable
+							class="w-full"
+							data-test-id="native-wizard-unit"
+							@change="onSource"
+						>
+							<el-option-group
+								v-for="group in groups"
+								:key="group.provider"
+								:label="providerLabel(group.provider)"
+							>
+								<el-option
+									v-for="candidate in group.candidates"
+									:key="candidate.device"
+									:value="candidate.device"
+									:disabled="candidate.reasons.length > 0"
+									:label="candidate.reasons.length ? `${candidate.name} — ${reasonLabel(candidate.reasons[0]!)}` : candidate.name"
+								/>
+							</el-option-group>
+						</el-select>
+					</el-form-item>
+				</el-form>
+				<empty-state
+					v-if="!loading && !error && !candidates.length"
+					icon="mdi:thermostat"
+					:description="tt('noCandidates')"
+					data-test-id="native-wizard-empty"
+				/>
+			</div>
+
+			<div v-show="step === 1">
+				<el-form
+					label-position="top"
+					status-icon
+				>
+					<el-form-item
+						:error="validation.error('name')"
+						:label="t('devicesModule.fields.devices.name.title')"
+						required
+					>
+						<el-input
+							v-model="name"
+							:disabled="busy"
+							:placeholder="t('devicesModule.fields.devices.name.placeholder')"
+							data-test-id="native-wizard-name"
+						/>
+					</el-form-item>
+				</el-form>
+				<el-alert
+					:title="label('delegation')"
+					type="info"
+					:closable="false"
+				/>
+			</div>
+
+			<div v-show="step === 2">
+				<virtual-wizard-review-section
+					:title="t('devicesVirtualPlugin.wizard.steps.details')"
+					:disabled="busy"
+					@edit="step = 1"
+				>
+					<virtual-wizard-descriptions :column="1">
+						<el-descriptions-item :label="t('devicesModule.fields.devices.name.title')">{{ name }}</el-descriptions-item>
+					</virtual-wizard-descriptions>
+					<el-alert
+						:title="label('acceptance')"
+						class="m-4"
+						type="info"
+						:closable="false"
+					/>
+				</virtual-wizard-review-section>
+			</div>
+			<template #aside>
+				<div
+					class="flex flex-col gap-4"
+					data-test-id="native-wizard-summary"
+				>
+					<virtual-wizard-summary
+						:title="name"
+						:subtitle="t('devicesVirtualPlugin.wizard.kinds.nativeThermostat.title')"
+						:items="sidebarItems"
+					/>
+					<virtual-wizard-review-section
+						v-if="step === 2"
+						:title="stepLabels[0]"
+						:disabled="busy"
+						@edit="step = 0"
+					>
+						<virtual-wizard-descriptions :column="1">
+							<el-descriptions-item :label="label('unit')">{{ selected?.name ?? '—' }}</el-descriptions-item>
+						</virtual-wizard-descriptions>
+					</virtual-wizard-review-section>
+				</div>
+			</template>
+		</virtual-wizard-layout>
+	</device-wizard-steps>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElAlert,
-	ElButton,
-	ElDescriptions,
-	ElDescriptionsItem,
-	ElEmpty,
-	ElForm,
-	ElFormItem,
-	ElInput,
-	ElOption,
-	ElOptionGroup,
-	ElSelect,
-} from 'element-plus';
+import { ElAlert, ElButton, ElDescriptionsItem, ElForm, ElFormItem, ElInput, ElOption, ElOptionGroup, ElSelect } from 'element-plus';
 
 import { useBackend } from '../../../common';
+import EmptyState from '../../../common/components/empty-state.vue';
+import DeviceWizardSteps from '../../../modules/devices/components/wizard/device-wizard-steps.vue';
+import type { IWizardAction } from '../../../modules/devices/components/wizard/device-wizard.types';
+import { useWizardValidation } from '../../../modules/devices/components/wizard/use-wizard-validation';
+import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
 import { type NativeCandidate, type NativeRange, nativeThermostatTransport } from '../services/native-thermostat';
 
-import VirtualWizardSteps from './wizard/virtual-wizard-steps.vue';
+import VirtualWizardDescriptions from './virtual-wizard-descriptions.vue';
+import VirtualWizardLayout from './virtual-wizard-layout.vue';
+import VirtualWizardReviewSection from './virtual-wizard-review-section.vue';
+import VirtualWizardSummary from './virtual-wizard-summary.vue';
 
 defineOptions({
 	name: 'NativeThermostatWizard',
@@ -182,10 +204,15 @@ const groups = computed(() => {
 	return [...byProvider].map(([provider, list]) => ({ provider, candidates: list })).sort((a, b) => a.provider.localeCompare(b.provider));
 });
 const stepLabels = computed<string[]>(() => ['device', 'details', 'review'].map((key) => t(`devicesVirtualPlugin.wizard.steps.${key}`)));
-const canAdvance = computed<boolean>(() => {
-	if (step.value === 0) return !!selected.value && !selected.value.reasons.length;
-	return !!name.value.trim();
-});
+const needsRefresh = ref(false);
+const validation = useWizardValidation(step, () =>
+	step.value === 0
+		? {
+				source:
+					selected.value && !selected.value.reasons.length && !needsRefresh.value ? undefined : t('devicesModule.wizard.validation.invalidValue'),
+			}
+		: { name: name.value.trim() ? undefined : t('devicesModule.fields.devices.name.validation.required') }
+);
 
 // The name starts as the device's own, and follows the selection until the user types one.
 let suggested = '';
@@ -227,7 +254,11 @@ const load = async (): Promise<boolean> => {
 	error.value = null;
 	try {
 		const result = await bounded((signal) => transport.candidates(signal));
-		if (alive) candidates.value = result;
+		if (alive) {
+			candidates.value = result;
+			needsRefresh.value = false;
+			if (step.value === 2) step.value = 0;
+		}
 		return true;
 	} catch {
 		if (alive) {
@@ -242,7 +273,7 @@ const load = async (): Promise<boolean> => {
 };
 const create = async (): Promise<void> => {
 	const unit = selected.value;
-	if (busy.value || !unit || unit.reasons.length || !name.value.trim()) return;
+	if (busy.value || needsRefresh.value || !unit || unit.reasons.length || !name.value.trim()) return;
 	creating.value = true;
 	error.value = null;
 	try {
@@ -255,10 +286,10 @@ const create = async (): Promise<void> => {
 	} catch {
 		if (!alive) return;
 		creating.value = false;
-		// The request may have been applied. Only a fresh list can say whether the unit is now taken,
-		// so another attempt waits for one: a failed refresh leaves nothing to choose from.
-		await load();
-		if (alive) error.value = label('uncertain');
+		// The request may have been applied. Keep the reviewed selection stable; only an explicit
+		// refresh may replace it and determine whether another attempt is safe.
+		needsRefresh.value = true;
+		error.value = label('uncertain');
 	}
 };
 watch(creating, (value) => emit('busy', value));
@@ -267,4 +298,25 @@ onBeforeUnmount(() => {
 	alive = false;
 	for (const request of requests) request.abort();
 });
+const wizardFinalActions = computed<IWizardAction[]>(() => [
+	{
+		id: 'create',
+		label: label('create'),
+		variant: 'primary',
+		disabled: busy.value || needsRefresh.value || !name.value.trim() || !selected.value || selected.value.reasons.length > 0,
+		handler: create,
+	},
+]);
+
+const sidebarItems = computed(() => [
+	{ label: label('unit'), value: selected.value?.name },
+	{ label: tt('summary.provider'), value: selected.value ? providerLabel(selected.value.provider) : '—' },
+	{ label: label('heating'), value: rangeLabel(selected.value?.capabilities.heating) },
+	{ label: label('cooling'), value: rangeLabel(selected.value?.capabilities.cooling) },
+	{
+		label: tt('summary.modes'),
+		value: selected.value?.capabilities.modes.map((mode) => t(`devicesVirtualPlugin.thermostat.modes.${mode}`)).join(', '),
+	},
+]);
+useVirtualWizardError(error);
 </script>

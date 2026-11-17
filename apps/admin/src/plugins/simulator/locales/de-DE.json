@@ -45,6 +45,9 @@
 			"details": "Einzelheiten",
 			"created": "Erstellt",
 			"failed": "Fehlgeschlagen"
+		},
+		"selection": {
+			"description": "Erzeugen Sie Testgeräte ohne physische Hardware."
 		}
 	},
 	"headings": {

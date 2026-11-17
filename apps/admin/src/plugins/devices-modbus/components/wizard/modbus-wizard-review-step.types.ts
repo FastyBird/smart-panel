@@ -2,4 +2,5 @@ import type { IUseModbusDeviceWizard } from '../../composables/useModbusDeviceWi
 
 export interface IModbusWizardReviewStepProps {
 	wizard: IUseModbusDeviceWizard;
+	showCreateAction?: boolean;
 }

@@ -1,9 +1,8 @@
-import { computed, nextTick } from 'vue';
+import { computed, defineComponent, h, nextTick, ref } from 'vue';
 
-import { ElProgress } from 'element-plus';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
 import type { IChannel, IChannelProperty, IDevice } from '../../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../../modules/devices/store/keys';
@@ -16,8 +15,10 @@ import {
 	DevicesModuleDeviceHiddenBy,
 	DevicesModuleDevicesHiddenFilter,
 } from '../../../../openapi.constants';
+import { provideVirtualWizardPlacement } from '../../composables/use-virtual-wizard-placement';
 import { DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 
+import VirtualProjectionSourceValue from './virtual-projection-source-value.vue';
 import type { IVirtualWizardMappingStepProps } from './virtual-wizard-mapping-step.types';
 import VirtualWizardMappingStep from './virtual-wizard-mapping-step.vue';
 
@@ -230,8 +231,21 @@ const PERMISSION_MISMATCH = `Source property id=${READ_ONLY_PROPERTY_ID} permiss
 
 const mountedWrappers: { unmount: () => void }[] = [];
 
-const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}) => {
+const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}, onUpdated?: () => void) => {
 	const wrapper = mount(VirtualWizardMappingStep, {
+		...(onUpdated
+			? {
+					global: {
+						mixins: [
+							{
+								updated() {
+									if (this.$options.name === 'VirtualWizardMappingStep') onUpdated();
+								},
+							},
+						],
+					},
+				}
+			: {}),
 		props: {
 			category: DevicesModuleDeviceCategory.lighting,
 			modelValue: [],
@@ -268,10 +282,6 @@ const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}) =
 		await nextTick();
 	};
 
-	// The rendered bar, not just the numbers behind it: "reports itself complete" is something the user
-	// sees, and a green 100% bar says it just as loudly as `isValid` does.
-	const progressBar = () => wrapper.findComponent(ElProgress);
-
 	return {
 		wrapper,
 		slots: computed(() => wrapper.vm.slots),
@@ -281,7 +291,6 @@ const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}) =
 		isValid: computed(() => wrapper.vm.isValid),
 		constraintViolations: computed(() => wrapper.vm.constraintViolations),
 		sourceDevicesOptions: computed(() => wrapper.vm.sourceDevicesOptions),
-		progressBar,
 		slotFor,
 		selectSource,
 		applyChannel: wrapper.vm.applyChannel,
@@ -317,6 +326,57 @@ describe('VirtualWizardMappingStep', () => {
 		const { slots } = mountMappingStep();
 
 		expect(slots.value.filter((slot) => slot.required).map((slot) => slot.specProperty)).toContain('on');
+	});
+
+	it('sorts source channels and properties by device then channel inside each placement group', async () => {
+		const sourceDevices = [
+			{ id: 'zebra', name: 'Zebra', roomId: 'elsewhere' },
+			{ id: 'beta', name: 'Beta', roomId: 'living' },
+			{ id: 'bravo', name: 'Bravo', roomId: 'elsewhere' },
+			{ id: 'alpha', name: 'Alpha', roomId: 'living' },
+		].map((device) => ({ ...device, type: 'shelly-ng', hidden: false, draft: false }) as IDevice);
+		const sourceChannels = sourceDevices.flatMap((device) =>
+			['Zeta', 'Alpha'].map(
+				(name) =>
+					({
+						id: `${device.id}-${name}`,
+						device: device.id,
+						name,
+						category: DevicesModuleChannelCategory.light,
+					}) as IChannel
+			)
+		);
+		const sourceProperties = sourceChannels.map((channel) => ({
+			...properties[0],
+			id: `${channel.id}-on`,
+			channel: channel.id,
+		}));
+		vi.spyOn(devicesStore, 'findAll').mockReturnValue(sourceDevices);
+		vi.spyOn(channelsStore, 'findAll').mockReturnValue(sourceChannels);
+		vi.spyOn(propertiesStore, 'findAll').mockReturnValue(sourceProperties);
+		const host = mount(
+			defineComponent({
+				setup() {
+					provideVirtualWizardPlacement(ref({ roomId: 'living', zoneIds: [] }));
+					return () => h(VirtualWizardMappingStep, { category: DevicesModuleDeviceCategory.lighting, modelValue: [] });
+				},
+			})
+		);
+		mountedWrappers.push(host);
+		await flushPromises();
+		const wrapper = host.getComponent(VirtualWizardMappingStep);
+		const shortcut = wrapper.findAllComponents({ name: 'ElSelectV2' }).find((select) => select.props('name') === 'shortcut-channel-light')!;
+		const expected = [
+			['Alpha › Alpha', 'Alpha › Zeta', 'Beta › Alpha', 'Beta › Zeta'],
+			['Bravo › Alpha', 'Bravo › Zeta', 'Zebra › Alpha', 'Zebra › Zeta'],
+		];
+		expect(shortcut.props('options').map((group: { options: { label: string }[] }) => group.options.map((option) => option.label))).toEqual(expected);
+		const slot = wrapper.vm.slots.find((slot) => slot.key === 'light.on')!;
+		await wrapper.vm.onOptionsOpen(slot, true);
+		expect(wrapper.vm.sourceOptions(slot).map((group) => group.options.map((option) => option.label.replace(' › On', '')))).toEqual(expected);
+		const shortcutField = wrapper.findAllComponents({ name: 'ElFormItem' }).find((field) => field.props('for') === shortcut.props('id'))!;
+		expect(shortcutField.get('label').text()).toContain('devicesVirtualPlugin.wizard.projection.fillDescription');
+		expect(shortcutField.get('label').attributes('for')).toBe(shortcut.props('id'));
 	});
 
 	it('blocks a source the backend reports incompatible', async () => {
@@ -790,30 +850,22 @@ describe('VirtualWizardMappingStep', () => {
 			expect(wrapper.emitted('update:valid')?.[0]?.[0]).toBe(false);
 		});
 
-		it('does not render a completed progress bar before anything has been mapped', () => {
-			const { wrapper, progressBar } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
-
-			expect(progressBar().props('percentage')).toBe(0);
-			expect(progressBar().props('status')).not.toBe('success');
-
-			// "0 of 0 required properties mapped" reads as finished, so this category says what it needs
-			// instead.
-			expect(wrapper.get('[data-test-id="mapping-progress"]').text()).toContain('devicesVirtualPlugin.wizard.mapping.noRequired');
+		it('asks the user to add a channel when the category has no required channel', () => {
+			const { wrapper } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+			expect(wrapper.vm.activeGroup).toBeNull();
+			expect(wrapper.text()).toContain('devicesVirtualPlugin.wizard.projection.chooseChannel');
+			expect(wrapper.findAll('[data-add-channel]').length).toBeGreaterThan(0);
 		});
 
 		it('becomes valid and complete as soon as one property is mapped', async () => {
-			const { wrapper, isValid, progressBar } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
+			const { wrapper, isValid } = mountMappingStep({ category: DevicesModuleDeviceCategory.switcher });
 
 			await wrapper.vm.selectSource(SWITCHER_ON_SLOT, PROPERTY_ON);
 
 			await nextTick();
 
 			expect(isValid.value).toBe(true);
-			expect(progressBar().props('percentage')).toBe(100);
-			expect(progressBar().props('status')).toBe('success');
-
-			// The prompt to map something must not survive next to a completed bar.
-			expect(wrapper.get('[data-test-id="mapping-progress"]').text()).not.toContain('devicesVirtualPlugin.wizard.mapping.noRequired');
+			expect(wrapper.vm.activeGroup?.specChannel).toBe('switcher');
 		});
 	});
 
@@ -898,24 +950,217 @@ describe('VirtualWizardMappingStep', () => {
 
 			expect(wrapper.find(`[data-test-id="slot-${empty.key}"]`).exists()).toBe(false);
 			expect(wrapper.find(`[data-test-id="slot-${mapped.key}"]`).exists()).toBe(true);
-			expect(wrapper.find(`[data-test-id="slot-error-${refused.key}"]`).text()).toBe(PERMISSION_MISMATCH);
+			expect(
+				wrapper
+					.findAllComponents({ name: 'ElFormItem' })
+					.find((item) => item.attributes('data-test-id') === `slot-error-${refused.key}`)
+					?.props('error')
+			).toBe(PERMISSION_MISMATCH);
 		});
 
-		it('sorts property options by their displayed translated labels', async () => {
+		it('sorts verified source choices by their displayed translated labels', async () => {
 			i18nMock.translations['devicesModule.categories.channelsProperties.power'] = 'Zasilanie';
 			i18nMock.translations['devicesModule.categories.channelsProperties.voltage'] = 'Napięcie';
-			const findForChannel = vi
-				.spyOn(propertiesStore, 'findForChannel')
-				.mockImplementation((id) => properties.filter((property) => property.channel === id).map((property) => ({ ...property, name: null })));
-			const { wrapper } = mountMappingStep({
-				modelValue: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_POWER)],
-			});
-			await nextTick();
-
-			const picker = wrapper.findAllComponents({ name: 'ElSelect' }).find((select) => select.props('name') === 'property-light.on')!;
-			expect(picker.findAllComponents({ name: 'ElOption' }).map((option) => option.props('label'))).toEqual(['Napięcie', 'Zasilanie']);
-			findForChannel.mockRestore();
+			vi.spyOn(propertiesStore, 'findAll').mockImplementation(() => properties.map((property) => ({ ...property, name: null })));
+			const { wrapper } = mountMappingStep();
+			wrapper.vm.addChannel(DevicesModuleChannelCategory.electrical_power);
+			const slot = wrapper.vm.slots.find((slot) => slot.key === 'electrical_power.power')!;
+			await wrapper.vm.onOptionsOpen(slot, true);
+			expect(wrapper.vm.sourceOptions(slot).flatMap((group) => group.options.map((option) => option.label.split(' › ').at(-1)))).toEqual([
+				'Napięcie',
+				'Zasilanie',
+			]);
 		});
+	});
+
+	it('adds optional channels explicitly and removes their selected mappings', async () => {
+		const { wrapper, selectSource, isValid } = mountMappingStep();
+		await selectSource(DevicesModuleChannelPropertyCategory.on, PROPERTY_ON);
+		wrapper.vm.addChannel(DevicesModuleChannelCategory.electrical_power);
+		await nextTick();
+		expect(wrapper.vm.activeGroup?.specChannel).toBe('electrical_power');
+		expect(isValid.value).toBe(false); // Adding the channel makes its own Power input required.
+		await wrapper.vm.selectSource('electrical_power.power', PROPERTY_POWER);
+		await nextTick();
+		expect(isValid.value).toBe(true);
+		wrapper.vm.removeChannel(DevicesModuleChannelCategory.electrical_power);
+		await nextTick();
+		expect(wrapper.vm.includedGroups.map((group) => group.specChannel)).not.toContain('electrical_power');
+		expect(isValid.value).toBe(true);
+	});
+
+	it('fills empty properties without replacing an existing user-selected source', async () => {
+		const { wrapper, applyChannel } = mountMappingStep();
+		await wrapper.vm.selectSource('electrical_power.power', PROPERTY_ON);
+		await applyChannel(DevicesModuleChannelCategory.electrical_power, CHANNEL_POWER);
+		const mappings = wrapper.emitted('update:modelValue')!.at(-1)![0] as {
+			specChannel: string;
+			specProperty: string;
+			sourceProperty: string | null;
+		}[];
+		expect(mappings.find((mapping) => mapping.specChannel === 'electrical_power' && mapping.specProperty === 'power')?.sourceProperty).toBe(
+			PROPERTY_ON
+		);
+		expect(mappings.find((mapping) => mapping.specChannel === 'electrical_power' && mapping.specProperty === 'voltage')?.sourceProperty).toBe(
+			PROPERTY_VOLTAGE
+		);
+	});
+
+	it('offers backend-approved sources lazily and reuses the result until metadata changes', async () => {
+		backendClient.POST.mockImplementation(async (_path, options) =>
+			respondWith(
+				options.body.data.candidates.map(
+					(candidate: { spec_channel: DevicesModuleChannelCategory; spec_property: DevicesModuleChannelPropertyCategory; source_property: string }) =>
+						report(candidate.spec_channel, candidate.spec_property, candidate.source_property, candidate.source_property !== READ_ONLY_PROPERTY_ID)
+				)
+			)
+		);
+		const { wrapper } = mountMappingStep();
+		await nextTick();
+		expect(backendClient.POST).not.toHaveBeenCalled();
+		const slot = wrapper.vm.slots.find((slot) => slot.key === 'light.on')!;
+		await wrapper.vm.onOptionsOpen(slot, true);
+		expect(wrapper.vm.sourceOptions(slot).flatMap((group) => group.options.map((option) => option.value))).toEqual([PROPERTY_ON]);
+		await wrapper.vm.onOptionsOpen(slot, true);
+		expect(backendClient.POST).toHaveBeenCalledTimes(1);
+	});
+
+	it('blocks an unverified pairing without showing a session failure as a mapping error', async () => {
+		backendClient.POST.mockResolvedValue({ error: { message: 'Token not found' }, response: { status: 401 } });
+		const { wrapper, selectSource, isValid } = mountMappingStep();
+		await selectSource(DevicesModuleChannelPropertyCategory.on, PROPERTY_ON);
+		expect(isValid.value).toBe(false);
+		expect(wrapper.vm.errors).toEqual({});
+		expect(flashMessage.error).not.toHaveBeenCalled();
+	});
+
+	it('bounds compatibility batches for large source catalogues', async () => {
+		vi.spyOn(propertiesStore, 'findAll').mockImplementation(
+			() => Array.from({ length: 513 }, (_, index) => ({ ...properties[0], id: `bulk-${index}` })) as IChannelProperty[]
+		);
+		const { wrapper } = mountMappingStep();
+		const slot = wrapper.vm.slots.find((slot) => slot.key === 'light.on')!;
+		await wrapper.vm.onOptionsOpen(slot, true);
+		expect(backendClient.POST.mock.calls.map(([, options]) => options.body.data.candidates.length)).toEqual([
+			...Array.from({ length: 16 }, () => 32),
+			1,
+		]);
+		expect(wrapper.vm.sourceOptions(slot).flatMap((group) => group.options)).toHaveLength(513);
+	});
+
+	it('ends a stalled compatibility check with field feedback instead of leaving Next busy', async () => {
+		vi.useFakeTimers();
+		try {
+			backendClient.POST.mockImplementation(
+				(_path, options) =>
+					new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError'))))
+			);
+			const { wrapper, selectSource, isValid } = mountMappingStep();
+			const pending = selectSource(DevicesModuleChannelPropertyCategory.on, PROPERTY_ON);
+			await vi.advanceTimersByTimeAsync(10000);
+			await pending;
+			expect(wrapper.vm.checking).toEqual({});
+			expect(isValid.value).toBe(false);
+			expect(wrapper.vm.errors['light.on']).toBe('devicesVirtualPlugin.wizard.mapping.errors.checkFailed');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not rerender the mapping table or rebuild selector options when live readings and device statuses arrive', async () => {
+		const liveProperties = ref<Record<string, IChannelProperty>>(
+			Object.fromEntries(properties.map((property) => [property.id, { ...property, value: { value: false, lastUpdated: null, trend: null } }]))
+		);
+		const liveDevices = ref<Record<string, IDevice>>(Object.fromEntries(devices.map((device) => [device.id, device])));
+		const propertyReads = vi.spyOn(propertiesStore, 'findAll').mockImplementation(() => Object.values(liveProperties.value));
+		vi.spyOn(propertiesStore, 'findById').mockImplementation((id) => liveProperties.value[id] ?? null);
+		vi.spyOn(devicesStore, 'findAll').mockImplementation(() => Object.values(liveDevices.value));
+		let updates = 0;
+		const { wrapper } = mountMappingStep({}, () => updates++);
+		await wrapper.vm.selectSource('light.on', PROPERTY_ON);
+		const slot = wrapper.vm.slots.find((slot) => slot.key === 'light.on')!;
+		await wrapper.vm.onOptionsOpen(slot, true);
+		await flushPromises();
+		const options = wrapper.vm.sourceOptions(slot);
+		const shortcut = () =>
+			wrapper
+				.findAllComponents({ name: 'ElSelectV2' })
+				.find((select) => select.props('name') === 'shortcut-channel-light')!
+				.props('options');
+		const channels = shortcut();
+		updates = 0;
+		for (let tick = 0; tick < 20; tick++) {
+			liveProperties.value[PROPERTY_ON] = {
+				...liveProperties.value[PROPERTY_ON],
+				value: { value: !!(tick % 2), lastUpdated: new Date().toISOString(), trend: null },
+			};
+			liveDevices.value[DEVICE_RELAY] = {
+				...liveDevices.value[DEVICE_RELAY],
+				status: { ...liveDevices.value[DEVICE_RELAY].status, online: !!(tick % 2) },
+				updatedAt: new Date(),
+			};
+			await nextTick();
+		}
+		propertyReads.mockClear();
+		for (let tick = 0; tick < 100; tick++)
+			liveProperties.value[PROPERTY_ON] = { ...liveProperties.value[PROPERTY_ON], value: { value: true, lastUpdated: null, trend: null } };
+		await nextTick();
+		expect(updates).toBe(0);
+		expect(wrapper.vm.sourceOptions(slot)).toBe(options);
+		expect(propertyReads.mock.calls.length).toBeLessThanOrEqual(1);
+		expect(shortcut()).toBe(channels);
+		expect(wrapper.getComponent(VirtualProjectionSourceValue).text()).toBe('true');
+		expect(
+			channels
+				.flatMap((group: { options: object[] }) => group.options)
+				.every((option: object) => Object.keys(option).sort().join(',') === 'label,value')
+		).toBe(true);
+	});
+
+	it('publishes verified sources in small batches and resumes after closing the selector', async () => {
+		vi.spyOn(propertiesStore, 'findAll').mockImplementation(
+			() => Array.from({ length: 65 }, (_, index) => ({ ...properties[0], id: `incremental-${index}` })) as IChannelProperty[]
+		);
+		let calls = 0;
+		backendClient.POST.mockImplementation((path, options) => {
+			calls++;
+			return calls === 2
+				? new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError'))))
+				: respondCompatible(path, options);
+		});
+		const { wrapper } = mountMappingStep();
+		const slot = wrapper.vm.slots.find((slot) => slot.key === 'light.on')!;
+		const loading = wrapper.vm.onOptionsOpen(slot, true);
+		await vi.waitFor(() => expect(backendClient.POST).toHaveBeenCalledTimes(2));
+		expect(wrapper.vm.sourceOptions(slot).flatMap((group) => group.options)).toHaveLength(32);
+		await wrapper.vm.onOptionsOpen(slot, false);
+		await loading;
+		await wrapper.vm.onOptionsOpen(slot, true);
+		expect(backendClient.POST.mock.calls.map(([, options]) => options.body.data.candidates.length)).toEqual([32, 32, 32, 1]);
+		expect(wrapper.vm.sourceOptions(slot).flatMap((group) => group.options)).toHaveLength(65);
+		expect(flashMessage.error).not.toHaveBeenCalled();
+	});
+
+	it('assigns unique identities to source groups without producing Element Plus duplicate-value warnings', async () => {
+		const warnings = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		backendClient.POST.mockImplementation(async (_path, options) =>
+			respondWith(
+				options.body.data.candidates.map(
+					(candidate: { spec_channel: DevicesModuleChannelCategory; spec_property: DevicesModuleChannelPropertyCategory; source_property: string }) =>
+						report(candidate.spec_channel, candidate.spec_property, candidate.source_property, candidate.source_property !== READ_ONLY_PROPERTY_ID)
+				)
+			)
+		);
+		const { wrapper } = mountMappingStep({
+			modelValue: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID)],
+		});
+		const slot = wrapper.vm.slots.find((slot) => slot.key === 'light.on')!;
+		await wrapper.vm.onOptionsOpen(slot, true);
+		await flushPromises();
+		const options = wrapper.vm.sourceOptions(slot);
+		expect(options).toHaveLength(2);
+		expect(new Set(options.map((option) => option.value)).size).toBe(options.length);
+		expect(warnings.mock.calls.some((args) => args.some((arg) => String(arg).includes('seem to be duplicated')))).toBe(false);
 	});
 
 	describe('when the wizard shell replaces the mapping list', () => {

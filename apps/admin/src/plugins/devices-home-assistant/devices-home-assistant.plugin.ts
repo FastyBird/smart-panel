@@ -14,6 +14,7 @@ import {
 	type IDevicePluginsComponents,
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
+import DeviceWizard from '../../modules/devices/components/wizard/device-wizard.vue';
 
 import {
 	HomeAssistantChannelPropertyAddForm,
@@ -107,7 +108,17 @@ export default {
 					components: {
 						deviceAddForm: HomeAssistantDeviceAddForm,
 						deviceEditForm: HomeAssistantDeviceEditForm,
-						deviceWizardAdapter: useDevicesWizard,
+						deviceWizard: {
+							selection: {
+								kind: 'integration',
+								icon: 'mdi:home-assistant',
+								order: 10,
+								description: 'devicesHomeAssistantPlugin.wizard.selection.description',
+							},
+							component: DeviceWizard,
+							props: { adapterFactory: useDevicesWizard },
+							capabilities: { discovery: true, batch: true },
+						},
 						channelPropertyAddForm: HomeAssistantChannelPropertyAddForm,
 						channelPropertyEditForm: HomeAssistantChannelPropertyEditForm,
 					},

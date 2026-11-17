@@ -6,58 +6,86 @@ import { AUTH_MODULE_PREFIX } from './auth.constants';
 import type { SessionStore } from './store/session.store.types';
 
 const REFRESH_PATH = `/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/refresh`;
+const SESSION_REJECTIONS = new Set([
+	'Token not found',
+	'Token revoked',
+	'Token expired',
+	'Invalid or expired token',
+	'Authentication required',
+	'Invalid user',
+]);
 
-export const createSessionMiddleware = (sessionStore: SessionStore): Middleware => ({
-	async onRequest({ request, schemaPath }) {
-		// Refresh authenticates with its body token. Re-entering refresh here can clear
-		// the loaded profile while the original refresh is still completing.
-		if (schemaPath === REFRESH_PATH) {
+// Distinguish rejection by our auth guard from a provider's unrelated 401.
+const isSessionRejection = async (response: Response): Promise<boolean> => {
+	if (response.status !== 401) return false;
+	try {
+		const body: unknown = await response.clone().json();
+		return typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string' && SESSION_REJECTIONS.has(body.message);
+	} catch {
+		return false;
+	}
+};
+
+export const createSessionMiddleware = (sessionStore: SessionStore, onSessionExpired?: () => void): Middleware => {
+	// Fetch consumes POST bodies, including catalog and draft-preview requests. Keep a replay
+	// before sending so a rejected authentication can be retried with the identical body once.
+	const replays = new WeakMap<Request, Request>();
+	let expirationReported = false;
+	const expireSession = () => {
+		sessionStore.clear();
+		if (!expirationReported) {
+			expirationReported = true;
+			onSessionExpired?.();
+		}
+	};
+	return {
+		async onRequest({ request, schemaPath }) {
+			// Refresh authenticates with its body token; it must never await itself.
+			if (schemaPath === REFRESH_PATH) return request;
+			if (sessionStore.tokenPair !== null && sessionStore.isExpired()) {
+				if (!(await sessionStore.refresh())) expireSession();
+			}
+			if (sessionStore.tokenPair !== null) {
+				request.headers.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
+				replays.set(request, request.clone());
+			}
 			return request;
-		}
-
-		if (sessionStore.tokenPair !== null && sessionStore.isExpired()) {
-			if (!(await sessionStore.refresh())) {
-				sessionStore.clear();
+		},
+		async onResponse({ request, response, schemaPath }) {
+			const replay = replays.get(request);
+			replays.delete(request);
+			if (schemaPath === REFRESH_PATH) return;
+			if (response.status !== 401) {
+				if (response.ok && sessionStore.tokenPair !== null) expirationReported = false;
+				return;
 			}
-		}
-
-		if (sessionStore.tokenPair !== null) {
-			request.headers.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
-		}
-
-		return request;
-	},
-	async onResponse({ request, response, schemaPath }) {
-		// Let the refresh caller handle rejection; retrying it can await its own promise.
-		if (schemaPath === REFRESH_PATH || response.status !== 401) {
-			return;
-		}
-
-		const headers = request.headers instanceof Headers ? request.headers : new Headers(request.headers as Record<string, string>);
-
-		if (headers.get('X-Retried') !== null) {
-			return;
-		}
-
-		if (sessionStore.tokenPair && sessionStore.isExpired()) {
-			if (!(await sessionStore.refresh())) {
-				sessionStore.clear();
+			if (request.headers.has('X-Retried') || request.signal.aborted) return;
+			const rejectedSession = await isSessionRejection(response);
+			const pair = sessionStore.tokenPair;
+			if (pair === null) return;
+			const currentAuthorization = `Bearer ${pair.accessToken}`;
+			const tokenChanged = request.headers.get('Authorization') !== currentAuthorization;
+			// A concurrent request may already have refreshed the rejected token. Use the newer
+			// token rather than rotating it again and invalidating the other request's retry.
+			if (!tokenChanged || sessionStore.isExpired()) {
+				if (!sessionStore.isExpired() && !rejectedSession) return;
+				if (!(await sessionStore.refresh())) {
+					if (sessionStore.tokenPair === pair) expireSession();
+					return;
+				}
 			}
-		} else if ((headers.get('Authorization') || '').startsWith('Bearer')) {
-			return;
-		}
-
-		if (sessionStore.tokenPair === null) {
-			return;
-		}
-
-		const retryHeaders = new Headers(headers);
-
-		retryHeaders.set('X-Retried', '1');
-		retryHeaders.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
-
-		const retryReq = new Request(request, { headers: retryHeaders });
-
-		return fetch(retryReq);
-	},
-});
+			if (sessionStore.tokenPair === null || request.signal.aborted) return;
+			const retryAuthorization = `Bearer ${sessionStore.tokenPair.accessToken}`;
+			const headers = new Headers(request.headers);
+			headers.set('X-Retried', '1');
+			headers.set('Authorization', retryAuthorization);
+			const retryResponse = await fetch(new Request(replay ?? request, { headers }));
+			if ((await isSessionRejection(retryResponse)) && `Bearer ${sessionStore.tokenPair?.accessToken}` === retryAuthorization) {
+				expireSession();
+			} else if (retryResponse.ok) {
+				expirationReported = false;
+			}
+			return retryResponse;
+		},
+	};
+};

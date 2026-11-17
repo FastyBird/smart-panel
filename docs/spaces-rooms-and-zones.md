@@ -4,6 +4,8 @@ This document defines the conceptual model for **Rooms** and **Zones** within th
 It is intended to be part of the `/docs` folder and serves as an architectural reference for backend, admin UI,
 and panel UX design.
 
+The relationship constraints are defined in [Spaces & Devices Relations](./spaces-devices-relations.md).
+
 ---
 
 ## 1. Purpose
@@ -64,6 +66,7 @@ Represents vertical grouping of Rooms inside the building.
 **Rules:**
 - A Room belongs to **at most one floor zone**
 - Floor zones typically contain Rooms only
+- Device membership in a floor zone is derived from its Room; devices cannot be assigned to a floor zone directly
 
 ---
 
@@ -82,6 +85,7 @@ Represents areas **outside the building envelope**
 **Rules:**
 - Outdoor zones usually do NOT contain Rooms
 - Devices are assigned directly to the Zone
+- This is contextual membership and does not replace or exclude a device's optional Room assignment
 
 ---
 
@@ -102,8 +106,10 @@ Represents a logical grouping based on function rather than location.
 
 ## 4. Relationship Model (MVP)
 
-- Room → optional `floor` Zone
-- Device → one primary Room OR one Outdoor Zone
+- Room → optional parent Zone (typically a floor)
+- Device → zero or one primary Room
+- Device ↔ zero or more non-floor Zones as contextual membership, independently of its Room assignment
+- Device → Room → floor Zone; floor membership is derived from the Room hierarchy
 - Display:
   - room panels → assigned to a Room
   - master/entry panels → no Room assignment
@@ -131,5 +137,6 @@ Zones are NOT:
 
 - Rooms = interaction
 - Zones = aggregation
+- A device can belong to one Room and several non-floor Zones at the same time
 - Displays = interaction surface
 - House Modes = global state

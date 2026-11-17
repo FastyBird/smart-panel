@@ -1,11 +1,12 @@
 import { ref } from 'vue';
 
-import { ElButton, ElCheckbox, ElFormItem, ElInput, ElInputNumber, ElSelect } from 'element-plus';
+import { ElButton, ElCheckbox, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { type ThermostatConfiguration, draftFromConfiguration } from '../services/thermostat-authoring';
+import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
+import { type ThermostatConfiguration, type ThermostatMemberDraft, draftFromConfiguration } from '../services/thermostat-authoring';
 import { ThermostatMemberFreshness, type ThermostatMemberRuntime } from '../services/thermostat-members';
 
 import ThermostatMemberCard from './thermostat-member-card.vue';
@@ -14,16 +15,40 @@ import ThermostatMemberRecovery from './thermostat-member-recovery.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
 import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
 import VirtualThermostatEditor from './virtual-thermostat-editor.vue';
+import VirtualWizardSourcePicker from './virtual-wizard-source-picker.vue';
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), post: vi.fn(), profile: { role: 'owner' }, on: vi.fn(), off: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+	flashError: vi.fn(),
+	get: vi.fn(),
+	put: vi.fn(),
+	post: vi.fn(),
+	profile: { role: 'owner' },
+	catalogue: { devices: [] as Record<string, unknown>[], channels: [] as Record<string, unknown>[], properties: [] as Record<string, unknown>[] },
+	on: vi.fn(),
+	off: vi.fn(),
+}));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../modules/auth/composables/useSession', () => ({ useSession: () => ({ profile: ref(mocks.profile) }) }));
 vi.mock('../../../common', () => ({
+	useFlashMessage: () => ({ error: mocks.flashError }),
 	useBackend: () => ({ client: { GET: mocks.get, PUT: mocks.put, POST: mocks.post } }),
 	getErrorReason: () => 'failure',
 	injectSockets: () => ({ on: mocks.on, off: mocks.off }),
 	// The spaces store behind the room and zone inputs of a new thermostat.
-	injectStoresManager: () => ({ getStore: () => ({ fetch: async () => undefined, findAll: () => [] }) }),
+	injectStoresManager: () => ({
+		getStore: (key: symbol) => ({
+			fetch: async () => undefined,
+			firstLoadFinished: () => true,
+			findAll: () =>
+				key === devicesStoreKey
+					? mocks.catalogue.devices
+					: key === channelsStoreKey
+						? mocks.catalogue.channels
+						: key === channelsPropertiesStoreKey
+							? mocks.catalogue.properties
+							: [],
+		}),
+	}),
 }));
 const context = (id: string) => ({
 	physical_identity: `canonical-${id}`,
@@ -88,10 +113,68 @@ const configuration = (count = 2, missing = false) => ({
 	settings: [],
 	released_actuators: [{ id: 'released-history', release_evidence: { evidenceId: 'historical-proof' } }],
 });
+const resetCatalogue = () => {
+	mocks.catalogue.devices = [
+		{ id: 'sensor', name: 'Room temperature sensor', type: 'devices-zigbee2mqtt', roomId: null, zoneIds: [], status: { online: true } },
+		...Array.from({ length: 2 }, (_, index) => ({
+			id: `relay-device-${index}`,
+			name: `Relay ${index}`,
+			type: 'devices-shelly-ng',
+			roomId: null,
+			zoneIds: [],
+			status: { online: true },
+		})),
+	];
+	mocks.catalogue.channels = [
+		{ id: 'temperature-channel', device: 'sensor', category: 'temperature', name: 'Room temperature' },
+		{ id: 'contact-channel', device: 'sensor', category: 'contact', name: 'Window' },
+		...Array.from({ length: 2 }, (_, index) => ({
+			id: `relay-channel-${index}`,
+			device: `relay-device-${index}`,
+			category: 'switcher',
+			identifier: 'switch:0',
+			name: 'Relay output',
+		})),
+	];
+	mocks.catalogue.properties = [
+		{
+			id: 'ambient',
+			channel: 'temperature-channel',
+			category: 'temperature',
+			name: 'Temperature',
+			dataType: 'float',
+			permissions: ['ro'],
+			unit: '°C',
+			value: { value: 20, lastUpdated: new Date().toISOString() },
+		},
+		{
+			id: 'window',
+			channel: 'contact-channel',
+			category: 'detected',
+			name: 'Contact',
+			dataType: 'bool',
+			permissions: ['ro'],
+			value: { value: false, lastUpdated: new Date().toISOString() },
+		},
+		{ id: 'not-contact', channel: 'temperature-channel', category: 'active', name: 'Active', dataType: 'bool', permissions: ['ro'] },
+		...Array.from({ length: 2 }, (_, index) => ({
+			id: `relay-${index}`,
+			channel: `relay-channel-${index}`,
+			category: 'on',
+			identifier: 'output',
+			name: 'On',
+			dataType: 'bool',
+			permissions: ['rw'],
+			value: { value: false, lastUpdated: new Date().toISOString() },
+		})),
+	];
+};
+
 let view: VueWrapper | undefined;
 let current = configuration();
 beforeEach(() => {
 	vi.clearAllMocks();
+	resetCatalogue();
 	mocks.profile.role = 'owner';
 	current = configuration();
 	mocks.get.mockImplementation((path: string, options: { params: { path: Record<string, string> } }) => {
@@ -135,6 +218,240 @@ const setNumber = (wrapper: VueWrapper, label: string, value: number) =>
 
 describe('actual mandatory-member authoring forms', () => {
 	vi.setConfig({ testTimeout: 30000 });
+	it('validates only the current step and defers policy fields until after sensor and relay selection', async () => {
+		const editor = await open(true);
+		const next = async () => {
+			await editor.get('[data-test-id="wizard-action-next"]').trigger('click');
+			await flushPromises();
+		};
+		const currentStep = () => editor.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue');
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('steps')).toHaveLength(5);
+		expect(editor.findAllComponents(ElInputNumber)).toHaveLength(0);
+		await next();
+		expect(currentStep()).toBe(0);
+		expect(
+			editor
+				.findAllComponents(ElFormItem)
+				.find((field) => field.props('label') === 'devicesModule.fields.devices.name.title')!
+				.props('error')
+		).toBe('devicesModule.fields.devices.name.validation.required');
+		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Room');
+		await next();
+		expect(currentStep()).toBe(1);
+		expect(editor.find('[data-source-id="ambient"]').exists()).toBe(true);
+		expect(editor.find('[data-source-id="window"]').exists()).toBe(true);
+		expect(editor.find('[data-source-id="not-contact"]').exists()).toBe(false);
+		await next();
+		expect(currentStep()).toBe(1);
+		await editor.get('[data-source-id="ambient"]').trigger('click');
+		await next();
+		expect(currentStep()).toBe(2);
+		expect(editor.findAllComponents(ElInputNumber)).toHaveLength(0);
+		await next();
+		expect(currentStep()).toBe(2);
+		await editor.get('[data-source-id="relay-0"]').trigger('click');
+		await next();
+		expect(currentStep()).toBe(3);
+		const heating = editor.findAllComponents(ElFormItem).find((field) => field.props('label') === 'devicesVirtualPlugin.thermostat.heatingSetpoint')!;
+		expect(heating.props('required')).toBe(true);
+		expect(heating.findComponent(ElInputNumber).props('modelValue')).toBe(21);
+		expect(editor.findAllComponents(ElFormItem).some((field) => field.props('label') === 'devicesVirtualPlugin.thermostat.coolingSetpoint')).toBe(
+			false
+		);
+		expect(editor.findAllComponents(ThermostatPropertyPicker)).toHaveLength(0);
+		expect(editor.findAllComponents(ElCheckbox).some((entry) => entry.text().includes('floorProtect'))).toBe(false);
+		expect(editor.findAllComponents(ElFormItem).some((field) => field.props('label') === 'devicesVirtualPlugin.thermostat.floorLimit')).toBe(false);
+		expect(editor.text()).not.toContain('devicesVirtualPlugin.members.displayFloor');
+		expect(mocks.get.mock.calls.some(([path]) => path.includes('member-authoring'))).toBe(false);
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.heatingSetpoint', 21);
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.coldTolerance', Number.NaN);
+		await next();
+		expect(currentStep()).toBe(3);
+		expect(mocks.post.mock.calls.some(([path]) => path.endsWith('/draft-preview'))).toBe(false);
+		expect(
+			editor
+				.findAllComponents(ElFormItem)
+				.find((field) => field.props('label') === 'devicesVirtualPlugin.thermostat.coldTolerance')!
+				.props('error')
+		).toContain('coldTolerance');
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.coldTolerance', 0.5);
+		await next();
+		expect(currentStep()).toBe(4);
+		expect(mocks.post.mock.calls.filter(([path]) => path.endsWith('/draft-preview'))).toHaveLength(1);
+	});
+	it('assigns heat/cool in selection, configures boolean contacts later, and repairs the preview after removing a branch', async () => {
+		const editor = await open(true);
+		const next = async () => {
+			await editor.get('[data-test-id="wizard-action-next"]').trigger('click');
+			await flushPromises();
+		};
+		const back = async () => {
+			await editor.get('[data-test-id="wizard-action-back"]').trigger('click');
+			await flushPromises();
+		};
+		const role = (id: string) => editor.findAllComponents(ElSelect).find((select) => select.attributes('data-thermostat-role') === id)!;
+		const contactField = (key: string) =>
+			editor
+				.findAllComponents(ElFormItem)
+				.find((field) => field.props('label') === `devicesVirtualPlugin.thermostat.wizard.${key}`)!
+				.findComponent(ElSelect);
+		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Room');
+		await next();
+		await editor.get('[data-source-id="ambient"]').trigger('click');
+		await editor.get('[data-source-id="window"]').trigger('click');
+		expect(role('window').props('disabled')).toBe(true);
+		await next();
+		await editor.get('[data-source-id="relay-0"]').trigger('click');
+		await editor.get('[data-source-id="relay-1"]').trigger('click');
+		role('relay-1').vm.$emit('update:modelValue', 'cooling');
+		await next();
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.heatingSetpoint', 21);
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.coolingSetpoint', 25);
+		contactField('openValue').vm.$emit('update:modelValue', true);
+		contactField('closedValue').vm.$emit('update:modelValue', true);
+		await next();
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(3);
+		expect(mocks.post.mock.calls.some(([path]) => path.endsWith('/draft-preview'))).toBe(false);
+		contactField('closedValue').vm.$emit('update:modelValue', false);
+		await next();
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(4);
+		const first = mocks.post.mock.calls.find(([path]) => path.endsWith('/draft-preview'))![1].body.configuration;
+		expect(first.actuators.map((member: { role: string }) => member.role)).toEqual(['heating', 'cooling']);
+		expect(first.sources.find((source: { role: string }) => source.role === 'contact')).toMatchObject({ open_value: true, closed_value: false });
+		await back();
+		await back();
+		editor
+			.findAllComponents(VirtualWizardSourcePicker)
+			.find((picker) => !picker.props('readOnly'))!
+			.vm.$emit('remove', 'relay-1');
+		await next();
+		expect(editor.findAllComponents(ElFormItem).some((field) => field.props('label') === 'devicesVirtualPlugin.thermostat.coolingSetpoint')).toBe(
+			false
+		);
+		expect(
+			editor
+				.findAllComponents(ElFormItem)
+				.find((field) => field.props('label') === 'devicesVirtualPlugin.thermostat.heatingSetpoint')!
+				.findComponent(ElInputNumber)
+				.props('modelValue')
+		).toBe(21);
+		await next();
+		const previews = mocks.post.mock.calls.filter(([path]) => path.endsWith('/draft-preview'));
+		expect(previews).toHaveLength(2);
+		expect(previews[1][1].body.configuration.policy).toMatchObject({ heatingSetpoint: 21, coolingSetpoint: null, cooling: null });
+		expect(previews[1][1].body.configuration.actuators).toHaveLength(1);
+	});
+	it('selects cooling inputs in Sensors, auto-binds the qualified surface and sends only real control sources to the API', async () => {
+		mocks.catalogue.devices.push({
+			id: 'dew-device',
+			name: 'Room dew point',
+			type: 'virtual',
+			mode: 'dew_point',
+			roomId: null,
+			zoneIds: [],
+			status: { online: false },
+		});
+		mocks.catalogue.channels.push(
+			{ id: 'dew-channel', device: 'dew-device', category: 'temperature', name: 'Dew point' },
+			{ id: 'surface-channel', device: 'relay-device-1', category: 'temperature', name: 'Surface probe' }
+		);
+		mocks.catalogue.properties.push(
+			{
+				id: 'dew-reading',
+				channel: 'dew-channel',
+				category: 'temperature',
+				name: 'Dew point',
+				dataType: 'float',
+				permissions: ['ro'],
+				unit: '°C',
+				valueOrigin: 'derived',
+				sourceProperty: null,
+			},
+			{
+				id: 'surface-reading',
+				channel: 'surface-channel',
+				category: 'temperature',
+				name: 'Surface temperature',
+				dataType: 'float',
+				permissions: ['ro'],
+				unit: '°C',
+			}
+		);
+		const fallbackGet = mocks.get.getMockImplementation()!;
+		mocks.get.mockImplementation((path, options) => {
+			if (!path.includes('member-authoring')) return fallbackGet(path, options);
+			const value = context(options.params.path.property);
+			value.candidates.push({ ...value.candidates[0], property: 'surface-reading', name: 'Surface probe' });
+			return Promise.resolve({ data: { data: value } });
+		});
+		const editor = await open(true);
+		const next = async () => {
+			await editor.get('[data-test-id="wizard-action-next"]').trigger('click');
+			await flushPromises();
+		};
+		const role = (id: string) => editor.findAllComponents(ElSelect).find((select) => select.attributes('data-thermostat-role') === id)!;
+		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Cool room');
+		await next();
+		await editor.get('[data-source-id="ambient"]').trigger('click');
+		await next();
+		await editor.get('[data-source-id="relay-1"]').trigger('click');
+		role('relay-1').vm.$emit('update:modelValue', 'cooling');
+		await next();
+		editor.findComponent(VirtualCoolingPolicyEditor).findComponent(ElSwitch).vm.$emit('change', true);
+		await flushPromises();
+		expect(editor.find('[data-test-id="cooling-dew-point"]').exists()).toBe(false);
+		await next();
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(1);
+		expect(
+			editor
+				.findAllComponents(ElFormItem)
+				.find((field) => field.attributes('data-test-id') === 'thermostat-selection-error')!
+				.props('error')
+		).toContain('devicesVirtualPlugin.thermostat.errors.coolingDewPointSource');
+		expect(mocks.post.mock.calls.some(([path]) => path.endsWith('/draft-preview'))).toBe(false);
+		await editor.get('[data-source-id="dew-reading"]').trigger('click');
+		await editor.get('[data-source-id="surface-reading"]').trigger('click');
+		role('surface-reading').vm.$emit('update:modelValue', 'cooled_surface');
+		await next();
+		await next();
+		const card = editor.findComponent(ThermostatMemberCard);
+		expect(card.props('member').cooling_protection).toMatchObject({
+			dew_point_property: 'dew-reading',
+			surface_property: 'surface-reading',
+			maximum_age_seconds: 60,
+		});
+		expect(
+			card
+				.getComponent('[data-test-id="cooling-surface-picker"]')
+				.findAllComponents(ElOption)
+				.map((option) => option.props('label'))
+		).toEqual(['Relay 1 · Surface temperature']);
+		expect(editor.findAllComponents(ElFormItem).some((field) => field.props('label') === 'devicesVirtualPlugin.thermostat.floorLimit')).toBe(false);
+		await next();
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(4);
+		const request = mocks.post.mock.calls.find(([path]) => path.endsWith('/draft-preview'))![1].body.configuration;
+		expect(request.sources.map((source: { role: string }) => source.role)).toEqual(['ambient']);
+		expect(request.coolingSources).toBeUndefined();
+		expect(request.actuators[0].cooling_protection).toMatchObject({
+			dew_point_property: 'dew-reading',
+			surface_property: 'surface-reading',
+			maximum_age_seconds: 60,
+		});
+		expect(editor.findAllComponents(VirtualWizardSourcePicker)[0].props('selected')).toHaveLength(3);
+		await editor.get('[data-test-id="wizard-action-back"]').trigger('click');
+		await flushPromises();
+		await button(editor.findComponent(VirtualCoolingPolicyEditor), 'devicesVirtualPlugin.thermostat.wizard.selectCoolingSources').trigger('click');
+		await flushPromises();
+		editor.findComponent(VirtualWizardSourcePicker).vm.$emit('remove', 'surface-reading');
+		await next();
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(1);
+		expect(
+			editor
+				.findAllComponents(ElFormItem)
+				.find((field) => field.attributes('data-test-id') === 'thermostat-selection-error')!
+				.props('error')
+		).toContain('devicesVirtualPlugin.thermostat.errors.coolingSurfaceSource');
+	});
 	it('repairs retained cooling through the actual editor and invalidates preview approval after a protection edit', async () => {
 		const stored = configuration(1);
 		current = {
@@ -201,56 +518,163 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(JSON.stringify(request)).not.toContain('qualification');
 		expect(mocks.post.mock.calls.some(([path]) => path.includes('/verify'))).toBe(false);
 	});
-	it('previews and creates two distinct local members through the real editor controls', async () => {
+	it('automatically binds only the selected compatible floor sensor to two outputs on the same relay device', async () => {
+		// Both outputs and the qualified floor probe belong to one physical Shelly.
+		mocks.catalogue.channels.find((channel) => channel.id === 'relay-channel-1')!.device = 'relay-device-0';
+		mocks.catalogue.channels.find((channel) => channel.id === 'relay-channel-1')!.identifier = 'switch:1';
+		mocks.catalogue.channels.push({ id: 'floor-channel', device: 'relay-device-0', category: 'temperature', name: 'Floor probe' });
+		mocks.catalogue.properties.push({
+			id: 'selected-floor',
+			channel: 'floor-channel',
+			category: 'temperature',
+			name: 'Floor temperature',
+			dataType: 'float',
+			permissions: ['ro'],
+			unit: '°C',
+		});
+		const fallbackGet = mocks.get.getMockImplementation()!;
+		const completeContext: (() => void)[] = [];
+		mocks.get.mockImplementation((path, options) => {
+			if (!path.includes('member-authoring')) return fallbackGet(path, options);
+			const value = context(options.params.path.property);
+			value.candidates.push({ ...value.candidates[0], property: 'selected-floor', name: 'Floor probe' });
+			return new Promise((resolve) => completeContext.push(() => resolve({ data: { data: value } })));
+		});
 		const editor = await open(true);
-		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Room');
-		for (const [label, value] of Object.entries({
-			'devicesVirtualPlugin.thermostat.heatingSetpoint': 21,
-			'devicesVirtualPlugin.thermostat.coldTolerance': 0.5,
-			'devicesVirtualPlugin.thermostat.hotTolerance': 0.5,
-			'devicesVirtualPlugin.thermostat.neutralMargin': 1,
-			'devicesVirtualPlugin.thermostat.minimumOff': 0,
-			'devicesVirtualPlugin.thermostat.changeover': 0,
-			'devicesVirtualPlugin.thermostat.contactOpening': 0,
-			'devicesVirtualPlugin.thermostat.contactClosing': 0,
-		}))
-			setNumber(editor, label, value);
-		editor
-			.findAllComponents(ElCheckbox)
-			.find((entry) => entry.text().includes('devicesVirtualPlugin.thermostat.floorProtect'))!
-			.vm.$emit('change', true);
-		await flushPromises();
-		setNumber(editor, 'devicesVirtualPlugin.thermostat.floorLimit', 28);
-		setNumber(editor, 'devicesVirtualPlugin.thermostat.floorHysteresis', 1);
-		await button(editor, 'devicesVirtualPlugin.thermostat.sources.addAmbient').trigger('click');
-		editor
-			.findAllComponents(ThermostatPropertyPicker)
-			.find((entry) => entry.props('kind') === 'ambient')!
-			.vm.$emit('update:modelValue', 'ambient');
-		setNumber(editor, 'devicesVirtualPlugin.thermostat.sources.maximumAge', 60);
-		for (let index = 0; index < 2; index++) {
-			await button(editor, 'devicesVirtualPlugin.members.addMember · devicesVirtualPlugin.thermostat.roles.heating').trigger('click');
-			const card = editor.findAllComponents(ThermostatMemberCard)[index];
-			card.findComponent(ThermostatPropertyPicker).vm.$emit('update:modelValue', `relay-${index}`);
-			card.findComponent(ElInputNumber).vm.$emit('update:modelValue', 30);
-			card.findComponent(ElCheckbox).vm.$emit('change', true);
+		const next = async () => {
+			await editor.get('[data-test-id="wizard-action-next"]').trigger('click');
 			await flushPromises();
-			card.findComponent(ElSelect).vm.$emit('change', `floor-relay-${index}`);
-			setNumber(card, 'devicesVirtualPlugin.members.maximumAge', 30);
+		};
+		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Room');
+		await next();
+		await editor.get('[data-source-id="ambient"]').trigger('click');
+		await editor.get('[data-source-id="selected-floor"]').trigger('click');
+		await next();
+		await editor.get('[data-source-id="relay-0"]').trigger('click');
+		await editor.get('[data-source-id="relay-1"]').trigger('click');
+		await next();
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('canAdvance')).toBe(false);
+		expect(mocks.post.mock.calls.some(([path]) => path.endsWith('/draft-preview'))).toBe(false);
+		completeContext.forEach((complete) => complete());
+		await flushPromises();
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('canAdvance')).toBe(true);
+		expect(editor.findAllComponents(ElCheckbox).some((entry) => entry.text().includes('floorProtect'))).toBe(false);
+		for (const card of editor.findAllComponents(ThermostatMemberCard)) {
+			expect(card.findComponent(ThermostatPropertyPicker).exists()).toBe(false);
+			expect(card.findComponent(ElCheckbox).exists()).toBe(false);
+			expect(card.props('member').protection).toMatchObject({ source_property: 'selected-floor', maximum_age_seconds: 300 });
+			expect(card.findComponent(ElSelect).props('modelValue')).toBe('selected-floor');
+			// A backend candidate that was not selected in Sensors cannot be assigned.
+			card.findComponent(ElSelect).vm.$emit('change', 'floor-relay-0');
+			expect(card.props('member').protection!.source_property).toBe('selected-floor');
 		}
-		await flushPromises();
-		// Creation is stepped: reaching the review step previews the draft by itself.
-		editor.findComponent({ name: 'VirtualWizardSteps' }).vm.$emit('update:modelValue', 3);
-		await flushPromises();
-		await flushPromises();
+		await next();
+		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(4);
 		const preview = mocks.post.mock.calls.find(([path]) => path.endsWith('/draft-preview'))!;
 		expect(
 			preview[1].body.configuration.actuators.map((member: { protection: { source_property: string } }) => member.protection.source_property)
-		).toEqual(['floor-relay-0', 'floor-relay-1']);
+		).toEqual(['selected-floor', 'selected-floor']);
+		const reviewTables = editor.findAllComponents(VirtualWizardSourcePicker);
+		expect(reviewTables).toHaveLength(2);
+		expect(reviewTables.every((table) => table.props('readOnly'))).toBe(true);
+		expect(reviewTables[0].props('selected')).toHaveLength(2);
+		expect(reviewTables[1].props('selected')).toHaveLength(2);
+		expect(new Set(reviewTables[1].props('selected').map((row) => row.id)).size).toBe(2);
+		expect(editor.get('[data-test-id="thermostat-processing-summary"]').text()).toContain('21');
 		await button(editor, 'devicesVirtualPlugin.thermostat.actions.create').trigger('click');
 		await flushPromises();
 		expect(editor.emitted('created')).toEqual([['created-controller']]);
 		expect(mocks.post.mock.calls.some(([path]) => path.includes('/verify'))).toBe(false);
+	});
+	it('never binds an unselected or incompatible local probe and preserves an edited age across selection updates', async () => {
+		const member = { role: 'heating', source_property: 'relay-0', lease_seconds: 600 } as ThermostatMemberDraft;
+		view = mount(ThermostatMemberCard, {
+			props: {
+				member,
+				floorSources: [{ id: 'incompatible-floor', label: 'Remote floor sensor', maximumAgeSeconds: 300 }],
+				selectable: false,
+				parallel: true,
+				configurationRevision: 0,
+				requestedLimit: 28,
+				disabled: false,
+				receivedAt: 0,
+				now: 0,
+				runtime: null,
+			},
+		});
+		await flushPromises();
+		expect(member.protection).toBeUndefined();
+		expect(view.text()).toContain('devicesVirtualPlugin.members.selectedFloorRequired');
+		await view.setProps({ floorSources: [{ id: 'floor-relay-0', label: 'Selected floor temperature', maximumAgeSeconds: 300 }] });
+		await flushPromises();
+		expect(member.protection).toMatchObject({
+			source_property: 'floor-relay-0',
+			maximum_age_seconds: 300,
+		});
+		expect(view.findAllComponents(ElOption).map((option) => option.props('label'))).toEqual(['Selected floor temperature']);
+		setNumber(view, 'devicesVirtualPlugin.members.maximumAge', 120);
+		await view.setProps({ floorSources: [{ id: 'floor-relay-0', label: 'Selected floor temperature', maximumAgeSeconds: 60 }] });
+		expect(member.protection!.maximum_age_seconds).toBe(120);
+		await view.setProps({ floorSources: [] });
+		expect(member.protection).toBeUndefined();
+	});
+	it('filters cooling surfaces by both the selected sources and the local relay contract', async () => {
+		const member = { role: 'cooling', source_property: 'relay-0', lease_seconds: 600 } as ThermostatMemberDraft;
+		view = mount(ThermostatMemberCard, {
+			props: {
+				member,
+				floorSources: [],
+				coolingSources: [
+					{ id: 'dew', label: 'Room dew point', role: 'dew_point' },
+					{ id: 'wrong-device', label: 'Other surface', role: 'cooled_surface' },
+				],
+				parallel: false,
+				selectable: false,
+				configurationRevision: 0,
+				requestedLimit: null,
+				disabled: false,
+				receivedAt: 0,
+				now: 0,
+				runtime: null,
+			},
+		});
+		await flushPromises();
+		expect(member.cooling_protection).toMatchObject({ dew_point_property: 'dew', surface_property: null, maximum_age_seconds: 60 });
+		expect(
+			view
+				.findAllComponents(ElSelect)
+				.find((select) => select.attributes('data-test-id') === 'cooling-surface-picker')!
+				.findAllComponents(ElOption)
+		).toHaveLength(0);
+		await view.setProps({
+			coolingSources: [
+				{ id: 'dew', label: 'Room dew point', role: 'dew_point' },
+				{ id: 'floor-relay-0', label: 'Selected local surface', role: 'cooled_surface' },
+			],
+		});
+		expect(member.cooling_protection!.surface_property).toBe('floor-relay-0');
+		await view.setProps({ coolingSources: [] });
+		expect(member.cooling_protection).toMatchObject({ dew_point_property: null, surface_property: null });
+		expect(mocks.get.mock.calls.filter(([path]) => path.includes('member-authoring'))).toHaveLength(1);
+	});
+	it('does not detach an installed local guard when the wizard floor selection is empty', async () => {
+		const member = draftFromConfiguration(configuration(1) as unknown as ThermostatConfiguration).actuators[0];
+		view = mount(ThermostatMemberCard, {
+			props: {
+				member,
+				floorSources: [],
+				parallel: false,
+				configurationRevision: 3,
+				requestedLimit: 28,
+				disabled: false,
+				receivedAt: 0,
+				now: 0,
+				runtime: null,
+			},
+			global: { stubs: { ThermostatMemberInstallation: true, ThermostatMemberRecovery: true } },
+		});
+		await flushPromises();
+		expect(member.protection!.source_property).toBe('floor-0');
 	});
 	it('edits two members while retaining exact claims and exposes released evidence separately', async () => {
 		const editor = await open();
@@ -259,7 +683,7 @@ describe('actual mandatory-member authoring forms', () => {
 		const card = editor.findAllComponents(ThermostatMemberCard)[0];
 		expect(card.text()).toContain('claim-0');
 		expect(card.text()).toContain('canonical-0');
-		expect(card.findAllComponents(ElButton).some((entry) => entry.text().includes('removeDraft'))).toBe(false);
+		expect(card.findAllComponents(ElButton).some((entry) => entry.attributes('aria-label')?.includes('removeDraft'))).toBe(false);
 		await button(editor, 'devicesVirtualPlugin.thermostat.actions.preview').trigger('click');
 		await flushPromises();
 		await button(editor, 'devicesVirtualPlugin.thermostat.actions.save').trigger('click');
@@ -351,7 +775,7 @@ describe('actual mandatory-member authoring forms', () => {
 		const cards = editor.findAllComponents(ThermostatMemberCard);
 		expect(cards).toHaveLength(outcome === 'released' ? 0 : 2);
 		if (outcome === 'releasing') expect(cards[0].props('member').retained).toMatchObject({ state: 'releasing', revision: 5 });
-		if (outcome === 'refused') expect(editor.text()).toContain('release_revision_changed');
+		if (outcome === 'refused') expect(mocks.flashError).toHaveBeenCalledWith(expect.stringContaining('release_revision_changed'));
 	});
 	it('stages versioned installation through real controls with derived read-only metadata and exact fences', async () => {
 		const editor = await open(),
@@ -441,7 +865,7 @@ describe('actual mandatory-member authoring forms', () => {
 		mocks.post.mockResolvedValueOnce({ error: { message: 'source_contract_changed' } });
 		await button(editor, 'devicesVirtualPlugin.thermostat.actions.preview').trigger('click');
 		await flushPromises();
-		expect(editor.text()).toContain('source_contract_changed');
+		expect(mocks.flashError).toHaveBeenCalledWith(expect.stringContaining('source_contract_changed'));
 		expect(button(editor, 'devicesVirtualPlugin.thermostat.actions.save').props('disabled')).toBe(true);
 		expect(editor.findComponent(ThermostatMemberCard).props('member').retained!.id).toBe('claim-0');
 	});
@@ -452,7 +876,7 @@ describe('actual mandatory-member authoring forms', () => {
 		mocks.put.mockResolvedValueOnce({ error: { message: 'configuration_revision_changed' }, response: { status: 409 } });
 		await button(editor, 'devicesVirtualPlugin.thermostat.actions.save').trigger('click');
 		await flushPromises();
-		expect(editor.text()).toContain('configuration_revision_changed');
+		expect(mocks.flashError).toHaveBeenCalledWith(expect.stringContaining('configuration_revision_changed'));
 		expect(editor.findAllComponents(ThermostatMemberCard).map((card) => card.props('member').retained!.id)).toEqual(['claim-0', 'claim-1']);
 		expect(mocks.put).toHaveBeenCalledTimes(1);
 	});

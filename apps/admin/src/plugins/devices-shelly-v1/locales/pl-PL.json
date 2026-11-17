@@ -138,5 +138,10 @@
 				"title": "Dodaj"
 			}
 		}
+	},
+	"wizard": {
+		"selection": {
+			"description": "Urządzenia Shelly pierwszej generacji w Twojej sieci."
+		}
 	}
 }

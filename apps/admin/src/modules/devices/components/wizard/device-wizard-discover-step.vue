@@ -74,6 +74,12 @@
 					v-for="field in control.fields"
 					:key="field.key"
 					:label="field.label"
+					:required="field.required"
+					:error="
+						attemptedForms[control.id] && field.required && !formValues[control.id]?.[field.key]?.trim()
+							? t('devicesModule.wizard.validation.required')
+							: undefined
+					"
 					class="mb-0!"
 				>
 					<el-input
@@ -295,6 +301,7 @@ const tableMinWidth = computed<number>(() => extraColumns.value.reduce((width, c
 // Field values are keyed by control id so several forms can coexist. Rebuilt whenever the
 // set of form controls changes so a newly-declared form always has a backing record.
 const formValues = reactive<Record<string, Record<string, string>>>({});
+const attemptedForms = reactive<Record<string, boolean>>({});
 
 watch(
 	forms,
@@ -311,9 +318,13 @@ watch(
 // Clear the inputs only when the handler resolves — a rejection leaves what the user typed
 // in place so they can correct it and retry.
 const onSubmitForm = async (control: IWizardFormControl): Promise<void> => {
+	if (control.submitDisabled || control.loading) return;
+	attemptedForms[control.id] = true;
+	if (control.fields.some((field) => field.required && !formValues[control.id]?.[field.key]?.trim())) return;
 	try {
 		await control.handler({ ...formValues[control.id] });
 
+		attemptedForms[control.id] = false;
 		formValues[control.id] = Object.fromEntries(control.fields.map((field) => [field.key, '']));
 	} catch {
 		// Errors are surfaced by the adapter via flashMessage.

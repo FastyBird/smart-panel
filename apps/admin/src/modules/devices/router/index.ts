@@ -36,7 +36,9 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'wizard',
-				redirect: { name: RouteNames.DEVICES },
+				name: RouteNames.DEVICES_WIZARD_SELECT,
+				component: () => import('../views/view-devices-wizard.vue'),
+				meta: { devicesWizard: true },
 			},
 			{
 				path: 'wizard/:type',

@@ -1,15 +1,29 @@
 import { reactive } from 'vue';
 
-import { ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch } from 'element-plus';
+import { ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTooltip } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 
+import DeviceWizardReviewChecks from '../../../modules/devices/components/wizard/device-wizard-review-checks.vue';
 import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 
 import VirtualMeasurementEditor from './virtual-measurement-editor.vue';
+import VirtualWizardReviewSection from './virtual-wizard-review-section.vue';
+import VirtualWizardSourcePicker from './virtual-wizard-source-picker.vue';
 
-const mocks = vi.hoisted(() => ({ GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), properties: [] as unknown[] }));
+enableAutoUnmount(afterEach);
+
+const mocks = vi.hoisted(() => ({
+	flashError: vi.fn(),
+	GET: vi.fn(),
+	POST: vi.fn(),
+	PUT: vi.fn(),
+	properties: [] as unknown[],
+	devices: [] as unknown[],
+	channels: [] as unknown[],
+	reads: { properties: 0, devices: 0, channels: 0 },
+}));
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string, params?: unknown) => `${key}${params ? JSON.stringify(params) : ''}`, te: () => true }),
 }));
@@ -19,12 +33,19 @@ vi.mock('../../../modules/devices/store/keys', () => ({
 	channelsPropertiesStoreKey: 'properties',
 }));
 vi.mock('../../../common', () => ({
+	useFlashMessage: () => ({ error: mocks.flashError }),
 	useBackend: () => ({ client: mocks }),
 	injectStoresManager: () => ({
 		getStore: (key: string) => ({
 			fetch: async () => {},
-			findAll: () => (key === 'properties' ? mocks.properties : []),
-			findById: (id: string) => (key === 'properties' ? mocks.properties.find((property) => (property as { id: string }).id === id) : null),
+			findAll: () => {
+				if (key === 'properties' || key === 'devices' || key === 'channels') mocks.reads[key]++;
+				return key === 'properties' ? mocks.properties : key === 'devices' ? mocks.devices : key === 'channels' ? mocks.channels : [];
+			},
+			findById: (id: string) =>
+				(key === 'properties' ? mocks.properties : key === 'devices' ? mocks.devices : key === 'channels' ? mocks.channels : []).find(
+					(entry) => (entry as { id: string }).id === id
+				) ?? null,
 		}),
 	}),
 }));
@@ -87,17 +108,27 @@ const state = {
 		{ id: 'binding2', source_property: 'outlier-id', source_identity: 'outlier-id', weight: 1, exclusion: 'outlier', age_seconds: 9 },
 	],
 };
-const mountEditor = async (outputId?: string) => {
-	const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_aggregate, outputId } });
+const mountEditor = async (outputId?: string, wizard = false) => {
+	const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_aggregate, outputId, wizard } });
 	await flushPromises();
 	return wrapper;
 };
 beforeEach(() => {
 	vi.resetAllMocks();
+	mocks.reads = { properties: 0, devices: 0, channels: 0 };
 	mocks.properties = [];
+	mocks.devices = [];
+	mocks.channels = [];
 	mocks.GET.mockImplementation(async (path: string) => ({
 		data: {
-			data: path.endsWith('aggregate-profiles') ? profiles : path.endsWith('/sources') ? [{ property: 'allowed', channel: 'c', device: 'd' }] : state,
+			data: path.endsWith('aggregate-profiles')
+				? profiles
+				: path.endsWith('/sources')
+					? [
+							{ property: 'allowed', channel: 'c', device: 'd' },
+							{ property: 'other', channel: 'c', device: 'd' },
+						]
+					: state,
 		},
 	}));
 });
@@ -158,7 +189,7 @@ describe('aggregate editor', () => {
 			expected_graph_revision: 10,
 			inputs: [{ id: 'binding', source_property: 'allowed', weight: 2 }, {}],
 		});
-		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain('.aggregatePreviewOnly');
+		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain('.help.previewDescription');
 		// Any subsequent policy edit invalidates the reviewed draft immediately.
 		wrapper
 			.findAllComponents(ElInputNumber)
@@ -202,8 +233,8 @@ const evaluated = (value: number | boolean | null, profile = 'humidity', expiry:
 		profile,
 		value,
 		quality: value === null ? 'unavailable' : 'degraded',
-		reasons: value === null ? ['quorum_lost'] : ['outlier:binding2'],
-		unit: profile === 'contact' ? null : profile === 'illuminance' ? 'lx' : '%',
+		reasons: value === null ? ['quorum_lost', 'missing:binding', 'outlier:binding2'] : ['outlier:binding2'],
+		unit: profile === 'contact' ? null : profile === 'illuminance' ? 'lx' : profile === 'temperature' ? '°C' : '%',
 		output_step: ['contact', 'temperature'].includes(profile) ? null : profile === 'illuminance' ? 0.1 : 1,
 		evaluated_at: new Date().toISOString(),
 		expires_at: expiry,
@@ -239,6 +270,14 @@ describe('backend-evaluated snapshot presentation', () => {
 		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain('.expiresAt');
 		// Saved runtime diagnostics remain outside the independently evaluated draft snapshot.
 		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain(value === null ? '.states.quorum_lost' : '.states.outlier');
+		const details = wrapper.find('[data-test-id="aggregate-preview-diagnostics"]');
+		if (value === null) {
+			expect(details.text()).toContain('.states.quorum_lost');
+			expect(details.text()).not.toContain('.states.missing');
+			expect(details.text()).not.toContain('.states.outlier');
+		} else {
+			expect(details.exists()).toBe(false);
+		}
 		wrapper.unmount();
 	});
 	it.each(['visible', 'in-flight'] as const)('invalidates a %s preview on source evidence changes without editing the draft', async (phase) => {
@@ -435,5 +474,576 @@ describe('measurement editor dedicated quantity routing', () => {
 			expect(quorum().props('modelValue')).toBe(2);
 			wrapper.unmount();
 		});
+	});
+});
+
+const wizardSnapshot = (expiry: string) => {
+	const snapshot = evaluated(22, 'temperature', expiry);
+	snapshot.preview_result.inputs = [
+		{
+			id: 'first',
+			source_property: 'allowed',
+			source_identity: 'allowed',
+			weight: 1,
+			exclusion: null,
+			age_seconds: 1,
+			current_value: 21,
+			unit: '°C',
+		},
+		{ id: 'second', source_property: 'other', source_identity: 'other', weight: 1, exclusion: null, age_seconds: 1, current_value: 23, unit: '°C' },
+	] as unknown as typeof snapshot.preview_result.inputs;
+	return snapshot;
+};
+const enterWizardReview = async (wrapper: Awaited<ReturnType<typeof mountEditor>>) => {
+	wrapper.findComponent(ElInput).vm.$emit('update:modelValue', 'Combined temperature');
+	await flushPromises();
+	await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+	await flushPromises();
+	await wrapper.get('[data-source-id="allowed"]').trigger('click');
+	await wrapper.get('[data-source-id="other"]').trigger('click');
+	await flushPromises();
+	await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+	await flushPromises();
+	await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+	await flushPromises();
+};
+describe('measurement wizard automatic review', () => {
+	it('covers the whole wizard content while its catalogue loads and enables navigation when ready', async () => {
+		const originalGet = mocks.GET.getMockImplementation()!;
+		let finish!: (response: unknown) => void;
+		mocks.GET.mockImplementation((path: string) =>
+			path.endsWith('aggregate-profiles')
+				? new Promise((resolve) => {
+						finish = resolve;
+					})
+				: originalGet(path)
+		);
+		const wrapper = await mountEditor(undefined, true);
+		const content = wrapper.get('.virtual-wizard-layout');
+		expect(content.attributes('aria-busy')).toBe('true');
+		expect(content.find('aside').exists()).toBe(true);
+		expect(wrapper.get('[data-test-id="wizard-action-next"]').attributes('disabled')).toBeDefined();
+		finish({ data: { data: profiles } });
+		await flushPromises();
+		expect(content.attributes('aria-busy')).toBe('false');
+		expect(wrapper.get('[data-test-id="wizard-action-next"]').attributes('disabled')).toBeUndefined();
+		wrapper.unmount();
+	});
+
+	it('does not display the epoch timestamp or cached offline zero as a real reading', async () => {
+		vi.useFakeTimers();
+		mocks.devices = [
+			{ id: 'offline', name: 'Offline Zigbee sensor', status: { online: false } },
+			{ id: 'online', name: 'Online sensor', status: { online: true } },
+		];
+		mocks.channels = [
+			{ id: 'c', device: 'offline' },
+			{ id: 'c2', device: 'online' },
+		];
+		mocks.properties = [
+			{ id: 'allowed', channel: 'c', value: { value: 0, lastUpdated: new Date(0).toISOString() } },
+			{ id: 'other', channel: 'c2', value: { value: 0, lastUpdated: new Date(Date.now() - 7200000).toISOString() } },
+		];
+		const wrapper = await mountEditor(undefined, true);
+		wrapper.getComponent(ElInput).vm.$emit('update:modelValue', 'Combined temperature');
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		const readings = wrapper.getComponent(VirtualWizardSourcePicker).props('sources');
+		expect(readings.find((source) => source.id === 'allowed')).toMatchObject({ online: false, reading: '—', age: '—' });
+		expect(readings.find((source) => source.id === 'other')).toMatchObject({ online: true, reading: '0 °C', age: '2h' });
+		wrapper.unmount();
+	});
+
+	it.each([DevicesVirtualPluginDeviceMode.sensor_aggregate, DevicesVirtualPluginDeviceMode.sensor_transform] as const)(
+		'shows an online Zigbee cached value with unknown sample time in %s without inventing freshness',
+		async (mode) => {
+			vi.useFakeTimers();
+			mocks.devices = [{ id: 'zigbee', name: 'Zigbee temperature sensor', type: 'devices-zigbee2mqtt', status: { online: true } }];
+			mocks.channels = [{ id: 'c', device: 'zigbee', name: 'Temperature', category: 'temperature' }];
+			mocks.properties = [
+				{
+					id: 'allowed',
+					channel: 'c',
+					name: 'Temperature',
+					category: 'temperature',
+					dataType: 'float',
+					unit: '°C',
+					permissions: ['ro'],
+					value: { value: 16.8, lastUpdated: new Date(0).toISOString() },
+				},
+			];
+			const originalGet = mocks.GET.getMockImplementation()!;
+			mocks.GET.mockImplementation((path: string) =>
+				path.endsWith('numeric-operators') ? Promise.resolve({ data: { data: [] } }) : originalGet(path)
+			);
+			const wrapper = mount(VirtualMeasurementEditor, { props: { mode, wizard: true } });
+			await flushPromises();
+			wrapper.getComponent(ElInput).vm.$emit('update:modelValue', 'Temperature');
+			await flushPromises();
+			await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+			await flushPromises();
+			const picker = wrapper.getComponent(VirtualWizardSourcePicker);
+			expect(picker.props('sources').find((source) => source.id === 'allowed')).toMatchObject({
+				reading: '16.8 °C',
+				age: 'devicesVirtualPlugin.wizard.layout.unknownSampleTime',
+				readingHint: 'devicesVirtualPlugin.wizard.layout.unknownSampleTimeHint',
+				online: true,
+			});
+			await wrapper.get('[data-source-id="allowed"]').trigger('click');
+			await flushPromises();
+			expect(picker.props('selected')[0]).toMatchObject({ reading: '16.8 °C', age: 'devicesVirtualPlugin.wizard.layout.unknownSampleTime' });
+			expect(wrapper.get('[data-test-id="wizard-selected-sources"]').text()).toContain('16.8 °C');
+			expect(wrapper.find('[title="devicesVirtualPlugin.wizard.layout.unknownSampleTimeHint"]').exists()).toBe(true);
+			expect(mocks.POST).not.toHaveBeenCalled();
+			wrapper.unmount();
+		}
+	);
+
+	it('keeps a large numeric catalogue lazy until Sources and reads store collections a bounded number of times', async () => {
+		vi.useFakeTimers();
+		mocks.GET.mockResolvedValue({ data: { data: [] } });
+		mocks.devices = [{ id: 'd', type: 'shelly-ng', name: 'Multi-sensor' }];
+		mocks.channels = [{ id: 'c', device: 'd', category: 'temperature', name: 'Measurements' }];
+		mocks.properties = Array.from({ length: 256 }, (_, index) => ({
+			id: `source-${index}`,
+			channel: 'c',
+			category: 'temperature',
+			dataType: 'float',
+			unit: '°C',
+			permissions: ['ro'],
+			name: `Temperature ${index}`,
+		}));
+		const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_transform, wizard: true } });
+		await flushPromises();
+		expect(wrapper.get('.virtual-wizard-layout').attributes('aria-busy')).toBe('false');
+		expect(wrapper.findComponent(VirtualWizardSourcePicker).exists()).toBe(false);
+		expect(mocks.reads.properties).toBe(0);
+		wrapper.getComponent(ElInput).vm.$emit('update:modelValue', 'Converted temperature');
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findAll('[data-source-id]')).toHaveLength(20);
+		const catalogueRows = wrapper.getComponent(VirtualWizardSourcePicker).props('sources');
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(wrapper.getComponent(VirtualWizardSourcePicker).props('sources')).toBe(catalogueRows);
+		expect(mocks.reads.properties).toBeLessThanOrEqual(3);
+		expect(mocks.reads.channels).toBeLessThanOrEqual(3);
+		expect(mocks.reads.devices).toBeLessThanOrEqual(3);
+		wrapper.findComponent(VirtualWizardSourcePicker).getComponent(ElInput).vm.$emit('update:modelValue', 'Temperature 255');
+		await flushPromises();
+		await wrapper.get('[data-source-id="source-255"]').trigger('click');
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(2);
+		expect(wrapper.findComponent(VirtualWizardSourcePicker).exists()).toBe(false);
+		wrapper.unmount();
+	});
+	it('keeps forms interactive during background calculation and ignores its late result after entering review', async () => {
+		vi.useFakeTimers();
+		const wrapper = await mountEditor(undefined, true);
+		wrapper.findComponent(ElInput).vm.$emit('update:modelValue', 'Combined temperature');
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		await wrapper.get('[data-source-id="allowed"]').trigger('click');
+		await wrapper.get('[data-source-id="other"]').trigger('click');
+		await flushPromises();
+		let finishBackground!: (response: unknown) => void;
+		mocks.POST.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finishBackground = resolve;
+			})
+		);
+		await vi.advanceTimersByTimeAsync(350);
+		const backgroundSignal = mocks.POST.mock.calls[0][1].signal as AbortSignal;
+		expect(wrapper.findComponent({ name: 'DeviceWizardSteps' }).props('disabled')).toBe(false);
+		expect(wrapper.text()).not.toContain('devicesVirtualPlugin.wizard.layout.refreshing');
+		expect(wrapper.get('[data-test-id="wizard-action-next"]').attributes('disabled')).toBeUndefined();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(backgroundSignal.aborted).toBe(true);
+		const reviewed = wizardSnapshot(new Date(Date.now() + 60000).toISOString());
+		mocks.POST.mockResolvedValueOnce({ data: { data: reviewed } });
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toContain('22');
+		const late = wizardSnapshot(new Date(Date.now() + 60000).toISOString());
+		late.preview_result.value = 99;
+		finishBackground({ data: { data: late } });
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toContain('22');
+		expect(mocks.POST).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
+	});
+
+	it('uses short, distinguishable sensor names for weights and keeps full paths in tooltips', async () => {
+		vi.useFakeTimers();
+		mocks.devices = [{ id: 'd', name: 'Room sensor' }];
+		mocks.channels = [
+			{ id: 'c', device: 'd', name: 'Air' },
+			{ id: 'c2', device: 'd', name: 'Surface' },
+		];
+		mocks.properties = [
+			{ id: 'allowed', channel: 'c', name: null },
+			{ id: 'other', channel: 'c2', name: null },
+		];
+		const originalGet = mocks.GET.getMockImplementation()!;
+		mocks.GET.mockImplementation((path: string) =>
+			path.endsWith('/sources')
+				? Promise.resolve({
+						data: {
+							data: [
+								{ property: 'allowed', channel: 'c', device: 'd' },
+								{ property: 'other', channel: 'c2', device: 'd' },
+							],
+						},
+					})
+				: originalGet(path)
+		);
+		mocks.POST.mockResolvedValueOnce({ data: { data: wizardSnapshot(new Date(Date.now() + 60000).toISOString()) } });
+		const wrapper = await mountEditor(undefined, true);
+		await enterWizardReview(wrapper);
+		wrapper.findAllComponents(VirtualWizardReviewSection)[2].vm.$emit('edit');
+		await flushPromises();
+		wrapper
+			.findAllComponents(ElSelect)
+			.find((select) => select.props('modelValue') === 'mean')!
+			.vm.$emit('update:modelValue', 'weighted_mean');
+		await flushPromises();
+		const fields = wrapper.findAllComponents(ElFormItem).filter((field) => field.find('[data-test-id="aggregate-weight"]').exists());
+		const labels = fields.map((field) => field.props('label'));
+		expect(labels).toEqual([
+			'devicesVirtualPlugin.measurement.weight · Room sensor · Air',
+			'devicesVirtualPlugin.measurement.weight · Room sensor · Surface',
+		]);
+		expect(fields[0].getComponent(ElTooltip).props('content')).toBe('Room sensor / Air / allowed (°C)');
+		fields[0].getComponent(ElInputNumber).vm.$emit('update:modelValue', 5);
+		await flushPromises();
+		expect(fields.map((field) => field.props('label'))).toEqual(labels);
+		wrapper.unmount();
+	});
+	it('opens the chosen review section for editing and validates it before advancing', async () => {
+		vi.useFakeTimers();
+		mocks.POST.mockResolvedValueOnce({ data: { data: wizardSnapshot(new Date(Date.now() + 60000).toISOString()) } });
+		const wrapper = await mountEditor(undefined, true);
+		await enterWizardReview(wrapper);
+		const sections = wrapper.findAllComponents(VirtualWizardReviewSection);
+		expect(sections).toHaveLength(3);
+		sections[0].vm.$emit('edit');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(0);
+		wrapper.getComponent(ElInput).vm.$emit('update:modelValue', '');
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(0);
+		expect(wrapper.find('[data-test-id="wizard-action-create"]').exists()).toBe(false);
+		expect(mocks.POST).toHaveBeenCalledTimes(1);
+		wrapper.unmount();
+	});
+	it('keeps Next available to explain missing values at the current step', async () => {
+		const wrapper = await mountEditor(undefined, true);
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(0);
+		await vi.waitFor(() => expect(wrapper.find('.el-form-item__error').exists()).toBe(true));
+		wrapper.findComponent(ElInput).vm.$emit('update:modelValue', 'Combined sensor');
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(1);
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(1);
+		await vi.waitFor(() => expect(wrapper.text()).toContain('devicesModule.wizard.validation.minimumItems'));
+		expect(mocks.POST).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+	it.each(['source update', 'expiry'])('saves the reviewed configuration directly after %s without changing the review', async (change) => {
+		vi.useFakeTimers();
+		const source = reactive({ id: 'allowed', channel: 'c', value: { value: 21, lastUpdated: 'first' } });
+		mocks.properties = [source];
+		mocks.POST.mockResolvedValueOnce({ data: { data: wizardSnapshot(new Date(Date.now() + 1000).toISOString()) } });
+		const wrapper = await mountEditor(undefined, true);
+		await enterWizardReview(wrapper);
+		expect(mocks.POST).toHaveBeenCalledTimes(1);
+		expect(wrapper.find('[data-test-id="wizard-action-preview"]').exists()).toBe(false);
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toContain('22');
+		const sourcesTable = () => wrapper.findAllComponents(VirtualWizardSourcePicker).find((picker) => picker.props('readOnly'))!;
+		const sourceSnapshot = JSON.parse(JSON.stringify(sourcesTable().props('selected')));
+		expect(sourcesTable().findAll('button')).toHaveLength(0);
+		expect(sourcesTable().find('input').exists()).toBe(false);
+		expect(wrapper.find('aside .el-table').exists()).toBe(false);
+		if (change === 'source update') source.value.lastUpdated = 'second';
+		else await vi.advanceTimersByTimeAsync(1000);
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toContain('22');
+		expect(sourcesTable().props('selected')).toEqual(sourceSnapshot);
+		expect(wrapper.find('[data-test-id="measurement-review-stale"]').exists()).toBe(false);
+		expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled')).toBeUndefined();
+		const review = wrapper.get('[data-test-id="aggregate-preview-result"]').text();
+		mocks.POST.mockResolvedValueOnce({
+			data: { data: { configuration: state, device: { id: 'created-device' } } },
+		});
+		await wrapper.get('[data-test-id="wizard-action-create"]').trigger('click');
+		await flushPromises();
+		expect(mocks.POST.mock.calls.map(([path]) => path)).toEqual([
+			'/plugins/devices-virtual/producers/aggregates/draft-preview',
+			'/plugins/devices-virtual/producers/aggregates',
+		]);
+		expect(wrapper.emitted('created')).toEqual([['created-device']]);
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toBe(review);
+		expect(sourcesTable().props('selected')).toEqual(sourceSnapshot);
+		expect(wrapper.find('[data-test-id="measurement-reasons"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+	it('accepts offline sources and keeps review unchanged throughout saving', async () => {
+		const source = reactive({ id: 'allowed', channel: 'c', value: { value: 21, lastUpdated: 'first' } });
+		mocks.properties = [source];
+		const snapshot = wizardSnapshot(new Date(Date.now() - 1000).toISOString());
+		snapshot.preview_result.value = null;
+		snapshot.preview_result.quality = 'unavailable';
+		snapshot.preview_result.reasons = ['quorum_lost', 'offline:first', 'offline:second'];
+		for (const input of snapshot.preview_result.inputs) input.exclusion = 'offline';
+		mocks.POST.mockResolvedValueOnce({ data: { data: snapshot } });
+		const wrapper = await mountEditor(undefined, true);
+		await enterWizardReview(wrapper);
+		const review = wrapper.get('[data-test-id="aggregate-preview-result"]').text();
+		expect(review).toContain('—');
+		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain('unavailable');
+		expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled')).toBeUndefined();
+		let resolve!: (response: unknown) => void;
+		mocks.POST.mockReturnValueOnce(
+			new Promise((done) => {
+				resolve = done;
+			})
+		);
+		await wrapper.get('[data-test-id="wizard-action-create"]').trigger('click');
+		await flushPromises();
+		source.value.lastUpdated = 'second';
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toBe(review);
+		expect(wrapper.text()).not.toContain('help.reviewLoading');
+		expect(wrapper.findComponent(DeviceWizardReviewChecks).exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="measurement-review-error"]').exists()).toBe(false);
+		resolve({ data: { data: { configuration: state, device: { id: 'offline-device' } } } });
+		await flushPromises();
+		expect(mocks.POST.mock.calls.map(([path]) => path)).toEqual([
+			'/plugins/devices-virtual/producers/aggregates/draft-preview',
+			'/plugins/devices-virtual/producers/aggregates',
+		]);
+		expect(wrapper.emitted('created')).toEqual([['offline-device']]);
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toBe(review);
+		wrapper.unmount();
+	});
+	it('keeps backend validation failures on Processing and permits retry before entering Review', async () => {
+		mocks.POST.mockRejectedValueOnce(new Error('Backend unavailable'));
+		const wrapper = await mountEditor(undefined, true);
+		await enterWizardReview(wrapper);
+		expect(wrapper.find('[data-test-id="wizard-action-create"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(true);
+		expect(mocks.flashError).toHaveBeenCalledWith('Backend unavailable');
+		expect(wrapper.find('.el-alert--error').exists()).toBe(false);
+		mocks.POST.mockResolvedValueOnce({ data: { data: wizardSnapshot(new Date(Date.now() + 10000).toISOString()) } });
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toContain('22');
+		expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled')).toBeUndefined();
+		wrapper.unmount();
+	});
+	it.each([409, 503])('keeps the snapshot and reports a %s save failure as a notification', async (status) => {
+		mocks.POST.mockResolvedValueOnce({ data: { data: wizardSnapshot(new Date(Date.now() + 10000).toISOString()) } });
+		const wrapper = await mountEditor(undefined, true);
+		await enterWizardReview(wrapper);
+		const review = wrapper.get('[data-test-id="aggregate-preview-result"]').text();
+		mocks.POST.mockResolvedValueOnce({ error: { message: 'Save refused' }, response: { status } });
+		await wrapper.get('[data-test-id="wizard-action-create"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.emitted('created')).toBeUndefined();
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toBe(review);
+		expect(wrapper.findComponent(DeviceWizardReviewChecks).exists()).toBe(false);
+		expect(mocks.flashError).toHaveBeenCalledWith(expect.stringContaining('measurementFailed'));
+		expect(wrapper.find('.el-alert--error').exists()).toBe(false);
+		expect(mocks.POST).toHaveBeenCalledTimes(2);
+		expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled') !== undefined).toBe(status === 409);
+		if (status === 409) {
+			await wrapper
+				.findAll('button')
+				.find((button) => button.text().includes('measurement.reload'))!
+				.trigger('click');
+			await flushPromises();
+			expect(wrapper.find('[data-test-id="wizard-action-create"]').exists()).toBe(false);
+			mocks.POST.mockResolvedValueOnce({ data: { data: wizardSnapshot(new Date(Date.now() + 10000).toISOString()) } });
+			await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+			await flushPromises();
+			expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled')).toBeUndefined();
+			expect(wrapper.get('[data-test-id="measurement-summary"]').text()).toContain('Combined temperature');
+		}
+		wrapper.unmount();
+	});
+});
+
+const transformState = () => ({
+	output_property: 'output',
+	schema_version: 1,
+	quantity: 'temperature',
+	unit: '°C',
+	maximum_age_seconds: 60,
+	revision: 0,
+	graph_revision: 10,
+	runtime_readiness: 'configured',
+	quality: 'unavailable',
+	current_value: null,
+	errors: [],
+	source: { id: 'binding', source_property: 'physical', source_identity: 'physical', quantity: 'temperature', unit: '°C' },
+	policy: { operator: 'affine', scale: 10, offset: 0, inputRange: { minimum: 0, maximum: 10 }, outputRange: { minimum: 0, maximum: 100 } },
+	preview_result: { input: 2, value: 20, error: null, qualified: false },
+});
+const enterTransformProcessing = async () => {
+	if (!mocks.devices.length) {
+		mocks.devices = [{ id: 'd', type: 'shelly-ng', name: 'Physical sensor' }];
+		mocks.channels = [{ id: 'c', device: 'd', category: 'temperature', name: 'Temperature' }];
+		mocks.properties = [
+			{ id: 'physical', channel: 'c', category: 'temperature', dataType: 'float', permissions: ['ro'], unit: '°C', name: 'Temperature' },
+		];
+	}
+
+	const originalGet = mocks.GET.getMockImplementation()!;
+	mocks.GET.mockImplementation((path: string) => (path.endsWith('numeric-operators') ? Promise.resolve({ data: { data: [] } }) : originalGet(path)));
+	const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_transform, wizard: true } });
+	await flushPromises();
+	wrapper.findComponent(ElInput).vm.$emit('update:modelValue', 'Calibrated sensor');
+	await flushPromises();
+	await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+	await flushPromises();
+	await wrapper.get('[data-source-id="physical"]').trigger('click');
+	await flushPromises();
+	await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+	await flushPromises();
+	return wrapper;
+};
+const setConversionField = (wrapper: ReturnType<typeof mount>, field: string, value: number) => {
+	wrapper
+		.findAllComponents(ElInputNumber)
+		.find((input) => input.attributes('data-test-id') === `conversion-${field}`)!
+		.vm.$emit('update:modelValue', value);
+};
+describe('numeric conversion wizard guidance and review', () => {
+	it('shows specific valid and invalid settings, then permits creation after correction', async () => {
+		const wrapper = await enterTransformProcessing();
+		const fields = wrapper.findAllComponents(ElFormItem);
+		expect(fields.find((field) => field.props('label') === 'devicesVirtualPlugin.measurement.inputMinimum')!.props('required')).toBe(true);
+		expect(fields.find((field) => field.props('label') === 'devicesVirtualPlugin.measurement.sample')!.props('required')).toBeFalsy();
+		setConversionField(wrapper, 'offset', 0);
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		const errors = wrapper.findAllComponents(ElFormItem).map((item) => item.props('error'));
+		expect(errors).toContain('devicesVirtualPlugin.conversion.validation.rangeRequired');
+		expect(errors).toContain('devicesVirtualPlugin.conversion.validation.requiredNumber');
+		expect(wrapper.findComponent(DeviceWizardReviewChecks).exists()).toBe(false);
+		expect(mocks.POST).not.toHaveBeenCalled();
+		expect(wrapper.find('.el-empty').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-action-create"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(true);
+		for (const [field, value] of Object.entries({ inputMinimum: 0, inputMaximum: 10, outputMinimum: 0, outputMaximum: 100, scale: 10 }))
+			setConversionField(wrapper, field, value);
+		mocks.POST.mockResolvedValueOnce({ data: { data: transformState() } });
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findComponent(DeviceWizardReviewChecks).exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="measurement-review-error"]').exists()).toBe(false);
+		expect(wrapper.get('[data-test-id="measurement-processing-summary"]').text()).toContain('devicesVirtualPlugin.measurement.offset');
+		expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled')).toBeUndefined();
+		wrapper.unmount();
+	});
+	it.each(['input_out_of_range', 'output_out_of_range'])('reviews and creates a valid policy despite %s in the test calculation', async (error) => {
+		vi.useFakeTimers();
+		const wrapper = await enterTransformProcessing();
+		for (const [field, value] of Object.entries({
+			inputMinimum: 0,
+			inputMaximum: 10,
+			outputMinimum: 0,
+			outputMaximum: 1,
+			scale: 10,
+			offset: 0,
+			sample: error === 'input_out_of_range' ? 20 : 2,
+		}))
+			setConversionField(wrapper, field, value);
+		mocks.POST.mockResolvedValueOnce({ data: { data: { ...transformState(), preview_result: { input: 2, value: null, error, qualified: false } } } });
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="measurement-processing-summary"]').exists()).toBe(true);
+		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain(`devicesVirtualPlugin.measurement.states.${error}`);
+		expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled')).toBeUndefined();
+		mocks.POST.mockResolvedValueOnce({ data: { data: { device: { id: 'converted' } } } });
+		await wrapper.get('[data-test-id="wizard-action-create"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.emitted('created')).toEqual([['converted']]);
+		expect(mocks.POST.mock.calls.map(([path]) => path)).toEqual([
+			'/plugins/devices-virtual/producers/transforms/draft-preview',
+			'/plugins/devices-virtual/producers/transforms',
+		]);
+	});
+
+	it('coalesces edits before background evaluation without blocking fields or navigation', async () => {
+		vi.useFakeTimers();
+		const wrapper = await enterTransformProcessing();
+		for (const [field, value] of Object.entries({ inputMinimum: 0, inputMaximum: 10, outputMinimum: 0, outputMaximum: 100, scale: 10, offset: 0 }))
+			setConversionField(wrapper, field, value);
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(650);
+		expect(mocks.POST).not.toHaveBeenCalled();
+		setConversionField(wrapper, 'outputMaximum', 90);
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(650);
+		expect(mocks.POST).not.toHaveBeenCalled();
+		let finish!: (value: unknown) => void;
+		mocks.POST.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finish = resolve;
+			})
+		);
+		await vi.advanceTimersByTimeAsync(50);
+		expect(mocks.POST).toHaveBeenCalledTimes(1);
+		expect(wrapper.get('[data-test-id="wizard-action-next"]').attributes('disabled')).toBeUndefined();
+		expect(wrapper.get('[data-test-id="conversion-inputMinimum"] input').attributes('disabled')).toBeUndefined();
+		finish({ data: { data: transformState() } });
+		await flushPromises();
+	});
+
+	it('enables thermistor operators for a qualified raw-voltage Shelly source and explains their prerequisites', async () => {
+		mocks.devices = [{ id: 'd', type: 'shelly-ng', name: 'Probe' }];
+		mocks.channels = [{ id: 'c', device: 'd', category: 'analog_input', identifier: `raw-voltage:voltmeter:1:${'a'.repeat(64)}`, name: 'Voltmeter' }];
+		mocks.properties = [
+			{
+				id: 'physical',
+				channel: 'c',
+				category: 'value',
+				dataType: 'float',
+				identifier: 'voltage',
+				unit: null,
+				permissions: ['ro'],
+				name: 'Raw voltage',
+			},
+		];
+		const wrapper = await enterTransformProcessing();
+		for (const operator of ['ntc_beta', 'steinhart_hart'])
+			expect(
+				wrapper
+					.findAllComponents(ElOption)
+					.find((option) => option.props('value') === operator)!
+					.props('disabled')
+			).toBe(false);
+		const operator = wrapper.findAllComponents(ElSelect).find((select) => select.props('modelValue') === 'affine')!;
+		operator.vm.$emit('update:modelValue', 'piecewise_linear');
+		await flushPromises();
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.conversion.pointsHelp');
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.conversion.operators.piecewise_linear');
+		wrapper.unmount();
 	});
 });

@@ -1,61 +1,98 @@
 <template>
-	<div class="flex flex-wrap gap-2 items-center">
-		<el-select
-			v-model="deviceId"
-			filterable
-			clearable
-			:placeholder="t('devicesVirtualPlugin.thermostat.picker.device')"
-			class="w-52"
-			@change="onDevice"
-		>
-			<el-option
-				v-for="device in devices"
-				:key="device.id"
-				:label="device.name"
-				:value="device.id"
-			/>
-		</el-select>
-		<el-select
-			v-model="channelId"
-			filterable
-			clearable
-			:placeholder="t('devicesVirtualPlugin.thermostat.picker.channel')"
-			class="w-48"
-			:disabled="!deviceId"
-			@change="onChannel"
-		>
-			<el-option
-				v-for="channel in channels"
-				:key="channel.id"
-				:label="channel.name"
-				:value="channel.id"
-			/>
-		</el-select>
-		<el-select
-			:model-value="modelValue"
-			filterable
-			clearable
-			:placeholder="t('devicesVirtualPlugin.thermostat.picker.property')"
-			class="w-56"
-			:disabled="!channelId"
-			@change="onProperty"
-		>
-			<el-option
-				v-for="property in properties"
-				:key="property.id"
-				:label="property.name ?? property.category"
-				:value="property.id"
-			/>
-		</el-select>
+	<div class="thermostat-property-picker">
+		<div class="thermostat-property-picker__field">
+			<label
+				:for="`${pickerId}-device`"
+				class="thermostat-property-picker__label"
+			>
+				{{ t('devicesVirtualPlugin.thermostat.picker.device') }}
+			</label>
+			<el-select
+				:id="`${pickerId}-device`"
+				v-model="deviceId"
+				:aria-label="t('devicesVirtualPlugin.thermostat.picker.device')"
+				filterable
+				clearable
+				:placeholder="t('devicesVirtualPlugin.thermostat.picker.device')"
+				class="w-full"
+				@change="onDevice"
+			>
+				<el-option-group
+					v-for="group in deviceGroups"
+					:key="group.id"
+					:label="group.label"
+				>
+					<el-option
+						v-for="device in group.items"
+						:key="device.id"
+						:label="device.name"
+						:value="device.id"
+					/>
+				</el-option-group>
+			</el-select>
+		</div>
+		<div class="thermostat-property-picker__field">
+			<label
+				:for="`${pickerId}-channel`"
+				class="thermostat-property-picker__label"
+			>
+				{{ t('devicesVirtualPlugin.thermostat.picker.channel') }}
+			</label>
+			<el-select
+				:id="`${pickerId}-channel`"
+				v-model="channelId"
+				:aria-label="t('devicesVirtualPlugin.thermostat.picker.channel')"
+				filterable
+				clearable
+				:placeholder="t('devicesVirtualPlugin.thermostat.picker.channel')"
+				class="w-full"
+				:disabled="!deviceId"
+				@change="onChannel"
+			>
+				<el-option
+					v-for="channel in sortedChannels"
+					:key="channel.id"
+					:label="channel.name"
+					:value="channel.id"
+				/>
+			</el-select>
+		</div>
+		<div class="thermostat-property-picker__field">
+			<label
+				:for="`${pickerId}-property`"
+				class="thermostat-property-picker__label"
+			>
+				{{ t('devicesVirtualPlugin.thermostat.picker.property') }}
+			</label>
+			<el-select
+				:id="`${pickerId}-property`"
+				:aria-label="t('devicesVirtualPlugin.thermostat.picker.property')"
+				:model-value="modelValue"
+				filterable
+				clearable
+				:placeholder="t('devicesVirtualPlugin.thermostat.picker.property')"
+				class="w-full"
+				:disabled="!channelId"
+				@change="onProperty"
+			>
+				<el-option
+					v-for="property in sortedProperties"
+					:key="property.id"
+					:label="property.name ?? property.category"
+					:value="property.id"
+				/>
+			</el-select>
+		</div>
 		<el-text
 			v-if="kind === 'actuator' && !ownerDeviceId && !devices.length"
-			type="info"
+			class="thermostat-property-picker__message"
 			size="small"
 		>
 			{{ t('devicesVirtualPlugin.thermostat.picker.noActuator') }}
 		</el-text>
 		<el-text
 			v-if="modelValue && !properties.some((property) => property.id === modelValue)"
+			class="thermostat-property-picker__message"
 			type="warning"
 			size="small"
 		>
@@ -65,21 +102,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElOption, ElSelect, ElText } from 'element-plus';
+import { ElOption, ElOptionGroup, ElSelect, ElText } from 'element-plus';
+import { orderBy } from 'natural-orderby';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { injectStoresManager, useBackend } from '../../../common';
 import type { IChannel, IChannelProperty, IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import { DEVICES_SHELLY_NG_TYPE } from '../../devices-shelly-ng/devices-shelly-ng.constants';
+import { useVirtualWizardSourceGroups } from '../composables/use-virtual-wizard-placement';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 
 const props = defineProps<{ modelValue: string | null; ownerDeviceId?: string; kind: 'ambient' | 'floor' | 'contact' | 'actuator' | 'setting' }>();
 const emit = defineEmits<{ (event: 'update:modelValue', value: string | null): void }>();
 const { t } = useI18n();
+const pickerId = useId();
 const stores = injectStoresManager();
 const backend = useBackend();
 const devicesStore = stores.getStore(devicesStoreKey);
@@ -102,6 +142,8 @@ const devices = computed<IDevice[]>(() =>
 				.findAll()
 				.filter((device) => device.id !== props.ownerDeviceId && (props.kind !== 'actuator' || device.type === DEVICES_SHELLY_NG_TYPE))
 );
+const groupSources = useVirtualWizardSourceGroups();
+const deviceGroups = computed(() => groupSources(orderBy(devices.value, [(device) => device.name], ['asc']), (device) => device));
 const channels = computed<IChannel[]>(() =>
 	deviceId.value ? channelsStore.findForDevice(deviceId.value).filter((channel) => props.kind !== 'actuator' || isActuatorChannel(channel)) : []
 );
@@ -115,6 +157,9 @@ const properties = computed<IChannelProperty[]>(() =>
 			})
 		: []
 );
+
+const sortedChannels = computed(() => orderBy(channels.value, [(channel) => channel.name], ['asc']));
+const sortedProperties = computed(() => orderBy(properties.value, [(property) => property.name ?? property.category], ['asc']));
 
 // Choosing a device or channel clears the bound property, and the parent echoes that back as a
 // `modelValue` change. Left to the watcher below, that echo re-resolved "no property" and reset the
@@ -199,3 +244,25 @@ onBeforeUnmount(() => {
 	resolveGeneration++;
 });
 </script>
+
+<style scoped>
+.thermostat-property-picker {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+	gap: 12px;
+	width: 100%;
+}
+.thermostat-property-picker__field {
+	min-width: 0;
+}
+.thermostat-property-picker__label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 20px;
+}
+.thermostat-property-picker__message {
+	grid-column: 1 / -1;
+}
+</style>

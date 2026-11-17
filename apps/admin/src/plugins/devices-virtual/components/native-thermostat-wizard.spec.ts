@@ -9,8 +9,11 @@ import type { NativeCandidate } from '../services/native-thermostat';
 
 import NativeThermostatWizard from './native-thermostat-wizard.vue';
 
-const mocks = vi.hoisted(() => ({ candidates: vi.fn(), create: vi.fn() }));
-vi.mock('../../../common', () => ({ useBackend: () => ({}) }));
+const mocks = vi.hoisted(() => ({ flashError: vi.fn(), candidates: vi.fn(), create: vi.fn() }));
+vi.mock('../../../common', () => ({
+	useFlashMessage: () => ({ error: mocks.flashError }),
+	useBackend: () => ({}),
+}));
 vi.mock('../services/native-thermostat', async (original) => ({
 	...(await original<object>()),
 	nativeThermostatTransport: () => mocks,
@@ -71,8 +74,12 @@ describe('native thermostat wizard', () => {
 	it('walks device, details and review, suggests the device name and creates the controller', async () => {
 		const wrapper = mounted();
 		await flushPromises();
-		const steps = wrapper.findComponent({ name: 'VirtualWizardSteps' });
-		expect(steps.props('canAdvance')).toBe(false);
+		const steps = wrapper.findComponent({ name: 'DeviceWizardSteps' });
+		expect(steps.props('canAdvance')).toBe(true);
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(steps.props('modelValue')).toBe(0);
+		await vi.waitFor(() => expect(wrapper.find('.el-form-item__error').exists()).toBe(true));
 		const select = wrapper.findComponent({ name: 'ElSelect' });
 		select.vm.$emit('update:modelValue', 'h');
 		select.vm.$emit('change', 'h');
@@ -88,7 +95,7 @@ describe('native thermostat wizard', () => {
 		expect(summary).toContain('Off, Heat');
 		expect(summary).toContain('5–30 °C, step 0.5');
 		expect(summary).toContain(en.nativeThermostat.wizard.summary.unsupported);
-		await wrapper.get('[data-test-id="native-wizard-create"]').trigger('click');
+		await wrapper.get('[data-test-id="wizard-action-create"]').trigger('click');
 		await flushPromises();
 		expect(mocks.create).toHaveBeenCalledWith('Thermostat h', 'h', expect.anything());
 		expect(wrapper.emitted('created')).toEqual([['controller-1']]);
@@ -110,14 +117,15 @@ describe('native thermostat wizard', () => {
 		select.vm.$emit('update:modelValue', 'z');
 		select.vm.$emit('change', 'z');
 		await flushPromises();
-		wrapper.findComponent({ name: 'VirtualWizardSteps' }).vm.$emit('update:modelValue', 2);
+		wrapper.findComponent({ name: 'DeviceWizardSteps' }).vm.$emit('update:modelValue', 2);
 		await flushPromises();
-		await wrapper.get('[data-test-id="native-wizard-create"]').trigger('click');
+		await wrapper.get('[data-test-id="wizard-action-create"]').trigger('click');
 		await flushPromises();
-		expect(wrapper.get('[data-test-id="native-wizard-error"]').text()).toContain(en.nativeThermostat.uncertain);
+		expect(mocks.flashError).toHaveBeenCalledWith(en.nativeThermostat.uncertain);
+		expect(wrapper.find('[data-test-id="native-wizard-error"]').exists()).toBe(false);
 		expect(wrapper.emitted('created')).toBeUndefined();
-		// One read for the empty mount, one for this mount and one after the failed create.
-		expect(mocks.candidates).toHaveBeenCalledTimes(3);
+		// Confirmation stays stable: no background refresh after the refused create.
+		expect(mocks.candidates).toHaveBeenCalledTimes(2);
 		wrapper.unmount();
 	});
 
@@ -129,18 +137,30 @@ describe('native thermostat wizard', () => {
 		select.vm.$emit('update:modelValue', 'z');
 		select.vm.$emit('change', 'z');
 		await flushPromises();
-		wrapper.findComponent({ name: 'VirtualWizardSteps' }).vm.$emit('update:modelValue', 2);
+		wrapper.findComponent({ name: 'DeviceWizardSteps' }).vm.$emit('update:modelValue', 2);
 		await flushPromises();
 		mocks.candidates.mockRejectedValueOnce(new Error('native_request_failed'));
-		await wrapper.get('[data-test-id="native-wizard-create"]').trigger('click');
+		await wrapper.get('[data-test-id="wizard-action-create"]').trigger('click');
 		await flushPromises();
-		expect(wrapper.get('[data-test-id="native-wizard-error"]').text()).toContain(en.nativeThermostat.uncertain);
+		expect(mocks.flashError).toHaveBeenCalledWith(en.nativeThermostat.uncertain);
+		expect(wrapper.find('[data-test-id="native-wizard-error"]').exists()).toBe(false);
+		expect(wrapper.findAllComponents({ name: 'ElOption' })).toHaveLength(3);
+		expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled')).toBeDefined();
+		const summary = wrapper.get('[data-test-id="native-wizard-summary"]').text();
+		await wrapper.get('[data-test-id="native-wizard-refresh"]').trigger('click');
+		await flushPromises();
 		expect(wrapper.findAllComponents({ name: 'ElOption' })).toHaveLength(0);
-		expect(wrapper.get('[data-test-id="native-wizard-create"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.get('[data-test-id="native-wizard-summary"]').text()).toContain('Thermostat z');
 		await wrapper.get('[data-test-id="native-wizard-refresh"]').trigger('click');
 		await flushPromises();
 		expect(wrapper.findAllComponents({ name: 'ElOption' })).toHaveLength(3);
-		expect(wrapper.get('[data-test-id="native-wizard-create"]').attributes('disabled')).toBeUndefined();
+		expect(wrapper.findComponent({ name: 'DeviceWizardSteps' }).props('modelValue')).toBe(0);
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="native-wizard-summary"]').text()).toBe(summary);
+		expect(wrapper.get('[data-test-id="wizard-action-create"]').attributes('disabled')).toBeUndefined();
 		wrapper.unmount();
 	});
 
@@ -160,16 +180,17 @@ describe('native thermostat wizard', () => {
 			select.vm.$emit('update:modelValue', 'h');
 			select.vm.$emit('change', 'h');
 			await flushPromises();
-			wrapper.findComponent({ name: 'VirtualWizardSteps' }).vm.$emit('update:modelValue', 2);
+			wrapper.findComponent({ name: 'DeviceWizardSteps' }).vm.$emit('update:modelValue', 2);
 			await flushPromises();
-			await wrapper.get('[data-test-id="native-wizard-create"]').trigger('click');
+			await wrapper.get('[data-test-id="wizard-action-create"]').trigger('click');
 			await flushPromises();
 			expect(wrapper.emitted('busy')).toEqual([[true]]);
 			await vi.advanceTimersByTimeAsync(10_000);
 			await flushPromises();
 			expect(aborted).toBe(true);
 			expect(wrapper.emitted('busy')).toEqual([[true], [false]]);
-			expect(wrapper.get('[data-test-id="native-wizard-error"]').text()).toContain(en.nativeThermostat.uncertain);
+			expect(mocks.flashError).toHaveBeenCalledWith(en.nativeThermostat.uncertain);
+			expect(wrapper.find('[data-test-id="native-wizard-error"]').exists()).toBe(false);
 			wrapper.unmount();
 		} finally {
 			vi.useRealTimers();

@@ -298,6 +298,7 @@ defineExpose({
 				))
 	),
 	waitForSave: () => submission ?? Promise.resolve(),
+	discard: () => discard(),
 });
 const canSave = computed(
 	() =>
@@ -317,9 +318,13 @@ const reset = () => {
 	baseline.value = cloneDeep(draft.value);
 	revision.value = configuration.value.revision;
 };
-watch(configuration, () => {
-	if (!dirty.value) reset();
-});
+watch(
+	configuration,
+	() => {
+		if (!dirty.value) reset();
+	},
+	{ immediate: true }
+);
 watch(
 	() => props.spaceId,
 	() => {

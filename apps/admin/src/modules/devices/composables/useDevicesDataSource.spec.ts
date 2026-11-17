@@ -6,6 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
 import { DevicesModuleDeviceCategory, DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
+import { RouteNames } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 
 import { defaultDevicesFilter, useDevicesDataSource } from './useDevicesDataSource';
@@ -105,6 +106,7 @@ describe('useDevicesDataSource', () => {
 		await fetchDevices();
 
 		expect(mockStore.fetch).toHaveBeenCalled();
+		expect(useListQuery).toHaveBeenCalledWith(expect.objectContaining({ queryRoute: RouteNames.DEVICES }));
 	});
 
 	it('requests only non-hidden devices while the show-hidden toggle is off', async () => {

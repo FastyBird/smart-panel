@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IPluginOptions } from '../../app.types';
 import { RouteNames as DevicesRouteNames } from '../../modules/devices';
-import { UsersModuleUserRole } from '../../openapi.constants';
 
 import { RouteNames } from './simulator.constants';
 import SimulatorPlugin from './simulator.plugin';
@@ -91,43 +90,22 @@ describe('SimulatorPlugin', () => {
 		expect(mocks.addPlugin).toHaveBeenCalledWith(expect.any(Symbol), expect.not.objectContaining({ routes: expect.anything() }));
 	});
 
-	it('registers an authenticated owner/admin wizard route under Devices', () => {
+	it('redirects the former simulator URL to the common wizard', () => {
 		const options = createOptions([{ name: DevicesRouteNames.DEVICES }]);
-
 		SimulatorPlugin.install({} as App, options);
-
 		expect(options.router.addRoute).toHaveBeenCalledWith(
 			DevicesRouteNames.DEVICES,
-			expect.objectContaining({
-				path: 'simulator/wizard',
-				name: RouteNames.WIZARD,
-				meta: expect.objectContaining({
-					guards: {
-						authenticated: true,
-						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
-					},
-				}),
-			})
+			expect.objectContaining({ name: RouteNames.WIZARD, redirect: expect.objectContaining({ params: { type: 'simulator-plugin' } }) })
 		);
 	});
 
-	it('registers route-based wizard launcher metadata', () => {
-		const options = createOptions([{ name: DevicesRouteNames.DEVICES }]);
-
-		SimulatorPlugin.install({} as App, options);
-
-		expect(mocks.addPlugin).toHaveBeenCalledWith(
-			expect.any(Symbol),
-			expect.objectContaining({
-				routes: {
-					wizard: {
-						label: 'simulatorPlugin.wizard.title',
-						icon: 'mdi:test-tube',
-						to: { name: RouteNames.WIZARD },
-						testId: 'simulator-device-wizard',
-					},
-				},
-			})
-		);
+	it('registers the simulator flow with manual and batch capabilities', () => {
+		SimulatorPlugin.install({} as App, createOptions([]));
+		const registration = mocks.addPlugin.mock.calls[0]?.[1];
+		expect(registration.routes).toBeUndefined();
+		expect(registration.elements.find((element: { type: string }) => element.type === 'simulator').components.deviceWizard.capabilities).toEqual({
+			manual: true,
+			batch: true,
+		});
 	});
 });

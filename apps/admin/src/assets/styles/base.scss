@@ -186,9 +186,8 @@ body {
 	box-sizing: border-box;
 }
 
-// Fix Safari clipping the top border of el-radio-group inside
-// el-collapse-item content areas. Safari's overflow handling clips
-// borders that touch the container edge.
-.el-collapse-item__content .el-radio-group {
-	margin-top: 2px;
+// Radio-button outlines extend outside their boxes. Reserve space on every side
+// so scrolling forms and collapse content cannot clip the outer edges.
+.el-radio-group:has(.el-radio-button) {
+	padding: 1px;
 }

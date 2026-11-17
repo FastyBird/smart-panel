@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file -- Isolated component stubs for plugin integration tests. */
 import { defineComponent, ref } from 'vue';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -51,10 +52,15 @@ const mockPluginList = [
 		},
 		elements: [
 			{
+				type: 'foreign-wizard-type',
+				modules: ['other-module'],
+				components: { deviceWizard: { component: defineComponent({ template: '<div data-test-id="foreign-flow" />' }) } },
+			},
+			{
 				type: 'wizard-type',
 				name: 'Wizard Type',
 				components: {
-					deviceWizardAdapter: () => ({}),
+					deviceWizard: { component: defineComponent({ template: '<div />' }) },
 				},
 				schemas: {
 					deviceSchema,
@@ -76,7 +82,12 @@ const mockPluginList = [
 		name: 'Detail Only Plugin',
 		description: 'Detail extension',
 		links: { documentation: '', devDocumentation: '', bugsTracking: '' },
-		elements: [{ type: 'detail-only-type', components: { deviceDetailSection: defineComponent({ template: '<div />' }) } }],
+		elements: [
+			{
+				type: 'detail-only-type',
+				components: { deviceDetailTabs: [{ id: 'custom', label: 'Custom', icon: 'mdi:test', component: defineComponent({ template: '<div />' }) }] },
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},
@@ -135,7 +146,7 @@ describe('useDevicesPlugins', () => {
 	it('discovers detail-only elements without offering them as creatable device types', () => {
 		const { getElement, options, wizardOptions } = useDevicesPlugins();
 
-		expect(getElement('detail-only-type')?.components?.deviceDetailSection).toBeDefined();
+		expect(getElement('detail-only-type')?.components?.deviceDetailTabs).toBeDefined();
 		expect(options.value.map((option) => option.value)).not.toContain('detail-only-type');
 		expect(wizardOptions.value.map((option) => option.value)).not.toContain('detail-only-plugin');
 	});
@@ -164,6 +175,12 @@ describe('useDevicesPlugins', () => {
 		expect(plugin).toBeUndefined();
 	});
 
+	it('resolves a wizard only from an element eligible for the devices module', () => {
+		const { getWizard, getElement } = useDevicesPlugins();
+		expect(getWizard('wizard-plugin')).toBe(getElement('wizard-type')?.components?.deviceWizard);
+		expect(getWizard('test-plugin')).toBeUndefined();
+		expect(getWizard('unrelated-plugin')).toBeUndefined();
+	});
 	it('getByPluginType returns correct plugin', () => {
 		const { getByPluginType } = useDevicesPlugins();
 		const plugin = getByPluginType('wizard-plugin');
@@ -184,47 +201,9 @@ describe('useDevicesPlugins', () => {
 		]);
 	});
 
-	it('exposes plugin-owned route wizard launchers separately from adoption adapters', () => {
-		const { wizardOptions, wizardRouteOptions } = useDevicesPlugins();
-
+	it('does not expose standalone route launchers as a second wizard registry', () => {
+		const { wizardOptions } = useDevicesPlugins();
 		expect(wizardOptions.value.map((item) => item.value)).not.toContain('test-plugin');
-		expect(wizardRouteOptions.value).toEqual([
-			{
-				value: 'test-plugin',
-				label: 'testPlugin.wizard.title',
-				icon: 'mdi:test-tube',
-				to: { name: 'test-plugin-wizard' },
-				testId: 'test-plugin-wizard',
-				disabled: false,
-			},
-		]);
-	});
-
-	it('excludes an element whose plugin has an exclusive route wizard and no add form', () => {
-		const exclusive = {
-			...mockPluginList[0],
-			type: 'exclusive-plugin',
-			name: 'Exclusive Plugin',
-			routes: { wizard: { ...mockPluginList[0]!.routes!.wizard, exclusive: true } },
-			elements: [{ type: 'exclusive-type', schemas: { deviceSchema } }],
-		};
-		const withAddForm = {
-			...exclusive,
-			type: 'exclusive-form-plugin',
-			name: 'Exclusive Form Plugin',
-			elements: [{ type: 'exclusive-form-type', components: { deviceAddForm: { template: '<div />' } }, schemas: { deviceSchema } }],
-		};
-
-		mockPluginList.push(exclusive, withAddForm);
-
-		try {
-			const { options, wizardRouteOptions } = useDevicesPlugins();
-
-			expect(options.value.map((item) => item.value)).toEqual(['exclusive-form-type', 'test-type']);
-			expect(wizardRouteOptions.value.map((item) => item.value)).toContain('exclusive-plugin');
-		} finally {
-			mockPluginList.splice(-2);
-		}
 	});
 
 	it('excludes wizard-only elements from regular device type options', () => {

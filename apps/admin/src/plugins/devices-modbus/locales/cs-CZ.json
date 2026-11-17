@@ -92,9 +92,10 @@
 			"counts": "{channels} channels, {points} points",
 			"fileErrors": "Some template files could not be loaded",
 			"startEmpty": {
-				"title": "Start empty",
-				"description": "Define the points yourself."
-			}
+				"title": "Nakonfigurovat vlastní zařízení",
+				"description": "Zadejte registry a funkce svého zařízení."
+			},
+			"browse": "Použít šablonu zařízení"
 		},
 		"points": {
 			"customNotice": "The points differ from the template, so the device will be created as a custom device.",
@@ -282,6 +283,9 @@
 			"save": "Uložit body",
 			"saved": "Body zařízení \"{name}\" byly uloženy.",
 			"saveFailed": "Body se nepodařilo uložit"
+		},
+		"selection": {
+			"description": "Brány Modbus TCP s registry přiřazenými zařízením."
 		}
 	},
 	"endpoints": {

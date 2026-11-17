@@ -458,6 +458,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			fields: [
 				{
 					key: 'hostname',
+					required: true,
 					label: t('devicesShellyV1Plugin.fields.devices.hostname.title'),
 					placeholder: t('devicesShellyV1Plugin.fields.devices.hostname.placeholder'),
 				},
@@ -534,17 +535,17 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			// connector's own auto-adoption — which the backend now settles against current
 			// state instead of a snapshot taken here.
 			try {
-				const { data: responseBody, error, response } = await backend.client.POST(
-					`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/adopt`,
-					{ body: { data: { devices: payload } } }
-				);
+				const {
+					data: responseBody,
+					error,
+					response,
+				} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/adopt`, {
+					body: { data: { devices: payload } },
+				});
 
 				if (typeof responseBody === 'undefined' || !response.ok) {
 					const errorReason = error
-						? getErrorReason<DevicesShellyV1PluginCreateAdoptOperation>(
-								error,
-								t('devicesShellyV1Plugin.messages.wizard.adoptionNotCreated')
-							)
+						? getErrorReason<DevicesShellyV1PluginCreateAdoptOperation>(error, t('devicesShellyV1Plugin.messages.wizard.adoptionNotCreated'))
 						: t('devicesShellyV1Plugin.messages.wizard.adoptionNotCreated');
 
 					throw new DevicesShellyV1ApiException(errorReason, response.status);
@@ -561,8 +562,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 				await devicesStore.fetch();
 			} catch (error: unknown) {
-				const reason =
-					error instanceof Error ? error.message : t('devicesShellyV1Plugin.messages.wizard.adoptionNotCreated');
+				const reason = error instanceof Error ? error.message : t('devicesShellyV1Plugin.messages.wizard.adoptionNotCreated');
 
 				for (const item of payload) {
 					outcomes.push({ hostname: item.hostname, name: item.name, status: 'failed', error: reason });

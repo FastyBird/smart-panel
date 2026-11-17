@@ -37,6 +37,7 @@
     "yourProfile": "Váš profil"
   },
   "messages": {
+    "sessionExpired": "Vaše prihlásenie už nie je platné. Prihláste sa prosím znova.",
     "invalidCredentials": "Používateľské meno alebo heslo je nesprávne.",
     "signInRateLimited": "Príliš veľa pokusov o prihlásenie. Skúste to prosím neskôr.",
     "signInRetryAfter": "Príliš veľa pokusov o prihlásenie. Pred ďalším pokusom počkajte {seconds} sekúnd.",

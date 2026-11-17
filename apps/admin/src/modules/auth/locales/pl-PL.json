@@ -37,6 +37,7 @@
     "yourProfile": "Twój profil"
   },
   "messages": {
+    "sessionExpired": "Sesja nie jest już ważna. Zaloguj się ponownie.",
     "invalidCredentials": "Nazwa użytkownika lub hasło są nieprawidłowe.",
     "signInRateLimited": "Zbyt wiele prób logowania. Spróbuj ponownie później.",
     "signInRetryAfter": "Zbyt wiele prób logowania. Odczekaj {seconds} sekund przed kolejną próbą.",

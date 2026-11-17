@@ -328,6 +328,9 @@
 			"friendlyName": "Priateľské meno",
 			"channels": "Kanály",
 			"channelsCount": "{count} kanál | {count} kanály | {count} kanálov"
+		},
+		"selection": {
+			"description": "Zariadenia Zigbee pripojené cez vašu bránu Zigbee2MQTT."
 		}
 	}
 }

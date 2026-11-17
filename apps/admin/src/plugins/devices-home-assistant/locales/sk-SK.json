@@ -285,6 +285,9 @@
 		"messages": {
 			"sessionNotStarted": "Zariadenia Home Assistant sa nepodarilo pripraviť na hromadný import.",
 			"adoptionFailed": "Vybrané zariadenia Home Assistant sa nepodarilo pridať."
+		},
+		"selection": {
+			"description": "Importujte zariadenia zo svojej inštancie Home Assistant."
 		}
 	}
 }

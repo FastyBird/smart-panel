@@ -21,7 +21,13 @@ export type ThermostatMemberDraft = Omit<ThermostatActuator, 'lease_seconds' | '
 	retained?: ThermostatClaim;
 };
 
+export interface ThermostatCoolingSourceDraft {
+	role: 'dew_point' | 'cooled_surface';
+	source_property: string;
+}
 export interface ThermostatDraft {
+	/** Wizard selections only; serialized through each member's cooling_protection, never as control sources. */
+	coolingSources?: ThermostatCoolingSourceDraft[];
 	display_floor_claim?: string | null;
 	requested_mode: ThermostatRequest['requested_mode'];
 	policy: {
@@ -76,13 +82,31 @@ export const emptyThermostatDraft = (): ThermostatDraft => ({
 /** Recommended starting values for the mandatory per-entry fields of a new thermostat. */
 export const RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS = 300;
 export const RECOMMENDED_ACTUATOR_LEASE_SECONDS = 600;
+export const recommendedFloorPolicy = (): NonNullable<ThermostatDraft['policy']['floor']> => ({ limit: 28, recoveryHysteresis: 1 });
+export const recommendedWindowHeuristic = (): NonNullable<ThermostatDraft['heuristic']> => ({
+	sampleWindowMs: 180_000,
+	minimumSamples: 3,
+	minimumSpanMs: 120_000,
+	maximumSampleAgeMs: 120_000,
+	slopeThresholdCPerMinute: 0.9,
+	confirmationMs: 60_000,
+	recoveryMs: 60_000,
+	maximumPauseMs: 600_000,
+	cooldownMs: 120_000,
+});
+export const recommendedCoolingPolicy = (): NonNullable<ThermostatDraft['policy']['cooling']> => ({
+	schemaVersion: 1,
+	marginC: 2,
+	recoveryHysteresisC: 1,
+	absoluteMinimumC: 18,
+});
 
 /**
  * Starting point for a thermostat that does not exist yet. Unlike {@link emptyThermostatDraft} the
  * timing and tolerance fields carry recommended values: every one of them is mandatory, none has an
  * obvious value to someone meeting the form for the first time, and an all-blank form answered with
  * a wall of validation errors before anything had been touched. They are ordinary editable values —
- * setpoints, sources and members still have to be chosen, because those depend on the room.
+ * sources and members still have to be chosen. The wizard seeds active branch setpoints after relay selection.
  */
 export const newThermostatDraft = (): ThermostatDraft => {
 	const draft = emptyThermostatDraft();
@@ -224,15 +248,22 @@ export const buildThermostatRequest = (
 	if (!finite(policy.coldTolerance) || policy.coldTolerance < 0) errors.push(thermostatError('coldTolerance'));
 	if (!finite(policy.hotTolerance) || policy.hotTolerance < 0) errors.push(thermostatError('hotTolerance'));
 	if (!finite(policy.neutralMargin) || policy.neutralMargin <= 0) errors.push(thermostatError('neutralMargin'));
-	if (!whole(policy.minimumOffMs) || policy.minimumOffMs < 0) errors.push(thermostatError('minimumOff'));
-	if (!whole(policy.changeoverMs) || policy.changeoverMs < 0) errors.push(thermostatError('changeover'));
+	if (!whole(policy.minimumOffMs) || policy.minimumOffMs < 0 || policy.minimumOffMs > 86400000) errors.push(thermostatError('minimumOff'));
+	if (!whole(policy.changeoverMs) || policy.changeoverMs < 0 || policy.changeoverMs > 86400000) errors.push(thermostatError('changeover'));
 	if (policy.floor && (!finite(policy.floor.limit) || !finite(policy.floor.recoveryHysteresis) || policy.floor.recoveryHysteresis <= 0)) {
 		errors.push(thermostatError('floorPolicy'));
 	}
 	if (draft.heuristic && Object.values(draft.heuristic).some((value) => !finite(value))) {
 		errors.push(thermostatError('trendIncomplete'));
 	}
-	if (!whole(draft.contact_opening_ms) || draft.contact_opening_ms < 0 || !whole(draft.contact_closing_ms) || draft.contact_closing_ms < 0) {
+	if (
+		!whole(draft.contact_opening_ms) ||
+		draft.contact_opening_ms < 0 ||
+		draft.contact_opening_ms > 86400000 ||
+		!whole(draft.contact_closing_ms) ||
+		draft.contact_closing_ms < 0 ||
+		draft.contact_closing_ms > 86400000
+	) {
 		errors.push(thermostatError('contactDebounce'));
 	}
 	if (draft.sources.filter((source) => source.role === 'ambient').length !== 1) errors.push(thermostatError('ambientSource'));
@@ -248,7 +279,8 @@ export const buildThermostatRequest = (
 		errors.push(thermostatError('floorProtectionSource'));
 	if (draft.sources.filter((source) => source.role === 'contact').length > 1) errors.push(thermostatError('contactSourceLimit'));
 	for (const source of draft.sources) {
-		if (!whole(source.maximum_age_seconds) || source.maximum_age_seconds < 1) errors.push(thermostatError('sourceAge', { role: source.role }));
+		if (!whole(source.maximum_age_seconds) || source.maximum_age_seconds < 1 || source.maximum_age_seconds > 86400)
+			errors.push(thermostatError('sourceAge', { role: source.role }));
 		if (!source.source_property && !source.id) errors.push(thermostatError('sourceSelect', { role: source.role }));
 		if (source.role === 'contact' && (source.open_value == null || source.closed_value == null)) errors.push(thermostatError('contactValues'));
 		if (source.role === 'contact' && source.open_value === source.closed_value) errors.push(thermostatError('contactValuesDiffer'));
@@ -268,7 +300,12 @@ export const buildThermostatRequest = (
 			if (!policy.floor) errors.push(thermostatError('sharedFloorPolicy'));
 			if (!actuator.protection || (!actuator.protection.source_property && !actuator.retained?.protection))
 				errors.push(thermostatError('localProtection'));
-			if (actuator.protection && (!whole(actuator.protection.maximum_age_seconds) || actuator.protection.maximum_age_seconds < 1))
+			if (
+				actuator.protection &&
+				(!whole(actuator.protection.maximum_age_seconds) ||
+					actuator.protection.maximum_age_seconds < 1 ||
+					actuator.protection.maximum_age_seconds > 86400)
+			)
 				errors.push(thermostatError('protectionAge'));
 		}
 		if (!actuator.source_property) errors.push(thermostatError('actuatorRepair', { role: actuator.role }));

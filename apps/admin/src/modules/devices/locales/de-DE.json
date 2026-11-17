@@ -399,12 +399,12 @@
 			},
 			"room": {
 				"title": "Raum",
-				"placeholder": "Raum auswählen (optional)",
+				"placeholder": "Raum auswählen",
 				"hint": "Weisen Sie dieses Gerät einem physischen Raum zu"
 			},
 			"zones": {
 				"title": "Zonen",
-				"placeholder": "Zonen auswählen (optional)",
+				"placeholder": "Zonen auswählen",
 				"hint": "Weisen Sie dieses Gerät logischen Zonen zu (z.B. Sicherheit, Außenbereich). Die Etagenzonenmitgliedschaft wird aus der Raumzuweisung abgeleitet."
 			},
 			"validation": {
@@ -705,6 +705,9 @@
 		},
 		"back": {
 			"title": "Zurück"
+		},
+		"manual": {
+			"title": "Manuelle Konfiguration"
 		}
 	},
 	"labels": {
@@ -1048,6 +1051,37 @@
 			"noSelection": "Es wurden keine Geräte ausgewählt",
 			"resultsSuccess": "Alle ausgewählten Geräte wurden erfolgreich hinzugefügt",
 			"resultsFailed": "Einige Geräte konnten nicht hinzugefügt werden"
+		},
+		"variant": "Variante auswählen",
+		"loadFailed": "Plugins konnten nicht geladen werden.",
+		"retry": "Erneut versuchen",
+		"discardChanges": "Ungespeicherte Änderungen verwerfen?",
+		"noPlugins": "Kein Assistent verfügbar. Aktivieren Sie ein unterstütztes Plugin in den Einstellungen.",
+		"review": {
+			"setting": "Einstellung",
+			"value": "Wert",
+			"status": "Status",
+			"details": "Details",
+			"success": "Gültig",
+			"error": "Korrektur erforderlich",
+			"info": "Information"
+		},
+		"validation": {
+			"required": "Füllen Sie dieses Feld aus.",
+			"invalidValue": "Wählen Sie einen gültigen Wert.",
+			"minimumItems": "Wählen Sie mindestens {count} Einträge.",
+			"numberRange": "Geben Sie eine ganze Zahl von {minimum} bis {maximum} ein."
+		},
+		"selection": {
+			"title": "Was möchten Sie hinzufügen?",
+			"description": "Wählen Sie eine Integration für physische Geräte oder erstellen Sie ein virtuelles Gerät aus vorhandenen Geräten.",
+			"integrations": "Integration verbinden",
+			"integrationsDescription": "Suchen Sie Geräte oder konfigurieren Sie deren Verbindung und wählen Sie, was hinzugefügt werden soll.",
+			"search": "Suchen",
+			"searchPlaceholder": "Integration oder Gerätetyp",
+			"noResults": "Keine passenden Integrationen oder Gerätetypen.",
+			"clearSearch": "Suche löschen",
+			"manualHint": "Möchten Sie die Konfiguration selbst eingeben?"
 		}
 	},
 	"diagnostics": {

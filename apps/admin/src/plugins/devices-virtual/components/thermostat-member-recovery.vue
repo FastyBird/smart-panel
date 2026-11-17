@@ -18,12 +18,7 @@
 		>
 			{{ label('disconnection') }}
 		</el-checkbox>
-		<el-alert
-			v-if="error"
-			:title="error"
-			type="error"
-			:closable="false"
-		/>
+
 		<el-button
 			v-if="error"
 			:disabled="pending"
@@ -43,9 +38,10 @@
 import { onScopeDispose, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElInput } from 'element-plus';
+import { ElButton, ElCheckbox, ElInput } from 'element-plus';
 
 import { useBackend } from '../../../common';
+import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
 import type { ThermostatClaim } from '../services/thermostat-authoring';
 
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
@@ -92,4 +88,5 @@ const recover = async () => {
 		if (alive) pending.value = false;
 	}
 };
+useVirtualWizardError(error);
 </script>

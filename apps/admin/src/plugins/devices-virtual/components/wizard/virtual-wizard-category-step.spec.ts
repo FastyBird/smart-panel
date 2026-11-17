@@ -16,7 +16,7 @@ vi.mock('vue-i18n', () => ({
 }));
 
 // `wrapper.vm.<exposed>` is already auto-unwrapped by @vue/test-utils's public instance proxy, so
-// `categories`/`blockedCategories` come back as plain arrays, not refs. Re-wrapping in `computed`
+// `categories` comes back as plain arrays, not refs. Re-wrapping in `computed`
 // here (rather than on the component) gives callers the `.value` access the rest of this codebase's
 // wizard-state helpers use (see useDeviceWizardState, useSpacesWizard) and keeps the read live
 // across `wrapper.setProps(...)`.
@@ -31,7 +31,6 @@ const mountCategoryStep = (props: Partial<IVirtualWizardCategoryStepProps> = {})
 	return {
 		wrapper,
 		categories: computed(() => wrapper.vm.categories),
-		blockedCategories: computed(() => wrapper.vm.blockedCategories),
 	};
 };
 
@@ -60,53 +59,41 @@ describe('VirtualWizardCategoryStep', () => {
 		expect(values).not.toContain('water_heater');
 	});
 
-	it('lists every blocked category separately, each with a non-empty reason', () => {
-		const { blockedCategories } = mountCategoryStep();
-
-		const values = blockedCategories.value.map((entry) => entry.value);
-
-		expect(values).toEqual(
-			expect.arrayContaining(['air_conditioner', 'air_dehumidifier', 'air_humidifier', 'heating_unit', 'water_heater', 'thermostat'])
-		);
-		expect(blockedCategories.value).toHaveLength(6);
-		expect(blockedCategories.value.every((entry) => entry.reason.length > 0)).toBe(true);
+	it('omits unavailable categories from both the compact and expanded grid', async () => {
+		const { wrapper } = mountCategoryStep();
+		const blocked = ['air_conditioner', 'air_dehumidifier', 'air_humidifier', 'heating_unit', 'water_heater', 'thermostat'];
+		for (const value of blocked) expect(wrapper.find(`[data-category="${value}"]`).exists()).toBe(false);
+		await wrapper.get('[data-test-id="projection-more-categories"]').trigger('click');
+		for (const value of blocked) expect(wrapper.find(`[data-category="${value}"]`).exists()).toBe(false);
+		expect(wrapper.findAllComponents({ name: 'ElRadio' }).some((radio) => radio.props('disabled'))).toBe(false);
 	});
 
-	it('renders one selectable option per allowed category', () => {
+	it('keeps every allowed category available through the expanded grid', async () => {
 		const { wrapper, categories } = mountCategoryStep();
 
-		const options = wrapper.findAllComponents({ name: 'ElOption' });
+		await wrapper.get('[data-test-id="projection-more-categories"]').trigger('click');
+		const options = wrapper.findAllComponents({ name: 'ElRadio' }).filter((radio) => !radio.props('disabled'));
 
 		expect(options).toHaveLength(categories.value.length);
 	});
 
-	it('renders blocked categories as disabled tags carrying the reason, not as selectable options', () => {
-		const { wrapper, blockedCategories } = mountCategoryStep();
-
-		const tags = wrapper.findAllComponents({ name: 'ElTag' });
-
-		expect(tags).toHaveLength(blockedCategories.value.length);
-
-		for (const tag of tags) {
-			expect(tag.attributes('title')).toBeTruthy();
-		}
-
-		const optionValues = wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'));
-
-		expect(optionValues).not.toContain(DevicesModuleDeviceCategory.thermostat);
+	it('does not emit an unsupported category from an externally triggered selection', async () => {
+		const { wrapper } = mountCategoryStep();
+		await wrapper.findComponent({ name: 'ElRadioGroup' }).setValue(DevicesModuleDeviceCategory.thermostat);
+		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
 	});
 
 	it('emits update:modelValue with the selected category', async () => {
 		const { wrapper } = mountCategoryStep();
 
-		await wrapper.findComponent({ name: 'ElSelect' }).setValue(DevicesModuleDeviceCategory.lighting);
+		await wrapper.findComponent({ name: 'ElRadioGroup' }).setValue(DevicesModuleDeviceCategory.lighting);
 
 		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([DevicesModuleDeviceCategory.lighting]);
 	});
 
-	it('reflects the current selection back into the select', () => {
+	it('reflects the current selection back into the radio group', () => {
 		const { wrapper } = mountCategoryStep({ modelValue: DevicesModuleDeviceCategory.switcher });
 
-		expect(wrapper.findComponent({ name: 'ElSelect' }).props('modelValue')).toBe(DevicesModuleDeviceCategory.switcher);
+		expect(wrapper.findComponent({ name: 'ElRadioGroup' }).props('modelValue')).toBe(DevicesModuleDeviceCategory.switcher);
 	});
 });

@@ -21,9 +21,7 @@
 									</el-icon>
 									{{ t('buddyModule.buttons.setupWizard.title') }}
 								</el-button>
-								<el-button
-									@click="router.push('/config/modules/buddy-module')"
-								>
+								<el-button @click="router.push('/config/modules/buddy-module')">
 									{{ t('buddyModule.buttons.configure.title') }}
 								</el-button>
 							</div>
@@ -48,9 +46,7 @@
 									</el-icon>
 									{{ t('buddyModule.buttons.setupWizard.title') }}
 								</el-button>
-								<el-button
-									@click="router.push(`/config/plugins/${selectedProvider.type}`)"
-								>
+								<el-button @click="router.push(`/config/plugins/${selectedProvider.type}`)">
 									{{ t('buddyModule.buttons.configure.title') }}
 								</el-button>
 							</div>
@@ -75,9 +71,7 @@
 									</el-icon>
 									{{ t('buddyModule.buttons.setupWizard.title') }}
 								</el-button>
-								<el-button
-									@click="router.push(`/config/plugins/${selectedProvider.type}`)"
-								>
+								<el-button @click="router.push(`/config/plugins/${selectedProvider.type}`)">
 									{{ t('buddyModule.buttons.configure.title') }}
 								</el-button>
 							</div>
@@ -115,7 +109,10 @@
 
 		<template v-else-if="!hasActiveConversation && !isLoadingMessages">
 			<div class="flex items-center justify-center h-full">
-				<el-empty :description="t('buddyModule.texts.emptyChat')" />
+				<empty-state
+					icon="mdi:chat-outline"
+					:description="t('buddyModule.texts.emptyChat')"
+				/>
 			</div>
 		</template>
 
@@ -125,8 +122,9 @@
 				class="grow-1 p-4"
 			>
 				<div>
-					<el-empty
+					<empty-state
 						v-if="messages.length === 0 && !isLoadingMessages"
+						icon="mdi:chat-outline"
 						:description="t('buddyModule.texts.startConversation')"
 					/>
 
@@ -154,7 +152,6 @@
 							</div>
 						</div>
 					</div>
-
 				</div>
 			</el-scrollbar>
 
@@ -192,12 +189,14 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElButton, ElEmpty, ElIcon, ElInput, ElResult, ElScrollbar, ElTag } from 'element-plus';
+import { ElButton, ElIcon, ElInput, ElResult, ElScrollbar, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import type { IProviderStatus } from '../composables/useBuddyProviders';
+import EmptyState from '../../../common/components/empty-state.vue';
 import type { IMessage } from '../buddy.types';
+import type { IProviderStatus } from '../composables/useBuddyProviders';
+
 import BuddyMessageBubble from './buddy-message-bubble.vue';
 import BuddySetupWizard from './buddy-setup-wizard.vue';
 

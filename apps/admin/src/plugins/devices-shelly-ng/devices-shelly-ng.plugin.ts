@@ -14,6 +14,7 @@ import {
 	type IDevicePluginsComponents,
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
+import DeviceWizard from '../../modules/devices/components/wizard/device-wizard.vue';
 
 import { ShellyNgConfigForm, ShellyNgDeviceAddForm, ShellyNgDeviceEditForm } from './components/components';
 import ShellyCoverRecoverySection from './components/shelly-cover-recovery-section.vue';
@@ -77,8 +78,26 @@ export default {
 					components: {
 						deviceAddForm: ShellyNgDeviceAddForm,
 						deviceEditForm: ShellyNgDeviceEditForm,
-						deviceDetailSection: ShellyCoverRecoverySection,
-						deviceWizardAdapter: useDevicesWizard,
+						deviceDetailTabs: [
+							{
+								id: 'shelly',
+								label: 'devicesShellyNgPlugin.detailTab',
+								icon: 'mdi:tools',
+								component: ShellyCoverRecoverySection,
+								visible: (device) => device.category === 'window_covering',
+							},
+						],
+						deviceWizard: {
+							selection: {
+								kind: 'integration',
+								icon: 'mdi:lightning-bolt-outline',
+								order: 20,
+								description: 'devicesShellyNgPlugin.wizard.selection.description',
+							},
+							component: DeviceWizard,
+							props: { adapterFactory: useDevicesWizard },
+							capabilities: { discovery: true, batch: true },
+						},
 					},
 					schemas: {
 						deviceSchema: ShellyNgDeviceSchema,

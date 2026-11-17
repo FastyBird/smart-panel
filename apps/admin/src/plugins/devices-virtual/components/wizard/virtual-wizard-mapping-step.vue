@@ -1,270 +1,283 @@
 <template>
-	<div class="space-y-4">
-		<el-alert
-			type="info"
-			:title="t('devicesVirtualPlugin.wizard.mapping.heading')"
-			:description="t('devicesVirtualPlugin.wizard.mapping.description')"
-			:closable="false"
-			show-icon
-		/>
-
+	<div
+		v-loading="loading"
+		class="projection-mapping"
+		:aria-busy="loading"
+	>
 		<el-alert
 			v-if="category === null"
 			type="warning"
 			:title="t('devicesVirtualPlugin.wizard.mapping.noCategory')"
 			:closable="false"
-			show-icon
 		/>
-
 		<template v-else>
-			<div
-				class="flex items-center gap-3"
-				data-test-id="mapping-progress"
-			>
-				<el-progress
-					:percentage="progressPercentage"
-					:status="isComplete ? 'success' : undefined"
-					class="grow"
-				/>
-
-				<el-text
-					v-if="progress.requiredTotal > 0"
-					size="small"
-					class="whitespace-nowrap"
+			<aside class="projection-mapping__channels">
+				<strong class="block mb-3">{{ text('channelsTitle') }}</strong>
+				<button
+					v-for="group in includedGroups"
+					:key="group.specChannel"
+					type="button"
+					class="projection-mapping__channel"
+					:class="{ 'is-active': activeGroup?.specChannel === group.specChannel }"
+					:data-channel="group.specChannel"
+					@click="activeChannel = group.specChannel"
 				>
-					{{ t('devicesVirtualPlugin.wizard.mapping.progress', { filled: progress.requiredFilled, total: progress.requiredTotal }) }}
-				</el-text>
-
-				<!-- "0 of 0 required properties mapped" is meaningless and reads as finished. These
-					categories still need at least one borrowed property, so say that instead — and only
-					until one is mapped, or the prompt would contradict the completed bar beside it. -->
-				<el-text
-					v-else-if="!hasMapping"
-					size="small"
-				>
-					{{ t('devicesVirtualPlugin.wizard.mapping.noRequired') }}
-				</el-text>
-			</div>
-
-			<!-- Spec constraints the required-slot count cannot express. Shown as alerts rather than
-				per-slot errors because each one is about a combination of properties, not about any single
-				mapping being wrong. -->
-			<el-alert
-				v-for="violation in constraintViolations"
-				:key="`${violation.specChannel}-${violation.message}`"
-				type="error"
-				:closable="false"
-				show-icon
-				class="mt-2"
-				data-test-id="constraint-violation"
-			>
-				<strong>{{ t(`devicesModule.categories.channels.${violation.specChannel}`) }}</strong>
-				{{ violation.message }}
-			</el-alert>
-
-			<div
-				v-for="group in groups"
-				:key="group.specChannel"
-				class="b b-solid b-gray-200 dark:b-gray-700 rounded p-3 space-y-3"
-				:data-test-id="`slot-group-${group.specChannel}`"
-			>
-				<div class="flex items-center gap-2 flex-wrap">
-					<strong>{{ t(`devicesModule.categories.channels.${group.specChannel}`) }}</strong>
-
-					<!-- The channel tag and the property tag below read from separate keys even though English
-						renders both the same word: the adjective agrees with the noun it labels, and "channel"
-						and "property" do not share a gender in four of the six locales (es canal m. /
-						propiedad f., pl kanał m. / właściwość f., and the same split in cs and sk). -->
-					<el-tag
-						:type="group.required ? 'danger' : 'info'"
-						size="small"
-					>
-						{{ group.required ? t('devicesVirtualPlugin.wizard.mapping.channelRequired') : t('devicesVirtualPlugin.wizard.mapping.channelOptional') }}
-					</el-tag>
-				</div>
-
-				<div class="flex flex-wrap items-center gap-2">
-					<el-text
-						size="small"
-						class="basis-full"
-					>
-						{{ t('devicesVirtualPlugin.wizard.mapping.shortcut.description') }}
-					</el-text>
-
-					<el-select
-						:model-value="channelPickers[group.specChannel]?.device ?? null"
-						:placeholder="t('devicesVirtualPlugin.wizard.mapping.source.devicePlaceholder')"
-						:name="`shortcut-device-${group.specChannel}`"
-						filterable
-						clearable
-						class="w-60"
-						@update:model-value="onShortcutDevice(group.specChannel, $event)"
-					>
-						<el-option
-							v-for="item in sourceDevicesOptions"
-							:key="item.value"
-							:label="item.label"
-							:value="item.value"
-						/>
-					</el-select>
-
-					<el-select
-						:model-value="channelPickers[group.specChannel]?.channel ?? null"
-						:placeholder="t('devicesVirtualPlugin.wizard.mapping.source.channelPlaceholder')"
-						:name="`shortcut-channel-${group.specChannel}`"
-						:disabled="!channelPickers[group.specChannel]?.device"
-						filterable
-						clearable
-						class="w-60"
-						@update:model-value="onShortcutChannel(group.specChannel, $event)"
-					>
-						<el-option
-							v-for="item in channelsOptions(channelPickers[group.specChannel]?.device ?? null)"
-							:key="item.value"
-							:label="item.label"
-							:value="item.value"
-						/>
-					</el-select>
-
-					<el-button
-						:disabled="!channelPickers[group.specChannel]?.channel"
-						plain
-						@click="onApplyChannel(group.specChannel)"
-					>
-						{{ t('devicesVirtualPlugin.wizard.mapping.shortcut.apply') }}
-					</el-button>
-				</div>
-
-				<div
-					v-for="slot in visibleSlots(group)"
-					:key="slot.key"
-					class="space-y-1"
-					:data-test-id="`slot-${slot.key}`"
-				>
-					<div class="flex items-center gap-2 flex-wrap">
-						<span class="text-sm font-medium">{{ t(`devicesModule.categories.channelsProperties.${slot.specProperty}`) }}</span>
-
+					<div class="flex items-center justify-between gap-2">
+						<strong>{{ channelLabel(group.specChannel) }}</strong>
 						<el-tag
-							v-if="slot.required"
-							type="danger"
+							v-if="issuesFor(group)"
+							type="warning"
 							size="small"
 						>
-							{{ t('devicesVirtualPlugin.wizard.mapping.propertyRequired') }}
+							{{ text('toFix', { count: issuesFor(group) }) }}
 						</el-tag>
-
-						<el-text
-							size="small"
-							type="info"
-						>
-							{{ slotHint(slot) }}
-						</el-text>
 					</div>
-
-					<div class="flex flex-wrap items-center gap-2">
-						<el-select
-							:model-value="pickers[slot.key]?.device ?? null"
-							:placeholder="t('devicesVirtualPlugin.wizard.mapping.source.devicePlaceholder')"
-							:name="`device-${slot.key}`"
-							filterable
-							clearable
-							class="w-60"
-							@update:model-value="onPickDevice(slot.key, $event)"
-						>
-							<el-option
-								v-for="item in sourceDevicesOptions"
-								:key="item.value"
-								:label="item.label"
-								:value="item.value"
-							/>
-						</el-select>
-
-						<el-select
-							:model-value="pickers[slot.key]?.channel ?? null"
-							:placeholder="t('devicesVirtualPlugin.wizard.mapping.source.channelPlaceholder')"
-							:name="`channel-${slot.key}`"
-							:disabled="!pickers[slot.key]?.device"
-							filterable
-							clearable
-							class="w-60"
-							@update:model-value="onPickChannel(slot.key, $event)"
-						>
-							<el-option
-								v-for="item in channelsOptions(pickers[slot.key]?.device ?? null)"
-								:key="item.value"
-								:label="item.label"
-								:value="item.value"
-							/>
-						</el-select>
-
-						<el-select
-							:model-value="selections[slot.key] ?? null"
-							:placeholder="t('devicesVirtualPlugin.wizard.mapping.source.propertyPlaceholder')"
-							:name="`property-${slot.key}`"
-							:disabled="!pickers[slot.key]?.channel"
-							:loading="checking[slot.key] === true"
-							filterable
-							clearable
-							class="w-60"
-							@update:model-value="onPickProperty(slot.key, $event)"
-						>
-							<el-option
-								v-for="item in propertiesOptions(pickers[slot.key]?.channel ?? null)"
-								:key="item.value"
-								:label="item.label"
-								:value="item.value"
-							/>
-						</el-select>
-					</div>
-
 					<el-text
-						v-if="errors[slot.key]"
 						size="small"
-						type="danger"
-						class="block"
-						:data-test-id="`slot-error-${slot.key}`"
+						class="block mt-2"
 					>
-						{{ errors[slot.key] }}
+						{{ t(`devicesVirtualPlugin.wizard.mapping.${group.required ? 'channelRequired' : 'channelOptional'}`) }} ·
+						{{ text('mappedCount', { mapped: mappedCount(group), total: group.slots.length }) }}
 					</el-text>
-				</div>
-
-				<el-button
-					v-if="expanded[group.specChannel] || hiddenSlotsCount(group) > 0"
-					link
-					type="primary"
-					:data-test-id="`optional-slots-${group.specChannel}`"
-					@click="expanded[group.specChannel] = !expanded[group.specChannel]"
+				</button>
+				<template v-if="optionalGroups.length">
+					<strong class="block mt-5 mb-3">{{ text('optionalChannels') }}</strong>
+					<el-card
+						shadow="never"
+						body-class="p-0!"
+					>
+						<div
+							v-for="group in optionalGroups"
+							:key="group.specChannel"
+							class="projection-mapping__optional-channel"
+						>
+							<span>{{ channelLabel(group.specChannel) }}</span>
+							<el-button
+								size="small"
+								:data-add-channel="group.specChannel"
+								@click="addChannel(group.specChannel)"
+							>
+								{{ t('devicesVirtualPlugin.wizard.layout.add') }}
+							</el-button>
+						</div>
+					</el-card>
+				</template>
+				<el-text
+					size="small"
+					class="projection-mapping__channel-help"
 				>
-					{{
-						expanded[group.specChannel]
-							? t('devicesVirtualPlugin.wizard.mapping.hideOptional')
-							: t('devicesVirtualPlugin.wizard.mapping.showOptional', { count: hiddenSlotsCount(group) })
-					}}
-				</el-button>
-			</div>
+					{{ text('optionalChannelHelp') }}
+				</el-text>
+			</aside>
+			<main class="projection-mapping__content">
+				<template v-if="activeGroup">
+					<div class="flex items-center justify-between gap-3 mb-2">
+						<h3 class="m-0 text-base">{{ channelLabel(activeGroup.specChannel) }}</h3>
+						<virtual-wizard-remove-button
+							v-if="!activeGroup.required"
+							:data-remove-channel="activeGroup.specChannel"
+							:label="t('devicesVirtualPlugin.measurement.remove')"
+							@click="removeChannel(activeGroup.specChannel)"
+						/>
+					</div>
+					<el-text class="projection-mapping__description">{{ text('mappingDescription') }}</el-text>
+					<el-form
+						class="projection-mapping__shortcut"
+						label-position="top"
+						@submit.prevent
+					>
+						<el-form-item
+							:label="text('fillDescription')"
+							:for="`shortcut-channel-${activeGroup.specChannel}`"
+							class="mb-0!"
+						>
+							<div class="projection-mapping__shortcut-controls">
+								<el-select-v2
+									:id="`shortcut-channel-${activeGroup.specChannel}`"
+									:model-value="channelPickers[activeGroup.specChannel]?.channel ?? null"
+									:options="channelOptions"
+									:placeholder="t('devicesVirtualPlugin.wizard.mapping.source.channelPlaceholder')"
+									:aria-label="t('devicesVirtualPlugin.wizard.mapping.source.channelPlaceholder')"
+									filterable
+									clearable
+									class="projection-mapping__shortcut-select"
+									:name="`shortcut-channel-${activeGroup.specChannel}`"
+									@update:model-value="onShortcutChannel(activeGroup.specChannel, $event || null)"
+								/>
+								<el-button
+									class="projection-mapping__shortcut-button"
+									:disabled="!channelPickers[activeGroup.specChannel]?.channel"
+									:loading="applying > 0"
+									@click="onApplyChannel(activeGroup.specChannel)"
+								>
+									{{ text('fillEmpty') }}
+								</el-button>
+							</div>
+						</el-form-item>
+					</el-form>
+
+					<virtual-wizard-card flush>
+						<el-form
+							label-position="top"
+							@submit.prevent
+						>
+							<el-table
+								:data="activeSlots"
+								row-key="key"
+								:data-test-id="`slot-group-${activeGroup.specChannel}`"
+								class="projection-mapping__table"
+							>
+								<el-table-column
+									:label="t('devicesVirtualPlugin.wizard.review.columns.property')"
+									:min-width="160"
+								>
+									<template #default="{ row }">
+										<div :data-test-id="`slot-${row.key}`">
+											<strong>{{ propertyLabel(row.specProperty) }}</strong>
+											<el-text
+												size="small"
+												class="block"
+											>
+												{{ t(`devicesVirtualPlugin.wizard.mapping.${row.propertyRequired ? 'propertyRequired' : 'propertyOptional'}`) }} ·
+												{{ slotHint(row) }}
+											</el-text>
+										</div>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="text('sourceColumn')"
+									:min-width="330"
+								>
+									<template #default="{ row }">
+										<el-form-item
+											:error="
+												errors[row.key] ||
+												(fieldError('mappings') && row.propertyRequired && !selections[row.key]
+													? t('devicesModule.wizard.validation.required')
+													: '') ||
+												(validationAttempted
+													? constraintViolations
+															.filter((violation) => violation.specChannel === row.specChannel)
+															.map((violation) => violation.message)
+															.join(' · ')
+													: '')
+											"
+											class="mb-0!"
+											:data-test-id="errors[row.key] ? `slot-error-${row.key}` : undefined"
+										>
+											<el-select-v2
+												:model-value="selections[row.key] ?? null"
+												:options="sourceOptions(row)"
+												:loading="checking[row.key] || (optionLoading[row.key] && !optionsReady(row))"
+												:aria-label="propertyLabel(row.specProperty)"
+												:placeholder="t('devicesVirtualPlugin.wizard.mapping.source.propertyPlaceholder')"
+												filterable
+												clearable
+												class="w-full"
+												:name="`property-${row.key}`"
+												@visible-change="onOptionsOpen(row, $event)"
+												@update:model-value="onPickProperty(row.key, $event || null)"
+											>
+												<template
+													v-if="optionLoading[row.key] && optionsReady(row)"
+													#footer
+												>
+													<el-text size="small">{{ text('loadingSources') }}</el-text>
+												</template>
+											</el-select-v2>
+										</el-form-item>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('devicesVirtualPlugin.wizard.layout.currentValue')"
+									:width="90"
+								>
+									<template #default="{ row }"><virtual-projection-source-value :property-id="selections[row.key]" /></template>
+								</el-table-column>
+								<el-table-column
+									:label="text('statusColumn')"
+									:width="145"
+								>
+									<template #default="{ row }">
+										<el-tag
+											:type="
+												errors[row.key]
+													? 'danger'
+													: checking[row.key]
+														? 'info'
+														: selections[row.key]
+															? 'success'
+															: row.propertyRequired
+																? 'warning'
+																: 'info'
+											"
+											size="small"
+										>
+											{{
+												text(
+													errors[row.key]
+														? 'needsAttention'
+														: checking[row.key]
+															? 'checking'
+															: selections[row.key]
+																? 'mapped'
+																: row.propertyRequired
+																	? 'notMapped'
+																	: 'optional'
+												)
+											}}
+										</el-tag>
+									</template>
+								</el-table-column>
+							</el-table>
+						</el-form>
+					</virtual-wizard-card>
+					<div
+						v-if="hiddenSlotsCount(activeGroup) > 0 || expanded[activeGroup.specChannel]"
+						class="flex items-center gap-3 mt-3 flex-wrap"
+					>
+						<el-text
+							v-if="hiddenSlotsCount(activeGroup) > 0"
+							size="small"
+						>
+							{{ text('unmappedOptional', { count: hiddenSlotsCount(activeGroup) }) }}
+						</el-text>
+						<el-button
+							link
+							type="primary"
+							:data-test-id="`optional-slots-${activeGroup.specChannel}`"
+							@click="expanded[activeGroup.specChannel] = !expanded[activeGroup.specChannel]"
+						>
+							{{
+								expanded[activeGroup.specChannel]
+									? t('devicesVirtualPlugin.wizard.mapping.hideOptional')
+									: t('devicesVirtualPlugin.wizard.mapping.showOptional', { count: hiddenSlotsCount(activeGroup) })
+							}}
+						</el-button>
+					</div>
+				</template>
+				<el-text v-else>{{ text('chooseChannel') }}</el-text>
+			</main>
 		</template>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, watch } from 'vue';
+import { computed, onBeforeMount, onScopeDispose, reactive, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElOption, ElProgress, ElSelect, ElTag, ElText } from 'element-plus';
+import { ElAlert, ElButton, ElCard, ElForm, ElFormItem, ElSelectV2, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
 import { PLUGINS_PREFIX } from '../../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../../common';
-import type { IChannel, IChannelProperty, IDevice } from '../../../../modules/devices';
-import {
-	channelChannelsPropertiesSpecificationMappers,
-	deviceChannelsSpecificationMappers,
-	deviceChannelsSpecificationOrder,
-	getChannelPropertySpecification,
-} from '../../../../modules/devices/devices.mapping';
+import type { IChannelProperty, IDevice } from '../../../../modules/devices';
+import { useWizardFieldError } from '../../../../modules/devices/components/wizard/use-wizard-validation';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../../modules/devices/store/keys';
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
+	DevicesModuleChannelPropertyPermissions,
 	type DevicesModuleDeviceCategory,
 	DevicesModuleDeviceHiddenBy,
 	DevicesModuleDevicesHiddenFilter,
@@ -273,9 +286,15 @@ import {
 } from '../../../../openapi.constants';
 import { channelsSchema } from '../../../../spec/channels';
 import { devicesSchema } from '../../../../spec/devices';
+import { useProjectionSourceMetadata } from '../../composables/use-projection-source-metadata';
+import { useVirtualWizardSourceGroups } from '../../composables/use-virtual-wizard-placement';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../../devices-virtual.constants';
+import { projectionSlotGroups } from '../../utils/projection-specification';
 import { isVirtualSourceDeviceCandidate, isVirtualSourcePropertyCandidate } from '../../utils/source-candidates.utils';
+import VirtualWizardCard from '../virtual-wizard-card.vue';
+import VirtualWizardRemoveButton from '../virtual-wizard-remove-button.vue';
 
+import VirtualProjectionSourceValue from './virtual-projection-source-value.vue';
 import type {
 	IVirtualMappingProgress,
 	IVirtualMappingSlot,
@@ -293,9 +312,19 @@ const props = defineProps<IVirtualWizardMappingStepProps>();
 const emit = defineEmits<{
 	(e: 'update:modelValue', value: IVirtualSlotMapping[]): void;
 	(e: 'update:valid', value: boolean): void;
+	(e: 'update:optionalChannels', value: DevicesModuleChannelCategory[]): void;
+	(e: 'update:busy', value: boolean): void;
 }>();
 
 const { t } = useI18n();
+const fieldError = useWizardFieldError();
+const text = (key: string, params = {}) => t(`devicesVirtualPlugin.wizard.projection.${key}`, params);
+const channelLabel = (value: string) => t(`devicesModule.categories.channels.${value}`);
+const propertyLabel = (value: string) => t(`devicesModule.categories.channelsProperties.${value}`);
+const loading = ref(true);
+const applying = ref(0);
+const activeChannel = ref<DevicesModuleChannelCategory | null>(null);
+const optionalChannels = ref<DevicesModuleChannelCategory[]>([...(props.optionalChannels ?? [])]);
 const backend = useBackend();
 const logger = useLogger();
 const flashMessage = useFlashMessage();
@@ -304,6 +333,7 @@ const storesManager = injectStoresManager();
 const devicesStore = storesManager.getStore(devicesStoreKey);
 const channelsStore = storesManager.getStore(channelsStoreKey);
 const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+const sourceMetadata = useProjectionSourceMetadata(devicesStore, channelsStore, propertiesStore);
 
 // slot key -> the source property chosen for it. The single source of truth for what is mapped;
 // `mappings`, `progress` and `isValid` are all derived from it rather than maintained alongside it,
@@ -314,6 +344,7 @@ const selections = reactive<Record<string, string>>({});
 const errors = reactive<Record<string, string>>({});
 // slot key -> a compatibility check is in flight for it.
 const checking = reactive<Record<string, boolean>>({});
+const unverified = reactive<Record<string, boolean>>({});
 // slot key -> which device/channel that slot's property list is narrowed to. Purely presentational:
 // clearing it never clears the mapping, and the mapping is what the wizard carries forward.
 const pickers = reactive<Record<string, { device: string | null; channel: string | null }>>({});
@@ -325,6 +356,8 @@ const expanded = reactive<Record<string, boolean>>({});
 // Monotonic per-slot request token. A slot's entry is bumped whenever its selection changes, so a
 // response that arrives after the user has moved on can be recognised as stale and dropped.
 let requestCounter = 0;
+let disposed = false;
+const compatibilityRequests = new Set<AbortController>();
 const slotTokens = new Map<string, number>();
 
 // The generated channel spec carries these alongside `properties`, but the admin's mapping layer only
@@ -357,64 +390,7 @@ const deviceConstraints = (category: DevicesModuleDeviceCategory): IDeviceConstr
 	return spec?.constraints ?? {};
 };
 
-const groups = computed<IVirtualMappingSlotGroup[]>((): IVirtualMappingSlotGroup[] => {
-	if (props.category === null) {
-		return [];
-	}
-
-	const channelSpec = deviceChannelsSpecificationMappers[props.category];
-
-	if (!channelSpec) {
-		return [];
-	}
-
-	const ordered = deviceChannelsSpecificationOrder[props.category] ?? [...channelSpec.required, ...channelSpec.optional];
-
-	// `device_information` is declared required by essentially every device category, so a plain
-	// expansion of the spec *would* offer it. The backend synthesizes those properties as owned by the
-	// virtual device itself (they describe the virtual device, not a borrowed source), so there is
-	// nothing legitimate to map them to and offering them would only invite a mapping that cannot be
-	// created.
-	const channels = ordered.filter((channel: DevicesModuleChannelCategory): boolean => channel !== DevicesModuleChannelCategory.device_information);
-
-	// Required first, at both levels: required channels ahead of optional ones here, and required
-	// properties ahead of optional ones inside each channel (which is the order the property mappers
-	// already produce). Grouping by channel rather than flattening required slots to the very top
-	// keeps a channel's properties together, which is how the user thinks about a source channel.
-	return [
-		...channels.filter((channel: DevicesModuleChannelCategory): boolean => channelSpec.required.includes(channel)),
-		...channels.filter((channel: DevicesModuleChannelCategory): boolean => !channelSpec.required.includes(channel)),
-	].map((specChannel: DevicesModuleChannelCategory): IVirtualMappingSlotGroup => {
-		const channelRequired = channelSpec.required.includes(specChannel);
-
-		const propertySpec = channelChannelsPropertiesSpecificationMappers[specChannel] ?? { required: [], optional: [] };
-
-		return {
-			specChannel,
-			required: channelRequired,
-			slots: [...propertySpec.required, ...propertySpec.optional].map((specProperty): IVirtualMappingSlot => {
-				const metadata = getChannelPropertySpecification(specChannel, specProperty);
-
-				const propertyRequired = propertySpec.required.includes(specProperty);
-
-				return {
-					key: `${specChannel}.${specProperty}`,
-					specChannel,
-					specProperty,
-					// `required` is the conjunction because the two levels are independent: a required
-					// property of an optional channel (illuminance.illuminance under lighting) does not
-					// have to be filled at all, since the channel it belongs to need not exist.
-					required: channelRequired && propertyRequired,
-					channelRequired,
-					propertyRequired,
-					permissions: metadata?.permissions ?? [],
-					dataType: metadata?.data_type ?? null,
-					unit: metadata?.unit ?? null,
-				};
-			}),
-		};
-	});
-});
+const groups = computed(() => projectionSlotGroups(props.category));
 
 const slots = computed<IVirtualMappingSlot[]>((): IVirtualMappingSlot[] =>
 	groups.value.flatMap((group: IVirtualMappingSlotGroup): IVirtualMappingSlot[] => group.slots)
@@ -446,7 +422,8 @@ const progress = computed<IVirtualMappingProgress>((): IVirtualMappingProgress =
 	);
 
 	const required = slots.value.filter(
-		(slot: IVirtualMappingSlot): boolean => slot.required || (slot.propertyRequired && usedChannels.has(slot.specChannel))
+		(slot: IVirtualMappingSlot): boolean =>
+			slot.required || (slot.propertyRequired && (usedChannels.has(slot.specChannel) || optionalChannels.value.includes(slot.specChannel)))
 	);
 
 	const remaining = required.filter((slot: IVirtualMappingSlot): boolean => typeof selections[slot.key] !== 'string');
@@ -468,16 +445,6 @@ const progress = computed<IVirtualMappingProgress>((): IVirtualMappingProgress =
 const hasMapping = computed<boolean>((): boolean => Object.keys(selections).length > 0);
 
 const isComplete = computed<boolean>((): boolean => hasMapping.value && progress.value.remaining.length === 0);
-
-const progressPercentage = computed<number>((): number => {
-	// With nothing required to count, the bar tracks the "at least one mapping" rule instead — it must
-	// not render a full bar on a step where nothing has been done.
-	if (progress.value.requiredTotal === 0) {
-		return hasMapping.value ? 100 : 0;
-	}
-
-	return Math.round((progress.value.requiredFilled / progress.value.requiredTotal) * 100);
-});
 
 // The spec constrains a channel beyond each property's own `required` flag, and DeviceValidationService
 // enforces those constraints server-side. Without repeating them here the wizard happily builds devices
@@ -599,13 +566,20 @@ const isChecking = computed<boolean>((): boolean => Object.values(checking).some
 // proven and blocks too, so the user cannot outrun the verdict by clicking straight through.
 const isValid = computed<boolean>(
 	(): boolean =>
-		props.category !== null && isComplete.value && Object.keys(errors).length === 0 && constraintViolations.value.length === 0 && !isChecking.value
+		props.category !== null &&
+		isComplete.value &&
+		optionalChannels.value.every((channel) =>
+			groups.value.find((group) => group.specChannel === channel)?.slots.some((slot) => !!selections[slot.key])
+		) &&
+		Object.keys(unverified).length === 0 &&
+		Object.keys(errors).length === 0 &&
+		constraintViolations.value.length === 0 &&
+		!isChecking.value
 );
 
 const sourceDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] =>
-	orderBy<IDevice>(
-		devicesStore
-			.findAll()
+	orderBy(
+		sourceMetadata.snapshot.value.devices
 			// Hidden devices are filtered here rather than requested away, because this reads an
 			// already-loaded store collection that the device list's "Show hidden" toggle also reads —
 			// narrowing the fetch would break that toggle for everyone.
@@ -622,68 +596,31 @@ const sourceDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>
 			// at creation (VirtualDevicesService.assertSourceNotVirtual) and the compatibility endpoint
 			// does *not* check for it, so such a source would preview clean and then fail on create.
 			.filter(
-				(device: IDevice): boolean =>
+				(device): boolean =>
 					!device.draft && (!device.hidden || device.hiddenBy === DevicesModuleDeviceHiddenBy.system) && isVirtualSourceDeviceCandidate(device)
 			),
-		[(device: IDevice): string => device.name],
+		[(device): string => device.name],
 		['asc']
-	).map((device: IDevice): { value: IDevice['id']; label: string } => ({ value: device.id, label: device.name }))
+	).map((device): { value: IDevice['id']; label: string } => ({ value: device.id, label: device.name }))
 );
 
-const channelsOptions = (deviceId: string | null): { value: IChannel['id']; label: string }[] => {
-	if (deviceId === null) {
-		return [];
-	}
-
-	return orderBy<IChannel>(channelsStore.findForDevice(deviceId), [(channel: IChannel): string => channel.name], ['asc']).map(
-		(channel: IChannel): { value: IChannel['id']; label: string } => ({
-			value: channel.id,
-			label: channel.name,
-		})
-	);
-};
-
-const propertiesOptions = (channelId: string | null): { value: IChannelProperty['id']; label: string }[] => {
-	if (channelId === null) {
-		return [];
-	}
-
-	return orderBy<IChannelProperty>(
-		propertiesStore.findForChannel(channelId).filter((candidate: IChannelProperty) => {
-			const sourceChannel = channelsStore.findById(channelId);
-			const sourceDevice = sourceChannel ? devicesStore.findById(sourceChannel.device) : null;
-			return isVirtualSourcePropertyCandidate(sourceDevice, sourceChannel, candidate);
-		}),
-		[(property: IChannelProperty): string => property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`)],
-		['asc']
-	).map((property: IChannelProperty): { value: IChannelProperty['id']; label: string } => ({
-		value: property.id,
-		label: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
-	}));
-};
-
+const groupSources = useVirtualWizardSourceGroups();
 const slotHint = (slot: IVirtualMappingSlot): string =>
 	[slot.dataType, slot.unit, slot.permissions.join('/')].filter((part): part is string => typeof part === 'string' && part.length > 0).join(' · ');
 
 // An optional slot is only worth the screen space once the user asks for it — or once it already
 // carries something (a mapping or an error), which must never be hidden from them.
 const isSlotVisible = (group: IVirtualMappingSlotGroup, slot: IVirtualMappingSlot): boolean =>
-	slot.required || expanded[group.specChannel] === true || typeof selections[slot.key] === 'string' || typeof errors[slot.key] === 'string';
+	slot.propertyRequired ||
+	group.slots.every((entry) => !entry.propertyRequired) ||
+	expanded[group.specChannel] === true ||
+	typeof selections[slot.key] === 'string' ||
+	typeof errors[slot.key] === 'string';
 
 const visibleSlots = (group: IVirtualMappingSlotGroup): IVirtualMappingSlot[] =>
 	group.slots.filter((slot: IVirtualMappingSlot): boolean => isSlotVisible(group, slot));
 
 const hiddenSlotsCount = (group: IVirtualMappingSlotGroup): number => group.slots.length - visibleSlots(group).length;
-
-const loadChannels = async (deviceId: string): Promise<IChannel[]> => {
-	try {
-		return await channelsStore.fetch({ deviceId });
-	} catch (error: unknown) {
-		logger.error('Failed to load source channels', error);
-
-		return channelsStore.findForDevice(deviceId);
-	}
-};
 
 // Always narrowed by `findForChannel`, never by what `fetch` happens to return. A successful fetch
 // resolves to the whole shared property cache rather than just the requested channel's rows, so a
@@ -743,6 +680,7 @@ const runCompatibility = async (candidates: { slot: IVirtualMappingSlot; sourceP
 		slotTokens.set(candidate.slot.key, token);
 
 		checking[candidate.slot.key] = true;
+		unverified[candidate.slot.key] = true;
 
 		delete errors[candidate.slot.key];
 	}
@@ -758,14 +696,23 @@ const runCompatibility = async (candidates: { slot: IVirtualMappingSlot; sourceP
 		delete checking[slotKey];
 
 		if (reason === null) {
+			delete unverified[slotKey];
 			delete errors[slotKey];
 		} else {
 			errors[slotKey] = reason;
 		}
 	};
 
+	const controller = new AbortController();
+	compatibilityRequests.add(controller);
+	const timeout = setTimeout(() => controller.abort(), 10000);
 	try {
-		const { data: responseData, error } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/devices/compatibility`, {
+		const {
+			data: responseData,
+			error,
+			response,
+		} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/devices/compatibility`, {
+			signal: controller.signal,
 			body: {
 				data: {
 					category: props.category,
@@ -778,6 +725,10 @@ const runCompatibility = async (candidates: { slot: IVirtualMappingSlot; sourceP
 			},
 		});
 
+		if (response?.status === 401) {
+			for (const candidate of candidates) if (slotTokens.get(candidate.slot.key) === token) delete checking[candidate.slot.key];
+			return;
+		}
 		const reports = responseData?.data;
 
 		if (!reports) {
@@ -811,6 +762,7 @@ const runCompatibility = async (candidates: { slot: IVirtualMappingSlot; sourceP
 			settle(candidate.slot.key, report.compatible ? null : (report.reason ?? t('devicesVirtualPlugin.wizard.mapping.errors.incompatible')));
 		});
 	} catch (err: unknown) {
+		if (disposed) return;
 		logger.error('Virtual device compatibility check failed', err);
 
 		const reason = t('devicesVirtualPlugin.wizard.mapping.errors.checkFailed');
@@ -819,7 +771,10 @@ const runCompatibility = async (candidates: { slot: IVirtualMappingSlot; sourceP
 			settle(candidate.slot.key, reason);
 		}
 
-		flashMessage.error(reason);
+		if (candidates.some((candidate) => slotTokens.get(candidate.slot.key) === token)) flashMessage.error(reason);
+	} finally {
+		clearTimeout(timeout);
+		compatibilityRequests.delete(controller);
 	}
 };
 
@@ -839,6 +794,7 @@ const selectSource = async (slotKey: string, sourcePropertyId: string | null): P
 
 	if (sourcePropertyId === null) {
 		delete selections[slotKey];
+		delete unverified[slotKey];
 
 		return;
 	}
@@ -895,8 +851,13 @@ const applyChannel = async (specChannel: DevicesModuleChannelCategory, sourceCha
 	const sourceChannel = channelsStore.findById(sourceChannelId);
 
 	const candidates: { slot: IVirtualMappingSlot; sourceProperty: string }[] = [];
+	let filled = 0;
 
 	for (const slot of group.slots) {
+		if (selections[slot.key]) {
+			candidates.push({ slot, sourceProperty: selections[slot.key] });
+			continue;
+		}
 		const match = sourceProperties.find((property: IChannelProperty): boolean => property.category === slot.specProperty);
 
 		if (!match) {
@@ -920,6 +881,7 @@ const applyChannel = async (specChannel: DevicesModuleChannelCategory, sourceCha
 		delete errors[slot.key];
 
 		selections[slot.key] = match.id;
+		filled++;
 
 		pickers[slot.key] = { device: sourceChannel?.device ?? null, channel: sourceChannelId };
 
@@ -935,45 +897,24 @@ const applyChannel = async (specChannel: DevicesModuleChannelCategory, sourceCha
 	// Everything the shortcut touched has to be visible, including the optional slots it filled.
 	expanded[specChannel] = true;
 
-	flashMessage.info(t('devicesVirtualPlugin.wizard.mapping.shortcut.applied', { filled: candidates.length, total: group.slots.length }));
+	flashMessage.info(
+		filled
+			? t('devicesVirtualPlugin.wizard.mapping.shortcut.applied', { filled, total: group.slots.length })
+			: t('devicesVirtualPlugin.wizard.mapping.shortcut.nothingApplied')
+	);
 
 	await runCompatibility(candidates);
 };
 
-const onPickDevice = (slotKey: string, deviceId: string | null): void => {
-	pickers[slotKey] = { device: deviceId, channel: null };
-
-	selectSource(slotKey, null).catch((error: unknown): void => logger.error('Failed to clear source property', error));
-
-	if (deviceId !== null) {
-		loadChannels(deviceId).catch((error: unknown): void => logger.error('Failed to load source channels', error));
-	}
-};
-
-const onPickChannel = (slotKey: string, channelId: string | null): void => {
-	pickers[slotKey] = { device: pickers[slotKey]?.device ?? null, channel: channelId };
-
-	selectSource(slotKey, null).catch((error: unknown): void => logger.error('Failed to clear source property', error));
-
-	if (channelId !== null) {
-		loadProperties(channelId).catch((error: unknown): void => logger.error('Failed to load source properties', error));
-	}
-};
-
 const onPickProperty = (slotKey: string, propertyId: string | null): void => {
+	const property = propertyId ? propertiesStore.findById(propertyId) : null;
+	const channel = property ? channelsStore.findById(property.channel) : null;
+	pickers[slotKey] = { device: channel?.device ?? null, channel: channel?.id ?? null };
 	selectSource(slotKey, propertyId).catch((error: unknown): void => logger.error('Failed to select source property', error));
 };
 
-const onShortcutDevice = (specChannel: DevicesModuleChannelCategory, deviceId: string | null): void => {
-	channelPickers[specChannel] = { device: deviceId, channel: null };
-
-	if (deviceId !== null) {
-		loadChannels(deviceId).catch((error: unknown): void => logger.error('Failed to load source channels', error));
-	}
-};
-
 const onShortcutChannel = (specChannel: DevicesModuleChannelCategory, channelId: string | null): void => {
-	channelPickers[specChannel] = { device: channelPickers[specChannel]?.device ?? null, channel: channelId };
+	channelPickers[specChannel] = { device: channelId ? (channelsStore.findById(channelId)?.device ?? null) : null, channel: channelId };
 
 	if (channelId !== null) {
 		loadProperties(channelId).catch((error: unknown): void => logger.error('Failed to load source properties', error));
@@ -981,9 +922,239 @@ const onShortcutChannel = (specChannel: DevicesModuleChannelCategory, channelId:
 };
 
 const onApplyChannel = (specChannel: DevicesModuleChannelCategory): void => {
-	applyChannel(specChannel, channelPickers[specChannel]?.channel ?? null).catch((error: unknown): void =>
-		logger.error('Failed to apply source channel', error)
+	applying.value++;
+	applyChannel(specChannel, channelPickers[specChannel]?.channel ?? null)
+		.catch((error: unknown): void => logger.error('Failed to apply source channel', error))
+		.finally(() => applying.value--);
+};
+
+const includedGroups = computed(() =>
+	groups.value.filter(
+		(group) => group.required || optionalChannels.value.includes(group.specChannel) || group.slots.some((slot) => !!selections[slot.key])
+	)
+);
+const optionalGroups = computed(() => groups.value.filter((group) => !includedGroups.value.includes(group)));
+const activeGroup = computed(
+	() => includedGroups.value.find((group) => group.specChannel === activeChannel.value) ?? includedGroups.value[0] ?? null
+);
+const activeSlots = computed<IVirtualMappingSlot[]>((previous) => {
+	const next = activeGroup.value ? visibleSlots(activeGroup.value) : [];
+	return previous?.length === next.length && next.every((slot, index) => slot === previous[index]) ? previous : next;
+});
+const mappedCount = (group: IVirtualMappingSlotGroup) => group.slots.filter((slot) => !!selections[slot.key]).length;
+const issuesFor = (group: IVirtualMappingSlotGroup) =>
+	Math.max(
+		group.slots.filter((slot) => !!errors[slot.key] || !!unverified[slot.key] || (slot.propertyRequired && !selections[slot.key])).length +
+			constraintViolations.value.filter((violation) => violation.specChannel === group.specChannel).length,
+		mappedCount(group) ? 0 : 1
 	);
+
+const addChannel = (channel: DevicesModuleChannelCategory) => {
+	if (!groups.value.some((group) => group.specChannel === channel && !group.required)) return;
+	if (!optionalChannels.value.includes(channel)) optionalChannels.value = [...optionalChannels.value, channel];
+	activeChannel.value = channel;
+};
+const removeChannel = (channel: DevicesModuleChannelCategory) => {
+	if (groups.value.some((group) => group.specChannel === channel && group.required)) return;
+	for (const slot of groups.value.find((group) => group.specChannel === channel)?.slots ?? []) {
+		slotTokens.set(slot.key, ++requestCounter);
+		delete selections[slot.key];
+		delete unverified[slot.key];
+		delete errors[slot.key];
+		delete checking[slot.key];
+	}
+	optionalChannels.value = optionalChannels.value.filter((value) => value !== channel);
+};
+const sourceIndex = computed(() => {
+	const devices = new Map(sourceMetadata.snapshot.value.devices.map((device) => [device.id, device]));
+	const allowed = new Set(sourceDevicesOptions.value.map((option) => option.value));
+	const channels = new Map(sourceMetadata.snapshot.value.channels.map((channel) => [channel.id, channel]));
+	const rows = sourceMetadata.snapshot.value.properties.flatMap((property) => {
+		const channel = channels.get(property.channel),
+			device = channel ? devices.get(channel.device) : undefined;
+		if (!device || !channel || !allowed.has(device.id) || !isVirtualSourcePropertyCandidate(device, channel, property)) return [];
+		return [
+			{
+				value: property.id,
+				label: `${device.name} › ${channel.name} › ${property.name ?? propertyLabel(property.category)}`,
+				property,
+				device,
+				channel,
+			},
+		];
+	});
+	return {
+		devices,
+		channels,
+		allowed,
+		rows: orderBy(rows, [(row) => row.device.name, (row) => row.channel.name, (row) => row.label], ['asc', 'asc', 'asc']),
+	};
+});
+const channelOptions = computed(() => {
+	const categories = new Set(activeGroup.value?.slots.map((slot) => slot.specProperty) ?? []);
+	const usable = new Set(sourceIndex.value.rows.filter((row) => categories.has(row.property.category)).map((row) => row.channel.id));
+	return groupSources(
+		[...sourceIndex.value.channels.values()].flatMap((channel) => {
+			const device = sourceIndex.value.devices.get(channel.device);
+			return device && sourceIndex.value.allowed.has(device.id) && usable.has(channel.id)
+				? [{ value: channel.id, label: `${device.name} › ${channel.name}`, device, channel }]
+				: [];
+		}),
+		(option) => option.device
+	).map((group) => ({
+		value: `channel-group:${group.id}`,
+		label: group.label,
+		options: orderBy(group.items, [(option) => option.device.name, (option) => option.channel.name], ['asc', 'asc']).map(({ value, label }) => ({
+			value,
+			label,
+		})),
+	}));
+});
+
+const optionLoading = reactive<Record<string, boolean>>({});
+const optionCache = shallowRef<Record<string, { signature: string; ids: Set<string>; checked: Set<string>; complete: boolean }>>({});
+const optionRequests = new Map<string, AbortController>();
+const metadataVersion = computed<{ signature: string; revision: number }>((previous) => {
+	const signature = sourceMetadata.signature.value;
+	return previous?.signature === signature ? previous : { signature, revision: (previous?.revision ?? 0) + 1 };
+});
+const optionSignature = (slot: IVirtualMappingSlot) => `${props.category}|${slot.key}|${metadataVersion.value.revision}`;
+interface SourceOptionGroup {
+	value: string;
+	label: string;
+	options: { value: string; label: string }[];
+}
+const optionSets = computed<Record<string, SourceOptionGroup[]>>(() =>
+	Object.fromEntries(
+		(activeGroup.value?.slots ?? []).map((slot) => {
+			const entry = optionCache.value[slot.key];
+			const rows = entry?.signature === optionSignature(slot) ? sourceIndex.value.rows.filter((row) => entry.ids.has(row.value)) : [];
+			const options = groupSources(rows, (row) => row.device).map((group) => ({
+				value: `source-group:${group.id}`,
+				label: group.label,
+				options: group.items.map(({ value, label }) => ({ value, label })),
+			}));
+			const selected = selections[slot.key];
+			if (selected && !rows.some((row) => row.value === selected)) {
+				const row = sourceIndex.value.rows.find((row) => row.value === selected);
+				options.unshift({
+					value: 'source-group:selected',
+					label: text('selectedSource'),
+					options: [{ value: selected, label: row?.label ?? t('devicesVirtualPlugin.wizard.review.unknownSource') }],
+				});
+			}
+			return [slot.key, options];
+		})
+	)
+);
+const sourceOptions = (slot: IVirtualMappingSlot) => optionSets.value[slot.key] ?? [];
+const optionsReady = (slot: IVirtualMappingSlot) => {
+	const entry = optionCache.value[slot.key];
+	return entry?.signature === optionSignature(slot) && entry.ids.size > 0;
+};
+const onOptionsOpen = async (slot: IVirtualMappingSlot, visible: boolean) => {
+	if (!visible) {
+		optionRequests.get(slot.key)?.abort();
+		return;
+	}
+	const signature = optionSignature(slot);
+	const previous = optionCache.value[slot.key];
+	if ((previous?.signature === signature && previous.complete) || props.category === null) return;
+	optionRequests.get(slot.key)?.abort();
+	const controller = new AbortController();
+	optionRequests.set(slot.key, controller);
+	optionLoading[slot.key] = true;
+	let timedOut = false;
+	try {
+		// Skip obvious type/permission mismatches before source lookups; the server still approves every offered option.
+		const raw = (
+			channelsSchema as unknown as Record<
+				string,
+				{ properties: Record<string, { category: string; data_type?: string; data_types?: { data_type: string }[] }> }
+			>
+		)[slot.specChannel];
+		const propertySpec = Object.values(raw?.properties ?? {}).find((property) => property.category === slot.specProperty);
+		const types = propertySpec?.data_types?.map((variant) => variant.data_type) ?? [propertySpec?.data_type];
+		const ids = new Set(previous?.signature === signature ? previous.ids : []);
+		const checked = new Set(previous?.signature === signature ? previous.checked : []);
+		const candidates = sourceIndex.value.rows.filter(
+			(row) =>
+				types.includes(row.property.dataType) &&
+				!checked.has(row.value) &&
+				slot.permissions.every(
+					(permission) =>
+						row.property.permissions.includes(permission) ||
+						((permission === 'ro' || permission === 'wo') && row.property.permissions.includes(DevicesModuleChannelPropertyPermissions.rw))
+				)
+		);
+		const publish = (complete: boolean) => {
+			optionCache.value = { ...optionCache.value, [slot.key]: { signature, ids: new Set(ids), checked: new Set(checked), complete } };
+		};
+		for (let start = 0; start < candidates.length; start += 32) {
+			const batch = candidates.slice(start, start + 32);
+			const timeout = setTimeout(() => {
+				timedOut = true;
+				controller.abort();
+			}, 10000);
+			const result = await backend.client
+				.POST(`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/devices/compatibility`, {
+					signal: controller.signal,
+					body: {
+						data: {
+							category: props.category,
+							candidates: batch.map((row) => ({ spec_channel: slot.specChannel, spec_property: slot.specProperty, source_property: row.value })),
+						},
+					},
+				})
+				.finally(() => clearTimeout(timeout));
+			if (controller.signal.aborted || optionRequests.get(slot.key) !== controller) return;
+			if (!result.data) {
+				if (result.response?.status !== 401) flashMessage.error(t('devicesVirtualPlugin.wizard.mapping.errors.checkFailed'));
+				return;
+			}
+			batch.forEach((row, index) => {
+				const report = matchReport(result.data.data, { slot, sourceProperty: row.value }, index);
+				if (!report) throw new Error('Incomplete compatibility response');
+				checked.add(row.value);
+				if (report.compatible) ids.add(row.value);
+			});
+			if (optionSignature(slot) !== signature) return;
+			publish(false);
+		}
+		if (controller.signal.aborted || optionSignature(slot) !== signature) return;
+		publish(true);
+	} catch {
+		if (!controller.signal.aborted || timedOut) flashMessage.error(t('devicesVirtualPlugin.wizard.mapping.errors.checkFailed'));
+	} finally {
+		if (optionRequests.get(slot.key) === controller) {
+			optionRequests.delete(slot.key);
+			delete optionLoading[slot.key];
+		}
+	}
+};
+onScopeDispose(() => {
+	disposed = true;
+	compatibilityRequests.forEach((controller) => controller.abort());
+	optionRequests.forEach((controller) => controller.abort());
+	slotTokens.clear();
+});
+const busy = computed(() => loading.value || applying.value > 0 || Object.values(checking).some(Boolean));
+watch(busy, (value) => emit('update:busy', value), { immediate: true });
+const validationAttempted = ref(false);
+const validate = async () => {
+	validationAttempted.value = true;
+	const candidates = slots.value.flatMap((slot) => (selections[slot.key] ? [{ slot, sourceProperty: selections[slot.key] }] : []));
+	for (let start = 0; start < candidates.length; start += 256) {
+		await runCompatibility(candidates.slice(start, start + 256).filter((candidate) => selections[candidate.slot.key] === candidate.sourceProperty));
+	}
+	if (!isValid.value) {
+		const constraint = constraintViolations.value[0];
+		if (constraint) flashMessage.error(constraint.message);
+		else if (!Object.values(errors).some(Boolean)) flashMessage.error(t('devicesModule.wizard.validation.invalidValue'));
+		const firstInvalid = includedGroups.value.find((group) => issuesFor(group) > 0);
+		if (firstInvalid) activeChannel.value = firstInvalid.specChannel;
+	}
+	return isValid.value;
 };
 
 // Order-independent identity of a set of mappings, used to tell an echo of our own emit apart from a
@@ -1019,6 +1190,8 @@ watch(
 		if (signature(value) === signature(mappings.value)) {
 			return;
 		}
+
+		for (const slotKey of Object.keys(unverified)) delete unverified[slotKey];
 
 		for (const slotKey of Object.keys(selections)) {
 			delete selections[slotKey];
@@ -1074,6 +1247,8 @@ watch(
 			return;
 		}
 
+		for (const slotKey of Object.keys(unverified)) delete unverified[slotKey];
+
 		for (const slotKey of Object.keys(selections)) {
 			delete selections[slotKey];
 		}
@@ -1094,6 +1269,10 @@ watch(
 			delete channelPickers[specChannel];
 		}
 
+		optionalChannels.value = [];
+		activeChannel.value = null;
+		optionCache.value = {};
+		optionRequests.forEach((controller) => controller.abort());
 		// Everything still in flight belongs to the previous category's slots.
 		slotTokens.clear();
 
@@ -1101,24 +1280,35 @@ watch(
 	}
 );
 
+watch(
+	() => props.optionalChannels,
+	(value) => {
+		if ((value ?? []).join('|') !== optionalChannels.value.join('|')) optionalChannels.value = [...(value ?? [])];
+	}
+);
+watch(optionalChannels, (value) => emit('update:optionalChannels', value));
 watch(mappings, (value: IVirtualSlotMapping[]): void => emit('update:modelValue', value), { deep: true, immediate: true });
 
 watch(isValid, (value: boolean): void => emit('update:valid', value), { immediate: true });
 
-onBeforeMount((): void => {
-	// Asks for `all`, and must: the endpoint treats an omitted filter as "visible only", so a bare
-	// fetch would replace the shared collection with visible devices and silently undo the
-	// system-hidden exception in `sourceDevicesOptions` below — the picker would keep a part-split
-	// source only when some other screen happened to have loaded hidden rows first.
-	//
-	// Widening the fetch is safe for the device list that shares this store: its own "Show hidden"
-	// toggle filters the collection it renders rather than relying on what was fetched.
-	devicesStore
-		.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all })
-		.catch((error: unknown): void => logger.error('Failed to load source devices', error));
+onBeforeMount(async () => {
+	try {
+		await devicesStore.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
+	} catch (error) {
+		logger.error('Failed to load source devices', error);
+	} finally {
+		loading.value = false;
+	}
 });
 
 defineExpose({
+	validate,
+	onOptionsOpen,
+	sourceOptions,
+	addChannel,
+	removeChannel,
+	activeGroup,
+	includedGroups,
 	slots,
 	groups,
 	errors,
@@ -1134,3 +1324,83 @@ defineExpose({
 	applyChannel,
 });
 </script>
+
+<style scoped>
+.projection-mapping {
+	display: grid;
+	grid-template-columns: 250px minmax(0, 1fr);
+	gap: 24px;
+	min-height: 300px;
+}
+.projection-mapping__channels,
+.projection-mapping__content {
+	min-width: 0;
+}
+.projection-mapping__channel {
+	display: block;
+	width: 100%;
+	padding: 12px;
+	text-align: left;
+	color: var(--el-text-color-regular);
+	border: 1px solid var(--el-border-color);
+	border-radius: var(--el-border-radius-base);
+	background: var(--el-bg-color);
+	cursor: pointer;
+}
+.projection-mapping__channel + .projection-mapping__channel {
+	margin-top: 8px;
+}
+.projection-mapping__channel.is-active {
+	border-color: var(--el-color-primary);
+}
+.projection-mapping__optional-channel {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+}
+.projection-mapping__optional-channel + .projection-mapping__optional-channel {
+	border-top: 1px solid var(--el-border-color-lighter);
+}
+.projection-mapping__channel-help {
+	display: block;
+	margin-top: 12px;
+}
+.projection-mapping__description {
+	display: block;
+	margin-bottom: 16px;
+}
+.projection-mapping__shortcut {
+	padding: 12px;
+	border-radius: var(--el-border-radius-base);
+	background: var(--el-fill-color-light);
+	margin-bottom: 16px;
+}
+.projection-mapping__shortcut-controls {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	width: 100%;
+}
+.projection-mapping__shortcut-select {
+	flex: 1;
+	min-width: 0;
+	width: 0;
+}
+.projection-mapping__shortcut-button {
+	flex-shrink: 0;
+}
+.projection-mapping__table :deep(.el-form-item__error) {
+	position: static;
+	line-height: 1.5;
+}
+.projection-mapping__table :deep(td.el-table__cell) {
+	padding: 12px 0;
+}
+@container (max-width: 850px) {
+	.projection-mapping {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+</style>

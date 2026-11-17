@@ -21,10 +21,7 @@
 				>
 					{{ names?.[child.member_identity ?? child.member_id] ?? child.member_identity ?? child.member_id }}
 					— {{ t(`devicesVirtualPlugin.lightGroup.status.${child.status}`) }}
-					<el-text
-						v-if="child.reason"
-						type="info"
-					>
+					<el-text v-if="child.reason">
 						{{ child.reason }}
 					</el-text>
 				</li>

@@ -17,13 +17,14 @@ import ViewDevice from './view-device.vue';
 const mocks = vi.hoisted(() => ({
 	device: undefined as unknown as { value: IDevice | null },
 	fetch: vi.fn(),
+	tab: 'plugin:virtual',
 	pluginsManager: undefined as unknown as PluginsManager,
 }));
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('vue-meta', () => ({ useMeta: () => ({ meta: {} }) }));
 vi.mock('vue-router', () => ({
-	useRoute: () => ({ name: RouteNames.DEVICE, path: '/devices/test', matched: [] }),
+	useRoute: () => ({ name: RouteNames.DEVICE, path: '/devices/test', matched: [], query: { tab: mocks.tab } }),
 	useRouter: () => ({ push: vi.fn(), replace: vi.fn(), resolve: vi.fn((route) => route) }),
 }));
 
@@ -97,12 +98,13 @@ vi.mock('../composables/composables', async () => ({
 }));
 
 const device = (type: string, id = 'device-id'): IDevice => ({ id, type, name: 'Device', category: 'lighting' }) as IDevice;
-const mountView = () => shallowMount(ViewDevice, { props: { id: 'device-id' } });
+const mountView = () => shallowMount(ViewDevice, { props: { id: 'device-id' }, global: { renderStubDefaultSlot: true } });
 
 describe('ViewDevice plugin detail section mount gate', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.fetch.mockResolvedValue(undefined);
+		mocks.tab = 'plugin:virtual';
 		mocks.pluginsManager = new PluginsManager();
 		DevicesVirtualPlugin.install(
 			{} as App,
@@ -136,10 +138,18 @@ describe('ViewDevice plugin detail section mount gate', () => {
 			...registered,
 			type: 'custom-plugin',
 			elements: [
-				{ type: 'custom-device', components: { deviceDetailSection: defineComponent({ name: 'CustomDetailSection', template: '<div />' }) } },
+				{
+					type: 'custom-device',
+					components: {
+						deviceDetailTabs: [
+							{ id: 'custom', label: 'Custom', icon: 'mdi:test', component: defineComponent({ name: 'CustomDetailSection', template: '<div />' }) },
+						],
+					},
+				},
 			],
 		});
 		mocks.device.value = device('custom-device');
+		mocks.tab = 'plugin:custom';
 		const wrapper = mountView();
 		await flushPromises();
 		expect(wrapper.findComponent({ name: 'CustomDetailSection' }).exists()).toBe(true);
@@ -162,5 +172,12 @@ describe('ViewDevice plugin detail section mount gate', () => {
 		mocks.device.value = device('devices-shelly-ng');
 		await nextTick();
 		expect(wrapper.findComponent({ name: 'VirtualDeviceSources' }).exists()).toBe(false);
+	});
+	it('keeps plugin content out of the shared overview until its tab is selected', async () => {
+		mocks.tab = 'overview';
+		const wrapper = mountView();
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'VirtualDeviceSources' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'DeviceDetail' }).exists()).toBe(true);
 	});
 });
