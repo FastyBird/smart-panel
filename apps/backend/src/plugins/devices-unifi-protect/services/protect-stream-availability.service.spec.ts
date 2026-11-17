@@ -462,6 +462,9 @@ describe('ProtectStreamAvailabilityService', () => {
 		await settle(0);
 
 		sessionListener(null, 'lost');
+
+		// The first read after the session refreshes (the store was cleared); hold its answer so it cannot settle.
+		refreshDevice.mockReturnValueOnce(new Promise<boolean>(() => undefined));
 		await service.readStreams('cam1');
 		await settle(0);
 		await service.readStreams('cam1');
