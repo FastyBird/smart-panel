@@ -676,6 +676,50 @@ describe('ProtectStreamBridgeService', () => {
 			await waitFor(() => openServers().length === 0);
 		});
 
+		it('releases a listener a stray connection pinned once that connection closes', async () => {
+			const preflight = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+
+			connectMock.mockImplementationOnce(() => preflight.promise);
+
+			const result = service.prepare(PORT).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1);
+
+			const port = (openServers()[0].address() as AddressInfo).port;
+			const stray = await connectClient(port);
+
+			await waitFor(() => connectMock.mock.calls.length === 2);
+			preflight.reject(new ProtectApiError(ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH, 'tls'));
+			await expect(result).resolves.toMatchObject({ category: 'tls_fingerprint_mismatch' });
+			expect(openServers()).toHaveLength(1);
+
+			stray.socket.destroy();
+			await waitFor(() => openServers().length === 0);
+		});
+
+		it('rejects a prepare whose upstream host changed meanwhile and keeps the new host connections', async () => {
+			const endpoint = await service.prepare(PORT);
+			const preflight = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const [bridgeEnd] = duplexPair();
+
+			connectMock.mockImplementationOnce(() => preflight.promise);
+
+			const result = service.prepare(PORT).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 2);
+
+			pluginConfig.streamHostOverride = 'streams.example';
+			service.handleConfigUpdated({ source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, type: 'plugin' });
+
+			const client = await connectClient(endpoint.port);
+
+			await waitFor(() => connectMock.mock.calls.length === 3);
+			preflight.resolve({ socket: bridgeEnd as unknown as tls.TLSSocket, fingerprint: PIN });
+
+			await expect(result).resolves.toMatchObject({ category: 'unavailable' });
+			expect(client.closed).toBe(false);
+		});
+
 		it('keeps a handed-out listener when a later pre-flight fails', async () => {
 			const endpoint = await service.prepare(PORT);
 

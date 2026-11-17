@@ -291,7 +291,11 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		const plan = planProtectTls(target.consoleHost, target.tls);
 		const sessionGeneration = this.sessionGeneration;
 		const isCurrent = (): boolean =>
-			!this.destroyed && this.sessionGeneration === sessionGeneration && this.isRelayCurrent(relay);
+			!this.destroyed &&
+			this.sessionGeneration === sessionGeneration &&
+			this.isRelayCurrent(relay) &&
+			// The host is read again after every await: an override change meanwhile makes this call stale.
+			this.getUpstreamHost() === host;
 
 		const cancel = signal === undefined ? this.lifetime.signal : AbortSignal.any([signal, this.lifetime.signal]);
 		const route = await this.withBudget(this.routeFor(relay), budget, cancel);
@@ -997,6 +1001,8 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		connection.guard?.destroy();
 		connection.listener.connections.delete(connection);
 		this.connections.delete(connection);
+		// A stray connection can be the only thing that pinned a listener nobody was handed.
+		this.releaseIfUnused(connection.listener);
 
 		if (reason !== null) {
 			this.logLimited(
