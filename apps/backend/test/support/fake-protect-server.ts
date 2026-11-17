@@ -5,6 +5,7 @@ import { AddressInfo } from 'net';
 import * as net from 'net';
 import { join, resolve } from 'path';
 import { Duplex } from 'stream';
+import * as tls from 'tls';
 import { TLSSocket } from 'tls';
 import { WebSocket, WebSocketServer } from 'ws';
 
@@ -13,7 +14,7 @@ import {
 	ProtectRtspsQuality,
 } from '../../src/plugins/devices-unifi-protect/devices-unifi-protect.constants';
 
-import { PROTECT_TEST_DIRECT_DOMAIN, protectTlsServerOptions } from './protect-tls';
+import { PROTECT_TEST_DIRECT_DOMAIN, PROTECT_TEST_TLS, protectTlsServerOptions } from './protect-tls';
 
 // TEST SUPPORT ONLY: a loopback HTTPS stand-in for a UniFi Protect console, serving the UP-0 fixtures with the
 // committed test certificates, plus the two subscription WebSockets (`subscribe/devices`, `subscribe/events`).
@@ -52,6 +53,14 @@ export interface FakeProtectServerOptions {
 	hangPaths: RegExp[];
 	/** Fixtures whose cameras the console lists, in order; the first entry of an id wins. */
 	cameraFixtures: string[];
+	/** Opt-in: `start()` also opens a TLS RTSP endpoint, and stream URLs point at it instead of `:7441`. */
+	rtsps: boolean;
+	/**
+	 * Certificate of the RTSP endpoint, read per connection: `mirror` serves what the API port serves (the console
+	 * certificate under SNI `fakeconsole.id.ui.direct`, else the self-signed one); `console` the CA-signed console
+	 * certificate whatever the SNI, including none.
+	 */
+	rtspsCertificate: 'mirror' | 'console';
 }
 
 interface RateLimitFixture {
@@ -69,6 +78,8 @@ const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 const MAX_POST_BYTES = 4 * 1024;
 const BAD_QUALITIES = { error: 'Invalid qualities', name: 'BAD_REQUEST' };
 const DEFAULT_RATE_LIMIT = { quota: 10, windowSeconds: 1 };
+const MAX_RTSP_REQUEST_BYTES = 16 * 1024;
+const RTSP_HEADER_END = '\r\n\r\n';
 
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -117,6 +128,15 @@ export class FakeProtectServer {
 
 		fake.port = (fake.server.address() as AddressInfo).port;
 
+		if (fake.options.rtsps) {
+			const rtspsServer = fake.createRtspsServer();
+
+			await new Promise<void>((resolveListen) => rtspsServer.listen(0, '127.0.0.1', resolveListen));
+
+			fake.rtspsServer = rtspsServer;
+			fake.rtspsPort = (rtspsServer.address() as AddressInfo).port;
+		}
+
 		return fake;
 	}
 
@@ -132,6 +152,15 @@ export class FakeProtectServer {
 	pingsReceived = 0;
 	forbiddenHits = 0;
 	rateLimited = 0;
+	/** Port of the TLS RTSP endpoint; 0 unless started with `rtsps: true`. */
+	rtspsPort = 0;
+	/**
+	 * First line of every RTSP request received over TLS, in order (memory only, never logged: it carries the alias).
+	 * Cleared by `reset()`.
+	 */
+	readonly rtspRequestLines: string[] = [];
+	/** Decrypted bytes received on each RTSP connection that completed its handshake, in accept order. */
+	readonly rtspsBytesReceived: number[] = [];
 
 	private options: FakeProtectServerOptions;
 	private readonly queue: { match: RegExp; response: FakeProtectResponse; method?: string }[] = [];
@@ -146,6 +175,9 @@ export class FakeProtectServer {
 	private upgradeRefusals: { status: number; headers?: Record<string, string> }[] = [];
 	private pongs = true;
 	private echo = false;
+	private rtspsServer: net.Server | null = null;
+	private readonly rtspsSockets = new Set<net.Socket>();
+	private readonly rtspAnswers: string[] = [];
 	private readonly rateHeaders = readJson<RateLimitFixture>('rate-limit-headers.json');
 
 	private constructor(options: Partial<FakeProtectServerOptions>) {
@@ -155,6 +187,8 @@ export class FakeProtectServer {
 			rateLimit: DEFAULT_RATE_LIMIT,
 			hangPaths: [],
 			cameraFixtures: ['cameras.json'],
+			rtsps: false,
+			rtspsCertificate: 'mirror',
 			...options,
 		};
 		this.server = https.createServer(protectTlsServerOptions(), (req, res) => this.handle(req, res));
@@ -283,6 +317,20 @@ export class FakeProtectServer {
 		});
 	}
 
+	/**
+	 * Queues the answer to the next RTSP request (sent verbatim, e.g. a `302` with a `Location`); null clears the queue.
+	 * Without one the endpoint answers `RTSP/1.0 200 OK` with the request's `CSeq`.
+	 */
+	rtspAnswer(response: string | null): void {
+		if (response === null) {
+			this.rtspAnswers.length = 0;
+
+			return;
+		}
+
+		this.rtspAnswers.push(response);
+	}
+
 	set(options: Partial<FakeProtectServerOptions>): void {
 		this.options = { ...this.options, ...options };
 	}
@@ -314,6 +362,10 @@ export class FakeProtectServer {
 		this.pongs = true;
 		this.echo = false;
 		this.patches.length = 0;
+		this.rtspRequestLines.length = 0;
+		this.rtspsBytesReceived.length = 0;
+		this.rtspAnswers.length = 0;
+		this.options = { ...this.options, rtspsCertificate: 'mirror' };
 	}
 
 	stop(): Promise<void> {
@@ -321,7 +373,88 @@ export class FakeProtectServer {
 			this.dropSubscriptions();
 			this.wss.close();
 			this.sockets.forEach((socket) => socket.destroy());
-			this.server.close(() => resolveStop());
+			this.rtspsSockets.forEach((socket) => socket.destroy());
+
+			const rtspsServer = this.rtspsServer;
+
+			this.rtspsServer = null;
+
+			if (rtspsServer === null) {
+				this.server.close(() => resolveStop());
+
+				return;
+			}
+
+			let pending = 2;
+			const done = (): void => {
+				pending -= 1;
+
+				if (pending === 0) {
+					resolveStop();
+				}
+			};
+
+			this.server.close(done);
+			rtspsServer.close(done);
+		});
+	}
+
+	/**
+	 * A plain TCP server whose sockets are wrapped in TLS one by one, so the certificate (also the default one, served
+	 * when the client sends no SNI) is chosen per connection from the live `rtspsCertificate`.
+	 */
+	private createRtspsServer(): net.Server {
+		const consoleContext = tls.createSecureContext(PROTECT_TEST_TLS.console);
+		const selfSignedContext = tls.createSecureContext(PROTECT_TEST_TLS.selfSigned);
+		const contextFor = (servername: string | null): tls.SecureContext =>
+			this.options.rtspsCertificate === 'console' || servername === PROTECT_TEST_DIRECT_DOMAIN
+				? consoleContext
+				: selfSignedContext;
+
+		return net.createServer((raw) => {
+			this.rtspsSockets.add(raw);
+			raw.on('close', () => this.rtspsSockets.delete(raw));
+			raw.on('error', () => undefined);
+
+			const socket = new tls.TLSSocket(raw, {
+				isServer: true,
+				secureContext: contextFor(null),
+				SNICallback: (servername, callback) => callback(null, contextFor(servername)),
+			});
+
+			socket.on('error', () => raw.destroy());
+			socket.once('secure', () => this.serveRtsp(socket));
+		});
+	}
+
+	/** Reads text RTSP requests (bounded; bodies are not expected), records each request line and answers each once. */
+	private serveRtsp(socket: tls.TLSSocket): void {
+		const index = this.rtspsBytesReceived.push(0) - 1;
+		let pending = '';
+
+		socket.on('data', (chunk: Buffer) => {
+			this.rtspsBytesReceived[index] += chunk.length;
+			pending += chunk.toString('latin1');
+
+			let end = pending.indexOf(RTSP_HEADER_END);
+
+			while (end !== -1) {
+				const header = pending.slice(0, end);
+
+				pending = pending.slice(end + RTSP_HEADER_END.length);
+
+				const [requestLine, ...fields] = header.split('\r\n');
+				const cseq = fields.map((field) => /^cseq:\s*(\d+)\s*$/i.exec(field)?.[1]).find((value) => value !== undefined);
+
+				this.rtspRequestLines.push(requestLine);
+				socket.write(this.rtspAnswers.shift() ?? `RTSP/1.0 200 OK\r\nCSeq: ${cseq ?? '0'}\r\n\r\n`);
+
+				end = pending.indexOf(RTSP_HEADER_END);
+			}
+
+			if (pending.length > MAX_RTSP_REQUEST_BYTES) {
+				socket.destroy();
+			}
 		});
 	}
 
@@ -535,7 +668,9 @@ export class FakeProtectServer {
 		return Object.fromEntries(
 			PROTECT_RTSPS_QUALITIES.map((quality) => [
 				quality,
-				enabled.has(quality) ? `rtsps://${this.host}:7441/${fakeProtectStreamAlias(quality)}?enableSrtp` : null,
+				enabled.has(quality)
+					? `rtsps://${this.host}:${this.rtspsPort === 0 ? 7441 : this.rtspsPort}/${fakeProtectStreamAlias(quality)}?enableSrtp`
+					: null,
 			]),
 		) as Record<ProtectRtspsQuality, string | null>;
 	}
