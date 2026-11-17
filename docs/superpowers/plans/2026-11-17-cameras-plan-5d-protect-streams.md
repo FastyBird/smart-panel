@@ -64,7 +64,9 @@ Decision:
   that host. With an external go2rtc on another host it crosses that network in cleartext: a passive observer on the
   path between the Smart Panel host and the relay host reads the alias and the video. That is the external relay's
   existing exposure (go2rtc's own API and MSE traffic to it are plain HTTP/WS, design §9.4 "external mode … the user
-  secures it") and the readme says so. The console hop is always verified or pinned.
+  secures it") and the readme says so. The console hop is always verified or pinned. While a listener is closed (plugin
+  disabled or backend shut down) and go2rtc still holds its URL, a local process that binds the freed port can receive
+  the alias from go2rtc's re-dial (R1).
 **Recommendation: as listed.** *Cost if wrong:* the bridge is one service and one guard; the provider only consumes
 `prepare()`.
 
@@ -96,8 +98,8 @@ every viewer, and holds the result itself while the stream lives (`modules/camer
 URL and path registered for redaction at `:350-379`). **Recommendation:** a fresh `GET cameras/{id}/rtsps-stream` on every
 `resolveSource`; the alias lives only in that call frame and the returned bridge URL (which the core holds). The bridge
 never sees the alias as data: it forwards bytes. Rotation, a session reset or a console restart need no invalidation.
-Known limit (core): a registered go2rtc stream keeps its URL until the core's 30 s idle grace removes it; after a session
-change its bridge port is gone, so it fails until re-registered. Only presence booleans are cached (D4). *Cost if wrong:*
+Known limit (core): a registered go2rtc stream keeps its URL until the core's 30 s idle grace removes it, so a rotated
+alias fails at the console until the stream is re-registered; the bridge port itself survives session changes (R1). Only presence booleans are cached (D4). *Cost if wrong:*
 a cache is one map in the availability service.
 
 **D4. Stream availability: what is cached, when it is read, and the rate budget.** The public API sends no frame when a
@@ -214,19 +216,20 @@ Decisions:
   opens); any other peer is destroyed before an upstream connection exists. If that address cannot be learnt, the bridge
   is `unavailable` (fail closed). Relay state comes from the exported `Go2rtcService` (`getStatus()`, `getClient()?.baseUrl`,
   `subscribe()`; `modules/cameras/services/go2rtc.service.ts:232-287`).
-- **Port.** OS-assigned (`listen(0)`), one listener per key `<connector session generation, upstream host:port, relay
-  generation>`; no configured port.
+- **Port.** OS-assigned (`listen(0)`), one listener per key `<relay mode, relay generation, bind address>` (R1); no
+  configured port. The upstream is not part of the key: each accepted connection reads it at accept time.
 - **Access control and secrets.** No per-session path token: the bridge is a transparent pipe to one fixed upstream, it
   adds no capability (the console still requires the alias, which only go2rtc holds), and a token would mean rewriting
   RTSP request lines. The alias in the go2rtc URL stays the only secret, protected by the core's redaction (the URL and
   its path are registered, F4). Access is limited by the bind address (loopback, or the relay's route plus a peer
   allow-list) and by the connection cap.
-- **Lifetime.** Opened lazily by the first `prepare()`; kept for the connector session so re-registrations within the
-  core's grace keep working (the provider gets no "stream released" call). Closed, with every connection, when: the
-  connector session ends (`onSessionChange(null, …)`, which covers TLS or host config changes, since those restart the
-  session), a `prepare()` with another key (override change), a relay status change with a new generation or mode, the
-  plugin being disabled or destroyed (`onModuleDestroy`). A connection also ends when go2rtc closes its side (the core
-  deleted the stream or the last consumer left) or the console closes.
+- **Lifetime (R1).** Opened lazily by the first `prepare()`; stays open while the plugin is enabled and the relay is
+  running, because go2rtc re-dials the same URL for as long as a consumer is attached and the core reuses a registration
+  while viewers hold leases. A session end or an upstream change (override, port) closes the open **connections**, not
+  the listener; while no session exists an accepted connection is destroyed before any upstream connect. The listener
+  and every connection close on a relay status with another mode or generation, or any `state !== 'running'` (M1), and
+  when the plugin is disabled or destroyed (`onModuleDestroy`). A connection also ends when go2rtc closes its side (the
+  core deleted the stream or the last consumer left) or the console closes.
 - **Limits.** At most `PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS` = **16** open connections (go2rtc holds one upstream per
   profile; the core's default caps are 8 sessions and 4 per camera); the 17th is destroyed on accept. TLS handshake
   timeout `PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS` = **5 000 ms** (the API's inspect timeout). Idle timeout
@@ -1122,6 +1125,110 @@ external relay on another host); `Closes #1186`; then `🤖 Generated with [Clau
 
 ---
 
+## Amendments after review (they win over the task text)
+
+These refine details inside the approved D1–D11; no decision is reopened. Each entry gives the plan location, the code
+reference, the rule and the tests to add.
+
+- **R1 (critical) — listener keyed by relay, not by session.** *Where:* D1 residual risk, D3, D11 Port/Lifetime (updated
+  inline), Task 5 rule 1 and tests. *Code:* go2rtc `internal/streams/producer.go:176-201` re-dials the same URL forever
+  while a consumer is attached; the core reuses a registration while viewers hold leases
+  (`modules/cameras/services/go2rtc-streams.service.ts:199-232, 403-411`). *Rule:* key the listener by `<relay mode, relay
+  generation, bind address>`; it stays open while the plugin is enabled and the relay is running. A session end or an
+  upstream change closes connections, not the listener. While no session exists an accepted connection is destroyed
+  before any upstream connect. Each accepted connection reads its upstream at accept time: host = valid override, else
+  `getConsoleHost()`; port = the last prepared port, default 7441; TLS = the current session's (R8). D3 known limit: "a
+  rotated alias fails at the console until the stream is re-registered". D1 residual risk: while a listener is closed
+  (plugin disabled or shut down) and go2rtc still holds its URL, a local process that binds the freed port can receive
+  the alias. *Tests (Task 5):* replace `closes every connection when the session ends` with `keeps the port across a
+  session restart and reaches the new upstream`, `destroys connections while no session exists without an upstream
+  connect`, `closes connections but keeps the listener when the upstream changes`; `re-keys the listener when the
+  upstream changes` is dropped.
+- **R2 — one source budget for `resolveSource`.** *Where:* Task 1 constants, Task 6 rule 4, Task 5 `prepare()`. *Code:*
+  `modules/cameras/services/cameras.service.ts:22` (10 s). *Rule:* `PROTECT_STREAM_SOURCE_BUDGET_MS = 9000`; the read gets
+  `deadlineMs = min(PROTECT_STREAM_READ_DEADLINE_MS, budget − PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS)`; `prepare()`
+  gets the remainder through `signal` and a deadline; the external probe connect is bounded by `GO2RTC_HTTP_TIMEOUT_MS`
+  and `dns.lookup` is raced against the deadline. *Test (Task 6):* `fits the source resolution into the core's timeout`
+  (fake timers: a 7 s read plus a hanging pre-flight rejects before 10 s).
+- **R3 — the redirect guard copies go2rtc's own parser.** *Where:* D12, Task 4 guard rules and tests, Task 5 rule 3.
+  *Code:* go2rtc `pkg/rtsp/client.go:84-122`, `pkg/tcp/textproto.go:43-84`, `pkg/rtsp/conn.go:188-264`. *Rule:*
+  1. The guard watches the go2rtc → console direction, without modifying it, for a `PLAY` request line. Before PLAY, a `$`
+     from the console at a message boundary is `malformed`. After PLAY, messages are classified by their first 4 bytes
+     as in `conn.go:205-216`: `RTSP` is a response; `OPTI TEAR DESC SETU PLAY PAUS RECO ANNO GET_ SET_` are requests;
+     anything else is `malformed`.
+  2. Lines end at LF with an optional CR; a header ends at the first empty line and is held whole until complete.
+  3. In every text message the first line is split on single spaces into at most 3 parts; a part 2 matching
+     `^[+-]?\d+$` with a value 300–399 is `redirect`. A response status must match `^\d{3}$`, else `malformed`.
+  4. `malformed`: a header line starting with SP or HT; a duplicate `Content-Length` (case-insensitive); a
+     `Content-Length` whose trimmed value does not match `^\d{1,5}$`.
+  *Tests (Task 4), refused cases:* `OPTIONS 302 Found` with a `Location` header; a `$` frame before PLAY whose payload
+  starts with `302 Found`; `RTSP 302 x`; `+302` and `0302`; LF-only line endings with a 302; a continuation line; a
+  duplicate `Content-Length`. The guard therefore takes both directions' data (the go2rtc → console side read-only).
+- **R4 — an `unverified` result expires.** *Where:* Task 5 `getVerification`, D5. *Code:* `cameras.service.ts:71-87` and
+  `cameras.controller.ts:234` (an unavailable profile returns 404 and blocks `resolveSource`). *Rule:* `unverified`
+  expires after `PROTECT_STREAM_AVAILABILITY_TTL_MS`; `getVerification` then reports `unknown`, so the profile is offered
+  again and the pre-flight re-runs. *Test (Task 5):* `forgets a failed verification after 60 s`.
+- **R5 — verification by host.** *Where:* Task 5 Produces, Task 6 rule 3. *Rule:* `getVerification(host: string):
+  ProtectBridgeVerification` returns the last result for that host on any port in the current session, subject to R4;
+  the provider passes only the upstream host.
+- **R6 — fake RTSPS certificate per connection.** *Where:* Task 5 fake console rules. *Code:* `test/support/fake-protect-server.ts:286-288`
+  (`set()` only merges options). *Rule:* the RTSPS server chooses its certificate per connection through `SNICallback`,
+  reading `this.options.rtspsCertificate` live: `mirror` = the `protectTlsServerOptions()` logic, `console` = the console
+  context for every SNI. `rtspsPort` is a property of the server instance, not an option. `reset()` clears the queued
+  `rtspAnswer` and sets `rtspsCertificate` back to `mirror`.
+- **R7 — fingerprint callback.** *Where:* Task 4 Produces and agent rewrite. *Code:* `client/protect-https-agent.spec.ts:195-198`
+  (the fingerprint is recorded on a mismatch). *Rule:* `ProtectVerifiedTlsOptions` gains `onPeerFingerprint?:
+  (fingerprint: string | null) => void`, called on `secureConnect` before the pin or `authorized` check; the agent sets
+  `peerFingerprintValue` through it. Extra CAs use the agent's `withExtraCa`.
+- **R8 — the bridge uses the session's TLS target.** *Where:* Task 5 rule 2, Task 6. *Code:* `client/protect-tls-policy.ts:20-51`;
+  `modules/extensions/services/managed-service-manager.service.ts:961-972` (the config is saved before the restart).
+  *Rule:* the connector exposes `getStreamTlsTarget(): { consoleHost: string; tls: ProtectTlsSettings } | null`, built from
+  `startedConfig`, non-null only while connected. The bridge connects to the stream host and port with
+  `planProtectTls(consoleHost, tls)`, so SNI, name verification and the pin are the API session's whatever the override
+  is; it never reads the current config for TLS. *Test (Task 6):* `verifies the console name, not the override name`.
+- **R9 — no retry storm for a failing camera.** *Where:* Task 3 rules. *Rule:* background reads record `attemptedAt` per
+  camera; the observer enqueues only when there is no entry and no attempt in the last TTL, or on a not-`CONNECTED` →
+  `CONNECTED` transition (subject to M11). *Test (Task 3):* `does not retry a failing camera on every frame`.
+- **R10 — stale-while-refresh.** *Where:* Task 3 `getAvailability`. *Rule:* a stale entry is returned immediately and a
+  background refresh is queued; a read is awaited only when there is no entry at all. *Test (Task 3):* `serves availability
+  from the store for 60 s` becomes: after 60 000 ms the stale entry returns at once and one background read follows.
+- **R11 — `prepare()` races.** *Where:* Task 5 rules. *Rule:* `prepare()` captures the session generation, the relay
+  generation and `destroyed`, re-checks them after every await, and on a mismatch closes whatever it opened and rejects
+  `unavailable`. Opening a listener is single-flight per key. External mode's allow-list is the probe socket's
+  `remoteAddress` plus `dns.lookup(host, { all: true })`, normalised (strip `::ffff:`), frozen before `listen()`; the
+  `connection` handler checks it synchronously as its first statement. *Tests (Task 5):* `closes a listener opened after
+  the session ended`, `opens one listener for concurrent prepares`.
+- **R12 — boot and e2e order.** *Where:* Tasks 2, 3, 5, 8. *Rule:* the `CamerasModule` import moves into the plugin's
+  `imports` in Task 5 (the imports-length test becomes 6; Task 8 only registers). Tasks 2, 3 and 5 each end by also
+  running `pnpm --filter ./apps/backend exec jest --config ./test/jest-e2e.json test/devices-unifi-protect` (the backend's
+  `test:e2e` script is `jest --config ./test/jest-e2e.json`, `apps/backend/package.json:72`; the path pattern selects every
+  Protect e2e file). Expected: PASS.
+- **R13 — no bytes before verification.** *Where:* D11 Limits, Task 5 rule 2 and integration tests. *Rule:* accepted
+  sockets are `pause()`d and not read until verification resolves, then `pipeline` starts; this replaces the 16 KiB hold
+  buffer and its test (`holds early bytes until the upstream is verified` becomes `reads nothing from go2rtc before the
+  upstream is verified`). Error listeners go on both sockets immediately. In the integration tests the raw client writes
+  `OPTIONS …/${FAKE_PROTECT_ALIAS}` right after connecting; the fake records `rtspsBytesReceived` per connection, and the
+  wrong-pin and untrusted-certificate cases assert 0.
+
+Minor:
+- **M1:** close the listener on any relay status `state !== 'running'` (`go2rtc-streams.service.ts:611`).
+- **M2:** the full-HD snapshot fallback shares one 8 s deadline (`8000 − elapsed`); see `camera-snapshot.service.ts:111-113`.
+- **M3:** clamp the snapshot interval with the existing `PROTECT_MIN/MAX/DEFAULT_SNAPSHOT_MIN_INTERVAL_MS`
+  (`devices-unifi-protect.constants.ts:20-22`).
+- **M4:** the bridge handshake timeout is 4 000 ms (below go2rtc's 5 s read deadline, `pkg/rtsp/client.go:21`), not the
+  inspect timeout; the listener gets a server `error` handler.
+- **M5:** accept rate limit of 32 handshakes per 10 s; list local connection exhaustion in the PR's Known limits.
+- **M6:** the external probe port is inferred from the scheme (80/443) when the URL has none; the readme explains that a
+  relay in another container whose traffic is NATed fails closed.
+- **M7:** `refreshDevice` uses `previousRaw = raw` (no rename propagation) and counts toward `PROTECT_MAX_PENDING_FRAMES`.
+- **M8:** the in-flight read map is keyed by session generation and dropped on session end.
+- **M9:** line drift: `go2rtc-streams.service.ts:356-381` (secret registration); the prime notifies observers only on
+  successful writes (`protect-synchronizer.service.ts:468-471`). `ACCEPTED_CONTENT_TYPES` is at
+  `camera-snapshot.service.ts:27` on `ee241a75c` (the review's `:26` does not match this commit).
+- **M10:** the PR body calls out A1 (#1186 acceptance criterion 3 still says `rtspx`); updating the issue text is left to
+  the maintainer.
+- **M11:** a reconnect read is skipped while the camera's entry is younger than 10 s (anti-flap).
+
 ## Decisions recorded (for the PR body)
 
 1. go2rtc never connects to the console: a plugin bridge opens TLS to the stream port with the API's own `verify`/`pinned`
@@ -1159,6 +1266,10 @@ external relay on another host); `Closes #1186`; then `🤖 Generated with [Clau
 | No alias in logs, responses, persisted properties or diagnostics, bridge included | 3, 5, 6, 9 (D9) |
 | Never create or delete streams outside adoption | 6, 9 (D5) |
 | D1b kept out of the tasks until the measurement confirms it | — (D1b) |
+| Plan review findings | R1–R13, M1–M11 applied in "Amendments after review"; they win over the task text |
+
+The review amendments were applied: D1's residual risk, D3's known limit and D11's Port and Lifetime are updated inline
+(R1); every other finding is stated once in "Amendments after review" with its task and tests.
 
 **Step scan:** every code step names its file, signatures and decided rules; test steps list names with fixture ids,
 values, certificates and expected categories; verification steps carry commands and expected output. The bridge and
