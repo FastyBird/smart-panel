@@ -185,7 +185,6 @@ export class UnifiProtectStreamProvider implements ICameraStreamProvider {
 		return { url, transport: 'rtsp' };
 	}
 
-	/** Task 7. */
 	/**
 	 * D6, D8. Snapshots go through the API client and its pacer, never the bridge. The camera is skipped without a
 	 * request only when its cached state is known and not `CONNECTED`; a camera missing from the cache is requested.
