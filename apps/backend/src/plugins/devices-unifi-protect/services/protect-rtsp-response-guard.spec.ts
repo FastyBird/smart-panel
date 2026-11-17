@@ -4,6 +4,8 @@ import { ProtectRtspGuardError, ProtectRtspResponseGuard } from './protect-rtsp-
 
 const ALIAS = 'SENTINELALIASx1y2z3';
 
+const EMPTY_PAYLOAD = Buffer.alloc(0);
+
 const text = (value: string): Buffer => Buffer.from(value, 'latin1');
 
 const frame = (channel: number, payload: Buffer): Buffer => {
@@ -30,13 +32,28 @@ const DESCRIBE_RESPONSE = Buffer.concat([
 	SDP,
 ]);
 
+const OPTIONS_REQUEST = text(`OPTIONS rtsps://h:7441/${ALIAS} RTSP/1.0\r\nCSeq: 1\r\n\r\n`);
+const OPTIONS_RESPONSE = text('RTSP/1.0 200 OK\r\nCSeq: 1\r\nPublic: OPTIONS, DESCRIBE, SETUP, PLAY\r\n\r\n');
+const DESCRIBE_REQUEST = text(
+	`DESCRIBE rtsps://h:7441/${ALIAS} RTSP/1.0\r\nCSeq: 2\r\nAccept: application/sdp\r\n\r\n`,
+);
 const SETUP_REQUEST = text(`SETUP rtsps://h:7441/${ALIAS}/trackID=0 RTSP/1.0\r\nCSeq: 3\r\n\r\n`);
+const SETUP_RESPONSE = text(
+	'RTSP/1.0 200 OK\r\nCSeq: 3\r\nSession: 1\r\nTransport: RTP/AVP/TCP;interleaved=0-1\r\n\r\n',
+);
 const PLAY_REQUEST = text(`PLAY rtsps://h:7441/${ALIAS}/ RTSP/1.0\r\nCSeq: 4\r\nSession: 1\r\n\r\n`);
 const PLAY_RESPONSE = text('RTSP/1.0 200 OK\r\nCSeq: 4\r\nSession: 1\r\n\r\n');
 
 const FRAMES = Buffer.concat([
 	frame(0, Buffer.concat([Buffer.from([0x80, 0x60]), text('RTSP/1.0 302 Found\r\nLocation: rtsps://x\r\n\r\n')])),
 	frame(1, Buffer.alloc(300, 0x24)),
+]);
+
+// go2rtc's Do reads this as `$ 302 Found` (ReadResponse splits on spaces): a 302 hidden in an interleaved frame header.
+const SMUGGLED_REDIRECT = Buffer.concat([
+	Buffer.from([0x24, 0x20]),
+	text('30'),
+	text(`2 Found\r\nLocation: rtsps://10.0.0.9:7441/${ALIAS}/\r\n\r\n`),
 ]);
 
 const redirectTo = (status: string): Buffer =>
@@ -97,8 +114,8 @@ describe('ProtectRtspResponseGuard', () => {
 
 		for (let index = 0; index <= before.length; index += 1) {
 			const outcome = await run([
+				{ go2rtc: DESCRIBE_REQUEST },
 				...fromConsole(before.subarray(0, index), before.subarray(index)),
-				{ go2rtc: SETUP_REQUEST },
 				{ go2rtc: PLAY_REQUEST },
 				...fromConsole(after),
 			]);
@@ -124,6 +141,93 @@ describe('ProtectRtspResponseGuard', () => {
 		expect(bytes.output.equals(input)).toBe(true);
 	});
 
+	it('forwards the go2rtc 1.9.15 sequence: Do for OPTIONS, DESCRIBE and each SETUP, then PLAY and frames', async () => {
+		const tail = Buffer.concat([PLAY_RESPONSE, FRAMES]);
+		const steps: Step[] = [
+			{ go2rtc: OPTIONS_REQUEST },
+			...fromConsole(OPTIONS_RESPONSE),
+			{ go2rtc: DESCRIBE_REQUEST },
+			...fromConsole(DESCRIBE_RESPONSE),
+			{ go2rtc: SETUP_REQUEST },
+			...fromConsole(SETUP_RESPONSE),
+			{ go2rtc: SETUP_REQUEST },
+			...fromConsole(SETUP_RESPONSE),
+			{ go2rtc: PLAY_REQUEST },
+			...fromConsole(tail),
+		];
+		const input = Buffer.concat([OPTIONS_RESPONSE, DESCRIBE_RESPONSE, SETUP_RESPONSE, SETUP_RESPONSE, tail]);
+
+		for (let index = 0; index <= tail.length; index += 1) {
+			const outcome = await run([...steps.slice(0, -1), ...fromConsole(tail.subarray(0, index), tail.subarray(index))]);
+
+			expect(outcome.error).toBeNull();
+			expect(outcome.output.equals(input)).toBe(true);
+		}
+	});
+
+	it('refuses a frame before the responses to pipelined requests', async () => {
+		// A go2rtc that pipelined SETUP with PLAY would still read the SETUP answer inside Do, where `$ 302` redirects.
+		const pipelined = { go2rtc: Buffer.concat([SETUP_REQUEST, PLAY_REQUEST]) };
+
+		for (const steps of [
+			[pipelined, ...fromConsole(SMUGGLED_REDIRECT)],
+			[pipelined, ...bytewise(SMUGGLED_REDIRECT)],
+			[pipelined, ...fromConsole(FRAMES)],
+		]) {
+			const outcome = await run(steps);
+
+			expect(reasonOf(outcome)).toBe('malformed');
+			expect(outcome.output).toHaveLength(0);
+		}
+
+		// Once the SETUP answer is through, the PLAY answer and frames belong to go2rtc's frame loop.
+		const answered = Buffer.concat([SETUP_RESPONSE, PLAY_RESPONSE, FRAMES]);
+		const outcome = await run([pipelined, ...fromConsole(answered)]);
+
+		expect(outcome.error).toBeNull();
+		expect(outcome.output.equals(answered)).toBe(true);
+	});
+
+	it('forwards empty and maximum-length frames and frame headers split at every offset', async () => {
+		const empty = frame(0, EMPTY_PAYLOAD);
+		const largest = frame(1, Buffer.alloc(0xffff, 0x52));
+		const input = Buffer.concat([empty, largest, empty, PLAY_RESPONSE]);
+
+		const whole = await run(afterPlay(input));
+
+		expect(whole.error).toBeNull();
+		expect(whole.output.equals(input)).toBe(true);
+
+		for (const offset of [1, 2, 3]) {
+			const split = await run(afterPlay(largest.subarray(0, offset), largest.subarray(offset), PLAY_RESPONSE));
+
+			expect(split.error).toBeNull();
+			expect(split.output.equals(Buffer.concat([largest, PLAY_RESPONSE]))).toBe(true);
+		}
+	});
+
+	it('emits nothing after a refusal', async () => {
+		const guard = new ProtectRtspResponseGuard();
+		const output: Buffer[] = [];
+		const errors: unknown[] = [];
+
+		guard.on('data', (chunk: Buffer) => output.push(chunk));
+		guard.on('error', (error) => errors.push(error));
+		guard.write(redirectTo('302'));
+
+		await new Promise((resolve) => setImmediate(resolve));
+
+		guard.write(OPTIONS_RESPONSE, () => undefined);
+		guard.observeRequests(PLAY_REQUEST);
+		guard.write(FRAMES, () => undefined);
+
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(output).toHaveLength(0);
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatchObject({ reason: 'redirect' });
+	});
+
 	it('forwards interleaved frames after PLAY', async () => {
 		const outcome = await run(afterPlay(FRAMES));
 
@@ -142,13 +246,15 @@ describe('ProtectRtspResponseGuard', () => {
 		expect(reasonOf(await run([{ go2rtc: parameter }, ...fromConsole(FRAMES)]))).toBe('malformed');
 
 		const split = await run([
-			{ go2rtc: Buffer.concat([SETUP_REQUEST, PLAY_REQUEST.subarray(0, 2)]) },
+			{ go2rtc: SETUP_REQUEST },
+			...fromConsole(SETUP_RESPONSE),
+			{ go2rtc: PLAY_REQUEST.subarray(0, 2) },
 			{ go2rtc: PLAY_REQUEST.subarray(2) },
 			...fromConsole(FRAMES),
 		]);
 
 		expect(split.error).toBeNull();
-		expect(split.output.equals(FRAMES)).toBe(true);
+		expect(split.output.equals(Buffer.concat([SETUP_RESPONSE, FRAMES]))).toBe(true);
 	});
 
 	it('forwards a body that looks like RTSP without parsing it', async () => {
@@ -200,12 +306,10 @@ describe('ProtectRtspResponseGuard', () => {
 	});
 
 	it('refuses an interleaved frame before PLAY', async () => {
-		const smuggled = frame(0x20, text('302 Found\r\nLocation: rtsps://x\r\n\r\n'));
-
 		for (const steps of [
-			fromConsole(smuggled),
-			bytewise(smuggled),
-			[{ go2rtc: SETUP_REQUEST }, ...fromConsole(smuggled)],
+			fromConsole(SMUGGLED_REDIRECT),
+			bytewise(SMUGGLED_REDIRECT),
+			[{ go2rtc: SETUP_REQUEST }, ...fromConsole(SMUGGLED_REDIRECT)],
 		]) {
 			const outcome = await run(steps);
 

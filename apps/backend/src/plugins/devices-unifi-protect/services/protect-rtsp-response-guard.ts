@@ -265,12 +265,24 @@ class RtspFramer {
  * response, a text header over PROTECT_RTSP_MAX_HEADER_BYTES, a body over PROTECT_RTSP_MAX_BODY_BYTES or a malformed
  * frame. The framing copies go2rtc 1.9.15 (`pkg/rtsp/client.go` Do, `pkg/rtsp/conn.go` handleTCPData,
  * `pkg/tcp/textproto.go` ReadResponse), so nothing go2rtc would follow as a redirect gets through, whatever the chunk
- * boundaries. The go2rtc -> console bytes are only observed (`observeRequests`) to learn when PLAY was sent: before
- * it go2rtc reads every message as a response, after it a `$` starts an interleaved frame.
+ * boundaries.
+ *
+ * The go2rtc -> console bytes are only observed (`observeRequests`) to learn which reader in go2rtc gets each console
+ * message. Every request go2rtc sends before PLAY goes through `Do`, which reads exactly one message as a response
+ * (`ReadResponse`, whatever its first bytes; a 301/302 there is followed). PLAY itself is sent with `WriteRequest` and
+ * its answer is read by the frame loop (`handleTCPData`), as is everything after it. So with N requests before PLAY,
+ * the first N console messages are `Do` answers: a `$` there is malformed. Only message N onwards, and only once PLAY
+ * was observed, is classified like the frame loop: `$` starts a frame, `RTSP` and request prefixes are text. go2rtc
+ * 1.9.15 waits for each answer before the next request, but counting keeps a go2rtc that pipelines requests with PLAY
+ * just as safe.
  */
 export class ProtectRtspResponseGuard extends Transform {
 	private playing = false;
 	private failed = false;
+	/** Requests go2rtc sent before PLAY; each one's answer is read by `Do`. */
+	private requestsBeforePlay = 0;
+	/** Complete text messages the console sent. */
+	private consoleMessages = 0;
 
 	private readonly responses = new RtspFramer({
 		classify: (start) => this.classifyResponse(start),
@@ -283,6 +295,8 @@ export class ProtectRtspResponseGuard extends Transform {
 				return 'malformed';
 			}
 
+			this.consoleMessages += 1;
+
 			return null;
 		},
 	});
@@ -291,6 +305,8 @@ export class ProtectRtspResponseGuard extends Transform {
 		classify: (start) => (start[0] === DOLLAR ? 'frame' : 'text'),
 		inspect: (header) => {
 			if (header.firstLine[0] !== 'PLAY') {
+				this.requestsBeforePlay += 1;
+
 				return null;
 			}
 
@@ -341,8 +357,8 @@ export class ProtectRtspResponseGuard extends Transform {
 	}
 
 	private classifyResponse(start: Buffer): MessageKind | ProtectRtspGuardFailure | null {
-		if (!this.playing) {
-			// Before PLAY go2rtc reads every message as a response (Do -> ReadResponse); a `$` there is no frame.
+		if (!this.playing || this.consoleMessages < this.requestsBeforePlay) {
+			// Read by Do -> ReadResponse: every message is a response there, and a `$` is no frame.
 			return start[0] === DOLLAR ? 'malformed' : 'text';
 		}
 

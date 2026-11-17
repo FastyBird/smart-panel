@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter, getEventListeners } from 'events';
 import * as net from 'net';
 import { AddressInfo } from 'net';
 import * as tls from 'tls';
@@ -50,10 +50,10 @@ function closer(server: net.Server, sockets: Set<net.Socket>): () => Promise<voi
 		});
 }
 
-async function startTlsServer(): Promise<TestServer> {
+async function startTlsServer(options: tls.TlsOptions = protectTlsServerOptions()): Promise<TestServer> {
 	const state = { bytesReceived: 0 };
 	const sockets = new Set<net.Socket>();
-	const server = tls.createServer(protectTlsServerOptions(), (socket) => {
+	const server = tls.createServer(options, (socket) => {
 		socket.on('data', (chunk: Buffer) => {
 			state.bytesReceived += chunk.length;
 		});
@@ -334,5 +334,79 @@ describe('connectVerifiedProtectTls', () => {
 		expect(keepAlive).toHaveBeenCalledWith(true, 4321);
 		expect(renegotiation).toHaveBeenCalledTimes(1);
 		expect(socket.listenerCount('error')).toBeGreaterThan(0);
+	});
+
+	it('rejects a valid chain checked against a different server name', async () => {
+		// Every SNI gets the CA-signed console certificate, so only the name check can refuse it.
+		await server.close();
+		server = await startTlsServer({ key: PROTECT_TEST_TLS.console.key, cert: PROTECT_TEST_TLS.console.cert });
+		captureSockets();
+
+		await expect(
+			connectVerifiedProtectTls({
+				host: '127.0.0.1',
+				port: server.port,
+				plan: planProtectTls('127.0.0.1', {
+					mode: 'verify',
+					serverName: 'other.id.ui.direct',
+					fingerprintSha256: null,
+				}),
+				ca: [PROTECT_TEST_TLS.ca],
+				handshakeTimeoutMs: PROTECT_TLS_INSPECT_TIMEOUT_MS,
+			}),
+		).rejects.toMatchObject({ category: 'tls_untrusted' });
+		expect(opened[0].destroyed).toBe(true);
+		expect(server.bytesReceived).toBe(0);
+	});
+
+	it('rejects a synchronous tls.connect failure as a ProtectApiError', async () => {
+		const error = await connectVerifiedProtectTls({
+			host: '127.0.0.1',
+			port: -1,
+			plan: planProtectTls('127.0.0.1', pinned(PROTECT_TEST_TLS.fingerprints.selfSigned)),
+			handshakeTimeoutMs: PROTECT_TLS_INSPECT_TIMEOUT_MS,
+		}).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(ProtectApiError);
+		expect(error).toMatchObject({ category: 'unavailable', operation: 'tls' });
+	});
+
+	it('refuses and destroys the socket when onPeerFingerprint throws', async () => {
+		captureSockets();
+
+		const error = await connectVerifiedProtectTls({
+			host: '127.0.0.1',
+			port: server.port,
+			plan: planProtectTls('127.0.0.1', pinned(PROTECT_TEST_TLS.fingerprints.selfSigned)),
+			handshakeTimeoutMs: PROTECT_TLS_INSPECT_TIMEOUT_MS,
+			onPeerFingerprint: () => {
+				throw new Error('observer failed');
+			},
+		}).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(ProtectApiError);
+		expect(error).toMatchObject({ category: 'unavailable', operation: 'tls' });
+		expect(opened[0].destroyed).toBe(true);
+		expect(server.bytesReceived).toBe(0);
+	});
+
+	it('leaves a resolved socket alone when the signal aborts later', async () => {
+		const controller = new AbortController();
+		const { socket } = await connectVerifiedProtectTls({
+			host: '127.0.0.1',
+			port: server.port,
+			plan: planProtectTls('127.0.0.1', pinned(PROTECT_TEST_TLS.fingerprints.selfSigned)),
+			handshakeTimeoutMs: PROTECT_TLS_INSPECT_TIMEOUT_MS,
+			signal: controller.signal,
+		});
+
+		opened.push(socket);
+
+		expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+
+		controller.abort();
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(socket.destroyed).toBe(false);
 	});
 });

@@ -73,7 +73,14 @@ export function connectVerifiedProtectTls(options: ProtectVerifiedTlsOptions): P
 		const onSecureConnect = (): void => {
 			const fingerprint = peerFingerprint(connection.getPeerCertificate());
 
-			options.onPeerFingerprint?.(fingerprint);
+			try {
+				options.onPeerFingerprint?.(fingerprint);
+			} catch (error) {
+				// A failing observer must not escape the socket event as an uncaught exception, nor skip the refusal.
+				settle(toProtectApiError(error, 'tls'));
+
+				return;
+			}
 
 			if (plan.pinnedFingerprint !== null) {
 				if (fingerprint === null || !fingerprintsEqual(fingerprint, plan.pinnedFingerprint)) {
@@ -91,13 +98,22 @@ export function connectVerifiedProtectTls(options: ProtectVerifiedTlsOptions): P
 			settle({ socket: connection, fingerprint });
 		};
 
-		const connection = tls.connect({
-			host: options.host,
-			port: options.port,
-			servername: plan.servername,
-			rejectUnauthorized: plan.rejectUnauthorized,
-			ca: options.ca,
-		});
+		let connection: tls.TLSSocket;
+
+		try {
+			connection = tls.connect({
+				host: options.host,
+				port: options.port,
+				servername: plan.servername,
+				rejectUnauthorized: plan.rejectUnauthorized,
+				ca: options.ca,
+			});
+		} catch (error) {
+			// Invalid options throw synchronously (e.g. ERR_SOCKET_BAD_PORT); callers only ever see ProtectApiError.
+			reject(toProtectApiError(error, 'tls'));
+
+			return;
+		}
 
 		if (options.keepAlive !== undefined) {
 			connection.setKeepAlive(options.keepAlive.enabled, options.keepAlive.initialDelayMs);
