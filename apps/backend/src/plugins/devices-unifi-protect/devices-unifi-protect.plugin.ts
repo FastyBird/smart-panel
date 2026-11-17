@@ -70,6 +70,7 @@ import {
 	PROTECT_REALTIME_TIMINGS,
 	ProtectRealtimeService,
 } from './services/protect-realtime.service';
+import { ProtectStreamAvailabilityService } from './services/protect-stream-availability.service';
 import { ProtectStreamAvailabilityStore } from './services/protect-stream-availability.store';
 import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
@@ -97,6 +98,7 @@ import { ProtectSynchronizerService } from './services/protect-synchronizer.serv
 		ProtectInventoryService,
 		ProtectMappingPreviewService,
 		ProtectStreamAvailabilityStore,
+		ProtectStreamAvailabilityService,
 		ProtectSynchronizerService,
 		UnifiProtectDevicePlatform,
 		{ provide: PROTECT_REALTIME_TIMINGS, useValue: PROTECT_DEFAULT_REALTIME_TIMINGS },
