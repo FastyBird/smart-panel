@@ -5,7 +5,11 @@ import { join } from 'path';
 import { Logger } from '@nestjs/common';
 
 import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
-import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME, DEVICES_UNIFI_PROTECT_TYPE } from '../devices-unifi-protect.constants';
+import {
+	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+	DEVICES_UNIFI_PROTECT_TYPE,
+	PROTECT_MAX_PENDING_FRAMES,
+} from '../devices-unifi-protect.constants';
 import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
 
 import { ProtectFrame, parseProtectFrame, valueKey } from './protect-frame-merge';
@@ -406,6 +410,113 @@ describe('ProtectSynchronizerService', () => {
 			await expect(service.refreshDevice(IDENTITY, 'camera', 'ffffffffffffffffffffffff')).resolves.toBe(false);
 			await expect(service.refreshDevice(IDENTITY, 'light', CAMERA_ID)).resolves.toBe(false);
 			expect(properties.update).not.toHaveBeenCalled();
+		});
+
+		it('does not open the status gate from availability that arrived mid-sync', async () => {
+			let release: () => void = () => undefined;
+			const held = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+
+			await prime();
+			baselines().set(MAIN, 'offline');
+			jest.spyOn(service as any, 'retryDevice').mockImplementation(() => held);
+			service.enqueueFrame(IDENTITY, statusFrame('CONNECTED'));
+			await new Promise((resolve) => setImmediate(resolve));
+
+			// The camera was evaluated with unknown availability; the entry lands while the sync waits.
+			streamStore.set(CAMERA_ID, { high: true, medium: false, low: false, package: false });
+			release();
+			await service.idle();
+
+			expect(updatedIds()).not.toContain(MAIN);
+		});
+
+		describe('refreshDevice', () => {
+			const known = (): void => {
+				baselines().set(MAIN, 'offline');
+				streamStore.set(CAMERA_ID, { high: true, medium: false, low: false, package: false });
+			};
+
+			it('reports a failed write', async () => {
+				await prime();
+				known();
+				properties.update.mockRejectedValue(new Error('write failed'));
+
+				await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(false);
+			});
+
+			it('writes nothing and resolves false when a reset lands mid-refresh', async () => {
+				let release: () => void = () => undefined;
+				const held = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+
+				await prime();
+				known();
+				jest.spyOn(service as any, 'retryDevice').mockImplementation(() => held);
+
+				const refreshed = service.refreshDevice(IDENTITY, 'camera', CAMERA_ID);
+
+				await new Promise((resolve) => setImmediate(resolve));
+				service.reset();
+				release();
+
+				await expect(refreshed).resolves.toBe(false);
+				expect(properties.update).not.toHaveBeenCalled();
+			});
+
+			it('resolves false without writing when the queue is full', async () => {
+				await prime();
+				known();
+				(service as any).pending = PROTECT_MAX_PENDING_FRAMES;
+
+				await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(false);
+				expect(properties.update).not.toHaveBeenCalled();
+			});
+
+			it('does not overwrite a value an event wrote', async () => {
+				const motion = prop(CAMERA_PANEL, 'motion', 'camera_motion_detected');
+
+				await prime();
+				known();
+				baselines().set(motion, true);
+				(service as any).eventOwned.set(CAMERA_ID, new Map([[valueKey('motion', 'camera_motion_detected'), 'event']]));
+
+				await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(true);
+				expect(updatedIds()).toEqual([MAIN]);
+			});
+
+			it('uses the object a frame queued ahead of it stored', async () => {
+				await prime();
+				streamStore.set(CAMERA_ID, { high: true, medium: false, low: false, package: false });
+				service.enqueueFrame(IDENTITY, statusFrame('DISCONNECTED'));
+
+				await service.refreshDevice(IDENTITY, 'camera', CAMERA_ID);
+
+				expect(
+					properties.update.mock.calls
+						.filter((call) => call[0] === MAIN)
+						.map((call) => (call[1] as Raw).value as unknown),
+				).toEqual(['offline']);
+			});
+
+			it('does not propagate renames', async () => {
+				devices = [adopt(goldenCamera, CAMERA_PANEL, { name: 'Old name' })];
+				await prime();
+				(service as any).propagatedNames.set(CAMERA_ID, 'Old name');
+				known();
+
+				await service.refreshDevice(IDENTITY, 'camera', CAMERA_ID);
+
+				expect(devicesService.update).not.toHaveBeenCalled();
+
+				// Control: a frame at the same state does propagate the pending rename.
+				service.enqueueFrame(IDENTITY, frameFor('update', { id: CAMERA_ID, modelKey: 'camera', state: 'CONNECTED' }));
+				await service.idle();
+
+				expect(devicesService.update).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		it('reports adoption', async () => {

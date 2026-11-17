@@ -930,6 +930,19 @@ describe('ProtectAdoptionService', () => {
 			});
 		});
 
+		it('records the prepared availability when the console rejects the stream request', async () => {
+			client.createRtspsStreams.mockRejectedValue(new Error('console down'));
+
+			await service.adoptOne(ENABLING);
+
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')?.availability).toEqual({
+				high: true,
+				medium: false,
+				low: false,
+				package: false,
+			});
+		});
+
 		it('records the prepared availability when stream enablement is declined', async () => {
 			await service.adoptOne(SELECTION);
 

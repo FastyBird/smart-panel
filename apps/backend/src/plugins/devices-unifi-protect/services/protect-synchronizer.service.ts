@@ -275,21 +275,22 @@ export class ProtectSynchronizerService {
 		let refreshed = false;
 
 		return this.run(async () => {
-			const raw = this.cache.get(cacheKey(modelKey, id)) ?? null;
-
-			if (raw === null) {
+			if (!this.cache.has(cacheKey(modelKey, id))) {
 				return;
 			}
 
 			await this.ensureIndex(identity);
 
-			const device = this.aborted() ? undefined : this.adopted({ modelKey, id });
+			// Read after the awaits: a frame or snapshot queued ahead of this task has already replaced the object.
+			const raw = this.cache.get(cacheKey(modelKey, id)) ?? null;
+			const device = this.aborted() || raw === null ? undefined : this.adopted({ modelKey, id });
 
-			if (device === undefined) {
+			if (device === undefined || raw === null) {
 				return;
 			}
 
-			const written = await this.syncDevice(identity, device, modelKey, raw, raw, 'frame', {});
+			// No rename propagation: the object is not new, so there is no name change to carry.
+			const written = await this.syncDevice(identity, device, modelKey, raw, raw, 'frame', {}, false);
 
 			refreshed = written && !this.aborted();
 		}).then(() => refreshed);
@@ -1116,14 +1117,16 @@ export class ProtectSynchronizerService {
 		previousRaw: Readonly<Record<string, unknown>> | null,
 		mode: SyncMode,
 		partial: Readonly<Record<string, unknown>> | null,
+		propagateRenames = true,
 	): Promise<boolean> {
 		const mappings = this.mappingLoader.getMappings();
+		// Read once: the evaluated status and the gate that lets it be written must come from the same availability.
+		const availability = modelKey === 'camera' ? this.streamAvailability.get(device.protectDeviceId) : null;
 		const result = evaluateProtectMapping(mappings, {
 			nvr: { id: identity.nvrId, macKey: identity.nvrMacKey },
 			modelKey: modelKey as 'camera' | 'sensor' | 'light',
 			device: raw,
-			streams:
-				modelKey === 'camera' ? (this.streamAvailability.get(device.protectDeviceId)?.availability ?? null) : null,
+			streams: availability?.availability ?? null,
 		});
 
 		if (result.ok && mode === 'snapshot') {
@@ -1152,7 +1155,7 @@ export class ProtectSynchronizerService {
 			mapped,
 			mappings,
 			partial,
-			this.syncedNames(mappings, raw, device.protectDeviceId),
+			this.syncedNames(mappings, raw, availability !== null),
 		);
 
 		await this.writeConnectionState(device, mapped);
@@ -1168,7 +1171,9 @@ export class ProtectSynchronizerService {
 			await this.resetStaleDetections(device);
 		}
 
-		await this.propagateRename(device, modelKey, raw, previousRaw);
+		if (propagateRenames) {
+			await this.propagateRename(device, modelKey, raw, previousRaw);
+		}
 
 		return written;
 	}
@@ -1299,9 +1304,9 @@ export class ProtectSynchronizerService {
 	private syncedNames(
 		mappings: ProtectResolvedMappings,
 		raw: Readonly<Record<string, unknown>>,
-		protectDeviceId: string,
+		availabilityKnown: boolean,
 	): ReadonlySet<string> {
-		if (raw.state === 'CONNECTED' && this.streamAvailability.get(protectDeviceId) === null) {
+		if (raw.state === 'CONNECTED' && !availabilityKnown) {
 			return this.syncableNames(mappings);
 		}
 

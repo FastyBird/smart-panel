@@ -943,7 +943,10 @@ export class ProtectAdoptionService {
 		const stream = this.streamModel(result.outcome, result.quality, result.enabledQualities, result.failureCategory);
 		let complete = true;
 
-		if (result.availability !== null) {
+		if (result.availability === null) {
+			// A failed enablement: the console state read before it is the best knowledge there is.
+			this.recordAvailability(prepared, prepared.streams);
+		} else {
 			this.recordAvailability(prepared, result.availability);
 
 			try {

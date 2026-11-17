@@ -9,14 +9,17 @@ describe('ProtectStreamAvailabilityStore', () => {
 
 		expect(store.get(ID)).toBeNull();
 		expect(store.set(ID, input, 10)).toBe(true);
-		expect(store.set(ID, { ...input }, 20)).toBe(false);
+		const latest = { ...input };
+
+		expect(store.set(ID, latest, 20)).toBe(false);
 		expect(store.get(ID)).toEqual({ availability: input, readAt: 20 });
+
+		// The caller keeps mutating the very object it passed last; the store holds its own copy.
+		latest.high = false;
+		latest.package = true;
+
+		expect(store.get(ID)?.availability).toEqual(input);
 		expect(store.set(ID, { ...input, package: true })).toBe(true);
-
-		input.high = false;
-		store.set('other', input);
-
-		expect(store.get(ID)?.availability.high).toBe(true);
 	});
 
 	it('forgets everything on clear', () => {
