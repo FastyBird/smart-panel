@@ -1134,10 +1134,11 @@ reference, the rule and the tests to add.
   inline), Task 5 rule 1 and tests. *Code:* go2rtc `internal/streams/producer.go:176-201` re-dials the same URL forever
   while a consumer is attached; the core reuses a registration while viewers hold leases
   (`modules/cameras/services/go2rtc-streams.service.ts:199-232, 403-411`). *Rule:* key the listener by `<relay mode, relay
-  generation, bind address>`; it stays open while the plugin is enabled and the relay is running. A session end or an
+  generation, bind address, upstream port>` (one listener per upstream port, so a stream registered against one port
+  always reconnects to that port; CodeRabbit on #1649); it stays open while the plugin is enabled and the relay is running. A session end or an
   upstream change closes connections, not the listener. While no session exists an accepted connection is destroyed
   before any upstream connect. Each accepted connection reads its upstream at accept time: host = valid override, else
-  `getConsoleHost()`; port = the last prepared port, default 7441; TLS = the current session's (R8). D3 known limit: "a
+  `getConsoleHost()`; port = the listener's own upstream port (from its key); TLS = the current session's (R8). D3 known limit: "a
   rotated alias fails at the console until the stream is re-registered". D1 residual risk: while a listener is closed
   (plugin disabled or shut down) and go2rtc still holds its URL, a local process that binds the freed port can receive
   the alias. *Tests (Task 5):* replace `closes every connection when the session ends` with `keeps the port across a
@@ -1149,28 +1150,32 @@ reference, the rule and the tests to add.
   `deadlineMs = min(PROTECT_STREAM_READ_DEADLINE_MS, budget − PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS)`; `prepare()`
   gets the remainder through `signal` and a deadline; the external probe connect is bounded by `GO2RTC_HTTP_TIMEOUT_MS`
   and `dns.lookup` is raced against the deadline. *Test (Task 6):* `fits the source resolution into the core's timeout`
-  (fake timers: a 7 s read plus a hanging pre-flight rejects before 10 s).
+  (fake timers: the read's deadline is `min(8000, 9000 − 4000)` = 5000 ms, so a 4.9 s read followed by a hanging
+  pre-flight rejects by the 9 s budget, before the core's 10 s; a read slower than 5 s rejects at 5 s).
 - **R3 — the redirect guard copies go2rtc's own parser.** *Where:* D12, Task 4 guard rules and tests, Task 5 rule 3.
   *Code:* go2rtc `pkg/rtsp/client.go:84-122`, `pkg/tcp/textproto.go:43-84`, `pkg/rtsp/conn.go:188-264`. *Rule:*
   1. The guard watches the go2rtc → console direction, without modifying it, for a `PLAY` request line. Before PLAY, a `$`
      from the console at a message boundary is `malformed`. After PLAY, messages are classified by their first 4 bytes
-     as in `conn.go:205-216`: `RTSP` is a response; `OPTI TEAR DESC SETU PLAY PAUS RECO ANNO GET_ SET_` are requests;
-     anything else is `malformed`.
+     as in `conn.go:205-216`: a `$` starts an interleaved binary frame (`$`, channel byte, 2-byte big-endian length) that
+     is forwarded whole and skipped by the parser — it is never text-parsed (CodeRabbit on #1649); `RTSP` is a response;
+     `OPTI TEAR DESC SETU PLAY PAUS RECO ANNO GET_ SET_` are requests; anything else is `malformed`.
   2. Lines end at LF with an optional CR; a header ends at the first empty line and is held whole until complete.
   3. In every text message the first line is split on single spaces into at most 3 parts; a part 2 matching
      `^[+-]?\d+$` with a value 300–399 is `redirect`. A response status must match `^\d{3}$`, else `malformed`.
   4. `malformed`: a header line starting with SP or HT; a duplicate `Content-Length` (case-insensitive); a
      `Content-Length` whose trimmed value does not match `^\d{1,5}$`.
   *Tests (Task 4), refused cases:* `OPTIONS 302 Found` with a `Location` header; a `$` frame before PLAY whose payload
-  starts with `302 Found`; `RTSP 302 x`; `+302` and `0302`; LF-only line endings with a 302; a continuation line; a
+  starts with `302 Found`; `RTSP 302 x`; and one accepted case, `forwards interleaved frames after PLAY`
+  (a `$` frame whose payload contains `RTSP/1.0 302` passes untouched); `+302` and `0302`; LF-only line endings with a 302; a continuation line; a
   duplicate `Content-Length`. The guard therefore takes both directions' data (the go2rtc → console side read-only).
 - **R4 — an `unverified` result expires.** *Where:* Task 5 `getVerification`, D5. *Code:* `cameras.service.ts:71-87` and
   `cameras.controller.ts:234` (an unavailable profile returns 404 and blocks `resolveSource`). *Rule:* `unverified`
   expires after `PROTECT_STREAM_AVAILABILITY_TTL_MS`; `getVerification` then reports `unknown`, so the profile is offered
   again and the pre-flight re-runs. *Test (Task 5):* `forgets a failed verification after 60 s`.
-- **R5 — verification by host.** *Where:* Task 5 Produces, Task 6 rule 3. *Rule:* `getVerification(host: string):
-  ProtectBridgeVerification` returns the last result for that host on any port in the current session, subject to R4;
-  the provider passes only the upstream host.
+- **R5 — verification by endpoint.** *Where:* Task 5 Produces, Task 6 rule 3. *Rule:* `getVerification(upstream:
+  { host: string; port: number }): ProtectBridgeVerification` returns the last result for that host and port in the
+  current session, subject to R4; the provider passes each profile's own upstream host and port (CodeRabbit on #1649: a
+  failing port must not block a healthy one on the same host).
 - **R6 — fake RTSPS certificate per connection.** *Where:* Task 5 fake console rules. *Code:* `test/support/fake-protect-server.ts:286-288`
   (`set()` only merges options). *Rule:* the RTSPS server chooses its certificate per connection through `SNICallback`,
   reading `this.options.rtspsCertificate` live: `mirror` = the `protectTlsServerOptions()` logic, `console` = the console
@@ -1227,7 +1232,10 @@ Minor:
   `camera-snapshot.service.ts:27` on `ee241a75c` (the review's `:26` does not match this commit).
 - **M10:** the PR body calls out A1 (#1186 acceptance criterion 3 still says `rtspx`); updating the issue text is left to
   the maintainer.
-- **M11:** a reconnect read is skipped while the camera's entry is younger than 10 s (anti-flap).
+- **M11:** a reconnect read is skipped while the camera's entry is younger than 10 s (anti-flap); a skipped read is
+  deferred, not dropped: one `unref()`ed timer per camera fires when the 10 s ends and enqueues the read (cleared on
+  session end and module destroy). *Test (Task 3):* `reads a skipped reconnect when the anti-flap window ends`
+  (CodeRabbit on #1649).
 
 ## Decisions recorded (for the PR body)
 
