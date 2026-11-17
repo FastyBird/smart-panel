@@ -32,11 +32,12 @@ UP-9 are merged on `main` (`ee241a75c`); every interface below is verified on th
 
 ---
 
-## Decisions (proposed — need maintainer approval)
+## Decisions (approved)
 
 The issue, the design, the roadmap and the code disagree or leave these open. The plan is written for each
-recommendation; *cost if wrong* says what changes. **D1's direction (a verified TLS bridge, never `rtspx`) was approved
-by the maintainer on 2026-11-17**; its details below and every other decision still need approval.
+recommendation; *cost if wrong* says what changes. The maintainer approved every recommendation below on 2026-11-17,
+unchanged, including D1's verified TLS bridge (never `rtspx`). D1b stays conditional: it is not in the tasks until the
+port 7441 certificate measurement shows a certificate different from port 443's.
 
 **D1. The camera stream is verified through a TLS bridge in the plugin.** Verified: the relay is go2rtc **1.9.15**
 (`build/go2rtc/pin.env:7`), the latest release (master has four commits past it, none in `pkg/tcp/dial.go`). Its RTSP
