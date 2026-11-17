@@ -281,7 +281,7 @@ export class ProtectSynchronizerService {
 
 			await this.ensureIndex(identity);
 
-			// Read after the awaits: a frame or snapshot queued ahead of this task has already replaced the object.
+			// The serial queue guarantees the object is fresh: every frame or snapshot queued ahead has been applied.
 			const raw = this.cache.get(cacheKey(modelKey, id)) ?? null;
 			const device = this.aborted() || raw === null ? undefined : this.adopted({ modelKey, id });
 

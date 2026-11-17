@@ -476,15 +476,25 @@ describe('ProtectSynchronizerService', () => {
 			});
 
 			it('does not overwrite a value an event wrote', async () => {
-				const motion = prop(CAMERA_PANEL, 'motion', 'camera_motion_detected');
+				// A value read from a path (the camera reports the indicator off), so the diff would write it.
+				const indicator = prop(CAMERA_PANEL, 'indicator', 'camera_indicator_on');
 
 				await prime();
 				known();
-				baselines().set(motion, true);
-				(service as any).eventOwned.set(CAMERA_ID, new Map([[valueKey('motion', 'camera_motion_detected'), 'event']]));
+				baselines().set(indicator, true);
+
+				await service.refreshDevice(IDENTITY, 'camera', CAMERA_ID);
+				expect(updatedIds()).toContain(indicator);
+
+				properties.update.mockClear();
+				baselines().set(indicator, true);
+				(service as any).eventOwned.set(
+					CAMERA_ID,
+					new Map([[valueKey('indicator', 'camera_indicator_on'), indicator]]),
+				);
 
 				await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(true);
-				expect(updatedIds()).toEqual([MAIN]);
+				expect(updatedIds()).not.toContain(indicator);
 			});
 
 			it('uses the object a frame queued ahead of it stored', async () => {
