@@ -839,8 +839,10 @@ git commit -m "feat(backend): bridge UniFi Protect camera streams over verified 
   2. *Upstream host*: stored `streamHostOverride` when non-null and `isValidProtectHost` (non-null and invalid → no host,
      limited warning) else `getConsoleHost()`.
   3. *Profiles*: order and reasons per D5; `stream_tls_unverified` when `bridge.getVerification({ host, port })` is
-     `unverified`, where `port` is that camera's last resolved upstream port in this session, else
-     `PROTECT_RTSPS_DEFAULT_PORT` (R5).
+     `unverified`, where `port` is that profile's own port (R5): every stream read of the camera (availability or
+     source) parses each quality's URL with `parseProtectStreamUrl` and keeps only `{ quality → port }` for the camera
+     (the alias is discarded; ports are not secret), cleared with the availability entry. A profile without a known
+     port has verification `unknown` and never borrows another endpoint's result; it is not defaulted to 7441.
   4. *Source*: unknown profile → `CameraProfileUnavailableException`; console unavailable or camera not `CONNECTED` →
      `CameraOfflineException`; `availability.readStreams` error → `toCameraProviderError(e, 'source')`; URL null →
      `CameraProfileUnavailableException`; `parseProtectStreamUrl` null or no upstream host → `CameraUpstreamException`;
@@ -1176,8 +1178,10 @@ reference, the rule and the tests to add.
   again and the pre-flight re-runs. *Test (Task 5):* `forgets a failed verification after 60 s`.
 - **R5 — verification by endpoint.** *Where:* Task 5 Produces, Task 6 rule 3. *Rule:* `getVerification(upstream:
   { host: string; port: number }): ProtectBridgeVerification` returns the last result for that host and port in the
-  current session, subject to R4; the provider passes each profile's own upstream host and port (CodeRabbit on #1649: a
-  failing port must not block a healthy one on the same host).
+  current session, subject to R4; the provider passes each profile's own upstream host and port, taken per quality from the
+  camera's most recent stream read (Task 6 rule 3); a profile whose port is unknown reports `unknown` (CodeRabbit on
+  #1649: a failing port must not block a healthy one on the same host or another camera). *Test (Task 6):*
+  `keeps a healthy profile available when another port on the same host failed verification`.
 - **R6 — fake RTSPS certificate per connection.** *Where:* Task 5 fake console rules. *Code:* `test/support/fake-protect-server.ts:286-288`
   (`set()` only merges options). *Rule:* the RTSPS server chooses its certificate per connection through `SNICallback`,
   reading `this.options.rtspsCertificate` live: `mirror` = the `protectTlsServerOptions()` logic, `console` = the console
