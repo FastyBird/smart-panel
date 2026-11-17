@@ -193,6 +193,8 @@ describe('UnifiProtectDevicePlatform', () => {
 	const seed = (modelKey: string, id: string, raw: Raw): void => {
 		cache.set(keyOf(modelKey, id), raw);
 		stored.set(keyOf(modelKey, id), raw);
+		// A cached device has a sequence of at least 1, as in the real synchronizer.
+		sequences.set(keyOf(modelKey, id), (sequences.get(keyOf(modelKey, id)) ?? 0) + 1);
 	};
 	const flush = (): Promise<void> => jest.advanceTimersByTimeAsync(0);
 	const loggedLines = (): string[] =>

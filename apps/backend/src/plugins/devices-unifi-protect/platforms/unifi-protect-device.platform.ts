@@ -49,7 +49,7 @@ type ConfirmationSource = 'frame' | 'cache' | 'readback';
 interface CommandResult {
 	outcome: ProtectCommandOutcome;
 	source?: ConfirmationSource;
-	/** Class name of an unexpected (non-Protect) error; never its message. */
+	/** Class name of an unexpected error, or the Protect category of a failed readback; never a message. */
 	errorClass?: string;
 }
 

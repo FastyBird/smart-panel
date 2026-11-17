@@ -244,8 +244,8 @@ function parseNvr(value: unknown): ProtectNvr | null {
 
 /**
  * Client of the Protect Integration API: reads, the stream-creation POST and allow-listed PATCHes; one retry policy,
- * one rate pacer and one TLS agent per console. The API key is sent as `X-API-KEY` and nowhere else; errors and logs carry endpoint templates,
- * statuses, durations and categories only.
+ * one rate pacer and one TLS agent per console. The API key is sent as `X-API-KEY` and nowhere else; errors and logs
+ * carry endpoint templates, statuses, durations and categories only.
  */
 export class ProtectApiClient {
 	private readonly logger = createExtensionLogger(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, 'ApiClient');

@@ -33,5 +33,7 @@ describe('ProtectFailureLogLimiter', () => {
 
 		// The 33rd key evicted the first: it logs again inside the interval instead of being remembered forever.
 		expect(limiter.consume('key0', 1)).toEqual({ log: true, suppressed: 0 });
+		// The most recent keys are still remembered inside the interval.
+		expect(limiter.consume('key32', 1)).toEqual({ log: false, suppressed: 1 });
 	});
 });
