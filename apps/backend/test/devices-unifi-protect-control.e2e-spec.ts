@@ -138,26 +138,30 @@ describe('UniFi Protect control (e2e)', () => {
 		}
 	};
 
-	const readValue = async (deviceId: string, channelIdentifier: string, propertyIdentifier: string) => {
-		const channel = (await app.get(ChannelsService).findAll(deviceId)).find(
-			(entry) => entry.identifier === channelIdentifier,
-		);
-		const property = (await app.get(ChannelsPropertiesService).findAll(channel?.id)).find(
-			(entry) => entry.identifier === propertyIdentifier,
-		);
-
-		return (await app.get(PropertyValueService).readLatest(property as never))?.value;
-	};
-
 	const channelProperty = async (deviceId: string, channelIdentifier: string, propertyIdentifier: string) => {
 		const channel = (await app.get(ChannelsService).findAll(deviceId)).find(
 			(entry) => entry.identifier === channelIdentifier,
 		);
-		const property = (await app.get(ChannelsPropertiesService).findAll(channel?.id)).find(
+
+		if (channel === undefined) {
+			throw new Error(`Channel ${channelIdentifier} not found on device ${deviceId}`);
+		}
+
+		const property = (await app.get(ChannelsPropertiesService).findAll(channel.id)).find(
 			(entry) => entry.identifier === propertyIdentifier,
 		);
 
+		if (property === undefined) {
+			throw new Error(`Property ${propertyIdentifier} not found on channel ${channelIdentifier} of device ${deviceId}`);
+		}
+
 		return { channel, property };
+	};
+
+	const readValue = async (deviceId: string, channelIdentifier: string, propertyIdentifier: string) => {
+		const { property } = await channelProperty(deviceId, channelIdentifier, propertyIdentifier);
+
+		return (await app.get(PropertyValueService).readLatest(property))?.value;
 	};
 
 	const propertyId = async (deviceId: string, channelIdentifier: string, propertyIdentifier: string) =>
