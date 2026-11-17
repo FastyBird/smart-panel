@@ -258,6 +258,16 @@ describe('ProtectStreamAvailabilityService', () => {
 		expect(getRtspsStreams).not.toHaveBeenCalled();
 	});
 
+	it('refreshes a stale entry of a camera adopted after its last frame', async () => {
+		store.set('cam1', { high: false, medium: false, low: false, package: false }, Date.now() - 5 * 60_000);
+
+		expect((await service.getAvailability('cam1'))?.availability.high).toBe(false);
+		await settle(10);
+
+		expect(getRtspsStreams).toHaveBeenCalledTimes(1);
+		expect(store.get('cam1')?.availability.high).toBe(true);
+	});
+
 	it('joins a read already in flight', async () => {
 		const hang = deferred<ProtectRtspsStreams>();
 

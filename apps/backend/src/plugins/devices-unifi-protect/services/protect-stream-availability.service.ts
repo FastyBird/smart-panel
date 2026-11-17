@@ -155,7 +155,8 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 
 			if (entry !== null) {
 				if (
-					this.lastState.get(cameraId) === 'CONNECTED' &&
+					// A camera adopted since its last frame has no state yet; only a known disconnect skips the refresh.
+					this.lastState.get(cameraId) !== 'DISCONNECTED' &&
 					Date.now() - entry.readAt >= PROTECT_STREAM_AVAILABILITY_TTL_MS &&
 					!this.attemptedRecently(cameraId)
 				) {
