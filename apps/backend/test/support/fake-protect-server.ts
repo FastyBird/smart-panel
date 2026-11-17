@@ -70,6 +70,28 @@ const MAX_POST_BYTES = 4 * 1024;
 const BAD_QUALITIES = { error: 'Invalid qualities', name: 'BAD_REQUEST' };
 const DEFAULT_RATE_LIMIT = { quota: 10, windowSeconds: 1 };
 
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** Recursive object merge into a copy; arrays and scalars are replaced. Skips prototype-polluting keys. */
+function deepMerge(target: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+	const result: Record<string, unknown> = { ...target };
+
+	for (const [name, value] of Object.entries(patch)) {
+		if (UNSAFE_KEYS.has(name)) {
+			continue;
+		}
+
+		const existing = result[name];
+
+		result[name] = isRecord(value) && isRecord(existing) ? deepMerge(existing, value) : value;
+	}
+
+	return result;
+}
+
 const json = (status: number, value: unknown): FakeProtectResponse => ({
 	status,
 	headers: JSON_HEADERS,
@@ -102,6 +124,8 @@ export class FakeProtectServer {
 	port = 0;
 	readonly requests: FakeProtectRequest[] = [];
 	readonly writes: FakeProtectRequest[] = [];
+	/** Accepted PATCH bodies, in order. Cleared by `reset()`. */
+	readonly patches: { resource: 'cameras' | 'lights'; id: string; body: Record<string, unknown> }[] = [];
 	readonly streamPosts: { cameraId: string; qualities: string[] }[] = [];
 	/** Every upgrade attempt (accepted or refused); never part of `requests`. Cleared by `reset()`. */
 	readonly upgrades: FakeProtectRequest[] = [];
@@ -121,6 +145,7 @@ export class FakeProtectServer {
 	private readonly removals = new Set<string>();
 	private upgradeRefusals: { status: number; headers?: Record<string, string> }[] = [];
 	private pongs = true;
+	private echo = false;
 	private readonly rateHeaders = readJson<RateLimitFixture>('rate-limit-headers.json');
 
 	private constructor(options: Partial<FakeProtectServerOptions>) {
@@ -179,6 +204,11 @@ export class FakeProtectServer {
 
 	answerPings(enabled: boolean): void {
 		this.pongs = enabled;
+	}
+
+	/** When enabled, an accepted PATCH is echoed as one devices `update` frame to every open devices socket. */
+	echoPatches(enabled: boolean): void {
+		this.echo = enabled;
 	}
 
 	/** Shallow overlay on the list and by-id reads of the resource. */
@@ -282,6 +312,8 @@ export class FakeProtectServer {
 		this.removals.clear();
 		this.upgradeRefusals = [];
 		this.pongs = true;
+		this.echo = false;
+		this.patches.length = 0;
 	}
 
 	stop(): Promise<void> {
@@ -294,7 +326,9 @@ export class FakeProtectServer {
 	}
 
 	private handle(req: http.IncomingMessage, res: http.ServerResponse): void {
-		if ((req.method ?? 'GET') !== 'POST') {
+		const method = req.method ?? 'GET';
+
+		if (method !== 'POST' && method !== 'PATCH') {
 			req.resume();
 			this.dispatch(req, res, Buffer.alloc(0));
 
@@ -344,6 +378,25 @@ export class FakeProtectServer {
 			const [{ response }] = this.queue.splice(queuedIndex, 1);
 
 			this.send(res, response, this.rateHeaders.ok);
+
+			return;
+		}
+
+		if (method === 'PATCH') {
+			if (presentedKey !== this.options.apiKey) {
+				this.send(res, unauthorized(), this.rateHeaders.ok);
+
+				return;
+			}
+
+			if (this.rateLimit(this.options.apiKey)) {
+				this.rateLimited += 1;
+				this.send(res, json(429, { error: 'Too Many Requests', name: 'RATE_LIMITED' }), this.rateHeaders.rate_limited);
+
+				return;
+			}
+
+			this.send(res, this.routePatch(path, body), this.remaining());
 
 			return;
 		}
@@ -485,6 +538,69 @@ export class FakeProtectServer {
 				enabled.has(quality) ? `rtsps://${this.host}:7441/${fakeProtectStreamAlias(quality)}?enableSrtp` : null,
 			]),
 		) as Record<ProtectRtspsQuality, string | null>;
+	}
+
+	private routePatch(path: string, body: Buffer | null): FakeProtectResponse {
+		const segments = path.startsWith(BASE) ? path.slice(BASE.length).split('/').filter(Boolean) : [];
+		const [resource, id] = segments;
+
+		if (segments.length !== 2 || (resource !== 'cameras' && resource !== 'lights')) {
+			return notFound();
+		}
+
+		let parsed: unknown;
+
+		try {
+			parsed = body === null ? undefined : JSON.parse(body.toString('utf8'));
+		} catch {
+			parsed = undefined;
+		}
+
+		if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+			return json(400, { error: 'Invalid body', name: 'BAD_REQUEST' });
+		}
+
+		const key = `${resource}/${id}`;
+		const found = (resource === 'cameras' ? this.cameras() : readJson<{ id: string }[]>(DEVICE_FIXTURES.lights)).find(
+			(entry) => entry.id === id,
+		);
+
+		if (found === undefined || this.removals.has(key)) {
+			return notFound();
+		}
+
+		const current = { ...found, ...this.overlays.get(key) } as Record<string, unknown>;
+		const merged = deepMerge(current, parsed as Record<string, unknown>);
+		const touched = Object.keys(parsed as Record<string, unknown>).filter((name) => !UNSAFE_KEYS.has(name));
+
+		// Synthetic console rule: forcing the light on or off is what turns it on or off.
+		if (
+			resource === 'lights' &&
+			typeof merged.isLightForceEnabled === 'boolean' &&
+			touched.includes('isLightForceEnabled')
+		) {
+			merged.isLightOn = merged.isLightForceEnabled;
+			touched.push('isLightOn');
+		}
+
+		this.overlays.set(key, {
+			...this.overlays.get(key),
+			...Object.fromEntries(touched.map((name) => [name, merged[name]])),
+		});
+		this.patches.push({ resource, id, body: parsed as Record<string, unknown> });
+
+		if (this.echo) {
+			this.sendFrame('devices', {
+				type: 'update',
+				item: {
+					id,
+					modelKey: resource === 'cameras' ? 'camera' : 'light',
+					...Object.fromEntries(touched.map((name) => [name, merged[name]])),
+				},
+			});
+		}
+
+		return json(200, merged);
 	}
 
 	private routePost(path: string, body: Buffer | null): FakeProtectResponse {

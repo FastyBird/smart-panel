@@ -14,6 +14,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../module
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
@@ -51,6 +52,7 @@ import {
 } from './entities/devices-unifi-protect.entity';
 import { ProtectMappingLoaderService } from './mappings/mapping-loader.service';
 import { ProtectConfigModel } from './models/config.model';
+import { UnifiProtectDevicePlatform } from './platforms/unifi-protect-device.platform';
 import { ProtectAdoptionLockService } from './services/protect-adoption-lock.service';
 import { ProtectAdoptionStreamsService } from './services/protect-adoption-streams.service';
 import { ProtectAdoptionService } from './services/protect-adoption.service';
@@ -94,6 +96,7 @@ import { ProtectSynchronizerService } from './services/protect-synchronizer.serv
 		ProtectInventoryService,
 		ProtectMappingPreviewService,
 		ProtectSynchronizerService,
+		UnifiProtectDevicePlatform,
 		{ provide: PROTECT_REALTIME_TIMINGS, useValue: PROTECT_DEFAULT_REALTIME_TIMINGS },
 		ProtectRealtimeService,
 		ProtectAdoptionLockService,
@@ -126,6 +129,8 @@ export class DevicesUnifiProtectPlugin implements OnModuleInit {
 		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly protectConnectorService: ProtectConnectorService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
+		private readonly platformRegistry: PlatformRegistryService,
+		private readonly unifiProtectDevicePlatform: UnifiProtectDevicePlatform,
 	) {}
 
 	onModuleInit(): void {
@@ -214,6 +219,7 @@ Connects Smart Panel to a UniFi Protect console over its local Integration API. 
 - Cameras, doorbells, UP-Sense sensors and floodlights adopted as Smart Panel devices, with a mapping preview and RTSPS stream enablement per camera (on by default, opt out with \`stream.enabled: false\`)
 - A fully local integration with no UniFi cloud account and no hosted Smart Panel bridge
 - Live device state, detections and doorbell rings through the console's event WebSockets, with REST polling while they are unavailable
+- Control of floodlight light, brightness and status LED, and camera and doorbell status LED and microphone volume
 - Certificate trust that never sends the API key over an unverified connection
 
 ## Setup
@@ -248,6 +254,17 @@ The API key is write-only: it is stored locally and never returned by the API.
 - Protect renames are copied unless the device was renamed in Smart Panel.
 - After three failed connection attempts, device state is polled every \`poll_interval_ms\` and one warning is raised until the connection recovers.
 
+## Control
+
+- Each change becomes one partial update per Protect device, sent through the same request pacing as every other console request.
+- A change counts as done only when the console confirms it, by its next device update or a read-back within a few seconds; otherwise the command fails and Smart Panel keeps showing the console's state.
+- In polling mode each command's read-back advances the snapshot sequence, so during a burst of commands an overlapping poll can be discarded and other devices refresh at the next poll.
+- Floodlight brightness has six levels on the console; a value between two levels is set to the nearest one.
+- Devices adopted before this version need to be adopted again to make the microphone volume and the floodlight status LED writable.
+- Known limit: room-level lighting intents fail for floodlights; control a floodlight through its own device.
+- Known limit: switching \`light.on\` off on a floodlight lit by motion clears only the forced-on state, so the command is confirmed while the light stays lit until the motion timer ends.
+- Known limit: a heavily queued command can exceed the core's 24 s command timeout and be reported as failed while it is later confirmed; the stored value stays correct because the console read-back is authoritative.
+
 ## TLS
 
 - \`verify\` checks the certificate chain and name. Set \`tls.server_name\` to the console's direct-connect domain, which serves a valid public certificate, or use a host name the certificate covers.
@@ -257,7 +274,7 @@ There is no insecure mode: the API key is never sent over a connection that is n
 
 ## Boundaries
 
-Adoption enables the RTSPS streams of every adopted camera unless the request opts out (\`stream.enabled: false\`); the plugin never deletes a stream and never changes other console settings. The plugin never disables a camera microphone. Recording, users and firmware stay in Protect.
+Adoption enables the RTSPS streams of every adopted camera unless the request opts out (\`stream.enabled: false\`); the plugin never deletes a stream, and changes no console setting other than those listed under Control. The plugin never disables a camera microphone. Recording, users and firmware stay in Protect.
 
 Adoption is API-only until the admin wizard (UP-12) ships. Provider settings are managed in the Smart Panel admin application. The API key is write-only and is never returned by the API.`,
 			links: {
@@ -267,6 +284,7 @@ Adoption is API-only until the admin wizard (UP-12) ships. Provider settings are
 		});
 
 		this.managedServiceManager.register(this.protectConnectorService);
+		this.platformRegistry.register(this.unifiProtectDevicePlatform);
 	}
 
 	private registerDiscriminator(

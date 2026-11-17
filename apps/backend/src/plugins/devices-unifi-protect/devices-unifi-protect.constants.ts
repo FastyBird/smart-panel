@@ -108,3 +108,13 @@ export type ProtectEndpoint = (typeof PROTECT_ENDPOINTS)[number];
  * so that tests can override it; production never sets it.
  */
 export const PROTECT_TRUSTED_CA = Symbol('PROTECT_TRUSTED_CA');
+
+/** Command budget (C7, C9): queue wait + PATCH + frame wait + readback = PROTECT_COMMAND_TIMEOUT_MS. */
+export const PROTECT_COMMAND_PATCH_DEADLINE_MS = 5_000;
+export const PROTECT_COMMAND_CONFIRM_TIMEOUT_MS = 3_000;
+export const PROTECT_COMMAND_SETTLE_MS = 500;
+export const PROTECT_COMMAND_READBACK_DEADLINE_MS = 4_000;
+export const PROTECT_COMMAND_QUEUE_WAIT_MS = 12_000;
+export const PROTECT_COMMAND_MAX_WAITING_PER_DEVICE = 4;
+export const PROTECT_COMMAND_MAX_WAITERS = 64;
+export const PROTECT_COMMAND_TIMEOUT_MS = 24_000;

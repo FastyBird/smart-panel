@@ -6,7 +6,7 @@ import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.err
 import { ProtectHeaders } from './protect-rate-pacer';
 
 export interface ProtectTransportRequest {
-	method: 'GET' | 'POST';
+	method: 'GET' | 'POST' | 'PATCH';
 	path: string;
 	headers: Record<string, string>;
 	/** One timer per request: it covers connect, headers and body. */

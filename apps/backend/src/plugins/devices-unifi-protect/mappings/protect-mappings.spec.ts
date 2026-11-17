@@ -114,7 +114,7 @@ const GOLDENS: Golden[] = [
 		streams: null,
 		category: 'lighting',
 		identifier: '0cea14003a69:5f0000000000000000000c01',
-		channels: ['device_information', 'light'],
+		channels: ['device_information', 'light', 'indicator'],
 	},
 ];
 
@@ -221,6 +221,17 @@ describe('built-in UniFi Protect mappings', () => {
 		expect(value(device, 'device_information', 'model')).toBe('UP Floodlight');
 		expect(value(device, 'light', 'on')).toBe(false);
 		expect(value(device, 'light', 'brightness')).toBe(100);
+		expect(value(device, 'indicator', 'on')).toBe(true);
+	});
+
+	it('creates no floodlight indicator when the console omits the field', () => {
+		const raw = structuredClone(fixture('lights.json')[0]) as Record<string, any>;
+
+		delete (raw.lightDeviceSettings as Raw).isIndicatorEnabled;
+
+		const device = evaluate({ ...GOLDENS[5], device: raw });
+
+		expect(device.channels.map((channel) => channel.identifier)).toEqual(['device_information', 'light']);
 	});
 
 	it('gives every channel a unique name and identifier and every property a unique name and identifier per channel', () => {

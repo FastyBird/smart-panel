@@ -6,6 +6,7 @@ import { PluginsTypeMapperService } from '../../modules/config/services/plugins-
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
@@ -55,6 +56,7 @@ import {
 	ProtectTestConnectionModel,
 	ProtectTestConnectionResponseModel,
 } from './models/test-connection.model';
+import { UnifiProtectDevicePlatform } from './platforms/unifi-protect-device.platform';
 import { ProtectAdoptionLockService } from './services/protect-adoption-lock.service';
 import { ProtectAdoptionService } from './services/protect-adoption.service';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
@@ -93,6 +95,8 @@ describe('DevicesUnifiProtectPlugin', () => {
 				resetHandler = handler;
 			}),
 		};
+		const platformRegistry = { register: jest.fn() };
+		const devicePlatform = {} as UnifiProtectDevicePlatform;
 		const plugin = new DevicesUnifiProtectPlugin(
 			configMapper as unknown as PluginsTypeMapperService,
 			devicesMapper as unknown as DevicesTypeMapperService,
@@ -104,6 +108,8 @@ describe('DevicesUnifiProtectPlugin', () => {
 			managedServiceManager as unknown as ManagedServiceManagerService,
 			connector as unknown as ProtectConnectorService,
 			factoryReset as unknown as FactoryResetRegistryService,
+			platformRegistry as unknown as PlatformRegistryService,
+			devicePlatform,
 		);
 
 		return {
@@ -118,6 +124,8 @@ describe('DevicesUnifiProtectPlugin', () => {
 			managedServiceManager,
 			connector,
 			factoryReset,
+			platformRegistry,
+			devicePlatform,
 			runFactoryReset: () => {
 				if (!resetHandler) {
 					throw new Error('factory reset handler was not registered');
@@ -176,6 +184,9 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(metadata.readme).toContain('never disables a camera microphone');
 		expect(metadata.readme).toContain('never deletes a stream');
 		expect(metadata.readme).not.toContain('creates no devices yet');
+		expect(metadata.readme).toContain('## Control');
+		expect(metadata.readme).toContain('microphone volume');
+		expect(metadata.readme).not.toContain('never changes other console settings');
 	});
 
 	it('registers the connector as a managed service and a factory-reset handler', async () => {
@@ -189,6 +200,15 @@ describe('DevicesUnifiProtectPlugin', () => {
 
 		await expect(runFactoryReset()).resolves.toEqual({ success: true });
 		expect(connector.stop).toHaveBeenCalledTimes(1);
+	});
+
+	it('registers the device platform for the plugin type', () => {
+		const { plugin, platformRegistry, devicePlatform } = build();
+
+		plugin.onModuleInit();
+
+		expect(platformRegistry.register).toHaveBeenCalledTimes(1);
+		expect(platformRegistry.register).toHaveBeenCalledWith(devicePlatform);
 	});
 
 	it('reports a factory-reset failure without leaking the error details beyond its message', async () => {
@@ -216,6 +236,7 @@ describe('DevicesUnifiProtectPlugin', () => {
 			ProtectAdoptionController,
 		]);
 		expect(providers).toContain(ProtectInventoryService);
+		expect(providers).toContain(UnifiProtectDevicePlatform);
 		expect(providers).toEqual(expect.arrayContaining([ProtectSynchronizerService, ProtectRealtimeService]));
 		expect(providers).toContainEqual({
 			provide: PROTECT_REALTIME_TIMINGS,

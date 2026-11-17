@@ -169,3 +169,11 @@ mappings:
       identifier: 'light'
       category: light
       name: 'Light'
+  - name: floodlight_indicator
+    devices: [floodlight]
+    when:
+      - { path: lightDeviceSettings.isIndicatorEnabled, exists: true }
+    channel:
+      identifier: 'indicator'
+      category: indicator
+      name: 'Status LED'

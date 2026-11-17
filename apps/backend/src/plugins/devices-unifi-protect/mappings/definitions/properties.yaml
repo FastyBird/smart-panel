@@ -290,3 +290,10 @@ mappings:
         input_range: [0, 6]
         output_range: [0, 100]
         round: true
+  - name: floodlight_indicator_on
+    channel: floodlight_indicator
+    property:
+      identifier: 'on'
+      category: 'on'
+    value:
+      path: 'lightDeviceSettings.isIndicatorEnabled'

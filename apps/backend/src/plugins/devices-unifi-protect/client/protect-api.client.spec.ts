@@ -179,6 +179,125 @@ describe('ProtectApiClient', () => {
 			expect(transport.requests).toHaveLength(1);
 		});
 
+		describe('patchDevice', () => {
+			const LIGHT = '5f0000000000000000000c01';
+
+			it('patches a camera with a JSON body to cameras/{id}', async () => {
+				transport.queue(200, '{"id":"6541"}');
+
+				const body = { ledSettings: { isEnabled: true }, micVolume: 60 };
+
+				await expect(client.patchDevice('cameras', '6541', body)).resolves.toBeUndefined();
+
+				expect(transport.requests).toHaveLength(1);
+
+				const [request] = transport.requests;
+
+				expect(request.method).toBe('PATCH');
+				expect(request.path).toBe(`${BASE}/cameras/6541`);
+				expect(JSON.parse(request.body.toString()) as unknown).toEqual(body);
+				expect(request.headers['X-API-KEY']).toBe(KEY);
+				expect(request.headers.Accept).toBe('application/json');
+			});
+
+			it('refuses a body outside the allow-list without a request', async () => {
+				await expect(client.patchDevice('cameras', '6541', { isMicEnabled: false })).rejects.toMatchObject({
+					category: 'validation',
+					operation: 'cameras/{id}',
+				});
+				await expect(client.patchDevice('sensors' as never, '6541', { micVolume: 1 })).rejects.toMatchObject({
+					category: 'validation',
+				});
+				expect(transport.requests).toHaveLength(0);
+			});
+
+			it('sends a PATCH once on a reset connection and throws', async () => {
+				transport.queueError(reset());
+				transport.queue(200, '{}');
+
+				await expect(client.patchDevice('lights', LIGHT, { isLightForceEnabled: true })).rejects.toMatchObject({
+					category: ProtectErrorCategory.UNREACHABLE,
+				});
+				expect(transport.requests).toHaveLength(1);
+			});
+
+			it('retries a PATCH 429 but not a 408, 500 or 503', async () => {
+				transport.queue(429, '{}', rateHeaders.rate_limited);
+				transport.queue(200, '{}');
+				await client.patchDevice('lights', LIGHT, { isLightForceEnabled: true });
+				expect(transport.requests).toHaveLength(2);
+
+				for (const [status, category] of [
+					[408, 'timeout'],
+					[500, 'unavailable'],
+					[503, 'unavailable'],
+				] as const) {
+					transport.requests.length = 0;
+					transport.queue(status);
+					await expect(client.patchDevice('lights', LIGHT, { isLightForceEnabled: true })).rejects.toMatchObject({
+						category,
+					});
+					expect(transport.requests).toHaveLength(1);
+				}
+			});
+
+			it.each([
+				[400, 'bad_request'],
+				[403, 'authorization'],
+				[404, 'not_found'],
+			])('maps PATCH %i to %s', async (status, category) => {
+				transport.queue(status);
+
+				await expect(client.patchDevice('lights', LIGHT, { isLightForceEnabled: true })).rejects.toMatchObject({
+					category,
+					operation: 'lights/{id}',
+					status,
+				});
+			});
+
+			it('ends a PATCH at its shorter deadline', async () => {
+				transport.queue(200, '{}');
+
+				await client.patchDevice('lights', LIGHT, { isLightForceEnabled: true }, { deadlineMs: 5000 });
+
+				expect(transport.requests[0].timeoutMs).toBeLessThanOrEqual(5000);
+				expect(transport.requests[0].timeoutMs).toBeGreaterThan(4000);
+			});
+
+			it('paces a PATCH through the same pacer as reads', async () => {
+				const acquire = jest.spyOn(pacer, 'acquire');
+
+				transport.queue(200, '[]');
+				transport.queue(200, '{}');
+				await client.listLights();
+				await client.patchDevice('lights', LIGHT, { isLightForceEnabled: true });
+
+				expect(acquire).toHaveBeenCalledTimes(2);
+			});
+
+			it('never logs the body', async () => {
+				const emitted: string[] = [];
+				const spies = (['log', 'warn', 'error', 'debug', 'verbose'] as const).map((level) =>
+					jest.spyOn(Logger.prototype, level).mockImplementation((...args: unknown[]) => {
+						emitted.push(args.map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' '));
+					}),
+				);
+
+				try {
+					transport.queue(200, '{"lightDeviceSettings":{"ledLevel":3}}');
+					await client.patchDevice('lights', LIGHT, { lightDeviceSettings: { ledLevel: 3 } });
+				} finally {
+					spies.forEach((spy) => spy.mockRestore());
+				}
+
+				const material = emitted.join('\n');
+
+				expect(material).toMatch(/PATCH lights\/\{id\} 200 \d+ms/);
+				expect(material).not.toContain('ledLevel');
+				expect(material).not.toContain(KEY);
+			});
+		});
+
 		it('createRtspsStreams maps 400 to bad_request and 409 to protocol', async () => {
 			transport.queue(400, '{"error":"Invalid qualities","name":"BAD_REQUEST"}');
 			await expect(client.createRtspsStreams('6541', ['high'])).rejects.toMatchObject({ category: 'bad_request' });

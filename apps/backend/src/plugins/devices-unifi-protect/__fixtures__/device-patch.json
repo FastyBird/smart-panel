@@ -1,0 +1,106 @@
+{
+	"_synthetic": true,
+	"camera": {
+		"request": {
+			"ledSettings": {
+				"isEnabled": true
+			},
+			"micVolume": 60
+		},
+		"response": {
+			"id": "600cefafd5f365d6f83c4ef3",
+			"modelKey": "camera",
+			"state": "CONNECTED",
+			"name": "Front door",
+			"type": "UVC G5 Dome",
+			"guid": "9f35a756-6ff5-4837-2f90-c2d81262f721",
+			"mac": "0CEA14008183",
+			"isMicEnabled": true,
+			"osdSettings": {
+				"isNameEnabled": true,
+				"isDateEnabled": true,
+				"isLogoEnabled": false,
+				"isDebugEnabled": false,
+				"overlayLocation": "topLeft"
+			},
+			"ledSettings": {
+				"isEnabled": true,
+				"welcomeLed": true,
+				"floodLed": true
+			},
+			"micVolume": 60,
+			"activePatrolSlot": null,
+			"videoMode": "lprNoneReflex",
+			"hdrType": "on",
+			"featureFlags": {
+				"supportFullHdSnapshot": false,
+				"hasHdr": true,
+				"smartDetectTypes": [
+					"person",
+					"vehicle",
+					"animal"
+				],
+				"smartDetectAudioTypes": [
+					"alrmSmoke",
+					"alrmCmonx",
+					"alrmBabyCry",
+					"alrmSpeak"
+				],
+				"videoModes": [
+					"default",
+					"sport",
+					"slowShutter"
+				],
+				"hasMic": true,
+				"hasLedStatus": true,
+				"hasSpeaker": true
+			},
+			"smartDetectSettings": {
+				"objectTypes": [
+					"animal",
+					"person",
+					"vehicle"
+				],
+				"audioTypes": [
+					"alrmSmoke",
+					"alrmCmonx",
+					"alrmBabyCry",
+					"alrmSpeak"
+				]
+			},
+			"hasPackageCamera": false
+		}
+	},
+	"light": {
+		"request": {
+			"isLightForceEnabled": true,
+			"lightDeviceSettings": {
+				"ledLevel": 3,
+				"isIndicatorEnabled": false
+			}
+		},
+		"response": {
+			"id": "5f0000000000000000000c01",
+			"modelKey": "light",
+			"state": "CONNECTED",
+			"name": "Synthetic floodlight",
+			"mac": "0CEA1400C001",
+			"lightModeSettings": {
+				"mode": "motion",
+				"enableAt": "dark"
+			},
+			"lightDeviceSettings": {
+				"isIndicatorEnabled": false,
+				"pirDuration": 15000,
+				"pirSensitivity": 50,
+				"ledLevel": 3
+			},
+			"isDark": true,
+			"isLightOn": true,
+			"isLightForceEnabled": true,
+			"lastMotion": 1794400000000,
+			"isPirMotionDetected": false,
+			"camera": "600cefafd5f365d6f83c4ef3"
+		}
+	}
+}

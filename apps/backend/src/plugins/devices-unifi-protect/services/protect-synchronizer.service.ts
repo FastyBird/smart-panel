@@ -13,7 +13,6 @@ import { NotificationsService } from '../../../modules/notifications/services/no
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	DEVICES_UNIFI_PROTECT_TYPE,
-	PROTECT_FAILURE_LOG_INTERVAL_MS,
 	PROTECT_MAX_PENDING_FRAMES,
 } from '../devices-unifi-protect.constants';
 import { ProtectChannelPropertyEntity, ProtectDeviceEntity } from '../entities/devices-unifi-protect.entity';
@@ -23,6 +22,7 @@ import { PROTECT_MODEL_KEYS, ProtectMappingScalar, ProtectResolvedMappings } fro
 
 import { ProtectConsoleIdentity } from './protect-connector.service';
 import { ProtectEventEffect, ProtectEventTracker, ProtectTargetWrite } from './protect-event-tracker';
+import { ProtectFailureLogLimiter } from './protect-failure-log-limiter';
 import {
 	ProtectFrame,
 	diffMappedValues,
@@ -38,6 +38,8 @@ export interface ProtectSnapshot {
 	complete: boolean;
 	entries: ProtectInventoryEntry[];
 }
+
+export type ProtectDeviceObserver = (modelKey: string, id: string, raw: Readonly<Record<string, unknown>>) => void;
 
 export interface ProtectSyncCounters {
 	framesIgnored: number;
@@ -77,6 +79,9 @@ type RetryEntry =
 
 type SyncMode = 'snapshot' | 'frame';
 
+/** `ignored`: the object was not stored (an update for an unknown device, a full cache); `aborted`: a reset intervened. */
+type DeviceApplyOutcome = 'applied' | 'ignored' | 'aborted' | 'unwritten';
+
 const RING_FAILURE_TEXT = 'UniFi Protect ring could not be published';
 /** The first retry lies outside the core's 5 s duplicate window, so a retried ring is never swallowed as a duplicate. */
 const RETRY_DELAYS_MS: readonly number[] = [6000, 15000, 45000];
@@ -88,6 +93,7 @@ const INVALID_EVENT_NAME = 'invalid';
 const DOORBELL_CHANNEL = 'doorbell';
 const DOORBELL_MAPPING = 'doorbell_event';
 const FAILURE_TEXT = 'UniFi Protect property update failed';
+const OBSERVER_FAILURE_TEXT = 'UniFi Protect device observer failed';
 const MAX_CACHED_DEVICES = 4096;
 const TAMPER_MAPPINGS: ReadonlySet<string> = new Set(['contact_tampered', 'sensor_motion_tampered']);
 const STALE_DETECTIONS: ReadonlySet<string> = new Set([
@@ -110,6 +116,13 @@ export class ProtectSynchronizerService {
 	private readonly tracker = new ProtectEventTracker();
 
 	private cache = new Map<string, Readonly<Record<string, unknown>>>();
+	/** Per cache key: grows with every cache write. Pruned with the cache; `sequenceBase` keeps a pruned key (or a reset) from reusing a value. */
+	private sequences = new Map<string, number>();
+	private sequenceBase = 0;
+	/** The device object last passed to the observers, i.e. stored (E2/E17); cleared with its cache entry and on reset. */
+	private stored = new Map<string, Readonly<Record<string, unknown>>>();
+	/** Survive `reset()`: subscribed by the platform for the lifetime of the plugin, not of one session. */
+	private readonly observers = new Set<ProtectDeviceObserver>();
 	private index = new Map<string, IndexedDevice>();
 	private indexNvrId: string | null = null;
 	private indexDirty = true;
@@ -145,8 +158,7 @@ export class ProtectSynchronizerService {
 
 	private syncable: { mappings: ProtectResolvedMappings; names: ReadonlySet<string> } | null = null;
 	private sources: { mappings: ProtectResolvedMappings; names: ReadonlyMap<string, ReadonlySet<string>> } | null = null;
-	private lastFailureLogAt: number | null = null;
-	private suppressedFailures = 0;
+	private readonly failureLog = new ProtectFailureLogLimiter();
 
 	private framesIgnored = 0;
 	private writesFailed = 0;
@@ -182,6 +194,65 @@ export class ProtectSynchronizerService {
 		return true;
 	}
 
+	/**
+	 * Subscribes to cache writes (frame add/update, snapshot entry, readback). Called inside the serial task, at the end of
+	 * the device's apply step and after its properties were synchronized, so "confirmed" means stored. A throwing
+	 * observer is logged (rate limited) and never stops the others or the synchronization. Survives `reset()`; returns
+	 * the unsubscribe.
+	 */
+	observeDevices(observer: ProtectDeviceObserver): () => void {
+		this.observers.add(observer);
+
+		return () => {
+			this.observers.delete(observer);
+		};
+	}
+
+	/** The merged console object the synchronizer holds, or null. */
+	getCachedDevice(modelKey: string, id: string): Readonly<Record<string, unknown>> | null {
+		return this.cache.get(cacheKey(modelKey, id)) ?? null;
+	}
+
+	/** The console object last passed to the observers (synchronized and stored), or null; never ahead of `syncDevice`. */
+	getStoredDevice(modelKey: string, id: string): Readonly<Record<string, unknown>> | null {
+		return this.stored.get(cacheKey(modelKey, id)) ?? null;
+	}
+
+	/** Grows with every cache write or removal of that device; 0 when it is not cached. */
+	getDeviceSequence(modelKey: string, id: string): number {
+		return this.sequences.get(cacheKey(modelKey, id)) ?? 0;
+	}
+
+	/**
+	 * Serial; applies a by-id GET as an authoritative object for one device, exactly like an `add` frame (retries the
+	 * object contradicts are dropped, event ownership and stale detections of that device are reset). Resolves false,
+	 * writing nothing, when the device's sequence is no longer `sinceSequence` (a newer frame, snapshot or removal) or a
+	 * reset intervened. A device that is not adopted only gets its cache refreshed.
+	 */
+	applyDeviceReadback(
+		identity: ProtectConsoleIdentity,
+		entry: ProtectInventoryEntry,
+		sinceSequence: number,
+	): Promise<boolean> {
+		let applied = false;
+
+		if (!(PROTECT_MODEL_KEYS as readonly string[]).includes(entry.modelKey)) {
+			return Promise.resolve(false);
+		}
+
+		// Marked when queued, as a snapshot is: a poll that read the console before this call must not queue its older
+		// snapshot behind the readback, however long the readback waits for the queue.
+		this.snapshotSequence++;
+
+		return this.run(async () => {
+			if (this.getDeviceSequence(entry.modelKey, entry.id) !== sinceSequence) {
+				return;
+			}
+
+			applied = (await this.applyDeviceObject(identity, entry.modelKey, entry.id, entry.raw, 'add')) === 'applied';
+		}).then(() => applied);
+	}
+
 	/** Number of snapshots enqueued so far; a reader that captured an older value read stale data. */
 	getSnapshotSequence(): number {
 		return this.snapshotSequence;
@@ -211,11 +282,15 @@ export class ProtectSynchronizerService {
 		};
 	}
 
-	/** Plugin stop: drops queue, caches and tracker; writes nothing. */
+	/** Plugin stop: drops queue, caches and tracker; writes nothing. Observers stay subscribed. */
 	reset(): void {
 		this.generation++;
 		this.pending = 0;
 		this.cache = new Map();
+		// The base keeps rising: a sequence captured before the reset never equals one of the next session.
+		this.sequenceBase = Math.max(this.sequenceBase, ...this.sequences.values());
+		this.sequences = new Map();
+		this.stored = new Map();
 		this.index = new Map();
 		this.indexNvrId = null;
 		this.indexDirty = true;
@@ -232,8 +307,7 @@ export class ProtectSynchronizerService {
 		this.eventIdentity = null;
 		this.clearTimer('eventTimer');
 		this.clearTimer('retryTimer');
-		this.lastFailureLogAt = null;
-		this.suppressedFailures = 0;
+		this.failureLog.reset();
 		this.framesIgnored = 0;
 		this.writesFailed = 0;
 		this.ignoredEventCount = 0;
@@ -354,6 +428,18 @@ export class ProtectSynchronizerService {
 
 		this.cache = next;
 
+		for (const key of previous.keys()) {
+			if (!next.has(key)) {
+				this.retireSequence(key);
+			}
+		}
+
+		for (const key of next.keys()) {
+			this.bumpSequence(key);
+		}
+
+		const notified = new Set<string>();
+
 		for (const device of [...this.index.values()]) {
 			if (this.aborted()) {
 				return;
@@ -366,9 +452,34 @@ export class ProtectSynchronizerService {
 			const key = modelKey === undefined ? null : cacheKey(modelKey, device.protectDeviceId);
 
 			if (modelKey !== undefined && key !== null) {
-				await this.syncDevice(identity, device, modelKey, next.get(key), previous.get(key) ?? null, 'snapshot', null);
+				const written = await this.syncDevice(
+					identity,
+					device,
+					modelKey,
+					next.get(key),
+					previous.get(key) ?? null,
+					'snapshot',
+					null,
+				);
+
+				notified.add(key);
+
+				// A failed write leaves the persisted property behind the object: it is not stored (nor announced) until a
+				// later sync writes it.
+				if (written) {
+					this.notifyObservers(modelKey, device.protectDeviceId, next.get(key));
+				}
 			} else if (snapshot.complete) {
 				await this.markRemoved(device);
+			}
+		}
+
+		// Cached devices without a synchronized device (not adopted) are cache writes too.
+		for (const [key, raw] of next) {
+			if (!notified.has(key)) {
+				const [modelKey, id] = key.split('\u0000');
+
+				this.notifyObservers(modelKey, id, raw);
 			}
 		}
 	}
@@ -386,62 +497,137 @@ export class ProtectSynchronizerService {
 			return;
 		}
 
-		const key = cacheKey(frame.modelKey, frame.id);
-		const cached = this.cache.get(key) ?? null;
-
-		if (frame.action === 'update' && cached === null) {
-			this.framesIgnored++;
+		if (frame.action === 'remove') {
+			await this.removeDevice(identity, frame);
 
 			return;
 		}
 
+		if ((await this.applyDeviceObject(identity, frame.modelKey, frame.id, frame.item, frame.action)) === 'ignored') {
+			this.framesIgnored++;
+		}
+	}
+
+	private async removeDevice(identity: ProtectConsoleIdentity, frame: ProtectFrame): Promise<void> {
 		await this.ensureIndex(identity);
 
 		if (this.aborted()) {
 			return;
 		}
 
+		const key = cacheKey(frame.modelKey, frame.id);
 		const device = this.adopted(frame);
 
-		if (frame.action === 'add' && cached === null && this.cache.size >= MAX_CACHED_DEVICES) {
+		this.cache.delete(key);
+		this.retireSequence(key);
+
+		if (device !== undefined) {
+			await this.markRemoved(device);
+		}
+	}
+
+	/**
+	 * Stores one device object (an `add` frame or readback replaces, an `update` frame merges) and synchronizes the
+	 * adopted device's properties from it; an `add` is authoritative for the whole device, an `update` for what it carries.
+	 * Observers are told last, so what they see is stored.
+	 */
+	private async applyDeviceObject(
+		identity: ProtectConsoleIdentity,
+		modelKey: string,
+		id: string,
+		item: Readonly<Record<string, unknown>>,
+		action: 'add' | 'update',
+	): Promise<DeviceApplyOutcome> {
+		const key = cacheKey(modelKey, id);
+		const cached = this.cache.get(key) ?? null;
+
+		if (action === 'update' && cached === null) {
+			return 'ignored';
+		}
+
+		await this.ensureIndex(identity);
+
+		if (this.aborted()) {
+			return 'aborted';
+		}
+
+		const device = this.adopted({ modelKey, id });
+
+		if (action === 'add' && cached === null && this.cache.size >= MAX_CACHED_DEVICES) {
 			// Adopted devices outrank unadopted ones at the cap, as in a snapshot; the excess is bounded by the index.
 			if (device === undefined) {
-				this.framesIgnored++;
-
-				return;
+				return 'ignored';
 			}
 
 			this.evictUnadopted();
 		}
 
-		if (frame.action === 'remove') {
-			this.cache.delete(key);
-
-			if (device !== undefined) {
-				await this.markRemoved(device);
-			}
-
-			return;
-		}
-
-		const raw = mergeProtectItem(frame.action === 'add' ? {} : (cached as Record<string, unknown>), frame.item);
+		const raw = mergeProtectItem(action === 'add' ? {} : (cached as Record<string, unknown>), item);
 
 		if (this.aborted()) {
-			return;
+			return 'aborted';
 		}
 
 		this.cache.set(key, raw);
+		this.bumpSequence(key);
 
 		if (device !== undefined) {
-			await this.syncDevice(
+			const written = await this.syncDevice(
 				identity,
 				device,
-				frame.modelKey,
+				modelKey,
 				raw,
 				cached,
-				frame.action === 'add' ? 'snapshot' : 'frame',
-				frame.action === 'add' ? null : frame.item,
+				action === 'add' ? 'snapshot' : 'frame',
+				action === 'add' ? null : item,
 			);
+
+			if (!written) {
+				// The persisted properties still hold the old values: neither stored nor announced, so nothing confirms
+				// from this object.
+				return this.aborted() ? 'aborted' : 'unwritten';
+			}
+		}
+
+		this.notifyObservers(modelKey, id, raw);
+
+		return this.aborted() ? 'aborted' : 'applied';
+	}
+
+	private bumpSequence(key: string): void {
+		this.sequences.set(key, (this.sequences.get(key) ?? this.sequenceBase) + 1);
+	}
+
+	/** The key left the cache: the value moves the base so a later write under the key never repeats a value. */
+	private retireSequence(key: string): void {
+		this.stored.delete(key);
+
+		const sequence = this.sequences.get(key);
+
+		if (sequence !== undefined) {
+			this.sequenceBase = Math.max(this.sequenceBase, sequence);
+			this.sequences.delete(key);
+		}
+	}
+
+	private notifyObservers(modelKey: string, id: string, raw: Readonly<Record<string, unknown>>): void {
+		if (!this.aborted()) {
+			this.stored.set(cacheKey(modelKey, id), raw);
+		}
+
+		for (const observer of [...this.observers]) {
+			if (this.aborted()) {
+				return;
+			}
+
+			try {
+				// An observer may return a promise despite its type; its rejection is a failure too.
+				void Promise.resolve(observer(modelKey, id, raw)).catch(() => {
+					this.logLimited(OBSERVER_FAILURE_TEXT);
+				});
+			} catch {
+				this.logLimited(OBSERVER_FAILURE_TEXT);
+			}
 		}
 	}
 
@@ -865,13 +1051,14 @@ export class ProtectSynchronizerService {
 
 			if (device === undefined || (device.modelKey !== null && device.modelKey !== modelKey)) {
 				this.cache.delete(key);
+				this.retireSequence(key);
 
 				return;
 			}
 		}
 	}
 
-	private adopted(frame: ProtectFrame): IndexedDevice | undefined {
+	private adopted(frame: Pick<ProtectFrame, 'modelKey' | 'id'>): IndexedDevice | undefined {
 		const device = this.index.get(frame.id);
 
 		return device !== undefined && (device.modelKey === null || device.modelKey === frame.modelKey)
@@ -887,7 +1074,7 @@ export class ProtectSynchronizerService {
 		previousRaw: Readonly<Record<string, unknown>> | null,
 		mode: SyncMode,
 		partial: Readonly<Record<string, unknown>> | null,
-	): Promise<void> {
+	): Promise<boolean> {
 		const mappings = this.mappingLoader.getMappings();
 		const result = evaluateProtectMapping(mappings, {
 			nvr: { id: identity.nvrId, macKey: identity.nvrMacKey },
@@ -910,13 +1097,15 @@ export class ProtectSynchronizerService {
 		await this.retryDevice(device.protectDeviceId);
 
 		if (!result.ok) {
-			return;
+			return true;
 		}
 
 		const mapped = result.device;
 
 		await this.resolveRemoval(device);
-		await this.writeChanges(device, mapped, mappings, partial);
+
+		const written = await this.writeChanges(device, mapped, mappings, partial);
+
 		await this.writeConnectionState(device, mapped);
 
 		const tamperCleared =
@@ -931,6 +1120,8 @@ export class ProtectSynchronizerService {
 		}
 
 		await this.propagateRename(device, modelKey, raw, previousRaw);
+
+		return written;
 	}
 
 	/** The property keys of a device whose value source reads a field the update frame carries. */
@@ -1056,7 +1247,9 @@ export class ProtectSynchronizerService {
 		mapped: ProtectMappedDevice,
 		mappings: ProtectResolvedMappings,
 		partial: Readonly<Record<string, unknown>> | null,
-	): Promise<void> {
+	): Promise<boolean> {
+		let allWritten = true;
+
 		// A snapshot or an add frame is authoritative; an update frame is so only for the fields it carries.
 		const owned = this.eventOwned.get(device.protectDeviceId);
 
@@ -1086,9 +1279,14 @@ export class ProtectSynchronizerService {
 
 			// An event wrote this value; the cached field it reads was not refreshed by this frame, so it is stale.
 			if (property !== undefined && !this.eventOwned.get(device.protectDeviceId)?.has(key)) {
-				await this.writeProperty(property.id, change.value);
+				// A write skipped by a reset is not a failure; the aborted() checks stop the processing.
+				if (!(await this.writeProperty(property.id, change.value)) && !this.aborted()) {
+					allWritten = false;
+				}
 			}
 		}
+
+		return allWritten;
 	}
 
 	private async writeConnectionState(device: IndexedDevice, mapped: ProtectMappedDevice): Promise<void> {
@@ -1295,19 +1493,16 @@ export class ProtectSynchronizerService {
 	}
 
 	private logWriteFailure(): void {
-		const now = Date.now();
+		this.logLimited(FAILURE_TEXT);
+	}
 
-		if (this.lastFailureLogAt !== null && now - this.lastFailureLogAt < PROTECT_FAILURE_LOG_INTERVAL_MS) {
-			this.suppressedFailures++;
+	/** One line per fixed text and `PROTECT_FAILURE_LOG_INTERVAL_MS`, with the number of suppressed repeats. */
+	private logLimited(text: string): void {
+		const decision = this.failureLog.consume(text);
 
-			return;
+		if (decision.log) {
+			this.logger.warn(decision.suppressed > 0 ? `${text} (${decision.suppressed} similar suppressed)` : text);
 		}
-
-		this.logger.warn(
-			this.suppressedFailures > 0 ? `${FAILURE_TEXT} (${this.suppressedFailures} similar suppressed)` : FAILURE_TEXT,
-		);
-		this.lastFailureLogAt = now;
-		this.suppressedFailures = 0;
 	}
 
 	private async ensureIndex(identity: ProtectConsoleIdentity): Promise<void> {

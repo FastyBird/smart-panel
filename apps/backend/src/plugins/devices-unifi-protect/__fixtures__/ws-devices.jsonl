@@ -17,3 +17,6 @@
 {"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","stats":{"light":{"value":8}}}}
 {"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","tamperingDetectedAt":null}}
 {"_synthetic":true,"type":"remove","item":{"id":"5f0000000000000000000b01","modelKey":"sensor"}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000c01","modelKey":"light","isLightForceEnabled":true,"isLightOn":true}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000c01","modelKey":"light","lightDeviceSettings":{"ledLevel":3,"isIndicatorEnabled":false}}}
+{"_synthetic":true,"type":"update","item":{"id":"600cefafd5f365d6f83c4ef3","modelKey":"camera","micVolume":60}}

@@ -3048,7 +3048,7 @@ microphone:
       description:
         en: Microphone volume/gain - integrator can choose between percentage or discrete levels
       permissions:
-        - ro
+        - rw
       data_types:
         - id: percentage
           data_type: uchar

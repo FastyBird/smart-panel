@@ -17,6 +17,7 @@ const CAPTURED_BINARY = ['discovery-reply.bin', 'discovery-reply-v0.bin'];
 const SYNTHETIC_JSON = [
 	'cameras-doorbell.json',
 	'rtsps-stream-post.json',
+	'device-patch.json',
 	'sensors.json',
 	'lights.json',
 	'chimes.json',
