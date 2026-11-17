@@ -69,6 +69,8 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 	/** Keyed `<generation>:<camera>`; joined by every caller of that camera in that session. */
 	private readonly inflight = new Map<string, Promise<void>>();
 	private readonly waiting: string[] = [];
+	/** When each waiting camera was queued; a read newer than this makes the queued one redundant. */
+	private readonly queuedAt = new Map<string, number>();
 	private readonly tracked = new Set<string>();
 	private readonly deferred = new Map<string, NodeJS.Timeout>();
 	/** Cameras whose status refresh did not happen after a presence change; retried on their next read. */
@@ -119,7 +121,9 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		const generation = this.generation;
 		const previousAttempt = this.attemptedAt.get(cameraId);
 
-		this.attemptedAt.set(cameraId, Date.now());
+		const stamp = Date.now();
+
+		this.attemptedAt.set(cameraId, stamp);
 
 		let streams: ProtectRtspsStreams;
 
@@ -131,7 +135,7 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		} catch (error) {
 			// A caller that gave up says nothing about the camera.
 			if (error instanceof ProtectApiError && error.category === ProtectErrorCategory.CANCELLED) {
-				this.restoreAttempt(generation, cameraId, previousAttempt);
+				this.restoreAttempt(generation, cameraId, previousAttempt, stamp);
 			}
 
 			throw error;
@@ -259,6 +263,7 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 
 		this.tracked.add(id);
 		this.waiting.push(id);
+		this.queuedAt.set(id, Date.now());
 		void this.pump();
 	}
 
@@ -274,9 +279,14 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		try {
 			while (generation === this.generation && this.waiting.length > 0) {
 				const id = this.waiting.shift();
+				const queued = this.queuedAt.get(id) ?? -Infinity;
+
+				this.queuedAt.delete(id);
 
 				try {
-					await this.read(id);
+					if (!this.readSince(id, queued)) {
+						await this.read(id);
+					}
 				} catch (error) {
 					if (generation === this.generation) {
 						this.logLimited(`UniFi Protect stream availability read failed (${describeFailure(error)})`);
@@ -292,6 +302,11 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 				this.pumping = false;
 			}
 		}
+	}
+
+	/** True when the camera was read, or a read was tried, after `since`. */
+	private readSince(id: string, since: number): boolean {
+		return (this.store.get(id)?.readAt ?? -Infinity) > since || (this.attemptedAt.get(id) ?? -Infinity) > since;
 	}
 
 	/** One read per camera and session, joined by every caller; rejects with the read's error. */
@@ -338,8 +353,9 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		});
 	}
 
-	private restoreAttempt(generation: number, cameraId: string, previous: number | undefined): void {
-		if (generation !== this.generation) {
+	/** Restores only while the stamp is still this call's: a later read's stamp is not undone by an earlier cancel. */
+	private restoreAttempt(generation: number, cameraId: string, previous: number | undefined, stamp: number): void {
+		if (generation !== this.generation || this.attemptedAt.get(cameraId) !== stamp) {
 			return;
 		}
 
@@ -397,6 +413,7 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 		this.ports.clear();
 		this.inflight.clear();
 		this.waiting.length = 0;
+		this.queuedAt.clear();
 		this.tracked.clear();
 		this.needsRefresh.clear();
 		this.pumping = false;

@@ -389,6 +389,53 @@ describe('ProtectStreamAvailabilityService', () => {
 		expect(store.get('cam1')).not.toBeNull();
 	});
 
+	it('does not read a camera again when a listing read it while it was queued', async () => {
+		const hang = deferred<ProtectRtspsStreams>();
+
+		getRtspsStreams.mockReturnValueOnce(hang.promise);
+		frame('cam1', 'CONNECTED');
+		frame('cam2', 'CONNECTED');
+		await settle(0);
+		expect(getRtspsStreams.mock.calls.map((call: unknown[]) => call[0])).toEqual(['cam1']);
+
+		await settle(5);
+		getRtspsStreams.mockResolvedValue(streams());
+		await service.getAvailability('cam2');
+		expect(getRtspsStreams.mock.calls.map((call: unknown[]) => call[0])).toEqual(['cam1', 'cam2']);
+
+		await settle(5);
+		hang.resolve(streams());
+		await settle(10);
+
+		expect(getRtspsStreams.mock.calls.map((call: unknown[]) => call[0])).toEqual(['cam1', 'cam2']);
+	});
+
+	it('keeps the stamp of a later failed read when an earlier one is cancelled', async () => {
+		const controller = new AbortController();
+
+		getRtspsStreams
+			.mockImplementationOnce(
+				(_id: string, options: { signal: AbortSignal }) =>
+					new Promise((_resolve, reject) => {
+						options.signal.addEventListener('abort', () =>
+							reject(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'cameras/{id}/rtsps-stream')),
+						);
+					}),
+			)
+			.mockRejectedValueOnce(new ProtectApiError(ProtectErrorCategory.TIMEOUT, 'cameras/{id}/rtsps-stream'));
+
+		const first = service.readStreams('cam1', { signal: controller.signal });
+
+		await settle(5);
+		await expect(service.readStreams('cam1')).rejects.toMatchObject({ category: ProtectErrorCategory.TIMEOUT });
+
+		controller.abort();
+		await expect(first).rejects.toMatchObject({ category: ProtectErrorCategory.CANCELLED });
+
+		await expect(service.getAvailability('cam1')).resolves.toBeNull();
+		expect(getRtspsStreams).toHaveBeenCalledTimes(2);
+	});
+
 	it('retries a status refresh that did not happen on the next read', async () => {
 		refreshDevice.mockResolvedValueOnce(false).mockRejectedValueOnce(new Error('queue'));
 
