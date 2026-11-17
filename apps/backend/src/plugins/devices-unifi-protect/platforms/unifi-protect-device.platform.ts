@@ -6,6 +6,7 @@ import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
 import { ProtectApiClient } from '../client/protect-api.client';
+import { ProtectCamera, ProtectLight } from '../client/protect-api.types';
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	DEVICES_UNIFI_PROTECT_TYPE,
@@ -105,7 +106,6 @@ const classifyPatchError = (error: unknown): ProtectCommandOutcome | 'ambiguous'
 		case ProtectErrorCategory.RATE_LIMITED:
 			return 'rate_limited';
 		case ProtectErrorCategory.CANCELLED:
-		case ProtectErrorCategory.VALIDATION:
 		case ProtectErrorCategory.TLS_UNTRUSTED:
 		case ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH:
 			return 'unavailable';
@@ -113,6 +113,8 @@ const classifyPatchError = (error: unknown): ProtectCommandOutcome | 'ambiguous'
 		case ProtectErrorCategory.UNAVAILABLE:
 		case ProtectErrorCategory.UNREACHABLE:
 			return 'ambiguous';
+		// An allow-list refusal means a broken internal invariant, not an unreachable console.
+		case ProtectErrorCategory.VALIDATION:
 		default:
 			return 'failed';
 	}
@@ -124,6 +126,10 @@ const errorClassOf = (error: unknown): string => {
 
 	return typeof name === 'string' && /^[A-Za-z0-9_$]{1,64}$/.test(name) ? name : 'unknown';
 };
+
+/** The Protect error category, otherwise the constructor name; never a message. */
+const failureClassOf = (error: unknown): string =>
+	error instanceof ProtectApiError ? error.category : errorClassOf(error);
 
 const mappingNameOf = (property: ChannelPropertyEntity): string | null =>
 	property instanceof ProtectChannelPropertyEntity && typeof property.protectMappingName === 'string'
@@ -434,13 +440,13 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 					: { outcome: verdict };
 			}
 
-			const matched = await this.readback(command, context);
+			const { matched, errorClass } = await this.readback(command, context);
 
 			if (matched === null) {
 				return { outcome: 'unavailable' };
 			}
 
-			return matched ? { outcome: 'confirmed', source: 'readback' } : { outcome: 'failed' };
+			return matched ? { outcome: 'confirmed', source: 'readback' } : { outcome: 'failed', errorClass };
 		}
 
 		waiter.accept(this.synchronizer.getStoredDevice(command.modelKey, command.protectDeviceId));
@@ -461,35 +467,40 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 			return { outcome: 'confirmed', source: 'frame' };
 		}
 
-		const matched = await this.readback(command, context);
+		const { matched, errorClass } = await this.readback(command, context);
 
 		if (matched === null) {
 			return { outcome: 'unavailable' };
 		}
 
-		return matched ? { outcome: 'confirmed', source: 'readback' } : { outcome: 'not_confirmed' };
+		return matched ? { outcome: 'confirmed', source: 'readback' } : { outcome: 'not_confirmed', errorClass };
 	}
 
-	/** True when the console shows the commanded values, null when the session ended meanwhile. */
-	private async readback(command: ProtectDeviceCommand, context: SessionContext): Promise<boolean | null> {
+	/**
+	 * Whether the console shows the commanded values (null when the session ended meanwhile); when the GET or the apply
+	 * failed, also the failure class (the Protect error category or the constructor name, never a message).
+	 */
+	private async readback(
+		command: ProtectDeviceCommand,
+		context: SessionContext,
+	): Promise<{ matched: boolean | null; errorClass?: string }> {
 		const sequence = this.synchronizer.getDeviceSequence(command.modelKey, command.protectDeviceId);
 		const options = { deadlineMs: PROTECT_COMMAND_READBACK_DEADLINE_MS };
-		const read = await this.live(
-			context,
-			(command.modelKey === 'light'
+		const request: Promise<ProtectCamera | ProtectLight> =
+			command.modelKey === 'light'
 				? context.client.getLight(command.protectDeviceId, options)
-				: context.client.getCamera(command.protectDeviceId, options)) as Promise<unknown>,
-		);
+				: context.client.getCamera(command.protectDeviceId, options);
+		const read = await this.live(context, request);
 
 		if (read === null) {
-			return null;
+			return { matched: null };
 		}
 
 		if (read.ok === false) {
-			return false;
+			return { matched: false, errorClass: failureClassOf(read.error) };
 		}
 
-		const raw = (read.value as { raw: Raw }).raw;
+		const raw: Raw = read.value.raw;
 		// Only a readback of the current session is applied; `live` returned null otherwise.
 		const applied = await this.live(
 			context,
@@ -501,18 +512,20 @@ export class UnifiProtectDevicePlatform implements IDevicePlatform, OnModuleInit
 		);
 
 		if (applied === null) {
-			return null;
+			return { matched: null };
 		}
 
 		if (applied.ok === false) {
-			return false;
+			return { matched: false, errorClass: failureClassOf(applied.error) };
 		}
 
 		// A discarded readback means a newer frame won: judge by what is stored now, never by the discarded object.
-		return protectFieldsMatch(
-			applied.value ? raw : this.synchronizer.getStoredDevice(command.modelKey, command.protectDeviceId),
-			command.fields,
-		);
+		return {
+			matched: protectFieldsMatch(
+				applied.value ? raw : this.synchronizer.getStoredDevice(command.modelKey, command.protectDeviceId),
+				command.fields,
+			),
+		};
 	}
 
 	/** Resolves with the settled promise, or null when the session ended first (or while it was pending). */

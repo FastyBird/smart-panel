@@ -8,6 +8,8 @@ import { FAKE_PROTECT_API_KEY } from '../../../../test/support/fake-protect-serv
 import { DataTypeType, PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { ProtectApiClient } from '../client/protect-api.client';
+import { ProtectCamera, ProtectLight } from '../client/protect-api.types';
 import { DEVICES_UNIFI_PROTECT_TYPE } from '../devices-unifi-protect.constants';
 import {
 	ProtectChannelEntity,
@@ -38,6 +40,37 @@ const light = (overrides: Raw = {}, ledLevel = 6, force = false): Raw => ({
 	isLightForceEnabled: force,
 	lightDeviceSettings: { ...lights[0].lightDeviceSettings, ledLevel },
 	...overrides,
+});
+/** The wrapper the client returns for a light: the console's object stays in `raw`. */
+const protectLight = (raw: Raw): ProtectLight => ({
+	id: raw.id as string,
+	modelKey: 'light',
+	state: raw.state as string,
+	name: (raw.name as string | undefined) ?? null,
+	mac: (raw.mac as string | undefined) ?? null,
+	cameraId: (raw.camera as string | undefined) ?? null,
+	raw,
+});
+/** The wrapper the client returns for a camera. */
+const protectCamera = (raw: Raw): ProtectCamera => ({
+	id: raw.id as string,
+	modelKey: 'camera',
+	state: raw.state as string,
+	name: (raw.name as string | undefined) ?? null,
+	type: (raw.type as string | undefined) ?? null,
+	mac: (raw.mac as string | undefined) ?? null,
+	hasPackageCamera: false,
+	featureFlags: {
+		supportFullHdSnapshot: false,
+		hasHdr: false,
+		hasMic: true,
+		hasSpeaker: false,
+		hasLedStatus: true,
+		smartDetectTypes: [],
+		smartDetectAudioTypes: [],
+		videoModes: [],
+	},
+	raw,
 });
 /** What the console shows after `light_on true` + brightness 50. */
 const lightOn50 = (): Raw => light({}, 3, true);
@@ -127,23 +160,22 @@ describe('UnifiProtectDevicePlatform', () => {
 	let cache: Map<string, Raw>;
 	let stored: Map<string, Raw>;
 	let observers: Set<(modelKey: string, id: string, raw: Raw) => void>;
-	let sequence: number;
+	let sequences: Map<string, number>;
 	let sessionListener: ProtectSessionListener | null;
 	let unsubscribeObserver: jest.Mock;
 	let unsubscribeSession: jest.Mock;
-	let realtimeState: string;
+	let realtimeState: ReturnType<ProtectRealtimeService['getState']>;
 	let consoleUp: boolean;
 
-	let client: { patchDevice: jest.Mock; getLight: jest.Mock; getCamera: jest.Mock };
-	let connector: { getClient: jest.Mock; getConsoleIdentity: jest.Mock; onSessionChange: jest.Mock };
-	let realtime: { getState: jest.Mock };
-	let synchronizer: {
-		observeDevices: jest.Mock;
-		getCachedDevice: jest.Mock;
-		getStoredDevice: jest.Mock;
-		getDeviceSequence: jest.Mock;
-		applyDeviceReadback: jest.Mock;
-	};
+	let client: jest.Mocked<Pick<ProtectApiClient, 'patchDevice' | 'getLight' | 'getCamera'>>;
+	let connector: jest.Mocked<Pick<ProtectConnectorService, 'getClient' | 'getConsoleIdentity' | 'onSessionChange'>>;
+	let realtime: jest.Mocked<Pick<ProtectRealtimeService, 'getState'>>;
+	let synchronizer: jest.Mocked<
+		Pick<
+			ProtectSynchronizerService,
+			'observeDevices' | 'getCachedDevice' | 'getStoredDevice' | 'getDeviceSequence' | 'applyDeviceReadback'
+		>
+	>;
 	let platform: UnifiProtectDevicePlatform;
 
 	const keyOf = (modelKey: string, id: string): string => `${modelKey}\u0000${id}`;
@@ -152,7 +184,7 @@ describe('UnifiProtectDevicePlatform', () => {
 	const emit = (modelKey: string, id: string, raw: Raw): void => {
 		cache.set(keyOf(modelKey, id), raw);
 		stored.set(keyOf(modelKey, id), raw);
-		sequence++;
+		sequences.set(keyOf(modelKey, id), (sequences.get(keyOf(modelKey, id)) ?? 0) + 1);
 
 		for (const observer of [...observers]) {
 			observer(modelKey, id, raw);
@@ -178,7 +210,7 @@ describe('UnifiProtectDevicePlatform', () => {
 		cache = new Map();
 		stored = new Map();
 		observers = new Set();
-		sequence = 1;
+		sequences = new Map();
 		sessionListener = null;
 		realtimeState = 'streaming';
 		consoleUp = true;
@@ -187,11 +219,12 @@ describe('UnifiProtectDevicePlatform', () => {
 
 		client = {
 			patchDevice: jest.fn().mockResolvedValue(undefined),
-			getLight: jest.fn().mockResolvedValue({ raw: lightOn50() }),
-			getCamera: jest.fn().mockResolvedValue({ raw: cameras[0] }),
+			getLight: jest.fn().mockResolvedValue(protectLight(lightOn50())),
+			getCamera: jest.fn().mockResolvedValue(protectCamera(cameras[0])),
 		};
 		connector = {
-			getClient: jest.fn(() => (consoleUp ? client : null)),
+			// The one cast the fake needs: the real client has private members a Pick cannot carry.
+			getClient: jest.fn(() => (consoleUp ? (client as unknown as ProtectApiClient) : null)),
 			getConsoleIdentity: jest.fn(() => (consoleUp ? IDENTITY : null)),
 			onSessionChange: jest.fn((listener: ProtectSessionListener) => {
 				sessionListener = listener;
@@ -201,7 +234,7 @@ describe('UnifiProtectDevicePlatform', () => {
 		};
 		realtime = { getState: jest.fn(() => realtimeState) };
 		synchronizer = {
-			observeDevices: jest.fn((observer: (modelKey: string, id: string, raw: Raw) => void) => {
+			observeDevices: jest.fn((observer) => {
 				observers.add(observer);
 
 				return () => {
@@ -211,14 +244,21 @@ describe('UnifiProtectDevicePlatform', () => {
 			}),
 			getCachedDevice: jest.fn((modelKey: string, id: string) => cache.get(keyOf(modelKey, id)) ?? null),
 			getStoredDevice: jest.fn((modelKey: string, id: string) => stored.get(keyOf(modelKey, id)) ?? null),
-			getDeviceSequence: jest.fn(() => sequence),
-			applyDeviceReadback: jest.fn((_identity: unknown, entry: { modelKey: string; id: string; raw: Raw }) => {
-				emit(entry.modelKey, entry.id, entry.raw);
+			// Like the real synchronizer: 0 for a device that was never cached, then one step per cache write.
+			getDeviceSequence: jest.fn((modelKey, id) => sequences.get(keyOf(modelKey, id)) ?? 0),
+			applyDeviceReadback: jest.fn((_identity, entry, sinceSequence) => {
+				// Like the real one: nothing is written when a newer write moved the device's sequence on.
+				if ((sequences.get(keyOf(entry.modelKey, entry.id)) ?? 0) !== sinceSequence) {
+					return Promise.resolve(false);
+				}
+
+				emit(entry.modelKey, entry.id, entry.raw as Raw);
 
 				return Promise.resolve(true);
 			}),
 		};
 
+		// The one injection cast: the fakes carry only the methods the platform uses, the services have private members.
 		platform = new UnifiProtectDevicePlatform(
 			connector as unknown as ProtectConnectorService,
 			realtime as unknown as ProtectRealtimeService,
@@ -272,7 +312,7 @@ describe('UnifiProtectDevicePlatform', () => {
 	});
 
 	it('falls back to a GET readback after 3 s without a frame', async () => {
-		sequence = 7;
+		sequences.set(LIGHT_KEY, 7);
 
 		const result = platform.processBatch([onUpdate(true), brightnessUpdate(50)]);
 
@@ -291,7 +331,7 @@ describe('UnifiProtectDevicePlatform', () => {
 	});
 
 	it('reports not_confirmed when the readback shows other values', async () => {
-		client.getLight.mockResolvedValue({ raw: light({}, 6, false) });
+		client.getLight.mockResolvedValue(protectLight(light({}, 6, false)));
 
 		const outcomes = platform.executeBatch([onUpdate(true), brightnessUpdate(50)]);
 
@@ -331,7 +371,7 @@ describe('UnifiProtectDevicePlatform', () => {
 		]);
 		expect(client.getLight).toHaveBeenCalledTimes(1);
 
-		client.getLight.mockResolvedValue({ raw: light({}, 6, false) });
+		client.getLight.mockResolvedValue(protectLight(light({}, 6, false)));
 
 		await expect(platform.executeBatch([onUpdate(true), brightnessUpdate(50)])).resolves.toEqual([
 			expect.objectContaining({ outcome: 'failed' }),
@@ -364,7 +404,7 @@ describe('UnifiProtectDevicePlatform', () => {
 		[ProtectErrorCategory.NOT_FOUND, 'not_found'],
 		[ProtectErrorCategory.RATE_LIMITED, 'rate_limited'],
 		[ProtectErrorCategory.CANCELLED, 'unavailable'],
-		[ProtectErrorCategory.VALIDATION, 'unavailable'],
+		[ProtectErrorCategory.VALIDATION, 'failed'],
 		[ProtectErrorCategory.TLS_UNTRUSTED, 'unavailable'],
 		[ProtectErrorCategory.UNSUPPORTED, 'failed'],
 		[ProtectErrorCategory.VERSION_UNSUPPORTED, 'failed'],
@@ -583,8 +623,8 @@ describe('UnifiProtectDevicePlatform', () => {
 		let finishGet: (raw: Raw) => void = () => undefined;
 
 		client.getLight.mockReturnValue(
-			new Promise<{ raw: Raw }>((resolve) => {
-				finishGet = (raw: Raw) => resolve({ raw });
+			new Promise<ProtectLight>((resolve) => {
+				finishGet = (raw: Raw) => resolve(protectLight(raw));
 			}),
 		);
 
@@ -601,7 +641,7 @@ describe('UnifiProtectDevicePlatform', () => {
 	});
 
 	it('never confirms from a match before the PATCH resolved that a later frame contradicted', async () => {
-		client.getLight.mockResolvedValue({ raw: light({}, 6) });
+		client.getLight.mockResolvedValue(protectLight(light({}, 6)));
 		client.patchDevice.mockImplementation(() => {
 			emit('light', LIGHT_ID, light({}, 3));
 			emit('light', LIGHT_ID, light({}, 5));
@@ -619,7 +659,7 @@ describe('UnifiProtectDevicePlatform', () => {
 
 	it('evaluates the stored state, not the readback, when the readback was discarded', async () => {
 		synchronizer.applyDeviceReadback.mockResolvedValue(false);
-		client.getLight.mockResolvedValue({ raw: light({}, 3) });
+		client.getLight.mockResolvedValue(protectLight(light({}, 3)));
 		seed('light', LIGHT_ID, light({}, 5));
 
 		const outcomes = platform.executeBatch([brightnessUpdate(50)]);
@@ -635,7 +675,7 @@ describe('UnifiProtectDevicePlatform', () => {
 
 			return Promise.resolve(false);
 		});
-		client.getLight.mockResolvedValue({ raw: light({}, 6) });
+		client.getLight.mockResolvedValue(protectLight(light({}, 6)));
 
 		const outcomes = platform.executeBatch([brightnessUpdate(50)]);
 
@@ -752,7 +792,7 @@ describe('UnifiProtectDevicePlatform', () => {
 
 	it('confirms from the stored state, never from a cache that runs ahead of it', async () => {
 		cache.set(LIGHT_KEY, light({}, 3));
-		client.getLight.mockResolvedValue({ raw: light({}, 6) });
+		client.getLight.mockResolvedValue(protectLight(light({}, 6)));
 
 		const outcomes = platform.executeBatch([brightnessUpdate(50)]);
 
@@ -773,5 +813,19 @@ describe('UnifiProtectDevicePlatform', () => {
 		expect(failure).toContain('error=SocketBoom');
 		expect(failure).not.toContain('secret detail');
 		expect(failure).not.toContain('https://');
+	});
+
+	it('logs the Protect category of a readback that failed', async () => {
+		client.getLight.mockRejectedValue(apiError(ProtectErrorCategory.AUTHENTICATION, 401));
+
+		const outcomes = platform.executeBatch([brightnessUpdate(50)]);
+
+		await jest.advanceTimersByTimeAsync(3000);
+
+		await expect(outcomes).resolves.toEqual([expect.objectContaining({ outcome: 'not_confirmed' })]);
+
+		const failure = loggedLines().find((line) => line.includes('UniFi Protect command failed (not_confirmed)'));
+
+		expect(failure).toContain(`error=${ProtectErrorCategory.AUTHENTICATION}`);
 	});
 });
