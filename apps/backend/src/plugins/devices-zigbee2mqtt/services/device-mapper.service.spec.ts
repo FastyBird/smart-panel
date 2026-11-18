@@ -615,6 +615,33 @@ describe('Z2mDeviceMapperService', () => {
 			);
 		});
 
+		it('flags only an untimed replay as of unknown age, never a timed replay or a live report', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			const sampledAt = new Date('2026-10-13T08:00:00Z');
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, isRetained: true, isReplay: true });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: observedAt, replay: true, ageUnknown: true }),
+			);
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25 },
+				{ observedAt, sampledAt, isRetained: true, isReplay: true, measurementFieldsAreLive: true },
+			);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.not.objectContaining({ ageUnknown: true }),
+			);
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.not.objectContaining({ ageUnknown: true }),
+			);
+		});
+
 		it('times a sample only by the source time the adapter accepted, never by a raw last_seen', async () => {
 			const observedAt = new Date('2026-10-13T09:00:00Z');
 			const sampledAt = new Date('2026-10-13T08:59:58Z');

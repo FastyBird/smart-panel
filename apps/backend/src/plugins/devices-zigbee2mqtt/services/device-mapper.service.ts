@@ -1495,19 +1495,19 @@ export class Z2mDeviceMapperService {
 			metadata?.measurementFieldsAreLive === true ? 'live' : metadata?.isRetained ? 'retained' : 'cached';
 		// The adapter is the only place that parses `last_seen` (parseSourceTimestamp), so a source time
 		// it rejected is never recovered here. Without one, the sample is timed by arrival. Replays are
-		// timed the same way; the value service keeps the previous timestamp for an unchanged non-live
-		// value, so a replay never renews a value's age.
+		// timed the same way, but flagged `ageUnknown`: the value service displays such a value without
+		// recording a measurement time or history point, so a replay never renews a value's age.
 		const source = metadata?.sampledAt?.getTime();
-		const sampledAt =
-			source !== undefined && Number.isFinite(source) && source > 0 && source <= observedAt.getTime()
-				? new Date(source)
-				: new Date(observedAt);
+		const timed = source !== undefined && Number.isFinite(source) && source > 0 && source <= observedAt.getTime();
+		const sampledAt = timed ? new Date(source) : new Date(observedAt);
 		return {
 			sampledAt,
 			receivedAt: new Date(),
 			observedAt,
 			provenance,
 			...(metadata?.isReplay === true ? { replay: true } : {}),
+			// An untimed replay's arrival is not its measurement time: display it, never record it.
+			...(metadata?.isReplay === true && !timed ? { ageUnknown: true } : {}),
 			...(metadata?.isCurrent ? { isCurrent: metadata.isCurrent } : {}),
 			...(metadata?.sourceIsCurrent ? { sourceIsCurrent: metadata.sourceIsCurrent } : {}),
 		};

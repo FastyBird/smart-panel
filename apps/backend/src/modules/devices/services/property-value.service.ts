@@ -302,16 +302,17 @@ export class PropertyValueService {
 				// before replacing it. A replay proves the value, not its age, so an unchanged replayed
 				// value keeps its stored timestamp. A sample older than the stored observation (a timed
 				// replay of an outdated retained message, for example) must not replace it, live or not.
+				const replay = evidence.replay === true;
 				let baseline = -Infinity;
+				let stored: PropertyValueState | null = null;
 				if (!this.valuesMap.has(key)) {
-					let stored: PropertyValueState | null = null;
 					try {
 						stored = await this.readLatestForSample(property);
 					} catch {
-						// Strict: a failed or timed-out lookup is not a confirmed miss. A non-live replay
-						// would be persisted at its arrival time, so skip it and let a later replay or
-						// report retry. A live report is still admitted.
-						if (!live) return { changed: false, state: null };
+						// Strict: a failed or timed-out lookup is not a confirmed miss. A replay (timed or
+						// not) has no baseline to be checked against, so skip it and let a later replay or
+						// report retry. A new live report is still admitted.
+						if (!live || replay) return { changed: false, state: null };
 					}
 					// The lookup awaited storage; the sample may have lost its authority meanwhile.
 					if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
@@ -321,21 +322,25 @@ export class PropertyValueService {
 				// A replay is also checked against the cached observation (read after the lookup, since
 				// another reader may have warmed the cache meanwhile). Ordinary reports are not: with a
 				// warm cache an optimistic command write could make a delayed report look older.
-				if (evidence.replay === true) baseline = Math.max(baseline, this.observedAt(this.valuesMap.get(key)));
-				if (sampledAt < baseline) return { changed: false, state: null };
-				const result = await this.writeInternal(
-					property,
-					key,
-					value,
-					false,
-					undefined,
-					evidence.sampledAt,
-					!this.valueLock.isEnabled(),
-					false,
-					undefined,
-					undefined,
-					live,
-				);
+				if (replay) baseline = Math.max(baseline, this.observedAt(this.valuesMap.get(key)));
+				// A replay of unknown age carries no measurement time to order or record.
+				const ageUnknown = !live && replay && evidence.ageUnknown === true;
+				if (!ageUnknown && sampledAt < baseline) return { changed: false, state: null };
+				const result = ageUnknown
+					? this.writeDisplayOnly(property, key, value, this.valuesMap.get(key) ?? stored, baseline)
+					: await this.writeInternal(
+							property,
+							key,
+							value,
+							false,
+							undefined,
+							evidence.sampledAt,
+							!this.valueLock.isEnabled(),
+							false,
+							undefined,
+							undefined,
+							live,
+						);
 				// A generation may change while history I/O is pending. It cannot regain live authority.
 				if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
 					return { changed: false, state: null };
@@ -378,6 +383,32 @@ export class PropertyValueService {
 			},
 			this.valueLock.isEnabled(),
 		);
+	}
+
+	/**
+	 * Show a replayed value whose measurement time is unknown. Its receipt time is not a measurement
+	 * time, so no history point is written and `lastUpdated` stays at the last known observation
+	 * (null when there is none): the value is displayed without being made to look newer than it is.
+	 */
+	private writeDisplayOnly(
+		property: ChannelPropertyEntity,
+		key: ChannelPropertyEntity['id'],
+		value: string | boolean | number | null,
+		previous: PropertyValueState | null | undefined,
+		observedAt: number,
+	): PropertyValueWriteResult {
+		if (value === null || value === undefined) return { changed: false, state: null };
+		if (property.invalid !== null && this.isInvalidValue(property.invalid, value))
+			return { changed: false, state: null };
+		if (previous && previous.value === value) {
+			if (!this.valuesMap.has(key)) this.setCachedState(key, previous);
+			return { changed: false, state: previous };
+		}
+		if (this.validateValue(property, value)) return { changed: false, state: null };
+		const lastUpdated = Number.isFinite(observedAt) ? new Date(observedAt).toISOString() : null;
+		const state = new PropertyValueState(value, lastUpdated, this.computeTrend(property, key));
+		this.setCachedState(key, state);
+		return { changed: true, state };
 	}
 
 	private observedAt(state: PropertyValueState | null | undefined): number {
@@ -691,6 +722,7 @@ export class PropertyValueService {
 			...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
 			...(evidence.replay === true ? { replay: true } : {}),
+			...(evidence.ageUnknown === true ? { ageUnknown: true } : {}),
 		});
 	}
 

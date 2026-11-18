@@ -980,6 +980,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			...(evidence.sourceIsCurrent ? { sourceIsCurrent: evidence.sourceIsCurrent } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
 			...(evidence.replay === true ? { replay: true } : {}),
+			...(evidence.ageUnknown === true ? { ageUnknown: true } : {}),
 		});
 		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
 	}

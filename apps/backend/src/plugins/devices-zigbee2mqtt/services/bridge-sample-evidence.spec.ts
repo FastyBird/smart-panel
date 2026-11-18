@@ -290,6 +290,7 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 					observedAt: metadata.observedAt,
 					provenance: metadata.measurementFieldsAreLive ? 'live' : metadata.isRetained ? 'retained' : 'cached',
 					...(metadata.isReplay ? { replay: true } : {}),
+					...(metadata.isReplay && !metadata.sampledAt ? { ageUnknown: true } : {}),
 					isCurrent: metadata.isCurrent,
 					sourceIsCurrent: metadata.sourceIsCurrent,
 				});
@@ -350,18 +351,35 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		expect(values.readQualifiedSample(property, 60 * 60_000)?.sampledAt.getTime()).toBe(base - 60_000);
 	});
 
-	it('times a replay by arrival, never epoch 0, and does not renew an unchanged replayed value', async () => {
+	it('displays an untimed replay without recording its arrival as a measurement time, never epoch 0', async () => {
 		await sample(25);
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
-		expect((await values.readLatest(property))?.lastUpdated).toBe(new Date(base).toISOString());
+		expect(await values.readLatest(property)).toMatchObject({ value: 25, lastUpdated: null });
 		jest.setSystemTime(base + 1_000);
-		await sample(25);
-		expect((await values.readLatest(property))?.lastUpdated).toBe(new Date(base).toISOString());
 		await sample(26);
+		expect(await values.readLatest(property)).toMatchObject({ value: 26, lastUpdated: null });
+		expect(storage.writePoints).not.toHaveBeenCalled();
+		expect(storage.enqueueWritePoint).not.toHaveBeenCalled();
+	});
+
+	it('keeps the stored age for a changed untimed replay and still admits a later timed replay', async () => {
+		const storedAt = base - 30 * 60_000;
+		storage.queryStrict.mockResolvedValueOnce([
+			{ time: new Date(storedAt).toISOString(), numberValue: 22, propertyId: property.id },
+		]);
+		await sample(21);
 		expect(await values.readLatest(property)).toMatchObject({
-			value: 26,
-			lastUpdated: new Date(base + 1_000).toISOString(),
+			value: 21,
+			lastUpdated: new Date(storedAt).toISOString(),
 		});
+		expect(storage.writePoints).not.toHaveBeenCalled();
+		expect(storage.enqueueWritePoint).not.toHaveBeenCalled();
+		// A replay timed by last_seen, older than the untimed replay's arrival but newer than the stored
+		// observation, is not rejected by a receipt time that was never a measurement time.
+		const lastSeen = base - 10 * 60_000;
+		adapter.feed('ambient', { temperature: 21, last_seen: new Date(lastSeen).toISOString() }, true);
+		await pending;
+		expect(values.readQualifiedSample(property, 60 * 60_000)?.sampledAt.getTime()).toBe(lastSeen);
 	});
 
 	it('skips a cold-cache replay when the stored value cannot be looked up, instead of re-timing it', async () => {
@@ -373,6 +391,15 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		// A later replay retries the lookup.
 		await sample(25);
 		expect((await values.readLatest(property))?.value).toBe(25);
+	});
+
+	it('skips a timed replay when the stored value cannot be looked up: it has no baseline to be ordered against', async () => {
+		storage.queryStrict.mockRejectedValueOnce(new Error('storage unavailable'));
+		adapter.feed('ambient', { temperature: 21.5, last_seen: new Date(base - 20 * 60_000).toISOString() }, true);
+		await pending;
+		expect(storage.writePoints).not.toHaveBeenCalled();
+		expect(storage.enqueueWritePoint).not.toHaveBeenCalled();
+		expect(values.readQualifiedSample(property, 60 * 60_000)).toBeNull();
 	});
 
 	it('ignores fields absent from a cache_state=false report', async () => {
