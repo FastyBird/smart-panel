@@ -51,10 +51,10 @@ import { ElAlert, ElButton, ElText } from 'element-plus';
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { useBackend } from '../../../common';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
-import { formatSourceSampleAge } from '../utils/source-sample-age';
 import {
 	type IThermostatSourceReporting,
 	type ThermostatSourceAgeAdvice,
+	formatReportingDuration,
 	thermostatSourceAgeAdvice,
 	transformThermostatSourceReporting,
 } from '../utils/thermostat-source-reporting';
@@ -76,7 +76,7 @@ const { t, locale } = useI18n();
 const backend = useBackend();
 
 const tt = (key: string, params: Record<string, unknown> = {}): string => t(`devicesVirtualPlugin.thermostat.sources.reporting.${key}`, params);
-const duration = (seconds: number | null): string => formatSourceSampleAge(seconds, locale.value);
+const duration = (seconds: number | null): string => formatReportingDuration(seconds, locale.value);
 
 const reporting = ref<IThermostatSourceReporting | null>(null);
 

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { type IThermostatSourceReporting, thermostatSourceAgeAdvice, transformThermostatSourceReporting } from './thermostat-source-reporting';
+import {
+	type IThermostatSourceReporting,
+	formatReportingDuration,
+	thermostatSourceAgeAdvice,
+	transformThermostatSourceReporting,
+} from './thermostat-source-reporting';
 
 const hourly: IThermostatSourceReporting = {
 	sourceKind: 'physical',
@@ -46,5 +51,22 @@ describe('transformThermostatSourceReporting', () => {
 			lastReportAt: null,
 			recommendedMaximumAgeSeconds: null,
 		});
+	});
+});
+
+describe('formatReportingDuration', () => {
+	it('keeps the two largest units so close durations stay distinguishable', () => {
+		expect(formatReportingDuration(3_600)).toBe('1h');
+		expect(formatReportingDuration(5_400)).toBe('1h 30m');
+		expect(formatReportingDuration(3_300)).toBe('55m');
+		expect(formatReportingDuration(90)).toBe('1m 30s');
+		expect(formatReportingDuration(45)).toBe('45s');
+		expect(formatReportingDuration(0)).toBe('0s');
+		expect(formatReportingDuration(90_000)).toBe('1d 1h');
+	});
+
+	it('shows a dash for a missing or invalid duration', () => {
+		expect(formatReportingDuration(null)).toBe('—');
+		expect(formatReportingDuration(-1)).toBe('—');
 	});
 });

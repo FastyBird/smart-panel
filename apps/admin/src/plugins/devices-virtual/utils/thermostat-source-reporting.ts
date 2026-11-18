@@ -49,3 +49,29 @@ export const thermostatSourceAgeAdvice = (
 		return { kind: 'too_short', reporting, recommended: reporting.recommendedMaximumAgeSeconds };
 	return { kind: 'fits', reporting };
 };
+
+const DURATION_UNITS: [Intl.NumberFormatOptions['unit'], number][] = [
+	['day', 86_400],
+	['hour', 3_600],
+	['minute', 60],
+	['second', 1],
+];
+
+/**
+ * A reporting interval or age with its two largest units ("1 h 30 min"), so close values such as
+ * 60 and 90 minutes stay distinguishable.
+ */
+export const formatReportingDuration = (seconds: number | null, locale = 'en'): string => {
+	if (seconds === null || !Number.isFinite(seconds) || seconds < 0) return '—';
+	let rest = Math.round(seconds);
+	const parts: string[] = [];
+	for (const [unit, size] of DURATION_UNITS) {
+		const amount = Math.floor(rest / size);
+		rest -= amount * size;
+		if (amount > 0 || (parts.length === 0 && unit === 'second'))
+			parts.push(new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: 'narrow' }).format(amount));
+		if (parts.length === 2) break;
+		if (parts.length === 1 && amount === 0) break;
+	}
+	return parts.join(' ');
+};
