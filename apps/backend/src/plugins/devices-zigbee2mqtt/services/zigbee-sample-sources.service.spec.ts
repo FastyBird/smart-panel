@@ -386,11 +386,14 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 	it('never replays cached state from a previous device under a reused friendly name', async () => {
 		adapter.feed('floor', { temperature: 25, last_seen: new Date(base - 60_000).toISOString() });
 		expect(adapter.getCachedStateReplays('floor')).toHaveLength(1);
+		const requestState = jest.spyOn(adapter, 'requestState');
 		adapter.feed('bridge/devices', [registry(replacement)]);
 		await registryPending;
 		expect(adapter.getCachedStateReplays('floor')).toEqual([]);
 		// The registered device under that name is the new one, with none of the previous device's state.
 		expect(adapter.getDevice('floor')).toMatchObject({ ieeeAddress: replacement, currentState: {} });
+		// With no state of its own, the new device's state is requested from the bridge.
+		expect(requestState).toHaveBeenCalledWith('floor');
 		adapter.feed('floor', { temperature: 19, last_seen: new Date(base - 1_000).toISOString() });
 		expect(adapter.getCachedStateReplays('floor').map((replay) => replay.state)).toEqual([
 			{ temperature: 19, last_seen: new Date(base - 1_000).toISOString() },
