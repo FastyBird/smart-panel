@@ -30,6 +30,7 @@ export class VirtualGroupCatalogService {
 		const profile = dto.profile ?? VirtualLightGroupProfile.LIGHT;
 		if (!Object.hasOwn(GROUP_PROFILES, profile)) throw new DevicesValidationException('Unsupported group profile');
 		const policy = GROUP_PROFILES[profile];
+		const excluded = new Set(dto.excludedCapabilities ?? []);
 		const channels = await this.dataSource.manager
 			.createQueryBuilder(ChannelEntity, 'channel')
 			.leftJoinAndSelect('channel.device', 'device')
@@ -76,8 +77,10 @@ export class VirtualGroupCatalogService {
 					members.map((member) => member.properties ?? []),
 				);
 				const requested = new Set([
-					...(dto.capabilities ?? common.map((capability) => capability.category)),
+					...(dto.capabilities ??
+						common.map((capability) => capability.category).filter((category) => !excluded.has(category))),
 					...requiredGroupFields(profile),
+					...outputs.map((output) => output.category),
 				]);
 				const reasons = [...requested]
 					.filter((category) => !common.some((field) => field.category === category))

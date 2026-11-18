@@ -45,10 +45,11 @@ const stores: Record<string, { fetch: typeof mocks.fetch; findAll: () => unknown
 			{ id: 'device-a', name: 'Couch light', roomId: 'living', zoneIds: ['downstairs'] },
 			{ id: 'device-c', name: 'TV light', roomId: 'living', zoneIds: ['downstairs'] },
 			{ id: 'device-d', name: 'Dimmer', roomId: 'bedroom', zoneIds: ['downstairs'] },
+			{ id: 'device-e', name: 'On-only light', roomId: null, zoneIds: [] },
 			{ id: 'device-b', name: 'Incompatible device', roomId: null, zoneIds: [] },
 		],
 	},
-	channels: { fetch: mocks.fetch, findAll: () => ['a', 'b', 'c', 'd'].map((id) => ({ id, name: 'Light channel' })) },
+	channels: { fetch: mocks.fetch, findAll: () => ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id, name: 'Light channel' })) },
 	properties: { fetch: mocks.fetch, findAll: () => propertyState.value },
 	spaces: {
 		fetch: mocks.fetch,
@@ -71,23 +72,32 @@ const categories = (profile: string, channel: string): GroupCategory[] => {
 	if (channel === 'b') return [];
 	if (profile === 'fan') return ['on', 'speed'] as GroupCategory[];
 	if (profile === 'cover') return ['type', 'status', 'position', 'command'] as GroupCategory[];
+	if (channel === 'e') return ['on'] as GroupCategory[];
 	return (channel === 'd' ? ['on', 'brightness'] : ['on', 'brightness', 'color_red', 'color_green', 'color_blue']) as GroupCategory[];
 };
 const common = (profile: string, channels: string[]) =>
 	categories(profile, channels[0]).filter((category) => channels.every((id) => categories(profile, id).includes(category)));
-const catalog = (profile: string, selected: string[]) => ({
+const catalog = (profile: string, selected: string[], requested?: GroupCategory[], excluded: GroupCategory[] = []) => ({
 	profiles: ['light', 'switch', 'outlet', 'fan', 'cover'].map((profile) => ({
 		profile,
 		required_capabilities: profile === 'cover' ? ['type', 'status', 'position', 'command'] : ['on'],
 	})),
-	candidates: ['a', 'b', 'c', 'd'].map((channel) => ({
-		channel,
-		device: `device-${channel}`,
-		name: `Candidate ${channel}`,
-		eligible: channel !== 'b',
-		reasons: channel === 'b' ? ['group_capability_incompatible:on'] : [],
-		common_capabilities: common(profile, [...new Set([...selected, channel])]).map(capability),
-	})),
+	candidates: ['a', 'b', 'c', 'd', 'e'].map((channel) => {
+		const prospective = common(profile, [...new Set([...selected, channel])]);
+		const required = profile === 'cover' ? ['type', 'status', 'position', 'command'] : ['on'];
+		const controls = new Set([...required, ...(requested ?? prospective.filter((category) => !excluded.includes(category)))]);
+		const reasons = [...controls]
+			.filter((category) => !prospective.includes(category as GroupCategory))
+			.map((category) => `group_capability_incompatible:${category}`);
+		return {
+			channel,
+			device: `device-${channel}`,
+			name: `Candidate ${channel}`,
+			eligible: reasons.length === 0,
+			reasons,
+			common_capabilities: prospective.map(capability),
+		};
+	}),
 	diagnostics: [],
 });
 let revision = 7;
@@ -129,7 +139,8 @@ describe('actuator group three-step authoring', () => {
 		propertyState.value[0].permissions = ['rw'];
 		mocks.fetch.mockResolvedValue(undefined);
 		mocks.POST.mockImplementation((path: string, { body }) => {
-			if (path.endsWith('light-group-candidates')) return Promise.resolve({ data: { data: catalog(body.profile, body.selected_channels) } });
+			if (path.endsWith('light-group-candidates'))
+				return Promise.resolve({ data: { data: catalog(body.profile, body.selected_channels, body.capabilities, body.excluded_capabilities) } });
 			if (path.endsWith('draft-preview'))
 				return Promise.resolve({
 					data: {
@@ -151,14 +162,36 @@ describe('actuator group three-step authoring', () => {
 	});
 	afterEach(() => view?.unmount());
 
+	it('allows additional members to narrow other controls after an optional control is excluded', async () => {
+		await openMembers();
+		await add('a');
+		view.getComponent(VirtualGroupCapabilityMatrix).vm.$emit('toggle', 'brightness', false);
+		await flushPromises();
+		expect(selected()).toEqual(['on', 'color_red', 'color_green', 'color_blue']);
+		const source = view
+			.getComponent(VirtualWizardAddSources)
+			.props('sources')
+			.find((entry) => entry.id === 'e')!;
+		expect(source.disabled).toBe(false);
+		expect(source.badge?.label).toBe('Removes 3 controls');
+		await add('e');
+		expect(selected()).toEqual(['on']);
+		await next();
+		expect(calls('draft-preview').at(-1)?.[1].body.capabilities).toEqual(['on']);
+	});
+
 	it('rechecks quarantined candidates against enabled controls without hiding controls that can be restored', async () => {
 		const defaultPost = mocks.POST.getMockImplementation()!;
 		mocks.POST.mockImplementation((path: string, options) => {
 			if (!path.endsWith('light-group-candidates')) return defaultPost(path, options);
 			const { body } = options;
-			const response = catalog(body.profile, body.selected_channels);
+			const response = catalog(body.profile, body.selected_channels, body.capabilities, body.excluded_capabilities);
 			for (const candidate of response.candidates) {
-				const requested = body.capabilities ?? candidate.common_capabilities.map((entry: GroupCapability) => entry.category);
+				const requested =
+					body.capabilities ??
+					candidate.common_capabilities
+						.map((entry: GroupCapability) => entry.category)
+						.filter((category: GroupCategory) => !body.excluded_capabilities?.includes(category));
 				if ((candidate.channel === 'c' || body.selected_channels.includes('c')) && requested.includes('brightness')) {
 					candidate.eligible = false;
 					candidate.reasons = ['graph_quarantined'];
@@ -179,7 +212,8 @@ describe('actuator group three-step authoring', () => {
 		matrix().vm.$emit('toggle', 'brightness', false);
 		await flushPromises();
 		const enabled = ['on', 'color_red', 'color_green', 'color_blue'];
-		expect(calls('light-group-candidates').at(-1)?.[1].body.capabilities).toEqual(enabled);
+		expect(calls('light-group-candidates').at(-1)?.[1].body).toMatchObject({ excluded_capabilities: ['brightness'] });
+		expect(calls('light-group-candidates').at(-1)?.[1].body).not.toHaveProperty('capabilities');
 		expect(candidate().disabled).toBe(false);
 		expect(candidate().disabledReason).toBeUndefined();
 		expect(
@@ -201,7 +235,7 @@ describe('actuator group three-step authoring', () => {
 				.props('members')
 				.map((member) => member.id)
 		).toEqual(['a', 'c']);
-		expect(calls('light-group-candidates').at(-1)?.[1].body.capabilities).toEqual(enabled);
+		expect(calls('light-group-candidates').at(-1)?.[1].body.excluded_capabilities).toEqual(['brightness']);
 		await next();
 		expect(calls('draft-preview').at(-1)?.[1].body.capabilities).toEqual(enabled);
 		expect(view.get('[data-test-id="group-review-controls"]').text()).not.toContain('brightness');
@@ -298,7 +332,7 @@ describe('actuator group three-step authoring', () => {
 		await flushPromises();
 		expect(selected()).toContain('on');
 		expect(calls('light-group-candidates')).toHaveLength(before + 1);
-		expect(calls('light-group-candidates').at(-1)?.[1].body.capabilities).toEqual(['on', 'brightness']);
+		expect(calls('light-group-candidates').at(-1)?.[1].body.excluded_capabilities).toEqual(['color_red', 'color_green', 'color_blue']);
 		await next();
 		expect(calls('draft-preview')).toHaveLength(1);
 		expect(calls('draft-preview')[0][1].body.capabilities).toEqual(['on', 'brightness']);

@@ -30,6 +30,21 @@ export class GroupCatalogDto {
 	@IsEnum(PropertyCategory, { each: true })
 	capabilities?: PropertyCategory[];
 	@ApiPropertyOptional({
+		name: 'excluded_capabilities',
+		enum: PropertyCategory,
+		isArray: true,
+		maxItems: 8,
+		description:
+			"When capabilities is omitted, exclude these optional controls from each candidate's prospective common contract. Required controls are always retained.",
+	})
+	@Expose({ name: 'excluded_capabilities' })
+	@IsOptional()
+	@IsArray()
+	@ArrayUnique()
+	@ArrayMaxSize(8)
+	@IsEnum(PropertyCategory, { each: true })
+	excludedCapabilities?: PropertyCategory[];
+	@ApiPropertyOptional({
 		name: 'exposed_group',
 		format: 'uuid',
 		description: 'Retain this group output contract when selecting repair candidates; never authorizes dispatch.',

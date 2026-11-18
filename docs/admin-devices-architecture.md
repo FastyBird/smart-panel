@@ -159,9 +159,14 @@ and the currently selected channels; it must not be used as the candidate's indi
 Eligibility and compatible units/ranges remain server decisions. Do not send the current optional
 control selection to the creation candidate query: a compatible dimmer can join an RGB group and
 remove unsupported colors, rather than being rejected for lacking those optional controls.
+Instead, send `excluded_capabilities` so the server checks each candidate's prospective common
+controls minus exclusions, retaining required controls and checking quarantine only for that contract.
+The full common control list is still returned for display. Explicit `capabilities` remain mandatory
+requirements for callers that prohibit narrowing, including existing repair flows.
 
-The catalog reloads on profile, member or property-contract changes, not on live readings or control
-checkbox changes. Superseded requests are aborted, reads time out, and disposal cancels pending work.
+The catalog reloads on profile, member, property-contract or control-exclusion changes, not on live
+readings. Changing exclusions requires one compatibility request. Superseded requests are aborted,
+reads time out, and disposal cancels pending work.
 A single primary draft preview approves Members and controls before Review. Review snapshots member
 labels and the server's chosen control contracts, uses small bordered descriptions, and keeps the
 approved graph revision stable through a failed create. Editing a section requests a new approval;
