@@ -500,8 +500,9 @@ export abstract class Z2mBaseClientAdapter {
 						this.lastSeenWarningLogged = true;
 						this.logger.warn(
 							'Zigbee2MQTT has advanced.last_seen disabled. Values of sleeping (battery) devices stay ' +
-								'non-fresh after a restart until the device reports again. Set advanced.last_seen to ' +
-								'ISO_8601 in Zigbee2MQTT to time values by the device itself.',
+								'non-fresh after a restart until the device reports again, and a cached state published ' +
+								'after the startup replay window (5 s quiet gap, 60 s limit) counts as a new report. Set ' +
+								'advanced.last_seen to ISO_8601 in Zigbee2MQTT to time values by the device itself.',
 						);
 					}
 				} catch {

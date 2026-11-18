@@ -69,7 +69,7 @@ is available and falls back to safe defaults when it isn't:
 
 | Zigbee2MQTT setting | What it gives Smart Panel | Without it |
 |---|---|---|
-| `advanced.last_seen: ISO_8601` (**recommended**) | Every value is timed by the moment the device actually spoke. After a Smart Panel or bridge restart, values of sleeping battery devices keep their real age, so they are usable right away as long as that age is within the freshness limit of the virtual device or automation using them. | Values replayed at startup are shown but stay non-fresh until each device reports again. How long that takes depends on when the device next sends a message. |
+| `advanced.last_seen: ISO_8601` (**recommended**) | Every value is timed by the moment the device actually spoke. After a Smart Panel or bridge restart, values of sleeping battery devices keep their real age, so they are usable right away as long as that age is within the freshness limit of the virtual device or automation using them. | Values replayed at startup are shown but stay non-fresh until each device reports again (see the startup note below for the limits of this). How long that takes depends on when the device next sends a message. |
 | `device_options.retain: true` (MQTT connection) | The broker keeps each device's last state, so Smart Panel receives it as soon as it connects, even when Zigbee2MQTT was already running. Combined with `last_seen`, those values keep their real age. | If Smart Panel starts while Zigbee2MQTT is already running, it learns a sleeping device's state only when that device next reports. If Zigbee2MQTT starts while Smart Panel is connected, Zigbee2MQTT publishes its cached states itself (`cache_state_send_on_startup`), so retain is not needed for that case. The WebSocket connection receives a snapshot either way. |
 | `advanced.cache_state: false` | Per-value freshness: a value whose sensor stops reporting goes stale even if the device still reports other values, such as battery. | Freshness is per device. Leave `cache_state` enabled if other consumers of your bridge (for example Home Assistant) rely on full-state messages. |
 
@@ -85,10 +85,19 @@ Smart Panel logs a warning when it connects to a bridge that has `last_seen` dis
 
 Without `last_seen`, Smart Panel cannot tell a replayed state from a new report by its content. It
 treats messages as replays while Zigbee2MQTT is still publishing after it connects or the bridge comes
-online: until no message has arrived for 5 seconds, and at most for 60 seconds. On a very large network
-Zigbee2MQTT may still be publishing its cached states after that. If you cannot enable `last_seen`
-and need that guarantee, set `advanced.cache_state_send_on_startup: false` so Zigbee2MQTT does not
-publish cached states at startup.
+online: until no message has arrived for 5 seconds, and at most for 60 seconds. A cached state that
+Zigbee2MQTT publishes after that (possible on a very large network or a slow bridge start) is treated
+as a new report, so that value counts as fresh although the device did not report it. With
+`last_seen` enabled this cannot happen, because every value carries its real age.
+
+If you cannot enable `last_seen` and need that guarantee:
+
+- **MQTT connection:** set `advanced.cache_state_send_on_startup: false`, so Zigbee2MQTT does not
+  publish its cached states at startup.
+- **WebSocket connection:** the Zigbee2MQTT frontend sends a snapshot of all device states whenever
+  Smart Panel connects, regardless of that setting. The snapshot is sent at once on connection, so it
+  falls inside the window, but no setting turns it off. Use `last_seen` (or the MQTT connection) if
+  you need the guarantee.
 
 <Callout>
 	A device that only reports on change and has no periodic reporting configured sends nothing while
