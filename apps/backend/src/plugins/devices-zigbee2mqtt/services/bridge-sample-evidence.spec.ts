@@ -14,6 +14,7 @@ import { PropertyValueLockService } from '../../../modules/devices/services/prop
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { StorageService } from '../../../modules/storage/services/storage.service';
+import { STARTUP_REPLAY_WINDOW_MS } from '../devices-zigbee2mqtt.constants';
 import { Z2mDeviceStateMetadata } from '../interfaces/zigbee2mqtt.interface';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
@@ -45,12 +46,17 @@ class FixtureAdapter extends Z2mBaseClientAdapter {
 	}
 }
 
-describe('Zigbee current bridge cache contract', () => {
+describe('Zigbee live device report contract', () => {
 	let adapter: FixtureAdapter;
 	let callback: jest.Mock<void, [string, Record<string, unknown>, Z2mDeviceStateMetadata]>;
+	const base = Date.parse('2026-10-13T10:00:00Z');
 	const cacheMode = (cache_state: unknown): unknown => ({ config: { advanced: { cache_state } } });
 	const lastMetadata = (): Z2mDeviceStateMetadata => callback.mock.calls.at(-1)[2];
+	const passReplayWindow = (): void => {
+		jest.setSystemTime(Date.now() + STARTUP_REPLAY_WINDOW_MS);
+	};
 	beforeEach(async () => {
+		jest.useFakeTimers({ now: base });
 		adapter = new FixtureAdapter();
 		callback = jest.fn<void, [string, Record<string, unknown>, Z2mDeviceStateMetadata]>();
 		adapter.setCallbacks({ onDeviceStateChanged: callback });
@@ -59,60 +65,121 @@ describe('Zigbee current bridge cache contract', () => {
 	});
 	afterEach(async () => {
 		await adapter.disconnect();
+		jest.useRealTimers();
 	});
 
-	it('refuses unknown/merged configuration even when a non-retained battery heartbeat includes old temperature', () => {
-		adapter.feed('ambient', { temperature: 25, battery: 80, last_seen: new Date().toISOString() });
-		expect(lastMetadata().measurementFieldsAreLive).toBe(false);
-		expect(adapter.getMeasurementReadiness().reasons).toEqual([
-			'zigbee_current_cache_state_unknown_require_live_bridge_info_or_gateway_frontend_snapshot',
-		]);
-		adapter.feed('bridge/info', cacheMode(true));
-		adapter.feed('ambient', { temperature: 25, battery: 79, last_seen: new Date().toISOString() });
+	it('treats device states inside the startup replay window as replays, not live reports', () => {
+		adapter.feed('ambient', { temperature: 25 });
 		expect(lastMetadata()).toMatchObject({
 			measurementFieldsAreLive: false,
-			qualificationReason: 'zigbee_cache_state_merges_old_fields',
+			qualificationReason: 'zigbee_startup_replay_window',
 		});
-		expect(adapter.getCachedState('ambient')).toMatchObject({ temperature: 25, battery: 79 });
+		expect(lastMetadata().sourceIsCurrent).toBeUndefined();
 	});
 
-	it('accepts genuine equal-value fields only with current literal cache_state=false; absent fields stay absent', () => {
+	it.each([
+		{ mode: true, reason: 'zigbee_live_device_report_merged_state' },
+		{ mode: null, reason: 'zigbee_live_device_report_merged_state' },
+		{ mode: false, reason: 'zigbee_live_device_report' },
+	])(
+		'accepts any device report as live with cache_state $mode, including equal-value heartbeats',
+		({ mode, reason }) => {
+			if (mode !== null) adapter.feed('bridge/info', cacheMode(mode));
+			passReplayWindow();
+			adapter.feed('ambient', { temperature: 25, battery: 80 });
+			const first = lastMetadata();
+			expect(first).toMatchObject({ measurementFieldsAreLive: true, qualificationReason: reason });
+			expect(first.sourceIsCurrent()).toBe(true);
+			// Battery-only report: with cache_state the unchanged temperature rides along and is confirmed.
+			adapter.feed('ambient', { temperature: 25, battery: 79 });
+			expect(lastMetadata().measurementFieldsAreLive).toBe(true);
+			expect(adapter.getMeasurementReadiness().reasons).toEqual([]);
+		},
+	);
+
+	it('does not revoke live authority when the bridge reports a cache_state change', () => {
 		adapter.feed('bridge/info', cacheMode(false));
+		passReplayWindow();
 		adapter.feed('ambient', { temperature: 25 });
 		const first = lastMetadata();
-		adapter.feed('ambient', { temperature: 25 });
-		expect(lastMetadata().measurementFieldsAreLive).toBe(true);
+		adapter.feed('bridge/info', cacheMode(true));
+		expect(first.isCurrent()).toBe(true);
 		expect(first.sourceIsCurrent()).toBe(true);
-		adapter.feed('bridge/info', cacheMode(false));
-		expect(first.sourceIsCurrent()).toBe(true);
-		adapter.feed('ambient', { battery: 79 });
-		expect(callback.mock.calls.at(-1)[1]).toEqual({ battery: 79 });
-		expect(first.sourceIsCurrent()).toBe(true);
-		expect(adapter.getMeasurementReadiness().reasons).toEqual([]);
 	});
 
-	it.each([true, null, 'false'])('revokes previously accepted authority immediately on cache/proof loss %j', (mode) => {
-		adapter.feed('bridge/info', cacheMode(false));
-		adapter.feed('ambient', { temperature: 25, state: 'ON' });
-		const first = lastMetadata();
-		adapter.feed('bridge/info', cacheMode(mode));
-		expect(first.isCurrent()).toBe(true); // display packet belongs to the same connection
-		expect(first.sourceIsCurrent()).toBe(false); // old control evidence no longer has authority
+	it('accepts replays timed by last_seen with their real age: retained, startup window and cached replay', () => {
+		const lastSeen = new Date(base - 20 * 60_000).toISOString();
+		adapter.feed('ambient', { temperature: 25, last_seen: lastSeen }, true);
+		expect(lastMetadata()).toMatchObject({
+			isRetained: true,
+			measurementFieldsAreLive: true,
+			sampledAt: new Date(lastSeen),
+			qualificationReason: 'zigbee_replay_timed_by_last_seen',
+		});
+		adapter.feed('ambient', { temperature: 25, last_seen: lastSeen });
+		expect(lastMetadata()).toMatchObject({ measurementFieldsAreLive: true, sampledAt: new Date(lastSeen) });
+		const replay = adapter.getCachedStateReplay('ambient');
+		expect(replay?.state).toEqual({ temperature: 25, last_seen: lastSeen });
+		expect(replay?.metadata).toMatchObject({
+			isCached: true,
+			measurementFieldsAreLive: true,
+			sampledAt: new Date(lastSeen),
+		});
+		expect(replay?.metadata.sourceIsCurrent()).toBe(true);
 	});
 
-	it('never uses retained bridge info as current MQTT config or retained state as live measurement', async () => {
-		adapter.feed('bridge/info', cacheMode(false), true);
-		adapter.feed('ambient', { temperature: 25 });
-		expect(lastMetadata().measurementFieldsAreLive).toBe(false);
-		adapter.feed('bridge/info', cacheMode(false));
+	it('keeps replays without a trustworthy last_seen non-fresh, including our own cached replay', () => {
+		adapter.feed('ambient', { temperature: 25, last_seen: new Date(base + 10 * 60_000).toISOString() });
+		expect(lastMetadata()).toMatchObject({
+			measurementFieldsAreLive: false,
+			qualificationReason: 'zigbee_startup_replay_window',
+		});
+		expect(lastMetadata().sampledAt).toBeUndefined();
+		adapter.feed('other', { temperature: 21 });
+		passReplayWindow();
+		expect(adapter.getCachedStateReplay('other')?.metadata).toMatchObject({
+			isCached: true,
+			measurementFieldsAreLive: false,
+			qualificationReason: 'zigbee_cached_replay_without_last_seen',
+		});
+		expect(adapter.getCachedStateReplay('unknown')).toBeNull();
+	});
+
+	it('time-stamps a live report by last_seen, and never makes a source-timed message live while offline', () => {
+		passReplayWindow();
+		const lastSeen = new Date(Date.now() - 1_000).toISOString();
+		adapter.feed('ambient', { temperature: 25, last_seen: lastSeen });
+		expect(lastMetadata()).toMatchObject({
+			measurementFieldsAreLive: true,
+			sampledAt: new Date(lastSeen),
+			qualificationReason: 'zigbee_device_report_timed_by_last_seen',
+		});
+		adapter.feed('bridge/state', { state: 'offline' });
+		adapter.feed('ambient', { temperature: 25, last_seen: lastSeen });
+		expect(lastMetadata()).toMatchObject({
+			measurementFieldsAreLive: false,
+			qualificationReason: 'zigbee_source_disconnected',
+		});
+	});
+
+	it('never treats retained state without last_seen as live, and reopens the replay window on reconnect and bridge restart', async () => {
+		passReplayWindow();
 		adapter.feed('ambient', { temperature: 25 }, true);
-		expect(lastMetadata().isRetained).toBe(true);
+		expect(lastMetadata()).toMatchObject({ isRetained: true, measurementFieldsAreLive: false });
 		expect(lastMetadata().sourceIsCurrent).toBeUndefined();
 		adapter.feed('ambient', { temperature: 25 });
 		const first = lastMetadata();
+		expect(first.measurementFieldsAreLive).toBe(true);
 		await adapter.disconnect();
 		expect(first.sourceIsCurrent()).toBe(false);
 		await adapter.connect();
+		adapter.feed('bridge/state', { state: 'online' });
+		adapter.feed('ambient', { temperature: 25 });
+		expect(lastMetadata().measurementFieldsAreLive).toBe(false);
+		passReplayWindow();
+		adapter.feed('ambient', { temperature: 25 });
+		expect(lastMetadata().measurementFieldsAreLive).toBe(true);
+		adapter.feed('bridge/state', { state: 'offline' });
 		adapter.feed('bridge/state', { state: 'online' });
 		adapter.feed('ambient', { temperature: 25 });
 		expect(lastMetadata().measurementFieldsAreLive).toBe(false);
@@ -126,7 +193,7 @@ class MeasurementProperty extends ChannelPropertyEntity {
 }
 
 /** Production admission/window/value services consume actual adapter packet evidence. */
-describe('Zigbee cache contract at sample and ordinary acknowledgement admission', () => {
+describe('Zigbee device report freshness at sample and ordinary acknowledgement admission', () => {
 	let adapter: FixtureAdapter;
 	let property: MeasurementProperty;
 	let values: PropertyValueService;
@@ -184,10 +251,10 @@ describe('Zigbee cache contract at sample and ordinary acknowledgement admission
 			onDeviceStateChanged: (_name, state, metadata) => {
 				if (!Object.hasOwn(state, 'temperature')) return;
 				pending = reports.reportSample(property.id, { value: state.temperature } as UpdateChannelPropertyDto, {
-					sampledAt: metadata.measurementFieldsAreLive ? metadata.observedAt : new Date(0),
+					sampledAt: metadata.sampledAt ?? metadata.observedAt,
 					receivedAt: new Date(),
 					observedAt: metadata.observedAt,
-					provenance: metadata.isRetained ? 'retained' : metadata.measurementFieldsAreLive ? 'live' : 'cached',
+					provenance: metadata.measurementFieldsAreLive ? 'live' : metadata.isRetained ? 'retained' : 'cached',
 					isCurrent: metadata.isCurrent,
 					sourceIsCurrent: metadata.sourceIsCurrent,
 				});
@@ -207,32 +274,54 @@ describe('Zigbee cache contract at sample and ordinary acknowledgement admission
 		await pending;
 	};
 
-	it('keeps cached scalar display but never manufactures temperature age from merged battery traffic', async () => {
+	it('keeps a fresh age for an equal temperature confirmed by merged cache_state heartbeats', async () => {
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: true } } });
+		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS);
 		await sample(25);
-		expect((await values.readLatest(property))?.value).toBe(25);
-		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
-		jest.setSystemTime(base + 2_000);
-		adapter.feed('ambient', { temperature: 25, battery: 79, last_seen: new Date().toISOString() });
+		expect(values.readQualifiedSample(property, 10_000)?.sampledAt.getTime()).toBe(base + STARTUP_REPLAY_WINDOW_MS);
+		// Hours later the sensor still reports the same value: the age keeps up with the reports.
+		const later = base + STARTUP_REPLAY_WINDOW_MS + 3 * 3_600_000;
+		jest.setSystemTime(later);
+		adapter.feed('ambient', { temperature: 25, battery: 79 });
 		await pending;
-		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect(values.readQualifiedSample(property, 10_000)?.sampledAt.getTime()).toBe(later);
+		expect((await values.readLatest(property))?.lastUpdated).toBe(new Date(later).toISOString());
 	});
 
-	it('renews genuine equal temperature, ignores absent fields, and revokes old qualification on config change inline', async () => {
-		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
+	it('makes a sleeping sensor usable right after startup when its replay carries last_seen', async () => {
+		const lastSeen = base - 20 * 60_000;
+		adapter.feed('ambient', { temperature: 21.5, last_seen: new Date(lastSeen).toISOString() }, true);
+		await pending;
+		expect(values.readQualifiedSample(property, 60 * 60_000)?.sampledAt.getTime()).toBe(lastSeen);
+		expect(values.readQualifiedSample(property, 10 * 60_000)).toBeNull();
+		expect((await values.readLatest(property))?.lastUpdated).toBe(new Date(lastSeen).toISOString());
+	});
+
+	it('times a replay by arrival, never epoch 0, and does not renew an unchanged replayed value', async () => {
 		await sample(25);
-		expect(values.readQualifiedSample(property, 10_000)?.sampledAt.getTime()).toBe(base);
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect((await values.readLatest(property))?.lastUpdated).toBe(new Date(base).toISOString());
 		jest.setSystemTime(base + 1_000);
 		await sample(25);
-		expect(values.readQualifiedSample(property, 10_000)?.sampledAt.getTime()).toBe(base + 1_000);
-		jest.setSystemTime(base + 2_000);
-		adapter.feed('ambient', { battery: 79 });
-		expect(values.readQualifiedSample(property, 10_000)?.sampledAt.getTime()).toBe(base + 1_000);
-		adapter.feed('bridge/info', { config: { advanced: { cache_state: true } } });
-		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect((await values.readLatest(property))?.lastUpdated).toBe(new Date(base).toISOString());
+		await sample(26);
+		expect(await values.readLatest(property)).toMatchObject({
+			value: 26,
+			lastUpdated: new Date(base + 1_000).toISOString(),
+		});
 	});
 
-	it('does not acknowledge an ordinary matching command from cache; genuine current readback confirms it', async () => {
+	it('ignores fields absent from a cache_state=false report', async () => {
+		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
+		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS);
+		await sample(25);
+		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS + 1_000);
+		adapter.feed('ambient', { battery: 79 });
+		expect(values.readQualifiedSample(property, 10_000)?.sampledAt.getTime()).toBe(base + STARTUP_REPLAY_WINDOW_MS);
+	});
+
+	it('does not acknowledge an ordinary matching command from a retained replay; a device report confirms it', async () => {
+		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS);
 		await sample(20);
 		windows.open({
 			canonicalTarget: { deviceId: 'device', channelId: 'channel', propertyId: property.id },
@@ -241,10 +330,10 @@ describe('Zigbee cache contract at sample and ordinary acknowledgement admission
 			previousValue: 20,
 			ttlMs: 3_000,
 		});
-		jest.setSystemTime(base + 1_000);
-		await sample(23);
+		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS + 1_000);
+		adapter.feed('ambient', { temperature: 23 }, true);
+		await pending;
 		expect(windows.get(property.id)?.state).toBe('pending');
-		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
 		await sample(23);
 		expect(windows.get(property.id)?.state).toBe('confirmed_grace');
 	});

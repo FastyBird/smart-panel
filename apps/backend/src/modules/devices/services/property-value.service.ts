@@ -296,6 +296,9 @@ export class PropertyValueService {
 					}
 					return { changed: false, state: null };
 				}
+				// A replay proves the value, not its age. Load the stored state first so an unchanged
+				// replayed value keeps its existing timestamp instead of looking freshly reported.
+				if (!live && !this.valuesMap.has(key)) await this.readLatestInternal(property, false);
 				const result = await this.writeInternal(
 					property,
 					key,
@@ -304,6 +307,10 @@ export class PropertyValueService {
 					undefined,
 					evidence.sampledAt,
 					!this.valueLock.isEnabled(),
+					false,
+					undefined,
+					undefined,
+					live,
 				);
 				// A generation may change while history I/O is pending. It cannot regain live authority.
 				if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
@@ -768,6 +775,7 @@ export class PropertyValueService {
 		producerWrite = false,
 		ownedCurrent?: () => boolean,
 		ownedHistory?: OwnedPropertyHistory,
+		refreshUnchangedTimestamp = true,
 	): Promise<PropertyValueWriteResult> {
 		// A projected property owns no series — the value belongs to its source, and only the source's
 		// own reports may write it. This is the exact mirror of delete()'s guard below, and exists for
@@ -813,8 +821,13 @@ export class PropertyValueService {
 		const cached = this.valuesMap.get(key);
 		if (!strict && cached && cached.value === value) {
 			if (ownedCurrent && !ownedCurrent()) return { changed: false, state: clonePropertyValueState(cached) };
-			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
-			cached.lastUpdated = (valueTimestamp ?? new Date()).toISOString();
+			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate.
+			// Freshness only moves forward; replays (refreshUnchangedTimestamp=false) never renew it.
+			const next = valueTimestamp ?? new Date();
+			const previous = cached.lastUpdated === null ? NaN : Date.parse(cached.lastUpdated);
+			if (refreshUnchangedTimestamp && (!Number.isFinite(previous) || previous < next.getTime())) {
+				cached.lastUpdated = next.toISOString();
+			}
 			this.bumpCacheVersion(key);
 			return { changed: false, state: cached };
 		}

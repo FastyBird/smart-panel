@@ -35,6 +35,7 @@ import { resolvePropertyUnit } from '../../../modules/devices/utils/property-met
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { zigbeeSourceIdentity } from '../contracts/sample-source.contract';
+import { STARTUP_REPLAY_WINDOW_MS } from '../devices-zigbee2mqtt.constants';
 import { UpdateZigbee2mqttChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
 	Zigbee2mqttChannelEntity,
@@ -111,7 +112,8 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 	let samplePending: Promise<void>;
 	let devices: { findOneBy: jest.Mock };
 	beforeEach(async () => {
-		jest.useFakeTimers({ now: base });
+		// Connect one startup replay window before `base`, so test packets are device reports.
+		jest.useFakeTimers({ now: base - STARTUP_REPLAY_WINDOW_MS });
 		database = await createSqliteDataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -226,6 +228,7 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 			},
 		});
 		await adapter.connect();
+		jest.setSystemTime(base);
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
 		adapter.feed('bridge/devices', [registry()]);
 		await registryPending;
@@ -327,6 +330,28 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		jest.setSystemTime(base + 3_000);
 		await sample(null);
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+	});
+
+	it('qualifies a reconnect replay only when last_seen gives it a real age', async () => {
+		await bind();
+		jest.setSystemTime(base + 1_000);
+		await sample(25);
+		await adapter.disconnect();
+		expect(values.readQualifiedSample(property, 10 * 60_000)).toBeNull();
+		jest.setSystemTime(base + 60_000);
+		await adapter.connect();
+		adapter.feed('bridge/devices', [registry()]);
+		await registryPending;
+		// Inside the startup replay window: without last_seen the age is unknown.
+		await sample(26);
+		expect(values.readQualifiedSample(property, 10 * 60_000)).toBeNull();
+		const lastSeen = new Date(base + 30_000);
+		adapter.feed('floor', { temperature: 26, last_seen: lastSeen.toISOString() });
+		await samplePending;
+		expect(values.readQualifiedSample(property, 10 * 60_000)).toMatchObject({ value: 26, sampledAt: lastSeen });
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		const replay = adapter.getCachedStateReplay('floor');
+		expect(replay?.metadata).toMatchObject({ isCached: true, measurementFieldsAreLive: true, sampledAt: lastSeen });
 	});
 
 	it('revokes live qualification synchronously and fences a queued mapper when the name is reassigned', async () => {

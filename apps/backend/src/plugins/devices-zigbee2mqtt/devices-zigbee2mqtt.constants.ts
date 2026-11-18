@@ -32,6 +32,11 @@ export const DEFAULT_WS_RECONNECT_INTERVAL = 5000;
 export const MAX_PENDING_ACTION_STATES = 100;
 export const MAX_PENDING_ACTION_AGE_MS = 30_000;
 
+// After we connect or the bridge comes online, Zigbee2MQTT replays its cached device states
+// (`cache_state_send_on_startup`, websocket connect snapshot). Device state messages arriving
+// inside this window are treated as replays, not as fresh device reports.
+export const STARTUP_REPLAY_WINDOW_MS = 5_000;
+
 // Connection type
 export const DEFAULT_CONNECTION_TYPE = 'mqtt' as const;
 

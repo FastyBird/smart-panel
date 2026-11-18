@@ -1496,14 +1496,18 @@ export class Z2mDeviceMapperService {
 				: typeof timestamp === 'string' || typeof timestamp === 'number'
 					? new Date(timestamp)
 					: null;
-		const provenance = metadata?.isRetained
-			? 'retained'
-			: metadata?.isCached || metadata?.measurementFieldsAreLive !== true
-				? 'cached'
-				: 'live';
-		// A replay without source time must never acquire a new measurement age.
+		// The adapter decides liveness: a fresh device report, or a replay timed by `last_seen`.
+		// Replay flags still suppress input occurrences (button actions) independently of this.
+		const provenance =
+			metadata?.measurementFieldsAreLive === true ? 'live' : metadata?.isRetained ? 'retained' : 'cached';
+		// Source time (last_seen) when usable, otherwise arrival time. A source time ahead of arrival is
+		// gateway clock skew and is capped. Replays (cached/retained) are timed the same way; the value
+		// service keeps the previous timestamp for an unchanged non-live value, so a replay never
+		// renews a value's age.
 		const sampledAt =
-			parsed && Number.isFinite(parsed.getTime()) ? parsed : provenance === 'live' ? observedAt : new Date(0);
+			parsed && Number.isFinite(parsed.getTime()) && parsed.getTime() <= observedAt.getTime()
+				? parsed
+				: new Date(observedAt);
 		return {
 			sampledAt,
 			receivedAt: new Date(),

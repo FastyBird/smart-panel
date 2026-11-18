@@ -588,18 +588,43 @@ describe('Z2mDeviceMapperService', () => {
 		it.each([
 			{ isRetained: true, provenance: 'retained' },
 			{ isCached: true, provenance: 'cached' },
-		])('preserves replay age and provenance %j', async (metadata) => {
+		])('preserves replay source age and provenance, and never times a replay at epoch 0 %j', async (metadata) => {
 			await service.updateDeviceState('ambient', { temperature: 25, last_seen: '2026-10-12T10:00:00+02:00' }, metadata);
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.anything(),
 				expect.objectContaining({ sampledAt: new Date('2026-10-12T08:00:00Z'), provenance: metadata.provenance }),
 			);
-			await service.updateDeviceState('ambient', { temperature: 25 }, metadata);
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			await service.updateDeviceState('ambient', { temperature: 25 }, { ...metadata, observedAt });
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.anything(),
-				expect.objectContaining({ sampledAt: new Date(0), provenance: metadata.provenance }),
+				expect.objectContaining({ sampledAt: observedAt, provenance: metadata.provenance }),
+			);
+		});
+
+		it('times a live report by last_seen, capping a gateway clock ahead of arrival', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25, last_seen: '2026-10-13T08:59:58Z' },
+				{ observedAt, measurementFieldsAreLive: true },
+			);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: new Date('2026-10-13T08:59:58Z') }),
+			);
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25, last_seen: '2026-10-13T09:00:03Z' },
+				{ observedAt, measurementFieldsAreLive: true },
+			);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: observedAt }),
 			);
 		});
 
@@ -612,7 +637,7 @@ describe('Z2mDeviceMapperService', () => {
 			);
 		});
 
-		it('does not promote a merged battery heartbeat or an unknown report contract to live temperature', async () => {
+		it('keeps a packet the adapter did not prove to be a live device report as cached', async () => {
 			const observedAt = new Date('2026-10-13T09:00:00Z');
 			await service.updateDeviceState(
 				'ambient',
@@ -620,7 +645,7 @@ describe('Z2mDeviceMapperService', () => {
 				{
 					observedAt,
 					measurementFieldsAreLive: false,
-					qualificationReason: 'zigbee_cache_state_merges_old_fields',
+					qualificationReason: 'zigbee_startup_replay_window',
 				},
 			);
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
@@ -630,13 +655,13 @@ describe('Z2mDeviceMapperService', () => {
 			);
 			expect(service.getSampleProvenance('reading')).toMatchObject({
 				provenance: 'cached',
-				reason: 'zigbee_cache_state_merges_old_fields',
+				reason: 'zigbee_startup_replay_window',
 			});
 			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.anything(),
-				expect.objectContaining({ provenance: 'cached', sampledAt: new Date(0) }),
+				expect.objectContaining({ provenance: 'cached', sampledAt: observedAt }),
 			);
 		});
 

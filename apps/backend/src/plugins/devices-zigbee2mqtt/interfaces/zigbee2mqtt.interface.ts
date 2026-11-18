@@ -22,7 +22,11 @@ export interface Z2mDeviceStateMetadata {
 	qualificationReason?: string;
 	/** Internal generation guard; never supplied through API DTOs. */
 	isCurrent?: () => boolean;
-	/** Internal proof that published fields are not merged from the gateway cache. */
+	/**
+	 * The packet is a fresh report from the device itself (connected, bridge online, not retained,
+	 * not a startup replay). Freshness is device-level: with `cache_state: true` the payload also
+	 * carries merged cached fields, which are treated as confirmed unchanged by this report.
+	 */
 	measurementFieldsAreLive?: boolean;
 	/** Stable connection/configuration authority, independent of individual packet arrival. */
 	sourceIsCurrent?: () => boolean;

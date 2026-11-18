@@ -3,6 +3,7 @@ import { ZigbeeSourceIdentity, zigbeeSourceIdentity } from '../contracts/sample-
 import {
 	DEFAULT_MQTT_BASE_TOPIC,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+	STARTUP_REPLAY_WINDOW_MS,
 	Z2M_IGNORED_DEVICE_TYPES,
 } from '../devices-zigbee2mqtt.constants';
 import {
@@ -17,6 +18,8 @@ import {
 	Z2mSetPayload,
 	Z2mWsConfig,
 } from '../interfaces/zigbee2mqtt.interface';
+
+import { parseSourceTimestamp } from './source-timestamp';
 
 /**
  * Abstract base class for Zigbee2MQTT client adapters.
@@ -54,7 +57,9 @@ export abstract class Z2mBaseClientAdapter {
 	}
 
 	private cacheState: boolean | null = null;
-	private cacheProofGeneration = 0;
+	/** Device state messages before this instant may be Zigbee2MQTT's startup/connect cache replay. */
+	private liveReportsNotBefore = 0;
+	private lastSeenWarningLogged = false;
 	private readonly sourceIdentities = new Map<string, ZigbeeSourceIdentity>();
 	private connectedState = false;
 	private bridgeOnlineState = false;
@@ -65,6 +70,7 @@ export abstract class Z2mBaseClientAdapter {
 		if (value !== this.connectedState) {
 			this.sourceGeneration++;
 			this.setCacheState(null);
+			if (value) this.openStartupReplayWindow();
 		}
 		this.connectedState = value;
 		if (!value) {
@@ -76,7 +82,10 @@ export abstract class Z2mBaseClientAdapter {
 		return this.bridgeOnlineState;
 	}
 	protected set bridgeOnline(value: boolean) {
-		if (value !== this.bridgeOnlineState) this.sourceGeneration++;
+		if (value !== this.bridgeOnlineState) {
+			this.sourceGeneration++;
+			if (value) this.openStartupReplayWindow();
+		}
 		if (!value) this.setCacheState(null);
 		this.bridgeOnlineState = value;
 	}
@@ -129,17 +138,8 @@ export abstract class Z2mBaseClientAdapter {
 
 	getMeasurementReadiness(): { requiredProof: string; reasons: readonly string[] } {
 		return {
-			requiredProof: 'current_bridge_info_config_advanced_cache_state_false',
-			reasons:
-				!this.connected || !this.bridgeOnline
-					? ['zigbee_source_disconnected']
-					: this.cacheState === false
-						? []
-						: [
-								this.cacheState === true
-									? 'zigbee_cache_state_merges_old_fields'
-									: 'zigbee_current_cache_state_unknown_require_live_bridge_info_or_gateway_frontend_snapshot',
-							],
+			requiredProof: 'live_device_report_after_startup_replay_window',
+			reasons: !this.connected || !this.bridgeOnline ? ['zigbee_source_disconnected'] : [],
 		};
 	}
 
@@ -159,8 +159,93 @@ export abstract class Z2mBaseClientAdapter {
 	}
 
 	private setCacheState(value: boolean | null): void {
-		if (value !== this.cacheState) this.cacheProofGeneration++;
 		this.cacheState = value;
+	}
+
+	private openStartupReplayWindow(): void {
+		this.liveReportsNotBefore = Date.now() + STARTUP_REPLAY_WINDOW_MS;
+	}
+
+	private liveReportReason(
+		online: boolean,
+		sourceTime: Date | null,
+		isRetained: boolean,
+		isCached: boolean,
+		afterReplayWindow: boolean,
+	): string {
+		if (!online) return 'zigbee_source_disconnected';
+		const replay = isRetained || isCached || !afterReplayWindow;
+		if (sourceTime) return replay ? 'zigbee_replay_timed_by_last_seen' : 'zigbee_device_report_timed_by_last_seen';
+		if (isRetained) return 'zigbee_retained_state_without_last_seen';
+		if (isCached) return 'zigbee_cached_replay_without_last_seen';
+		if (!afterReplayWindow) return 'zigbee_startup_replay_window';
+		// With cache_state enabled the payload merges cached fields; the report still proves the
+		// device is alive, so those fields are treated as confirmed unchanged.
+		return this.cacheState === false ? 'zigbee_live_device_report' : 'zigbee_live_device_report_merged_state';
+	}
+
+	/**
+	 * Device-level sample evidence for a state payload.
+	 *
+	 * A device report is live when it arrives while connected and the bridge is online. Without a
+	 * source time, replays (retained messages, our own cached replay, the startup replay window) are
+	 * not live, since their age is unknown. With Zigbee2MQTT's optional `last_seen`, the message
+	 * carries the moment the device last spoke, so replays are live samples timed by it and their
+	 * age decides freshness.
+	 */
+	private buildStateMetadata(
+		friendlyName: string,
+		state: Record<string, unknown>,
+		observedAt: Date,
+		isRetained: boolean,
+		options?: Pick<Z2mDeviceStateMetadata, 'isDup' | 'packetId' | 'isCached' | 'isCurrent'>,
+	): Z2mDeviceStateMetadata {
+		const generation = this.sourceGeneration;
+		const identity = this.sourceIdentities.get(friendlyName);
+		const online = this.connected && this.bridgeOnline;
+		const isCached = options?.isCached === true;
+		const afterReplayWindow = observedAt.getTime() >= this.liveReportsNotBefore;
+		const sourceTime = parseSourceTimestamp(state.last_seen, observedAt);
+		const isLive = online && (sourceTime !== null || (!isRetained && !isCached && afterReplayWindow));
+
+		return {
+			observedAt,
+			isRetained,
+			isCached: options?.isCached,
+			...(sourceTime ? { sampledAt: sourceTime } : {}),
+			measurementFieldsAreLive: isLive,
+			sourceIdentity: identity ?? null,
+			qualificationReason: this.liveReportReason(online, sourceTime, isRetained, isCached, afterReplayWindow),
+			isCurrent: () =>
+				generation === this.sourceGeneration &&
+				this.sourceIdentities.get(friendlyName) === identity &&
+				(options?.isCurrent?.() ?? true),
+			...(isLive
+				? {
+						sourceIsCurrent: () =>
+							generation === this.sourceGeneration &&
+							this.connected &&
+							this.bridgeOnline &&
+							this.sourceIdentities.get(friendlyName) === identity &&
+							(options?.isCurrent?.() ?? true),
+					}
+				: {}),
+			isDup: options?.isDup,
+			packetId: options?.packetId,
+		};
+	}
+
+	/**
+	 * The merged state cached for a device, as a replay with its own sample evidence.
+	 * Used to process states that arrived before the device mapping was ready.
+	 */
+	getCachedStateReplay(
+		friendlyName: string,
+	): { state: Record<string, unknown>; metadata: Z2mDeviceStateMetadata } | null {
+		const cached = this.stateCache.get(friendlyName);
+		if (!cached || Object.keys(cached).length === 0) return null;
+		const state = { ...cached };
+		return { state, metadata: this.buildStateMetadata(friendlyName, state, new Date(), false, { isCached: true }) };
 	}
 
 	/**
@@ -243,10 +328,7 @@ export abstract class Z2mBaseClientAdapter {
 		message: string,
 		isRelative = false,
 		isRetained = false,
-		options?: Pick<
-			Z2mDeviceStateMetadata,
-			'isDup' | 'packetId' | 'isCached' | 'sampledAt' | 'qualificationReason' | 'isCurrent'
-		>,
+		options?: Pick<Z2mDeviceStateMetadata, 'isDup' | 'packetId' | 'isCached' | 'isCurrent'>,
 	): void {
 		try {
 			const relativePath = isRelative ? topic : topic.replace(`${this.baseTopic}/`, '');
@@ -305,9 +387,20 @@ export abstract class Z2mBaseClientAdapter {
 				// Bridge requestLookup has no read-only info request; never mutate options to elicit proof.
 				let cacheState: boolean | null = null;
 				try {
-					const info = JSON.parse(message) as { config?: { advanced?: { cache_state?: unknown } } };
+					const info = JSON.parse(message) as {
+						config?: { advanced?: { cache_state?: unknown; last_seen?: unknown } };
+					};
 					const value = info?.config?.advanced?.cache_state;
 					if (this.connected && !isRetained && typeof value === 'boolean') cacheState = value;
+					const lastSeen = info?.config?.advanced?.last_seen;
+					if (lastSeen === 'disable' && !this.lastSeenWarningLogged) {
+						this.lastSeenWarningLogged = true;
+						this.logger.warn(
+							'Zigbee2MQTT has advanced.last_seen disabled. Values of sleeping (battery) devices stay ' +
+								'non-fresh after a restart until the device reports again. Set advanced.last_seen to ' +
+								'ISO_8601 in Zigbee2MQTT to time values by the device itself.',
+						);
+					}
 				} catch {
 					/* malformed proof remains unqualified */
 				}
@@ -517,17 +610,12 @@ export abstract class Z2mBaseClientAdapter {
 		friendlyName: string,
 		message: string,
 		isRetained = false,
-		options?: Pick<
-			Z2mDeviceStateMetadata,
-			'isDup' | 'packetId' | 'isCached' | 'sampledAt' | 'qualificationReason' | 'isCurrent'
-		>,
+		options?: Pick<Z2mDeviceStateMetadata, 'isDup' | 'packetId' | 'isCached' | 'isCurrent'>,
 	): void {
 		const observedAt = new Date();
-		const generation = this.sourceGeneration;
-		const cacheProofGeneration = this.cacheProofGeneration;
-		const identity = this.sourceIdentities.get(friendlyName);
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
+			const metadata = this.buildStateMetadata(friendlyName, state, observedAt, isRetained, options);
 
 			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
 
@@ -545,40 +633,8 @@ export abstract class Z2mBaseClientAdapter {
 				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
-			const metadata: Z2mDeviceStateMetadata = {
-				observedAt,
-				isRetained,
-				isCached: options?.isCached,
-				sampledAt: options?.sampledAt,
-				measurementFieldsAreLive: this.connected && this.bridgeOnline && this.cacheState === false,
-				sourceIdentity: identity ?? null,
-				qualificationReason:
-					this.cacheState === false
-						? options?.qualificationReason
-						: this.cacheState === true
-							? 'zigbee_cache_state_merges_old_fields'
-							: 'zigbee_current_cache_state_unknown',
-				isCurrent: () =>
-					generation === this.sourceGeneration &&
-					this.sourceIdentities.get(friendlyName) === identity &&
-					(options?.isCurrent?.() ?? true),
-				...(this.connected && this.bridgeOnline && this.cacheState === false && !isRetained && !options?.isCached
-					? {
-							sourceIsCurrent: () =>
-								generation === this.sourceGeneration &&
-								cacheProofGeneration === this.cacheProofGeneration &&
-								this.connected &&
-								this.bridgeOnline &&
-								this.cacheState === false &&
-								this.sourceIdentities.get(friendlyName) === identity &&
-								(options?.isCurrent?.() ?? true),
-						}
-					: {}),
-				isDup: options?.isDup,
-				packetId: options?.packetId,
-			};
 			if (
-				identity &&
+				metadata.sourceIdentity &&
 				Array.isArray(device?.definition?.exposes) &&
 				device.definition.exposes.some((expose) => expose.type === 'climate')
 			)

@@ -583,13 +583,15 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 			}
 		}
 
-		// Process cached state for all existing devices
+		// Process cached state for all existing devices. States that arrived before the mapping was ready
+		// (startup snapshot, retained messages) are replayed with their own evidence: timed by `last_seen`
+		// when Zigbee2MQTT provides it, otherwise shown but not fresh until the device reports again.
 		const existingDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
 		for (const device of existingDevices) {
-			const cachedState = this.activeAdapter.getCachedState(device.identifier);
-			if (Object.keys(cachedState).length > 0) {
+			const replay = this.activeAdapter.getCachedStateReplay(device.identifier);
+			if (replay) {
 				try {
-					await this.deviceMapper.updateDeviceState(device.identifier, cachedState, { isCached: true });
+					await this.deviceMapper.updateDeviceState(device.identifier, replay.state, replay.metadata);
 				} catch (error) {
 					this.logger.debug(`Failed to process cached state for ${device.identifier}: ${error}`);
 				}
