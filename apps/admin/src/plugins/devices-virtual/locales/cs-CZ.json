@@ -786,7 +786,20 @@
 			"closedValue": "Hodnota pro zavřeno (JSON literál nebo text)",
 			"addAmbient": "Přidat okolní teplotu",
 			"addFloor": "Přidat podlahu",
-			"addContact": "Přidat kontakt"
+			"addContact": "Přidat kontakt",
+			"reporting": {
+				"observed": "Toto čidlo hlásí zhruba každých {typical} (nejdelší mezera {longest}).",
+				"fits": "Maximální stáří to pokrývá.",
+				"unknown": {
+					"title": "Interval hlášení zatím není známý",
+					"message": "Smart Panel od spuštění nezaznamenal dost hlášení z tohoto čidla. Bateriová rádiová čidla (Zigbee, Bluetooth) často hlásí jen každých 30–60 minut: nastavte maximální stáří o něco delší, nebo se později vraťte pro doporučení."
+				},
+				"tooShort": {
+					"title": "Maximální stáří je kratší než interval hlášení tohoto čidla",
+					"message": "Mezi hlášeními hodnota zastará a termostat přestane topit nebo chladit, dokud nepřijde další. Delší stáří ho nechá pracovat s hodnotou, která může být až takto stará.",
+					"apply": "Použít {duration} ({seconds} s)"
+				}
+			}
 		},
 		"remove": "Odebrat",
 		"settings": {

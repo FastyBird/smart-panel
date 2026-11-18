@@ -47,6 +47,21 @@ const BOUNDED_READ_SOURCE_CHUNK_SIZE = 50;
 const BOUNDED_READ_DEFAULT_DEADLINE_MS = 750;
 // Bound on the stored-state lookup that admits the first provider sample of a property after start.
 const SAMPLE_BASELINE_LOOKUP_TIMEOUT_MS = 5_000;
+/** Reports kept per property for the reporting profile. */
+const REPORTING_PROFILE_REPORTS = 32;
+/** Three reports give two intervals: the least that says anything about a reporting cadence. */
+const REPORTING_PROFILE_MINIMUM_REPORTS = 3;
+
+export interface PropertyReportingProfile {
+	/** Live reports observed (at most {@link REPORTING_PROFILE_REPORTS}) */
+	reports: number;
+	/** Median time between consecutive reports */
+	typicalIntervalMs: number;
+	/** Longest time between consecutive reports */
+	longestIntervalMs: number;
+	firstReportAt: Date;
+	lastReportAt: Date;
+}
 
 interface PropertyValueRow {
 	time?: Date | string;
@@ -152,6 +167,8 @@ export class PropertyValueService {
 	private readonly liveEpochs = new Set<string>();
 	private readonly samples = new Map<string, QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>>();
 	private readonly liveWatermarks = new Map<string, { sampledAt: number; invalid: boolean }>();
+	/** Sample times of the latest live device reports per property, oldest first (process-local). */
+	private readonly reportTimes = new Map<string, number[]>();
 	/** Cached states shown from a replay of unknown age: displayed, never recorded in history. */
 	private readonly displayOnlyStates = new WeakSet<PropertyValueState>();
 
@@ -365,6 +382,8 @@ export class PropertyValueService {
 					if (live) {
 						this.liveEpochs.add(key);
 						this.liveWatermarks.set(key, { sampledAt, invalid: false });
+						// A replay re-sends an earlier report; it says nothing about how often the device reports.
+						if (evidence.replay !== true) this.recordReport(key, sampledAt);
 						this.samples.set(key, {
 							...sample,
 							provenance: 'live',
@@ -443,6 +462,40 @@ export class PropertyValueService {
 		} finally {
 			clearTimeout(timer);
 		}
+	}
+
+	private recordReport(key: string, sampledAt: number): void {
+		const times = this.reportTimes.get(key) ?? [];
+		if (times.length > 0 && sampledAt <= times[times.length - 1]) return;
+		times.push(sampledAt);
+		if (times.length > REPORTING_PROFILE_REPORTS) times.shift();
+		this.reportTimes.set(key, times);
+	}
+
+	/**
+	 * How often a physical property's device has been reporting, from the live reports accepted since
+	 * this process started (equal-value heartbeats included). Null for a derived property or when
+	 * fewer than {@link REPORTING_PROFILE_MINIMUM_REPORTS} reports were seen. Display guidance only:
+	 * never evidence for freshness or qualification.
+	 */
+	readReportingProfile(property: ChannelPropertyEntity): PropertyReportingProfile | null {
+		const key = this.resolveBestEffort(property, 'reporting profile');
+		if (key === null || this.producers?.owns(key)) return null;
+		const times = this.reportTimes.get(key);
+		if (!times || times.length < REPORTING_PROFILE_MINIMUM_REPORTS) return null;
+		const intervals = times
+			.slice(1)
+			.map((time, index) => time - times[index])
+			.sort((a, b) => a - b);
+		const middle = Math.floor(intervals.length / 2);
+		return {
+			reports: times.length,
+			typicalIntervalMs:
+				intervals.length % 2 === 1 ? intervals[middle] : (intervals[middle - 1] + intervals[middle]) / 2,
+			longestIntervalMs: intervals[intervals.length - 1],
+			firstReportAt: new Date(times[0]),
+			lastReportAt: new Date(times[times.length - 1]),
+		};
 	}
 
 	/** Captures the live acceptance boundary for new process-local producer admission. */
@@ -1773,6 +1826,7 @@ export class PropertyValueService {
 		this.liveEpochs.delete(property.id);
 		this.samples.delete(property.id);
 		this.liveWatermarks.delete(property.id);
+		this.reportTimes.delete(property.id);
 		this.producers?.remove(property.id);
 		this.valuesMap.delete(property.id);
 		this.recentValuesMap.delete(property.id);

@@ -70,3 +70,26 @@ device controls remain available.
 The thermostat detail lists the freshness of each configured room, floor and window input, including its sample age
 and allowed age. Missing, stale or incompatible sources remain visible. Runtime updates and reconnects refresh these
 diagnostics without allowing an older HTTP response to replace newer state.
+
+### Battery and radio sensors
+
+Each thermostat input has a **maximum sample age**. A reading older than that is stale: a stale room temperature
+stops heating and cooling, a stale window contact counts as unknown and pauses output, and a stale floor reading
+inhibits heating. The input becomes usable again with its next report.
+
+Battery radio sensors (Zigbee, Bluetooth) save power by reporting rarely: many send a reading only when the value
+changes, plus a heartbeat every 30–60 minutes. They work with the thermostat when the maximum age is a little longer
+than their reporting interval. The editor shows how often each selected sensor has been reporting since Smart Panel
+started. It warns when the maximum age is shorter than the longest gap between reports, and offers a recommended
+value: the longest gap plus half of it, so one late report does not stop the thermostat.
+
+The trade-off is reaction time. With a maximum age of 90 minutes, the thermostat may act on a reading up to 90 minutes
+old, and it notices a sensor that stopped working only after that time. For a faster response, use a sensor that
+reports more often, or configure periodic reporting on the device where it supports it. For Zigbee2MQTT devices, see
+[value freshness](/docs/extensions/device-integrations#zigbee2mqtt-value-freshness).
+
+<Callout>
+  Window contacts usually report only when they open or close. They stay usable between changes only if the device
+  also sends heartbeats (most battery contacts do, together with their battery level) and the maximum age covers the
+  heartbeat interval.
+</Callout>
