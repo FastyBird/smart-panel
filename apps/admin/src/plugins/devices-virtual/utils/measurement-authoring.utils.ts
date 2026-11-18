@@ -10,6 +10,7 @@ import {
 	DevicesVirtualPluginDeviceMode,
 	DevicesVirtualPluginValueOrigin,
 } from '../../../openapi.constants';
+import { DEVICES_SHELLY_NG_TYPE } from '../../devices-shelly-ng/devices-shelly-ng.constants';
 
 export type NumericOperator = components['schemas']['DevicesVirtualPluginDataNumericOperator'];
 export type TransformPolicy = components['schemas']['DevicesVirtualPluginNumericTransformPolicy'];
@@ -57,7 +58,7 @@ export function measurementCandidates(
 		)
 			return [];
 		const rawShellyVoltage =
-			device.type === 'shelly-ng' &&
+			device.type === DEVICES_SHELLY_NG_TYPE &&
 			channel.category === DevicesModuleChannelCategory.analog_input &&
 			property.category === DevicesModuleChannelPropertyCategory.value &&
 			property.identifier === 'voltage' &&

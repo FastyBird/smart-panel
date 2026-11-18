@@ -19,6 +19,7 @@ import VirtualWizardSourcePicker from './virtual-wizard-source-picker.vue';
 
 const mocks = vi.hoisted(() => ({
 	flashError: vi.fn(),
+	fetch: vi.fn(),
 	get: vi.fn(),
 	put: vi.fn(),
 	post: vi.fn(),
@@ -37,7 +38,7 @@ vi.mock('../../../common', () => ({
 	// The spaces store behind the room and zone inputs of a new thermostat.
 	injectStoresManager: () => ({
 		getStore: (key: symbol) => ({
-			fetch: async () => undefined,
+			fetch: mocks.fetch,
 			firstLoadFinished: () => true,
 			findAll: () =>
 				key === devicesStoreKey
@@ -218,6 +219,13 @@ const setNumber = (wrapper: VueWrapper, label: string, value: number) =>
 
 describe('actual mandatory-member authoring forms', () => {
 	vi.setConfig({ testTimeout: 30000 });
+	it('fetches all device visibility scopes even if the default device list already populated the cache', async () => {
+		const editor = await open(true);
+		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Thermostat');
+		await editor.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(mocks.fetch).toHaveBeenCalledWith({ hidden: 'all' });
+	});
 	it('validates only the current step and defers policy fields until after sensor and relay selection', async () => {
 		const editor = await open(true);
 		const next = async () => {

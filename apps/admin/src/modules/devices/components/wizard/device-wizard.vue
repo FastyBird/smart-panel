@@ -20,7 +20,7 @@
 		:identifier-label="adapter.identifierLabel"
 		:confirmation-mode="adapter.confirmationMode ?? 'editable'"
 		@toggle-row="onToggleRow"
-		@toggle-rows="toggleRows"
+		@toggle-rows="onToggleRows"
 		@update-name="onUpdateName"
 		@update-category="onUpdateCategory"
 	/>
@@ -69,10 +69,12 @@ const adapter = props.adapterFactory();
 // rewrite its rows, selected names or categories while the confirmation request is running.
 const reviewedRows = ref<IWizardRow[] | null>(null);
 const adopting = ref(false);
+const draftEdited = ref(false);
 let deferredSessionReset = false;
 const confirmationRows = computed(() => reviewedRows.value?.filter((row) => row.adoptable) ?? adoptableRows.value);
-const { activeStep, activeStepIndex, selected, nameByKey, categoryByKey, adoptableRows, toggleRows, reconcile, reset, buildSelection } =
-	useDeviceWizardState(adapter.rows);
+const { activeStep, activeStepIndex, selected, nameByKey, categoryByKey, adoptableRows, reconcile, reset, buildSelection } = useDeviceWizardState(
+	adapter.rows
+);
 const validation = useWizardValidation(activeStep, () => {
 	const selectedRows = confirmationRows.value.filter((row) => selected[row.key]);
 	const errors: Record<string, string | undefined> = {
@@ -109,6 +111,7 @@ watch(
 			reviewedRows.value = null;
 			validation.reset();
 			reset();
+			draftEdited.value = false;
 		}
 	}
 );
@@ -164,6 +167,7 @@ const onBack = (): void => {
 	activeStep.value = 'discover';
 	if (deferredSessionReset) {
 		reset();
+		draftEdited.value = false;
 		validation.reset();
 		deferredSessionReset = false;
 	}
@@ -173,11 +177,12 @@ const onBack = (): void => {
 
 const onAdopt = async (): Promise<void> => {
 	if (adapter.busy.value || adopting.value || !validation.validate()) return;
-	reviewedRows.value = JSON.parse(JSON.stringify(adapter.rows.value)) as IWizardRow[];
+	reviewedRows.value ??= JSON.parse(JSON.stringify(adapter.rows.value)) as IWizardRow[];
 	adopting.value = true;
 	try {
-		await adapter.adopt(buildSelection());
+		await adapter.adopt(buildSelection(reviewedRows.value));
 
+		draftEdited.value = false;
 		activeStep.value = 'results';
 	} catch {
 		// Stay on the confirm step with the user's input intact.
@@ -203,6 +208,7 @@ const onAddMore = async (): Promise<void> => {
 	deferredSessionReset = false;
 	validation.reset();
 	reset();
+	draftEdited.value = false;
 
 	try {
 		await adapter.restart?.();
@@ -242,14 +248,21 @@ const actions = computed<IWizardAction[]>(() =>
 );
 
 const onToggleRow = (key: string, value: boolean): void => {
+	if (selected[key] !== value) draftEdited.value = true;
 	selected[key] = value;
 };
 
+const onToggleRows = (keys: string[], value: boolean): void => {
+	const allowed = new Set(confirmationRows.value.map((row) => row.key));
+	for (const key of keys) if (allowed.has(key)) onToggleRow(key, value);
+};
 const onUpdateName = (key: string, value: string): void => {
+	if (nameByKey[key] !== value) draftEdited.value = true;
 	nameByKey[key] = value;
 };
 
 const onUpdateCategory = (key: string, value: DevicesModuleDeviceCategory | null): void => {
+	if (categoryByKey[key] !== value) draftEdited.value = true;
 	categoryByKey[key] = value;
 };
 useDeviceWizardFlow(
@@ -257,6 +270,7 @@ useDeviceWizardFlow(
 		steps: ['discover', 'confirm', 'results'].map((step) => t(`devicesModule.wizard.steps.${step}`)),
 		activeStep: activeStepIndex.value,
 		busy: adapter.busy.value || adopting.value,
+		dirty: draftEdited.value,
 		actions: actions.value,
 	}))
 );

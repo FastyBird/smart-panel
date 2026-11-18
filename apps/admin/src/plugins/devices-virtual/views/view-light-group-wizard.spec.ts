@@ -151,6 +151,36 @@ describe('actuator group three-step authoring', () => {
 	});
 	afterEach(() => view?.unmount());
 
+	it('uses the current capability contract when a previously quarantined candidate becomes eligible', async () => {
+		mocks.POST.mockImplementation((path: string, { body }) => {
+			const response = catalog(body.profile, body.selected_channels);
+			const candidate = response.candidates.find((candidate) => candidate.channel === 'b')!;
+			candidate.eligible = body.selected_channels.length > 0;
+			candidate.reasons = candidate.eligible ? [] : ['graph_quarantined'];
+			return Promise.resolve({ data: { data: response } });
+		});
+		await openMembers();
+		expect(
+			view
+				.getComponent(VirtualWizardAddSources)
+				.props('sources')
+				.find((source) => source.id === 'b')?.disabled
+		).toBe(true);
+		await add('d');
+		const candidate = view
+			.getComponent(VirtualWizardAddSources)
+			.props('sources')
+			.find((source) => source.id === 'b')!;
+		expect(candidate.disabled).toBe(false);
+		expect(candidate.disabledReason).toBeUndefined();
+		await add('b');
+		expect(
+			view
+				.getComponent(VirtualGroupCapabilityMatrix)
+				.props('members')
+				.map((member) => member.id)
+		).toContain('b');
+	});
 	it('validates the name first, offers five kinds and never derives the name from placement or kind', async () => {
 		view = mount(Wizard);
 		await flushPromises();

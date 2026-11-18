@@ -126,7 +126,7 @@ const load = async () => {
 	}
 };
 onMounted(() => {
-	if (!devices.firstLoadFinished()) void load();
+	void load();
 });
 onBeforeUnmount(() => {
 	active = false;

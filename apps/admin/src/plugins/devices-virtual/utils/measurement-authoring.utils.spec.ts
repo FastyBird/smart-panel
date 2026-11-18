@@ -41,7 +41,9 @@ const property = (fields: Partial<MeasurementSourceProperty> = {}): MeasurementS
 
 describe('measurement candidate and output contracts', () => {
 	it('offers native Celsius as a direct affine source and permits only canonical transformed temperature in aggregates', () => {
-		expect(measurementCandidates(DevicesVirtualPluginDeviceMode.sensor_transform, [device('shelly-ng')], [channel()], [property()])).toHaveLength(1);
+		expect(
+			measurementCandidates(DevicesVirtualPluginDeviceMode.sensor_transform, [device('devices-shelly-ng')], [channel()], [property()])
+		).toHaveLength(1);
 		expect(
 			measurementCandidates(
 				DevicesVirtualPluginDeviceMode.sensor_aggregate,
@@ -75,7 +77,7 @@ describe('measurement candidate and output contracts', () => {
 			measurementCandidates(DevicesVirtualPluginDeviceMode.sensor_transform, [device('virtual', 'sensor_transform')], [channel()], [property()])
 		).toEqual([]);
 		expect(
-			measurementCandidates(DevicesVirtualPluginDeviceMode.sensor_transform, [device('shelly-ng')], [channel()], [property({ unit: null })])
+			measurementCandidates(DevicesVirtualPluginDeviceMode.sensor_transform, [device('devices-shelly-ng')], [channel()], [property({ unit: null })])
 		).toEqual([]);
 		expect(
 			measurementCandidates(
@@ -145,7 +147,7 @@ describe('thermistor source admission', () => {
 	const candidates = (p: Partial<MeasurementSourceProperty>, identifier: string) =>
 		measurementCandidates(
 			DevicesVirtualPluginDeviceMode.sensor_transform,
-			[device('shelly-ng')],
+			[device('devices-shelly-ng')],
 			[{ ...channel(DevicesModuleChannelCategory.analog_input), identifier }],
 			[property({ category: DevicesModuleChannelPropertyCategory.value, identifier: 'voltage', unit: null, ...p })]
 		);

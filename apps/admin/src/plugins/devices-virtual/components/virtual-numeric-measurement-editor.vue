@@ -1301,7 +1301,6 @@ const checkDraft = async () => {
 	}
 	await previewDraft();
 };
-const processingErrors = computed(() => reviewChecks.value.filter((check) => check.status === 'error'));
 const requiredField = () => t('devicesModule.wizard.validation.required');
 const invalidField = () => t('devicesModule.wizard.validation.invalidValue');
 const validation = useWizardValidation(step, () => {
@@ -1343,7 +1342,8 @@ const beforeNext = async (): Promise<boolean> => {
 	if (!validation.validate()) return false;
 	if (step.value !== REVIEW_STEP - 1) return true;
 	await checkDraft();
-	return !!lastPreview.value && !processingErrors.value.length;
+	const checked = lastPreview.value;
+	return !!checked && !error.value && !catalogError.value && !('policy' in checked && isBlockingTransformPreviewError(checked.preview_result?.error));
 };
 const transformOperators = Object.values(TransformOperator),
 	aggregateOperators = computed(() => selectedProfile.value?.operators ?? []);

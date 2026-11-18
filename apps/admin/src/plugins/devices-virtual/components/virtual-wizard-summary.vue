@@ -17,7 +17,7 @@
 						{{ item.label }}
 					</el-text>
 				</dt>
-				<dd class="m-0 whitespace-pre-line break-words">{{ item.value || '—' }}</dd>
+				<dd class="m-0 whitespace-pre-line break-words">{{ item.value === '' ? '—' : (item.value ?? '—') }}</dd>
 			</div>
 		</dl>
 		<slot />

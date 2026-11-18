@@ -378,7 +378,7 @@ const availableMembers = computed(() =>
 		const lost = proposed
 			? selectedCapabilities.value.filter((category) => !proposed.common_capabilities.some((capability) => capability.category === category))
 			: [];
-		const reason = proposed?.reasons[0] ?? member.reasons[0];
+		const reason = (proposed ?? member).reasons[0];
 		const disabledReason = reason?.startsWith('group_capability_incompatible:')
 			? text('missingControl', { control: categoryLabel(reason.split(':')[1]) })
 			: reason
@@ -386,7 +386,7 @@ const availableMembers = computed(() =>
 				: undefined;
 		return {
 			...member,
-			disabled: proposed?.eligible === false || member.eligible === false,
+			disabled: !(proposed ?? member).eligible,
 			disabledReason,
 			badge:
 				!memberIds.value.length || !proposed?.eligible

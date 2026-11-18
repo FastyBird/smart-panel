@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 import type { IUseModbusDeviceWizard } from '../composables/useModbusDeviceWizard';
+import type { ModbusPoint } from '../lib/points';
 
 import ViewModbusWizard from './view-modbus-wizard.vue';
 
@@ -97,6 +98,44 @@ describe('Modbus wizard step validation', () => {
 		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
 		await flushPromises();
 		expect(mocks.wizard.state.step).toBe(1);
+		wrapper.unmount();
+	});
+	it('accepts a custom long press on a button point, but keeps rejecting it on non-button points', async () => {
+		mocks.wizard.state.step = 2;
+		mocks.wizard.state.points = [
+			{
+				key: 'button',
+				channelCategory: 'button',
+				propertyCategory: 'event',
+				dataType: 'enum',
+				permissions: ['ev'],
+				read: {
+					registerType: 'discrete_input',
+					address: 0,
+					dataType: 'bool',
+					bit: null,
+					scale: 1,
+					offset: 0,
+					invert: false,
+					valueMap: null,
+					writeFunction: null,
+					longPressMs: 1200,
+				},
+				write: null,
+			},
+		] as unknown as ModbusPoint[];
+		const wrapper = render();
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(mocks.wizard.state.step).toBe(3);
+		mocks.wizard.state.step = 2;
+		mocks.wizard.state.points[0].channelCategory = 'binary_input';
+		mocks.wizard.state.points[0].propertyCategory = 'active';
+		mocks.wizard.state.points[0].dataType = 'bool';
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(mocks.wizard.state.step).toBe(2);
 		wrapper.unmount();
 	});
 	it('validates a new endpoint before persisting it and device settings before Review', async () => {

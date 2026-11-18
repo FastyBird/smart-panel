@@ -1,9 +1,9 @@
 /* eslint-disable vue/one-component-per-file -- Isolated component stubs for plugin integration tests. */
 import { computed, h, ref } from 'vue';
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 
 import { useBreakpoints } from '../../../../common';
 import { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
@@ -13,6 +13,8 @@ import type { IDeviceWizardAdapter, IWizardResult, IWizardRow } from './device-w
 import DeviceWizard from './device-wizard.vue';
 
 vi.mock('vue-meta', () => ({ useMeta: () => ({ meta: {} }) }));
+
+enableAutoUnmount(afterEach);
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -150,7 +152,30 @@ describe('DeviceWizard', () => {
 		await flushPromises();
 		expect(wrapper.get('[data-test-id="wizard-step-confirm"]').text()).toBe(before);
 		expect(adopt).toHaveBeenCalledTimes(1);
+		adopt.mockResolvedValueOnce([]);
+		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		expect(adopt).toHaveBeenCalledTimes(2);
+		expect(adopt.mock.calls[1]).toEqual(adopt.mock.calls[0]);
+		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(true);
 		wrapper.unmount();
+	});
+	it('guards unsaved confirmation changes and clears the guard on successful adoption', async () => {
+		const wrapper = mountWizard(buildAdapter());
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		const leaving = () => {
+			const event = new Event('beforeunload', { cancelable: true });
+			window.dispatchEvent(event);
+			return event.defaultPrevented;
+		};
+		expect(leaving()).toBe(false);
+		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('Unsaved device');
+		expect(leaving()).toBe(true);
+		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		expect(leaving()).toBe(false);
 	});
 	it('calls start on mount', async () => {
 		const adapter = buildAdapter();

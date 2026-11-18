@@ -14,10 +14,11 @@ export function useVirtualWizardSourceGroups() {
 	const placement = inject(placementKey, null);
 	const { t } = useI18n();
 	return <T>(items: T[], locate: (item: T) => SourcePlacement | null | undefined, preference = placement?.value ?? {}) =>
-		groupSourcesByPlacement(items, preference, locate).map((group) => ({
-			...group,
-			label: t(
-				`devicesVirtualPlugin.wizard.layout.${group.id === 'room' ? 'roomSources' : group.id === 'zones' ? 'zoneSources' : preference.roomId || preference.zoneIds?.length ? 'otherSources' : 'availableSources'}`
-			),
-		}));
+		groupSourcesByPlacement(items, preference, locate).map((group) => {
+			let key = 'availableSources';
+			if (group.id === 'room') key = 'roomSources';
+			else if (group.id === 'zones') key = 'zoneSources';
+			else if (preference.roomId || preference.zoneIds?.length) key = 'otherSources';
+			return { ...group, label: t(`devicesVirtualPlugin.wizard.layout.${key}`) };
+		});
 }

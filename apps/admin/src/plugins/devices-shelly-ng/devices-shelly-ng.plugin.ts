@@ -3,7 +3,7 @@ import type { App } from 'vue';
 import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
-import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
+import { type IPlugin, type PluginInjectionKey, injectPluginsManager, injectStoresManager } from '../../common';
 import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents, type IPluginsSchemas } from '../../modules/config';
 import {
 	DEVICES_MODULE_NAME,
@@ -15,9 +15,11 @@ import {
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
 import DeviceWizard from '../../modules/devices/components/wizard/device-wizard.vue';
+import { channelsPropertiesStoreKey, channelsStoreKey } from '../../modules/devices/store/keys';
 
 import { ShellyNgConfigForm, ShellyNgDeviceAddForm, ShellyNgDeviceEditForm } from './components/components';
 import ShellyCoverRecoverySection from './components/shelly-cover-recovery-section.vue';
+import { shellyCoverRecoveryTargets } from './components/shelly-cover-recovery-targets';
 import { useDevicesWizard } from './composables/composables';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from './devices-shelly-ng.constants';
 import { locales } from './locales';
@@ -84,7 +86,14 @@ export default {
 								label: 'devicesShellyNgPlugin.detailTab',
 								icon: 'mdi:tools',
 								component: ShellyCoverRecoverySection,
-								visible: (device) => device.category === 'window_covering',
+								visible: (device) => {
+									const stores = injectStoresManager(app);
+									return (
+										shellyCoverRecoveryTargets(device, stores.getStore(channelsStoreKey).findForDevice(device.id), (id) =>
+											stores.getStore(channelsPropertiesStoreKey).findForChannel(id)
+										).length > 0
+									);
+								},
 							},
 						],
 						deviceWizard: {

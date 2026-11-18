@@ -508,6 +508,7 @@ const enterWizardReview = async (wrapper: Awaited<ReturnType<typeof mountEditor>
 	await flushPromises();
 };
 describe('measurement wizard automatic review', () => {
+	beforeEach(() => vi.useFakeTimers());
 	it('covers the whole wizard content while its catalogue loads and enables navigation when ready', async () => {
 		const originalGet = mocks.GET.getMockImplementation()!;
 		let finish!: (response: unknown) => void;
@@ -603,7 +604,7 @@ describe('measurement wizard automatic review', () => {
 	it('keeps a large numeric catalogue lazy until Sources and reads store collections a bounded number of times', async () => {
 		vi.useFakeTimers();
 		mocks.GET.mockResolvedValue({ data: { data: [] } });
-		mocks.devices = [{ id: 'd', type: 'shelly-ng', name: 'Multi-sensor' }];
+		mocks.devices = [{ id: 'd', type: 'devices-shelly-ng', name: 'Multi-sensor' }];
 		mocks.channels = [{ id: 'c', device: 'd', category: 'temperature', name: 'Measurements' }];
 		mocks.properties = Array.from({ length: 256 }, (_, index) => ({
 			id: `source-${index}`,
@@ -903,7 +904,7 @@ const transformState = () => ({
 });
 const enterTransformProcessing = async () => {
 	if (!mocks.devices.length) {
-		mocks.devices = [{ id: 'd', type: 'shelly-ng', name: 'Physical sensor' }];
+		mocks.devices = [{ id: 'd', type: 'devices-shelly-ng', name: 'Physical sensor' }];
 		mocks.channels = [{ id: 'c', device: 'd', category: 'temperature', name: 'Temperature' }];
 		mocks.properties = [
 			{ id: 'physical', channel: 'c', category: 'temperature', dataType: 'float', permissions: ['ro'], unit: '°C', name: 'Temperature' },
@@ -931,6 +932,32 @@ const setConversionField = (wrapper: ReturnType<typeof mount>, field: string, va
 		.vm.$emit('update:modelValue', value);
 };
 describe('numeric conversion wizard guidance and review', () => {
+	it.each([true, false])('uses the explicit review result instead of a stale background result (explicit success: %s)', async (succeeds) => {
+		vi.useFakeTimers();
+		const wrapper = await enterTransformProcessing();
+		for (const [field, value] of Object.entries({ inputMinimum: 0, inputMaximum: 10, outputMinimum: 0, outputMaximum: 100, scale: 10, offset: 0 }))
+			setConversionField(wrapper, field, value);
+		const background = transformState();
+		if (succeeds)
+			background.preview_result = {
+				input: 2,
+				value: null,
+				error: 'source_unavailable',
+				qualified: false,
+			} as unknown as typeof background.preview_result;
+		mocks.POST.mockResolvedValueOnce({ data: { data: background } });
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(700);
+		const reviewed = transformState();
+		if (!succeeds)
+			reviewed.preview_result = { input: 2, value: null, error: 'source_unavailable', qualified: false } as unknown as typeof reviewed.preview_result;
+		mocks.POST.mockResolvedValueOnce({ data: { data: reviewed } });
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="measurement-processing-summary"]').exists()).toBe(succeeds);
+		expect(wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(!succeeds);
+		wrapper.unmount();
+	});
 	it('shows specific valid and invalid settings, then permits creation after correction', async () => {
 		const wrapper = await enterTransformProcessing();
 		const fields = wrapper.findAllComponents(ElFormItem);
@@ -1017,7 +1044,7 @@ describe('numeric conversion wizard guidance and review', () => {
 	});
 
 	it('enables thermistor operators for a qualified raw-voltage Shelly source and explains their prerequisites', async () => {
-		mocks.devices = [{ id: 'd', type: 'shelly-ng', name: 'Probe' }];
+		mocks.devices = [{ id: 'd', type: 'devices-shelly-ng', name: 'Probe' }];
 		mocks.channels = [{ id: 'c', device: 'd', category: 'analog_input', identifier: `raw-voltage:voltmeter:1:${'a'.repeat(64)}`, name: 'Voltmeter' }];
 		mocks.properties = [
 			{

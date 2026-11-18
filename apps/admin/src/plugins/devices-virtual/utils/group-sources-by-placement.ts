@@ -22,8 +22,9 @@ export function groupSourcesByPlacement<T>(
 	const zones = new Set(placement.zoneIds ?? []);
 	for (const item of items) {
 		const source = locate(item);
-		const group =
-			placement.roomId && source?.roomId === placement.roomId ? groups[0] : source?.zoneIds?.some((id) => zones.has(id)) ? groups[1] : groups[2];
+		let group = groups[2];
+		if (placement.roomId && source?.roomId === placement.roomId) group = groups[0];
+		else if (source?.zoneIds?.some((id) => zones.has(id))) group = groups[1];
 		group.items.push(item);
 	}
 	return groups.filter((group) => group.items.length);

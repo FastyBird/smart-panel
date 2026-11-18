@@ -75,6 +75,7 @@ import ModbusWizardReviewStep from '../components/wizard/modbus-wizard-review-st
 import ModbusWizardTemplateStep from '../components/wizard/modbus-wizard-template-step.vue';
 import { MODBUS_WIZARD_STEP, useModbusDeviceWizard } from '../composables/useModbusDeviceWizard';
 import { MODBUS_MAX_POLL_INTERVAL_MS, MODBUS_MIN_POLL_INTERVAL_MS } from '../devices-modbus.constants';
+import { capabilityKindOf } from '../lib/capabilities';
 import { bindingIssues } from '../lib/points';
 
 defineOptions({
@@ -184,7 +185,9 @@ const validation = useWizardValidation(
 		} else if (state.step === MODBUS_WIZARD_STEP.POINTS) {
 			errors.points = state.points.length && state.points.some((point) => point.read) ? undefined : required;
 			for (const point of state.points) {
-				const problems = (['read', 'write'] as const).flatMap((kind) => (point[kind] ? Object.values(bindingIssues(point[kind]!, kind)) : []));
+				const problems = (['read', 'write'] as const).flatMap((kind) =>
+					point[kind] ? Object.values(bindingIssues(point[kind]!, kind, capabilityKindOf(point))) : []
+				);
 				if (problems.length) errors[`point:${point.key}`] = problems.map((key) => t(key!)).join(' · ');
 			}
 		} else if (state.step === MODBUS_WIZARD_STEP.DEVICE) {
