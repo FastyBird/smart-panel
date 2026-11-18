@@ -334,6 +334,12 @@
 		}
 	},
 	"bridgeSettings": {
+		"title": "Nastavenia bridge pre aktuálne hodnoty",
+		"refresh": "Obnoviť",
+		"unavailable": {
+			"title": "Nastavenia bridge zatiaľ nie sú k dispozícii",
+			"message": "Zobrazia sa, keď bude bridge online a nahlási svoju konfiguráciu. Táto sekcia sa obnovuje sama."
+		},
 		"openConfig": "Otvoriť konfiguráciu",
 		"learnMore": "Ako tieto nastavenia ovplyvňujú aktuálnosť hodnôt",
 		"ready": {
@@ -348,8 +354,8 @@
 			},
 			"retain": {
 				"title": "Zvážte zapnutie uchovávaných stavov (retain) v Zigbee2MQTT",
-				"message": "S uchovávanými stavmi Smart Panel dostane posledný stav každého zariadenia hneď po pripojení, aj keď Zigbee2MQTT beží ďalej. Bez nich je stav spiaceho zariadenia známy až po jeho ďalšom hlásení.",
-				"config": "device_options:\n  retain: true"
+				"message": "S uchovávanými stavmi Smart Panel dostane posledný stav každého zariadenia hneď po pripojení, aj keď Zigbee2MQTT beží ďalej. Bez nich je stav spiaceho zariadenia známy až po jeho ďalšom hlásení. Skontrolujte tiež, že nie je zapnuté mqtt.force_disable_retain, ktoré uchovávané stavy vypína.",
+				"config": "device_options:\n  retain: true\nmqtt:\n  force_disable_retain: false"
 			}
 		}
 	}

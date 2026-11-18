@@ -334,6 +334,12 @@
 		}
 	},
 	"bridgeSettings": {
+		"title": "Ajustes del bridge para valores actualizados",
+		"refresh": "Actualizar",
+		"unavailable": {
+			"title": "Los ajustes del bridge aún no están disponibles",
+			"message": "Aparecerán cuando el bridge esté en línea y haya informado su configuración. Esta sección se actualiza sola."
+		},
 		"openConfig": "Abrir configuración",
 		"learnMore": "Cómo afectan estos ajustes a la actualidad de los valores",
 		"ready": {
@@ -348,8 +354,8 @@
 			},
 			"retain": {
 				"title": "Considera activar los estados retenidos (retain) en Zigbee2MQTT",
-				"message": "Con estados retenidos, Smart Panel recibe el último estado de cada dispositivo en cuanto se conecta, aunque Zigbee2MQTT siga en marcha. Sin ellos, el estado de un dispositivo en reposo solo se conoce cuando vuelve a informar.",
-				"config": "device_options:\n  retain: true"
+				"message": "Con estados retenidos, Smart Panel recibe el último estado de cada dispositivo en cuanto se conecta, aunque Zigbee2MQTT siga en marcha. Sin ellos, el estado de un dispositivo en reposo solo se conoce cuando vuelve a informar. Asegúrate también de que mqtt.force_disable_retain no esté activado, ya que desactiva los estados retenidos.",
+				"config": "device_options:\n  retain: true\nmqtt:\n  force_disable_retain: false"
 			}
 		}
 	}

@@ -334,6 +334,12 @@
 		}
 	},
 	"bridgeSettings": {
+		"title": "Ustawienia bridge dla aktualnych wartości",
+		"refresh": "Odśwież",
+		"unavailable": {
+			"title": "Ustawienia bridge nie są jeszcze dostępne",
+			"message": "Pojawią się, gdy bridge będzie online i zgłosi swoją konfigurację. Ta sekcja odświeża się sama."
+		},
 		"openConfig": "Otwórz konfigurację",
 		"learnMore": "Jak te ustawienia wpływają na aktualność wartości",
 		"ready": {
@@ -348,8 +354,8 @@
 			},
 			"retain": {
 				"title": "Rozważ włączenie zachowywanych stanów (retain) w Zigbee2MQTT",
-				"message": "Dzięki zachowywanym stanom Smart Panel otrzymuje ostatni stan każdego urządzenia zaraz po połączeniu, nawet gdy Zigbee2MQTT nadal działa. Bez nich stan uśpionego urządzenia jest znany dopiero po jego kolejnym zgłoszeniu.",
-				"config": "device_options:\n  retain: true"
+				"message": "Dzięki zachowywanym stanom Smart Panel otrzymuje ostatni stan każdego urządzenia zaraz po połączeniu, nawet gdy Zigbee2MQTT nadal działa. Bez nich stan uśpionego urządzenia jest znany dopiero po jego kolejnym zgłoszeniu. Upewnij się też, że mqtt.force_disable_retain nie jest włączone, ponieważ wyłącza zachowywane stany.",
+				"config": "device_options:\n  retain: true\nmqtt:\n  force_disable_retain: false"
 			}
 		}
 	}

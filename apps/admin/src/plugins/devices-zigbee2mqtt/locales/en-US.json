@@ -334,6 +334,12 @@
 		}
 	},
 	"bridgeSettings": {
+		"title": "Bridge settings for fresh values",
+		"refresh": "Refresh",
+		"unavailable": {
+			"title": "Bridge settings not available yet",
+			"message": "They appear once the bridge is online and has reported its configuration. This section refreshes on its own."
+		},
 		"openConfig": "Open configuration",
 		"learnMore": "How these settings affect value freshness",
 		"ready": {
@@ -348,8 +354,8 @@
 			},
 			"retain": {
 				"title": "Consider enabling retained states in Zigbee2MQTT",
-				"message": "With retained states, Smart Panel receives each device's last state as soon as it connects, even while Zigbee2MQTT keeps running. Without them, a sleeping device's state is known only after it next reports.",
-				"config": "device_options:\n  retain: true"
+				"message": "With retained states, Smart Panel receives each device's last state as soon as it connects, even while Zigbee2MQTT keeps running. Without them, a sleeping device's state is known only after it next reports. Also make sure mqtt.force_disable_retain is not enabled, because it turns retained states off.",
+				"config": "device_options:\n  retain: true\nmqtt:\n  force_disable_retain: false"
 			}
 		}
 	}
