@@ -348,6 +348,13 @@ export class PropertyCommandWindowService {
 		return true;
 	}
 
+	/** Whether a reconciliation is still pending for the property, without cancelling it. */
+	hasRecovery(canonicalPropertyId: string): boolean {
+		this.pruneRecoveries(Date.now());
+
+		return this.recoveries.has(canonicalPropertyId);
+	}
+
 	/** Returns whether a fresh report supersedes a still-pending reconciliation. */
 	cancelRecovery(canonicalPropertyId: string): boolean {
 		const recovery = this.recoveries.get(canonicalPropertyId);

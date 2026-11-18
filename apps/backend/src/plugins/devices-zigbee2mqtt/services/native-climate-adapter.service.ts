@@ -149,17 +149,14 @@ export class ZigbeeNativeClimateAdapterService {
 				const packet = adapter.getNativeClimateSample(route);
 				const metadata = packet?.metadata;
 				const observedAt = metadata?.observedAt?.getTime() ?? NaN;
-				const sourceTime = packet?.state.last_seen;
-				const sampledAt =
-					metadata?.sampledAt?.getTime() ??
-					(typeof sourceTime === 'string' || typeof sourceTime === 'number'
-						? new Date(sourceTime).getTime()
-						: observedAt);
+				// The adapter's accepted source time, never a raw `last_seen` it may have rejected.
+				const sampledAt = metadata?.sampledAt?.getTime() ?? observedAt;
 				if (
 					!packet ||
 					!metadata ||
 					metadata.isRetained ||
 					metadata.isCached ||
+					metadata.isReplay !== false ||
 					metadata.isDup ||
 					metadata.measurementFieldsAreLive !== true ||
 					metadata.isCurrent?.() !== true ||

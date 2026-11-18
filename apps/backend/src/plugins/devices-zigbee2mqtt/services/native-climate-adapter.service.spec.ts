@@ -2,6 +2,7 @@ import { ChannelCategory } from '../../../modules/devices/devices.constants';
 import { NativeClimateUnit } from '../../../modules/devices/platforms/native-climate.contract';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { STARTUP_REPLAY_WINDOW_MS } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
@@ -23,6 +24,9 @@ class PacketAdapter extends Z2mBaseClientAdapter {
 	disconnect(): Promise<void> {
 		this.resetState();
 		return Promise.resolve();
+	}
+	reopenStartupReplayWindow(): void {
+		this.openStartupReplayWindow();
 	}
 	publishCommand(...args: Parameters<Z2mBaseClientAdapter['publishCommand']>): Promise<boolean> {
 		return this.send(...args);
@@ -82,9 +86,11 @@ describe('Zigbee native climate production profile', () => {
 	let prepareDispatch: jest.Mock;
 	beforeEach(async () => {
 		jest.useFakeTimers();
-		jest.setSystemTime(new Date('2026-10-31T12:00:00Z'));
+		const now = Date.parse('2026-10-31T12:00:00Z');
+		// The bridge comes online one startup replay window earlier, so test packets are device reports.
+		jest.setSystemTime(now - STARTUP_REPLAY_WINDOW_MS);
 		boundProperties = new Set(['heater-on', 'heater-setpoint', 'thermostat-on', 'thermostat-setpoint']);
-		bindingTime = new Date(Date.now() - 60_000);
+		bindingTime = new Date(now - 60_000);
 		prepareDispatch = jest.fn((id: string, route: string, required: readonly string[] = []) => {
 			const current = () =>
 				id === 'device' && route === 'trv' && required.length > 0 && required.every((key) => boundProperties.has(key));
@@ -101,6 +107,7 @@ describe('Zigbee native climate production profile', () => {
 		adapter.feed('bridge/state', { state: 'online' });
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
 		adapter.feed('bridge/devices', registry());
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
 		device = Object.assign(new Zigbee2mqttDeviceEntity(), { id: 'device', identifier: 'trv', enabled: true });
 		service = new ZigbeeNativeClimateAdapterService(
 			{ getActiveAdapter: () => adapter } as unknown as Zigbee2mqttService,
@@ -214,8 +221,9 @@ describe('Zigbee native climate production profile', () => {
 		expect(unit.observe()).toMatchObject({ available: true, temperature: 20, activity: 'heating' });
 		adapter.feed('trv', { system_mode: 'heat' });
 		expect(unit.observe()).toMatchObject({ available: true, temperature: null, activity: null, mode: 'heat' });
-		adapter.feed('trv', { local_temperature: 20 }, true);
-		expect(unit.observe().available).toBe(false);
+		// A retained replay is not a current observation and does not displace the last qualified one.
+		adapter.feed('trv', { local_temperature: 21 }, true);
+		expect(unit.observe()).toMatchObject({ available: true, temperature: null, mode: 'heat' });
 		adapter.feed('trv', { local_temperature: 20 });
 		jest.advanceTimersByTime(120_001);
 		expect(unit.observe().available).toBe(false);
@@ -230,10 +238,29 @@ describe('Zigbee native climate production profile', () => {
 		expect(observed.isCurrent()).toBe(false);
 	});
 
-	it('does not upgrade cache-merged packets or stale source timestamps', () => {
+	it('refuses a startup-window replay even when last_seen dates it recently', () => {
+		adapter.reopenStartupReplayWindow();
+		const recent = new Date(Date.now() - 1_000).toISOString();
+		adapter.feed('trv', { local_temperature: 20, last_seen: recent });
+		expect(unit.observe().available).toBe(false);
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		adapter.feed('trv', { local_temperature: 20, last_seen: new Date(Date.now() - 1_000).toISOString() });
+		expect(unit.observe()).toMatchObject({ available: true, temperature: 20 });
+	});
+
+	it('times an observation by arrival when the adapter rejected last_seen, never by the raw value', () => {
+		adapter.feed('trv', { local_temperature: 20, last_seen: new Date(Date.now() + 70_000).toISOString() });
+		expect(unit.observe()).toMatchObject({
+			available: true,
+			temperature: 20,
+			observedAt: new Date(Date.now()).toISOString(),
+		});
+	});
+
+	it('accepts cache-merged device reports but never upgrades stale source timestamps', () => {
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: true } } });
 		adapter.feed('trv', { local_temperature: 20 });
-		expect(unit.observe().available).toBe(false);
+		expect(unit.observe()).toMatchObject({ available: true, temperature: 20 });
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
 		adapter.feed('trv', { local_temperature: 20, last_seen: '2026-10-30T12:00:00Z' });
 		expect(unit.observe().available).toBe(false);

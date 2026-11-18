@@ -57,6 +57,64 @@ API tokens, or polling intervals.
 	Third-party devices are created individually.
 </Callout>
 
+### Zigbee2MQTT: value freshness
+
+Virtual devices (for example a virtual thermostat built from radio sensors) and automations only use
+values that are **fresh**. Smart Panel treats every message a Zigbee device sends through the bridge as
+proof that the device is alive, so a sensor that reports the same temperature for hours stays fresh as
+long as it keeps reporting.
+
+Zigbee2MQTT can provide extra information that makes this more accurate. Smart Panel uses it when it
+is available and falls back to safe defaults when it isn't:
+
+| Zigbee2MQTT setting | What it gives Smart Panel | Without it |
+|---|---|---|
+| `advanced.last_seen: ISO_8601` (**recommended**) | Every value is timed by the moment the device actually spoke. After a Smart Panel or bridge restart, values of sleeping battery devices keep their real age, so they are usable right away as long as that age is within the freshness limit of the virtual device or automation using them. | Values replayed at startup are shown but stay non-fresh until each device reports again (see the startup note below for the limits of this). How long that takes depends on when the device next sends a message. |
+| `device_options.retain: true` (MQTT connection) | The broker keeps each device's last state, so Smart Panel receives it as soon as it connects, even when Zigbee2MQTT was already running. Combined with `last_seen`, those values keep their real age. | If Smart Panel starts while Zigbee2MQTT is already running, it learns a sleeping device's state only when that device next reports. If Zigbee2MQTT starts while Smart Panel is connected, Zigbee2MQTT publishes its cached states itself (`cache_state_send_on_startup`), so retain is not needed for that case. The WebSocket connection receives a snapshot either way. |
+| `advanced.cache_state: false` | Per-value freshness: a value whose sensor stops reporting goes stale even if the device still reports other values, such as battery. | Freshness is per device. Leave `cache_state` enabled if other consumers of your bridge (for example Home Assistant) rely on full-state messages. |
+
+```yaml
+# Zigbee2MQTT configuration.yaml
+advanced:
+  last_seen: ISO_8601
+device_options:
+  retain: true
+```
+
+Smart Panel logs a warning when it connects to a bridge that has `last_seen` disabled.
+
+Without a usable `last_seen`, Smart Panel cannot tell a replayed state from a new report by its
+content. It treats messages as replays while Zigbee2MQTT is still publishing after it connects or the
+bridge comes online: until no message has arrived for 5 seconds, and at most for 60 seconds. This is
+a heuristic, not a guarantee. A cached state that reaches Smart Panel after that (possible on a very
+large network, a slow bridge start, or a delayed connection) is treated as a new report, so that
+value counts as fresh although the device did not report it.
+
+Enabling `last_seen` avoids this for every message that carries a valid one, because the value is
+then timed by the device's report instead of its arrival. That age is only as accurate as the
+Zigbee2MQTT host's clock. A `last_seen` slightly ahead of Smart Panel's clock (up to a minute) is
+treated as the arrival time, so with a gateway clock running ahead an older value can look fresh.
+Smart Panel ignores a `last_seen` that is missing, invalid, zero (a device Zigbee2MQTT has never
+heard from) or more than a minute ahead; such messages fall back to the heuristic above. Keep the
+clocks of both machines synchronised (NTP).
+
+If you cannot enable `last_seen` and want to reduce the risk:
+
+- **MQTT connection:** set `advanced.cache_state_send_on_startup: false`, so Zigbee2MQTT does not
+  publish its cached states at startup.
+- **WebSocket connection:** the Zigbee2MQTT frontend sends a snapshot of all device states whenever
+  Smart Panel connects, regardless of that setting, and no setting turns it off. It is sent right
+  after connecting, so it normally arrives inside the window, but a delayed delivery can still miss
+  it. Use `last_seen` (or the MQTT connection) if you need the stronger behaviour.
+
+<Callout>
+	A device that only reports on change and has no periodic reporting configured sends nothing while
+	its value is stable, so its values will eventually be considered stale. Where the device supports
+	it, configure periodic reporting in Zigbee2MQTT with a maximum interval shorter than the freshness
+	limit of the virtual device or automation using it. Some devices (for example the Xiaomi
+	WSDCGQ11LM) do not accept a reporting configuration and report on their own schedule.
+</Callout>
+
 ---
 
 ## What's Next?

@@ -188,6 +188,13 @@ describe('Z2mDeviceMapperService', () => {
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 
+		it('should suppress occurrences on startup-window replays', async () => {
+			await service.updateDeviceState('sonoff-button', { action: 'single' }, { isReplay: true });
+
+			expect(channelInputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
 		it('should suppress occurrences on empty action reset messages', async () => {
 			await service.updateDeviceState('sonoff-button', { action: '' });
 			await service.updateDeviceState('sonoff-button', { action: '   ' });
@@ -588,18 +595,80 @@ describe('Z2mDeviceMapperService', () => {
 		it.each([
 			{ isRetained: true, provenance: 'retained' },
 			{ isCached: true, provenance: 'cached' },
-		])('preserves replay age and provenance %j', async (metadata) => {
-			await service.updateDeviceState('ambient', { temperature: 25, last_seen: '2026-10-12T10:00:00+02:00' }, metadata);
+		])('preserves replay source age and provenance, and never times a replay at epoch 0 %j', async (metadata) => {
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25, last_seen: '2026-10-12T10:00:00+02:00' },
+				{ ...metadata, sampledAt: new Date('2026-10-12T08:00:00Z') },
+			);
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.anything(),
 				expect.objectContaining({ sampledAt: new Date('2026-10-12T08:00:00Z'), provenance: metadata.provenance }),
 			);
-			await service.updateDeviceState('ambient', { temperature: 25 }, metadata);
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			await service.updateDeviceState('ambient', { temperature: 25 }, { ...metadata, observedAt });
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.anything(),
-				expect.objectContaining({ sampledAt: new Date(0), provenance: metadata.provenance }),
+				expect.objectContaining({ sampledAt: observedAt, provenance: metadata.provenance }),
+			);
+		});
+
+		it('flags only an untimed replay as of unknown age, never a timed replay or a live report', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			const sampledAt = new Date('2026-10-13T08:00:00Z');
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, isRetained: true, isReplay: true });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: observedAt, replay: true, ageUnknown: true }),
+			);
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25 },
+				{ observedAt, sampledAt, isRetained: true, isReplay: true, measurementFieldsAreLive: true },
+			);
+			const timed = channelsPropertiesService.reportSample.mock.lastCall?.[2];
+			expect(timed).toMatchObject({ sampledAt, replay: true });
+			expect(timed).not.toHaveProperty('ageUnknown');
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.not.objectContaining({ ageUnknown: true }),
+			);
+		});
+
+		it('times a sample only by the source time the adapter accepted, never by a raw last_seen', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			const sampledAt = new Date('2026-10-13T08:59:58Z');
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25, last_seen: '2026-10-13T08:59:58Z' },
+				{ observedAt, sampledAt, measurementFieldsAreLive: true },
+			);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt }),
+			);
+			// The adapter rejected this last_seen (epoch 0): the mapper must not parse it back.
+			await service.updateDeviceState('ambient', { temperature: 25, last_seen: 0 }, { observedAt });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: observedAt }),
+			);
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25 },
+				{ observedAt, sampledAt: new Date('2026-10-13T09:00:03Z') },
+			);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: observedAt }),
 			);
 		});
 
@@ -612,7 +681,7 @@ describe('Z2mDeviceMapperService', () => {
 			);
 		});
 
-		it('does not promote a merged battery heartbeat or an unknown report contract to live temperature', async () => {
+		it('keeps a packet the adapter did not prove to be a live device report as cached', async () => {
 			const observedAt = new Date('2026-10-13T09:00:00Z');
 			await service.updateDeviceState(
 				'ambient',
@@ -620,7 +689,7 @@ describe('Z2mDeviceMapperService', () => {
 				{
 					observedAt,
 					measurementFieldsAreLive: false,
-					qualificationReason: 'zigbee_cache_state_merges_old_fields',
+					qualificationReason: 'zigbee_startup_replay_window',
 				},
 			);
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
@@ -630,13 +699,15 @@ describe('Z2mDeviceMapperService', () => {
 			);
 			expect(service.getSampleProvenance('reading')).toMatchObject({
 				provenance: 'cached',
-				reason: 'zigbee_cache_state_merges_old_fields',
+				reason: 'zigbee_startup_replay_window',
 			});
+			channelsPropertiesService.reportSample.mockClear();
 			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
-			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(1);
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledWith(
 				'reading',
 				expect.anything(),
-				expect.objectContaining({ provenance: 'cached', sampledAt: new Date(0) }),
+				expect.objectContaining({ provenance: 'cached', sampledAt: observedAt }),
 			);
 		});
 

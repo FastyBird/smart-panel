@@ -77,7 +77,12 @@ class FixtureAdapter extends Z2mBaseClientAdapter {
 	connect(): Promise<void> {
 		this.connected = true;
 		this.bridgeOnline = true;
+		// Test packets are device reports unless a test reopens the startup replay window.
+		this.openStartupReplayWindow(0);
 		return Promise.resolve();
+	}
+	reopenStartupReplayWindow(): void {
+		this.openStartupReplayWindow();
 	}
 	disconnect(): Promise<void> {
 		this.resetState();
@@ -327,6 +332,72 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		jest.setSystemTime(base + 3_000);
 		await sample(null);
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+	});
+
+	it('qualifies a reconnect replay only when last_seen gives it a real age', async () => {
+		await bind();
+		jest.setSystemTime(base + 1_000);
+		await sample(25);
+		await adapter.disconnect();
+		expect(values.readQualifiedSample(property, 10 * 60_000)).toBeNull();
+		jest.setSystemTime(base + 60_000);
+		await adapter.connect();
+		adapter.reopenStartupReplayWindow();
+		adapter.feed('bridge/devices', [registry()]);
+		await registryPending;
+		// Inside the startup replay window: without last_seen the age is unknown.
+		await sample(26);
+		expect(values.readQualifiedSample(property, 10 * 60_000)).toBeNull();
+		const lastSeen = new Date(base + 30_000);
+		adapter.feed('floor', { temperature: 26, last_seen: lastSeen.toISOString() });
+		await samplePending;
+		expect(values.readQualifiedSample(property, 10 * 60_000)).toMatchObject({ value: 26, sampledAt: lastSeen });
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		const replays = adapter.getCachedStateReplays('floor');
+		expect(replays).toHaveLength(1);
+		expect(replays[0].metadata).toMatchObject({ isCached: true, measurementFieldsAreLive: true, sampledAt: lastSeen });
+	});
+
+	it('replays each cached field with the age of the packet that supplied it', () => {
+		const older = new Date(base - 120_000);
+		const newer = new Date(base - 60_000);
+		adapter.feed('floor', { temperature: 25, last_seen: older.toISOString() });
+		adapter.feed('floor', { battery: 80, last_seen: newer.toISOString() });
+		const replays = adapter.getCachedStateReplays('floor');
+		expect(replays.map((replay) => [replay.state, replay.metadata.sampledAt])).toEqual([
+			[{ temperature: 25 }, older],
+			[{ battery: 80, last_seen: newer.toISOString() }, newer],
+		]);
+	});
+
+	it('drops cached state of an unidentified sender when its friendly name moves to another device', async () => {
+		await adapter.disconnect();
+		await adapter.connect();
+		adapter.feed('floor', { temperature: 25 });
+		adapter.feed('bridge/devices', [registry()]);
+		await registryPending;
+		expect(adapter.getCachedStateReplays('floor').map((replay) => replay.state)).toEqual([{ temperature: 25 }]);
+		adapter.feed('bridge/devices', [registry(replacement)]);
+		await registryPending;
+		expect(adapter.getCachedStateReplays('floor')).toEqual([]);
+		expect(adapter.getCachedState('floor')).toEqual({});
+	});
+
+	it('never replays cached state from a previous device under a reused friendly name', async () => {
+		adapter.feed('floor', { temperature: 25, last_seen: new Date(base - 60_000).toISOString() });
+		expect(adapter.getCachedStateReplays('floor')).toHaveLength(1);
+		const requestState = jest.spyOn(adapter, 'requestState');
+		adapter.feed('bridge/devices', [registry(replacement)]);
+		await registryPending;
+		expect(adapter.getCachedStateReplays('floor')).toEqual([]);
+		// The registered device under that name is the new one, with none of the previous device's state.
+		expect(adapter.getDevice('floor')).toMatchObject({ ieeeAddress: replacement, currentState: {} });
+		// With no state of its own, the new device's state is requested from the bridge.
+		expect(requestState).toHaveBeenCalledWith('floor');
+		adapter.feed('floor', { temperature: 19, last_seen: new Date(base - 1_000).toISOString() });
+		expect(adapter.getCachedStateReplays('floor').map((replay) => replay.state)).toEqual([
+			{ temperature: 19, last_seen: new Date(base - 1_000).toISOString() },
+		]);
 	});
 
 	it('revokes live qualification synchronously and fences a queued mapper when the name is reassigned', async () => {

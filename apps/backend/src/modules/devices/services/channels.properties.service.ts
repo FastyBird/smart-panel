@@ -979,6 +979,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			...(evidence.isCurrent ? { isCurrent: evidence.isCurrent } : {}),
 			...(evidence.sourceIsCurrent ? { sourceIsCurrent: evidence.sourceIsCurrent } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
+			...(evidence.replay === true ? { replay: true } : {}),
+			...(evidence.ageUnknown === true ? { ageUnknown: true } : {}),
 		});
 		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
 	}
@@ -1321,6 +1323,15 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const validation = validatePropertyCommandValue(property, value);
 
 		if (!validation.valid || validation.value === undefined) {
+			// A valid measurement that fails only the command step is still a replay to hold while its
+			// command is pending or being recovered; invalid measurements keep the fault path below.
+			if (
+				evidence?.replay === true &&
+				(this.propertyCommandWindowService.get(canonicalPropertyId) !== null ||
+					this.propertyCommandWindowService.hasRecovery(canonicalPropertyId)) &&
+				validatePropertyCommandValue({ ...property, step: null }, value).valid
+			)
+				return { changed: false, state: null, held: true, forceValueEvent: false };
 			const result = await writers.unwindowed();
 
 			return { ...result, held: false, forceValueEvent: false };
@@ -1331,6 +1342,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			(evidence || activeWindow.requiresLiveEvidence) &&
 			(!evidence ||
 				evidence.provenance !== 'live' ||
+				evidence.replay === true ||
 				!evidence.observedAt ||
 				!Number.isFinite(evidence.observedAt.getTime()) ||
 				evidence.observedAt.getTime() < activeWindow.openedAt ||
@@ -1353,6 +1365,10 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 		const window = this.propertyCommandWindowService.get(canonicalPropertyId);
 		if (window === null) {
+			// A replay neither supersedes nor races a pending reconciliation: hold it so the recovery
+			// (including a rollback) runs first.
+			if (evidence?.replay === true && this.propertyCommandWindowService.hasRecovery(canonicalPropertyId))
+				return { changed: false, state: null, held: true, forceValueEvent: false };
 			const reconcilesCommand = this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
 			const result = await (reconcilesCommand ? writers.windowed() : writers.unwindowed());
 

@@ -465,7 +465,7 @@ export class Z2mDeviceMapperService {
 		metadata?: Z2mDeviceStateMetadata,
 	): Promise<void> {
 		// Suppress occurrences for retained startup messages or cached replays
-		if (metadata?.isRetained || metadata?.isCached) {
+		if (metadata?.isRetained || metadata?.isCached || metadata?.isReplay) {
 			return;
 		}
 
@@ -1489,26 +1489,25 @@ export class Z2mDeviceMapperService {
 		metadata: Z2mDeviceStateMetadata | undefined,
 		observedAt: Date,
 	): PropertySampleEvidence {
-		const timestamp = metadata?.sampledAt ?? state.last_seen;
-		const parsed =
-			timestamp instanceof Date
-				? new Date(timestamp)
-				: typeof timestamp === 'string' || typeof timestamp === 'number'
-					? new Date(timestamp)
-					: null;
-		const provenance = metadata?.isRetained
-			? 'retained'
-			: metadata?.isCached || metadata?.measurementFieldsAreLive !== true
-				? 'cached'
-				: 'live';
-		// A replay without source time must never acquire a new measurement age.
-		const sampledAt =
-			parsed && Number.isFinite(parsed.getTime()) ? parsed : provenance === 'live' ? observedAt : new Date(0);
+		// The adapter decides liveness: a fresh device report, or a replay timed by `last_seen`.
+		// Replay flags still suppress input occurrences (button actions) independently of this.
+		const provenance =
+			metadata?.measurementFieldsAreLive === true ? 'live' : metadata?.isRetained ? 'retained' : 'cached';
+		// The adapter is the only place that parses `last_seen` (parseSourceTimestamp), so a source time
+		// it rejected is never recovered here. Without one, the sample is timed by arrival. Replays are
+		// timed the same way, but flagged `ageUnknown`: the value service displays such a value without
+		// recording a measurement time or history point, so a replay never renews a value's age.
+		const source = metadata?.sampledAt?.getTime();
+		const timed = source !== undefined && Number.isFinite(source) && source > 0 && source <= observedAt.getTime();
+		const sampledAt = timed ? new Date(source) : new Date(observedAt);
 		return {
 			sampledAt,
 			receivedAt: new Date(),
 			observedAt,
 			provenance,
+			...(metadata?.isReplay === true ? { replay: true } : {}),
+			// An untimed replay's arrival is not its measurement time: display it, never record it.
+			...(metadata?.isReplay === true && !timed ? { ageUnknown: true } : {}),
 			...(metadata?.isCurrent ? { isCurrent: metadata.isCurrent } : {}),
 			...(metadata?.sourceIsCurrent ? { sourceIsCurrent: metadata.sourceIsCurrent } : {}),
 		};
