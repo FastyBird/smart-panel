@@ -1,4 +1,4 @@
-import { type Ref, onScopeDispose, ref, watch } from 'vue';
+import { type InjectionKey, type Ref, hasInjectionContext, inject, onScopeDispose, provide, ref, watch } from 'vue';
 
 import { cloneDeep } from 'lodash';
 
@@ -15,7 +15,7 @@ export const scheduleDraft = (row: ScheduleConfiguration): ScheduleDraft => ({
 	entries: cloneDeep(row.entries),
 });
 
-export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
+const createSpaceSchedule = (spaceId: Ref<string | undefined>) => {
 	const { client } = useBackend();
 	const configuration = ref<ScheduleConfiguration | null>(null);
 	const loading = ref(false);
@@ -125,4 +125,17 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 		activeSave?.abort();
 	});
 	return { configuration, loading, busy, error, load, save };
+};
+
+// A space detail shares saved configuration with its compact summary and modal editor.
+const sourceKey: InjectionKey<{ id: Ref<string | undefined>; source: ReturnType<typeof createSpaceSchedule> }> =
+	Symbol('space-Schedule-configuration');
+export const provideSpaceSchedule = (id: Ref<string | undefined>) => {
+	const source = createSpaceSchedule(id);
+	provide(sourceKey, { id, source });
+	return source;
+};
+export const useSpaceModeSchedule = (id: Ref<string | undefined>) => {
+	const shared = hasInjectionContext() ? inject(sourceKey, null) : null;
+	return shared && shared.id.value === id.value ? shared.source : createSpaceSchedule(id);
 };

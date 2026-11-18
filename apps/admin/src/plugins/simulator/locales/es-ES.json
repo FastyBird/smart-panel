@@ -45,6 +45,9 @@
 			"details": "Detalles",
 			"created": "Creado",
 			"failed": "Fallido"
+		},
+		"selection": {
+			"description": "Genere dispositivos de prueba sin hardware físico."
 		}
 	},
 	"headings": {

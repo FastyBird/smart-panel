@@ -1,11 +1,13 @@
 /* eslint-disable vue/one-component-per-file */
-import { nextTick, ref } from 'vue';
+import { h, nextTick, ref } from 'vue';
 
+import { ElMessageBox } from 'element-plus';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 
 import type { IChannel, IChannelProperty, IDevice } from '../../../modules/devices';
+import DeviceWizardShell from '../../../modules/devices/components/wizard/device-wizard-shell.vue';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import { spacesStoreKey } from '../../../modules/spaces/store/keys';
 import type { ISpace } from '../../../modules/spaces/store/spaces.store.types';
@@ -24,7 +26,7 @@ import ViewVirtualDeviceWizard from './view-virtual-device-wizard.vue';
 
 enableAutoUnmount(afterEach);
 
-// Real four-step flows retain the same bounded budget as the full mapping component suite.
+// Real three-step flows retain the same bounded budget as the full mapping component suite.
 // Measurements and the policy for this exception live in docs/testing-lifecycle.md.
 vi.setConfig({ testTimeout: 15000 });
 
@@ -156,6 +158,7 @@ vi.mock('vue-meta', () => ({
 }));
 
 vi.mock('vue-router', () => ({
+	onBeforeRouteUpdate: vi.fn(),
 	useRouter: () => ({
 		push: mocks.routerPush,
 		replace: mocks.routerReplace,
@@ -255,13 +258,17 @@ const flushAsync = async (): Promise<void> => {
 };
 
 const mountWizard = () => {
-	const wrapper = mount(ViewVirtualDeviceWizard);
+	const wrapper = mount(DeviceWizardShell, {
+		props: { title: 'devicesVirtualPlugin.wizard.title' },
+		slots: { default: () => h(ViewVirtualDeviceWizard) },
+	});
 
 	const chooseCategory = async (category: DevicesModuleDeviceCategory): Promise<void> => {
-		await wrapper.findComponent({ name: 'ElSelect' }).setValue(category);
+		await wrapper.findComponent(VirtualWizardDetailsStep).find('input[name="name"]').setValue('Living Room Light');
+		await wrapper.findComponent({ name: 'ElRadioGroup' }).setValue(category);
 		await flushAsync();
 
-		await wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
 		await flushAsync();
 	};
 
@@ -279,22 +286,28 @@ const mountWizard = () => {
 		await mappingStep.vm.selectSource(slot.key, sourcePropertyId);
 		await flushAsync();
 
-		await wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
 		await flushAsync();
 	};
 
 	const setName = async (name: string): Promise<void> => {
+		if (wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).exists()) {
+			wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).vm.$emit('editDetails');
+			await flushAsync();
+		}
 		await wrapper.findComponent(VirtualWizardDetailsStep).find('input').setValue(name);
 		await flushAsync();
 
-		await wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushAsync();
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
 		await flushAsync();
 	};
 
 	// Drives the review step's own "Create device" button — the shell has no create action of its
 	// own, so this is the only thing `confirm()` can mean.
 	const confirm = async (): Promise<void> => {
-		await wrapper.find('[data-test-id="create-device"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-action-create"]').trigger('click');
 		await flushAsync();
 	};
 
@@ -306,17 +319,17 @@ const mountWizard = () => {
 		confirm,
 		activeStep: {
 			get value() {
-				return wrapper.vm.activeStep;
+				return wrapper.findComponent(ViewVirtualDeviceWizard).vm.activeStep;
 			},
 		},
 		canAdvance: {
 			get value() {
-				return wrapper.vm.canAdvance;
+				return wrapper.findComponent(ViewVirtualDeviceWizard).vm.canAdvance;
 			},
 		},
 		createdDevice: {
 			get value() {
-				return wrapper.vm.createdDevice;
+				return wrapper.findComponent(ViewVirtualDeviceWizard).vm.createdDevice;
 			},
 		},
 	};
@@ -324,7 +337,9 @@ const mountWizard = () => {
 
 describe('ViewVirtualDeviceWizard', () => {
 	beforeEach(() => {
+		vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm' as Awaited<ReturnType<typeof ElMessageBox.confirm>>);
 		vi.clearAllMocks();
+		mocks.useMeta.mockReturnValue({ meta: {} });
 
 		mocks.isMDDevice = true;
 		mocks.isLGDevice = true;
@@ -339,49 +354,69 @@ describe('ViewVirtualDeviceWizard', () => {
 	});
 
 	it('renders the category step as step 1 of the wizard', () => {
-		const wrapper = mount(ViewVirtualDeviceWizard);
+		const wrapper = mount(DeviceWizardShell, {
+			props: { title: 'devicesVirtualPlugin.wizard.title' },
+			slots: { default: () => h(ViewVirtualDeviceWizard) },
+		});
 
 		expect(wrapper.findComponent({ name: 'VirtualWizardCategoryStep' }).exists()).toBe(true);
 	});
 
-	it('renders all four step labels in the step indicator', () => {
-		const wrapper = mount(ViewVirtualDeviceWizard);
+	it('renders all three step labels in the step indicator', async () => {
+		const wrapper = mount(DeviceWizardShell, {
+			props: { title: 'devicesVirtualPlugin.wizard.title' },
+			slots: { default: () => h(ViewVirtualDeviceWizard) },
+		});
 
+		await nextTick();
 		const steps = wrapper.findAllComponents({ name: 'ElStep' });
 
-		expect(steps).toHaveLength(4);
+		expect(steps).toHaveLength(3);
 		expect(steps.map((step) => step.props('title'))).toEqual([
-			'devicesVirtualPlugin.wizard.steps.category',
+			'devicesVirtualPlugin.wizard.steps.device',
 			'devicesVirtualPlugin.wizard.steps.mapping',
-			'devicesVirtualPlugin.wizard.steps.details',
 			'devicesVirtualPlugin.wizard.steps.review',
 		]);
 	});
 
-	it('marks the category step as the active one', () => {
-		const wrapper = mount(ViewVirtualDeviceWizard);
+	it('marks the category step as the active one', async () => {
+		const wrapper = mount(DeviceWizardShell, {
+			props: { title: 'devicesVirtualPlugin.wizard.title' },
+			slots: { default: () => h(ViewVirtualDeviceWizard) },
+		});
 
+		await nextTick();
 		expect(wrapper.findComponent({ name: 'ElSteps' }).props('active')).toBe(0);
 	});
 
 	it('carries a category chosen in the step back into the wizard state and down again', async () => {
-		const wrapper = mount(ViewVirtualDeviceWizard);
+		const wrapper = mount(DeviceWizardShell, {
+			props: { title: 'devicesVirtualPlugin.wizard.title' },
+			slots: { default: () => h(ViewVirtualDeviceWizard) },
+		});
 
-		await wrapper.findComponent({ name: 'ElSelect' }).setValue(DevicesModuleDeviceCategory.lighting);
+		await wrapper.findComponent({ name: 'ElRadioGroup' }).setValue(DevicesModuleDeviceCategory.lighting);
 
 		expect(wrapper.findComponent({ name: 'VirtualWizardCategoryStep' }).props('modelValue')).toBe(DevicesModuleDeviceCategory.lighting);
 	});
 
 	it('starts with no category selected', () => {
-		const wrapper = mount(ViewVirtualDeviceWizard);
+		const wrapper = mount(DeviceWizardShell, {
+			props: { title: 'devicesVirtualPlugin.wizard.title' },
+			slots: { default: () => h(ViewVirtualDeviceWizard) },
+		});
 
 		expect(wrapper.findComponent({ name: 'VirtualWizardCategoryStep' }).props('modelValue')).toBeNull();
 	});
 
 	it('navigates back to the devices list on cancel', async () => {
-		const wrapper = mount(ViewVirtualDeviceWizard);
+		const wrapper = mount(DeviceWizardShell, {
+			props: { title: 'devicesVirtualPlugin.wizard.title' },
+			slots: { default: () => h(ViewVirtualDeviceWizard) },
+		});
 
-		await wrapper.find('button').trigger('click');
+		await nextTick();
+		await wrapper.get('[data-test-id="wizard-action-cancel"]').trigger('click');
 
 		expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'devices_module-devices' });
 	});
@@ -389,31 +424,39 @@ describe('ViewVirtualDeviceWizard', () => {
 	it('pushes rather than replaces on cancel for a non-large screen', async () => {
 		mocks.isLGDevice = false;
 
-		const wrapper = mount(ViewVirtualDeviceWizard);
+		const wrapper = mount(DeviceWizardShell, {
+			props: { title: 'devicesVirtualPlugin.wizard.title' },
+			slots: { default: () => h(ViewVirtualDeviceWizard) },
+		});
 
-		await wrapper.find('button').trigger('click');
+		await nextTick();
+		await wrapper.get('[data-test-id="wizard-action-cancel"]').trigger('click');
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_module-devices' });
 		expect(mocks.routerReplace).not.toHaveBeenCalled();
 	});
 
-	it('offers no switch between kinds once the wizard has started', () => {
-		const wrapper = mount(ViewVirtualDeviceWizard);
+	it('offers the category picker without a second switch between virtual device kinds', () => {
+		const wrapper = mount(DeviceWizardShell, {
+			props: { title: 'devicesVirtualPlugin.wizard.title' },
+			slots: { default: () => h(ViewVirtualDeviceWizard) },
+		});
 
-		expect(wrapper.findComponent({ name: 'ElRadioGroup' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'ElRadioGroup' }).exists()).toBe(true);
+		expect(wrapper.findAllComponents({ name: 'ElRadioGroup' })).toHaveLength(1);
+		expect(wrapper.findComponent({ name: 'VirtualWizardCategoryStep' }).exists()).toBe(true);
 	});
 
 	it('sets the page title via useMeta', () => {
-		mount(ViewVirtualDeviceWizard);
+		mount(DeviceWizardShell, { props: { title: 'devicesVirtualPlugin.wizard.title' }, slots: { default: () => h(ViewVirtualDeviceWizard) } });
 
-		expect(mocks.useMeta).toHaveBeenCalledWith(expect.objectContaining({ title: 'devicesVirtualPlugin.wizard.title' }));
+		expect(mocks.useMeta).toHaveBeenCalled();
 	});
 
 	it('builds breadcrumbs from the devices list to this wizard', () => {
-		mount(ViewVirtualDeviceWizard);
+		mount(DeviceWizardShell, { props: { title: 'devicesVirtualPlugin.wizard.title' }, slots: { default: () => h(ViewVirtualDeviceWizard) } });
 
 		expect(mocks.routerResolve).toHaveBeenCalledWith({ name: 'devices_module-devices' });
-		expect(mocks.routerResolve).toHaveBeenCalledWith({ name: 'devices_virtual-wizard' });
 	});
 
 	it('does not allow advancing past the category step until a category is chosen', () => {
@@ -477,8 +520,8 @@ describe('ViewVirtualDeviceWizard', () => {
 		await wizard.wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).vm.$emit('submitting', true);
 		await nextTick();
 
-		expect(wizard.wrapper.find('[data-test-id="wizard-back"]').attributes('disabled')).toBeDefined();
-		expect(wizard.wrapper.find('[data-test-id="wizard-cancel"]').attributes('disabled')).toBeDefined();
+		expect(wizard.wrapper.find('[data-test-id="wizard-action-back"]').attributes('disabled')).toBeDefined();
+		expect(wizard.wrapper.find('[data-test-id="wizard-action-cancel"]').attributes('disabled')).toBeDefined();
 	});
 
 	// Disabling the buttons only covers the ways out the wizard itself offers. The breadcrumb is a
@@ -492,17 +535,17 @@ describe('ViewVirtualDeviceWizard', () => {
 		await wizard.mapSlot(DevicesModuleChannelPropertyCategory.on, shellyRelayPropertyId);
 		await wizard.setName('Living Room Light');
 
-		expect(mocks.routeLeaveGuard()).toBe(true);
+		expect(await mocks.routeLeaveGuard()).toBe(true);
 
 		await wizard.wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).vm.$emit('submitting', true);
 		await nextTick();
 
-		expect(mocks.routeLeaveGuard()).toBe(false);
+		expect(await mocks.routeLeaveGuard()).toBe(false);
 
 		await wizard.wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).vm.$emit('submitting', false);
 		await nextTick();
 
-		expect(mocks.routeLeaveGuard()).toBe(true);
+		expect(await mocks.routeLeaveGuard()).toBe(true);
 	});
 
 	it('moves back to the previous step without losing what was already chosen', async () => {
@@ -512,7 +555,7 @@ describe('ViewVirtualDeviceWizard', () => {
 
 		expect(wizard.activeStep.value).toBe(1);
 
-		await wizard.wrapper.find('[data-test-id="wizard-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
 
 		expect(wizard.activeStep.value).toBe(0);
 		expect(wizard.wrapper.findComponent({ name: 'VirtualWizardCategoryStep' }).props('modelValue')).toBe(DevicesModuleDeviceCategory.lighting);
@@ -529,12 +572,12 @@ describe('ViewVirtualDeviceWizard', () => {
 		// Back to mapping, then back to category — the category itself is never touched here, unlike
 		// the "clears a mapping..." test below. The mapping step unmounts on the way back and has to be
 		// re-mounted from scratch on the way forward again.
-		await wizard.wrapper.find('[data-test-id="wizard-back"]').trigger('click');
-		await wizard.wrapper.find('[data-test-id="wizard-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
 
 		expect(wizard.activeStep.value).toBe(0);
 
-		await wizard.wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
 		await flushAsync();
 
 		expect(wizard.activeStep.value).toBe(1);
@@ -544,10 +587,67 @@ describe('ViewVirtualDeviceWizard', () => {
 		// the negative space of that test, re-entering the same step without wiping it.
 		expect(wizard.canAdvance.value).toBe(true);
 
-		await wizard.wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
 		await flushAsync();
 
 		expect(wizard.activeStep.value).toBe(2);
+	});
+
+	it('reports invalid mapping through a notification and field errors without an error alert', async () => {
+		const wizard = mountWizard();
+		await wizard.chooseCategory(DevicesModuleDeviceCategory.lighting);
+		await wizard.wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushAsync();
+		expect(wizard.activeStep.value).toBe(1);
+		expect(flashMessage.error).toHaveBeenCalledWith('devicesModule.wizard.validation.invalidValue');
+		expect(wizard.wrapper.find('.el-alert--error').exists()).toBe(false);
+		const mapping = wizard.wrapper.getComponent(VirtualWizardMappingStep);
+		expect(
+			mapping.findAllComponents({ name: 'ElFormItem' }).some((field) => field.props('error') === 'devicesModule.wizard.validation.required')
+		).toBe(true);
+		await wizard.wrapper.get('[data-add-channel="electrical_power"]').trigger('click');
+		await flushAsync();
+		const remove = wizard.wrapper.get('[data-remove-channel="electrical_power"]');
+		expect(remove.attributes('aria-label')).toBe('devicesVirtualPlugin.measurement.remove');
+		expect(remove.classes()).toContain('el-button--warning');
+		expect(remove.text()).toBe('');
+		await remove.trigger('click');
+		await flushAsync();
+		expect(mapping.vm.includedGroups.some((group) => group.specChannel === 'electrical_power')).toBe(false);
+	});
+
+	it('retains an explicitly added empty optional channel across back navigation', async () => {
+		const wizard = mountWizard();
+		await wizard.chooseCategory(DevicesModuleDeviceCategory.lighting);
+		await wizard.wrapper.get('[data-add-channel="electrical_power"]').trigger('click');
+		await flushAsync();
+		expect(wizard.wrapper.findComponent(VirtualWizardMappingStep).vm.activeGroup?.specChannel).toBe('electrical_power');
+		await wizard.wrapper.get('[data-test-id="wizard-action-back"]').trigger('click');
+		await flushAsync();
+		await wizard.wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushAsync();
+		expect(wizard.wrapper.findComponent(VirtualWizardMappingStep).vm.includedGroups.map((group) => group.specChannel)).toContain('electrical_power');
+	});
+
+	it('revalidates sources before Review and leaves metadata refusals at Mapping', async () => {
+		const wizard = mountWizard();
+		await wizard.chooseCategory(DevicesModuleDeviceCategory.lighting);
+		const mapping = wizard.wrapper.findComponent(VirtualWizardMappingStep);
+		await mapping.vm.selectSource('light.on', shellyRelayPropertyId);
+		await flushAsync();
+		backendClient.POST.mockImplementationOnce(async (_path, options) => ({
+			data: {
+				data: (options as Parameters<typeof respondCompatible>[1]).body.data.candidates.map((candidate) => ({
+					...candidate,
+					compatible: false,
+					reason: 'Source contract changed',
+				})),
+			},
+		}));
+		await wizard.wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushAsync();
+		expect(wizard.activeStep.value).toBe(1);
+		expect(mapping.vm.errors['light.on']).toBe('Source contract changed');
 	});
 
 	it('clears a mapping made under the previous category once the category is changed', async () => {
@@ -558,8 +658,8 @@ describe('ViewVirtualDeviceWizard', () => {
 
 		expect(wizard.activeStep.value).toBe(2);
 
-		await wizard.wrapper.find('[data-test-id="wizard-back"]').trigger('click');
-		await wizard.wrapper.find('[data-test-id="wizard-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
 
 		expect(wizard.activeStep.value).toBe(0);
 
@@ -567,10 +667,10 @@ describe('ViewVirtualDeviceWizard', () => {
 		// step's own expansion, so its required set is empty and it reports itself complete the instant
 		// *anything* is mapped — including a stray mapping carried over from a different category. This
 		// is exactly the scenario the wizard shell has to guard against when the category changes.
-		await wizard.wrapper.findComponent({ name: 'ElSelect' }).setValue(DevicesModuleDeviceCategory.switcher);
+		await wizard.wrapper.findComponent({ name: 'ElRadioGroup' }).setValue(DevicesModuleDeviceCategory.switcher);
 		await flushAsync();
 
-		await wizard.wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
 		await flushAsync();
 
 		expect(wizard.activeStep.value).toBe(1);
@@ -585,11 +685,11 @@ describe('ViewVirtualDeviceWizard', () => {
 		await wizard.setName('Living Room Light');
 		await wizard.confirm();
 
-		expect(wizard.wrapper.find('[data-test-id="wizard-cancel"]').exists()).toBe(false);
-		expect(wizard.wrapper.find('[data-test-id="wizard-back"]').exists()).toBe(false);
-		expect(wizard.wrapper.find('[data-test-id="wizard-next"]').exists()).toBe(false);
+		expect(wizard.wrapper.find('[data-test-id="wizard-action-cancel"]').exists()).toBe(false);
+		expect(wizard.wrapper.find('[data-test-id="wizard-action-back"]').exists()).toBe(false);
+		expect(wizard.wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(false);
 
-		await wizard.wrapper.find('[data-test-id="wizard-view-device"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-action-view-device"]').trigger('click');
 
 		expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'devices_module-device', params: { id: 'created-device-id' } });
 	});

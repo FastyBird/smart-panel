@@ -28,7 +28,10 @@
 			class="flex flex-wrap items-center gap-3 py-2"
 		>
 			<icon :icon="icons[mode.activity_mode]" />
-			<strong class="flex-1">{{ text(`modes.${mode.activity_mode}`) }}</strong>
+			<div class="flex-1 min-w-0">
+				<strong>{{ text(`modes.${mode.activity_mode}`) }}</strong>
+				<p class="text-sm text-[var(--el-text-color-secondary)] my-1">{{ summary(mode) }}</p>
+			</div>
 			<el-switch
 				:model-value="mode.activity_enabled"
 				:disabled="!canEdit || busy || loading"
@@ -37,7 +40,6 @@
 				@change="(enabled) => toggle(mode, enabled === true)"
 			/>
 			<el-tag :type="mode.activity_enabled ? 'success' : 'info'">{{ text(mode.activity_enabled ? 'enabled' : 'disabled') }}</el-tag>
-			<span>{{ text('order') }}: {{ mode.activity_order }}</span>
 			<el-button
 				:disabled="busy || loading"
 				:data-testid="`edit-${mode.activity_mode}`"
@@ -103,131 +105,145 @@
 					class="mb-4 p-3 border-solid border border-[var(--el-border-color)] rounded"
 				>
 					<legend>{{ text(domain) }}</legend>
-					<el-form-item :label="text('enabled')">
-						<el-switch
+					<el-form-item :label="text(domain)">
+						<el-select
 							v-model="draft.configuration[domain].enabled"
 							:data-testid="`${domain}-enabled`"
-						/>
-					</el-form-item>
-					<template v-if="domain === 'lighting'">
-						<el-form-item :label="text('lightingMode')">
-							<el-select
-								v-model="draft.configuration.lighting.mode"
-								@change="lightingChanged"
-							>
-								<el-option
-									v-for="value in LightingMode"
-									:key="value"
-									:value="value"
-									:label="text(`lightingModes.${value}`)"
-								/>
-							</el-select>
-						</el-form-item>
-						<el-form-item
-							v-if="draft.configuration.lighting.mode !== LightingMode.off"
-							:label="text('brightness')"
 						>
-							<el-input-number
-								:model-value="draft.configuration.lighting.brightness"
-								:min="0"
-								:max="100"
-								:precision="0"
-								:placeholder="text('defaultBrightness')"
-								@update:model-value="brightnessChanged"
-							/>
-						</el-form-item>
-					</template>
-					<template v-if="domain === 'climate'">
-						<el-alert
-							:title="text('climateAutomation')"
-							type="info"
-							:closable="false"
-							class="mb-3"
-						/>
-						<el-form-item :label="text('climateKind')">
-							<el-select
-								:model-value="climateKind"
-								data-testid="climate-kind"
-								@update:model-value="setClimateKind"
-							>
-								<el-option
-									v-for="value in climateKinds"
-									:key="value"
-									:value="value"
-									:label="text(`climateKinds.${value}`)"
-								/>
-							</el-select>
-						</el-form-item>
-						<el-form-item
-							v-if="climateKind === 'preset'"
-							:label="text('preset')"
-						>
-							<el-select v-model="draft.configuration.climate.thermostat_preset">
-								<el-option
-									v-for="value in Preset"
-									:key="value"
-									:value="value"
-									:label="text(`presets.${value}`)"
-								/>
-							</el-select>
-						</el-form-item>
-						<template v-if="climateKind === 'setpoint' || climateKind === 'delta'">
-							<el-form-item :label="text('climateMode')">
-								<el-select v-model="draft.configuration.climate.mode">
-									<el-option
-										v-for="value in [ClimateMode.heat, ClimateMode.cool]"
-										:key="value"
-										:value="value"
-										:label="text(`climateModes.${value}`)"
-									/>
-								</el-select>
-							</el-form-item>
-							<el-form-item :label="text(climateKind)">
-								<el-input-number
-									v-if="climateKind === 'setpoint'"
-									v-model="draft.configuration.climate.setpoint"
-									:precision="1"
-									:step="0.5"
-								/>
-								<el-input-number
-									v-else
-									v-model="draft.configuration.climate.setpoint_delta"
-									:precision="1"
-									:step="0.5"
-								/>
-							</el-form-item>
-						</template>
-					</template>
-					<el-form-item
-						v-if="domain === 'covers'"
-						:label="text('position')"
-					>
-						<el-input-number
-							v-model="draft.configuration.covers.position"
-							:min="0"
-							:max="100"
-							:precision="0"
-						/>
-					</el-form-item>
-					<el-form-item
-						v-if="domain === 'media'"
-						:label="text('mediaActivity')"
-					>
-						<el-select v-model="draft.configuration.media.activity">
 							<el-option
-								v-for="value in MediaActivity"
-								:key="value"
-								:value="value"
-								:label="text(`mediaActivities.${value}`)"
+								:value="false"
+								:label="text('leaveUnchanged')"
+							/>
+							<el-option
+								:value="true"
+								:label="text('apply')"
 							/>
 						</el-select>
 					</el-form-item>
-					<el-alert
-						v-if="domain === 'security'"
-						:title="text('securityUnsupported')"
-						type="warning"
-						:closable="false"
-					/>
+					<template v-if="draft.configuration[domain].enabled">
+						<template v-if="domain === 'lighting'">
+							<el-form-item :label="text('lightingMode')">
+								<el-select
+									v-model="draft.configuration.lighting.mode"
+									@change="lightingChanged"
+								>
+									<el-option
+										v-for="value in LightingMode"
+										:key="value"
+										:value="value"
+										:label="text(`lightingModes.${value}`)"
+									/>
+								</el-select>
+							</el-form-item>
+							<el-form-item
+								v-if="draft.configuration.lighting.mode !== LightingMode.off"
+								:label="text('brightness')"
+							>
+								<el-input-number
+									:model-value="draft.configuration.lighting.brightness"
+									:min="0"
+									:max="100"
+									:precision="0"
+									:placeholder="text('defaultBrightness')"
+									@update:model-value="brightnessChanged"
+								/>
+							</el-form-item>
+						</template>
+						<template v-if="domain === 'climate'">
+							<el-alert
+								:title="text('climateAutomation')"
+								type="info"
+								:closable="false"
+								class="mb-3"
+							/>
+							<el-form-item :label="text('climateKind')">
+								<el-select
+									:model-value="climateKind"
+									data-testid="climate-kind"
+									@update:model-value="setClimateKind"
+								>
+									<el-option
+										v-for="value in climateKinds"
+										:key="value"
+										:value="value"
+										:label="text(`climateKinds.${value}`)"
+									/>
+								</el-select>
+							</el-form-item>
+							<el-form-item
+								v-if="climateKind === 'preset'"
+								:label="text('preset')"
+							>
+								<el-select
+									v-model="draft.configuration.climate.thermostat_preset"
+									data-testid="thermostat-preset"
+								>
+									<el-option
+										v-for="value in Preset"
+										:key="value"
+										:value="value"
+										:label="text(`presets.${value}`)"
+									/>
+								</el-select>
+							</el-form-item>
+							<template v-if="climateKind === 'setpoint' || climateKind === 'delta'">
+								<el-form-item :label="text('climateMode')">
+									<el-select v-model="draft.configuration.climate.mode">
+										<el-option
+											v-for="value in [ClimateMode.heat, ClimateMode.cool]"
+											:key="value"
+											:value="value"
+											:label="text(`climateModes.${value}`)"
+										/>
+									</el-select>
+								</el-form-item>
+								<el-form-item :label="text(climateKind)">
+									<el-input-number
+										v-if="climateKind === 'setpoint'"
+										v-model="draft.configuration.climate.setpoint"
+										:precision="1"
+										:step="0.5"
+									/>
+									<el-input-number
+										v-else
+										v-model="draft.configuration.climate.setpoint_delta"
+										:precision="1"
+										:step="0.5"
+									/>
+								</el-form-item>
+							</template>
+						</template>
+						<el-form-item
+							v-if="domain === 'covers'"
+							:label="text('position')"
+						>
+							<el-input-number
+								v-model="draft.configuration.covers.position"
+								:min="0"
+								:max="100"
+								:precision="0"
+							/>
+						</el-form-item>
+						<el-form-item
+							v-if="domain === 'media'"
+							:label="text('mediaActivity')"
+						>
+							<el-select v-model="draft.configuration.media.activity">
+								<el-option
+									v-for="value in MediaActivity"
+									:key="value"
+									:value="value"
+									:label="text(`mediaActivities.${value}`)"
+								/>
+							</el-select>
+						</el-form-item>
+						<el-alert
+							v-if="domain === 'security'"
+							:title="text('securityUnsupported')"
+							type="warning"
+							:closable="false"
+						/>
+					</template>
 				</fieldset>
 			</el-form>
 			<el-alert
@@ -330,6 +346,30 @@ const icons: Record<ActivityMode, string> = {
 	sleep: 'mdi:bed-king',
 	entertainment: 'mdi:television-play',
 	away: 'mdi:exit-run',
+};
+const summary = (mode: ActivityConfig): string => {
+	const config = mode.activity_configuration;
+	const parts: string[] = [];
+	if (config.lighting.enabled)
+		parts.push(
+			`${text('lighting')}: ${text(`lightingModes.${config.lighting.mode}`)}${config.lighting.brightness === undefined ? '' : ` ${config.lighting.brightness} %`}`
+		);
+	if (config.climate.enabled) {
+		const climate = config.climate;
+		const value =
+			climate.thermostat_preset !== undefined
+				? text(`presets.${climate.thermostat_preset}`)
+				: climate.setpoint !== undefined
+					? `${text(`climateModes.${climate.mode}`)} ${climate.setpoint} °C`
+					: climate.setpoint_delta !== undefined
+						? `${text(`climateModes.${climate.mode}`)} ${climate.setpoint_delta > 0 ? '+' : ''}${climate.setpoint_delta} °C`
+						: text('none');
+		parts.push(`${text('climate')}: ${value}`);
+	}
+	if (config.covers.enabled) parts.push(`${text('covers')}: ${config.covers.position} %`);
+	if (config.media.enabled) parts.push(`${text('media')}: ${text(`mediaActivities.${config.media.activity}`)}`);
+	if (config.security.enabled) parts.push(text('securityUnsupported'));
+	return parts.join(' · ') || text('noChanges');
 };
 const dirty = computed(() => !!draft.value && !!selected.value && JSON.stringify(draft.value) !== JSON.stringify(activityDraft(selected.value)));
 const valid = computed(() => ActivityDraftSchema.safeParse(draft.value).success);

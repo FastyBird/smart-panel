@@ -136,6 +136,9 @@
 			"rescanFailed": "WLED-Erkennung konnte nicht neu gestartet werden.",
 			"probeFailed": "Verbindung zum WLED-Gerät fehlgeschlagen.",
 			"adoptionFailed": "Die ausgewählten WLED-Geräte konnten nicht übernommen werden."
+		},
+		"selection": {
+			"description": "Controller für adressierbare LEDs mit WLED."
 		}
 	}
 }

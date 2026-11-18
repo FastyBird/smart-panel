@@ -1,3 +1,5 @@
+import { effectScope } from 'vue';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import type { GroupProfile } from './useGroupCatalog';
@@ -48,5 +50,37 @@ describe('metadata-only group profile catalog', () => {
 		expect(catalog.error.value).toContain('reload before repair');
 		expect(catalog.profiles.value).toHaveLength(1);
 		expect(catalog.catalog.value).toBeNull();
+	});
+	it('aborts superseded requests and cancels pending reads when the wizard is unmounted', async () => {
+		let finish!: (value: ReturnType<typeof response>) => void;
+		client.POST.mockReset().mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				})
+		);
+		const scope = effectScope();
+		const catalog = scope.run(() => useGroupCatalog())!;
+		const first = catalog.load({ profile: 'fan' as GroupProfile });
+		const firstFinish = finish;
+		const firstSignal = client.POST.mock.calls[0][1].signal as AbortSignal;
+		const second = catalog.load({ profile: 'cover' as GroupProfile });
+		expect(firstSignal.aborted).toBe(true);
+		const secondSignal = client.POST.mock.calls[1][1].signal as AbortSignal;
+		expect(secondSignal.aborted).toBe(false);
+		scope.stop();
+		expect(secondSignal.aborted).toBe(true);
+		firstFinish(response('fan'));
+		finish(response('cover'));
+		await Promise.all([first, second]);
+		expect(catalog.catalog.value).toBeNull();
+		expect(catalog.pending.value).toBe(false);
+	});
+	it('leaves rejected-session feedback to the global authentication handler', async () => {
+		client.POST.mockReset().mockResolvedValue({ error: { message: 'Token not found' }, response: { status: 401 } });
+		const catalog = useGroupCatalog();
+		expect(await catalog.load({})).toBeNull();
+		expect(catalog.error.value).toBeNull();
+		expect(catalog.pending.value).toBe(false);
 	});
 });

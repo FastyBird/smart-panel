@@ -25,6 +25,7 @@ vi.mock('../devices.constants', () => ({
 		DEVICES_ADD: 'devices-add',
 		DEVICES_EDIT: 'devices-edit',
 		DEVICES_WIZARD: 'devices-wizard',
+		DEVICES_WIZARD_SELECT: 'devices-wizard-select',
 		DEVICE: 'device',
 		DEVICE_EDIT: 'device-edit',
 		DEVICE_CONTROL: 'device-control',
@@ -51,7 +52,7 @@ describe('devices module routes', () => {
 		expect(wizardRoute?.props).toBe(true);
 	});
 
-	it('redirects incomplete wizard paths before the edit route can match them as ids', () => {
+	it('opens the plugin chooser before the edit route can match the wizard path as an id', () => {
 		const devicesRoute = ModuleRoutes.find((route) => route.name === RouteNames.DEVICES);
 		const children = devicesRoute?.children ?? [];
 		const editIndex = children.findIndex((route) => route.name === RouteNames.DEVICES_EDIT);
@@ -59,6 +60,8 @@ describe('devices module routes', () => {
 
 		expect(wizardFallbackIndex).toBeGreaterThanOrEqual(0);
 		expect(wizardFallbackIndex).toBeLessThan(editIndex);
-		expect(children[wizardFallbackIndex]?.redirect).toEqual({ name: RouteNames.DEVICES });
+		expect(children[wizardFallbackIndex]?.name).toBe(RouteNames.DEVICES_WIZARD_SELECT);
+		expect(children[wizardFallbackIndex]?.component).toBeTypeOf('function');
+		expect(children[wizardFallbackIndex]?.redirect).toBeUndefined();
 	});
 });

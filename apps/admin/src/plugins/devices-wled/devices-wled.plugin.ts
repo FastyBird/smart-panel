@@ -14,6 +14,7 @@ import {
 	type IDevicePluginsComponents,
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
+import DeviceWizard from '../../modules/devices/components/wizard/device-wizard.vue';
 
 import { WledConfigForm, WledDeviceAddForm, WledDeviceEditForm } from './components/components';
 import { useDevicesWizard } from './composables/composables';
@@ -76,7 +77,17 @@ export default {
 					components: {
 						deviceAddForm: WledDeviceAddForm,
 						deviceEditForm: WledDeviceEditForm,
-						deviceWizardAdapter: useDevicesWizard,
+						deviceWizard: {
+							selection: {
+								kind: 'integration',
+								icon: 'mdi:led-strip-variant',
+								order: 50,
+								description: 'devicesWledPlugin.wizard.selection.description',
+							},
+							component: DeviceWizard,
+							props: { adapterFactory: useDevicesWizard },
+							capabilities: { discovery: true, batch: true },
+						},
 					},
 					schemas: {
 						deviceSchema: WledDeviceSchema,

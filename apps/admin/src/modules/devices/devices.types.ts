@@ -1,8 +1,7 @@
 /*
 eslint-disable @typescript-eslint/no-empty-object-type
 */
-import type { ComponentOptionsMixin, DefineComponent } from 'vue';
-import type { RouteLocationRaw } from 'vue-router';
+import type { Component, ComponentOptionsMixin, DefineComponent } from 'vue';
 
 import { type IChannelAddFormProps, channelAddFormEmits } from './components/channels/channel-add-form.types';
 import { type IChannelEditFormProps, channelEditFormEmits } from './components/channels/channel-edit-form.types';
@@ -23,7 +22,7 @@ import { ChannelCreateReqSchema, type ChannelSchema, ChannelUpdateReqSchema } fr
 import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './store/devices.store.schemas';
 import type { IDevice } from './store/devices.store.types';
 
-/** Props passed to the plugin-owned section below the shared device information card. */
+/** Props passed to plugin-owned content inside a device detail tab. */
 export interface IDeviceDetailSectionProps {
 	device: IDevice;
 }
@@ -31,8 +30,8 @@ export interface IDeviceDetailSectionProps {
 export type IDevicePluginsComponents = {
 	deviceAddForm?: DefineComponent<IDeviceAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceAddFormEmits>;
 	deviceEditForm?: DefineComponent<IDeviceEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceEditFormEmits>;
-	deviceWizardAdapter?: () => IDeviceWizardAdapter;
-	deviceDetailSection?: DefineComponent<IDeviceDetailSectionProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
+	deviceWizard?: IDeviceWizardDefinition;
+	deviceDetailTabs?: IDeviceDetailTab[];
 };
 
 export type IDevicePluginsSchemas = {
@@ -43,40 +42,41 @@ export type IDevicePluginsSchemas = {
 	deviceUpdateReqSchema?: typeof DeviceUpdateReqSchema;
 };
 
-export interface IDeviceWizardRouteLauncher {
-	/** Translation key rendered by the Devices view. */
-	label: string;
-	icon: string;
-	to: RouteLocationRaw;
-	/** Stable base id; the small-screen launcher appends `-small`. */
-	testId: string;
-	/**
-	 * The wizard is the only way to create the plugin's devices: the generic Add device picker does not offer an
-	 * element of this plugin unless it has its own `deviceAddForm`.
-	 */
-	exclusive?: boolean;
-	/**
-	 * Kinds of device the wizard can build, when it builds more than one. With these the launcher
-	 * opens a chooser first — the same dialog the adoption wizard uses to pick a plugin — and `to` is
-	 * only the fallback for a direct link. Labels and descriptions are translation keys.
-	 */
-	options?: IDeviceWizardRouteLauncherOption[];
-	/** Translation key for the chooser's title. */
-	optionsTitle?: string;
-}
-
-export interface IDeviceWizardRouteLauncherOption {
-	value: string;
+/** Translation keys and plugin-owned content, rendered inside the shared wizard. */
+export interface IDeviceWizardVariant {
+	id: string;
 	label: string;
 	description: string;
 	icon: string;
-	to: RouteLocationRaw;
-	testId: string;
+	component: Component;
+	props?: Record<string, unknown>;
 }
 
-export type IDevicePluginRoutes = {
-	wizard?: IDeviceWizardRouteLauncher;
-};
+/** Picker presentation belongs to the plugin; it does not change the plugin's device capabilities. */
+export type IDeviceWizardSelection = {
+	label?: string;
+	description?: string;
+	icon?: string;
+	order?: number;
+} & ({ kind: 'integration' } | { kind: 'section'; section: { label: string; description: string } });
+
+export type IDeviceWizardDefinition = {
+	capabilities?: { discovery?: boolean; batch?: boolean; manual?: boolean };
+	selection?: IDeviceWizardSelection;
+} & (
+	| { component: Component; props?: { adapterFactory?: () => IDeviceWizardAdapter } & Record<string, unknown>; variants?: never }
+	| { variants: IDeviceWizardVariant[]; component?: never; props?: never }
+);
+
+export interface IDeviceDetailTab {
+	id: string;
+	label: string;
+	icon: string;
+	component: Component;
+	visible?: (device: IDevice) => boolean;
+}
+
+export type IDevicePluginRoutes = Record<string, never>;
 
 export type IChannelPluginsComponents = {
 	channelAddForm?: DefineComponent<IChannelAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof channelAddFormEmits>;

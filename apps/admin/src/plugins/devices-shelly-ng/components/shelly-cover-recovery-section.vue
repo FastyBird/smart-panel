@@ -13,6 +13,7 @@ import { injectSockets, injectStoresManager } from '../../../common';
 import type { IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey } from '../../../modules/devices/store/keys';
 
+import { shellyCoverRecoveryTargets } from './shelly-cover-recovery-targets';
 import ShellyCoverRecovery from './shelly-cover-recovery.vue';
 
 const props = defineProps<{ device: IDevice }>();
@@ -34,12 +35,6 @@ onBeforeUnmount(() => {
 	sockets.off('disconnect', disconnect);
 });
 const targets = computed(() =>
-	props.device.type !== 'devices-shelly-ng'
-		? []
-		: channels.findForDevice(props.device.id).flatMap((channel) => {
-				if (channel.category !== 'window_covering' || !/^cover:\d+$/.test(channel.identifier ?? '')) return [];
-				const command = properties.findForChannel(channel.id).find((property) => property.category === 'command');
-				return command ? [{ deviceId: props.device.id, channelId: channel.id, propertyId: command.id }] : [];
-			})
+	shellyCoverRecoveryTargets(props.device, channels.findForDevice(props.device.id), (id) => properties.findForChannel(id))
 );
 </script>

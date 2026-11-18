@@ -27,6 +27,29 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 describe('measurement authoring API lifecycle', () => {
+	it('evaluates a sidebar draft without changing review state, errors, busy state or graph revision', async () => {
+		const stored = { ...config(), source: { ...config().source, source_property: 'physical' } };
+		client.GET.mockResolvedValueOnce({ data: { data: stored } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		authoring.error.value = 'Keep the primary request error';
+		const signal = new AbortController().signal;
+		const snapshot = { ...stored, graph_revision: 99, preview_result: { input: 2, value: 2, error: null, qualified: false } };
+		client.POST.mockResolvedValueOnce({ data: { data: snapshot } });
+		await expect(authoring.evaluateDraft(signal)).resolves.toEqual(snapshot);
+		expect(client.POST.mock.calls[0][1].signal).toBe(signal);
+		expect(authoring.busy.value).toBe(false);
+		expect(authoring.error.value).toBe('Keep the primary request error');
+		expect(authoring.preview.value).toBeNull();
+		expect(authoring.lastPreview.value).toBeNull();
+		expect(authoring.canSavePreview.value).toBe(false);
+		client.POST.mockRejectedValueOnce(new Error('Background offline'));
+		await expect(authoring.evaluateDraft()).rejects.toThrow('Background offline');
+		expect(authoring.error.value).toBe('Keep the primary request error');
+		client.PUT.mockResolvedValueOnce({ data: { data: stored } });
+		await authoring.save();
+		expect(client.PUT.mock.calls[0][1].body.expected_graph_revision).toBe(10);
+	});
 	it.each(['http', 'throw'] as const)('keeps built-in editing available after a %s numeric catalogue failure', async (failure) => {
 		const stored = { ...config(), source: { ...config().source, source_property: 'physical' } };
 		client.GET.mockResolvedValueOnce({ data: { data: stored } });
@@ -599,11 +622,14 @@ describe('evaluated draft snapshot lifecycle', () => {
 			vi.advanceTimersByTime(1000);
 			expect(authoring.preview.value).toBeNull();
 			expect(authoring.previewExpired.value).toBe(true);
+			expect(authoring.lastPreview.value).toMatchObject({ preview_result: { value: false } });
 			expect(authoring.canSavePreview.value).toBe(false);
 			client.POST.mockResolvedValueOnce({ data: { data: evaluatedState(null, null, ['quorum_lost']) } });
 			await authoring.previewDraft();
 			expect(authoring.preview.value).toMatchObject({ preview_result: { value: null, reasons: ['quorum_lost'] } });
 			expect(authoring.previewExpired.value).toBe(false);
+			authoring.model.name = 'Changed draft';
+			expect(authoring.lastPreview.value).toBeNull();
 			authoring.invalidatePreview();
 		} finally {
 			vi.useRealTimers();
@@ -639,5 +665,34 @@ describe('evaluated draft snapshot lifecycle', () => {
 		await authoring.previewDraft();
 		expect(authoring.preview.value).toMatchObject({ preview_result: { reasons: ['preview_revoked'] } });
 		expect(authoring.canSavePreview.value).toBe(false);
+	});
+});
+
+describe('conversion calculation failure gate', () => {
+	it.each(['input_out_of_range', 'output_out_of_range'])('allows saving the validated policy while retaining the %s diagnostic', async (error) => {
+		const stored = { ...config(), source: { ...config().source, source_property: 'physical' } };
+		client.GET.mockResolvedValueOnce({ data: { data: stored } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		client.POST.mockResolvedValueOnce({ data: { data: { ...stored, preview_result: { input: 22, value: null, error, qualified: false } } } });
+		await authoring.previewDraft();
+		expect(authoring.canSavePreview.value).toBe(true);
+		expect(authoring.lastPreview.value?.preview_result).toMatchObject({ error });
+		authoring.invalidatePreview();
+	});
+
+	it('shows a failed calculation without authorizing a save', async () => {
+		const stored = { ...config(), source: { ...config().source, source_property: 'physical' } };
+		client.GET.mockResolvedValueOnce({ data: { data: stored } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		authoring.model.previewInput = 22;
+		client.POST.mockResolvedValueOnce({
+			data: { data: { ...stored, preview_result: { input: 22, value: null, error: 'nonfinite_output', qualified: false } } },
+		});
+		await authoring.previewDraft();
+		expect(authoring.lastPreview.value).toMatchObject({ preview_result: { error: 'nonfinite_output' } });
+		expect(authoring.canSavePreview.value).toBe(false);
+		authoring.invalidatePreview();
 	});
 });

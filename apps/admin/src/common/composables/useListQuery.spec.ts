@@ -12,6 +12,7 @@ import { listQueryStoreKey } from '../store/keys';
 
 import { useListQuery } from './useListQuery';
 
+const routeName = ref('devices');
 const routeQuery = ref<Record<string, unknown>>({});
 
 const replaceSpy = vi.fn((arg: { query: Record<string, unknown> }) => {
@@ -22,6 +23,9 @@ const replaceSpy = vi.fn((arg: { query: Record<string, unknown> }) => {
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
+		get name() {
+			return routeName.value;
+		},
 		get query() {
 			return routeQuery.value;
 		},
@@ -79,6 +83,7 @@ const defaultPagination: { page: number; size: number } = { page: 1, size: 20 };
 const defaultSort: { by: string; dir: 'asc' | 'desc' | null }[] = [{ by: 'name', dir: 'asc' }];
 
 const resetRouter = () => {
+	routeName.value = 'devices';
 	routeQuery.value = {};
 	replaceSpy.mockClear();
 };
@@ -248,6 +253,73 @@ describe('useListQuery (composable)', () => {
 			serviceKind: 'plugin',
 			search: 'stored',
 		});
+	});
+
+	it('does not hydrate or read parent-list filters on a wizard reload', () => {
+		fakeStore.set({ key: 'scoped', data: { filters: { ...defaultFilters, types: ['devices-shelly-ng'] } }, version: 1 });
+		routeName.value = 'devices-wizard';
+		routeQuery.value = { variant: 'transform', types: 'child-owned-value' };
+		const scope = effectScope();
+		const state = scope.run(() =>
+			useListQuery({
+				key: 'scoped',
+				filters: { schema: FilterSchema, defaults: defaultFilters },
+				queryRoute: 'devices',
+			})
+		)!;
+		expect(state.filters.value.types).toEqual(['devices-shelly-ng']);
+		expect(replaceSpy).not.toHaveBeenCalled();
+		expect(routeQuery.value).toEqual({ variant: 'transform', types: 'child-owned-value' });
+		scope.stop();
+	});
+
+	it('keeps pending filter, sort, pagination and view debounces out of a child URL', async () => {
+		const scope = effectScope();
+		const state = scope.run(() =>
+			useListQuery({
+				key: 'scoped',
+				filters: { schema: FilterSchema, defaults: defaultFilters },
+				sort: { defaults: defaultSort },
+				pagination: { defaults: defaultPagination },
+				viewMode: { options: ['table', 'cards'], default: 'table' },
+				queryRoute: 'devices',
+			})
+		)!;
+		state.filters.value.types = ['devices-shelly-ng'];
+		state.sort.value = [{ by: 'name', dir: 'desc' }];
+		state.pagination.value.page = 3;
+		state.viewMode.value = 'cards';
+		await nextTick();
+		routeName.value = 'devices-wizard';
+		routeQuery.value = { variant: 'aggregate' };
+		await vi.advanceTimersByTimeAsync(200);
+		expect(replaceSpy).not.toHaveBeenCalled();
+		expect(routeQuery.value).toEqual({ variant: 'aggregate' });
+		expect(fakeStore.get<{ filters: Filters }>({ key: 'scoped', expectedVersion: 1 })?.filters.types).toEqual(['devices-shelly-ng']);
+		scope.stop();
+	});
+
+	it('restores the latest list state when returning from a child, preserving unrelated parameters', async () => {
+		fakeStore.set({ key: 'scoped', data: { filters: { ...defaultFilters, types: ['old'] } }, version: 1 });
+		routeName.value = 'devices-wizard';
+		routeQuery.value = { variant: 'aggregate' };
+		const scope = effectScope();
+		const state = scope.run(() =>
+			useListQuery({
+				key: 'scoped',
+				filters: { schema: FilterSchema, defaults: defaultFilters },
+				queryRoute: 'devices',
+			})
+		)!;
+		expect(replaceSpy).not.toHaveBeenCalled();
+		state.filters.value.types = ['devices-shelly-ng'];
+		await vi.advanceTimersByTimeAsync(200);
+		expect(routeQuery.value).toEqual({ variant: 'aggregate' });
+		routeQuery.value = { tab: 'devices' };
+		routeName.value = 'devices';
+		await nextTick();
+		expect(routeQuery.value).toEqual({ tab: 'devices', types: ['devices-shelly-ng'] });
+		scope.stop();
 	});
 
 	it('clears pending debounce timers when the wrapping scope is disposed', async () => {

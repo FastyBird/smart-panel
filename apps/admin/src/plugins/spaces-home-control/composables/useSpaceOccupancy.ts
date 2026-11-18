@@ -1,4 +1,4 @@
-import { type Ref, onScopeDispose, ref, watch } from 'vue';
+import { type InjectionKey, type Ref, hasInjectionContext, inject, onScopeDispose, provide, ref, watch } from 'vue';
 
 import { cloneDeep } from 'lodash';
 
@@ -20,7 +20,7 @@ export const occupancyDraft = (row: OccupancyConfiguration): OccupancyDraft => (
 	vacant_mode: row.vacant_mode,
 });
 
-export const useSpaceOccupancy = (spaceId: Ref<string | undefined>) => {
+const createSpaceOccupancy = (spaceId: Ref<string | undefined>) => {
 	const { client } = useBackend();
 	const configuration = ref<OccupancyConfiguration | null>(null);
 	const loading = ref(false);
@@ -142,4 +142,17 @@ export const useSpaceOccupancy = (spaceId: Ref<string | undefined>) => {
 		activeLoad?.abort();
 	});
 	return { configuration, loading, busy, error, load, save };
+};
+
+// A space detail shares saved configuration with its compact summary and modal editor.
+const sourceKey: InjectionKey<{ id: Ref<string | undefined>; source: ReturnType<typeof createSpaceOccupancy> }> =
+	Symbol('space-Occupancy-configuration');
+export const provideSpaceOccupancy = (id: Ref<string | undefined>) => {
+	const source = createSpaceOccupancy(id);
+	provide(sourceKey, { id, source });
+	return source;
+};
+export const useSpaceOccupancy = (id: Ref<string | undefined>) => {
+	const shared = hasInjectionContext() ? inject(sourceKey, null) : null;
+	return shared && shared.id.value === id.value ? shared.source : createSpaceOccupancy(id);
 };

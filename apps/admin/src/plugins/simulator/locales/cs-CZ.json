@@ -45,6 +45,9 @@
 			"details": "Podrobnosti",
 			"created": "Vytvořeno",
 			"failed": "Selhalo"
+		},
+		"selection": {
+			"description": "Vygenerujte testovací zařízení bez skutečného hardwaru."
 		}
 	},
 	"headings": {

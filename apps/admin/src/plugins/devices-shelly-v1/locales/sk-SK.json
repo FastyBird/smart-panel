@@ -138,5 +138,10 @@
 				"title": "Pridať"
 			}
 		}
+	},
+	"wizard": {
+		"selection": {
+			"description": "Zariadenia Shelly prvej generácie vo vašej sieti."
+		}
 	}
 }

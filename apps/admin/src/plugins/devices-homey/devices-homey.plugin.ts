@@ -12,6 +12,7 @@ import {
 	type IDevicePluginsComponents,
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
+import DeviceWizard from '../../modules/devices/components/wizard/device-wizard.vue';
 
 import { HomeyConfigForm } from './components/components';
 import { useDevicesWizard } from './composables/composables';
@@ -77,7 +78,9 @@ export default {
 				},
 				{
 					type: DEVICES_HOMEY_TYPE,
-					components: { deviceWizardAdapter: useDevicesWizard },
+					components: {
+						deviceWizard: { component: DeviceWizard, props: { adapterFactory: useDevicesWizard }, capabilities: { discovery: true, batch: true } },
+					},
 					schemas: {
 						deviceSchema: HomeyDeviceSchema,
 						deviceCreateReqSchema: HomeyDeviceCreateReqSchema,

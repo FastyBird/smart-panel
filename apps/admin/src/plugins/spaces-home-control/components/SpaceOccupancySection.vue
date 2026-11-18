@@ -250,9 +250,13 @@ const reset = () => {
 		revision.value = configuration.value.revision;
 	}
 };
-watch(configuration, () => {
-	if (!dirty.value) reset();
-});
+watch(
+	configuration,
+	() => {
+		if (!dirty.value) reset();
+	},
+	{ immediate: true }
+);
 const supplemental = async () => {
 	if (disposed) return;
 	controller?.abort();
@@ -297,6 +301,7 @@ watch(
 		revision.value = 0;
 		state.value = null;
 		sensors.value = [];
+		if (configuration.value?.space_id === props.spaceId) reset();
 		void supplemental();
 	},
 	{ immediate: true }
@@ -355,7 +360,7 @@ const resume = () => {
 	});
 	return submission;
 };
-defineExpose({ hasUnsavedChanges: dirty, waitForSave: () => submission ?? Promise.resolve() });
+defineExpose({ hasUnsavedChanges: dirty, waitForSave: () => submission ?? Promise.resolve(), discard: () => discard() });
 onScopeDispose(() => {
 	disposed = true;
 	generation++;

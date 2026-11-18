@@ -1,5 +1,5 @@
 import { type Ref, computed, ref, toRaw, watch } from 'vue';
-import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
+import { type LocationQueryRaw, type RouteRecordName, useRoute, useRouter } from 'vue-router';
 
 import { isEqual } from 'lodash';
 import { z } from 'zod';
@@ -33,6 +33,8 @@ interface IUseListQueryProps<F extends z.ZodObject<AnyShape> | undefined, V exte
 		default: V;
 	};
 	syncQuery?: boolean;
+	/** Restrict URL reads/writes when a parent list stays mounted on child routes. */
+	queryRoute?: RouteRecordName;
 	version?: number;
 	debounceMs?: number;
 	ttlMs?: number | null;
@@ -158,6 +160,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 	pagination,
 	viewMode,
 	syncQuery = true,
+	queryRoute,
 	version = 1,
 	debounceMs = 150,
 	ttlMs = null,
@@ -176,6 +179,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 
 	const route = useRoute();
 	const router = useRouter();
+	const queryActive = computed(() => syncQuery && (queryRoute === undefined || route.name === queryRoute));
 
 	const store = storesManager.getStore(listQueryStoreKey);
 
@@ -245,20 +249,20 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 	});
 
 	const fromQueryFilters =
-		syncQuery && routeHasRelevantKeys.value && filters
+		queryActive.value && routeHasRelevantKeys.value && filters
 			? applySchema(filters.schema, filters.defaults, { ...filters.defaults, ...normalizedRouteQuery.value })
 			: undefined;
 
 	const fromQueryPagination =
-		syncQuery && routeHasRelevantKeys.value && pagination
+		queryActive.value && routeHasRelevantKeys.value && pagination
 			? applySchema(PaginationEntrySchema, pagination.defaults, { ...pagination.defaults, ...normalizedRouteQuery.value })
 			: undefined;
 
 	const fromQuerySort =
-		syncQuery && sort && route.query[SORT_Q] !== undefined ? (normalizedRouteQuery.value[SORT_Q] as ISortEntry[] | undefined) : undefined;
+		queryActive.value && sort && route.query[SORT_Q] !== undefined ? (normalizedRouteQuery.value[SORT_Q] as ISortEntry[] | undefined) : undefined;
 
 	const fromQueryViewMode =
-		syncQuery && viewMode && route.query[VIEW_Q] !== undefined ? (normalizedRouteQuery.value[VIEW_Q] as V | undefined) : undefined;
+		queryActive.value && viewMode && route.query[VIEW_Q] !== undefined ? (normalizedRouteQuery.value[VIEW_Q] as V | undefined) : undefined;
 
 	// Load stored
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -377,6 +381,8 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 
 	// URL sync (debounced)
 	const replaceQuery = (next: LocationQueryRaw) => {
+		// Check at execution time as navigation can happen during the debounce.
+		if (!queryActive.value) return;
 		router.replace({ query: next }).catch(() => void 0);
 	};
 
@@ -515,9 +521,9 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 		}
 	});
 
-	// Hydrate URL once from store if no relevant keys present
-	tryOnMounted(() => {
-		if (!syncQuery || !stored || !isStoredValid || routeHasRelevantKeys.value) {
+	// Restore current list state only on the route that owns its query parameters.
+	const hydrateQuery = () => {
+		if (!queryActive.value || routeHasRelevantKeys.value) {
 			return;
 		}
 
@@ -525,13 +531,13 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 		const preservedQueryKeyCount = Object.keys(next).length;
 
 		// filters
-		if (filters && stored.filters) {
+		if (filters) {
 			for (const k of filterKeys) {
 				if (!includeInQuery(k)) {
 					continue;
 				}
 
-				const qv = toQueryValue(stored.filters[k as keyof FF]);
+				const qv = toQueryValue(filtersRef.value[k as keyof FF]);
 				const dv = toQueryValue(filters.defaults[k as keyof typeof filters.defaults]);
 
 				if (isEmptyValue(qv) || isEqual(qv, dv)) {
@@ -543,8 +549,8 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 		}
 
 		// sort
-		if (stored.sort) {
-			const qv = sortToQuery(sanitizeSort(stored.sort));
+		if (sort) {
+			const qv = sortToQuery(sanitizeSort(sortRef.value));
 			const dv = sortToQuery(sortDefaults);
 
 			if (qv && !isEqual(qv, dv)) {
@@ -553,13 +559,13 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 		}
 
 		// pagination
-		if (stored.pagination) {
+		if (pagination) {
 			for (const k of PAG_Q_KEYS) {
 				if (!includeInQuery(k)) {
 					continue;
 				}
 
-				const qv = toQueryValue(stored.pagination[k]);
+				const qv = toQueryValue(paginationRef.value[k]);
 				const dv = toQueryValue(paginationDefaults[k]);
 
 				if (isEmptyValue(qv) || isEqual(qv, dv)) {
@@ -571,13 +577,17 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 		}
 
 		// view mode
-		if (viewMode && stored.viewMode && includeInQuery(VIEW_Q) && stored.viewMode !== viewModeDefault) {
-			next[VIEW_Q] = stored.viewMode;
+		if (viewMode && viewModeRef.value && includeInQuery(VIEW_Q) && viewModeRef.value !== viewModeDefault) {
+			next[VIEW_Q] = viewModeRef.value;
 		}
 
 		if (Object.keys(next).length > preservedQueryKeyCount) {
 			replaceQuery(next);
 		}
+	};
+	tryOnMounted(hydrateQuery);
+	watch(queryActive, (active) => {
+		if (active) hydrateQuery();
 	});
 
 	const reset = () => {

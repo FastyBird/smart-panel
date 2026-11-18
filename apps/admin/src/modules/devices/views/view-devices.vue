@@ -47,7 +47,7 @@
 		small
 		@click="onDeviceCreate"
 	>
-		<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
+		<span class="uppercase">{{ t('devicesModule.buttons.manual.title') }}</span>
 	</app-bar-button>
 
 	<view-header
@@ -60,6 +60,7 @@
 			<div class="flex items-center">
 				<el-button
 					v-if="enabledWizardOptions.length > 0"
+					type="primary"
 					class="px-4!"
 					@click="onWizard"
 				>
@@ -67,17 +68,6 @@
 					{{ t('devicesModule.buttons.wizard.title') }}
 				</el-button>
 				<el-button
-					v-for="item in enabledWizardRouteOptions"
-					:key="item.value"
-					class="px-4! ml-2!"
-					:data-test-id="item.testId"
-					@click="onRouteWizard(item)"
-				>
-					<el-icon class="mr-1"><icon :icon="item.icon" /></el-icon>
-					{{ t(item.label) }}
-				</el-button>
-				<el-button
-					type="primary"
 					plain
 					class="px-4! ml-2!"
 					@click="onDeviceCreate"
@@ -86,7 +76,7 @@
 						<icon icon="mdi:plus" />
 					</template>
 
-					{{ t('devicesModule.buttons.add.title') }}
+					{{ t('devicesModule.buttons.manual.title') }}
 				</el-button>
 			</div>
 		</template>
@@ -99,7 +89,7 @@
 		row there is no way to reach either kind of wizard on a small screen short of typing its URL.
 	-->
 	<div
-		v-if="!isMDDevice && isDevicesListRoute && !isWizardRoute && (enabledWizardOptions.length > 0 || enabledWizardRouteOptions.length > 0)"
+		v-if="!isMDDevice && isDevicesListRoute && !isWizardRoute && enabledWizardOptions.length > 0"
 		class="flex gap-2 lt-sm:mx-1 sm:mx-2 mt-2"
 	>
 		<el-button
@@ -110,16 +100,6 @@
 		>
 			<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
 			{{ t('devicesModule.buttons.wizard.title') }}
-		</el-button>
-		<el-button
-			v-for="item in enabledWizardRouteOptions"
-			:key="item.value"
-			class="flex-1"
-			:data-test-id="`${item.testId}-small`"
-			@click="onRouteWizard(item)"
-		>
-			<el-icon class="mr-1"><icon :icon="item.icon" /></el-icon>
-			{{ t(item.label) }}
 		</el-button>
 	</div>
 
@@ -157,7 +137,7 @@
 	</router-view>
 
 	<el-drawer
-		v-if="isLGDevice"
+		v-if="isLGDevice && !isWizardRoute"
 		v-model="showDrawer"
 		:show-close="false"
 		:size="adjustList ? '300px' : '40%'"
@@ -212,111 +192,15 @@
 			</template>
 		</div>
 	</el-drawer>
-
-	<el-dialog
-		v-model="wizardPluginDialogVisible"
-		:title="t('devicesModule.headings.devices.selectWizardPlugin')"
-		width="520px"
-	>
-		<div class="flex flex-col gap-2">
-			<el-card
-				v-for="item in enabledWizardOptions"
-				:key="item.value"
-				shadow="hover"
-				class="devices-wizard-plugin-card"
-				:class="{ 'devices-wizard-plugin-card--disabled': item.disabled }"
-				body-class="p-4!"
-				role="button"
-				:tabindex="item.disabled ? -1 : 0"
-				:aria-disabled="item.disabled"
-				@click="!item.disabled && onStartWizard(item.value)"
-				@keydown.enter.prevent="!item.disabled && onStartWizard(item.value)"
-				@keydown.space.prevent="!item.disabled && onStartWizard(item.value)"
-			>
-				<div class="flex items-start gap-3">
-					<div class="devices-wizard-plugin-card__icon">
-						<icon icon="mdi:puzzle-outline" />
-					</div>
-					<div class="flex-1 min-w-0 devices-wizard-plugin-card__content">
-						<h3 class="devices-wizard-plugin-card__title">
-							{{ item.label }}
-						</h3>
-						<p class="devices-wizard-plugin-card__description">
-							{{ item.description || '&nbsp;' }}
-						</p>
-					</div>
-					<div class="devices-wizard-plugin-card__chevron">
-						<icon icon="mdi:chevron-right" />
-					</div>
-				</div>
-			</el-card>
-		</div>
-
-		<template #footer>
-			<el-button @click="wizardPluginDialogVisible = false">
-				{{ t('devicesModule.buttons.cancel.title') }}
-			</el-button>
-		</template>
-	</el-dialog>
-	<!--
-		A plugin wizard that builds more than one kind of device asks which kind before it starts, in the
-		same dialog shape the adoption wizard uses to pick a plugin — so the choice is made once, up
-		front, rather than by a switch inside a wizard that is already under way.
-	-->
-	<el-dialog
-		v-model="routeWizardDialogVisible"
-		:title="routeWizardLauncher?.optionsTitle ? t(routeWizardLauncher.optionsTitle) : t('devicesModule.headings.devices.selectWizardPlugin')"
-		width="520px"
-		data-test-id="route-wizard-dialog"
-	>
-		<div class="flex flex-col gap-2">
-			<el-card
-				v-for="option in routeWizardLauncher?.options ?? []"
-				:key="option.value"
-				shadow="hover"
-				class="devices-wizard-plugin-card"
-				body-class="p-4!"
-				:data-test-id="option.testId"
-				role="button"
-				tabindex="0"
-				@click="onStartRouteWizard(option.to)"
-				@keydown.enter.prevent="onStartRouteWizard(option.to)"
-				@keydown.space.prevent="onStartRouteWizard(option.to)"
-			>
-				<div class="flex items-start gap-3">
-					<div class="devices-wizard-plugin-card__icon">
-						<icon :icon="option.icon" />
-					</div>
-					<div class="flex-1 min-w-0 devices-wizard-plugin-card__content">
-						<h3 class="devices-wizard-plugin-card__title">
-							{{ t(option.label) }}
-						</h3>
-						<p class="devices-wizard-plugin-card__description">
-							{{ t(option.description) }}
-						</p>
-					</div>
-					<div class="devices-wizard-plugin-card__chevron">
-						<icon icon="mdi:chevron-right" />
-					</div>
-				</div>
-			</el-card>
-		</div>
-
-		<template #footer>
-			<el-button @click="routeWizardDialogVisible = false">
-				{{ t('devicesModule.buttons.cancel.title') }}
-			</el-button>
-		</template>
-	</el-dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -335,7 +219,6 @@ import { ListDevices, ListDevicesAdjust } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import type { IDeviceWizardRouteLauncher } from '../devices.types';
 import type { IDevice } from '../store/devices.store.types';
 
 import type { IViewDevicesProps } from './view-devices.types';
@@ -375,17 +258,13 @@ const {
 } = useDevicesDataSource();
 const deviceActions = useDevicesActions();
 const { fetchValidation } = useDevicesValidation();
-const { wizardOptions, wizardRouteOptions } = useDevicesPlugins();
+const { wizardOptions } = useDevicesPlugins();
 const enabledWizardOptions = computed(() => wizardOptions.value.filter((item) => !item.disabled));
-const enabledWizardRouteOptions = computed(() => wizardRouteOptions.value.filter((item) => !item.disabled));
 
 const mounted = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
 const adjustList = ref<boolean>(false);
-const wizardPluginDialogVisible = ref<boolean>(false);
-const routeWizardDialogVisible = ref<boolean>(false);
-const routeWizardLauncher = ref<IDeviceWizardRouteLauncher | null>(null);
 
 const remoteFormChanged = ref<boolean>(false);
 
@@ -394,12 +273,7 @@ const isDevicesListRoute = computed<boolean>((): boolean => {
 });
 
 const isWizardRoute = computed<boolean>((): boolean => {
-	// Secondary authoring routes are not launchers themselves, but still need the full page.
-	return (
-		route.meta.devicesWizard === true ||
-		route.name === RouteNames.DEVICES_WIZARD ||
-		wizardRouteOptions.value.some((item) => router.resolve(item.to).name === route.name)
-	);
+	return route.meta.devicesWizard === true || route.name === RouteNames.DEVICES_WIZARD || route.name === RouteNames.DEVICES_WIZARD_SELECT;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -525,47 +399,10 @@ const onAdjustList = (): void => {
 };
 
 const onWizard = (): void => {
-	if (enabledWizardOptions.value.length === 1 && enabledWizardOptions.value[0]) {
-		onStartWizard(enabledWizardOptions.value[0].value);
-		return;
-	}
-
-	wizardPluginDialogVisible.value = true;
+	void router.push({ name: RouteNames.DEVICES_WIZARD_SELECT });
 };
 
-const onStartWizard = (type: string): void => {
-	wizardPluginDialogVisible.value = false;
-
-	router.push({
-		name: RouteNames.DEVICES_WIZARD,
-		params: {
-			type,
-		},
-	});
-};
-
-const onStartRouteWizard = (to: RouteLocationRaw): void => {
-	routeWizardDialogVisible.value = false;
-
-	if (isLGDevice.value) {
-		router.replace(to);
-	} else {
-		router.push(to);
-	}
-};
-
-const onRouteWizard = (launcher: IDeviceWizardRouteLauncher): void => {
-	if (launcher.options && launcher.options.length > 1) {
-		routeWizardLauncher.value = launcher;
-		routeWizardDialogVisible.value = true;
-
-		return;
-	}
-
-	onStartRouteWizard(launcher.options?.[0]?.to ?? launcher.to);
-};
-
-onBeforeMount((): void => {
+const refreshList = (): void => {
 	fetchDevices().catch((error: unknown): void => {
 		const err = error as Error;
 
@@ -576,9 +413,15 @@ onBeforeMount((): void => {
 		// Validation fetch errors are non-critical, just log them
 		console.warn('Failed to fetch device validation data:', error);
 	});
+};
 
+onBeforeMount((): void => {
+	if (!isWizardRoute.value) refreshList();
 	showDrawer.value =
 		route.matched.find((matched) => matched.name === RouteNames.DEVICES_ADD || matched.name === RouteNames.DEVICES_EDIT) !== undefined;
+});
+watch(isWizardRoute, (wizard, wasWizard) => {
+	if (wasWizard && !wizard) refreshList();
 });
 
 onMounted((): void => {
@@ -628,81 +471,3 @@ watch(
 	}
 );
 </script>
-
-<style scoped lang="scss">
-.devices-wizard-plugin-card {
-	cursor: pointer;
-	transition: all 0.2s ease;
-
-	&:hover,
-	&:focus-visible {
-		.devices-wizard-plugin-card__chevron {
-			opacity: 1;
-			transform: translateX(2px);
-		}
-	}
-
-	&:focus-visible {
-		outline: 2px solid var(--el-color-primary);
-		outline-offset: 2px;
-	}
-}
-
-.devices-wizard-plugin-card--disabled {
-	cursor: not-allowed;
-	opacity: 0.6;
-}
-
-.devices-wizard-plugin-card__icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 2.5rem;
-	height: 2.5rem;
-	border-radius: var(--el-border-radius-base);
-	background-color: var(--el-color-primary-light-9);
-	color: var(--el-color-primary);
-	font-size: 1.25rem;
-	flex-shrink: 0;
-}
-
-.devices-wizard-plugin-card__content {
-	display: flex;
-	flex-direction: column;
-	min-height: 4.5rem;
-}
-
-.devices-wizard-plugin-card__title {
-	margin: 0 0 0.25rem 0;
-	font-size: 0.9375rem;
-	font-weight: 600;
-	line-height: 1.3;
-	color: var(--el-text-color-primary);
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
-
-.devices-wizard-plugin-card__description {
-	margin: 0;
-	font-size: 0.8125rem;
-	line-height: 1.4;
-	color: var(--el-text-color-secondary);
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
-
-.devices-wizard-plugin-card__chevron {
-	display: flex;
-	align-items: center;
-	color: var(--el-text-color-placeholder);
-	font-size: 1.25rem;
-	opacity: 0.5;
-	transition: all 0.2s ease;
-	flex-shrink: 0;
-	align-self: center;
-}
-</style>

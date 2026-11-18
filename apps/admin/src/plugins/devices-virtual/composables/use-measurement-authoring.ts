@@ -25,6 +25,7 @@ import {
 	type TransformPolicy,
 	type TransformState,
 	aggregateDraft,
+	isBlockingTransformPreviewError,
 	measurementDraft,
 	numericOperatorKey,
 	withPlacement,
@@ -141,6 +142,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		conflict = ref(false);
 	const current = ref<AggregateState | TransformState | null>(null);
 	const preview = ref<AggregateState | TransformState | null>(null);
+	// A successful review validates configuration independently of live sample freshness. The wizard
+	// retains that snapshot; the inline editor can separately require a fresh calculation via `preview`.
+	const lastPreview = ref<AggregateState | TransformState | null>(null);
 	let draftVersion = 0;
 	const previewExpired = ref(false);
 	let expiryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -173,8 +177,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	const canSavePreview = computed(
 		() =>
 			!!preview.value &&
-			(isTransform ||
-				('inputs' in preview.value && !!preview.value.preview_result && !preview.value.preview_result.reasons.includes('preview_revoked')))
+			(isTransform
+				? 'policy' in preview.value && !isBlockingTransformPreviewError(preview.value.preview_result?.error)
+				: 'inputs' in preview.value && !!preview.value.preview_result && !preview.value.preview_result.reasons.includes('preview_revoked'))
 	);
 	const expectedRevision = ref(0),
 		expectedGraphRevision = ref<number>();
@@ -305,6 +310,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		throw new MeasurementRequestError(getErrorReason<SemanticErrorOperation>(failure, 'measurementFailed'), status);
 	};
 	const load = async () => {
+		lastPreview.value = null;
 		invalidatePreview();
 		return run(async () => {
 			current.value = null;
@@ -397,40 +403,50 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		),
 		output_property: ids.output,
 	});
+	const evaluateDraft = async (signal?: AbortSignal): Promise<AggregateState | TransformState> => {
+		let value: AggregateState | TransformState;
+		if (isTransform) {
+			const config = configuration() as TransformConfiguration;
+			const result = outputId
+				? await backend.client.POST('/plugins/devices-virtual/producers/transforms/{id}/preview', {
+						signal,
+						params: { path: { id: outputId } },
+						body: { ...config, preview_input: model.previewInput },
+					})
+				: await backend.client.POST('/plugins/devices-virtual/producers/transforms/draft-preview', {
+						signal,
+						body: { ...draft(), configuration: config, preview_input: model.previewInput },
+					});
+			value = response(result.data, result.error, result.response?.status);
+		} else {
+			const config = configuration() as AggregateConfiguration;
+			const result = outputId
+				? await backend.client.POST('/plugins/devices-virtual/producers/aggregates/{id}/preview', {
+						signal,
+						params: { path: { id: outputId } },
+						body: config,
+					})
+				: await backend.client.POST('/plugins/devices-virtual/producers/aggregates/draft-preview', {
+						signal,
+						body: { ...draft(), configuration: config },
+					});
+			value = response(result.data, result.error, result.response?.status);
+		}
+		return value;
+	};
 	const previewDraft = async () => {
 		invalidatePreview();
 		const version = draftVersion;
 		return run(async () => {
-			let value: AggregateState | TransformState;
-			if (isTransform) {
-				const config = configuration() as TransformConfiguration;
-				const result = outputId
-					? await backend.client.POST('/plugins/devices-virtual/producers/transforms/{id}/preview', {
-							params: { path: { id: outputId } },
-							body: { ...config, preview_input: model.previewInput },
-						})
-					: await backend.client.POST('/plugins/devices-virtual/producers/transforms/draft-preview', {
-							body: { ...draft(), configuration: config, preview_input: model.previewInput },
-						});
-				value = response(result.data, result.error, result.response?.status);
-			} else {
-				const config = configuration() as AggregateConfiguration;
-				const result = outputId
-					? await backend.client.POST('/plugins/devices-virtual/producers/aggregates/{id}/preview', {
-							params: { path: { id: outputId } },
-							body: config,
-						})
-					: await backend.client.POST('/plugins/devices-virtual/producers/aggregates/draft-preview', { body: { ...draft(), configuration: config } });
-				value = response(result.data, result.error, result.response?.status);
-			}
+			const value = await evaluateDraft();
 			if (version !== draftVersion) return;
+			lastPreview.value = value;
 			preview.value = value;
 			expectedGraphRevision.value = value.graph_revision;
 		});
 	};
 	const save = async () =>
 		run(async () => {
-			let deviceId: string | undefined;
 			if (isTransform) {
 				const config = configuration() as TransformConfiguration;
 				if (outputId) {
@@ -442,8 +458,8 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				} else {
 					const result = await backend.client.POST('/plugins/devices-virtual/producers/transforms', { body: { ...draft(), configuration: config } });
 					const value = response(result.data, result.error, result.response?.status);
-					current.value = value.configuration;
-					deviceId = value.device.id;
+					// Creation leaves the reviewed draft untouched until the caller navigates away.
+					return value.device.id;
 				}
 			} else {
 				const config = configuration() as AggregateConfiguration;
@@ -456,8 +472,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				} else {
 					const result = await backend.client.POST('/plugins/devices-virtual/producers/aggregates', { body: { ...draft(), configuration: config } });
 					const value = response(result.data, result.error, result.response?.status);
-					current.value = value.configuration;
-					deviceId = value.device.id;
+					return value.device.id;
 				}
 			}
 			if ('inputs' in current.value) {
@@ -471,7 +486,6 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 			expectedRevision.value = current.value.revision;
 			expectedGraphRevision.value = current.value.graph_revision;
 			preview.value = null;
-			return deviceId;
 		});
 	const canPreview = computed(
 		() =>
@@ -500,6 +514,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	watch(
 		model,
 		() => {
+			lastPreview.value = null;
 			invalidatePreview();
 		},
 		{ deep: true, flush: 'sync' }
@@ -525,10 +540,12 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		conflict,
 		current,
 		preview,
+		lastPreview,
 		isTransform,
 		canPreview,
 		load,
 		previewDraft,
+		evaluateDraft,
 		save,
 	};
 }

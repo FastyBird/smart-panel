@@ -62,7 +62,7 @@
 			},
 			"nativeThermostat": {
 				"title": "Radič pre existujúci termostat",
-				"description": "Pridá radič Smart Panelu nad termostat, ktorý už ako zariadenie máte. Podporované: termostaty z Home Assistant a Zigbee2MQTT."
+				"description": "Pridajte virtuálny radič pre fyzický termostat, ktorý už máte pripojený v Smart Paneli."
 			}
 		},
 		"subtitle": "Zostavte zariadenie z kanálov iného zariadenia",
@@ -84,9 +84,7 @@
 		},
 		"category": {
 			"heading": "Vyberte kategóriu",
-			"description": "Vyberte druh zariadenia, ktoré vytvárate. Určuje, ktoré kanály a vlastnosti bude potrebné namapovať v ďalšom kroku.",
-			"blockedHeading": "V tomto vydaní nie je k dispozícii",
-			"blockedReason": "vyžaduje regulátor — plánované pre neskoršie vydanie"
+			"description": "Vyberte druh zariadenia, ktoré vytvárate. Určuje, ktoré kanály a vlastnosti bude potrebné namapovať v ďalšom kroku."
 		},
 		"mapping": {
 			"heading": "Prepojte vlastnosti",
@@ -97,6 +95,7 @@
 			"channelRequired": "Povinný",
 			"channelOptional": "Voliteľný",
 			"propertyRequired": "Povinná",
+			"propertyOptional": "Voliteľná",
 			"showOptional": "Zobraziť ďalších {count} voliteľných vlastností",
 			"hideOptional": "Skryť prázdne voliteľné vlastnosti",
 			"source": {
@@ -154,6 +153,82 @@
 				"hideFailedFlash": "{device} nebolo skryté: požiadavka zlyhala. Môžete ho skryť neskôr v zozname zariadení.",
 				"zonesFailed": "Nepodarilo sa priradiť {count} zón. Môžete ich pridať neskôr v zozname zariadení."
 			}
+		},
+		"selection": {
+			"heading": "Zostaviť virtuálne zariadenie",
+			"description": "Rozdeľte alebo skombinujte kanály a vlastnosti zariadení, ktoré už máte v Smart Paneli."
+		},
+		"layout": {
+			"summary": "Súhrn",
+			"unnamed": "Nové virtuálne zariadenie",
+			"edit": "Upraviť",
+			"reviewTitle": "Skontrolujte zariadenie pred vytvorením",
+			"reviewDescription": "Pred vytvorením sa môžete vrátiť a upraviť jednotlivé časti.",
+			"outputDescription": "Vyberte výstup a umiestnenie zariadenia.",
+			"sourcesDescription": "Vyberte zariadenia alebo hodnoty. Možno pridať aj offline zdroje.",
+			"processingDescription": "Nastavte spracovanie vybraných zdrojov.",
+			"searchSources": "Hľadať podľa zariadenia, kanála alebo miestnosti",
+			"addSource": "Pridať zdroj",
+			"selectedSources": "Vybrané zdroje",
+			"suggested": "Odporúčané z miestnosti {room}",
+			"otherRooms": "Ostatné miestnosti",
+			"noSources": "Žiadne zodpovedajúce zdroje",
+			"add": "Pridať",
+			"livePreview": "Priebežný náhľad",
+			"previewHint": "Vyberte zdroje na zobrazenie náhľadu výpočtu.",
+			"previewError": "Náhľad sa nepodarilo načítať. Skúste to znova alebo pokračujte v nastavení.",
+			"recalculate": "Prepočítať",
+			"refreshing": "Aktualizujem náhľad…",
+			"currentValue": "Hodnota",
+			"lastReport": "Posledné hlásenie",
+			"unknownSampleTime": "Neznámy",
+			"unknownSampleTimeHint": "Posledná známa hodnota. Čas merania nie je známy, takže nepotvrdzuje čerstvý vstup pre výpočet.",
+			"state": "Stav",
+			"online": "Online",
+			"offline": "Offline",
+			"selectedCount": "Vybrané zdroje: {count}",
+			"outputTitle": "Čo má nové zariadenie merať?",
+			"sourcesTitle": "Ktoré senzory chcete zlúčiť?",
+			"processingTitle": "Ako sa majú hodnoty spracovať?",
+			"offlineHelp": "Offline zdroje nebránia vytvoreniu zariadenia. Zapoja sa znova, keď odošlú platné hodnoty.",
+			"noRoom": "Bez miestnosti",
+			"roomHint": "Zariadenia z tejto miestnosti sa pri výbere zdrojov ponúknu ako prvé.",
+			"zonesHint": "Zariadenia z týchto zón sa ponúknu za zariadeniami z vybranej miestnosti.",
+			"roomSources": "Z vybranej miestnosti",
+			"zoneSources": "Z vybraných zón",
+			"otherSources": "Ostatné zariadenia",
+			"availableSources": "Dostupné zariadenia",
+			"unitSourcesHint": "V ďalšom kroku sa ponúknu iba kompatibilné zdroje s touto jednotkou.",
+			"measurementDescription": "Pomenujte zariadenie a vyberte, čo má merať. Podľa merania sa v ďalšom kroku ponúknu vhodné zdroje."
+		},
+		"projection": {
+			"deviceTitle": "Aké zariadenie vytvárate?",
+			"structureTitle": "Kanály v tomto zariadení",
+			"mustHave": "Musí obsahovať",
+			"canHave": "Môže obsahovať",
+			"optionalChannels": "Voliteľné kanály na pridanie",
+			"channelsTitle": "Kanály v tomto zariadení",
+			"toFix": "Na opravu: {count}",
+			"mappedCount": "Namapovaných {mapped} z {total} vlastností",
+			"optionalChannelHelp": "Voliteľný kanál bude súčasťou zariadenia až po pridaní a namapovaní. Ostatné môžete vynechať.",
+			"mappingDescription": "Prepojte každú vlastnosť s vlastnosťou skutočného zariadenia. Zdroje môžu pochádzať z rôznych zariadení. Ponúkajú sa len overené kompatibilné zdroje.",
+			"fillDescription": "Vyplniť prázdne vlastnosti zo zdrojového kanála",
+			"fillEmpty": "Vyplniť prázdne vlastnosti",
+			"sourceColumn": "Zdrojové zariadenie › kanál › vlastnosť",
+			"statusColumn": "Stav",
+			"needsAttention": "Vyžaduje pozornosť",
+			"checking": "Overovanie…",
+			"mapped": "Namapované",
+			"notMapped": "Nenamapované",
+			"optional": "Voliteľné",
+			"unmappedOptional": "Nenamapované voliteľné vlastnosti: {count}.",
+			"chooseChannel": "Začnite pridaním kanála vľavo a namapujte jeho vlastnosti.",
+			"selectedSource": "Vybraný zdroj",
+			"reviewDescription": "Zobrazené sú iba namapované kanály a vlastnosti. Pred vytvorením zariadenia môžete ktorúkoľvek časť upraviť.",
+			"mappingSummary": "Kanály: {channels} · vlastnosti: {properties} · zdrojové zariadenia: {devices}",
+			"moreCategories": "Zobraziť ďalšie kategórie ({count})",
+			"fewerCategories": "Zobraziť bežné kategórie",
+			"loadingSources": "Načítanie ďalších kompatibilných zdrojov…"
 		}
 	},
 	"sources": {
@@ -307,7 +382,40 @@
 		"extensionOperator": "Operátor dôveryhodného rozšírenia",
 		"measurementOperatorMissing": "Uložený kontrakt alebo verzia operátora nie je dostupná. Konfigurácia je zachovaná; na opravu vyberte dostupnú verziu.",
 		"measurementOperatorParameter": "Číselný parameter je mimo podporovaného rozsahu.",
-		"resetOperatorDefinition": "Obnoviť podľa definície operátora"
+		"resetOperatorDefinition": "Obnoviť podľa definície operátora",
+		"help": {
+			"unitTitle": "Jednotka: {unit}",
+			"legacyPrecision": "Teplota zachováva presnosť definovanú pri výstupnej vlastnosti.",
+			"precision": "Výsledok sa zaokrúhľuje po {step} {unit}.",
+			"quorum": "Toľko vstupov musí po vyradení nepoužiteľných hodnôt zostať platných a dostatočne čerstvých. Pri menšom počte nie je výsledok dostupný. Napríklad minimum 2 umožní skupine 3 senzorov fungovať, aj keď jeden prestane hlásiť.",
+			"filter": "Po zapnutí sa vynechajú hodnoty vzdialené od prostrednej hodnoty (mediánu) viac než nastavená maximálna odchýlka. Odchýlka sa zadáva vo zvolenej jednotke. Na porovnanie sú potrebné aspoň 3 platné a čerstvé senzory a po vyradení musí zostať nastavený minimálny počet vstupov.",
+			"maximumAge": "Hodnoty staršie než tento počet sekúnd sa do výpočtu nezahrnú. Zvoľte limit tak, aby senzory stihli odoslať ďalšie meranie.",
+			"previewTitle": "Náhľad výpočtu",
+			"previewDescription": "Výpočet používa hodnoty dostupné v uvedenom čase. Offline senzory ani nedostupné hodnoty nebránia uloženiu konfigurácie. Po vytvorení zariadenie počíta hodnoty z nových hlásení senzorov.",
+			"reviewLoading": "Overujem nastavenia a počítam náhľad…",
+			"result": "Výsledok",
+			"quality": "Kvalita merania",
+			"diagnostics": "Podrobnosti",
+			"evaluatedAt": "Vypočítané",
+			"expiresAt": "Hodnoty platné do",
+			"inputStatus": "Použitie vo výpočte",
+			"sampleAge": "Vek hodnoty",
+			"included": "Zahrnuté",
+			"enabled": "Zapnuté",
+			"disabled": "Vypnuté",
+			"operators": {
+				"mean": "Sčíta použiteľné hodnoty a vydelí ich počtom. Každý senzor má rovnaký vplyv.",
+				"median": "Použije prostrednú hodnotu po zoradení. Pri párnom počte vezme priemer dvoch prostredných hodnôt. Obmedzuje tým vplyv extrémnych meraní.",
+				"min": "Použije najnižšiu použiteľnú hodnotu.",
+				"max": "Použije najvyššiu použiteľnú hodnotu.",
+				"weighted_mean": "Vypočíta priemer podľa relatívnej váhy senzorov. Senzor s váhou 2 má dvojnásobný vplyv oproti senzoru s váhou 1.",
+				"any": "Ohlási detekciu, ak ju hlási aspoň jeden použiteľný vstup. Neprítomnosť detekcie potvrdí, len ak sú všetky nastavené vstupy použiteľné a nehlásia detekciu.",
+				"all": "Ohlási detekciu, iba ak sú všetky nastavené vstupy použiteľné a hlásia detekciu. Na vylúčenie detekcie stačí jeden použiteľný vstup, ktorý ju nehlási."
+			},
+			"processingTitle": "Ako nastaviť výpočet",
+			"processingAdvice": "Začnite s predvoleným nastavením. Maximálny vek zvoľte o niečo dlhší než bežný interval merania senzorov. Minimum môžete znížiť, ak chcete pripustiť výpočet z menšieho počtu dostupných senzorov."
+		},
+		"loadingCatalog": "Načítavam nastavenia a dostupné zdroje merania…"
 	},
 	"lightGroup": {
 		"apply": "Použiť",
@@ -361,6 +469,39 @@
 			"outlet": "Zásuvka",
 			"fan": "Ventilátor",
 			"cover": "Tienenie"
+		},
+		"wizard": {
+			"detailsTitle": "Čo má skupina ovládať?",
+			"detailsDescription": "Skupina spojí niekoľko zariadení rovnakého druhu do jedného. Najskôr vyberte druh; podľa neho sa ponúknu zariadenia, ktoré môžete pridať.",
+			"membersTitle": "Ktoré zariadenia patria do skupiny?",
+			"membersDescription": "Ovládací prvok je dostupný len vtedy, keď ho podporujú všetci členovia. Tabuľka ukazuje možnosti zariadení a výsledné ovládanie skupiny.",
+			"reviewTitle": "Skontrolujte skupinu pred vytvorením",
+			"reviewDescription": "Zmena hodnoty na skupine sa vykoná na všetkých členoch. Zariadenia zostanú dostupné aj samostatne.",
+			"groupOf": "Skupina zariadení",
+			"profileHelp": "Povinné ovládacie prvky sú vždy súčasťou skupiny. Ďalšie možnosti vyplývajú z vybraných zariadení.",
+			"membersControls": "Členovia a ovládanie",
+			"groupControls": "Ovládanie skupiny",
+			"controlsHint": "Voliteľné prvky, ktoré v skupine nechcete, odškrtnite.",
+			"controlsAdvice": "Ovládací prvok musí byť kompatibilný u všetkých členov vrátane jednotky a rozsahu. Povinné prvky nemožno vypnúť.",
+			"addMembers": "Pridať zariadenia",
+			"controls": "Ovládacie prvky",
+			"onOff": "Zapnuté / vypnuté",
+			"yes": "Áno",
+			"no": "Nie",
+			"missingControl": "Chýba kompatibilný ovládací prvok: {control}.",
+			"incompatibleMember": "Nastavenie zariadenia nie je kompatibilné s vybranou skupinou.",
+			"removesControls": "Odoberie ovládacie prvky: {count}",
+			"keepsControls": "Zachová všetky ovládacie prvky: {count}",
+			"membersLater": "Vyberiete v kroku 2",
+			"controlsLater": "Podľa vybraných členov",
+			"groupNames": {
+				"light": "Svetlá",
+				"switch": "Spínače",
+				"outlet": "Zásuvky",
+				"fan": "Ventilátory",
+				"cover": "Rolety a žalúzie"
+			},
+			"coverHelp": "Všetky rolety a žalúzie v skupine musia mať nastavený rovnaký typ. Skupina ponúkne iba ovládacie prvky, ktoré podporujú všetci členovia."
 		}
 	},
 	"comfort": {
@@ -427,7 +568,7 @@
 		"latched": "Ochrana blokuje",
 		"lease": "Maximálna doba zapnutia (sekundy)",
 		"legacyProfile": "Pôvodné nastavenie jedného člena je zachované. Pre nový formát najprv výslovne priraďte miestnu ochranu.",
-		"localProtection": "Výslovná miestna ochrana podlahy",
+		"localProtection": "Miestna ochrana podlahy",
 		"localSource": "Spôsobilý miestny zdroj v °C",
 		"mandatory": "Povinný člen",
 		"mandatoryHelp": "Všetci členovia sledujú jednu požiadavku miestnosti. Porucha jedného blokuje celú vetvu.",
@@ -468,7 +609,8 @@
 		"qualification": "Kvalifikácia ochrany pri čítaní serverom",
 		"qualificationHelp": "Kontrola sa týka iba nainštalovanej ochrany a aktuálneho výstupu. Nepotvrdzuje pripravenosť regulátora ani bezpečnosť fyzického zariadenia.",
 		"activitySample": "Pozorovaná vzorka relé",
-		"activityExpiry": "Pozorovanie platí do"
+		"activityExpiry": "Pozorovanie platí do",
+		"selectedFloorRequired": "V kroku Senzory vyberte kompatibilné podlahové čidlo. Miestna ochrana vyžaduje čidlo pripojené k rovnakému zariadeniu ako relé."
 	},
 	"dewPoint": {
 		"title": "Rosný bod",
@@ -482,7 +624,7 @@
 		"hysteresis": "Hysteréza prísneho obnovenia (°C)",
 		"absoluteMinimum": "Voliteľné absolútne minimum povrchu (°C)",
 		"surface": "UUID miestnej sondy chladeného povrchu",
-		"installation": "Inštalované chladenie nie je spôsobilé do kvalifikácie povrchu, autentifikácie, časovania, izolácie zápisu a dokončenia OFF po reštarte po vydaní alfa.",
+		"installation": "Chladenie vyžaduje údaj rosného bodu, čidlo chladeného povrchu a overený ochranný profil relé. Kým tieto podmienky nie sú splnené, chránené chladenie zostane zablokované.",
 		"errors": {
 			"reload": "Načítajte konfiguráciu znova.",
 			"inputs": "Vyberte oba vstupy.",
@@ -491,6 +633,24 @@
 			"coolingPolicy": "Zadajte kladnú rezervu a hysteréziu obnovenia chladenia najviac 60 °C.",
 			"coolingMinimum": "Zadajte konečné voliteľné minimum povrchu nad −45 °C a najviac 60 °C.",
 			"coolingDependencies": "Každý člen chladenia vyžaduje rosný bod, miestne čidlo chladeného povrchu a platný vek zdrojov."
+		},
+		"description": "Počíta teplotu rosného bodu z teploty vzduchu a relatívnej vlhkosti. Ide o vypočítanú veličinu, nie ďalšie meranie teploty vzduchu.",
+		"sourcesDescription": "Vyberte jeden zdroj teploty vzduchu a jeden zdroj relatívnej vlhkosti pre rovnaké prostredie. Pridanie ďalšieho zdroja nahradí zdroj rovnakého typu. Možno nastaviť aj offline zdroje.",
+		"processingHelp": "Maximálny vek určuje, aká stará môže byť každá hodnota. Maximálny časový rozdiel obmedzuje odstup medzi meraním teploty a vlhkosti, aby sa nekombinovala stará hodnota s novou. Limity nastavte podľa frekvencie hlásení senzorov.",
+		"requiredRole": "Vyberte zdroj pre {role}.",
+		"diagnostics": {
+			"stale_or_unavailable": "Meranie je zastarané alebo nedostupné",
+			"quality": "Kvalita merania nie je dostupná",
+			"lineage": "Čaká sa na platné podklady zdroja",
+			"awaiting_fresh_input": "Čaká sa na nové meranie",
+			"skew": "Merania zdrojov sú časovo príliš vzdialené",
+			"domain": "Hodnota je mimo podporovaného rozsahu",
+			"invalid_policy": "Neplatné nastavenie výpočtu",
+			"incompatible_output": "Nekompatibilná výstupná veličina",
+			"output_disabled": "Výstup je vypnutý",
+			"graph_ineligible": "Závislosti zdrojov nie sú dostupné",
+			"missing_input_role": "Vyberte oba požadované typy zdrojov",
+			"graph_validation_pending": "Prebieha kontrola závislostí zdrojov"
 		}
 	},
 	"nativeThermostat": {
@@ -531,9 +691,9 @@
 		"releaseHelp": "Uvoľniť rezerváciu Smart Panelu? Počká na odoslané operácie, ale neposiela príkaz OFF. Fyzický termostat môže ďalej regulovať.",
 		"wizard": {
 			"intro": "Tento radič pracuje so skutočným termostatom. Teplotu ďalej reguluje zariadenie; Smart Panel mu posiela požadovaný režim a teploty a zobrazuje, čo zariadenie hlási späť.",
-			"supported": "Zatiaľ sú podporované len termostaty z Home Assistant a Zigbee2MQTT. Zariadenia z iných integrácií sa v zozname nezobrazujú.",
+			"supported": "Ponúkané zariadenia a možnosti ovládania závisia od schopností fyzického termostatu.",
 			"unitPlaceholder": "Vyberte termostat",
-			"noCandidates": "Nenašiel sa žiadny podporovaný termostat. Najprv pridajte termostat z Home Assistant alebo Zigbee2MQTT.",
+			"noCandidates": "Nenašiel sa žiadny vhodný fyzický termostat. Najprv pridajte zariadenie do Smart Panelu a skontrolujte jeho konfiguráciu.",
 			"providers": {
 				"home-assistant": "Home Assistant",
 				"zigbee2mqtt": "Zigbee2MQTT"
@@ -550,6 +710,37 @@
 		}
 	},
 	"thermostat": {
+		"wizard": {
+			"detailsTitle": "Čo má termostat riadiť?",
+			"detailsDescription": "Pomenujte termostat a vyberte jeho miestnosť a zóny.",
+			"sourcesTitle": "Ktoré snímače má termostat používať?",
+			"sourcesDescription": "Pri teplotných čidlách vyberte izbovú, podlahovú alebo povrchovú teplotu. Pre ochranu chladenia pridajte aj výstup virtuálneho zariadenia Rosný bod. Kontakt okna alebo dverí musí byť booleovské kontaktné čidlo.",
+			"actuatorsTitle": "Ktoré relé majú ovládať vykurovanie a chladenie?",
+			"actuatorsDescription": "Pridajte výstupy relé a pri každom vyberte vykurovanie alebo chladenie.",
+			"policyHelpTitle": "Ako tieto nastavenia fungujú",
+			"policyHelp": "Požadované teploty určujú cieľovú teplotu miestnosti. Tolerancie obmedzujú časté spínanie okolo tejto hodnoty. Minimálna doba vypnutia určuje prestávku pred ďalším zopnutím relé, interval prepnutia prestávku medzi vykurovaním a chladením. Ochrana podlahy obmedzuje jej teplotu. Oneskorenie kontaktu filtruje krátke otvorenia okna a detekcia teplotného trendu môže pozastaviť reguláciu pri náhlom poklese teploty.",
+			"previewTitle": "Kontrola konfigurácie",
+			"configurationTitle": "Ako má termostat regulovať teplotu?",
+			"configurationDescription": "Nastavte teploty, vek meraní, oneskorenia a ochrany vybraných snímačov a relé.",
+			"role": "Použiť ako",
+			"sourceLimit": "Každú rolu možno vybrať raz; čidiel chladeného povrchu možno vybrať až osem.",
+			"actuatorLimit": "Možno vybrať najviac osem výstupov relé.",
+			"addActuator": "Pridať relé",
+			"openValue": "Stav snímača pri otvorení",
+			"closedValue": "Stav snímača pri zatvorení",
+			"roles": {
+				"ambient": "Izbová teplota",
+				"floor": "Podlahová teplota",
+				"contact": "Okenný alebo dverový kontakt",
+				"heating": "Vykurovanie",
+				"cooling": "Chladenie",
+				"dew_point": "Rosný bod",
+				"cooled_surface": "Teplota chladeného povrchu"
+			},
+			"configurationStep": "Konfigurácia",
+			"selectCoolingSources": "Vybrať čidlá chladenia",
+			"coolingSurfaceRequired": "V kroku Senzory vyberte čidlo chladeného povrchu pripojené k rovnakému zariadeniu ako toto relé."
+		},
 		"title": {
 			"create": "Vytvoriť virtuálny termostat",
 			"edit": "Konfigurácia termostatu"
@@ -650,16 +841,16 @@
 			"coldTolerance": "Zadajte nezápornú toleranciu chladu.",
 			"hotTolerance": "Zadajte nezápornú toleranciu tepla.",
 			"neutralMargin": "Zadajte kladné neutrálne pásmo.",
-			"minimumOff": "Zadajte minimálny čas vypnutia v milisekundách.",
-			"changeover": "Zadajte interval prepnutia režimu v milisekundách.",
+			"minimumOff": "Zadajte celé číslo od 0 do 86400000 ms.",
+			"changeover": "Zadajte celé číslo od 0 do 86400000 ms.",
 			"floorPolicy": "Zadajte limit podlahy a kladnú hysterézu obnovy v stupňoch Celzia.",
 			"trendIncomplete": "Vyplňte všetky povolené nastavenia trendu.",
-			"contactDebounce": "Zadajte obe oneskorenia kontaktu v milisekundách.",
+			"contactDebounce": "Zadajte oneskorenia otvorenia a zatvorenia ako celé čísla od 0 do 86400000 ms.",
 			"ambientSource": "Nastavte práve jeden zdroj okolitej teploty.",
 			"retainFloorPolicy": "Ponechajte spoločnú politiku podlahy pre existujúcu globálnu ochranu.",
 			"floorProtectionSource": "Ochrana podlahy vyžaduje globálny zdroj alebo výslovnú miestnu ochranu pri každom vykurovacom člene.",
 			"contactSourceLimit": "Nastavte najviac jeden zdroj kontaktu.",
-			"sourceAge": "Zadajte kladný maximálny vek pre zdroj: {role}.",
+			"sourceAge": "Zadajte maximálny vek od 1 do 86400 sekúnd pre {role}.",
 			"sourceSelect": "Vyberte zdroj: {role}.",
 			"contactValues": "Namapujte hodnoty kontaktu pre otvorené aj zatvorené.",
 			"contactValuesDiffer": "Hodnoty kontaktu pre otvorené a zatvorené sa musia líšiť.",
@@ -670,11 +861,13 @@
 			"retainedClaim": "Opravte zachovaný nárok {id}; jeho vlastníctvo zostáva zachované.",
 			"sharedFloorPolicy": "Zadajte spoločný limit podlahy a hysterézu pre miestnu ochranu.",
 			"localProtection": "Každý vykurovací člen vyžaduje výslovný miestny ochranný zdroj.",
-			"protectionAge": "Zadajte kladný maximálny vek ochranného zdroja.",
+			"protectionAge": "Zadajte vek lokálnej ochrany od 1 do 86400 sekúnd.",
 			"actuatorRepair": "Pred uložením opravte akčný člen: {role}.",
 			"lease": "Zadajte kladný čas zapnutia pre akčný člen: {role}.",
 			"settingUnique": "Každá rola miestneho nastavenia môže byť registrovaná len raz.",
-			"settingProperty": "Vyberte miestnu vlastnosť pre každé nastavenie."
+			"settingProperty": "Vyberte miestnu vlastnosť pre každé nastavenie.",
+			"coolingDewPointSource": "V kroku Senzory vyberte výstup virtuálneho zariadenia Rosný bod.",
+			"coolingSurfaceSource": "V kroku Senzory vyberte samostatné čidlo teploty chladeného povrchu."
 		},
 		"settingRoles": {
 			"heating_setpoint": "Žiadaná teplota kúrenia",
@@ -682,6 +875,53 @@
 			"heating_enabled": "Kúrenie povolené",
 			"cooling_enabled": "Chladenie povolené",
 			"locked": "Uzamknuté"
+		}
+	},
+	"detailTab": "Virtuálne zariadenie",
+	"conversion": {
+		"inputRange": "Rozsah vstupu",
+		"outputRange": "Rozsah výstupu",
+		"coefficients": "Koeficienty",
+		"calibration": "Kalibračné body",
+		"operatorRanges": "Rozsahy operátora",
+		"sourceCompatibility": "Kompatibilita zdroja",
+		"backendCheck": "Overenie nastavení",
+		"processingTitle": "Ako nastaviť prevod",
+		"calibrationInput": "Bod {index}: nameraný vstup (X)",
+		"calibrationOutput": "Bod {index}: zodpovedajúci výstup (Y)",
+		"parameterBounds": "Povolené: {minimum} až {maximum}",
+		"rangesHelp": "Medze vstupu a výstupu určujú, kde je prevod platný. Vyplňte obe medze; hodnoty mimo nich sa odmietnu, neposunú sa automaticky na najbližšiu medzu.",
+		"sampleHelp": "Skúšobný vstup je voliteľný. Zadajte hodnotu vnútri vstupného rozsahu a uvidíte vypočítaný výstup. Bez nej sa overia nastavenia bez skúšobného výpočtu.",
+		"pointsHelp": "Každý kalibračný bod spája nameraný vstup X so známym správnym výstupom Y. Napríklad 0 → 0 a 10 → 100 opisujú prevod stupnice. Pridajte aspoň dva body so vzostupným X. Medzi nimi sa prevádza po priamke, za prvý ani posledný bod sa výpočet nepredlžuje.",
+		"thermistorHelp": "Použite skutočné údaje zapojenia a sondy: Vref je napájacie napätie deliča, Rfixed jeho pevný odpor, Rnom odpor sondy pri teplote Tnom. Beta alebo A/B/C pochádzajú z dokumentácie sondy. Vyberte, či je sonda pripojená k zemi alebo k napájaniu. Tieto hodnoty sa neodhadujú.",
+		"thermistorRequirement": "NTC beta a Steinhart–Hart vyžadujú fyzický zdroj surového napätia vo V a teplotný výstup v °C. Senzor, ktorý už hlási °C, tento prevod nepotrebuje; na drobnú korekciu použite afinný prevod.",
+		"operators": {
+			"affine": "Afinný prevod počíta výstup = koeficient × vstup + posun. Koeficient mení mierku, posun pridá korekciu, napríklad odchýlku senzora.",
+			"piecewise_linear": "Prevod po úsekoch používa známe kalibračné dvojice a dopočítava hodnoty medzi susednými bodmi.",
+			"ntc_beta": "NTC beta prevádza surové napätie deliča na °C pomocou menovitého odporu, menovitej teploty a beta koeficientu sondy.",
+			"steinhart_hart": "Steinhart–Hart prevádza surové napätie deliča na °C pomocou koeficientov A, B a C sondy.",
+			"extension": "Prevod poskytuje rozšírenie. Vyberte jeho definíciu a zadajte povinné parametre v uvedených medziach."
+		},
+		"validation": {
+			"requiredNumber": "Zadajte číselnú hodnotu.",
+			"positiveNumber": "Zadajte číslo väčšie než nula.",
+			"absoluteTemperature": "Zadajte teplotu vyššiu než −273,15 °C.",
+			"rangeOrder": "Minimum nesmie byť väčšie než maximum.",
+			"rangeRequired": "Vyplňte obe medze rozsahu.",
+			"pointCount": "Pridajte 2 až 256 kalibračných bodov.",
+			"pointOrder": "Zadajte číselné dvojice X/Y s jedinečným, vzostupne zoradeným X.",
+			"pointCoverage": "Kalibračné body musia pokryť celý rozsah vstupu.",
+			"coefficientsNonzero": "Aspoň jeden koeficient musí byť nenulový.",
+			"dividerRequired": "Vyberte zapojenie sondy v deliči.",
+			"operatorMissing": "Vyberte dostupnú definíciu operátora.",
+			"parameterBounds": "Vyplňte povinné parametre v medziach operátora.",
+			"operatorRanges": "Dodržte rozsahy stanovené operátorom.",
+			"ageBounds": "Zadajte celý počet sekúnd od 1 do 86400.",
+			"sampleOptional": "Bez skúšobnej hodnoty: overia sa iba nastavenia.",
+			"sampleBounds": "Použite skúšobnú hodnotu vnútri rozsahu vstupu; napätie termistora musí byť aj medzi nulou a Vref.",
+			"sourceRequired": "Vyberte vstupný zdroj.",
+			"checking": "Overujem…",
+			"notChecked": "Opravte označené nastavenia a spustite overenie znovu."
 		}
 	}
 }

@@ -1,6 +1,13 @@
 <template>
 	<div class="flex flex-col gap-4">
 		<el-alert
+			v-if="fieldError('points')"
+			:title="fieldError('points')"
+			type="error"
+			:closable="false"
+			show-icon
+		/>
+		<el-alert
 			v-if="templateDiffers"
 			type="info"
 			:closable="false"
@@ -143,8 +150,9 @@
 			</div>
 		</el-alert>
 
-		<el-empty
+		<empty-state
 			v-if="wizard.state.points.length === 0"
+			icon="mdi:format-list-bulleted"
 			:description="t('devicesModbusPlugin.wizard.points.empty')"
 		/>
 
@@ -169,6 +177,12 @@
 			>
 				<template #default="{ row }">
 					<span data-test-id="point-name">{{ row.name }}</span>
+					<el-text
+						v-if="fieldError(`point:${row.key}`)"
+						type="danger"
+					>
+						{{ fieldError(`point:${row.key}`) }}
+					</el-text>
 				</template>
 			</el-table-column>
 
@@ -450,7 +464,6 @@ import {
 	ElAlert,
 	ElButton,
 	ElCard,
-	ElEmpty,
 	ElForm,
 	ElFormItem,
 	ElInput,
@@ -461,9 +474,12 @@ import {
 	ElSwitch,
 	ElTable,
 	ElTableColumn,
+	ElText,
 } from 'element-plus';
 
 import { useFlashMessage } from '../../../../common';
+import EmptyState from '../../../../common/components/empty-state.vue';
+import { useWizardFieldError } from '../../../../modules/devices/components/wizard/use-wizard-validation';
 import { DevicesModbusPluginRegisterType } from '../../../../openapi.constants';
 import { useModbusLiveValues } from '../../composables/useModbusLiveValues';
 import { type IModbusProbePointsResult, type ModbusProbeTarget, useModbusProbe } from '../../composables/useModbusProbe';
@@ -492,6 +508,7 @@ const props = defineProps<IModbusWizardPointsStepProps>();
 const MAX_POINTS = 256;
 
 const { t } = useI18n();
+const fieldError = useWizardFieldError();
 const flashMessage = useFlashMessage();
 const probe = useModbusProbe();
 

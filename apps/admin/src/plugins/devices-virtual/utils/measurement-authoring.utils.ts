@@ -10,6 +10,7 @@ import {
 	DevicesVirtualPluginDeviceMode,
 	DevicesVirtualPluginValueOrigin,
 } from '../../../openapi.constants';
+import { DEVICES_SHELLY_NG_TYPE } from '../../devices-shelly-ng/devices-shelly-ng.constants';
 
 export type NumericOperator = components['schemas']['DevicesVirtualPluginDataNumericOperator'];
 export type TransformPolicy = components['schemas']['DevicesVirtualPluginNumericTransformPolicy'];
@@ -21,17 +22,19 @@ export type AggregateSource = components['schemas']['DevicesVirtualPluginDataAgg
 export type AggregateState = components['schemas']['DevicesVirtualPluginDataAggregateConfiguration'];
 export type MeasurementMode = DevicesVirtualPluginDeviceMode.sensor_aggregate | DevicesVirtualPluginDeviceMode.sensor_transform;
 export type MeasurementSourceDevice = Pick<IDevice, 'id' | 'type' | 'name'> & { mode?: string };
-export type MeasurementSourceChannel = Pick<IChannel, 'id' | 'device' | 'category' | 'name'>;
+export type MeasurementSourceChannel = Pick<IChannel, 'id' | 'device' | 'category' | 'name'> & { identifier?: string | null };
 export type MeasurementSourceProperty = Pick<IChannelProperty, 'id' | 'channel' | 'category' | 'dataType' | 'permissions' | 'unit' | 'name'> & {
 	valueOrigin?: string;
 	sourceProperty?: string | null;
 	measurementQuantity?: string;
+	identifier?: string | null;
 };
 export interface MeasurementCandidate {
 	id: string;
 	label: string;
 	quantity: string;
 	unit: string;
+	thermistorVoltage?: boolean;
 }
 
 /** Backend validation remains authoritative; this filters only structurally supported source choices. */
@@ -41,9 +44,11 @@ export function measurementCandidates(
 	channels: MeasurementSourceChannel[],
 	properties: MeasurementSourceProperty[]
 ): MeasurementCandidate[] {
+	const channelById = new Map(channels.map((channel) => [channel.id, channel]));
+	const deviceById = new Map(devices.map((device) => [device.id, device]));
 	return properties.flatMap((property) => {
-		const channel = channels.find((entry) => entry.id === property.channel);
-		const device = devices.find((entry) => entry.id === channel?.device);
+		const channel = channelById.get(property.channel);
+		const device = channel && deviceById.get(channel.device);
 		if (
 			!device ||
 			!channel ||
@@ -52,9 +57,17 @@ export function measurementCandidates(
 			)
 		)
 			return [];
+		const rawShellyVoltage =
+			device.type === DEVICES_SHELLY_NG_TYPE &&
+			channel.category === DevicesModuleChannelCategory.analog_input &&
+			property.category === DevicesModuleChannelPropertyCategory.value &&
+			property.identifier === 'voltage' &&
+			/^raw-voltage:voltmeter:\d+:[a-f0-9]{64}$/.test(channel.identifier ?? '') &&
+			property.permissions.every((permission) => permission === DevicesModuleChannelPropertyPermissions.ro) &&
+			(property.unit == null || property.unit === 'V');
+		const unit = rawShellyVoltage ? 'V' : property.unit;
 		if (mode === DevicesVirtualPluginDeviceMode.sensor_transform) {
-			if (device.type === 'virtual' || !property.unit || !['float', 'char', 'uchar', 'short', 'ushort', 'int', 'uint'].includes(property.dataType))
-				return [];
+			if (device.type === 'virtual' || !unit || !['float', 'char', 'uchar', 'short', 'ushort', 'int', 'uint'].includes(property.dataType)) return [];
 		} else {
 			const virtual = device;
 			const derived = property;
@@ -79,9 +92,58 @@ export function measurementCandidates(
 				id: property.id,
 				label: `${device.name} / ${channel.name} / ${property.name ?? property.category}`,
 				quantity: property.category,
-				unit: property.unit ?? '',
+				unit: unit ?? '',
+				...(rawShellyVoltage || (property.category === DevicesModuleChannelPropertyCategory.voltage && unit === 'V')
+					? { thermistorVoltage: true }
+					: {}),
 			},
 		];
+	});
+}
+
+/** Sample range rejection does not invalidate a policy accepted by the backend. */
+export function isBlockingTransformPreviewError(error: string | null | undefined): boolean {
+	return !!error && error !== 'input_out_of_range' && error !== 'output_out_of_range';
+}
+
+/**
+ * A Shelly addon can expose both a display-only temperature:100 channel and its address-bound probe.
+ * Prefer the single offered canonical representation of that exact physical reading. This never
+ * remaps an existing binding, uses a cached value as live evidence, or filters offline devices.
+ */
+export function preferCanonicalMeasurementSources<T extends { id: string }>(
+	sources: T[],
+	devices: MeasurementSourceDevice[],
+	channels: MeasurementSourceChannel[],
+	properties: MeasurementSourceProperty[]
+): T[] {
+	const deviceById = new Map(devices.map((device) => [device.id, device]));
+	const channelById = new Map(channels.map((channel) => [channel.id, channel]));
+	const propertyById = new Map(properties.map((property) => [property.id, property]));
+	const identities = sources.map((source) => {
+		const property = propertyById.get(source.id);
+		const channel = property && channelById.get(property.channel);
+		const device = channel && deviceById.get(channel.device);
+		if (
+			device?.type !== 'devices-shelly-ng' ||
+			channel?.category !== 'temperature' ||
+			property?.category !== 'temperature' ||
+			property.identifier !== 'tC' ||
+			property.unit !== '°C'
+		)
+			return null;
+		const identifier = channel.identifier ?? '';
+		const canonical = /^probe-temperature:temperature:1\d\d:[a-f0-9]{64}$/.test(identifier);
+		const component = canonical ? identifier.split(':').slice(1, 3).join(':') : /^temperature:1\d\d$/.test(identifier) ? identifier : null;
+		return component ? { key: JSON.stringify([device.id, component]), canonical } : null;
+	});
+	const canonicalCounts = new Map<string, number>();
+	for (const identity of identities) {
+		if (identity?.canonical) canonicalCounts.set(identity.key, (canonicalCounts.get(identity.key) ?? 0) + 1);
+	}
+	return sources.filter((_, index) => {
+		const identity = identities[index];
+		return !identity || identity.canonical || canonicalCounts.get(identity.key) !== 1;
 	});
 }
 
@@ -158,10 +220,13 @@ export function aggregateCandidates(
 	properties: MeasurementSourceProperty[],
 	profile: AggregateProfile
 ): MeasurementCandidate[] {
+	const deviceById = new Map(devices.map((device) => [device.id, device]));
+	const channelById = new Map(channels.map((channel) => [channel.id, channel]));
+	const propertyById = new Map(properties.map((property) => [property.id, property]));
 	return sources.map((source) => {
-		const device = devices.find((entry) => entry.id === source.device);
-		const channel = channels.find((entry) => entry.id === source.channel);
-		const property = properties.find((entry) => entry.id === source.property);
+		const device = deviceById.get(source.device);
+		const channel = channelById.get(source.channel);
+		const property = propertyById.get(source.property);
 		return {
 			id: source.property,
 			label: [device?.name, channel?.name, property?.name ?? source.property].filter(Boolean).join(' / '),

@@ -285,6 +285,9 @@
     "messages": {
       "sessionNotStarted": "Home Assistant devices could not be prepared for bulk import.",
       "adoptionFailed": "The selected Home Assistant devices could not be added."
+    },
+    "selection": {
+      "description": "Import devices from your Home Assistant instance."
     }
   }
 }

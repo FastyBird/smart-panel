@@ -37,6 +37,7 @@
     "yourProfile": "Ihr Profil"
   },
   "messages": {
+    "sessionExpired": "Ihre Sitzung ist nicht mehr gültig. Bitte melden Sie sich erneut an.",
     "invalidCredentials": "Der Benutzername oder das Passwort ist falsch.",
     "signInRateLimited": "Zu viele Anmeldeversuche. Bitte versuchen Sie es später erneut.",
     "signInRetryAfter": "Zu viele Anmeldeversuche. Bitte warten Sie {seconds} Sekunden, bevor Sie es erneut versuchen.",

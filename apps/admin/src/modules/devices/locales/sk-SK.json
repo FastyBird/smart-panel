@@ -399,12 +399,12 @@
 			},
 			"room": {
 				"title": "Miestnosť",
-				"placeholder": "Vyberte miestnosť (voliteľné)",
+				"placeholder": "Vyberte miestnosť",
 				"hint": "Priraďte toto zariadenie k fyzickej miestnosti"
 			},
 			"zones": {
 				"title": "Zóny",
-				"placeholder": "Vyberte zóny (voliteľné)",
+				"placeholder": "Vyberte zóny",
 				"hint": "Priraďte toto zariadenie k logickým zónam (napr. Bezpečnosť, Exteriér). Členstvo v zóne poschodia je odvodené z priradenia miestnosti."
 			},
 			"validation": {
@@ -705,6 +705,9 @@
 		},
 		"back": {
 			"title": "Späť"
+		},
+		"manual": {
+			"title": "Ručná konfigurácia"
 		}
 	},
 	"labels": {
@@ -1048,6 +1051,37 @@
 			"noSelection": "Neboli vybrané žiadne zariadenia",
 			"resultsSuccess": "Všetky vybrané zariadenia boli úspešne pridané",
 			"resultsFailed": "Niektoré zariadenia sa nepodarilo pridať"
+		},
+		"variant": "Vyberte variant",
+		"loadFailed": "Načítanie pluginov sa nepodarilo.",
+		"retry": "Skúsiť znova",
+		"discardChanges": "Zahodiť neuložené zmeny?",
+		"noPlugins": "Nie je dostupný žiadny sprievodca. Zapnite podporovaný plugin v nastaveniach.",
+		"review": {
+			"setting": "Nastavenie",
+			"value": "Hodnota",
+			"status": "Stav",
+			"details": "Podrobnosti",
+			"success": "V poriadku",
+			"error": "Vyžaduje opravu",
+			"info": "Informácia"
+		},
+		"validation": {
+			"required": "Vyplňte toto pole.",
+			"invalidValue": "Vyberte platnú hodnotu.",
+			"minimumItems": "Vyberte aspoň {count} položky.",
+			"numberRange": "Zadajte celé číslo od {minimum} do {maximum}."
+		},
+		"selection": {
+			"title": "Čo chcete pridať?",
+			"description": "Vyberte integráciu na pripojenie skutočných zariadení alebo zostavte virtuálne zariadenie z tých, ktoré už máte.",
+			"integrations": "Pripojiť integráciu",
+			"integrationsDescription": "Vyhľadajte zariadenia alebo nastavte ich pripojenie a vyberte, čo chcete pridať.",
+			"search": "Hľadať",
+			"searchPlaceholder": "Integrácia alebo typ zariadenia",
+			"noResults": "Žiadna integrácia ani typ zariadenia nezodpovedá hľadaniu.",
+			"clearSearch": "Vymazať hľadanie",
+			"manualHint": "Chcete konfiguráciu zadať ručne?"
 		}
 	},
 	"diagnostics": {

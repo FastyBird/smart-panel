@@ -39,6 +39,8 @@ export type ISessionRegisterActionPayload = z.infer<typeof SessionRegisterAction
 // =====
 
 export interface ISessionStoreState {
+	/** Changes at authentication boundaries; token refresh keeps the same generation. */
+	sessionGeneration: Ref<number>;
 	profile: Ref<IUser | null>;
 	tokenPair: Ref<ITokenPair | null>;
 	semaphore: Ref<ISessionStateSemaphore>;

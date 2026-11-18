@@ -21,8 +21,9 @@
 					:config="configPlugin"
 					:remote-form-errors="formFieldErrors"
 				/>
-				<el-empty
+				<empty-state
 					v-else-if="!isLoading"
+					icon="mdi:puzzle-outline"
 					:description="t('onboardingModule.integrations.configDialog.noConfig')"
 				/>
 			</div>
@@ -61,14 +62,15 @@
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElEmpty, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElDialog, ElScrollbar, vLoading } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
+import EmptyState from '../../../common/components/empty-state.vue';
+import { usePlugins } from '../../../modules/config/composables/usePlugins';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
-import { configPluginsStoreKey } from '../../../modules/config/store/keys';
 import type { IConfigPluginValidationResult } from '../../../modules/config/store/config-plugins.store.types';
-import { usePlugins } from '../../../modules/config/composables/usePlugins';
+import { configPluginsStoreKey } from '../../../modules/config/store/keys';
 import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
 
 defineOptions({
@@ -112,9 +114,7 @@ const snakeToCamel = (str: string): string => {
 const formFieldErrors = computed(() => {
 	if (!validationResult.value || validationResult.value.valid) return [];
 
-	return (validationResult.value.errors ?? [])
-		.filter((err) => err.field)
-		.map((err) => ({ field: snakeToCamel(err.field!), message: err.message }));
+	return (validationResult.value.errors ?? []).filter((err) => err.field).map((err) => ({ field: snakeToCamel(err.field!), message: err.message }));
 });
 
 const plugin = computed(() => getByName(props.pluginType));

@@ -133,81 +133,84 @@
 					</div>
 
 					<div class="flex-1 overflow-auto min-h-0">
-					<div
-						v-if="sortedCards.length === 0"
-						class="p-4 text-center"
-					>
-						<el-empty :description="t('pagesCardsPlugin.texts.cards.noCards')" />
-					</div>
-
-					<div
-						v-for="card in sortedCards"
-						:key="card.id"
-						class="b-b b-b-solid"
-						style="border-color: var(--el-border-color-lighter)"
-					>
-						<div :class="[ns.e('card-header'), 'flex items-center justify-between px-2 h-8 min-h-8 b-b b-b-solid']">
-							<div class="flex items-center gap-1 min-w-0">
-								<el-icon
-									v-if="card.icon"
-									:size="14"
-									color="var(--el-text-color-regular)"
-								>
-									<icon :icon="formatIcon(card.icon, '')" />
-								</el-icon>
-								<el-text
-									size="small"
-									class="truncate font-medium"
-								>
-									{{ card.title }}
-								</el-text>
-								<el-tag
-									size="small"
-									type="info"
-									class="ml-1"
-								>
-									#{{ card.order }}
-								</el-tag>
-							</div>
-							<div class="flex items-center gap-1">
-								<el-button
-									size="small"
-									plain
-									@click="emit('addTile', card.id)"
-								>
-									<template #icon>
-										<icon icon="mdi:plus" />
-									</template>
-								</el-button>
-								<el-button
-									size="small"
-									plain
-									@click="emit('editCard', card.id)"
-								>
-									<template #icon>
-										<icon icon="mdi:pencil" />
-									</template>
-								</el-button>
-								<el-button
-									size="small"
-									plain
-									type="danger"
-									@click="emit('removeCard', card.id)"
-								>
-									<template #icon>
-										<icon icon="mdi:trash-can-outline" />
-									</template>
-								</el-button>
-							</div>
-						</div>
-
-						<div class="p-2">
-							<div
-								:ref="(el) => setGridRef(card.id, el as HTMLElement | null)"
-								class="card-grid-container"
+						<div
+							v-if="sortedCards.length === 0"
+							class="p-4 text-center"
+						>
+							<empty-state
+								icon="mdi:view-dashboard-outline"
+								:description="t('pagesCardsPlugin.texts.cards.noCards')"
 							/>
 						</div>
-					</div>
+
+						<div
+							v-for="card in sortedCards"
+							:key="card.id"
+							class="b-b b-b-solid"
+							style="border-color: var(--el-border-color-lighter)"
+						>
+							<div :class="[ns.e('card-header'), 'flex items-center justify-between px-2 h-8 min-h-8 b-b b-b-solid']">
+								<div class="flex items-center gap-1 min-w-0">
+									<el-icon
+										v-if="card.icon"
+										:size="14"
+										color="var(--el-text-color-regular)"
+									>
+										<icon :icon="formatIcon(card.icon, '')" />
+									</el-icon>
+									<el-text
+										size="small"
+										class="truncate font-medium"
+									>
+										{{ card.title }}
+									</el-text>
+									<el-tag
+										size="small"
+										type="info"
+										class="ml-1"
+									>
+										#{{ card.order }}
+									</el-tag>
+								</div>
+								<div class="flex items-center gap-1">
+									<el-button
+										size="small"
+										plain
+										@click="emit('addTile', card.id)"
+									>
+										<template #icon>
+											<icon icon="mdi:plus" />
+										</template>
+									</el-button>
+									<el-button
+										size="small"
+										plain
+										@click="emit('editCard', card.id)"
+									>
+										<template #icon>
+											<icon icon="mdi:pencil" />
+										</template>
+									</el-button>
+									<el-button
+										size="small"
+										plain
+										type="danger"
+										@click="emit('removeCard', card.id)"
+									>
+										<template #icon>
+											<icon icon="mdi:trash-can-outline" />
+										</template>
+									</el-button>
+								</div>
+							</div>
+
+							<div class="p-2">
+								<div
+									:ref="(el) => setGridRef(card.id, el as HTMLElement | null)"
+									class="card-grid-container"
+								/>
+							</div>
+						</div>
 					</div>
 				</el-card>
 			</el-col>
@@ -326,14 +329,16 @@
 import { type ComputedRef, computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElCol, ElEmpty, ElIcon, ElOption, ElPopover, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
+import { storeToRefs } from 'pinia';
+
+import { ElButton, ElCard, ElCol, ElIcon, ElOption, ElPopover, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
 import { GridStack } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
-import { storeToRefs } from 'pinia';
 
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager } from '../../../common';
+import EmptyState from '../../../common/components/empty-state.vue';
 import {
 	DashboardException,
 	FormResult,
@@ -907,7 +912,10 @@ const tileSignature = computed((): string => {
 		const store = tilesByCard.get(card.id);
 
 		if (store) {
-			const ids = store.tiles.value.map((t) => t.id).sort().join(',');
+			const ids = store.tiles.value
+				.map((t) => t.id)
+				.sort()
+				.join(',');
 			parts.push(`${card.id}:${ids}`);
 		}
 	}

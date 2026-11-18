@@ -5,14 +5,10 @@ import { type Pinia, defineStore } from 'pinia';
 
 import { jwtDecode } from 'jwt-decode';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
-import type {
-	AuthModuleGetProfileOperation,
-	AuthModuleRegisterOperation,
-	UsersModuleUpdateUserOperation,
-} from '../../../openapi.constants';
-import { type IUser, transformUserResponse, USERS_MODULE_PREFIX } from '../../users';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
+import type { AuthModuleGetProfileOperation, AuthModuleRegisterOperation, UsersModuleUpdateUserOperation } from '../../../openapi.constants';
+import { type IUser, USERS_MODULE_PREFIX, transformUserResponse } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthApiException, AuthException, AuthLoginException } from '../auth.exceptions';
 
@@ -42,8 +38,9 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 	const { cookies } = useCookies();
 
-	const semaphore = ref<ISessionStateSemaphore>(defaultSemaphore);
+	const semaphore = ref<ISessionStateSemaphore>({ ...defaultSemaphore });
 
+	const sessionGeneration = ref(0);
 	const tokenPair = ref<ITokenPair | null>(null);
 	const profile = ref<IUser | null>(null);
 
@@ -71,6 +68,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			return false;
 		}
 
+		const generation = sessionGeneration.value;
 		const accessTokenCookie = readCookie(ACCESS_TOKEN_COOKIE_NAME);
 		const refreshTokenCookie = readCookie(REFRESH_TOKEN_COOKIE_NAME);
 
@@ -105,6 +103,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			try {
 				// Access token is missing, need to refresh tokens
 				const refreshed = await refresh();
+				if (generation !== sessionGeneration.value) return false;
 
 				if (!refreshed) {
 					clear();
@@ -112,6 +111,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 					return false;
 				}
 			} catch (error: unknown) {
+				if (generation !== sessionGeneration.value) return false;
 				clear();
 
 				if (error instanceof AuthApiException) {
@@ -126,8 +126,9 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			// Get user profile info
 			await get();
 
-			return true;
+			return generation === sessionGeneration.value;
 		} catch (error: unknown) {
+			if (generation !== sessionGeneration.value) return false;
 			if (error instanceof AuthApiException) {
 				throw error;
 			}
@@ -137,7 +138,10 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 	};
 
 	const clear = (): void => {
-		semaphore.value = defaultSemaphore;
+		sessionGeneration.value++;
+		pendingGetPromise = undefined;
+		pendingRefreshPromise = undefined;
+		semaphore.value = { ...defaultSemaphore };
 
 		tokenPair.value = null;
 		profile.value = null;
@@ -151,6 +155,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			return pendingGetPromise;
 		}
 
+		const generation = sessionGeneration.value;
 		const getPromise = (async (): Promise<IUser> => {
 			if (semaphore.value.fetching) {
 				throw new AuthException('Already fetching profile.');
@@ -161,6 +166,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			try {
 				const { data: responseData, error } = await backend.client.GET(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/profile`);
 
+				if (generation !== sessionGeneration.value) throw new AuthException('Session changed.');
 				if (typeof responseData !== 'undefined') {
 					profile.value = transformUserResponse(responseData.data);
 
@@ -175,7 +181,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 				throw new AuthException(errorReason);
 			} finally {
-				semaphore.value.fetching = false;
+				if (generation === sessionGeneration.value) semaphore.value.fetching = false;
 			}
 		})();
 
@@ -184,7 +190,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		try {
 			return await getPromise;
 		} finally {
-			pendingGetPromise = undefined;
+			if (pendingGetPromise === getPromise) pendingGetPromise = undefined;
 		}
 	};
 
@@ -193,6 +199,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			throw new AuthException('Already creating session.');
 		}
 
+		let generation = sessionGeneration.value;
 		semaphore.value.creating = true;
 
 		try {
@@ -209,7 +216,11 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 				},
 			});
 
+			if (generation !== sessionGeneration.value) throw new AuthException('Session changed.');
 			if (typeof responseData !== 'undefined') {
+				clear();
+				generation = sessionGeneration.value;
+				semaphore.value.creating = true;
 				tokenPair.value = transformTokenPairResponse(responseData.data);
 
 				writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
@@ -227,7 +238,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 			throw new AuthLoginException(errorReason, response?.status, response?.headers.get('Retry-After'));
 		} finally {
-			semaphore.value.creating = false;
+			if (generation === sessionGeneration.value) semaphore.value.creating = false;
 		}
 	};
 
@@ -269,10 +280,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 				updateData.current_password = payload.data.password.current;
 			}
 
-			const {
-				data: responseData,
-				error,
-			} = await backend.client.PATCH(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users/{id}`, {
+			const { data: responseData, error } = await backend.client.PATCH(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users/{id}`, {
 				params: {
 					path: { id: payload.id },
 				},
@@ -342,6 +350,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			return pendingRefreshPromise;
 		}
 
+		const generation = sessionGeneration.value;
 		const refreshPromise = (async (): Promise<boolean> => {
 			if (semaphore.value.updating) {
 				return false;
@@ -368,6 +377,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 					},
 				});
 
+				if (generation !== sessionGeneration.value) return false;
 				if (typeof responseData !== 'undefined') {
 					tokenPair.value = transformTokenPairResponse(responseData.data);
 
@@ -382,7 +392,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 				return false;
 			} finally {
-				semaphore.value.updating = false;
+				if (generation === sessionGeneration.value) semaphore.value.updating = false;
 			}
 		})();
 
@@ -391,7 +401,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		try {
 			return await refreshPromise;
 		} finally {
-			pendingRefreshPromise = undefined;
+			if (pendingRefreshPromise === refreshPromise) pendingRefreshPromise = undefined;
 		}
 	};
 
@@ -414,6 +424,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 	};
 
 	return {
+		sessionGeneration,
 		semaphore,
 		tokenPair,
 		profile,

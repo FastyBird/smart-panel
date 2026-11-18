@@ -1,9 +1,11 @@
 /* eslint-disable vue/one-component-per-file */
-import { defineComponent } from 'vue';
+import { defineComponent, h } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
+
+import DeviceWizardShell from '../../../modules/devices/components/wizard/device-wizard-shell.vue';
 
 import ViewSimulatorDeviceWizard from './view-simulator-device-wizard.vue';
 
@@ -20,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
-vi.mock('vue-meta', () => ({ useMeta: vi.fn() }));
+vi.mock('vue-meta', () => ({ useMeta: () => ({ meta: {} }) }));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		push: mocks.routerPush,
@@ -28,6 +30,7 @@ vi.mock('vue-router', () => ({
 		resolve: (to: unknown) => to,
 	}),
 	onBeforeRouteLeave: vi.fn(),
+	onBeforeRouteUpdate: vi.fn(),
 }));
 
 vi.mock('../../../common', async () => {
@@ -87,10 +90,12 @@ const ButtonStub = defineComponent({
 	emits: ['click'],
 	template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
-const PassThroughStub = defineComponent({ template: '<div><slot /><slot name="header" /><slot name="default" /></div>' });
+const PassThroughStub = defineComponent({ template: '<div><slot name="header" /><slot /><slot name="footer" /></div>' });
 
 const mountView = () =>
-	mount(ViewSimulatorDeviceWizard, {
+	mount(DeviceWizardShell, {
+		props: { title: 'Simulator' },
+		slots: { default: () => h(ViewSimulatorDeviceWizard) },
 		global: {
 			stubs: {
 				ElAlert: PassThroughStub,
@@ -167,14 +172,17 @@ describe('ViewSimulatorDeviceWizard', () => {
 
 	it('derives and reviews every batch name before generation', async () => {
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as { form: { category: string; namePrefix: string; count: number }; previewNames: string[] };
+		const vm = wrapper.findComponent(ViewSimulatorDeviceWizard).vm as unknown as {
+			form: { category: string; namePrefix: string; count: number };
+			previewNames: string[];
+		};
 
 		vm.form.category = 'lighting';
 		vm.form.namePrefix = 'Office light';
 		vm.form.count = 3;
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
 
 		expect(wrapper.find('[data-test-id="wizard-review"]').exists()).toBe(true);
 		expect(vm.previewNames).toEqual(['Office light 1', 'Office light 2', 'Office light 3']);
@@ -182,19 +190,23 @@ describe('ViewSimulatorDeviceWizard', () => {
 
 	it('prevents review when the device count is fractional', async () => {
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as { form: { category: string; namePrefix: string; count: number } };
+		const vm = wrapper.findComponent(ViewSimulatorDeviceWizard).vm as unknown as { form: { category: string; namePrefix: string; count: number } };
 
 		vm.form.category = 'lighting';
 		vm.form.namePrefix = 'Office light';
 		vm.form.count = 1.5;
 		await flushPromises();
 
-		expect(wrapper.find('[data-test-id="wizard-next"]').attributes('disabled')).toBeDefined();
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-configure"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-review"]').exists()).toBe(false);
+		expect(mocks.generate).not.toHaveBeenCalled();
 	});
 
 	it('prevents review when the active simulation interval is invalid', async () => {
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as {
+		const vm = wrapper.findComponent(ViewSimulatorDeviceWizard).vm as unknown as {
 			form: { category: string; namePrefix: string; autoSimulate: boolean; simulateInterval: number | null };
 		};
 
@@ -204,12 +216,16 @@ describe('ViewSimulatorDeviceWizard', () => {
 		vm.form.simulateInterval = null;
 		await flushPromises();
 
-		expect(wrapper.find('[data-test-id="wizard-next"]').attributes('disabled')).toBeDefined();
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-configure"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-review"]').exists()).toBe(false);
+		expect(mocks.generate).not.toHaveBeenCalled();
 	});
 
 	it('keeps realistic behavior selectable when automatic simulation is disabled', () => {
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as { form: { autoSimulate: boolean } };
+		const vm = wrapper.findComponent(ViewSimulatorDeviceWizard).vm as unknown as { form: { autoSimulate: boolean } };
 
 		expect(vm.form.autoSimulate).toBe(false);
 		expect(wrapper.find('[data-test-id="wizard-behavior-mode"]').exists()).toBe(true);
@@ -224,14 +240,14 @@ describe('ViewSimulatorDeviceWizard', () => {
 		});
 
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as { form: { category: string; namePrefix: string; count: number } };
+		const vm = wrapper.findComponent(ViewSimulatorDeviceWizard).vm as unknown as { form: { category: string; namePrefix: string; count: number } };
 		vm.form.category = 'lighting';
 		vm.form.namePrefix = 'Office light';
 		vm.form.count = 2;
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-next"]').trigger('click');
-		await wrapper.find('[data-test-id="wizard-generate"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-action-generate"]').trigger('click');
 		await flushPromises();
 
 		expect(mocks.generate).toHaveBeenCalledWith(expect.objectContaining({ category: 'lighting', count: 2, namePrefix: 'Office light' }));
@@ -240,11 +256,11 @@ describe('ViewSimulatorDeviceWizard', () => {
 
 	it('can reset the completed batch to generate more', async () => {
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as { activeStep: number };
+		const vm = wrapper.findComponent(ViewSimulatorDeviceWizard).vm as unknown as { activeStep: number };
 		vm.activeStep = 2;
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-generate-more"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-action-generate-more"]').trigger('click');
 
 		expect(mocks.reset).toHaveBeenCalledTimes(1);
 		expect(wrapper.find('[data-test-id="wizard-configure"]').exists()).toBe(true);
@@ -252,7 +268,7 @@ describe('ViewSimulatorDeviceWizard', () => {
 
 	it('opens a generated device from the results', () => {
 		const wrapper = mountView();
-		const vm = wrapper.vm as unknown as { onViewDevice: (id: string) => void };
+		const vm = wrapper.findComponent(ViewSimulatorDeviceWizard).vm as unknown as { onViewDevice: (id: string) => void };
 
 		vm.onViewDevice('device-1');
 

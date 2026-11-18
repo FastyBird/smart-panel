@@ -136,6 +136,9 @@
 			"rescanFailed": "Nepodarilo sa znova spustiť vyhľadávanie WLED.",
 			"probeFailed": "Nepodarilo sa pripojiť k zariadeniu WLED.",
 			"adoptionFailed": "Nepodarilo sa prijať vybrané zariadenia WLED."
+		},
+		"selection": {
+			"description": "Ovládače adresovateľných LED so systémom WLED."
 		}
 	}
 }

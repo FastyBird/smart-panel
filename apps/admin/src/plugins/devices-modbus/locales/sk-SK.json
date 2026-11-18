@@ -92,9 +92,10 @@
 			"counts": "{channels} channels, {points} points",
 			"fileErrors": "Some template files could not be loaded",
 			"startEmpty": {
-				"title": "Start empty",
-				"description": "Define the points yourself."
-			}
+				"title": "Nakonfigurovať vlastné zariadenie",
+				"description": "Zadajte registre a funkcie svojho zariadenia."
+			},
+			"browse": "Použiť šablónu zariadenia"
 		},
 		"points": {
 			"customNotice": "The points differ from the template, so the device will be created as a custom device.",
@@ -282,6 +283,9 @@
 			"save": "Uložiť body",
 			"saved": "Body zariadenia \"{name}\" boli uložené.",
 			"saveFailed": "Body sa nepodarilo uložiť"
+		},
+		"selection": {
+			"description": "Brány Modbus TCP s registrami priradenými zariadeniam."
 		}
 	},
 	"endpoints": {

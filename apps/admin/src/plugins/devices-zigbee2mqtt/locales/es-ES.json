@@ -328,6 +328,9 @@
 			"friendlyName": "Nombre amigable",
 			"channels": "Canales",
 			"channelsCount": "{count} canal | {count} canales"
+		},
+		"selection": {
+			"description": "Dispositivos Zigbee a través de su puente Zigbee2MQTT."
 		}
 	}
 }

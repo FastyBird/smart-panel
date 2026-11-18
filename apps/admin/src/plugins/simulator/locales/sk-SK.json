@@ -45,6 +45,9 @@
 			"details": "Podrobnosti",
 			"created": "Vytvorené",
 			"failed": "Zlyhalo"
+		},
+		"selection": {
+			"description": "Vygenerujte testovacie zariadenia bez skutočného hardvéru."
 		}
 	},
 	"headings": {

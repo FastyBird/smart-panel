@@ -17,9 +17,8 @@ export interface IWizardActionsContext {
 }
 
 /**
- * Single source of truth for the wizard action bar. Rendered twice — once in the desktop
- * `view-header` `#extra` slot and once in the mobile footer — so the per-step button logic
- * lives here rather than being duplicated in both templates.
+ * Single source of truth for the shared wizard footer on desktop and mobile.
+ * The shell renders the actions; per-step button logic stays here.
  */
 // A plugin's discovery action lives in the bar rather than the step body, so the primary thing
 // a user does on the discover step ("Scan again", "Pair new device") sits with Cancel and Next

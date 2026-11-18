@@ -65,7 +65,11 @@ export default {
 
 		const sessionStore = registerSessionStore(options.store);
 
-		backendClient.use(createSessionMiddleware(sessionStore));
+		backendClient.use(
+			createSessionMiddleware(sessionStore, () => {
+				flashMessage.error(i18n.global.t('authModule.messages.sessionExpired'));
+			})
+		);
 
 		app.provide(sessionStoreKey, sessionStore);
 		storesManager.addStore(sessionStoreKey, sessionStore);

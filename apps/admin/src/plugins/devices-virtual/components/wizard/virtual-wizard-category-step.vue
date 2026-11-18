@@ -1,107 +1,85 @@
 <template>
-	<div class="space-y-4">
-		<el-alert
-			type="info"
-			:title="t('devicesVirtualPlugin.wizard.category.heading')"
-			:description="t('devicesVirtualPlugin.wizard.category.description')"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-form label-position="top">
-			<el-form-item :label="t('devicesVirtualPlugin.fields.devices.category.title')">
-				<el-select
-					:model-value="modelValue"
-					:placeholder="t('devicesVirtualPlugin.fields.devices.category.placeholder')"
-					name="category"
-					filterable
-					class="w-full"
-					@update:model-value="onSelect"
-				>
-					<el-option
-						v-for="item in categories"
-						:key="item.value"
-						:label="item.label"
-						:value="item.value"
-					/>
-				</el-select>
-			</el-form-item>
-		</el-form>
-
-		<div
-			v-if="blockedCategories.length > 0"
-			data-test-id="blocked-categories"
+	<el-form-item
+		:error="fieldError('category')"
+		:label="t('devicesModule.fields.devices.category.title')"
+		class="projection-category"
+		required
+	>
+		<el-radio-group
+			:model-value="modelValue ?? undefined"
+			class="projection-categories"
+			:aria-label="t('devicesModule.fields.devices.category.title')"
+			@update:model-value="onSelect"
 		>
-			<p class="text-sm text-gray-500 mb-2">
-				{{ t('devicesVirtualPlugin.wizard.category.blockedHeading') }}
-			</p>
-
-			<div class="flex flex-wrap gap-2">
-				<el-tag
-					v-for="item in blockedCategories"
-					:key="item.value"
-					type="info"
-					:title="item.reason"
-					class="opacity-60! cursor-not-allowed!"
-				>
-					{{ item.label }}
-				</el-tag>
-			</div>
-		</div>
-	</div>
+			<el-radio
+				v-for="item in visibleCategories"
+				:key="item.value"
+				:value="item.value"
+				border
+				:data-category="item.value"
+			>
+				{{ item.label }}
+			</el-radio>
+		</el-radio-group>
+		<el-button
+			v-if="moreCount"
+			link
+			type="primary"
+			class="mt-3"
+			data-test-id="projection-more-categories"
+			@click="expanded = !expanded"
+		>
+			{{ t(`devicesVirtualPlugin.wizard.projection.${expanded ? 'fewerCategories' : 'moreCategories'}`, { count: moreCount }) }}
+		</el-button>
+	</el-form-item>
 </template>
-
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, ElTag } from 'element-plus';
+import { ElButton, ElFormItem, ElRadio, ElRadioGroup } from 'element-plus';
 
+import { useWizardFieldError } from '../../../../modules/devices/components/wizard/use-wizard-validation';
 import { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
-import { VIRTUAL_BLOCKED_CATEGORIES, VIRTUAL_SELECTABLE_CATEGORIES } from '../../devices-virtual.constants';
+import { VIRTUAL_SELECTABLE_CATEGORIES } from '../../devices-virtual.constants';
 
 import type { IVirtualWizardCategoryStepProps } from './virtual-wizard-category-step.types';
 
-defineOptions({
-	name: 'VirtualWizardCategoryStep',
-});
-
-defineProps<IVirtualWizardCategoryStepProps>();
-
-const emit = defineEmits<{
-	(e: 'update:modelValue', value: DevicesModuleDeviceCategory): void;
-}>();
-
+defineOptions({ name: 'VirtualWizardCategoryStep' });
+const props = defineProps<IVirtualWizardCategoryStepProps>();
+const emit = defineEmits<{ 'update:modelValue': [value: DevicesModuleDeviceCategory] }>();
 const { t } = useI18n();
-
-// The selectable list: every device category the generated spec knows about, minus the six that
-// need a controller the plugin cannot yet drive (see VIRTUAL_SELECTABLE_CATEGORIES/
-// VIRTUAL_BLOCKED_CATEGORIES). Deliberately excludes blocked values entirely rather than
-// including-but-disabling them here — the disabled, explained rendering lives in `blockedCategories`
-// below, so the two lists never disagree.
-const categories = computed<{ value: DevicesModuleDeviceCategory; label: string }[]>(() =>
-	VIRTUAL_SELECTABLE_CATEGORIES.map((value) => ({
-		value,
-		label: t(`devicesModule.categories.devices.${value}`),
-	}))
-);
-
-// Shown disabled with a reason so a user wondering where e.g. "Thermostat" went finds it here
-// explained, rather than the omission looking like a bug.
-const blockedCategories = computed<{ value: DevicesModuleDeviceCategory; label: string; reason: string }[]>(() =>
-	VIRTUAL_BLOCKED_CATEGORIES.map((value) => ({
-		value,
-		label: t(`devicesModule.categories.devices.${value}`),
-		reason: t('devicesVirtualPlugin.wizard.category.blockedReason'),
-	}))
-);
-
-const onSelect = (value: DevicesModuleDeviceCategory): void => {
-	emit('update:modelValue', value);
-};
-
-defineExpose({
-	categories,
-	blockedCategories,
+const fieldError = useWizardFieldError();
+const categories = computed(() => VIRTUAL_SELECTABLE_CATEGORIES.map((value) => ({ value, label: t(`devicesModule.categories.devices.${value}`) })));
+const expanded = ref(false);
+const commonCategories = ['lighting', 'switcher', 'outlet', 'sensor', 'alarm', 'camera'];
+const moreCount = computed(() => categories.value.filter((item) => !commonCategories.includes(item.value)).length);
+const visibleCategories = computed(() => {
+	const common = commonCategories.flatMap((value) => categories.value.filter((item) => item.value === value));
+	const others = categories.value.filter((item) => !commonCategories.includes(item.value) && (expanded.value || props.modelValue === item.value));
+	return [...common, ...others];
 });
+const onSelect = (value: string | number | boolean | undefined) => {
+	if (categories.value.some((item) => item.value === value)) emit('update:modelValue', value as DevicesModuleDeviceCategory);
+};
+defineExpose({ categories });
 </script>
+<style scoped>
+.projection-categories {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: 8px;
+	width: 100%;
+}
+.projection-categories :deep(.el-radio) {
+	width: 100%;
+	min-height: 44px;
+	height: auto;
+	margin: 0;
+	padding: 10px 12px;
+}
+.projection-categories :deep(.el-radio__label) {
+	white-space: normal;
+	line-height: 18px;
+}
+</style>

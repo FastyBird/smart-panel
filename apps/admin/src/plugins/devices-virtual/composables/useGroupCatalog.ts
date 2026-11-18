@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { getCurrentScope, onScopeDispose, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useBackend } from '../../../common';
@@ -16,19 +16,25 @@ export const useGroupCatalog = () => {
 	const error = ref<string | null>(null);
 	const pending = ref(false);
 	let generation = 0;
+	let request: AbortController | undefined;
 	const invalidate = () => {
 		generation++;
+		request?.abort();
 		catalog.value = null;
 		pending.value = false;
 	};
-	const load = async (request: Request) => {
+	if (getCurrentScope()) onScopeDispose(invalidate);
+	const load = async (body: Request) => {
 		const current = ++generation;
+		request?.abort();
+		const controller = (request = new AbortController());
+		const timeout = setTimeout(() => controller.abort(), 10000);
 		catalog.value = null;
 		pending.value = true;
 		error.value = null;
 		try {
-			const result = await backend.client.POST('/plugins/devices-virtual/producers/light-group-candidates', { body: request });
-			if (current !== generation) return null;
+			const result = await backend.client.POST('/plugins/devices-virtual/producers/light-group-candidates', { body, signal: controller.signal });
+			if (current !== generation || result.response?.status === 401) return null;
 			if (!result.data)
 				throw new Error(
 					result.error && typeof result.error === 'object' && 'message' in result.error
@@ -42,6 +48,7 @@ export const useGroupCatalog = () => {
 			if (current === generation) error.value = cause instanceof Error ? cause.message : t('devicesVirtualPlugin.lightGroup.readinessUnavailable');
 			return null;
 		} finally {
+			clearTimeout(timeout);
 			if (current === generation) pending.value = false;
 		}
 	};

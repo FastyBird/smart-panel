@@ -2,12 +2,7 @@
 	<details data-test-id="member-installation">
 		<summary>{{ label('installation') }}</summary>
 		<p>{{ label('stagingOnly') }}</p>
-		<el-alert
-			v-if="state.error.value || error"
-			:title="state.error.value ?? error ?? ''"
-			type="error"
-			:closable="false"
-		/>
+
 		<p v-if="state.value.value?.profile">{{ state.value.value.profile.readiness }} · r{{ state.value.value.profile.revision }}</p>
 		<el-alert
 			v-for="reason in [
@@ -82,7 +77,10 @@
 						:controls="false"
 						:placeholder="label('observedMs')"
 					/>
-					<el-button @click="draft.attestations.splice(index, 1)">{{ label('removeDraft') }}</el-button>
+					<virtual-wizard-remove-button
+						:label="label('removeDraft')"
+						@click="draft.attestations.splice(index, 1)"
+					/>
 				</div>
 				<el-button
 					:disabled="draft.attestations.length >= 7"
@@ -119,6 +117,7 @@ import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption
 
 import { useBackend } from '../../../common';
 import { useThermostatMemberContext } from '../composables/use-thermostat-member-context';
+import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
 import type { ThermostatClaim } from '../services/thermostat-authoring';
 import {
 	attestationKinds,
@@ -127,6 +126,8 @@ import {
 	memberInstallationRequest,
 } from '../services/thermostat-member-installation';
 import type { ThermostatInstallation, ThermostatMemberContext } from '../services/thermostat-members';
+
+import VirtualWizardRemoveButton from './virtual-wizard-remove-button.vue';
 
 const props = defineProps<{ claim: ThermostatClaim; configurationRevision: number; requestedLimit: number | null; disabled: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
@@ -209,4 +210,5 @@ const stage = async () => {
 		if (alive) pending.value = false;
 	}
 };
+useVirtualWizardError(() => state.error.value ?? error.value);
 </script>

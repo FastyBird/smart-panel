@@ -11,6 +11,12 @@
 			/>
 		</div>
 
+		<el-alert
+			v-if="fieldError('selection')"
+			:title="fieldError('selection')"
+			type="error"
+			:closable="false"
+		/>
 		<device-wizard-inventory-summary
 			:rows="summaryRows"
 			:visible-count="filteredRows.length"
@@ -20,127 +26,144 @@
 			data-test-id="wizard-confirm-table-scroll"
 			class="min-h-0 flex-1 overflow-x-auto overscroll-x-contain"
 		>
-			<el-table
-				:data="pageRows"
-				class="h-full w-full"
-				:style="{ minWidth: `${tableMinWidth}px` }"
-				table-layout="fixed"
-				:empty-text="t('devicesModule.wizard.texts.noSelection')"
-				:default-sort="{ prop: 'name', order: 'ascending' }"
-				@sort-change="onSortChange"
+			<el-form
+				class="h-full"
+				status-icon
 			>
-				<el-table-column width="60">
-					<template #header>
-						<el-checkbox
-							:model-value="allFilteredSelected"
-							:indeterminate="someFilteredSelected && !allFilteredSelected"
-							:disabled="filteredRows.length === 0"
-							@change="
-								(value: boolean | string | number) =>
-									emit(
-										'toggle-rows',
-										filteredRows.map((row) => row.key),
-										value === true
-									)
-							"
-						/>
-					</template>
-					<template #default="{ row }: { row: IWizardRow }">
-						<el-checkbox
-							:model-value="selected[row.key] === true"
-							@change="(value: boolean | string | number) => emit('toggle-row', row.key, value === true)"
-						/>
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					prop="name"
-					:label="t('devicesModule.wizard.columns.name')"
-					min-width="220"
-					sortable="custom"
+				<el-table
+					:data="pageRows"
+					class="h-full w-full"
+					:style="{ minWidth: `${tableMinWidth}px` }"
+					table-layout="fixed"
+					:empty-text="t('devicesModule.wizard.texts.noSelection')"
+					:default-sort="{ prop: 'name', order: 'ascending' }"
+					@sort-change="onSortChange"
 				>
-					<template #default="{ row }: { row: IWizardRow }">
-						<el-input
-							v-if="confirmationMode === 'editable'"
-							:model-value="nameByKey[row.key] ?? ''"
-							@update:model-value="(value: string) => emit('update-name', row.key, value)"
-						/>
-						<span
-							v-else
-							class="font-medium"
-						>
-							{{ nameByKey[row.key] ?? row.suggestedName }}
-						</span>
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					prop="identifier"
-					:label="identifierLabel"
-					min-width="150"
-					sortable="custom"
-				>
-					<template #default="{ row }: { row: IWizardRow }">
-						<code class="text-sm">{{ row.identifier }}</code>
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					prop="change"
-					:label="t('devicesModule.wizard.columns.change')"
-					width="170"
-					sortable="custom"
-				>
-					<template #default="{ row }: { row: IWizardRow }">
-						<el-tag
-							size="small"
-							:type="row.willUpdate ? 'warning' : 'success'"
-						>
-							{{ row.willUpdate ? t('devicesModule.wizard.statuses.willUpdate') : t('devicesModule.wizard.statuses.willCreate') }}
-						</el-tag>
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					prop="category"
-					:label="t('devicesModule.wizard.columns.category')"
-					min-width="240"
-					sortable="custom"
-				>
-					<template #default="{ row }: { row: IWizardRow }">
-						<el-select
-							v-if="confirmationMode === 'editable'"
-							:model-value="categoryByKey[row.key] ?? null"
-							filterable
-							@update:model-value="(value: DevicesModuleDeviceCategory | null) => emit('update-category', row.key, value)"
-						>
-							<el-option
-								v-for="option in row.categoryOptions"
-								:key="option.value"
-								:label="option.label"
-								:value="option.value"
+					<el-table-column width="60">
+						<template #header>
+							<el-checkbox
+								:model-value="allFilteredSelected"
+								:indeterminate="someFilteredSelected && !allFilteredSelected"
+								:disabled="filteredRows.length === 0"
+								@change="
+									(value: boolean | string | number) =>
+										emit(
+											'toggle-rows',
+											filteredRows.map((row) => row.key),
+											value === true
+										)
+								"
 							/>
-						</el-select>
-						<span v-else>
-							{{ categoryLabel(row) }}
-						</span>
-					</template>
-				</el-table-column>
+						</template>
+						<template #default="{ row }: { row: IWizardRow }">
+							<el-checkbox
+								:model-value="selected[row.key] === true"
+								@change="(value: boolean | string | number) => emit('toggle-row', row.key, value === true)"
+							/>
+						</template>
+					</el-table-column>
 
-				<el-table-column
-					v-for="column in extraColumns"
-					:key="column.key"
-					:prop="column.key"
-					:label="column.label"
-					:width="column.width"
-					:min-width="column.minWidth"
-					:sortable="column.sortable ? 'custom' : false"
-				>
-					<template #default="{ row }: { row: IWizardRow }">
-						<device-wizard-cell :cell="row.cells?.[column.key]" />
-					</template>
-				</el-table-column>
-			</el-table>
+					<el-table-column
+						prop="name"
+						:label="t('devicesModule.wizard.columns.name')"
+						min-width="220"
+						sortable="custom"
+					>
+						<template #default="{ row }: { row: IWizardRow }">
+							<el-form-item
+								v-if="confirmationMode === 'editable'"
+								:error="fieldError(`name:${row.key}`)"
+								class="mb-0!"
+							>
+								<el-input
+									:model-value="nameByKey[row.key] ?? ''"
+									:placeholder="t('devicesModule.fields.devices.name.placeholder')"
+									@update:model-value="(value: string) => emit('update-name', row.key, value)"
+								/>
+							</el-form-item>
+							<span
+								v-else
+								class="font-medium"
+							>
+								{{ nameByKey[row.key] ?? row.suggestedName }}
+							</span>
+						</template>
+					</el-table-column>
+
+					<el-table-column
+						prop="identifier"
+						:label="identifierLabel"
+						min-width="150"
+						sortable="custom"
+					>
+						<template #default="{ row }: { row: IWizardRow }">
+							<code class="text-sm">{{ row.identifier }}</code>
+						</template>
+					</el-table-column>
+
+					<el-table-column
+						prop="change"
+						:label="t('devicesModule.wizard.columns.change')"
+						width="170"
+						sortable="custom"
+					>
+						<template #default="{ row }: { row: IWizardRow }">
+							<el-tag
+								size="small"
+								:type="row.willUpdate ? 'warning' : 'success'"
+							>
+								{{ row.willUpdate ? t('devicesModule.wizard.statuses.willUpdate') : t('devicesModule.wizard.statuses.willCreate') }}
+							</el-tag>
+						</template>
+					</el-table-column>
+
+					<el-table-column
+						prop="category"
+						:label="t('devicesModule.wizard.columns.category')"
+						min-width="240"
+						sortable="custom"
+					>
+						<template #default="{ row }: { row: IWizardRow }">
+							<el-form-item
+								v-if="confirmationMode === 'editable'"
+								:error="fieldError(`category:${row.key}`)"
+								class="mb-0!"
+							>
+								<el-select
+									:model-value="categoryByKey[row.key] ?? null"
+									:placeholder="t('devicesModule.fields.devices.category.placeholder')"
+									filterable
+									@update:model-value="(value: DevicesModuleDeviceCategory | null) => emit('update-category', row.key, value)"
+								>
+									<el-option
+										v-for="option in row.categoryOptions"
+										:key="option.value"
+										:label="option.label"
+										:value="option.value"
+									/>
+								</el-select>
+							</el-form-item>
+							<span v-else>
+								{{ categoryLabel(row) }}
+							</span>
+						</template>
+					</el-table-column>
+
+					<el-table-column
+						v-for="column in extraColumns"
+						:key="column.key"
+						:prop="column.key"
+						:label="column.label"
+						:width="column.width"
+						:min-width="column.minWidth"
+						:sortable="column.sortable ? 'custom' : false"
+					>
+						<template #default="{ row }: { row: IWizardRow }">
+							<device-wizard-cell :cell="row.cells?.[column.key]" />
+						</template>
+					</el-table-column>
+				</el-table>
+			</el-form>
 		</div>
 
 		<el-pagination
@@ -160,7 +183,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCheckbox, ElInput, ElOption, ElPagination, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElAlert, ElCheckbox, ElForm, ElFormItem, ElInput, ElOption, ElPagination, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
 
 import type { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 
@@ -168,6 +191,7 @@ import DeviceWizardCell from './device-wizard-cell.vue';
 import DeviceWizardInventorySummary from './device-wizard-inventory-summary.vue';
 import { compareLocale } from './device-wizard.sort';
 import type { IWizardColumn, IWizardRow } from './device-wizard.types';
+import { useWizardFieldError } from './use-wizard-validation';
 
 defineOptions({
 	name: 'DeviceWizardConfirmStep',
@@ -194,6 +218,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const fieldError = useWizardFieldError();
 
 const PAGE_SIZE = 25;
 

@@ -263,9 +263,16 @@
 			"channelsCount": "Liczba kanałów: {count}",
 			"warningsCount": "Liczba ostrzeżeń mapowania: {count}"
 		},
-		"kinds": { "device": "Urządzenie", "helper": "Pomocnik" },
-		"statuses": { "needsAttention": "Kontrola ręczna" },
-		"actions": { "refresh": "Odśwież inwentarz" },
+		"kinds": {
+			"device": "Urządzenie",
+			"helper": "Pomocnik"
+		},
+		"statuses": {
+			"needsAttention": "Kontrola ręczna"
+		},
+		"actions": {
+			"refresh": "Odśwież inwentarz"
+		},
 		"manualReview": {
 			"title": "Pozycje wymagające kontroli ręcznej: {count}",
 			"message": "Te pozycje nie są wybrane do importu zbiorczego. Użyj istniejącego kontrolowanego formularza, aby sprawdzić kategorię, kanały i właściwości.",
@@ -278,6 +285,9 @@
 		"messages": {
 			"sessionNotStarted": "Nie udało się przygotować urządzeń Home Assistant do importu zbiorczego.",
 			"adoptionFailed": "Nie udało się dodać wybranych urządzeń Home Assistant."
+		},
+		"selection": {
+			"description": "Importuj urządzenia ze swojej instancji Home Assistant."
 		}
 	}
 }

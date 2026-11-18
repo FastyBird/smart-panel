@@ -409,7 +409,7 @@
 			"noActiveMedia": "Nie je spustená žiadna mediálna aktivita, ktorú by bolo možné zastaviť.",
 			"noTargets": "V tomto priestore nie sú dostupné žiadne kompatibilné zariadenia."
 		},
-		"title": "Režimy aktivít",
+		"title": "Režimy",
 		"description": "Zvoľte, čo jednotlivé režimy aktivít v tomto priestore vykonajú.",
 		"enabled": "Povolené",
 		"disabled": "Zakázané",
@@ -494,7 +494,10 @@
 			"gaming": "Hranie",
 			"background": "Na pozadí",
 			"off": "Vypnuté"
-		}
+		},
+		"leaveUnchanged": "Nemeniť",
+		"apply": "Nastaviť",
+		"noChanges": "Bez zmien zariadení"
 	},
 	"schedules": {
 		"title": "Časové plány",
@@ -690,5 +693,11 @@
 			"spaceType": "Tento priestor nie je miestnosť ani zóna; blok pôsobí len na miestnosti a zóny.",
 			"required": "Táto hodnota je potrebná."
 		}
+	},
+	"modesLayout": {
+		"configure": "Nastaviť",
+		"scheduleDescription": "Zvoľte, kedy sa majú režimy priestoru automaticky meniť.",
+		"presenceTitle": "Podľa prítomnosti",
+		"presenceDescription": "Zvoľte, ako má priestor reagovať na príchod a odchod."
 	}
 }

@@ -1,21 +1,12 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { UsersModuleUserRole } from '../../../openapi.constants';
-import { RouteNames } from '../simulator.constants';
+import { RouteNames as DevicesRouteNames } from '../../../modules/devices/devices.constants';
+import { RouteNames, SIMULATOR_PLUGIN_NAME } from '../simulator.constants';
 
 export const PluginRoutes: RouteRecordRaw[] = [
 	{
 		path: 'simulator/wizard',
 		name: RouteNames.WIZARD,
-		component: () => import('../views/view-simulator-device-wizard.vue'),
-		props: true,
-		meta: {
-			guards: {
-				authenticated: true,
-				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
-			},
-			title: 'Generate simulated devices',
-			icon: 'mdi:test-tube',
-		},
+		redirect: { name: DevicesRouteNames.DEVICES_WIZARD, params: { type: SIMULATOR_PLUGIN_NAME } },
 	},
 ];

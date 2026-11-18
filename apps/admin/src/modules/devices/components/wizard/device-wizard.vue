@@ -1,174 +1,55 @@
 <template>
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:wizard-hat"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ adapter.title }}
-		</template>
-
-		<template #subtitle>
-			{{ adapter.subtitle }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onCancel"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-breadcrumbs :items="breadcrumbs" />
-
-	<view-header
-		:heading="adapter.title"
-		:sub-heading="adapter.subtitle"
-		icon="mdi:wizard-hat"
-	>
-		<template
-			v-if="isMDDevice"
-			#extra
-		>
-			<div class="flex items-center gap-2">
-				<el-button
-					v-for="action in actions"
-					:key="action.id"
-					:data-test-id="`wizard-action-${action.id}`"
-					:link="action.variant === 'link'"
-					:type="buttonType(action)"
-					class="px-4!"
-					:disabled="action.disabled"
-					:loading="action.loading"
-					@click="action.handler"
-				>
-					<template
-						v-if="action.icon"
-						#icon
-					>
-						<icon :icon="action.icon" />
-					</template>
-					{{ action.label }}
-				</el-button>
-			</div>
-		</template>
-	</view-header>
-
-	<div class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
-		<el-card
-			shadow="never"
-			class="max-h-full flex flex-col overflow-hidden box-border"
-			body-class="p-0! max-h-full overflow-hidden flex flex-col"
-		>
-			<template #header>
-				<el-steps
-					:active="activeStepIndex"
-					finish-status="success"
-					align-center
-				>
-					<el-step :title="t('devicesModule.wizard.steps.discover')" />
-					<el-step :title="t('devicesModule.wizard.steps.confirm')" />
-					<el-step :title="t('devicesModule.wizard.steps.results')" />
-				</el-steps>
-			</template>
-
-			<div class="p-4 max-h-full box-border flex flex-col gap-3 overflow-hidden">
-				<device-wizard-discover-step
-					v-if="activeStep === 'discover'"
-					data-test-id="wizard-step-discover"
-					:rows="adapter.rows.value"
-					:columns="adapter.columns"
-					:controls="adapter.controls.value"
-					:identifier-label="adapter.identifierLabel"
-					:ready="adapter.ready.value"
-				/>
-
-				<device-wizard-confirm-step
-					v-else-if="activeStep === 'confirm'"
-					data-test-id="wizard-step-confirm"
-					:rows="adoptableRows"
-					:summary-rows="adapter.rows.value"
-					:columns="adapter.columns"
-					:selected="selected"
-					:name-by-key="nameByKey"
-					:category-by-key="categoryByKey"
-					:identifier-label="adapter.identifierLabel"
-					:confirmation-mode="adapter.confirmationMode ?? 'editable'"
-					@toggle-row="onToggleRow"
-					@toggle-rows="toggleRows"
-					@update-name="onUpdateName"
-					@update-category="onUpdateCategory"
-				/>
-
-				<device-wizard-results-step
-					v-else
-					data-test-id="wizard-step-results"
-					:results="adapter.results.value"
-					:columns="adapter.columns"
-					:identifier-label="adapter.identifierLabel"
-				/>
-			</div>
-
-			<div
-				v-if="!isMDDevice"
-				class="flex flex-wrap justify-end gap-2 p-4 border-t border-t-solid"
-			>
-				<el-button
-					v-for="action in actions"
-					:key="action.id"
-					:data-test-id="`wizard-action-mobile-${action.id}`"
-					:link="action.variant === 'link'"
-					:type="buttonType(action)"
-					:disabled="action.disabled"
-					:loading="action.loading"
-					@click="action.handler"
-				>
-					<template
-						v-if="action.icon"
-						#icon
-					>
-						<icon :icon="action.icon" />
-					</template>
-					{{ action.label }}
-				</el-button>
-			</div>
-		</el-card>
-	</div>
+	<device-wizard-discover-step
+		v-if="activeStep === 'discover'"
+		data-test-id="wizard-step-discover"
+		:rows="adapter.rows.value"
+		:columns="adapter.columns"
+		:controls="adapter.controls.value"
+		:identifier-label="adapter.identifierLabel"
+		:ready="adapter.ready.value"
+	/>
+	<device-wizard-confirm-step
+		v-else-if="activeStep === 'confirm'"
+		data-test-id="wizard-step-confirm"
+		:rows="confirmationRows"
+		:summary-rows="reviewedRows ?? adapter.rows.value"
+		:columns="adapter.columns"
+		:selected="selected"
+		:name-by-key="nameByKey"
+		:category-by-key="categoryByKey"
+		:identifier-label="adapter.identifierLabel"
+		:confirmation-mode="adapter.confirmationMode ?? 'editable'"
+		@toggle-row="onToggleRow"
+		@toggle-rows="onToggleRows"
+		@update-name="onUpdateName"
+		@update-category="onUpdateCategory"
+	/>
+	<device-wizard-results-step
+		v-else
+		data-test-id="wizard-step-results"
+		:results="adapter.results.value"
+		:columns="adapter.columns"
+		:identifier-label="adapter.identifierLabel"
+	/>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElIcon, ElStep, ElSteps } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../../common';
+import { useBreakpoints } from '../../../../common';
 import type { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 import { useDeviceWizardState } from '../../composables/useDeviceWizardState';
 import { RouteNames } from '../../devices.constants';
 
 import DeviceWizardConfirmStep from './device-wizard-confirm-step.vue';
 import DeviceWizardDiscoverStep from './device-wizard-discover-step.vue';
+import { useDeviceWizardFlow } from './device-wizard-flow';
 import DeviceWizardResultsStep from './device-wizard-results-step.vue';
 import { buildWizardActions } from './device-wizard.actions';
 import type { IDeviceWizardProps, IWizardAction, IWizardActionControl, IWizardRow } from './device-wizard.types';
+import { useWizardValidation } from './use-wizard-validation';
 
 defineOptions({
 	name: 'DeviceWizard',
@@ -178,14 +59,33 @@ const props = defineProps<IDeviceWizardProps>();
 
 const { t } = useI18n();
 const router = useRouter();
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 // The factory must be invoked here, inside setup(): the adapter is a composable and calls
 // useI18n / useBackend / inject internally, which are only valid in an injection context.
 const adapter = props.adapterFactory();
 
-const { activeStep, activeStepIndex, selected, nameByKey, categoryByKey, adoptableRows, canContinue, toggleRows, reconcile, reset, buildSelection } =
-	useDeviceWizardState(adapter.rows);
+// The user confirms this inventory snapshot. Background discovery and adoption updates must not
+// rewrite its rows, selected names or categories while the confirmation request is running.
+const reviewedRows = ref<IWizardRow[] | null>(null);
+const adopting = ref(false);
+const draftEdited = ref(false);
+let deferredSessionReset = false;
+const confirmationRows = computed(() => reviewedRows.value?.filter((row) => row.adoptable) ?? adoptableRows.value);
+const { activeStep, activeStepIndex, selected, nameByKey, categoryByKey, adoptableRows, reconcile, reset, buildSelection } = useDeviceWizardState(
+	adapter.rows
+);
+const validation = useWizardValidation(activeStep, () => {
+	const selectedRows = confirmationRows.value.filter((row) => selected[row.key]);
+	const errors: Record<string, string | undefined> = {
+		selection: selectedRows.length ? undefined : t('devicesModule.wizard.validation.minimumItems', { count: 1 }),
+	};
+	for (const row of selectedRows) {
+		errors[`name:${row.key}`] = nameByKey[row.key]?.trim() ? undefined : t('devicesModule.fields.devices.name.validation.required');
+		errors[`category:${row.key}`] = categoryByKey[row.key] ? undefined : t('devicesModule.fields.devices.category.validation.required');
+	}
+	return errors;
+});
 
 // A rescan opens a brand new discovery session, and the previous session's selections must not
 // survive into it: a device that was `ready` last time may come back as `already_registered`,
@@ -204,7 +104,14 @@ watch(
 	() => adapter.sessionKey?.value ?? null,
 	(next: string | null, previous: string | null): void => {
 		if (next !== null && previous !== null && next !== previous) {
+			if (adopting.value) {
+				deferredSessionReset = true;
+				return;
+			}
+			reviewedRows.value = null;
+			validation.reset();
 			reset();
+			draftEdited.value = false;
 		}
 	}
 );
@@ -212,7 +119,7 @@ watch(
 watch(
 	adapter.rows,
 	(rows: IWizardRow[]): void => {
-		reconcile(rows);
+		if (!reviewedRows.value) reconcile(rows);
 	},
 	{ immediate: true }
 );
@@ -234,21 +141,8 @@ onBeforeUnmount(async (): Promise<void> => {
 	}
 });
 
-const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(() => [
-	{
-		label: t('devicesModule.breadcrumbs.devices.list'),
-		route: router.resolve({ name: RouteNames.DEVICES }),
-	},
-	{
-		label: adapter.breadcrumbLabel,
-		route: router.resolve({
-			name: RouteNames.DEVICES_WIZARD,
-			params: { type: adapter.pluginType },
-		}),
-	},
-]);
-
 const onCancel = (): void => {
+	if (adapter.busy.value) return;
 	if (isLGDevice.value) {
 		router.replace({ name: RouteNames.DEVICES });
 	} else {
@@ -265,20 +159,35 @@ const onNext = async (): Promise<void> => {
 		// Errors are surfaced by the adapter via flashMessage.
 	}
 
+	if (!adoptableRows.value.length) return;
 	activeStep.value = 'confirm';
 };
 
 const onBack = (): void => {
 	activeStep.value = 'discover';
+	if (deferredSessionReset) {
+		reset();
+		draftEdited.value = false;
+		validation.reset();
+		deferredSessionReset = false;
+	}
+	reviewedRows.value = null;
+	reconcile(adapter.rows.value);
 };
 
 const onAdopt = async (): Promise<void> => {
+	if (adapter.busy.value || adopting.value || !validation.validate()) return;
+	reviewedRows.value ??= JSON.parse(JSON.stringify(adapter.rows.value)) as IWizardRow[];
+	adopting.value = true;
 	try {
-		await adapter.adopt(buildSelection());
+		await adapter.adopt(buildSelection(reviewedRows.value));
 
+		draftEdited.value = false;
 		activeStep.value = 'results';
 	} catch {
 		// Stay on the confirm step with the user's input intact.
+	} finally {
+		adopting.value = false;
 	}
 };
 
@@ -295,7 +204,11 @@ const onAdopt = async (): Promise<void> => {
 // the discover step renders, otherwise it mounts against a null session and flashes a
 // misleading offline banner.
 const onAddMore = async (): Promise<void> => {
+	reviewedRows.value = null;
+	deferredSessionReset = false;
+	validation.reset();
 	reset();
+	draftEdited.value = false;
 
 	try {
 		await adapter.restart?.();
@@ -317,18 +230,13 @@ const actionControls = computed<IWizardActionControl[]>(() =>
 	adapter.controls.value.filter((control): control is IWizardActionControl => control.type === 'action')
 );
 
-// Element Plus takes `warning` and `primary` as button types; `link` is a separate prop and
-// `default` is the absence of a type.
-const buttonType = (action: IWizardAction): 'primary' | 'warning' | undefined =>
-	action.variant === 'primary' || action.variant === 'warning' ? action.variant : undefined;
-
 const actions = computed<IWizardAction[]>(() =>
 	buildWizardActions(activeStep.value, {
 		t,
 		capabilities: adapter.capabilities,
-		canContinue: canContinue.value,
+		canContinue: !adapter.busy.value && !adopting.value,
 		hasAdoptable: adoptableRows.value.length > 0,
-		busy: adapter.busy.value,
+		busy: adapter.busy.value || adopting.value,
 		actionControls: actionControls.value,
 		onCancel,
 		onBack,
@@ -340,14 +248,30 @@ const actions = computed<IWizardAction[]>(() =>
 );
 
 const onToggleRow = (key: string, value: boolean): void => {
+	if (selected[key] !== value) draftEdited.value = true;
 	selected[key] = value;
 };
 
+const onToggleRows = (keys: string[], value: boolean): void => {
+	const allowed = new Set(confirmationRows.value.map((row) => row.key));
+	for (const key of keys) if (allowed.has(key)) onToggleRow(key, value);
+};
 const onUpdateName = (key: string, value: string): void => {
+	if (nameByKey[key] !== value) draftEdited.value = true;
 	nameByKey[key] = value;
 };
 
 const onUpdateCategory = (key: string, value: DevicesModuleDeviceCategory | null): void => {
+	if (categoryByKey[key] !== value) draftEdited.value = true;
 	categoryByKey[key] = value;
 };
+useDeviceWizardFlow(
+	computed(() => ({
+		steps: ['discover', 'confirm', 'results'].map((step) => t(`devicesModule.wizard.steps.${step}`)),
+		activeStep: activeStepIndex.value,
+		busy: adapter.busy.value || adopting.value,
+		dirty: draftEdited.value,
+		actions: actions.value,
+	}))
+);
 </script>

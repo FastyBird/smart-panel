@@ -1,8 +1,9 @@
-import { type ComputedRef, type Ref, computed, reactive, ref } from 'vue';
+import { type ComputedRef, type Ref, computed, ref } from 'vue';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import { configPluginsStoreKey } from '../../../modules/config';
+import { useDeviceWizardData } from '../../../modules/devices/components/wizard/device-wizard-flow';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import {
 	DevicesModbusPluginByteOrder,
@@ -187,7 +188,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		edit: null,
 	});
 
-	const state = reactive<IModbusWizardState>(initialState());
+	const state = useDeviceWizardData<IModbusWizardState>('modbus', initialState);
 
 	const mode = ref<ModbusWizardMode>('create');
 	const loading = ref<boolean>(false);

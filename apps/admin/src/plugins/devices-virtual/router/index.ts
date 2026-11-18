@@ -1,56 +1,35 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { UsersModuleUserRole } from '../../../openapi.constants';
-import { RouteNames } from '../devices-virtual.constants';
+import { RouteNames as DevicesRouteNames } from '../../../modules/devices/devices.constants';
+import { DEVICES_VIRTUAL_PLUGIN_NAME, RouteNames } from '../devices-virtual.constants';
 
 export const PluginRoutes: RouteRecordRaw[] = [
 	{
-		path: 'devices-virtual/light-groups/new',
-		name: RouteNames.LIGHT_GROUP_WIZARD,
-		component: () => import('../views/view-light-group-wizard.vue'),
-		meta: {
-			devicesWizard: true,
-			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
-			title: 'Create light group',
-			icon: 'mdi:lightbulb-group',
-		},
-	},
-
-	{
 		path: 'devices-virtual/wizard',
 		name: RouteNames.WIZARD,
-		component: () => import('../views/view-virtual-device-wizard.vue'),
-		props: true,
-		meta: {
-			devicesWizard: true,
-			guards: {
-				authenticated: true,
-				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
-			},
-			title: 'Create virtual device',
-			icon: 'mdi:wizard-hat',
-		},
+		redirect: { name: DevicesRouteNames.DEVICES_WIZARD, params: { type: DEVICES_VIRTUAL_PLUGIN_NAME }, query: { variant: 'projection' } },
+	},
+	{
+		path: 'devices-virtual/light-groups/new',
+		name: RouteNames.LIGHT_GROUP_WIZARD,
+		redirect: { name: DevicesRouteNames.DEVICES_WIZARD, params: { type: DEVICES_VIRTUAL_PLUGIN_NAME }, query: { variant: 'group' } },
 	},
 	{
 		path: 'devices-virtual/measurements/new',
 		name: RouteNames.MEASUREMENT_WIZARD,
-		component: () => import('../views/view-virtual-measurement-wizard.vue'),
-		meta: {
-			devicesWizard: true,
-			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
-			title: 'Create virtual measurement',
-			icon: 'mdi:function-variant',
-		},
+		redirect: (to) => ({
+			name: DevicesRouteNames.DEVICES_WIZARD,
+			params: { type: DEVICES_VIRTUAL_PLUGIN_NAME },
+			query: { variant: to.query.kind === 'dew_point' ? 'dewPoint' : to.query.mode === 'sensor_transform' ? 'transform' : 'aggregate' },
+		}),
 	},
 	{
 		path: 'devices-virtual/thermostats/new',
 		name: RouteNames.THERMOSTAT_WIZARD,
-		component: () => import('../views/view-virtual-thermostat-wizard.vue'),
-		meta: {
-			devicesWizard: true,
-			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
-			title: 'Create virtual thermostat',
-			icon: 'mdi:thermostat',
-		},
+		redirect: (to) => ({
+			name: DevicesRouteNames.DEVICES_WIZARD,
+			params: { type: DEVICES_VIRTUAL_PLUGIN_NAME },
+			query: { variant: to.query.strategy === 'native_unit' ? 'nativeThermostat' : 'thermostat' },
+		}),
 	},
 ];

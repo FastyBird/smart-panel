@@ -274,15 +274,24 @@ describe('actual activity mode section and saved API editor', () => {
 		const wrapper = render();
 		await flushPromises();
 		await click(wrapper, 'edit-work');
-		wrapper.findComponent(ElDialog).findAllComponents(ElSwitch)[2].vm.$emit('update:modelValue', true);
+		wrapper
+			.findAllComponents(ElSelect)
+			.find((control) => control.attributes('data-testid') === 'climate-enabled')!
+			.vm.$emit('update:modelValue', true);
 		await nextTick();
 		expect(wrapper.text()).toContain('climateAutomation');
 		expect(wrapper.text()).not.toContain('climateUnsupported');
 		expect(wrapper.get('[data-testid="save"]').attributes('disabled')).toBeDefined();
-		wrapper.findAllComponents(ElSelect)[1].vm.$emit('update:modelValue', 'preset');
+		wrapper
+			.findAllComponents(ElSelect)
+			.find((control) => control.attributes('data-testid') === 'climate-kind')!
+			.vm.$emit('update:modelValue', 'preset');
 		await nextTick();
 		expect(wrapper.get('[data-testid="save"]').attributes('disabled')).toBeDefined();
-		wrapper.findAllComponents(ElSelect)[2].vm.$emit('update:modelValue', 'comfort');
+		wrapper
+			.findAllComponents(ElSelect)
+			.find((control) => control.attributes('data-testid') === 'thermostat-preset')!
+			.vm.$emit('update:modelValue', 'comfort');
 		await nextTick();
 		await click(wrapper, 'save');
 		const body = requests.find((request) => request.method === 'PUT')?.body;

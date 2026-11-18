@@ -14,6 +14,7 @@ import {
 	type IDevicePluginsComponents,
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
+import DeviceWizard from '../../modules/devices/components/wizard/device-wizard.vue';
 
 import { ShellyV1ConfigForm, ShellyV1DeviceAddForm, ShellyV1DeviceEditForm } from './components/components';
 import { useDevicesWizard } from './composables/composables';
@@ -76,7 +77,17 @@ export default {
 					components: {
 						deviceAddForm: ShellyV1DeviceAddForm,
 						deviceEditForm: ShellyV1DeviceEditForm,
-						deviceWizardAdapter: useDevicesWizard,
+						deviceWizard: {
+							selection: {
+								kind: 'integration',
+								icon: 'mdi:lightning-bolt-outline',
+								order: 30,
+								description: 'devicesShellyV1Plugin.wizard.selection.description',
+							},
+							component: DeviceWizard,
+							props: { adapterFactory: useDevicesWizard },
+							capabilities: { discovery: true, batch: true },
+						},
 					},
 					schemas: {
 						deviceSchema: ShellyV1DeviceSchema,

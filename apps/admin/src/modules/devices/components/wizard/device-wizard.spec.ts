@@ -1,14 +1,20 @@
-import { computed, ref } from 'vue';
+/* eslint-disable vue/one-component-per-file -- Isolated component stubs for plugin integration tests. */
+import { computed, h, ref } from 'vue';
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 
 import { useBreakpoints } from '../../../../common';
 import { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 
+import DeviceWizardShell from './device-wizard-shell.vue';
 import type { IDeviceWizardAdapter, IWizardResult, IWizardRow } from './device-wizard.types';
 import DeviceWizard from './device-wizard.vue';
+
+vi.mock('vue-meta', () => ({ useMeta: () => ({ meta: {} }) }));
+
+enableAutoUnmount(afterEach);
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -20,6 +26,8 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('vue-router', () => ({
+	onBeforeRouteLeave: vi.fn(),
+	onBeforeRouteUpdate: vi.fn(),
 	useRouter: () => ({
 		replace,
 		push,
@@ -47,6 +55,7 @@ vi.mock('../../../../common', async () => {
 		}),
 		// Wrapped in vi.fn() so a single test can override it with mockReturnValueOnce to cover
 		// the mobile footer branch, which this default never exercises.
+		useLogger: () => ({ error: vi.fn() }),
 		useBreakpoints: vi.fn(() => ({ isMDDevice: ref(true), isLGDevice: ref(true) })),
 	};
 });
@@ -90,12 +99,84 @@ const buildAdapter = (overrides: Partial<IDeviceWizardAdapter> = {}): IDeviceWiz
 	}) as IDeviceWizardAdapter;
 
 const mountWizard = (adapter: IDeviceWizardAdapter) =>
-	mount(DeviceWizard, {
-		props: { adapterFactory: () => adapter },
+	mount(DeviceWizardShell, {
+		props: { title: adapter.title, subtitle: adapter.subtitle },
+		slots: { default: () => h(DeviceWizard, { adapterFactory: () => adapter }) },
 		global: { stubs: { 'router-link': true } },
 	});
 
 describe('DeviceWizard', () => {
+	it('validates an empty confirmation name at its input before adopting', async () => {
+		const adapter = buildAdapter();
+		const wrapper = mountWizard(adapter);
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('  ');
+		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		expect(adapter.adopt).not.toHaveBeenCalled();
+		await vi.waitFor(() =>
+			expect(wrapper.get('[data-test-id="wizard-step-confirm"]').text()).toContain('devicesModule.fields.devices.name.validation.required')
+		);
+		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('Kitchen');
+		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		expect(adapter.adopt).toHaveBeenCalledWith([expect.objectContaining({ name: 'Kitchen' })]);
+		wrapper.unmount();
+	});
+	it('keeps confirmation rows and entered values fixed during adoption despite session updates', async () => {
+		const rows = ref([row()]);
+		const sessionKey = ref('first');
+		let reject!: (reason: Error) => void;
+		const adopt = vi.fn(
+			() =>
+				new Promise<[]>((_, fail) => {
+					reject = fail;
+				})
+		);
+		const wrapper = mountWizard(buildAdapter({ rows: computed(() => rows.value), sessionKey: computed(() => sessionKey.value), adopt }));
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('My switch');
+		const before = wrapper.get('[data-test-id="wizard-step-confirm"]').text();
+		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		rows.value = [row({ label: 'Changed', suggestedName: 'Changed', adoptable: false, status: 'already_registered' })];
+		sessionKey.value = 'second';
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="wizard-step-confirm"]').text()).toBe(before);
+		expect(wrapper.get<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').element.value).toBe('My switch');
+		reject(new Error('Save failed'));
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="wizard-step-confirm"]').text()).toBe(before);
+		expect(adopt).toHaveBeenCalledTimes(1);
+		adopt.mockResolvedValueOnce([]);
+		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		expect(adopt).toHaveBeenCalledTimes(2);
+		expect(adopt.mock.calls[1]).toEqual(adopt.mock.calls[0]);
+		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+	it('guards unsaved confirmation changes and clears the guard on successful adoption', async () => {
+		const wrapper = mountWizard(buildAdapter());
+		await flushPromises();
+		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await flushPromises();
+		const leaving = () => {
+			const event = new Event('beforeunload', { cancelable: true });
+			window.dispatchEvent(event);
+			return event.defaultPrevented;
+		};
+		expect(leaving()).toBe(false);
+		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('Unsaved device');
+		expect(leaving()).toBe(true);
+		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
+		await flushPromises();
+		expect(leaving()).toBe(false);
+	});
 	it('calls start on mount', async () => {
 		const adapter = buildAdapter();
 		mountWizard(adapter);
@@ -263,7 +344,7 @@ describe('DeviceWizard', () => {
 		expect(checkboxAfter.element.checked).toBe(false);
 	});
 
-	it('promotes a plugin action control into the header and wires it to the control handler', async () => {
+	it('promotes a plugin action control into the footer and wires it to the control handler', async () => {
 		const handler = vi.fn();
 		const wrapper = mountWizard(
 			buildAdapter({
@@ -441,10 +522,8 @@ describe('DeviceWizard', () => {
 		const wrapper = mountWizard(buildAdapter());
 		await flushPromises();
 
-		expect(wrapper.find('[data-test-id="wizard-action-mobile-cancel"]').exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="wizard-action-mobile-next"]').exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="wizard-action-cancel"]').exists()).toBe(false);
-		expect(wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-action-cancel"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(true);
 	});
 
 	it('does not switch back to discover until restart resolves', async () => {

@@ -57,7 +57,10 @@
 						v-if="llmProviders.length === 0 && !isLoading"
 						class="text-center py-8"
 					>
-						<el-empty :description="t('buddyModule.wizard.noProvidersAvailable')" />
+						<empty-state
+							icon="mdi:robot-outline"
+							:description="t('buddyModule.wizard.noProvidersAvailable')"
+						/>
 					</div>
 
 					<div
@@ -612,23 +615,24 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElDialog, ElEmpty, ElIcon, ElRadio, ElScrollbar, ElStep, ElSteps, ElSwitch, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElDialog, ElIcon, ElRadio, ElScrollbar, ElStep, ElSteps, ElSwitch, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
+import EmptyState from '../../../common/components/empty-state.vue';
+import { usePlugins } from '../../config/composables/usePlugins';
 import { CONFIG_MODULE_PLUGIN_TYPE } from '../../config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../config/config.types';
-import { usePlugins } from '../../config/composables/usePlugins';
 import { configModulesStoreKey, configPluginsStoreKey } from '../../config/store/keys';
 import { extensionsStoreKey } from '../../extensions/store/keys';
 import IntegrationConfigDialog from '../../onboarding/components/integration-config-dialog.vue';
 import { LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
+import { useBuddyMessagingProviders } from '../composables/useBuddyMessagingProviders';
 import type { IProviderStatus } from '../composables/useBuddyProviders';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
-import { useBuddyTtsProviders } from '../composables/useBuddyTtsProviders';
 import { useBuddySttProviders } from '../composables/useBuddySttProviders';
-import { useBuddyMessagingProviders } from '../composables/useBuddyMessagingProviders';
+import { useBuddyTtsProviders } from '../composables/useBuddyTtsProviders';
 import type { IVoiceProviderStatus } from '../composables/useBuddyVoiceProviders';
 
 defineOptions({
@@ -791,7 +795,7 @@ const hasPluginConfigForm = (type: string): boolean => {
 	if (!plugin) return false;
 
 	const element = plugin.elements?.find(
-		(el: { type: string; components?: IPluginsComponents; schemas?: IPluginsSchemas }) => el.type === CONFIG_MODULE_PLUGIN_TYPE,
+		(el: { type: string; components?: IPluginsComponents; schemas?: IPluginsSchemas }) => el.type === CONFIG_MODULE_PLUGIN_TYPE
 	);
 
 	return !!element?.components?.pluginConfigEditForm;
@@ -1009,21 +1013,14 @@ const loadAllData = async (): Promise<void> => {
 	isLoading.value = true;
 
 	try {
-		await Promise.all([
-			extensionsStore.fetch(),
-			fetchLlmProviders(),
-			fetchTtsProviders(),
-			fetchSttProviders(),
-			fetchMessagingProviders(),
-		]);
+		await Promise.all([extensionsStore.fetch(), fetchLlmProviders(), fetchTtsProviders(), fetchSttProviders(), fetchMessagingProviders()]);
 
 		// Pre-select currently selected providers, falling back to first enabled
-		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected)
-			?? llmProviders.value.find((p: IProviderStatus) => p.enabled);
-		const selectedTts = ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected)
-			?? ttsProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
-		const selectedStt = sttProviders.value.find((p: IVoiceProviderStatus) => p.selected)
-			?? sttProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
+		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected) ?? llmProviders.value.find((p: IProviderStatus) => p.enabled);
+		const selectedTts =
+			ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected) ?? ttsProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
+		const selectedStt =
+			sttProviders.value.find((p: IVoiceProviderStatus) => p.selected) ?? sttProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
 
 		if (selected && selected.type !== LLM_PROVIDER_NONE) {
 			selectedLlmProvider.value = selected.type;
@@ -1073,7 +1070,7 @@ watch(
 
 			loadAllData();
 		}
-	},
+	}
 );
 
 onBeforeMount(() => {

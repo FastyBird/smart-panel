@@ -18,7 +18,7 @@ export interface IUseDeviceWizardState {
 	toggleRows: (keys: string[], value: boolean) => void;
 	reconcile: (rows: IWizardRow[]) => void;
 	reset: () => void;
-	buildSelection: () => IWizardAdoptSelection[];
+	buildSelection: (reviewedRows?: readonly IWizardRow[]) => IWizardAdoptSelection[];
 }
 
 export const useDeviceWizardState = (rows: Ref<IWizardRow[]> | ComputedRef<IWizardRow[]> = ref([])): IUseDeviceWizardState => {
@@ -86,8 +86,8 @@ export const useDeviceWizardState = (rows: Ref<IWizardRow[]> | ComputedRef<IWiza
 		);
 	};
 
-	const buildSelection = (): IWizardAdoptSelection[] =>
-		selectedRows.value.map((item) => ({
+	const buildSelection = (reviewedRows?: readonly IWizardRow[]): IWizardAdoptSelection[] =>
+		(reviewedRows ? reviewedRows.filter((item) => item.adoptable && selected[item.key]) : selectedRows.value).map((item) => ({
 			key: item.key,
 			name: (nameByKey[item.key] ?? item.suggestedName).trim(),
 			category: categoryByKey[item.key] as DevicesModuleDeviceCategory,

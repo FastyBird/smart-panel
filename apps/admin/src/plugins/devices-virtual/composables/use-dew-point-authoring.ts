@@ -15,6 +15,12 @@ type Configuration = components['schemas']['DevicesVirtualPluginConfigureDewPoin
 type State = components['schemas']['DevicesVirtualPluginDataDewPoint'];
 const formula = DevicesVirtualPluginConfigureDewPointFormula_version.magnus_water_17_62_243_12_v1;
 
+class DewPointPreviewError extends Error {
+	constructor(readonly reason: string | null) {
+		super('dewPointPreview');
+	}
+}
+
 /** Revision/preview fencing and atomic authoring; no client value becomes protective evidence. */
 export function useDewPointAuthoring(outputId?: string) {
 	const backend = useBackend();
@@ -91,6 +97,19 @@ export function useDewPointAuthoring(outputId?: string) {
 			if (token === generation) busy.value = false;
 		}
 	}
+	// A background read never grants permission to save or changes primary errors/revisions.
+	async function evaluateDraft(signal?: AbortSignal): Promise<State> {
+		const result = outputId
+			? await backend.client.POST('/plugins/devices-virtual/producers/dew-points/{id}/preview', {
+					signal,
+					params: { path: { id: outputId } },
+					body: configuration(),
+				})
+			: await backend.client.POST('/plugins/devices-virtual/producers/dew-points/draft-preview', { signal, body: draft() });
+		if (!result.data || result.error) throw new DewPointPreviewError(getErrorReason(result.error as never, '') || null);
+		return result.data.data;
+	}
+
 	async function check() {
 		if (!valid()) {
 			error.value = 'inputs';
@@ -99,26 +118,22 @@ export function useDewPointAuthoring(outputId?: string) {
 		const token = ++generation,
 			captured = snapshot();
 		busy.value = true;
+		// Explicit recalculation after a failed create obtains a new graph authorization.
+		if (!outputId && error.value === 'revision') graphRevision = undefined;
 		error.value = null;
 		reason.value = null;
 		reviewed = null;
 		try {
-			const result = outputId
-				? await backend.client.POST('/plugins/devices-virtual/producers/dew-points/{id}/preview', {
-						params: { path: { id: outputId } },
-						body: configuration(),
-					})
-				: await backend.client.POST('/plugins/devices-virtual/producers/dew-points/draft-preview', { body: draft() });
-			if (!result.data || result.error) {
-				if (token === generation) reason.value = getErrorReason(result.error as never, '') || null;
-				throw new Error('dewPointPreview');
-			}
+			const result = await evaluateDraft();
 			if (token !== generation || captured !== snapshot()) return;
-			preview.value = result.data.data;
+			preview.value = result;
 			graphRevision = preview.value.graph_revision;
 			reviewed = captured;
-		} catch {
-			if (token === generation) error.value = 'preview';
+		} catch (failure) {
+			if (token === generation) {
+				error.value = 'preview';
+				reason.value = failure instanceof DewPointPreviewError ? failure.reason : null;
+			}
 		} finally {
 			if (token === generation) busy.value = false;
 		}
@@ -159,7 +174,10 @@ export function useDewPointAuthoring(outputId?: string) {
 			if (token === generation) {
 				busy.value = false;
 				reviewed = null;
-				preview.value = null;
+				// Keep the creation review visible until navigation, including after a failed save.
+				if (outputId) {
+					preview.value = null;
+				}
 			}
 		}
 	}
@@ -172,5 +190,5 @@ export function useDewPointAuthoring(outputId?: string) {
 		{ deep: true, flush: 'sync' }
 	);
 	onMounted(reload);
-	return { model, current, preview, busy, error, reason, canSave, reload, check, save };
+	return { model, current, preview, busy, error, reason, canSave, reload, check, evaluateDraft, save };
 }

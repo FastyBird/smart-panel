@@ -1,6 +1,7 @@
 <template>
 	<el-form
 		label-position="top"
+		status-icon
 		@submit.prevent
 	>
 		<el-alert
@@ -15,19 +16,25 @@
 
 		<el-form-item
 			v-if="!editing"
-			:label="t('devicesModbusPlugin.wizard.device.name.title')"
+			:error="fieldError('name')"
+			:label="t('devicesModule.fields.devices.name.title')"
+			required
 		>
 			<el-input
 				v-model="wizard.state.device.name"
-				:placeholder="t('devicesModbusPlugin.wizard.device.name.placeholder')"
+				:placeholder="t('devicesModule.fields.devices.name.placeholder')"
 				name="deviceName"
 			/>
 		</el-form-item>
 
-		<el-form-item :label="t('devicesModbusPlugin.wizard.device.category.title')">
+		<el-form-item
+			:error="fieldError('category')"
+			:label="t('devicesModule.fields.devices.category.title')"
+			required
+		>
 			<el-select
 				v-model="wizard.state.device.category"
-				:placeholder="t('devicesModbusPlugin.wizard.device.category.placeholder')"
+				:placeholder="t('devicesModule.fields.devices.category.placeholder')"
 				name="deviceCategory"
 				class="w-full"
 			>
@@ -67,7 +74,11 @@
 			</div>
 		</el-form-item>
 
-		<el-form-item :label="t('devicesModbusPlugin.wizard.device.pollInterval.title')">
+		<el-form-item
+			:error="fieldError('pollInterval')"
+			:label="t('devicesModbusPlugin.wizard.device.pollInterval.title')"
+			required
+		>
 			<el-input-number
 				v-model="wizard.state.device.pollIntervalMs"
 				:min="MODBUS_MIN_POLL_INTERVAL_MS"
@@ -91,7 +102,11 @@
 		</el-form-item>
 
 		<div class="grid gap-x-4 sm:grid-cols-2">
-			<el-form-item :label="t('devicesModbusPlugin.wizard.device.byteOrder.title')">
+			<el-form-item
+				:error="fieldError('byteOrder')"
+				:label="t('devicesModbusPlugin.wizard.device.byteOrder.title')"
+				required
+			>
 				<el-select
 					v-model="wizard.state.device.byteOrder"
 					name="deviceByteOrder"
@@ -106,7 +121,11 @@
 				</el-select>
 			</el-form-item>
 
-			<el-form-item :label="t('devicesModbusPlugin.wizard.device.wordOrder.title')">
+			<el-form-item
+				:error="fieldError('wordOrder')"
+				:label="t('devicesModbusPlugin.wizard.device.wordOrder.title')"
+				required
+			>
 				<el-select
 					v-model="wizard.state.device.wordOrder"
 					name="deviceWordOrder"
@@ -132,6 +151,7 @@ import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager, useLogger } from '../../../../common';
+import { useWizardFieldError } from '../../../../modules/devices/components/wizard/use-wizard-validation';
 import { SpaceType } from '../../../../modules/spaces/spaces.constants';
 import { spacesStoreKey } from '../../../../modules/spaces/store/keys';
 import type { ISpace } from '../../../../modules/spaces/store/spaces.store.types';
@@ -153,6 +173,7 @@ const BASE_CATEGORIES = ['switcher', 'input_controller', 'sensor', 'valve'];
 const RESERVED_CATEGORY = 'generic';
 
 const { t } = useI18n();
+const fieldError = useWizardFieldError();
 const logger = useLogger();
 const spacesStore = injectStoresManager().getStore(spacesStoreKey);
 

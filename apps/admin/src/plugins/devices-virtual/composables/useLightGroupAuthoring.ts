@@ -41,7 +41,7 @@ export const useLightGroupAuthoring = () => {
 		error.value = null;
 		try {
 			const result = await backend.client.GET('/plugins/devices-virtual/producers/light-groups/{id}', { params: { path: { id } } });
-			if (current !== generation) return null;
+			if (current !== generation || result.response?.status === 401) return null;
 			if (!result.data) throw new Error(describeError(result.error));
 			configuration.value = result.data.data;
 			return result.data.data;
@@ -61,7 +61,7 @@ export const useLightGroupAuthoring = () => {
 		error.value = null;
 		try {
 			const result = await backend.client.POST('/plugins/devices-virtual/producers/light-groups/draft-preview', { body: draft });
-			if (current !== generation) return null;
+			if (current !== generation || result.response?.status === 401) return null;
 			if (!result.data) throw new Error(describeError(result.error));
 			preview.value = result.data.data;
 			previewKey = key(draft);
@@ -84,12 +84,13 @@ export const useLightGroupAuthoring = () => {
 			const result = await backend.client.POST('/plugins/devices-virtual/producers/light-groups', {
 				body: { ...draft, expected_graph_revision: preview.value.graph_revision },
 			});
-			if (current !== generation) return null;
+			if (current !== generation || result.response?.status === 401) return null;
 			if (!result.data) {
 				repairConflict.value = result.response.status === 409 || result.response.status === 422;
 				throw new Error(describeError(result.error));
 			}
-			invalidatePreview();
+			// Keep the creation review stable until navigation; do not allow the same approval twice.
+			previewKey = null;
 			return result.data.data;
 		} catch (cause) {
 			if (current === generation) error.value = describeError(cause);

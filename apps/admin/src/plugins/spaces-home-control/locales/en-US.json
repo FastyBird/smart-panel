@@ -409,7 +409,7 @@
 			"noActiveMedia": "There is no active media activity to stop.",
 			"noTargets": "No compatible devices are available in this space."
 		},
-		"title": "Activity modes",
+		"title": "Modes",
 		"description": "Choose what each activity mode does in this space.",
 		"enabled": "Enabled",
 		"disabled": "Disabled",
@@ -494,7 +494,10 @@
 			"gaming": "Gaming",
 			"background": "Background",
 			"off": "Off"
-		}
+		},
+		"leaveUnchanged": "Leave unchanged",
+		"apply": "Set",
+		"noChanges": "No device changes"
 	},
 	"schedules": {
 		"title": "Time schedules",
@@ -690,5 +693,11 @@
 			"spaceType": "This space is not a room or a zone; the card acts only on rooms and zones.",
 			"required": "This value is needed."
 		}
+	},
+	"modesLayout": {
+		"configure": "Configure",
+		"scheduleDescription": "Choose when space modes change automatically.",
+		"presenceTitle": "Based on presence",
+		"presenceDescription": "Choose how the space responds when people arrive or leave."
 	}
 }

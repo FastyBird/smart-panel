@@ -1,176 +1,185 @@
-import { describe, expect, it, vi } from 'vitest';
+/* eslint-disable vue/one-component-per-file */
+import { computed, defineComponent, ref } from 'vue';
 
-import { mount } from '@vue/test-utils';
+import { ElInput, ElSteps } from 'element-plus';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { flushPromises, mount } from '@vue/test-utils';
+
+import EmptyState from '../../../common/components/empty-state.vue';
+import DeviceWizardShell from '../components/wizard/device-wizard-shell.vue';
+import type { IDeviceWizardDefinition } from '../devices.types';
 
 import ViewDevicesWizard from './view-devices-wizard.vue';
 
-const adapterFactory = vi.fn(() => ({ title: 'Adapter wizard' }));
-// Declares the SAME `deviceWizardAdapter` key as the devices-scoped element below, differing
-// only in `modules`. This is what makes the module-eligibility test meaningful: if the
-// `modules` filter in view-devices-wizard.vue were ever disabled, `.find()` would pick this one
-// up first (it comes first in the elements array) and the shell would receive the wrong
-// factory. A fixture that instead used the dead `deviceWizard` key would be excluded solely
-// because nothing reads that key any more, proving nothing about module scoping.
-const otherAdapterFactory = vi.fn(() => ({ title: 'Other module wizard' }));
-// A second, independently valid plugin type — used only by the :key remount test, so switching
-// `type` between it and `multi-module-plugin` keeps `device-wizard` mounted throughout (no
-// v-if toggle to entity-not-found), isolating the remount to the `:key="type"` binding itself.
-const secondAdapterFactory = vi.fn(() => ({ title: 'Second plugin wizard' }));
-
-vi.mock('vue-i18n', () => ({
-	useI18n: () => ({
-		t: (key: string) => key,
-	}),
-}));
-
-vi.mock('vue-router', () => ({
-	useRouter: () => ({
-		push: vi.fn(),
-	}),
-}));
-
-vi.mock('../../../common', async () => {
-	const { defineComponent: defineVueComponent } = await import('vue');
-
-	return {
-		EntityNotFound: defineVueComponent({
-			name: 'EntityNotFound',
-			template: '<div data-test-id="entity-not-found" />',
-		}),
-	};
-});
-
-vi.mock('../components/components', async () => {
-	const { defineComponent } = await import('vue');
-
-	return {
-		DeviceWizard: defineComponent({
-			name: 'DeviceWizard',
-			props: { adapterFactory: { type: Function, required: true } },
-			template: '<div data-test-id="device-wizard" />',
-		}),
-	};
-});
-
-vi.mock('../composables/composables', () => ({
-	useDevicesPlugins: () => ({
-		getByPluginType: (type: string) => {
-			if (type === 'multi-module-plugin') {
-				return {
-					type: 'multi-module-plugin',
-					elements: [
-						{
-							type: 'other-module-wizard',
-							modules: ['other-module'],
-							components: {
-								deviceWizardAdapter: otherAdapterFactory,
-							},
-						},
-						{
-							type: 'devices-module-wizard',
-							modules: ['devices-module'],
-							components: {
-								deviceWizardAdapter: adapterFactory,
-							},
-						},
-					],
-				};
-			}
-
-			if (type === 'second-plugin') {
-				return {
-					type: 'second-plugin',
-					elements: [
-						{
-							type: 'second-plugin-wizard',
-							modules: ['devices-module'],
-							components: {
-								deviceWizardAdapter: secondAdapterFactory,
-							},
-						},
-					],
-				};
-			}
-
-			return undefined;
-		},
-	}),
-}));
-
-vi.mock('../devices.constants', () => ({
-	RouteNames: {
-		DEVICES: 'devices',
+const mocks = vi.hoisted(() => ({ push: vi.fn(), query: {} as Record<string, string>, enabled: true, disabled: new Set<string>(), load: vi.fn() }));
+const Flow = defineComponent({ props: { channel: { type: String, default: '' } }, template: '<div data-test-id="flow">{{ channel }}</div>' });
+const definitions: Record<string, IDeviceWizardDefinition> = {
+	plugin: {
+		selection: { kind: 'integration', icon: 'mdi:lan', description: 'Network devices' },
+		variants: [
+			{ id: 'lan', label: 'LAN', description: 'Local', icon: 'mdi:lan', component: Flow, props: { channel: 'local' } },
+			{ id: 'cloud', label: 'Cloud', description: 'Remote', icon: 'mdi:cloud', component: Flow, props: { channel: 'cloud' } },
+		],
 	},
-	DEVICES_MODULE_NAME: 'devices-module',
+	'tools-plugin': {
+		selection: { kind: 'section', section: { label: 'Build from existing devices', description: 'Plugin-owned section' } },
+		variants: [
+			{ id: 'aggregate', label: 'Čidlo teploty', description: 'Combine sensor readings', icon: 'mdi:sigma', component: Flow },
+			{ id: 'convert', label: 'Conversion', description: 'Calibrate a measurement', icon: 'mdi:function', component: Flow },
+		],
+	},
+};
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock('vue-meta', () => ({ useMeta: () => ({ meta: {} }) }));
+vi.mock('vue-router', () => ({
+	useRoute: () => ({ query: mocks.query }),
+	useRouter: () => ({ push: mocks.push, resolve: () => ({ href: '/devices' }) }),
 }));
+vi.mock('../../../common', () => ({
+	EntityNotFound: defineComponent({ template: '<div data-test-id="unavailable" />' }),
+	AppBreadcrumbs: defineComponent({ template: '<div />' }),
+	ViewHeader: defineComponent({
+		props: { heading: { type: String, default: '' } },
+		template: '<header><h1>{{ heading }}</h1><slot name="extra" /></header>',
+	}),
+	useBreakpoints: () => ({ isMDDevice: ref(true) }),
+}));
+vi.mock('../components/wizard/device-wizard-shell.vue', () => ({
+	default: defineComponent({
+		name: 'DeviceWizardShell',
+		props: { title: { type: String, default: '' }, prefixSteps: { type: Array, default: () => [] }, backRoute: { type: Object, default: undefined } },
+		template: '<div><h1>{{ title }}</h1><slot /></div>',
+	}),
+}));
+vi.mock('../../config', () => ({
+	useConfigPlugins: () => ({
+		enabled: (type: string) => mocks.enabled && !mocks.disabled.has(type),
+		loaded: ref(true),
+		fetchConfigPlugins: mocks.load,
+	}),
+}));
+vi.mock('../composables/useDevicesPlugins', () => ({
+	useDevicesPlugins: () => ({
+		wizardOptions: computed(() =>
+			['plugin', 'tools-plugin'].map((type) => ({
+				value: type,
+				label: type === 'plugin' ? 'Plugin' : 'Tools',
+				description: 'Description',
+				disabled: !mocks.enabled || mocks.disabled.has(type),
+			}))
+		),
+		getByPluginType: (type: string) => (definitions[type] ? { name: type === 'plugin' ? 'Plugin' : 'Tools', description: 'Description' } : undefined),
+		getWizard: (type: string) => definitions[type],
+	}),
+}));
+beforeEach(() => {
+	mocks.query = {};
+	mocks.enabled = true;
+	mocks.disabled.clear();
+	mocks.push.mockReset();
+	mocks.load.mockResolvedValue(undefined);
+});
 
-describe('ViewDevicesWizard', () => {
-	it('renders the shared shell for the devices-scoped adapter element', () => {
-		const wrapper = mount(ViewDevicesWizard, {
-			props: {
-				type: 'multi-module-plugin',
-			},
-		});
-
-		const deviceWizard = wrapper.findComponent({ name: 'DeviceWizard' });
-
-		expect(deviceWizard.exists()).toBe(true);
-		expect(deviceWizard.props('adapterFactory')).toBe(adapterFactory);
+describe('standalone device setup selection', () => {
+	it('shows integrations and plugin-owned sections without mounting wizard steps or a footer', async () => {
+		const wrapper = mount(ViewDevicesWizard);
+		expect(wrapper.findComponent(DeviceWizardShell).exists()).toBe(false);
+		expect(wrapper.findComponent(ElSteps).exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-footer"]').exists()).toBe(false);
+		expect(wrapper.get('[data-test-id="wizard-section-integrations"]').findAll('[role="button"]')).toHaveLength(1);
+		expect(wrapper.get('[data-test-id="wizard-section-tools-plugin"]').findAll('[role="button"]')).toHaveLength(2);
+		expect(wrapper.find('[data-test-id="wizard-choice-tools-plugin"]').exists()).toBe(false);
+		await wrapper.get('[data-test-id="wizard-choice-plugin"]').trigger('click');
+		expect(mocks.push).toHaveBeenCalledWith({ name: 'devices_module-devices_wizard', params: { type: 'plugin' } });
+		wrapper.unmount();
 	});
-
-	it('excludes an element scoped to a different module even though it declares its own adapter factory', () => {
-		const wrapper = mount(ViewDevicesWizard, {
-			props: {
-				type: 'multi-module-plugin',
-			},
+	it.each(['click', 'enter', 'space'])('opens a plugin-owned variant directly using %s', async (action) => {
+		const wrapper = mount(ViewDevicesWizard);
+		const card = wrapper.get('[data-test-id="wizard-choice-tools-plugin:aggregate"]');
+		if (action === 'click') await card.trigger('click');
+		else await card.trigger('keydown', { key: action === 'enter' ? 'Enter' : ' ' });
+		expect(mocks.push).toHaveBeenCalledWith({
+			name: 'devices_module-devices_wizard',
+			params: { type: 'tools-plugin' },
+			query: { variant: 'aggregate' },
 		});
-
-		const deviceWizard = wrapper.findComponent({ name: 'DeviceWizard' });
-
-		expect(deviceWizard.props('adapterFactory')).not.toBe(otherAdapterFactory);
-		expect(otherAdapterFactory).not.toHaveBeenCalled();
+		wrapper.unmount();
 	});
-
-	it('passes the adapter factory without invoking it', () => {
-		mount(ViewDevicesWizard, {
-			props: {
-				type: 'multi-module-plugin',
-			},
-		});
-
-		expect(adapterFactory).not.toHaveBeenCalled();
+	it('filters translated card content without case or accent sensitivity and clears an empty search', async () => {
+		const wrapper = mount(ViewDevicesWizard);
+		const search = wrapper.getComponent(ElInput);
+		search.vm.$emit('update:modelValue', 'CIDLO');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-choice-tools-plugin:aggregate"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-section-integrations"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-choice-tools-plugin:convert"]').exists()).toBe(false);
+		search.vm.$emit('update:modelValue', 'not-present');
+		await flushPromises();
+		expect(wrapper.getComponent(EmptyState).props('description')).toBe('devicesModule.wizard.selection.noResults');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text().includes('selection.clearSearch'))!
+			.trigger('click');
+		await flushPromises();
+		expect(wrapper.findAll('[role="button"]')).toHaveLength(3);
+		wrapper.unmount();
 	});
-
-	it('remounts the shell — a brand new instance, not a patched one — when the type prop changes', async () => {
-		// `:key="type"` exists specifically so switching plugin type tears down the outgoing
-		// adapter (running its dispose()) instead of leaving stale state bleeding into the new
-		// one. Both `multi-module-plugin` and `second-plugin` resolve to a real adapter factory,
-		// so `device-wizard` stays mounted throughout — isolating the assertion to the key-driven
-		// remount rather than a v-if toggle to/from entity-not-found.
-		const wrapper = mount(ViewDevicesWizard, {
-			props: { type: 'multi-module-plugin' },
-		});
-
-		const elementBefore = wrapper.find('[data-test-id="device-wizard"]').element;
-
-		await wrapper.setProps({ type: 'second-plugin' });
-
-		const deviceWizardAfter = wrapper.findComponent({ name: 'DeviceWizard' });
-		const elementAfter = wrapper.find('[data-test-id="device-wizard"]').element;
-
-		expect(deviceWizardAfter.props('adapterFactory')).toBe(secondAdapterFactory);
-		// A patched (not remounted) component would keep rendering into the SAME DOM node;
-		// a `:key` change destroys the old vnode/instance and mounts a fresh one in its place.
-		expect(elementAfter).not.toBe(elementBefore);
+	it('opens manual configuration from the picker', async () => {
+		const wrapper = mount(ViewDevicesWizard);
+		await wrapper.get('[data-test-id="wizard-manual-configuration"]').trigger('click');
+		expect(mocks.push).toHaveBeenCalledWith({ name: 'devices_module-devices_add' });
+		wrapper.unmount();
 	});
-
-	it('renders the not-found state for an unknown plugin type', () => {
-		const wrapper = mount(ViewDevicesWizard, {
-			props: {
-				type: 'nope',
-			},
-		});
-
-		expect(wrapper.find('[data-test-id="entity-not-found"]').exists()).toBe(true);
+	it('hides every variant of a disabled section owner', () => {
+		mocks.disabled.add('tools-plugin');
+		const wrapper = mount(ViewDevicesWizard);
+		expect(wrapper.find('[data-test-id="wizard-section-tools-plugin"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-choice-plugin"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+	it('offers a normal integration method on a standalone picker before mounting a flow', async () => {
+		const wrapper = mount(ViewDevicesWizard, { props: { type: 'plugin' } });
+		expect(wrapper.find('[data-test-id="wizard-choice-lan"]').exists()).toBe(true);
+		expect(wrapper.findComponent(DeviceWizardShell).exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="flow"]').exists()).toBe(false);
+		await wrapper.get('[data-test-id="wizard-choice-cloud"]').trigger('click');
+		expect(mocks.push).toHaveBeenCalledWith({ name: 'devices_module-devices_wizard', params: { type: 'plugin' }, query: { variant: 'cloud' } });
+		wrapper.unmount();
+	});
+	it('starts a chosen integration flow without counting either selection as a step', () => {
+		mocks.query = { variant: 'cloud' };
+		const wrapper = mount(ViewDevicesWizard, { props: { type: 'plugin' } });
+		expect(wrapper.get('[data-test-id="flow"]').text()).toBe('cloud');
+		expect(wrapper.getComponent(DeviceWizardShell).props('prefixSteps')).toEqual([]);
+		expect(wrapper.getComponent(DeviceWizardShell).props('backRoute')).toEqual({ name: 'devices_module-devices_wizard', params: { type: 'plugin' } });
+		wrapper.unmount();
+	});
+	it('returns a section variant directly to the main choice page', () => {
+		mocks.query = { variant: 'aggregate' };
+		const wrapper = mount(ViewDevicesWizard, { props: { type: 'tools-plugin' } });
+		expect(wrapper.getComponent(DeviceWizardShell).props('backRoute')).toEqual({ name: 'devices_module-devices_wizard_select' });
+		wrapper.unmount();
+	});
+	it.each(['invalid', 'lan'])('refuses invalid variants and disabled plugins (%s)', (variant) => {
+		mocks.query = { variant };
+		if (variant === 'lan') mocks.enabled = false;
+		const wrapper = mount(ViewDevicesWizard, { props: { type: 'plugin' } });
+		expect(wrapper.find('[data-test-id="flow"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="unavailable"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+	it('surfaces configuration failures and lets the user retry on the choice page', async () => {
+		mocks.load.mockRejectedValueOnce(new Error('offline'));
+		const wrapper = mount(ViewDevicesWizard);
+		await flushPromises();
+		expect(wrapper.text()).toContain('devicesModule.wizard.loadFailed');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text().includes('devicesModule.wizard.retry'))!
+			.trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-choice-plugin"]').exists()).toBe(true);
+		wrapper.unmount();
 	});
 });

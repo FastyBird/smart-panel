@@ -1,5 +1,7 @@
 <template>
-	<el-card
+	<virtual-wizard-card
+		icon="mdi:thermostat"
+		header-class="px-3! py-3! font-bold"
 		data-test-id="thermostat-comfort"
 		class="mt-4"
 		@focusin="focused = true"
@@ -223,14 +225,14 @@
 				</el-button>
 			</template>
 		</template>
-	</el-card>
+	</virtual-wizard-card>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCard, ElCheckbox, ElDivider, ElForm, ElFormItem, ElInputNumber, ElOption, ElSelect } from 'element-plus';
+import { ElAlert, ElButton, ElCheckbox, ElDivider, ElForm, ElFormItem, ElInputNumber, ElOption, ElSelect } from 'element-plus';
 
 import { injectSockets, useBackend } from '../../../common';
 import { useThermostatComfort } from '../composables/use-thermostat-comfort';
@@ -241,6 +243,8 @@ import {
 	remainingOverrideSeconds,
 	thermostatComfortTransport,
 } from '../services/thermostat-comfort';
+
+import VirtualWizardCard from './virtual-wizard-card.vue';
 
 const props = defineProps<{ deviceId: string; disabled?: boolean; revision?: number }>();
 const emit = defineEmits<{ changed: [] }>();

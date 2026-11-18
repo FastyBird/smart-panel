@@ -81,22 +81,47 @@
 				</template>
 
 				<el-scrollbar class="h-full">
-					<space-activity-modes-section
-						v-if="props.space.type === SpaceType.ROOM || props.space.type === SpaceType.ZONE"
-						:space-id="props.space.id"
-					/>
 					<space-domains-section :space="props.space" />
-					<space-mode-schedule-section
-						v-if="props.space.type === SpaceType.ROOM || props.space.type === SpaceType.ZONE"
-						ref="scheduleSectionRef"
-						:space-id="props.space.id"
-					/>
-					<space-occupancy-section
-						v-if="occupancyEditorSpaceId === props.space.id"
-						ref="occupancySectionRef"
-						:space-id="props.space.id"
-						:supported="occupancySupported"
-					/>
+				</el-scrollbar>
+			</el-tab-pane>
+
+			<el-tab-pane
+				v-if="occupancySupported"
+				name="modes"
+				class="h-full overflow-hidden"
+			>
+				<template #label>
+					<div class="flex items-center gap-2 px-4">
+						<icon icon="mdi:home-switch" />
+						{{ t('spacesHomeControlPlugin.activityModes.title') }}
+					</div>
+				</template>
+				<el-scrollbar class="h-full">
+					<space-activity-modes-section :space-id="props.space.id" />
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 m-2">
+						<el-card shadow="never">
+							<h3>{{ t('spacesHomeControlPlugin.schedules.title') }}</h3>
+							<p>{{ t('spacesHomeControlPlugin.modesLayout.scheduleDescription') }}</p>
+							<p>{{ activationSummary('schedule') }}</p>
+							<el-button
+								data-test-id="configure-schedule"
+								@click="showSchedule = true"
+							>
+								{{ t('spacesHomeControlPlugin.modesLayout.configure') }}
+							</el-button>
+						</el-card>
+						<el-card shadow="never">
+							<h3>{{ t('spacesHomeControlPlugin.modesLayout.presenceTitle') }}</h3>
+							<p>{{ t('spacesHomeControlPlugin.modesLayout.presenceDescription') }}</p>
+							<p>{{ activationSummary('occupancy') }}</p>
+							<el-button
+								data-test-id="configure-presence"
+								@click="showOccupancy = true"
+							>
+								{{ t('spacesHomeControlPlugin.modesLayout.configure') }}
+							</el-button>
+						</el-card>
+					</div>
 				</el-scrollbar>
 			</el-tab-pane>
 
@@ -175,6 +200,36 @@
 			</el-tab-pane>
 		</el-tabs>
 	</div>
+
+	<el-dialog
+		v-model="showSchedule"
+		destroy-on-close
+		:title="t('spacesHomeControlPlugin.schedules.title')"
+		width="min(900px, 96vw)"
+		:close-on-click-modal="false"
+		:before-close="closeSchedule"
+	>
+		<space-mode-schedule-section
+			v-if="occupancySupported"
+			ref="scheduleSectionRef"
+			:space-id="props.space.id"
+		/>
+	</el-dialog>
+	<el-dialog
+		v-model="showOccupancy"
+		destroy-on-close
+		:title="t('spacesHomeControlPlugin.modesLayout.presenceTitle')"
+		width="min(720px, 96vw)"
+		:close-on-click-modal="false"
+		:before-close="closeOccupancy"
+	>
+		<space-occupancy-section
+			v-if="occupancyEditorSpaceId === props.space.id"
+			ref="occupancySectionRef"
+			:space-id="props.space.id"
+			:supported="occupancySupported"
+		/>
+	</el-dialog>
 
 	<space-add-device-dialog
 		v-model:visible="showAddDeviceDialog"
@@ -271,7 +326,7 @@ import { computed, onBeforeMount, onMounted, onScopeDispose, ref, watch } from '
 import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox, ElScrollbar, ElTabPane, ElTabs, useNamespace } from 'element-plus';
+import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox, ElScrollbar, ElTabPane, ElTabs, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -294,6 +349,8 @@ import {
 	SpaceParentZoneSection,
 	SpaceScenesSection,
 } from '../components/components';
+import { provideSpaceSchedule } from '../composables/useSpaceModeSchedule';
+import { provideSpaceOccupancy } from '../composables/useSpaceOccupancy';
 import { RouteNames as PluginRouteNames } from '../spaces-home-control.constants';
 
 import type { IViewSpaceConfigureProps } from './view-space-configure.types';
@@ -319,7 +376,15 @@ const { fetchSpaces, firstLoadFinished: spacesFirstLoadFinished } = useSpaces();
 const mounted = ref<boolean>(false);
 const showDrawer = ref<boolean>(false);
 
-const activeTab = ref<string>('domains');
+const validTabs = computed(() => ['domains', 'devices', 'scenes', 'displays', ...(occupancySupported.value ? ['modes'] : [])]);
+const activeTab = computed<string>({
+	get: () => (typeof route.query?.tab === 'string' && validTabs.value.includes(route.query.tab) ? route.query.tab : 'domains'),
+	set: (tab) => {
+		void router.replace({ query: { ...route.query, tab: tab === 'domains' ? undefined : tab } });
+	},
+});
+const showSchedule = ref(false);
+const showOccupancy = ref(false);
 const showAddDeviceDialog = ref<boolean>(false);
 const showAddSceneDialog = ref<boolean>(false);
 const showAddDisplayDialog = ref<boolean>(false);
@@ -345,6 +410,18 @@ const confirmScheduleDiscard = async (sections = [scheduleSectionRef.value, occu
 		return false;
 	}
 };
+const closeSchedule = async (done: () => void): Promise<void> => {
+	if (await confirmScheduleDiscard([scheduleSectionRef.value])) {
+		scheduleSectionRef.value?.discard();
+		done();
+	}
+};
+const closeOccupancy = async (done: () => void): Promise<void> => {
+	if (await confirmScheduleDiscard([occupancySectionRef.value])) {
+		occupancySectionRef.value?.discard();
+		done();
+	}
+};
 onBeforeRouteLeave(() => confirmScheduleDiscard());
 onBeforeRouteUpdate((to, from) => to.params.id === from.params.id || confirmScheduleDiscard());
 // A server-side type change is authoritative. Retain the draft read-only until the user agrees to discard it.
@@ -362,6 +439,15 @@ watch(
 	{ immediate: true, flush: 'sync' }
 );
 onScopeDispose(() => occupancyTypeGeneration++);
+
+const scheduleSource = provideSpaceSchedule(computed(() => (occupancySupported.value ? props.space.id : undefined)));
+const occupancySource = provideSpaceOccupancy(computed(() => occupancyEditorSpaceId.value ?? undefined));
+const activationSummary = (kind: 'schedule' | 'occupancy'): string => {
+	const source = kind === 'schedule' ? scheduleSource : occupancySource;
+	if (source.error.value) return t('spacesHomeControlPlugin.activityModes.loadFailed');
+	if (source.loading.value || !source.configuration.value) return t('spacesHomeControlPlugin.activityModes.loading');
+	return t(`spacesHomeControlPlugin.activityModes.${source.configuration.value.enabled ? 'enabled' : 'disabled'}`);
+};
 
 const isSpaceEditRoute = computed<boolean>(
 	(): boolean => route.matched.find((matched) => matched.name === PluginRouteNames.SPACE_EDIT) !== undefined

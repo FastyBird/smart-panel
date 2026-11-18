@@ -6,11 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
-import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
-import { RouteNames as VirtualRouteNames } from '../../../plugins/devices-virtual/devices-virtual.constants';
-import { PluginRoutes } from '../../../plugins/devices-virtual/router';
-import { ListDevices } from '../components/components';
-
 import ViewDevices from './view-devices.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -22,16 +17,6 @@ const mocks = vi.hoisted(() => ({
 	fetchValidation: vi.fn(),
 	flashError: vi.fn(),
 	wizardOptions: [] as { value: string; label: string; description: string; disabled: boolean }[],
-	wizardRouteOptions: [] as {
-		value: string;
-		label: string;
-		icon: string;
-		to: { name: string };
-		testId: string;
-		disabled: boolean;
-		optionsTitle?: string;
-		options?: { value: string; label: string; description: string; icon: string; to: { name: string }; testId: string }[];
-	}[],
 	isLGDevice: false,
 	// Read once per `useBreakpoints()` call, like `isLGDevice` above: set it before `mountView()`.
 	isMDDevice: true,
@@ -159,7 +144,6 @@ vi.mock('../composables/composables', () => ({
 	},
 	useDevicesPlugins: () => ({
 		wizardOptions: computed(() => mocks.wizardOptions),
-		wizardRouteOptions: computed(() => mocks.wizardRouteOptions),
 	}),
 	useDevicesValidation: () => ({
 		fetchValidation: mocks.fetchValidation,
@@ -172,6 +156,7 @@ vi.mock('../devices.constants', () => ({
 		DEVICES_ADD: 'devices-add',
 		DEVICES_EDIT: 'devices-edit',
 		DEVICES_WIZARD: 'devices-wizard',
+		DEVICES_WIZARD_SELECT: 'devices-wizard-select',
 	},
 }));
 
@@ -221,16 +206,6 @@ describe('ViewDevices', () => {
 		mocks.fetchDevices.mockResolvedValue(undefined);
 		mocks.fetchValidation.mockResolvedValue(undefined);
 		mocks.wizardOptions = [];
-		mocks.wizardRouteOptions = [
-			{
-				value: 'devices-virtual',
-				label: 'devicesVirtualPlugin.wizard.title',
-				icon: 'mdi:call-split',
-				to: { name: 'devices_virtual-wizard' },
-				testId: 'virtual-device-wizard',
-				disabled: false,
-			},
-		];
 		mocks.isLGDevice = false;
 		mocks.isMDDevice = true;
 		mocks.route = {
@@ -261,30 +236,43 @@ describe('ViewDevices', () => {
 		}
 	});
 
-	it('opens the only installed wizard directly without showing the selection dialog', async () => {
-		mocks.wizardOptions = [
-			{
-				value: 'devices-home-assistant-plugin',
-				label: 'Home Assistant',
-				description: 'Wizard',
-				disabled: false,
-			},
-		];
+	it('leaves catalogue loading to the wizard on direct entry', async () => {
+		mocks.route = { path: '/devices/wizard/devices-virtual', name: 'devices-wizard', meta: {}, matched: [] };
+		mountView();
+		await flushPromises();
+		expect(mocks.fetchDevices).not.toHaveBeenCalled();
+		expect(mocks.fetchValidation).not.toHaveBeenCalled();
+	});
 
-		const wrapper = mountView();
-
-		await wrapper
-			.findAll('button')
-			.find((button) => button.text().includes('devicesModule.buttons.wizard.title'))
-			?.trigger('click');
-
-		expect(mocks.routerPush).toHaveBeenCalledWith({
-			name: 'devices-wizard',
-			params: {
-				type: 'devices-home-assistant-plugin',
-			},
+	it('refreshes the list when returning from the wizard without loading it behind the wizard', async () => {
+		mocks.useRealRouter = true;
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{
+					path: '/devices',
+					name: 'devices',
+					component: ViewDevices,
+					children: [{ path: 'wizard', name: 'devices-wizard-select', component: defineComponent({ template: '<div />' }) }],
+				},
+			],
 		});
-		expect(wrapper.text()).not.toContain('Home Assistant');
+		await router.push('/devices/wizard');
+		await router.isReady();
+		const view = mountView({}, router);
+		await flushPromises();
+		expect(mocks.fetchDevices).not.toHaveBeenCalled();
+		await router.push('/devices');
+		await flushPromises();
+		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
+		expect(mocks.fetchValidation).toHaveBeenCalledTimes(1);
+		await router.push('/devices/wizard');
+		await flushPromises();
+		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
+		await router.push('/devices');
+		await flushPromises();
+		expect(mocks.fetchDevices).toHaveBeenCalledTimes(2);
+		view.unmount();
 	});
 
 	it('hides the wizard button when all wizard-capable plugins are disabled', () => {
@@ -300,217 +288,6 @@ describe('ViewDevices', () => {
 		const wrapper = mountView();
 
 		expect(wrapper.findAll('button').some((button) => button.text().includes('devicesModule.buttons.wizard.title'))).toBe(false);
-	});
-
-	it('navigates to the virtual device wizard from its own launcher, independent of the discovery wizard dialog', async () => {
-		// Deliberately left empty: the virtual wizard's launcher must not depend on any discovery
-		// plugin being installed — it is not a `wizardOptions` entry.
-		mocks.wizardOptions = [];
-
-		const wrapper = mountView();
-
-		await wrapper.find('[data-test-id="virtual-device-wizard"]').trigger('click');
-
-		// `beforeEach` defaults `isLGDevice` to `false` (see the `useBreakpoints` stub above), the same
-		// branch `onDeviceCreate` is already exercised under elsewhere in this file, so `push` — not
-		// `replace` — is the call that reflects it here.
-		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_virtual-wizard' });
-	});
-
-	it('asks which kind of virtual device to create before the wizard starts', async () => {
-		mocks.wizardRouteOptions[0] = {
-			...mocks.wizardRouteOptions[0]!,
-			optionsTitle: 'devicesVirtualPlugin.wizard.selectKind',
-			options: [
-				{
-					value: 'projection',
-					label: 'p.title',
-					description: 'p.description',
-					icon: 'mdi:a',
-					to: { name: 'devices_virtual-wizard' },
-					testId: 'kind-projection',
-				},
-				{
-					value: 'group',
-					label: 'g.title',
-					description: 'g.description',
-					icon: 'mdi:b',
-					to: { name: 'devices_virtual-light_group_wizard' },
-					testId: 'kind-group',
-				},
-			],
-		} as (typeof mocks.wizardRouteOptions)[number];
-
-		const wrapper = mountView();
-		await flushPromises();
-
-		await wrapper.get('[data-test-id="virtual-device-wizard"]').trigger('click');
-		await flushPromises();
-
-		// The launcher opens the chooser instead of navigating.
-		expect(mocks.routerPush).not.toHaveBeenCalled();
-		expect(mocks.routerReplace).not.toHaveBeenCalled();
-		expect(wrapper.get('[data-test-id="kind-projection"]').text()).toContain('p.title');
-
-		// Each choice is reachable and operable from the keyboard, not only by pointer.
-		const projection = wrapper.get('[data-test-id="kind-projection"]');
-		expect(projection.attributes('role')).toBe('button');
-		expect(projection.attributes('tabindex')).toBe('0');
-		await projection.trigger('keydown', { key: 'Enter' });
-		expect(mocks.routerPush).toHaveBeenLastCalledWith({ name: 'devices_virtual-wizard' });
-
-		await wrapper.get('[data-test-id="virtual-device-wizard"]').trigger('click');
-		await flushPromises();
-		await wrapper.get('[data-test-id="kind-group"]').trigger('keydown', { key: ' ' });
-		expect(mocks.routerPush).toHaveBeenLastCalledWith({ name: 'devices_virtual-light_group_wizard' });
-
-		await wrapper.get('[data-test-id="virtual-device-wizard"]').trigger('click');
-		await flushPromises();
-		await wrapper.get('[data-test-id="kind-group"]').trigger('click');
-
-		expect(mocks.routerPush).toHaveBeenLastCalledWith({ name: 'devices_virtual-light_group_wizard' });
-	});
-
-	it('renders and navigates an enabled Simulator generation launcher alongside Virtual Devices', async () => {
-		mocks.wizardRouteOptions.push({
-			value: 'simulator-plugin',
-			label: 'simulatorPlugin.wizard.title',
-			icon: 'mdi:test-tube',
-			to: { name: 'simulator-wizard' },
-			testId: 'simulator-device-wizard',
-			disabled: false,
-		});
-
-		const wrapper = mountView();
-
-		await wrapper.find('[data-test-id="simulator-device-wizard"]').trigger('click');
-
-		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'simulator-wizard' });
-	});
-
-	it('renders the virtual device wizard route on lg+ (desktop) viewports, not just mobile', async () => {
-		// Regression test: the virtual wizard route (`devices_virtual-wizard`, registered as a child of
-		// `RouteNames.DEVICES` by the plugin) used to be invisible to `isWizardRoute`, which checked only
-		// `RouteNames.DEVICES_WIZARD`. On an `lg`+ viewport, that made the outer `router-view`'s condition
-		// — `isWizardRoute || (!isDevicesListRoute && !isLGDevice)` — false: the device list stayed
-		// mounted and the wizard never rendered, even though the URL had already navigated there. Every
-		// other test in this file mounts with `isLGDevice: false` (mobile), which never exercised this.
-		mocks.isLGDevice = true;
-		mocks.route = {
-			path: '/devices/devices-virtual/wizard',
-			name: 'devices_virtual-wizard',
-			meta: {},
-			matched: [],
-		};
-
-		const wrapper = mountView();
-		await flushPromises();
-
-		expect(wrapper.find('router-view-stub').exists()).toBe(true);
-		expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
-	});
-
-	it.each([true, false])('renders secondary virtual wizards through the real router (desktop: %s)', async (desktop) => {
-		mocks.useRealRouter = true;
-		mocks.isLGDevice = desktop;
-		const wizardPage = defineComponent({ template: '<div data-test-id="wizard-page" />' });
-		const router = createRouter({
-			history: createMemoryHistory(),
-			routes: [
-				{
-					path: '/devices',
-					name: 'devices',
-					component: ViewDevices,
-					children: [
-						{ path: ':id', name: 'devices-edit', component: defineComponent({ template: '<div data-test-id="device-editor" />' }) },
-						...PluginRoutes.map((route) =>
-							route.name === VirtualRouteNames.MEASUREMENT_WIZARD
-								? route
-								: {
-										path: route.path,
-										name: route.name,
-										meta: route.meta,
-										component: wizardPage,
-									}
-						),
-					],
-				},
-			],
-		});
-		// A direct URL (including a browser refresh) must render the actual measurement shell.
-		await router.push('/devices/devices-virtual/measurements/new?mode=sensor_aggregate');
-		await router.isReady();
-		const wrapper = mountView({}, router);
-		await flushPromises();
-		expect(wrapper.get('[data-test-id="measurement-editor"]').text()).toBe('sensor_aggregate');
-		expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
-
-		// Either measurement mode must also work while the parent stays mounted.
-		for (const mode of [DevicesVirtualPluginDeviceMode.sensor_aggregate, DevicesVirtualPluginDeviceMode.sensor_transform]) {
-			await router.push({ name: VirtualRouteNames.WIZARD });
-			await flushPromises();
-			expect(router.currentRoute.value.name).toBe(VirtualRouteNames.WIZARD);
-			await router.push({ name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode } });
-			await flushPromises();
-			expect(wrapper.get('[data-test-id="measurement-editor"]').text()).toBe(mode);
-			expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
-		}
-		for (const name of [VirtualRouteNames.LIGHT_GROUP_WIZARD, VirtualRouteNames.THERMOSTAT_WIZARD]) {
-			await router.push({ name });
-			await flushPromises();
-			expect(wrapper.find('[data-test-id="wizard-page"]').exists()).toBe(true);
-			expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
-		}
-		await router.push('/devices/existing-device');
-		await flushPromises();
-		expect(wrapper.find('[data-test-id="device-editor"]').exists()).toBe(true);
-		expect(wrapper.findComponent(ListDevices).exists()).toBe(desktop);
-		expect(wrapper.find('[data-test-id="edit-drawer"] [data-test-id="device-editor"]').exists()).toBe(desktop);
-		await router.push('/devices');
-		await flushPromises();
-		expect(wrapper.findComponent(ListDevices).exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="wizard-page"]').exists()).toBe(false);
-		wrapper.unmount();
-	});
-
-	// `ViewHeader` is gated on `isMDDevice`, so on a small screen it renders nothing — and the app bar's
-	// single teleported right-hand slot is already the Add button. Without a row of its own there is no
-	// way to reach the virtual wizard on a phone short of typing its URL, and unlike the discovery
-	// wizard it has no dialog to appear in: the plugin deliberately registers no `deviceWizardAdapter`.
-	it('offers the virtual device wizard on small screens, where the header is not rendered', async () => {
-		mocks.isMDDevice = false;
-
-		const wrapper = mountView();
-
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="virtual-device-wizard-small"]').exists()).toBe(true);
-
-		await wrapper.find('[data-test-id="virtual-device-wizard-small"]').trigger('click');
-
-		expect(mocks.routerPush).toHaveBeenCalledWith(expect.objectContaining({ name: 'devices_virtual-wizard' }));
-	});
-
-	it('hides the small-screen virtual wizard launcher when the plugin is disabled', async () => {
-		mocks.isMDDevice = false;
-		mocks.wizardRouteOptions[0]!.disabled = true;
-
-		const wrapper = mountView();
-
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="virtual-device-wizard-small"]').exists()).toBe(false);
-	});
-
-	it('hides the virtual device wizard launcher when the plugin is disabled', () => {
-		// Mirrors 'hides the wizard button when all wizard-capable plugins are disabled' above: the
-		// launcher must not stay visible just because devices-virtual is a core plugin — its config DTO
-		// supports `enabled`, so an admin can genuinely turn it off from Extensions.
-		mocks.wizardRouteOptions[0]!.disabled = true;
-
-		const wrapper = mountView();
-
-		expect(wrapper.find('[data-test-id="virtual-device-wizard"]').exists()).toBe(false);
 	});
 
 	it('refetches devices when the show-hidden toggle changes', async () => {
@@ -587,5 +364,13 @@ describe('ViewDevices', () => {
 		expect(mocks.flashError).toHaveBeenCalledTimes(1);
 		// The restoration is not a fresh request: the store already holds what the previous filter read.
 		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
+	});
+	it('opens the shared wizard selection for every registered wizard plugin', async () => {
+		mocks.wizardOptions = [{ value: 'devices-virtual', label: 'Virtual', description: '', disabled: false }];
+		const wrapper = mountView();
+		const button = wrapper.findAll('button').find((item) => item.text().includes('devicesModule.buttons.wizard.title'));
+		await button!.trigger('click');
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices-wizard-select' });
+		expect(wrapper.find('[data-test-id="virtual-device-wizard"]').exists()).toBe(false);
 	});
 });

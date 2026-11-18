@@ -328,6 +328,9 @@
       "friendlyName": "Przyjazna nazwa",
       "channels": "Kanały",
       "channelsCount": "{count} kanał | {count} kanały | {count} kanałów"
+    },
+    "selection": {
+      "description": "Urządzenia Zigbee przez Twoją bramkę Zigbee2MQTT."
     }
   }
 }

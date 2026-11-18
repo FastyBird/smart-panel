@@ -45,6 +45,9 @@
 			"details": "Szczegóły",
 			"created": "Utworzono",
 			"failed": "Niepowodzenie"
+		},
+		"selection": {
+			"description": "Generuj urządzenia testowe bez fizycznego sprzętu."
 		}
 	},
 	"headings": {

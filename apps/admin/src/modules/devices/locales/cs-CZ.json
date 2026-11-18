@@ -399,12 +399,12 @@
 			},
 			"room": {
 				"title": "Místnost",
-				"placeholder": "Vyberte místnost (volitelné)",
+				"placeholder": "Vyberte místnost",
 				"hint": "Přiřaďte toto zařízení k fyzické místnosti"
 			},
 			"zones": {
 				"title": "Zóny",
-				"placeholder": "Vyberte zóny (volitelné)",
+				"placeholder": "Vyberte zóny",
 				"hint": "Přiřaďte toto zařízení k logickým zónám (např. Zabezpečení, Venkovní). Členství v zóně patra je odvozeno z přiřazení místnosti."
 			},
 			"validation": {
@@ -705,6 +705,9 @@
 		},
 		"back": {
 			"title": "Zpět"
+		},
+		"manual": {
+			"title": "Ruční konfigurace"
 		}
 	},
 	"labels": {
@@ -1048,6 +1051,37 @@
 			"noSelection": "Nebyla vybrána žádná zařízení",
 			"resultsSuccess": "Všechna vybraná zařízení byla úspěšně přidána",
 			"resultsFailed": "Některá zařízení se nepodařilo přidat"
+		},
+		"variant": "Vyberte variantu",
+		"loadFailed": "Načtení pluginů se nezdařilo.",
+		"retry": "Zkusit znovu",
+		"discardChanges": "Zahodit rozpracované změny?",
+		"noPlugins": "Není dostupný žádný průvodce. Zapněte podporovaný plugin v nastavení.",
+		"review": {
+			"setting": "Nastavení",
+			"value": "Hodnota",
+			"status": "Stav",
+			"details": "Podrobnosti",
+			"success": "V pořádku",
+			"error": "Vyžaduje opravu",
+			"info": "Informace"
+		},
+		"validation": {
+			"required": "Vyplňte toto pole.",
+			"invalidValue": "Vyberte platnou hodnotu.",
+			"minimumItems": "Vyberte alespoň {count} položky.",
+			"numberRange": "Zadejte celé číslo od {minimum} do {maximum}."
+		},
+		"selection": {
+			"title": "Co chcete přidat?",
+			"description": "Vyberte integraci pro připojení skutečných zařízení nebo sestavte virtuální zařízení z těch, která již máte.",
+			"integrations": "Připojit integraci",
+			"integrationsDescription": "Vyhledejte zařízení nebo nastavte jejich připojení a vyberte, co chcete přidat.",
+			"search": "Hledat",
+			"searchPlaceholder": "Integrace nebo typ zařízení",
+			"noResults": "Žádná integrace ani typ zařízení neodpovídá hledání.",
+			"clearSearch": "Vymazat hledání",
+			"manualHint": "Chcete konfiguraci zadat ručně?"
 		}
 	},
 	"diagnostics": {

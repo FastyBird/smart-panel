@@ -136,6 +136,9 @@
 			"rescanFailed": "Failed to restart WLED discovery.",
 			"probeFailed": "Failed to connect to the WLED device.",
 			"adoptionFailed": "Failed to adopt the selected WLED devices."
+		},
+		"selection": {
+			"description": "Addressable LED controllers running WLED."
 		}
 	}
 }

@@ -136,6 +136,9 @@
 			"rescanFailed": "No se pudo reiniciar el descubrimiento WLED.",
 			"probeFailed": "No se pudo conectar con el dispositivo WLED.",
 			"adoptionFailed": "No se pudieron adoptar los dispositivos WLED seleccionados."
+		},
+		"selection": {
+			"description": "Controladores de LED direccionables con WLED."
 		}
 	}
 }

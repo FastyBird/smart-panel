@@ -1,24 +1,20 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import { RouteNames as DevicesRouteNames } from '../../../modules/devices/devices.constants';
 import { UsersModuleUserRole } from '../../../openapi.constants';
+import { DEVICES_MODBUS_PLUGIN_NAME } from '../devices-modbus.constants';
 import { RouteNames } from '../devices-modbus.constants';
 
 export const PluginRoutes: RouteRecordRaw[] = [
 	{
 		path: 'devices-modbus/wizard',
 		name: RouteNames.WIZARD,
-		component: () => import('../views/view-modbus-wizard.vue'),
-		meta: {
-			devicesWizard: true,
-			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
-			title: 'Add Modbus device',
-			icon: 'mdi:lan-connect',
-		},
+		redirect: { name: DevicesRouteNames.DEVICES_WIZARD, params: { type: DEVICES_MODBUS_PLUGIN_NAME } },
 	},
 	{
 		path: 'devices-modbus/:id/points',
 		name: RouteNames.EDIT,
-		component: () => import('../views/view-modbus-wizard.vue'),
+		component: () => import('../views/view-modbus-points.vue'),
 		props: true,
 		meta: {
 			devicesWizard: true,

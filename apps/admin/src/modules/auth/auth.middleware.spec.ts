@@ -34,9 +34,11 @@ vi.mock('vue3-cookies', () => ({
 	}),
 }));
 
+const LOGIN_PATH = '/modules/auth/auth/login';
 const PROFILE_PATH = '/modules/auth/auth/profile';
 const REFRESH_PATH = '/modules/auth/auth/refresh';
 const DEVICES_PATH = '/modules/devices/devices';
+const CATALOG_PATH = '/plugins/devices-virtual/producers/light-group-candidates';
 const BASE_URL = 'http://localhost/api/v1';
 
 const jwt = (expiration: number): string =>
@@ -54,7 +56,13 @@ describe('session middleware with the real session store and HTTP client', () =>
 	let refreshToken: string;
 	let refreshStatus: number;
 	let deviceStatus: number;
+	let rejectedAccessToken: string | undefined;
+	let rejectAllTokens: boolean;
+	let catalogBodies: unknown[];
+	let onSessionExpired = vi.fn<() => void>();
 	let refreshBarrier: Promise<void> | undefined;
+	let deviceBarrier: Promise<void> | undefined;
+	let profileBarrier: Promise<void> | undefined;
 	let onDeviceRequest: (() => void) | undefined;
 
 	const refreshRequests = (): Request[] => requests.filter((request) => request.url === BASE_URL + REFRESH_PATH);
@@ -81,7 +89,13 @@ describe('session middleware with the real session store and HTTP client', () =>
 		requests = [];
 		refreshStatus = 200;
 		deviceStatus = 200;
+		rejectedAccessToken = undefined;
+		rejectAllTokens = false;
+		catalogBodies = [];
+		onSessionExpired = vi.fn<() => void>();
 		refreshBarrier = undefined;
+		deviceBarrier = undefined;
+		profileBarrier = undefined;
 		onDeviceRequest = undefined;
 		cookieJar.clear();
 		accessToken = jwt(Math.floor(Date.now() / 1000) + 600);
@@ -93,8 +107,8 @@ describe('session middleware with the real session store and HTTP client', () =>
 		const fetchMock = vi.fn(async (request: Request): Promise<Response> => {
 			requests.push(request);
 
-			if (request.url === BASE_URL + REFRESH_PATH) {
-				await refreshBarrier;
+			if (request.url === BASE_URL + REFRESH_PATH || request.url === BASE_URL + LOGIN_PATH) {
+				if (request.url === BASE_URL + REFRESH_PATH) await refreshBarrier;
 
 				return jsonResponse(
 					{
@@ -108,16 +122,26 @@ describe('session middleware with the real session store and HTTP client', () =>
 			}
 
 			if (request.url === BASE_URL + PROFILE_PATH) {
-				return jsonResponse({
-					id: 'a82d231f-8898-4a62-9295-2d3491028491',
-					username: 'owner',
+				const result = jsonResponse({
+					id:
+						request.headers.get('Authorization') === `Bearer ${refreshedAccessToken}`
+							? 'e74a5f58-92dc-4d67-885d-d7f6b4f5be9a'
+							: 'a82d231f-8898-4a62-9295-2d3491028491',
+					username: request.headers.get('Authorization') === `Bearer ${refreshedAccessToken}` ? 'other-owner' : 'owner',
 					role: UsersModuleUserRole.owner,
 					created_at: '2026-10-01T00:00:00Z',
 				});
+				if (request.headers.get('Authorization') === `Bearer ${accessToken}`) await profileBarrier;
+				return result;
 			}
 
-			expect(request.url).toBe(BASE_URL + DEVICES_PATH);
+			expect([BASE_URL + DEVICES_PATH, BASE_URL + CATALOG_PATH]).toContain(request.url);
+			if (request.url === BASE_URL + CATALOG_PATH) catalogBodies.push(await request.json());
+			await deviceBarrier;
 			onDeviceRequest?.();
+			if (rejectAllTokens || (rejectedAccessToken && request.headers.get('Authorization') === `Bearer ${rejectedAccessToken}`)) {
+				return Response.json({ statusCode: 401, message: 'Token not found', error: 'Unauthorized' }, { status: 401 });
+			}
 
 			return jsonResponse([], deviceStatus);
 		});
@@ -130,7 +154,7 @@ describe('session middleware with the real session store and HTTP client', () =>
 		provideBackendClient(app, client);
 		provideLogger(app, createConsola({ level: 0 }));
 		session = app.runWithContext(() => useSession(pinia));
-		client.use(createSessionMiddleware(session));
+		client.use(createSessionMiddleware(session, onSessionExpired));
 		await session.initialize();
 		expect(session.isSignedIn()).toBe(true);
 		expect(canDisconnect()).toBe(true);
@@ -208,8 +232,7 @@ describe('session middleware with the real session store and HTTP client', () =>
 
 		expect(response.response.status).toBe(401);
 		expect(refreshRequests()).toHaveLength(1);
-		expect(deviceRequests()).toHaveLength(1);
-		expect(deviceRequests()[0].headers.has('Authorization')).toBe(false);
+		expect(deviceRequests()).toHaveLength(0);
 		expect(session.tokenPair).toBeNull();
 		expect(session.profile).toBeNull();
 		expect(cookieJar.size).toBe(0);
@@ -230,6 +253,7 @@ describe('session middleware with the real session store and HTTP client', () =>
 
 	it('refreshes and retries a request once if its token expires before a 401 response', async () => {
 		deviceStatus = 401;
+		rejectedAccessToken = accessToken;
 		onDeviceRequest = (): void => {
 			if (deviceRequests().length === 1) {
 				expireSession();
@@ -245,5 +269,166 @@ describe('session middleware with the real session store and HTTP client', () =>
 		expect(deviceRequests()[1].headers.get('X-Retried')).toBe('1');
 		expect(session.isSignedIn()).toBe(true);
 		expect(canDisconnect()).toBe(true);
+	});
+	it('recovers a rejected but locally unexpired token and replays the consumed catalog POST body once', async () => {
+		rejectedAccessToken = accessToken;
+		const body = { selected_channels: ['a', 'b'] };
+		const result = await client.POST(CATALOG_PATH, { body });
+		expect(result.response.status).toBe(200);
+		expect(refreshRequests()).toHaveLength(1);
+		expect(catalogBodies).toEqual([body, body]);
+		expect(requests.filter((request) => request.url.endsWith(CATALOG_PATH))).toHaveLength(2);
+		expect(session.isSignedIn()).toBe(true);
+		expect(onSessionExpired).not.toHaveBeenCalled();
+	});
+
+	it('coalesces concurrent rejected-token responses into one refresh', async () => {
+		rejectedAccessToken = accessToken;
+		let release!: () => void;
+		refreshBarrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const pending = Promise.all([client.GET(DEVICES_PATH), client.GET(DEVICES_PATH), client.GET(DEVICES_PATH)]);
+		await vi.waitFor(() => expect(refreshRequests()).toHaveLength(1));
+		release();
+		const results = await pending;
+		expect(results.every((result) => result.response.status === 200)).toBe(true);
+		expect(refreshRequests()).toHaveLength(1);
+		expect(deviceRequests()).toHaveLength(6);
+		expect(session.isSignedIn()).toBe(true);
+	});
+
+	it('reuses a newer session token when a delayed rejection belongs to the previous token', async () => {
+		rejectedAccessToken = accessToken;
+		onDeviceRequest = () => {
+			session.tokenPair!.accessToken = refreshedAccessToken;
+		};
+		const result = await client.GET(DEVICES_PATH);
+		expect(result.response.status).toBe(200);
+		expect(refreshRequests()).toHaveLength(0);
+		expect(deviceRequests()).toHaveLength(2);
+		expect(deviceRequests()[1].headers.get('Authorization')).toBe(`Bearer ${refreshedAccessToken}`);
+	});
+
+	it('does not replay a delayed POST after logout and another account signs in', async () => {
+		rejectedAccessToken = accessToken;
+		let release!: () => void;
+		deviceBarrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const body = { selected_channels: ['action-from-first-user'] };
+		const pending = client.POST(CATALOG_PATH, { body });
+		await vi.waitFor(() => expect(catalogBodies).toHaveLength(1));
+		session.clear();
+		await session.create({ data: { username: 'other-owner', password: 'test-password' } });
+		release();
+		const result = await pending;
+		expect(result.response.status).toBe(401);
+		expect(catalogBodies).toEqual([body]);
+		expect(refreshRequests()).toHaveLength(0);
+		expect(session.accessToken()).toBe(refreshedAccessToken);
+		expect(session.profile?.username).toBe('other-owner');
+		expect(onSessionExpired).not.toHaveBeenCalled();
+	});
+
+	it('fences a new sign-in even when it replaces the existing session without an explicit logout', async () => {
+		rejectedAccessToken = accessToken;
+		let release!: () => void;
+		deviceBarrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const pending = client.GET(DEVICES_PATH);
+		await vi.waitFor(() => expect(deviceRequests()).toHaveLength(1));
+		await session.create({ data: { username: 'other-owner', password: 'test-password' } });
+		release();
+		expect((await pending).response.status).toBe(401);
+		expect(deviceRequests()).toHaveLength(1);
+		expect(session.profile?.username).toBe('other-owner');
+	});
+
+	it('does not restore an old profile after another account has signed in', async () => {
+		let release!: () => void;
+		profileBarrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const pending = session.get();
+		const rejected = expect(pending).rejects.toThrow('Session changed.');
+		await vi.waitFor(() => expect(requests.some((request) => request.url.endsWith(PROFILE_PATH))).toBe(true));
+		session.clear();
+		await session.create({ data: { username: 'other-owner', password: 'test-password' } });
+		release();
+		await rejected;
+		expect(session.profile?.username).toBe('other-owner');
+		expect(session.isSignedIn()).toBe(true);
+	});
+
+	it.each([false, true])('does not let an old refresh replace a new login (preflight: %s)', async (preflight) => {
+		if (preflight) expireSession();
+		else rejectedAccessToken = accessToken;
+		let release!: () => void;
+		refreshBarrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const pending = client.GET(DEVICES_PATH);
+		await vi.waitFor(() => expect(refreshRequests()).toHaveLength(1));
+		session.clear();
+		await session.create({ data: { username: 'other-owner', password: 'test-password' } });
+		const nextToken = jwt(Math.floor(Date.now() / 1000) + 2400);
+		session.tokenPair!.accessToken = nextToken;
+		const currentProfile = session.profile;
+		release();
+		expect((await pending).response.status).toBe(401);
+		expect(session.accessToken()).toBe(nextToken);
+		expect(session.profile).toBe(currentProfile);
+		expect(session.isSignedIn()).toBe(true);
+		expect(deviceRequests()).toHaveLength(preflight ? 0 : 1);
+		expect(onSessionExpired).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])('does not retry a provider 401 after a local token change (expired: %s)', async (expired) => {
+		deviceStatus = 401;
+		onDeviceRequest = () => {
+			if (expired) expireSession();
+			else session.tokenPair!.accessToken = refreshedAccessToken;
+		};
+		expect((await client.GET(DEVICES_PATH)).response.status).toBe(401);
+		expect(deviceRequests()).toHaveLength(1);
+		expect(refreshRequests()).toHaveLength(0);
+	});
+
+	it('reports an unrecoverable session globally once for concurrent failures', async () => {
+		rejectedAccessToken = accessToken;
+		refreshStatus = 401;
+		await Promise.all([client.GET(DEVICES_PATH), client.GET(DEVICES_PATH)]);
+		expect(refreshRequests()).toHaveLength(1);
+		expect(session.isSignedIn()).toBe(false);
+		expect(session.tokenPair).toBeNull();
+		expect(onSessionExpired).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops after one retry when the renewed token is rejected too', async () => {
+		rejectAllTokens = true;
+		const result = await client.GET(DEVICES_PATH);
+		expect(result.response.status).toBe(401);
+		expect(refreshRequests()).toHaveLength(1);
+		expect(deviceRequests()).toHaveLength(2);
+		expect(session.tokenPair).toBeNull();
+		expect(onSessionExpired).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not replay a wizard request cancelled while authentication was refreshing', async () => {
+		rejectedAccessToken = accessToken;
+		let release!: () => void;
+		refreshBarrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const controller = new AbortController();
+		const pending = client.GET(DEVICES_PATH, { signal: controller.signal });
+		await vi.waitFor(() => expect(refreshRequests()).toHaveLength(1));
+		controller.abort();
+		release();
+		await pending;
+		expect(deviceRequests()).toHaveLength(1);
+		expect(onSessionExpired).not.toHaveBeenCalled();
 	});
 });

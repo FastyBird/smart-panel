@@ -65,14 +65,6 @@ describe('DevicesModbusPlugin', () => {
 		expect(registration).toMatchObject({
 			type: 'devices-modbus-plugin',
 			source: 'com.fastybird.smart-panel.plugin.devices-modbus',
-			routes: {
-				wizard: {
-					label: 'devicesModbusPlugin.wizard.title',
-					icon: 'mdi:lan-connect',
-					to: { name: RouteNames.WIZARD },
-					testId: 'modbus-device-wizard',
-				},
-			},
 		});
 
 		const deviceElement = registration.elements.find((element: { type: string }) => element.type === 'devices-modbus');
@@ -86,7 +78,7 @@ describe('DevicesModbusPlugin', () => {
 			})
 		);
 		expect(deviceElement.components?.deviceAddForm).toBeUndefined();
-		expect(deviceElement.components?.deviceDetailSection).toBeDefined();
+		expect(deviceElement.components?.deviceDetailTabs).toBeDefined();
 
 		const configElement = registration.elements.find((element: { type: string }) => element.type !== 'devices-modbus');
 		expect(configElement.components?.pluginConfigEditForm).toBeDefined();
@@ -106,7 +98,6 @@ describe('DevicesModbusPlugin', () => {
 	});
 
 	it.each([
-		[RouteNames.WIZARD, {}, '/devices/devices-modbus/wizard'],
 		[RouteNames.EDIT, { id: 'd1' }, '/devices/devices-modbus/d1/points'],
 		[RouteNames.ENDPOINTS, {}, '/devices/devices-modbus/endpoints'],
 	])('adds the %s route under the devices route and gates it on the plugin being enabled', async (name, params, path) => {
@@ -130,7 +121,7 @@ describe('DevicesModbusPlugin', () => {
 		const router = createRealRouter();
 		DevicesModbusPlugin.install(app, createOptions(router));
 
-		await router.push({ name: RouteNames.WIZARD });
+		await router.push({ name: RouteNames.ENDPOINTS });
 
 		expect(router.currentRoute.value.name).toBe(DevicesRouteNames.DEVICES);
 	});

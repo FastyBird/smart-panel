@@ -73,6 +73,7 @@ export interface IWizardActionControl {
 }
 
 export interface IWizardFormField {
+	required?: boolean;
 	key: string;
 	label: string;
 	placeholder?: string;

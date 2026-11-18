@@ -593,7 +593,8 @@ describe('VirtualWizardReviewStep', () => {
 		await flushAsync();
 
 		expect(submitState.value).toBe('error');
-		expect(wrapper.get('[data-test-id="create-error"]').text()).toContain('Category is not allowed for virtual devices');
+		expect(flashMessage.error).toHaveBeenCalledWith('Category is not allowed for virtual devices');
+		expect(wrapper.find('[data-test-id="create-error"]').exists()).toBe(false);
 		// Nothing was created, so retrying is exactly the right recovery — the button must come back.
 		expect(canCreate.value).toBe(true);
 		expect(wrapper.find('[data-test-id="create-device"]').exists()).toBe(true);

@@ -22,10 +22,17 @@ vi.mock('../../../common', () => ({
 
 describe('virtual placement fields', () => {
 	it('offers rooms and assignable zones, and reports the choice', async () => {
-		const wrapper = mount(VirtualPlacementFields, { props: { roomId: null, zoneIds: [] } });
+		const wrapper = mount(VirtualPlacementFields, { props: { roomId: null, zoneIds: [], suggestSources: true } });
 		await flushPromises();
 		expect(mocks.fetch).toHaveBeenCalled();
+		expect(wrapper.findAllComponents({ name: 'ElFormItem' }).every((field) => !field.props('required'))).toBe(true);
+		expect(wrapper.text()).toContain('devicesModule.fields.devices.room.hint');
+		expect(wrapper.text()).toContain('devicesModule.fields.devices.zones.hint');
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.wizard.layout.roomHint');
+		expect(wrapper.text()).not.toContain('devicesVirtualPlugin.wizard.layout.optional');
 		const [room, zones] = wrapper.findAllComponents({ name: 'ElSelect' });
+		expect(room!.props('placeholder')).toBe('devicesModule.fields.devices.room.placeholder');
+		expect(zones!.props('placeholder')).toBe('devicesModule.fields.devices.zones.placeholder');
 		expect(room!.findAllComponents({ name: 'ElOption' }).map((option) => option.props('label'))).toEqual(['Bedroom', 'Kitchen']);
 		// A floor zone follows from the room and cannot be assigned directly.
 		expect(zones!.findAllComponents({ name: 'ElOption' }).map((option) => option.props('label'))).toEqual(['Downstairs']);

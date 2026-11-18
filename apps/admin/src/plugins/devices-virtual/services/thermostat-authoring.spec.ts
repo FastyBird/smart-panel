@@ -44,6 +44,23 @@ describe('thermostat validation messages', () => {
 });
 
 describe('thermostat authoring payload', () => {
+	it('rejects timing and evidence ages beyond the backend bounds before a request', () => {
+		const draft = newThermostatDraft();
+		draft.policy.minimumOffMs = 86400001;
+		draft.policy.changeoverMs = 86400001;
+		draft.contact_opening_ms = 86400001;
+		draft.sources = [{ role: SourceRole.ambient, source_property: 'ambient', maximum_age_seconds: 86401 }];
+		const result = buildThermostatRequest(draft, 0);
+		expect(result.request).toBeUndefined();
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				thermostatError('minimumOff'),
+				thermostatError('changeover'),
+				thermostatError('contactDebounce'),
+				thermostatError('sourceAge', { role: 'ambient' }),
+			])
+		);
+	});
 	it('does not invent safety thresholds or actuator leases for an empty draft', () => {
 		const result = buildThermostatRequest(emptyThermostatDraft(), 0);
 		expect(result.request).toBeUndefined();

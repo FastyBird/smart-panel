@@ -328,6 +328,9 @@
 			"friendlyName": "Friendly name",
 			"channels": "Channels",
 			"channelsCount": "{count} channel | {count} channels"
+		},
+		"selection": {
+			"description": "Zigbee devices through your Zigbee2MQTT bridge."
 		}
 	}
 }

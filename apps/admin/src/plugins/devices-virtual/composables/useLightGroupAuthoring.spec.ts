@@ -69,4 +69,19 @@ describe('light group preview admission', () => {
 		expect(authoring.repairConflict.value).toBe(true);
 		expect(client.POST).toHaveBeenCalledTimes(2);
 	});
+	it('does not turn session failures into group validation or save errors', async () => {
+		const unauthorized = { error: { message: 'Token not found' }, response: { status: 401 } };
+		client.POST.mockReset().mockResolvedValue(unauthorized);
+		client.GET.mockReset().mockResolvedValue(unauthorized);
+		const authoring = useLightGroupAuthoring();
+		expect(await authoring.load('group')).toBeNull();
+		expect(await authoring.previewDraft(draft(['a', 'b']))).toBeNull();
+		expect(authoring.error.value).toBeNull();
+		client.POST.mockResolvedValueOnce(response(5));
+		await authoring.previewDraft(draft(['a', 'b']));
+		expect(await authoring.create({ ...draft(['a', 'b']), device: { name: 'Group' } })).toBeNull();
+		expect(authoring.error.value).toBeNull();
+		expect(authoring.preview.value?.graph_revision).toBe(5);
+		expect(authoring.repairConflict.value).toBe(false);
+	});
 });

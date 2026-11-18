@@ -138,5 +138,10 @@
 				"title": "Přidat"
 			}
 		}
+	},
+	"wizard": {
+		"selection": {
+			"description": "Zařízení Shelly první generace ve vaší síti."
+		}
 	}
 }

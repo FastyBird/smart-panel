@@ -62,7 +62,7 @@
 			},
 			"nativeThermostat": {
 				"title": "Controlador para un termostato existente",
-				"description": "Añade un controlador de Smart Panel sobre un termostato que ya tiene como dispositivo. Compatibles: termostatos de Home Assistant y Zigbee2MQTT."
+				"description": "Cree un controlador virtual para un termostato físico que ya esté conectado a Smart Panel."
 			}
 		},
 		"subtitle": "Cree un dispositivo a partir de los canales de otro dispositivo",
@@ -84,9 +84,7 @@
 		},
 		"category": {
 			"heading": "Elija una categoría",
-			"description": "Elija el tipo de dispositivo que está creando. Determina qué canales y propiedades deberá asignar en el siguiente paso.",
-			"blockedHeading": "No disponible en esta versión",
-			"blockedReason": "necesita un controlador — previsto para una versión posterior"
+			"description": "Elija el tipo de dispositivo que está creando. Determina qué canales y propiedades deberá asignar en el siguiente paso."
 		},
 		"mapping": {
 			"heading": "Conecte las propiedades",
@@ -97,6 +95,7 @@
 			"channelRequired": "Obligatorio",
 			"channelOptional": "Opcional",
 			"propertyRequired": "Obligatoria",
+			"propertyOptional": "Opcional",
 			"showOptional": "Mostrar {count} propiedades opcionales más",
 			"hideOptional": "Ocultar propiedades opcionales vacías",
 			"source": {
@@ -154,6 +153,82 @@
 				"hideFailedFlash": "{device} no se ocultó: la solicitud falló. Puede ocultarlo más tarde desde la lista de dispositivos.",
 				"zonesFailed": "No se pudieron asignar {count} zona(s). Puede añadirlas más tarde desde la lista de dispositivos."
 			}
+		},
+		"selection": {
+			"heading": "Crear un dispositivo virtual",
+			"description": "Divida o combine canales y propiedades de dispositivos que ya están en Smart Panel."
+		},
+		"layout": {
+			"summary": "Resumen",
+			"unnamed": "Nuevo dispositivo virtual",
+			"edit": "Editar",
+			"reviewTitle": "Revise el dispositivo antes de crearlo",
+			"reviewDescription": "Puede volver a editar cualquier sección antes de crear el dispositivo.",
+			"outputDescription": "Elija la salida y la ubicación del dispositivo.",
+			"sourcesDescription": "Elija dispositivos o lecturas. También se pueden configurar fuentes sin conexión.",
+			"processingDescription": "Ajuste cómo se procesan las fuentes seleccionadas.",
+			"searchSources": "Buscar por dispositivo, canal o habitación",
+			"addSource": "Añadir fuente",
+			"selectedSources": "Fuentes seleccionadas",
+			"suggested": "Sugerencias de {room}",
+			"otherRooms": "Otras habitaciones",
+			"noSources": "No hay fuentes coincidentes",
+			"add": "Añadir",
+			"livePreview": "Vista previa en vivo",
+			"previewHint": "Seleccione fuentes para ver una vista previa del cálculo.",
+			"previewError": "No se pudo cargar la vista previa. Reintente o continúe la configuración.",
+			"recalculate": "Recalcular",
+			"refreshing": "Actualizando vista previa…",
+			"currentValue": "Valor",
+			"lastReport": "Último informe",
+			"unknownSampleTime": "Desconocido",
+			"unknownSampleTimeHint": "Último valor conocido. Se desconoce cuándo se midió, por lo que no confirma una entrada reciente para el cálculo.",
+			"state": "Estado",
+			"online": "En línea",
+			"offline": "Sin conexión",
+			"selectedCount": "{count} fuentes seleccionadas",
+			"outputTitle": "¿Qué debe medir el nuevo dispositivo?",
+			"sourcesTitle": "¿Qué sensores desea combinar?",
+			"processingTitle": "¿Cómo deben combinarse las lecturas?",
+			"offlineHelp": "Las fuentes sin conexión no impiden la creación. Se usarán de nuevo cuando envíen lecturas válidas.",
+			"noRoom": "Sin habitación",
+			"roomHint": "Los dispositivos de esta habitación se sugieren primero al elegir las fuentes.",
+			"zonesHint": "Los dispositivos de estas zonas se sugieren después de los de la habitación seleccionada.",
+			"roomSources": "De la habitación seleccionada",
+			"zoneSources": "De las zonas seleccionadas",
+			"otherSources": "Otros dispositivos",
+			"availableSources": "Dispositivos disponibles",
+			"unitSourcesHint": "En el siguiente paso solo se ofrecen fuentes compatibles con esta unidad.",
+			"measurementDescription": "Nombre el dispositivo y elija qué mide. La medición determina las fuentes que puede elegir después."
+		},
+		"projection": {
+			"deviceTitle": "¿Qué tipo de dispositivo está creando?",
+			"structureTitle": "Canales de este dispositivo",
+			"mustHave": "Debe incluir",
+			"canHave": "Puede incluir",
+			"optionalChannels": "Canales opcionales que puede añadir",
+			"channelsTitle": "Canales de este dispositivo",
+			"toFix": "{count} por corregir",
+			"mappedCount": "{mapped} de {total} propiedades asignadas",
+			"optionalChannelHelp": "Un canal opcional solo forma parte del dispositivo después de añadirlo y asignarlo. Puede omitir los demás.",
+			"mappingDescription": "Conecte cada propiedad con una propiedad de un dispositivo real. Las fuentes pueden proceder de distintos dispositivos. Solo se ofrecen fuentes compatibles verificadas.",
+			"fillDescription": "Rellenar propiedades vacías desde un canal de origen",
+			"fillEmpty": "Rellenar propiedades vacías",
+			"sourceColumn": "Dispositivo de origen › canal › propiedad",
+			"statusColumn": "Estado",
+			"needsAttention": "Requiere atención",
+			"checking": "Verificando…",
+			"mapped": "Asignada",
+			"notMapped": "Sin asignar",
+			"optional": "Opcional",
+			"unmappedOptional": "{count} propiedades opcionales sin asignar.",
+			"chooseChannel": "Añada un canal a la izquierda para empezar a asignar sus propiedades.",
+			"selectedSource": "Fuente seleccionada",
+			"reviewDescription": "Solo se muestran los canales y las propiedades asignados. Puede editar cualquier sección antes de crear el dispositivo.",
+			"mappingSummary": "{channels} canales · {properties} propiedades · {devices} dispositivos de origen",
+			"moreCategories": "Mostrar {count} categorías más",
+			"fewerCategories": "Mostrar categorías habituales",
+			"loadingSources": "Cargando más fuentes compatibles…"
 		}
 	},
 	"sources": {
@@ -307,7 +382,40 @@
 		"extensionOperator": "Operador de extensión de confianza",
 		"measurementOperatorMissing": "El contrato o la versión guardada del operador no está disponible. La configuración se conserva; seleccione una versión disponible para repararla.",
 		"measurementOperatorParameter": "El parámetro numérico está fuera del rango admitido.",
-		"resetOperatorDefinition": "Restablecer la definición del operador"
+		"resetOperatorDefinition": "Restablecer la definición del operador",
+		"help": {
+			"unitTitle": "Unidad: {unit}",
+			"legacyPrecision": "La temperatura conserva la precisión definida en la propiedad de salida.",
+			"precision": "El resultado se redondea en pasos de {step} {unit}.",
+			"quorum": "Este número de entradas debe seguir siendo válido y reciente tras excluir valores no utilizables. Con menos entradas, el resultado no está disponible. Por ejemplo, un mínimo de 2 permite que un grupo de 3 sensores siga funcionando si uno deja de informar.",
+			"filter": "Al activarlo, se ignoran las lecturas cuya distancia al valor central (mediana) supera la desviación máxima. La desviación se indica en la unidad elegida. Se necesitan al menos 3 sensores válidos y recientes para comparar, y deben quedar suficientes entradas para alcanzar el mínimo.",
+			"maximumAge": "Se ignoran las lecturas con más de este número de segundos. Elija un límite que permita a sus sensores enviar la siguiente medición a tiempo.",
+			"previewTitle": "Vista previa del cálculo",
+			"previewDescription": "El cálculo utiliza las lecturas disponibles en el momento indicado. Los sensores sin conexión o las lecturas no disponibles no impiden guardar la configuración. Tras crear el dispositivo, calcula valores a partir de nuevos informes de los sensores.",
+			"reviewLoading": "Comprobando la configuración y calculando la vista previa…",
+			"result": "Resultado",
+			"quality": "Calidad de lectura",
+			"diagnostics": "Detalles",
+			"evaluatedAt": "Calculado el",
+			"expiresAt": "Lecturas válidas hasta",
+			"inputStatus": "Uso en el cálculo",
+			"sampleAge": "Antigüedad de lectura",
+			"included": "Incluida",
+			"enabled": "Activado",
+			"disabled": "Desactivado",
+			"operators": {
+				"mean": "Suma las lecturas utilizables y divide entre su número. Todos los sensores tienen la misma influencia.",
+				"median": "Usa el valor central tras ordenar las lecturas. Con un número par, calcula la media de los dos valores centrales. Esto reduce la influencia de lecturas extremas.",
+				"min": "Usa la lectura utilizable más baja.",
+				"max": "Usa la lectura utilizable más alta.",
+				"weighted_mean": "Calcula una media según el peso relativo de cada sensor. Un sensor con peso 2 tiene el doble de influencia que uno con peso 1.",
+				"any": "Indica detección si al menos una entrada utilizable la indica. Solo confirma la ausencia de detección cuando todas las entradas configuradas son utilizables y no indican detección.",
+				"all": "Indica detección solo si todas las entradas configuradas son utilizables e indican detección. Una entrada utilizable sin detección basta para descartarla."
+			},
+			"processingTitle": "Cómo configurar el cálculo",
+			"processingAdvice": "Empiece con los valores predeterminados. Ajuste la antigüedad máxima un poco por encima del intervalo habitual de sus sensores. Reduzca el mínimo si quiere permitir cálculos con menos sensores disponibles."
+		},
+		"loadingCatalog": "Cargando ajustes y fuentes de medición disponibles…"
 	},
 	"lightGroup": {
 		"apply": "Aplicar",
@@ -361,6 +469,39 @@
 			"outlet": "Enchufe",
 			"fan": "Ventilador",
 			"cover": "Persiana"
+		},
+		"wizard": {
+			"detailsTitle": "¿Qué debe controlar el grupo?",
+			"detailsDescription": "Un grupo reúne varios dispositivos del mismo tipo en uno solo. Elija primero el tipo; determina qué dispositivos puede añadir.",
+			"membersTitle": "¿Qué dispositivos pertenecen al grupo?",
+			"membersDescription": "Un control está disponible solo si todos los miembros lo admiten. La tabla muestra los controles de cada dispositivo y del grupo.",
+			"reviewTitle": "Revise el grupo antes de crearlo",
+			"reviewDescription": "Un cambio en el grupo se aplica a todos los miembros. Los dispositivos siguen disponibles por separado.",
+			"groupOf": "Grupo de",
+			"profileHelp": "Los controles obligatorios siempre se incluyen. Los demás dependen de los dispositivos seleccionados.",
+			"membersControls": "Miembros y controles",
+			"groupControls": "Controles del grupo",
+			"controlsHint": "Desmarque los controles opcionales que no desee.",
+			"controlsAdvice": "Todos los miembros deben admitir un control compatible, incluida su unidad y rango. Los controles obligatorios no se pueden desactivar.",
+			"addMembers": "Añadir dispositivos",
+			"controls": "Controles",
+			"onOff": "Encendido / apagado",
+			"yes": "Sí",
+			"no": "No",
+			"missingControl": "Falta un control compatible: {control}.",
+			"incompatibleMember": "La configuración de este dispositivo no es compatible con el grupo seleccionado.",
+			"removesControls": "Elimina {count} controles",
+			"keepsControls": "Mantiene los {count} controles",
+			"membersLater": "Selección en el paso 2",
+			"controlsLater": "Dependen de los miembros",
+			"groupNames": {
+				"light": "Luces",
+				"switch": "Interruptores",
+				"outlet": "Enchufes",
+				"fan": "Ventiladores",
+				"cover": "Persianas"
+			},
+			"coverHelp": "Todas las persianas del grupo deben tener configurado el mismo tipo. El grupo solo ofrece los controles compatibles con todos los miembros."
 		}
 	},
 	"comfort": {
@@ -427,7 +568,7 @@
 		"latched": "Protección enclavada",
 		"lease": "Plazo máximo de encendido (segundos)",
 		"legacyProfile": "Se conserva la configuración individual anterior. Asigne protección local explícita antes del nuevo formato.",
-		"localProtection": "Protección local explícita del suelo",
+		"localProtection": "Protección local del suelo",
 		"localSource": "Fuente local cualificada en Celsius",
 		"mandatory": "Miembro obligatorio",
 		"mandatoryHelp": "Todos siguen una demanda de sala. Un fallo bloquea toda la rama.",
@@ -468,7 +609,8 @@
 		"qualification": "Cualificación de protección al consultar el servidor",
 		"qualificationHelp": "Comprueba únicamente la protección instalada y el destino actual. No confirma que el controlador esté listo ni certifica la seguridad del equipo físico.",
 		"activitySample": "Muestra observada del relé",
-		"activityExpiry": "Observación válida hasta"
+		"activityExpiry": "Observación válida hasta",
+		"selectedFloorRequired": "Seleccione un sensor de suelo compatible en el paso Sensores. La protección local requiere un sensor conectado al mismo dispositivo que el relé."
 	},
 	"dewPoint": {
 		"title": "Punto de rocío",
@@ -482,7 +624,7 @@
 		"hysteresis": "Histéresis estricta de recuperación (°C)",
 		"absoluteMinimum": "Mínimo absoluto opcional de superficie (°C)",
 		"surface": "UUID de sonda local de superficie refrigerada",
-		"installation": "La refrigeración instalada sigue inhabilitada hasta verificar superficie, autenticación, tiempos, aislamiento de escritura y drenaje tras reinicio después de alfa.",
+		"installation": "La refrigeración necesita una lectura del punto de rocío, un sensor de la superficie refrigerada y un perfil de protección del relé verificado. Hasta cumplir estos requisitos, la refrigeración protegida permanece bloqueada.",
 		"errors": {
 			"reload": "Recargue la configuración.",
 			"inputs": "Seleccione ambas entradas.",
@@ -491,6 +633,24 @@
 			"coolingPolicy": "Introduzca un margen positivo de refrigeración y una histéresis de recuperación de como máximo 60 °C.",
 			"coolingMinimum": "Introduzca un mínimo opcional finito de superficie superior a −45 °C y como máximo 60 °C.",
 			"coolingDependencies": "Cada miembro de refrigeración requiere punto de rocío, una sonda local de superficie refrigerada y una antigüedad válida."
+		},
+		"description": "Calcula la temperatura del punto de rocío a partir de la temperatura del aire y la humedad relativa. Es una medición calculada, no otro sensor de temperatura del aire.",
+		"sourcesDescription": "Elija una fuente de temperatura del aire y otra de humedad relativa del mismo entorno. Añadir otra fuente reemplaza la del mismo tipo. También se pueden configurar fuentes sin conexión.",
+		"processingHelp": "La antigüedad máxima limita la edad de cada lectura. La diferencia temporal máxima limita la separación entre las mediciones de temperatura y humedad para no combinar valores antiguos y nuevos. Elija límites según el intervalo de sus sensores.",
+		"requiredRole": "Elija una fuente para {role}.",
+		"diagnostics": {
+			"stale_or_unavailable": "Lectura caducada o no disponible",
+			"quality": "Calidad de lectura no disponible",
+			"lineage": "Esperando datos válidos de la fuente",
+			"awaiting_fresh_input": "Esperando una lectura nueva",
+			"skew": "Las mediciones están demasiado separadas en el tiempo",
+			"domain": "Valor fuera del rango admitido",
+			"invalid_policy": "Configuración de cálculo no válida",
+			"incompatible_output": "Medición de salida incompatible",
+			"output_disabled": "La salida está desactivada",
+			"graph_ineligible": "Las dependencias de fuentes no están disponibles",
+			"missing_input_role": "Seleccione ambos tipos de fuente requeridos",
+			"graph_validation_pending": "Comprobando dependencias de fuentes"
 		}
 	},
 	"nativeThermostat": {
@@ -531,9 +691,9 @@
 		"releaseHelp": "¿Liberar la reserva de Smart Panel? Se esperan las operaciones iniciadas, pero no se envía una orden de apagado. El termostato físico puede seguir regulando.",
 		"wizard": {
 			"intro": "Este controlador funciona con un termostato real. El dispositivo sigue regulando la temperatura; Smart Panel le envía el modo y las consignas solicitados y muestra lo que el dispositivo comunica.",
-			"supported": "Por ahora solo se admiten termostatos de Home Assistant y Zigbee2MQTT. Los dispositivos de otras integraciones no aparecen en la lista.",
+			"supported": "Los dispositivos y controles disponibles dependen de las capacidades que indique el termostato físico.",
 			"unitPlaceholder": "Seleccione un termostato",
-			"noCandidates": "No se encontró ningún termostato compatible. Añada primero un termostato de Home Assistant o Zigbee2MQTT.",
+			"noCandidates": "No se encontró ningún termostato físico adecuado. Añada su dispositivo a Smart Panel y compruebe su configuración.",
 			"providers": {
 				"home-assistant": "Home Assistant",
 				"zigbee2mqtt": "Zigbee2MQTT"
@@ -550,6 +710,37 @@
 		}
 	},
 	"thermostat": {
+		"wizard": {
+			"detailsTitle": "¿Qué debe controlar el termostato?",
+			"detailsDescription": "Asigne un nombre al termostato y elija su habitación y zonas.",
+			"sourcesTitle": "¿Qué sensores debe utilizar el termostato?",
+			"sourcesDescription": "Elija temperatura ambiente, del suelo o de la superficie refrigerada para cada lectura. Para la protección de refrigeración, añada una lectura virtual de Punto de rocío. El contacto de ventana o puerta debe ser un sensor booleano de contacto.",
+			"actuatorsTitle": "¿Qué relés deben controlar la calefacción y la refrigeración?",
+			"actuatorsDescription": "Añada salidas de relé y elija calefacción o refrigeración para cada una.",
+			"policyHelpTitle": "Cómo funcionan estos ajustes",
+			"policyHelp": "Las consignas definen la temperatura ambiente deseada. Las tolerancias reducen las conmutaciones frecuentes alrededor de ese valor. El tiempo mínimo apagado establece la pausa antes de volver a encender un relé; el intervalo de cambio establece la pausa entre calefacción y refrigeración. La protección limita la temperatura del suelo. Los retardos del contacto filtran aperturas breves de ventanas y la detección de tendencias puede pausar la regulación ante una caída brusca de temperatura.",
+			"previewTitle": "Comprobación de configuración",
+			"configurationTitle": "¿Cómo debe regular la temperatura el termostato?",
+			"configurationDescription": "Ajuste temperaturas, antigüedad de lecturas, retardos y protección de los sensores y relés seleccionados.",
+			"role": "Usar como",
+			"sourceLimit": "Cada función se puede seleccionar una vez; se admiten hasta ocho sensores de superficie refrigerada.",
+			"actuatorLimit": "Se pueden seleccionar hasta ocho salidas de relé.",
+			"addActuator": "Añadir un relé",
+			"openValue": "Estado del sensor con el contacto abierto",
+			"closedValue": "Estado del sensor con el contacto cerrado",
+			"roles": {
+				"ambient": "Temperatura ambiente",
+				"floor": "Temperatura del suelo",
+				"contact": "Contacto de ventana o puerta",
+				"heating": "Calefacción",
+				"cooling": "Refrigeración",
+				"dew_point": "Punto de rocío",
+				"cooled_surface": "Temperatura de superficie refrigerada"
+			},
+			"configurationStep": "Configuración",
+			"selectCoolingSources": "Elegir sensores de refrigeración",
+			"coolingSurfaceRequired": "En Sensores elija un sensor de la superficie refrigerada conectado al mismo dispositivo que este relé."
+		},
 		"title": {
 			"create": "Crear termostato virtual",
 			"edit": "Configuración del termostato"
@@ -650,16 +841,16 @@
 			"coldTolerance": "Introduzca una tolerancia al frío no negativa.",
 			"hotTolerance": "Introduzca una tolerancia al calor no negativa.",
 			"neutralMargin": "Introduzca un margen neutro positivo.",
-			"minimumOff": "Introduzca el intervalo mínimo de apagado en milisegundos.",
-			"changeover": "Introduzca el intervalo de cambio de modo en milisegundos.",
+			"minimumOff": "Introduzca un número entero entre 0 y 86400000 ms.",
+			"changeover": "Introduzca un número entero entre 0 y 86400000 ms.",
 			"floorPolicy": "Introduzca el límite del suelo y una histéresis de recuperación positiva en Celsius.",
 			"trendIncomplete": "Complete todos los ajustes de tendencia activados.",
-			"contactDebounce": "Introduzca ambos retardos del contacto en milisegundos.",
+			"contactDebounce": "Introduzca los retardos de apertura y cierre como números enteros entre 0 y 86400000 ms.",
 			"ambientSource": "Configure exactamente una fuente de ambiente.",
 			"retainFloorPolicy": "Mantenga una política de suelo común para la protección global existente.",
 			"floorProtectionSource": "La protección del suelo requiere una fuente global o una protección local explícita para cada miembro de calefacción.",
 			"contactSourceLimit": "Configure como máximo una fuente de contacto.",
-			"sourceAge": "Introduzca una antigüedad máxima positiva para la fuente: {role}.",
+			"sourceAge": "Introduzca una antigüedad máxima entre 1 y 86400 segundos para {role}.",
 			"sourceSelect": "Seleccione una fuente: {role}.",
 			"contactValues": "Asigne los valores de abierto y cerrado del contacto.",
 			"contactValuesDiffer": "Los valores de abierto y cerrado del contacto deben ser distintos.",
@@ -670,11 +861,13 @@
 			"retainedClaim": "Repare la reserva conservada {id}; su propiedad se mantiene.",
 			"sharedFloorPolicy": "Introduzca el límite de suelo y la histéresis comunes para la protección local.",
 			"localProtection": "Cada miembro de calefacción requiere una fuente de protección local explícita.",
-			"protectionAge": "Introduzca una antigüedad máxima positiva para la fuente de protección.",
+			"protectionAge": "Introduzca una antigüedad de protección local entre 1 y 86400 segundos.",
 			"actuatorRepair": "Repare el actuador antes de guardar: {role}.",
 			"lease": "Introduzca una duración de encendido positiva para el actuador: {role}.",
 			"settingUnique": "Cada rol de ajuste local solo puede registrarse una vez.",
-			"settingProperty": "Seleccione una propiedad local para cada ajuste."
+			"settingProperty": "Seleccione una propiedad local para cada ajuste.",
+			"coolingDewPointSource": "Seleccione una lectura virtual de Punto de rocío en Sensores.",
+			"coolingSurfaceSource": "Seleccione un sensor de temperatura independiente de la superficie refrigerada en Sensores."
 		},
 		"settingRoles": {
 			"heating_setpoint": "Consigna de calefacción",
@@ -682,6 +875,53 @@
 			"heating_enabled": "Calefacción activada",
 			"cooling_enabled": "Refrigeración activada",
 			"locked": "Bloqueado"
+		}
+	},
+	"detailTab": "Dispositivo virtual",
+	"conversion": {
+		"inputRange": "Rango de entrada",
+		"outputRange": "Rango de salida",
+		"coefficients": "Coeficientes",
+		"calibration": "Puntos de calibración",
+		"operatorRanges": "Rangos del operador",
+		"sourceCompatibility": "Compatibilidad de la fuente",
+		"backendCheck": "Comprobación de ajustes",
+		"processingTitle": "Cómo configurar la conversión",
+		"calibrationInput": "Punto {index}: entrada medida (X)",
+		"calibrationOutput": "Punto {index}: salida correspondiente (Y)",
+		"parameterBounds": "Permitido: {minimum} a {maximum}",
+		"rangesHelp": "Los límites de entrada y salida definen dónde es válida la conversión. Introduzca ambos límites. Los valores fuera de ellos se rechazan, no se ajustan automáticamente al límite más cercano.",
+		"sampleHelp": "La entrada de prueba es opcional. Introduzca un valor dentro del rango de entrada para ver el resultado. Si se deja en blanco, solo se comprueban los ajustes.",
+		"pointsHelp": "Cada punto de calibración une una entrada medida X con su salida correcta conocida Y. Por ejemplo, 0 → 0 y 10 → 100 describen un cambio de escala. Añada al menos dos puntos con X creciente. La conversión sigue líneas rectas entre ellos y no se extiende fuera de los extremos.",
+		"thermistorHelp": "Use los datos reales del circuito y la sonda: Vref es la tensión de alimentación del divisor, Rfixed su resistencia fija y Rnom la resistencia de la sonda a Tnom. Beta o A/B/C proceden de la ficha de la sonda. Elija si está conectada a tierra o a la alimentación. Estos valores no se estiman.",
+		"thermistorRequirement": "NTC beta y Steinhart–Hart requieren una fuente física de tensión sin procesar en V y una salida de temperatura en °C. Un sensor que ya informa °C no necesita esta conversión; use la conversión afín para corregirlo.",
+		"operators": {
+			"affine": "La conversión afín calcula salida = escala × entrada + desplazamiento. La escala cambia la magnitud y el desplazamiento añade una corrección, como el error de un sensor.",
+			"piecewise_linear": "La conversión lineal por tramos usa pares de calibración conocidos y calcula valores entre puntos vecinos.",
+			"ntc_beta": "NTC beta convierte la tensión sin procesar del divisor a °C mediante la resistencia nominal, la temperatura nominal y beta de la sonda.",
+			"steinhart_hart": "Steinhart–Hart convierte la tensión sin procesar a °C mediante los coeficientes A, B y C de la sonda.",
+			"extension": "Una extensión proporciona la conversión. Seleccione su definición e introduzca los parámetros obligatorios dentro de los límites mostrados."
+		},
+		"validation": {
+			"requiredNumber": "Introduzca un valor numérico.",
+			"positiveNumber": "Introduzca un número mayor que cero.",
+			"absoluteTemperature": "Introduzca una temperatura superior a −273,15 °C.",
+			"rangeOrder": "El mínimo no puede superar el máximo.",
+			"rangeRequired": "Introduzca ambos límites del rango.",
+			"pointCount": "Añada entre 2 y 256 puntos de calibración.",
+			"pointOrder": "Introduzca pares numéricos X/Y con X únicos y crecientes.",
+			"pointCoverage": "Los puntos de calibración deben cubrir todo el rango de entrada.",
+			"coefficientsNonzero": "Al menos un coeficiente debe ser distinto de cero.",
+			"dividerRequired": "Elija la conexión de la sonda en el divisor.",
+			"operatorMissing": "Seleccione una definición de operador disponible.",
+			"parameterBounds": "Rellene los parámetros obligatorios dentro de sus límites.",
+			"operatorRanges": "Respete los rangos declarados por el operador.",
+			"ageBounds": "Introduzca segundos enteros entre 1 y 86400.",
+			"sampleOptional": "Sin valor de prueba: solo se comprobarán los ajustes.",
+			"sampleBounds": "Use un valor de prueba dentro del rango; la tensión del termistor también debe estar entre cero y Vref.",
+			"sourceRequired": "Seleccione una fuente de entrada.",
+			"checking": "Comprobando…",
+			"notChecked": "Corrija los ajustes marcados y vuelva a comprobar."
 		}
 	}
 }

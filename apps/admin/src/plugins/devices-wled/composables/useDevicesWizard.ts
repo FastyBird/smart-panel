@@ -353,6 +353,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				fields: [
 					{
 						key: 'host',
+						required: true,
 						label: t('devicesWledPlugin.fields.devices.hostname.title'),
 						placeholder: t('devicesWledPlugin.fields.devices.hostname.placeholder'),
 					},

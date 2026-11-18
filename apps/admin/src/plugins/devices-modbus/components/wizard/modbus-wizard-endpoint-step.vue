@@ -17,8 +17,15 @@
 		</el-radio-group>
 
 		<div v-if="wizard.state.endpointMode === 'existing'">
-			<el-form label-position="top">
-				<el-form-item :label="t('devicesModbusPlugin.wizard.endpoint.select.title')">
+			<el-form
+				label-position="top"
+				status-icon
+			>
+				<el-form-item
+					:error="fieldError('endpointId')"
+					:label="t('devicesModbusPlugin.wizard.endpoint.select.title')"
+					required
+				>
 					<div class="flex items-center gap-2 w-full">
 						<el-select
 							v-model="wizard.state.endpointId"
@@ -62,8 +69,15 @@
 			:disabled="wizard.savingEndpoint.value"
 		/>
 
-		<el-form label-position="top">
-			<el-form-item :label="t('devicesModbusPlugin.wizard.endpoint.unitId.title')">
+		<el-form
+			label-position="top"
+			status-icon
+		>
+			<el-form-item
+				:error="fieldError('unitId')"
+				:label="t('devicesModbusPlugin.wizard.endpoint.unitId.title')"
+				required
+			>
 				<el-input-number
 					v-model="wizard.state.unitId"
 					:min="0"
@@ -98,6 +112,7 @@ import { useRouter } from 'vue-router';
 import { ElAlert, ElButton, ElDivider, ElForm, ElFormItem, ElInputNumber, ElOption, ElRadioButton, ElRadioGroup, ElSelect } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
+import { useWizardFieldError } from '../../../../modules/devices/components/wizard/use-wizard-validation';
 import { RouteNames } from '../../devices-modbus.constants';
 import type { IModbusEndpoint } from '../../store/endpoints.types';
 import { modbusEndpointsStoreKey } from '../../store/keys';
@@ -113,6 +128,7 @@ defineOptions({
 const props = defineProps<IModbusWizardEndpointStepProps>();
 
 const { t } = useI18n();
+const fieldError = useWizardFieldError();
 const router = useRouter();
 const flashMessage = useFlashMessage();
 

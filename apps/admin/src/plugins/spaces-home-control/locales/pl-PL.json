@@ -409,7 +409,7 @@
 			"noActiveMedia": "Nie ma aktywnej aktywności multimedialnej do zatrzymania.",
 			"noTargets": "W tej przestrzeni nie ma dostępnych zgodnych urządzeń."
 		},
-		"title": "Tryby aktywności",
+		"title": "Tryby",
 		"description": "Wybierz, co robi każdy tryb aktywności w tej przestrzeni.",
 		"enabled": "Włączony",
 		"disabled": "Wyłączony",
@@ -494,7 +494,10 @@
 			"gaming": "Granie",
 			"background": "W tle",
 			"off": "Wyłączone"
-		}
+		},
+		"leaveUnchanged": "Bez zmian",
+		"apply": "Ustaw",
+		"noChanges": "Brak zmian urządzeń"
 	},
 	"schedules": {
 		"title": "Harmonogramy",
@@ -690,5 +693,11 @@
 			"spaceType": "Ta przestrzeń nie jest pomieszczeniem ani strefą; blok działa tylko na pomieszczenia i strefy.",
 			"required": "Ta wartość jest wymagana."
 		}
+	},
+	"modesLayout": {
+		"configure": "Konfiguruj",
+		"scheduleDescription": "Wybierz, kiedy tryby pomieszczenia zmieniają się automatycznie.",
+		"presenceTitle": "Według obecności",
+		"presenceDescription": "Wybierz reakcję pomieszczenia na przyjście i wyjście."
 	}
 }

@@ -55,7 +55,11 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRoute: () =>
 			mocks.realRouter
 				? actual.useRoute()
-				: { matched: mocks.routeMatched, path: '/space/7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d/plugin/spaces-home-control/configure' },
+				: {
+						query: { tab: 'modes' },
+						matched: mocks.routeMatched,
+						path: '/space/7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d/plugin/spaces-home-control/configure',
+					},
 		useRouter: () => (mocks.realRouter ? actual.useRouter() : { push: mocks.routerPush, replace: mocks.routerReplace }),
 	};
 });
@@ -288,7 +292,7 @@ describe('ViewSpaceConfigure', () => {
 		expect(wrapper.find('[data-test-id="space-configure-edit-route"]').exists()).toBe(true);
 	});
 
-	it('renders the floor selector and activity modes before domain controls', () => {
+	it('keeps the floor selector and separates modes from domain controls', () => {
 		const wrapper = shallowMount(ViewSpaceConfigure, {
 			props: {
 				space: {
@@ -322,7 +326,14 @@ describe('ViewSpaceConfigure', () => {
 		const modes = wrapper.findComponent({ name: 'SpaceActivityModesSection' });
 		const domains = wrapper.findComponent({ name: 'SpaceDomainsSection' });
 		expect(modes.props('spaceId')).toBe('7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d');
-		expect(modes.element.compareDocumentPosition(domains.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(
+			wrapper
+				.findAllComponents({ name: 'ElTabPane' })
+				.find((tab) => tab.props('name') === 'modes')
+				?.findComponent({ name: 'SpaceActivityModesSection' })
+				.exists()
+		).toBe(true);
+		expect(domains.findComponent({ name: 'SpaceActivityModesSection' }).exists()).toBe(false);
 	});
 });
 
@@ -463,11 +474,18 @@ describe('mounted configure activity mode support', () => {
 			},
 		});
 	});
-	const render = (type: SpaceType) =>
-		mount(ViewSpaceConfigure, {
-			props: { space: space(type) },
-			global: { stubs: { RouterView: true, teleport: false } },
-		});
+	const openEditors = async (wrapper: ReturnType<typeof mount>) => {
+		const schedule = wrapper.find('[data-test-id="configure-schedule"]');
+		if (schedule.exists()) await schedule.trigger('click');
+		const occupancy = wrapper.find('[data-test-id="configure-presence"]');
+		if (occupancy.exists()) await occupancy.trigger('click');
+		await flushPromises();
+	};
+	const render = (type: SpaceType) => {
+		const wrapper = mount(ViewSpaceConfigure, { props: { space: space(type) }, global: { stubs: { RouterView: true, teleport: false } } });
+		void openEditors(wrapper);
+		return wrapper;
+	};
 	it.each([SpaceType.ROOM, SpaceType.ZONE, SpaceType.MASTER, SpaceType.ENTRY, SpaceType.SIGNAGE_INFO_PANEL])(
 		'only requests activity configuration for supported space type %s',
 		async (type) => {
@@ -547,6 +565,7 @@ describe('mounted configure activity mode support', () => {
 		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
 		try {
 			await flushPromises();
+			await openEditors(wrapper);
 			const section = wrapper.getComponent(Selected);
 			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
 			await flushPromises();
@@ -561,6 +580,7 @@ describe('mounted configure activity mode support', () => {
 			await router.push('/space/other/plugin/configure');
 			await flushPromises();
 			expect(router.currentRoute.value.params.id).toBe('other');
+			await openEditors(wrapper);
 			expect(wrapper.getComponent(Selected).vm.$.uid).not.toBe(section.vm.$.uid);
 		} finally {
 			wrapper.unmount();
@@ -568,7 +588,7 @@ describe('mounted configure activity mode support', () => {
 			mocks.realRouter = false;
 		}
 	});
-	it('retains the draft across same-space edit navigation and a desktop-to-mobile resize', async () => {
+	it('retains the open modal and draft across same-space edit navigation and a desktop-to-mobile resize', async () => {
 		mocks.realRouter = true;
 		mocks.isLGDevice = true;
 		const initial = space(SpaceType.ROOM).id;
@@ -599,6 +619,7 @@ describe('mounted configure activity mode support', () => {
 		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
 		try {
 			await flushPromises();
+			await openEditors(wrapper);
 			const section = wrapper.getComponent(SpaceModeScheduleSection);
 			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
 			await flushPromises();
@@ -608,7 +629,7 @@ describe('mounted configure activity mode support', () => {
 			await flushPromises();
 			expect(wrapper.getComponent(SpaceModeScheduleSection).vm.$.uid).toBe(section.vm.$.uid);
 			expect(section.vm.hasUnsavedChanges).toBe(true);
-			expect(section.get('.el-card').isVisible()).toBe(false);
+			expect(section.get('.el-card').isVisible()).toBe(true);
 			await router.push(`/space/${initial}/plugin/configure`);
 			await flushPromises();
 			expect(section.get('.el-card').isVisible()).toBe(true);
@@ -647,6 +668,7 @@ describe('mounted configure activity mode support', () => {
 		});
 		try {
 			await flushPromises();
+			await openEditors(wrapper);
 			const section = wrapper.getComponent(target === 'schedule' ? SpaceModeScheduleSection : SpaceOccupancySection);
 			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
 			if (target === 'occupancy') section.getComponent(ElCheckboxGroup).vm.$emit('update:modelValue', ['sensor-1']);
@@ -696,6 +718,7 @@ describe('mounted configure activity mode support', () => {
 		});
 		try {
 			await flushPromises();
+			await openEditors(wrapper);
 			const section = wrapper.getComponent(SpaceModeScheduleSection);
 			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
 			await flushPromises();
