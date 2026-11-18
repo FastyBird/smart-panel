@@ -151,6 +151,62 @@ describe('actuator group three-step authoring', () => {
 	});
 	afterEach(() => view?.unmount());
 
+	it('rechecks quarantined candidates against enabled controls without hiding controls that can be restored', async () => {
+		const defaultPost = mocks.POST.getMockImplementation()!;
+		mocks.POST.mockImplementation((path: string, options) => {
+			if (!path.endsWith('light-group-candidates')) return defaultPost(path, options);
+			const { body } = options;
+			const response = catalog(body.profile, body.selected_channels);
+			for (const candidate of response.candidates) {
+				const requested = body.capabilities ?? candidate.common_capabilities.map((entry: GroupCapability) => entry.category);
+				if ((candidate.channel === 'c' || body.selected_channels.includes('c')) && requested.includes('brightness')) {
+					candidate.eligible = false;
+					candidate.reasons = ['graph_quarantined'];
+				}
+			}
+			return Promise.resolve({ data: { data: response } });
+		});
+		await openMembers();
+		await add('a');
+		const candidate = () =>
+			view
+				.getComponent(VirtualWizardAddSources)
+				.props('sources')
+				.find((source) => source.id === 'c')!;
+		const matrix = () => view.getComponent(VirtualGroupCapabilityMatrix);
+		expect(candidate().disabled).toBe(true);
+
+		matrix().vm.$emit('toggle', 'brightness', false);
+		await flushPromises();
+		const enabled = ['on', 'color_red', 'color_green', 'color_blue'];
+		expect(calls('light-group-candidates').at(-1)?.[1].body.capabilities).toEqual(enabled);
+		expect(candidate().disabled).toBe(false);
+		expect(candidate().disabledReason).toBeUndefined();
+		expect(
+			matrix()
+				.props('availableCapabilities')
+				.map((entry) => entry.category)
+		).toContain('brightness');
+
+		matrix().vm.$emit('toggle', 'brightness', true);
+		await flushPromises();
+		expect(candidate().disabled).toBe(true);
+		expect(selected()).toContain('brightness');
+
+		matrix().vm.$emit('toggle', 'brightness', false);
+		await flushPromises();
+		await add('c');
+		expect(
+			matrix()
+				.props('members')
+				.map((member) => member.id)
+		).toEqual(['a', 'c']);
+		expect(calls('light-group-candidates').at(-1)?.[1].body.capabilities).toEqual(enabled);
+		await next();
+		expect(calls('draft-preview').at(-1)?.[1].body.capabilities).toEqual(enabled);
+		expect(view.get('[data-test-id="group-review-controls"]').text()).not.toContain('brightness');
+	});
+
 	it('uses the current capability contract when a previously quarantined candidate becomes eligible', async () => {
 		mocks.POST.mockImplementation((path: string, { body }) => {
 			const response = catalog(body.profile, body.selected_channels);
@@ -230,7 +286,7 @@ describe('actuator group three-step authoring', () => {
 		expect(selected()).toHaveLength(5);
 	});
 
-	it('toggles RGB together locally, preserves required controls and reviews only the chosen controls', async () => {
+	it('toggles RGB together, refreshes eligibility, preserves required controls and reviews only the chosen controls', async () => {
 		await openMembers();
 		await add('a');
 		await add('c');
@@ -241,7 +297,8 @@ describe('actuator group three-step authoring', () => {
 		view.getComponent(VirtualGroupCapabilityMatrix).vm.$emit('toggle', 'on', false);
 		await flushPromises();
 		expect(selected()).toContain('on');
-		expect(calls('light-group-candidates')).toHaveLength(before);
+		expect(calls('light-group-candidates')).toHaveLength(before + 1);
+		expect(calls('light-group-candidates').at(-1)?.[1].body.capabilities).toEqual(['on', 'brightness']);
 		await next();
 		expect(calls('draft-preview')).toHaveLength(1);
 		expect(calls('draft-preview')[0][1].body.capabilities).toEqual(['on', 'brightness']);

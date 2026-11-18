@@ -427,6 +427,7 @@ const metadataSignature = computed(() =>
 	)
 );
 let baseKey = '',
+	catalogKey = '',
 	generation = 0,
 	catalogReady = false;
 const refreshCatalog = async () => {
@@ -434,20 +435,38 @@ const refreshCatalog = async () => {
 	const current = ++generation,
 		selectedProfile = profile.value;
 	const metadataKey = JSON.stringify([selectedProfile, metadataSignature.value]);
+	const request = { profile: selectedProfile, selected_channels: [...memberIds.value] };
+	const selectionKey = JSON.stringify([metadataKey, request.selected_channels]);
+	const excluded = new Set(excludedCapabilities.value);
 	authoring.invalidatePreview();
 	let loadedBaseline = false;
+	let result = catalog.catalog.value;
 	if (baseKey !== metadataKey) {
 		baseCandidates.value = [];
-		const result = await catalog.load({ profile: selectedProfile, selected_channels: [] });
+		result = await catalog.load({ profile: selectedProfile, selected_channels: [] });
 		if (!result || current !== generation) return;
 		baseCandidates.value = result.candidates;
 		baseKey = metadataKey;
 		loadedBaseline = true;
 	}
-	if (memberIds.value.length || !loadedBaseline) await catalog.load({ profile: selectedProfile, selected_channels: [...memberIds.value] });
+	if ((request.selected_channels.length || !loadedBaseline) && (!excluded.size || !result || catalogKey !== selectionKey))
+		result = await catalog.load(request);
+	if (!result || current !== generation) return;
+	catalogKey = selectionKey;
+	if (request.selected_channels.length && excluded.size) {
+		// The catalog retains every common control even for a limited eligibility request.
+		// Reuse that full contract when only exclusions change; refresh it first after member/metadata changes.
+		const common = result.candidates.find((candidate) => candidate.channel === request.selected_channels[0])?.common_capabilities ?? [];
+		await catalog.load({
+			...request,
+			capabilities: common
+				.map(({ category }) => category)
+				.filter((category) => requiredCapabilities.value.includes(category) || !excluded.has(category)),
+		});
+	}
 };
 watch(
-	[profile, () => memberIds.value.join('|'), metadataSignature, () => step.value === 2],
+	[profile, () => memberIds.value.join('|'), () => excludedCapabilities.value.join('|'), metadataSignature, () => step.value === 2],
 	() => {
 		if (catalogReady) void refreshCatalog();
 	},
