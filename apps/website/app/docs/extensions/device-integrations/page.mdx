@@ -83,6 +83,13 @@ device_options:
 
 Smart Panel logs a warning when it connects to a bridge that has `last_seen` disabled.
 
+Without `last_seen`, Smart Panel cannot tell a replayed state from a new report by its content. It
+treats messages as replays while Zigbee2MQTT is still publishing after it connects or the bridge comes
+online: until no message has arrived for 5 seconds, and at most for 60 seconds. On a very large network
+Zigbee2MQTT may still be publishing its cached states after that. If you cannot enable `last_seen`
+and need that guarantee, set `advanced.cache_state_send_on_startup: false` so Zigbee2MQTT does not
+publish cached states at startup.
+
 <Callout>
 	A device that only reports on change and has no periodic reporting configured sends nothing while
 	its value is stable, so its values will eventually be considered stale. Where the device supports

@@ -152,6 +152,8 @@ export class PropertyValueService {
 	private readonly liveEpochs = new Set<string>();
 	private readonly samples = new Map<string, QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>>();
 	private readonly liveWatermarks = new Map<string, { sampledAt: number; invalid: boolean }>();
+	/** Cached states shown from a replay of unknown age: displayed, never recorded in history. */
+	private readonly displayOnlyStates = new WeakSet<PropertyValueState>();
 
 	constructor(
 		private readonly storageService: StorageService,
@@ -407,6 +409,7 @@ export class PropertyValueService {
 		if (this.validateValue(property, value)) return { changed: false, state: null };
 		const lastUpdated = Number.isFinite(observedAt) ? new Date(observedAt).toISOString() : null;
 		const state = new PropertyValueState(value, lastUpdated, this.computeTrend(property, key));
+		this.displayOnlyStates.add(state);
 		this.setCachedState(key, state);
 		return { changed: true, state };
 	}
@@ -907,7 +910,8 @@ export class PropertyValueService {
 		}
 
 		const cached = this.valuesMap.get(key);
-		if (!strict && cached && cached.value === value) {
+		// A displayed-only value was never recorded, so the first real report of it must be.
+		if (!strict && cached && cached.value === value && !this.displayOnlyStates.has(cached)) {
 			if (ownedCurrent && !ownedCurrent()) return { changed: false, state: clonePropertyValueState(cached) };
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate.
 			// Freshness only moves forward; replays (refreshUnchangedTimestamp=false) never renew it.

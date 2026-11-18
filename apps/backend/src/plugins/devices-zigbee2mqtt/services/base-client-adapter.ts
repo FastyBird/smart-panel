@@ -3,6 +3,7 @@ import { ZigbeeSourceIdentity, zigbeeSourceIdentity } from '../contracts/sample-
 import {
 	DEFAULT_MQTT_BASE_TOPIC,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+	STARTUP_REPLAY_WINDOW_MAX_MS,
 	STARTUP_REPLAY_WINDOW_MS,
 	Z2M_IGNORED_DEVICE_TYPES,
 } from '../devices-zigbee2mqtt.constants';
@@ -63,6 +64,8 @@ export abstract class Z2mBaseClientAdapter {
 	 * Raspberry Pi boots) cannot shorten or stretch the window.
 	 */
 	private liveReportsNotBefore = 0;
+	/** Monotonic instant past which message traffic no longer extends the replay window. */
+	private replayWindowLimit = 0;
 	/**
 	 * Wall-clock instant the current replay window opened. A message whose `last_seen` is later
 	 * than this was sent by the device after we connected, so it is a fresh report, not a replay.
@@ -184,8 +187,24 @@ export abstract class Z2mBaseClientAdapter {
 
 	/** Opened on connect and when the bridge comes online; protected so fixtures can control it. */
 	protected openStartupReplayWindow(durationMs = STARTUP_REPLAY_WINDOW_MS): void {
-		this.liveReportsNotBefore = performance.now() + durationMs;
+		const now = performance.now();
+		this.liveReportsNotBefore = now + durationMs;
+		this.replayWindowLimit = now + Math.max(durationMs, STARTUP_REPLAY_WINDOW_MAX_MS);
 		this.replayWindowOpenedAt = Date.now();
+	}
+
+	/**
+	 * Keep an open replay window open while Zigbee2MQTT is still publishing: it starts extensions and
+	 * then publishes cached states one by one after `online`, with no fixed bound. Live reports that
+	 * arrive meanwhile also extend it, which only delays freshness (the safe direction).
+	 */
+	private extendStartupReplayWindow(): void {
+		const now = performance.now();
+		if (now >= this.liveReportsNotBefore) return;
+		this.liveReportsNotBefore = Math.max(
+			this.liveReportsNotBefore,
+			Math.min(this.replayWindowLimit, now + STARTUP_REPLAY_WINDOW_MS),
+		);
 	}
 
 	private liveReportReason(
@@ -230,10 +249,15 @@ export abstract class Z2mBaseClientAdapter {
 		const sourceTime =
 			decidedSourceTime !== undefined ? decidedSourceTime : parseSourceTimestamp(state.last_seen, observedAt);
 		// Inside the window a message is a replay, unless its source time shows the device sent it
-		// after the window opened (a fresh report, such as a real button press).
+		// after the window opened (a fresh report, such as a real button press). A source time that had
+		// to be capped at receipt (gateway clock ahead of ours) cannot place the report after anything.
 		const afterReplayWindow =
 			performance.now() >= this.liveReportsNotBefore ||
-			(!isCached && sourceTime !== null && sourceTime.getTime() > this.replayWindowOpenedAt);
+			(!isCached &&
+				decidedSourceTime === undefined &&
+				sourceTime !== null &&
+				sourceTime.getTime() > this.replayWindowOpenedAt &&
+				new Date(state.last_seen as string | number).getTime() <= observedAt.getTime());
 		const isReplay = isRetained || isCached || !afterReplayWindow;
 		const isLive = online && (sourceTime !== null || !isReplay);
 
@@ -278,22 +302,24 @@ export abstract class Z2mBaseClientAdapter {
 		if (!cached) return [];
 		const evidence = this.cachedFieldEvidence.get(friendlyName);
 		const currentIeee = this.sourceIdentities.get(friendlyName)?.ieeeAddress ?? null;
-		const groups = new Map<number | null, { state: Record<string, unknown>; receivedAt: number }>();
+		const groups = new Map<string, { time: number | null; state: Record<string, unknown>; receivedAt: number }>();
 		for (const [field, value] of Object.entries(cached)) {
 			const fieldEvidence = evidence?.get(field);
 			const sender = fieldEvidence?.ieeeAddress ?? null;
 			if (sender !== null && sender !== currentIeee) continue;
 			const sourceTime = sender !== null ? (fieldEvidence?.sourceTime ?? null) : null;
-			const key = sourceTime ? sourceTime.getTime() : null;
-			const group = groups.get(key) ?? { state: {}, receivedAt: Infinity };
+			const time = sourceTime ? sourceTime.getTime() : null;
+			// Grouped by original receipt too: source-binding cutoffs judge when we actually observed
+			// each field, so fields received at different times never share one receipt time.
+			const receivedAt = fieldEvidence?.receivedAt.getTime() ?? Date.now();
+			const key = `${time}|${receivedAt}`;
+			const group = groups.get(key) ?? { time, state: {}, receivedAt };
 			group.state[field] = value;
-			// The earliest original receipt: source-binding cutoffs judge when we actually observed it.
-			group.receivedAt = Math.min(group.receivedAt, fieldEvidence?.receivedAt.getTime() ?? Date.now());
 			groups.set(key, group);
 		}
-		return [...groups.entries()]
-			.sort(([a], [b]) => (a ?? -Infinity) - (b ?? -Infinity))
-			.map(([time, group]) => ({
+		return [...groups.values()]
+			.sort((a, b) => (a.time ?? -Infinity) - (b.time ?? -Infinity) || a.receivedAt - b.receivedAt)
+			.map(({ time, ...group }) => ({
 				state: group.state,
 				metadata: this.buildStateMetadata(
 					friendlyName,
@@ -411,6 +437,8 @@ export abstract class Z2mBaseClientAdapter {
 			if (!relativePath) {
 				return;
 			}
+
+			this.extendStartupReplayWindow();
 
 			const topicParts = relativePath.split('/');
 
@@ -571,7 +599,10 @@ export abstract class Z2mBaseClientAdapter {
 					continue;
 				}
 
-				const existing = this.deviceRegistry.get(device.friendly_name);
+				const registered = this.deviceRegistry.get(device.friendly_name);
+				// A friendly name now held by a different device: the previous device's state is not its own.
+				const existing = registered?.ieeeAddress === device.ieee_address ? registered : undefined;
+				if (registered && !existing) this.expireNativeClimate(device.friendly_name);
 				if (
 					existing &&
 					(existing.softwareBuildId !== device.software_build_id ||
@@ -719,7 +750,9 @@ export abstract class Z2mBaseClientAdapter {
 				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
+			// A replay is never a current native observation: keep the last qualified one.
 			if (
+				!metadata.isReplay &&
 				metadata.sourceIdentity &&
 				Array.isArray(device?.definition?.exposes) &&
 				device.definition.exposes.some((expose) => expose.type === 'climate')

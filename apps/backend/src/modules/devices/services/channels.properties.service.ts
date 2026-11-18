@@ -1323,6 +1323,14 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const validation = validatePropertyCommandValue(property, value);
 
 		if (!validation.valid || validation.value === undefined) {
+			// A valid measurement that fails only the command step is still a replay to hold while its
+			// command is pending; invalid measurements keep the fault path below.
+			if (
+				evidence?.replay === true &&
+				this.propertyCommandWindowService.get(canonicalPropertyId) !== null &&
+				validatePropertyCommandValue({ ...property, step: null }, value).valid
+			)
+				return { changed: false, state: null, held: true, forceValueEvent: false };
 			const result = await writers.unwindowed();
 
 			return { ...result, held: false, forceValueEvent: false };
@@ -1356,6 +1364,10 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 		const window = this.propertyCommandWindowService.get(canonicalPropertyId);
 		if (window === null) {
+			// A replay neither supersedes nor races a pending reconciliation: hold it so the recovery
+			// (including a rollback) runs first.
+			if (evidence?.replay === true && this.propertyCommandWindowService.hasRecovery(canonicalPropertyId))
+				return { changed: false, state: null, held: true, forceValueEvent: false };
 			const reconcilesCommand = this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
 			const result = await (reconcilesCommand ? writers.windowed() : writers.unwindowed());
 

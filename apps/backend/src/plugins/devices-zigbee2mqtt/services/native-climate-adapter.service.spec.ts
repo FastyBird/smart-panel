@@ -221,8 +221,9 @@ describe('Zigbee native climate production profile', () => {
 		expect(unit.observe()).toMatchObject({ available: true, temperature: 20, activity: 'heating' });
 		adapter.feed('trv', { system_mode: 'heat' });
 		expect(unit.observe()).toMatchObject({ available: true, temperature: null, activity: null, mode: 'heat' });
-		adapter.feed('trv', { local_temperature: 20 }, true);
-		expect(unit.observe().available).toBe(false);
+		// A retained replay is not a current observation and does not displace the last qualified one.
+		adapter.feed('trv', { local_temperature: 21 }, true);
+		expect(unit.observe()).toMatchObject({ available: true, temperature: null, mode: 'heat' });
 		adapter.feed('trv', { local_temperature: 20 });
 		jest.advanceTimersByTime(120_001);
 		expect(unit.observe().available).toBe(false);

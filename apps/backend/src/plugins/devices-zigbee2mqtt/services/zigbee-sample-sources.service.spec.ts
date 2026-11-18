@@ -389,6 +389,8 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		adapter.feed('bridge/devices', [registry(replacement)]);
 		await registryPending;
 		expect(adapter.getCachedStateReplays('floor')).toEqual([]);
+		// The registered device under that name is the new one, with none of the previous device's state.
+		expect(adapter.getDevice('floor')).toMatchObject({ ieeeAddress: replacement, currentState: {} });
 		adapter.feed('floor', { temperature: 19, last_seen: new Date(base - 1_000).toISOString() });
 		expect(adapter.getCachedStateReplays('floor').map((replay) => replay.state)).toEqual([
 			{ temperature: 19, last_seen: new Date(base - 1_000).toISOString() },

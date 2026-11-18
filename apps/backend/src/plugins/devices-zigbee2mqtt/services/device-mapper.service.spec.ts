@@ -629,11 +629,9 @@ describe('Z2mDeviceMapperService', () => {
 				{ temperature: 25 },
 				{ observedAt, sampledAt, isRetained: true, isReplay: true, measurementFieldsAreLive: true },
 			);
-			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
-				'reading',
-				expect.anything(),
-				expect.not.objectContaining({ ageUnknown: true }),
-			);
+			const timed = channelsPropertiesService.reportSample.mock.lastCall?.[2];
+			expect(timed).toMatchObject({ sampledAt, replay: true });
+			expect(timed).not.toHaveProperty('ageUnknown');
 			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',

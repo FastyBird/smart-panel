@@ -14,7 +14,7 @@ import { PropertyValueLockService } from '../../../modules/devices/services/prop
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { StorageService } from '../../../modules/storage/services/storage.service';
-import { STARTUP_REPLAY_WINDOW_MS } from '../devices-zigbee2mqtt.constants';
+import { STARTUP_REPLAY_WINDOW_MAX_MS, STARTUP_REPLAY_WINDOW_MS } from '../devices-zigbee2mqtt.constants';
 import { Z2mDeviceStateMetadata } from '../interfaces/zigbee2mqtt.interface';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
@@ -167,6 +167,40 @@ describe('Zigbee live device report contract', () => {
 		});
 		adapter.feed('remote', { action: 'single', last_seen: new Date(base - 500).toISOString() });
 		expect(lastMetadata()).toMatchObject({ isReplay: true, qualificationReason: 'zigbee_replay_timed_by_last_seen' });
+	});
+
+	it('keeps the replay window open while Zigbee2MQTT is still publishing after online, up to a limit', () => {
+		// Zigbee2MQTT starts its extensions after `online` and only then publishes its cached states.
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS - 1_000);
+		adapter.feed('bridge/info', cacheMode(true));
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS - 1_000);
+		adapter.feed('ambient', { temperature: 25 });
+		expect(lastMetadata()).toMatchObject({ isReplay: true, measurementFieldsAreLive: false });
+		// Continuous traffic cannot hold it open past the limit.
+		for (let elapsed = 0; elapsed < STARTUP_REPLAY_WINDOW_MAX_MS; elapsed += STARTUP_REPLAY_WINDOW_MS - 1_000) {
+			jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS - 1_000);
+			adapter.feed('ambient', { temperature: 25 });
+		}
+		expect(lastMetadata()).toMatchObject({ isReplay: false, measurementFieldsAreLive: true });
+	});
+
+	it('does not treat a last_seen capped at receipt as proof that a report followed the window opening', () => {
+		// The gateway clock runs ahead: the source time is capped at receipt and places nothing.
+		jest.advanceTimersByTime(500);
+		adapter.feed('remote', { action: 'single', last_seen: new Date(base + 2_000).toISOString() });
+		expect(lastMetadata()).toMatchObject({ isReplay: true, sampledAt: new Date(base + 500) });
+	});
+
+	it('replays cached fields with their own receipt times when they share a source time', () => {
+		adapter.feed('ambient', { humidity: 40 });
+		jest.advanceTimersByTime(1_000);
+		adapter.feed('ambient', { temperature: 25 });
+		expect(
+			adapter.getCachedStateReplays('ambient').map((replay) => [replay.state, replay.metadata.observedAt.getTime()]),
+		).toEqual([
+			[{ humidity: 40 }, base],
+			[{ temperature: 25 }, base + 1_000],
+		]);
 	});
 
 	it('replays cached fields with their original receipt time, not the replay time', () => {
@@ -393,6 +427,25 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		expect((await values.readLatest(property))?.value).toBe(25);
 	});
 
+	it('records the first real report of a value that was only displayed from an untimed replay', async () => {
+		const storedAt = base - 30 * 60_000;
+		storage.queryStrict.mockResolvedValueOnce([
+			{ time: new Date(storedAt).toISOString(), numberValue: 20, propertyId: property.id },
+		]);
+		await sample(23);
+		expect(await values.readLatest(property)).toMatchObject({
+			value: 23,
+			lastUpdated: new Date(storedAt).toISOString(),
+		});
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(23);
+		expect(storage.writePoints.mock.calls.length + storage.enqueueWritePoint.mock.calls.length).toBe(1);
+		expect(await values.readLatest(property)).toMatchObject({
+			value: 23,
+			lastUpdated: new Date(base + STARTUP_REPLAY_WINDOW_MS).toISOString(),
+		});
+	});
+
 	it('skips a timed replay when the stored value cannot be looked up: it has no baseline to be ordered against', async () => {
 		storage.queryStrict.mockRejectedValueOnce(new Error('storage unavailable'));
 		adapter.feed('ambient', { temperature: 21.5, last_seen: new Date(base - 20 * 60_000).toISOString() }, true);
@@ -477,5 +530,42 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		expect(windows.get(property.id)?.state).toBe('pending');
 		await sample(23);
 		expect(windows.get(property.id)?.state).toBe('confirmed_grace');
+	});
+
+	it('holds a replay whose value fails only the command step while its command is pending', async () => {
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(20);
+		property.step = 0.5;
+		windows.open({
+			canonicalTarget: { deviceId: 'device', channelId: 'channel', propertyId: property.id },
+			requestedTargets: [],
+			commandedValue: 23,
+			previousValue: 20,
+			ttlMs: 3_000,
+		});
+		adapter.feed('ambient', { temperature: 21.3, last_seen: new Date().toISOString() }, true);
+		await pending;
+		expect((await values.readLatest(property))?.value).toBe(20);
+		expect(windows.get(property.id)?.state).toBe('pending');
+	});
+
+	it('never lets a replay cancel a pending command recovery', async () => {
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(20);
+		const handle = windows.open({
+			canonicalTarget: { deviceId: 'device', channelId: 'channel', propertyId: property.id },
+			requestedTargets: [],
+			commandedValue: 23,
+			previousValue: 20,
+			ttlMs: 3_000,
+		});
+		windows.hold(handle, { value: 22, receivedAt: Date.now() });
+		jest.advanceTimersByTime(3_001);
+		windows.expire(property.id);
+		expect(windows.hasRecovery(property.id)).toBe(true);
+		adapter.feed('ambient', { temperature: 21, last_seen: new Date().toISOString() }, true);
+		await pending;
+		expect(windows.hasRecovery(property.id)).toBe(true);
+		expect((await values.readLatest(property))?.value).toBe(20);
 	});
 });
