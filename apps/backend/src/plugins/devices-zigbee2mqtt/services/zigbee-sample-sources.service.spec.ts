@@ -370,6 +370,19 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		]);
 	});
 
+	it('drops cached state of an unidentified sender when its friendly name moves to another device', async () => {
+		await adapter.disconnect();
+		await adapter.connect();
+		adapter.feed('floor', { temperature: 25 });
+		adapter.feed('bridge/devices', [registry()]);
+		await registryPending;
+		expect(adapter.getCachedStateReplays('floor').map((replay) => replay.state)).toEqual([{ temperature: 25 }]);
+		adapter.feed('bridge/devices', [registry(replacement)]);
+		await registryPending;
+		expect(adapter.getCachedStateReplays('floor')).toEqual([]);
+		expect(adapter.getCachedState('floor')).toEqual({});
+	});
+
 	it('never replays cached state from a previous device under a reused friendly name', async () => {
 		adapter.feed('floor', { temperature: 25, last_seen: new Date(base - 60_000).toISOString() });
 		expect(adapter.getCachedStateReplays('floor')).toHaveLength(1);

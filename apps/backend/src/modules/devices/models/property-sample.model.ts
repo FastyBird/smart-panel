@@ -13,6 +13,12 @@ export interface PropertySampleEvidence {
 	readonly commandObservation?: object;
 	/** Server poll request start or notification capture, before queuing. */
 	readonly observedAt?: Date;
+	/**
+	 * The sample replays earlier state (retained message, startup snapshot, cached replay) rather
+	 * than reporting something new. It may still be live measurement evidence timed by its source,
+	 * but it never confirms a command and never replaces a newer observation.
+	 */
+	readonly replay?: boolean;
 	/** Pure process-local generation/identity guard; never serialized or supplied by a public DTO. */
 	readonly isCurrent?: () => boolean;
 	/** Stable connection/configuration identity after acceptance; ordinary newer packets do not revoke it. */

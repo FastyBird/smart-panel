@@ -979,6 +979,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			...(evidence.isCurrent ? { isCurrent: evidence.isCurrent } : {}),
 			...(evidence.sourceIsCurrent ? { sourceIsCurrent: evidence.sourceIsCurrent } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
+			...(evidence.replay === true ? { replay: true } : {}),
 		});
 		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
 	}
@@ -1331,6 +1332,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			(evidence || activeWindow.requiresLiveEvidence) &&
 			(!evidence ||
 				evidence.provenance !== 'live' ||
+				evidence.replay === true ||
 				!evidence.observedAt ||
 				!Number.isFinite(evidence.observedAt.getTime()) ||
 				evidence.observedAt.getTime() < activeWindow.openedAt ||

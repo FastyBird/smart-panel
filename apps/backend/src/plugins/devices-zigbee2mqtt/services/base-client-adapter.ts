@@ -64,13 +64,20 @@ export abstract class Z2mBaseClientAdapter {
 	 */
 	private liveReportsNotBefore = 0;
 	/**
+	 * Wall-clock instant the current replay window opened. A message whose `last_seen` is later
+	 * than this was sent by the device after we connected, so it is a fresh report, not a replay.
+	 */
+	private replayWindowOpenedAt = 0;
+	/** The device (IEEE address) whose state the cache holds for each friendly name. */
+	private readonly cacheOwners = new Map<string, string>();
+	/**
 	 * Per-field evidence for the merged state cache, decided when the field's packet was received:
 	 * the packet's accepted source time (null when absent or rejected) and the device that sent it.
 	 * Replays reuse these decisions instead of re-deriving them at replay time.
 	 */
 	private readonly cachedFieldEvidence = new Map<
 		string,
-		Map<string, { sourceTime: Date | null; ieeeAddress: string | null }>
+		Map<string, { sourceTime: Date | null; ieeeAddress: string | null; receivedAt: Date }>
 	>();
 	private lastSeenWarningLogged = false;
 	private readonly sourceIdentities = new Map<string, ZigbeeSourceIdentity>();
@@ -178,6 +185,7 @@ export abstract class Z2mBaseClientAdapter {
 	/** Opened on connect and when the bridge comes online; protected so fixtures can control it. */
 	protected openStartupReplayWindow(durationMs = STARTUP_REPLAY_WINDOW_MS): void {
 		this.liveReportsNotBefore = performance.now() + durationMs;
+		this.replayWindowOpenedAt = Date.now();
 	}
 
 	private liveReportReason(
@@ -219,9 +227,13 @@ export abstract class Z2mBaseClientAdapter {
 		const identity = this.sourceIdentities.get(friendlyName);
 		const online = this.connected && this.bridgeOnline;
 		const isCached = options?.isCached === true;
-		const afterReplayWindow = performance.now() >= this.liveReportsNotBefore;
 		const sourceTime =
 			decidedSourceTime !== undefined ? decidedSourceTime : parseSourceTimestamp(state.last_seen, observedAt);
+		// Inside the window a message is a replay, unless its source time shows the device sent it
+		// after the window opened (a fresh report, such as a real button press).
+		const afterReplayWindow =
+			performance.now() >= this.liveReportsNotBefore ||
+			(!isCached && sourceTime !== null && sourceTime.getTime() > this.replayWindowOpenedAt);
 		const isReplay = isRetained || isCached || !afterReplayWindow;
 		const isLive = online && (sourceTime !== null || !isReplay);
 
@@ -266,24 +278,27 @@ export abstract class Z2mBaseClientAdapter {
 		if (!cached) return [];
 		const evidence = this.cachedFieldEvidence.get(friendlyName);
 		const currentIeee = this.sourceIdentities.get(friendlyName)?.ieeeAddress ?? null;
-		const groups = new Map<number | null, Record<string, unknown>>();
+		const groups = new Map<number | null, { state: Record<string, unknown>; receivedAt: number }>();
 		for (const [field, value] of Object.entries(cached)) {
 			const fieldEvidence = evidence?.get(field);
 			const sender = fieldEvidence?.ieeeAddress ?? null;
 			if (sender !== null && sender !== currentIeee) continue;
 			const sourceTime = sender !== null ? (fieldEvidence?.sourceTime ?? null) : null;
 			const key = sourceTime ? sourceTime.getTime() : null;
-			groups.set(key, { ...(groups.get(key) ?? {}), [field]: value });
+			const group = groups.get(key) ?? { state: {}, receivedAt: Infinity };
+			group.state[field] = value;
+			// The earliest original receipt: source-binding cutoffs judge when we actually observed it.
+			group.receivedAt = Math.min(group.receivedAt, fieldEvidence?.receivedAt.getTime() ?? Date.now());
+			groups.set(key, group);
 		}
-		const observedAt = new Date();
 		return [...groups.entries()]
 			.sort(([a], [b]) => (a ?? -Infinity) - (b ?? -Infinity))
-			.map(([time, state]) => ({
-				state,
+			.map(([time, group]) => ({
+				state: group.state,
 				metadata: this.buildStateMetadata(
 					friendlyName,
-					state,
-					observedAt,
+					group.state,
+					new Date(group.receivedAt),
 					false,
 					{ isCached: true },
 					time === null ? null : new Date(time),
@@ -298,8 +313,12 @@ export abstract class Z2mBaseClientAdapter {
 	): void {
 		const evidence =
 			this.cachedFieldEvidence.get(friendlyName) ??
-			new Map<string, { sourceTime: Date | null; ieeeAddress: string | null }>();
-		const entry = { sourceTime: metadata.sampledAt ?? null, ieeeAddress: metadata.sourceIdentity?.ieeeAddress ?? null };
+			new Map<string, { sourceTime: Date | null; ieeeAddress: string | null; receivedAt: Date }>();
+		const entry = {
+			sourceTime: metadata.sampledAt ?? null,
+			ieeeAddress: metadata.sourceIdentity?.ieeeAddress ?? null,
+			receivedAt: metadata.observedAt ?? new Date(),
+		};
 		for (const field of Object.keys(state)) evidence.set(field, entry);
 		this.cachedFieldEvidence.set(friendlyName, evidence);
 	}
@@ -518,7 +537,17 @@ export abstract class Z2mBaseClientAdapter {
 				next.set(identity.friendlyName, previous?.fingerprint === identity.fingerprint ? previous : identity);
 			}
 			this.sourceIdentities.clear();
-			for (const [name, identity] of next) this.sourceIdentities.set(name, identity);
+			for (const [name, identity] of next) {
+				this.sourceIdentities.set(name, identity);
+				// A friendly name now held by a different device: its cached state (including fields
+				// whose sender could not be identified) belongs to the previous device.
+				const owner = this.cacheOwners.get(name);
+				if (owner !== undefined && owner !== identity.ieeeAddress) {
+					this.stateCache.delete(name);
+					this.cachedFieldEvidence.delete(name);
+				}
+				this.cacheOwners.set(name, identity.ieeeAddress);
+			}
 			void this.callbacks.onSourceRegistryReceived?.([...next.values()]);
 
 			this.logger.log(`Received device registry with ${devices.length} devices`);
@@ -755,6 +784,7 @@ export abstract class Z2mBaseClientAdapter {
 		this.deviceRegistry.clear();
 		this.stateCache.clear();
 		this.cachedFieldEvidence.clear();
+		this.cacheOwners.clear();
 		this.nativeSamples.clear();
 		this.nativeEpochs.clear();
 		this.sourceIdentities.clear();

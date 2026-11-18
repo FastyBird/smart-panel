@@ -1507,6 +1507,7 @@ export class Z2mDeviceMapperService {
 			receivedAt: new Date(),
 			observedAt,
 			provenance,
+			...(metadata?.isReplay === true ? { replay: true } : {}),
 			...(metadata?.isCurrent ? { isCurrent: metadata.isCurrent } : {}),
 			...(metadata?.sourceIsCurrent ? { sourceIsCurrent: metadata.sourceIsCurrent } : {}),
 		};

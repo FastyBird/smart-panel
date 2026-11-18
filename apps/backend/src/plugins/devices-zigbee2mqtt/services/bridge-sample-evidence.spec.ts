@@ -157,6 +157,24 @@ describe('Zigbee live device report contract', () => {
 		expect(adapter.getCachedStateReplays('unknown')).toEqual([]);
 	});
 
+	it('treats a message the device sent after the window opened as a fresh report, not a replay', () => {
+		jest.advanceTimersByTime(1_000);
+		adapter.feed('remote', { action: 'single', last_seen: new Date(base + 500).toISOString() });
+		expect(lastMetadata()).toMatchObject({
+			isReplay: false,
+			measurementFieldsAreLive: true,
+			qualificationReason: 'zigbee_device_report_timed_by_last_seen',
+		});
+		adapter.feed('remote', { action: 'single', last_seen: new Date(base - 500).toISOString() });
+		expect(lastMetadata()).toMatchObject({ isReplay: true, qualificationReason: 'zigbee_replay_timed_by_last_seen' });
+	});
+
+	it('replays cached fields with their original receipt time, not the replay time', () => {
+		adapter.feed('ambient', { temperature: 25 });
+		jest.advanceTimersByTime(60_000);
+		expect(adapter.getCachedStateReplays('ambient')[0].metadata.observedAt).toEqual(new Date(base));
+	});
+
 	it('time-stamps a live report by last_seen, and never makes a source-timed message live while offline', () => {
 		passReplayWindow();
 		const lastSeen = new Date(Date.now() - 1_000).toISOString();
@@ -271,6 +289,7 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 					receivedAt: new Date(),
 					observedAt: metadata.observedAt,
 					provenance: metadata.measurementFieldsAreLive ? 'live' : metadata.isRetained ? 'retained' : 'cached',
+					...(metadata.isReplay ? { replay: true } : {}),
 					isCurrent: metadata.isCurrent,
 					sourceIsCurrent: metadata.sourceIsCurrent,
 				});
@@ -363,6 +382,56 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS + 1_000);
 		adapter.feed('ambient', { battery: 79 });
 		expect(values.readQualifiedSample(property, 10_000)?.sampledAt.getTime()).toBe(base + STARTUP_REPLAY_WINDOW_MS);
+	});
+
+	it('keeps a newer observation when an older replay arrives again after the cache was warmed by a read', async () => {
+		const storedAt = base - 5 * 60_000;
+		storage.queryStrict.mockResolvedValueOnce([
+			{ time: new Date(storedAt).toISOString(), numberValue: 22, propertyId: property.id },
+		]);
+		const replay = { temperature: 21.5, last_seen: new Date(base - 20 * 60_000).toISOString() };
+		adapter.feed('ambient', replay, true);
+		await pending;
+		expect((await values.readLatest(property))?.value).toBe(22);
+		adapter.feed('ambient', replay, true);
+		await pending;
+		expect(await values.readLatest(property)).toMatchObject({
+			value: 22,
+			lastUpdated: new Date(storedAt).toISOString(),
+		});
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(23);
+		expect(await values.readLatest(property)).toMatchObject({
+			value: 23,
+			lastUpdated: new Date(base + STARTUP_REPLAY_WINDOW_MS).toISOString(),
+		});
+	});
+
+	it('bounds the stored-state lookup: a stalled backend times out and a live report is still admitted', async () => {
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		storage.queryStrict.mockReturnValueOnce(new Promise(() => undefined));
+		adapter.feed('ambient', { temperature: 25 });
+		await jest.advanceTimersByTimeAsync(5_000);
+		await pending;
+		expect((await values.readLatest(property))?.value).toBe(25);
+	});
+
+	it('never lets a replay timed by last_seen confirm a pending command', async () => {
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(20);
+		windows.open({
+			canonicalTarget: { deviceId: 'device', channelId: 'channel', propertyId: property.id },
+			requestedTargets: [],
+			commandedValue: 23,
+			previousValue: 20,
+			ttlMs: 3_000,
+		});
+		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS + 1_000);
+		adapter.feed('ambient', { temperature: 23, last_seen: new Date().toISOString() }, true);
+		await pending;
+		expect(windows.get(property.id)?.state).toBe('pending');
+		await sample(23);
+		expect(windows.get(property.id)?.state).toBe('confirmed_grace');
 	});
 
 	it('does not acknowledge an ordinary matching command from a retained replay; a device report confirms it', async () => {

@@ -247,6 +247,15 @@ describe('Zigbee native climate production profile', () => {
 		expect(unit.observe()).toMatchObject({ available: true, temperature: 20 });
 	});
 
+	it('times an observation by arrival when the adapter rejected last_seen, never by the raw value', () => {
+		adapter.feed('trv', { local_temperature: 20, last_seen: new Date(Date.now() + 70_000).toISOString() });
+		expect(unit.observe()).toMatchObject({
+			available: true,
+			temperature: 20,
+			observedAt: new Date(Date.now()).toISOString(),
+		});
+	});
+
 	it('accepts cache-merged device reports but never upgrades stale source timestamps', () => {
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: true } } });
 		adapter.feed('trv', { local_temperature: 20 });

@@ -45,6 +45,8 @@ const TREND_POINTS_COUNT = 5;
 const BOUNDED_READ_MAX_PROPERTIES = 500;
 const BOUNDED_READ_SOURCE_CHUNK_SIZE = 50;
 const BOUNDED_READ_DEFAULT_DEADLINE_MS = 750;
+// Bound on the stored-state lookup that admits the first provider sample of a property after start.
+const SAMPLE_BASELINE_LOOKUP_TIMEOUT_MS = 5_000;
 
 interface PropertyValueRow {
 	time?: Date | string;
@@ -300,22 +302,27 @@ export class PropertyValueService {
 				// before replacing it. A replay proves the value, not its age, so an unchanged replayed
 				// value keeps its stored timestamp. A sample older than the stored observation (a timed
 				// replay of an outdated retained message, for example) must not replace it, live or not.
+				let baseline = -Infinity;
 				if (!this.valuesMap.has(key)) {
 					let stored: PropertyValueState | null = null;
 					try {
-						stored = (await this.readLatestInternal(property, true)).state;
+						stored = await this.readLatestForSample(property);
 					} catch {
-						// Strict: a failed lookup is not a confirmed miss. A non-live replay would be
-						// persisted at its arrival time, so skip it and let a later replay or report retry.
-						// A live report is still admitted.
+						// Strict: a failed or timed-out lookup is not a confirmed miss. A non-live replay
+						// would be persisted at its arrival time, so skip it and let a later replay or
+						// report retry. A live report is still admitted.
 						if (!live) return { changed: false, state: null };
 					}
 					// The lookup awaited storage; the sample may have lost its authority meanwhile.
 					if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
 						return { changed: false, state: null };
-					const storedAt = stored?.lastUpdated == null ? NaN : Date.parse(stored.lastUpdated);
-					if (Number.isFinite(storedAt) && sampledAt < storedAt) return { changed: false, state: null };
+					baseline = this.observedAt(stored);
 				}
+				// A replay is also checked against the cached observation (read after the lookup, since
+				// another reader may have warmed the cache meanwhile). Ordinary reports are not: with a
+				// warm cache an optimistic command write could make a delayed report look older.
+				if (evidence.replay === true) baseline = Math.max(baseline, this.observedAt(this.valuesMap.get(key)));
+				if (sampledAt < baseline) return { changed: false, state: null };
 				const result = await this.writeInternal(
 					property,
 					key,
@@ -371,6 +378,37 @@ export class PropertyValueService {
 			},
 			this.valueLock.isEnabled(),
 		);
+	}
+
+	private observedAt(state: PropertyValueState | null | undefined): number {
+		const time = state?.lastUpdated == null ? NaN : Date.parse(state.lastUpdated);
+		return Number.isFinite(time) ? time : -Infinity;
+	}
+
+	/**
+	 * Strict latest-value lookup for sample admission, bounded in time. It runs while the property's
+	 * write slot is held, so a stalled storage backend must not block every later sample.
+	 */
+	private async readLatestForSample(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
+		const controller = new AbortController();
+		let timer: NodeJS.Timeout | undefined;
+		const timeout = new Promise<never>((_, reject) => {
+			timer = setTimeout(() => {
+				controller.abort();
+				reject(new Error('Property value lookup timed out'));
+			}, SAMPLE_BASELINE_LOOKUP_TIMEOUT_MS);
+			timer.unref?.();
+		});
+		try {
+			return (
+				await Promise.race([
+					this.readLatestInternal(property, true, false, false, undefined, controller.signal),
+					timeout,
+				])
+			).state;
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 
 	/** Captures the live acceptance boundary for new process-local producer admission. */
@@ -652,6 +690,7 @@ export class PropertyValueService {
 			provenance: evidence.provenance,
 			...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
+			...(evidence.replay === true ? { replay: true } : {}),
 		});
 	}
 
@@ -1526,6 +1565,7 @@ export class PropertyValueService {
 		bypassCache = false,
 		activeBackendOnly = false,
 		capture?: PropertyReadSourceCapture,
+		signal?: AbortSignal,
 	): Promise<InternalPropertyValueReadResult> {
 		const publication = ControllerPublicationContext.current();
 		const health = publication ? this.storageService.captureControllerReadHealth() : null;
@@ -1573,9 +1613,13 @@ export class PropertyValueService {
 				: null;
 			const result = boundResult
 				? boundResult.rows
-				: strict
-					? await this.storageService.queryStrict<PropertyValueRow>(query)
-					: await this.storageService.query<PropertyValueRow>(query);
+				: signal
+					? strict
+						? await this.storageService.queryStrict<PropertyValueRow>(query, { signal })
+						: await this.storageService.query<PropertyValueRow>(query, { signal })
+					: strict
+						? await this.storageService.queryStrict<PropertyValueRow>(query)
+						: await this.storageService.query<PropertyValueRow>(query);
 
 			// Admit neither rows nor empty-result invalidations after routing changed.
 			if (capture) this.assertReadSourceCurrent(capture);
