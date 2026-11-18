@@ -296,20 +296,25 @@ export class PropertyValueService {
 					}
 					return { changed: false, state: null };
 				}
-				// A replay proves the value, not its age. Load the stored state first so an unchanged
-				// replayed value keeps its existing timestamp instead of looking freshly reported.
-				if (!live && !this.valuesMap.has(key)) {
+				// Cold cache (first sample for this property since start): reconcile with the stored state
+				// before replacing it. A replay proves the value, not its age, so an unchanged replayed
+				// value keeps its stored timestamp. A sample older than the stored observation (a timed
+				// replay of an outdated retained message, for example) must not replace it, live or not.
+				if (!this.valuesMap.has(key)) {
+					let stored: PropertyValueState | null = null;
 					try {
-						// Strict: a failed lookup is not a confirmed miss. Without the stored timestamp the
-						// replay would be persisted at its arrival time, so skip it and let a later
-						// replay or report retry.
-						await this.readLatestInternal(property, true);
+						stored = (await this.readLatestInternal(property, true)).state;
 					} catch {
-						return { changed: false, state: null };
+						// Strict: a failed lookup is not a confirmed miss. A non-live replay would be
+						// persisted at its arrival time, so skip it and let a later replay or report retry.
+						// A live report is still admitted.
+						if (!live) return { changed: false, state: null };
 					}
-					// The lookup awaited storage; the replay may have lost its authority meanwhile.
+					// The lookup awaited storage; the sample may have lost its authority meanwhile.
 					if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
 						return { changed: false, state: null };
+					const storedAt = stored?.lastUpdated == null ? NaN : Date.parse(stored.lastUpdated);
+					if (Number.isFinite(storedAt) && sampledAt < storedAt) return { changed: false, state: null };
 				}
 				const result = await this.writeInternal(
 					property,

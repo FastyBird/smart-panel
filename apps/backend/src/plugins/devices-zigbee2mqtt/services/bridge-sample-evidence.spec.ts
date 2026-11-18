@@ -313,6 +313,24 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		expect((await values.readLatest(property))?.lastUpdated).toBe(new Date(lastSeen).toISOString());
 	});
 
+	it('never lets an older timed replay replace a newer stored observation after a restart', async () => {
+		const storedAt = base - 5 * 60_000;
+		storage.queryStrict.mockResolvedValueOnce([
+			{ time: new Date(storedAt).toISOString(), numberValue: 22, propertyId: property.id },
+		]);
+		adapter.feed('ambient', { temperature: 21.5, last_seen: new Date(base - 20 * 60_000).toISOString() }, true);
+		await pending;
+		expect(await values.readLatest(property)).toMatchObject({
+			value: 22,
+			lastUpdated: new Date(storedAt).toISOString(),
+		});
+		expect(values.readQualifiedSample(property, 60 * 60_000)).toBeNull();
+		// A replay newer than the stored observation is accepted with its own age.
+		adapter.feed('ambient', { temperature: 21.5, last_seen: new Date(base - 60_000).toISOString() }, true);
+		await pending;
+		expect(values.readQualifiedSample(property, 60 * 60_000)?.sampledAt.getTime()).toBe(base - 60_000);
+	});
+
 	it('times a replay by arrival, never epoch 0, and does not renew an unchanged replayed value', async () => {
 		await sample(25);
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
