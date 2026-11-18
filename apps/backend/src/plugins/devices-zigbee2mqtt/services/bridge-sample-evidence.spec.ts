@@ -578,4 +578,38 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		expect(windows.hasRecovery(property.id)).toBe(false);
 		expect((await values.readLatest(property))?.value).toBe(22);
 	});
+
+	it('keeps a pending rollback intact through replays: recovery restores the baseline over the optimistic state', async () => {
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(20);
+		const baseline = await values.readLatest(property);
+		const handle = windows.open({
+			canonicalTarget: { deviceId: 'device', channelId: 'channel', propertyId: property.id },
+			requestedTargets: [],
+			commandedValue: 23,
+			previousValue: 20,
+			ttlMs: 3_000,
+		});
+		await values.write(property, 23);
+		const optimisticState = await values.readLatest(property);
+		expect(windows.attachPatchReceipt(handle, { baseline, optimisticState })).toBe(true);
+		jest.advanceTimersByTime(3_001);
+		windows.expire(property.id);
+		expect(windows.hasRecovery(property.id)).toBe(true);
+		// A valid replay and one that fails only the command step: neither touches the optimistic state.
+		property.step = 0.5;
+		adapter.feed('ambient', { temperature: 21, last_seen: new Date().toISOString() }, true);
+		await pending;
+		adapter.feed('ambient', { temperature: 21.3, last_seen: new Date().toISOString() }, true);
+		await pending;
+		expect((await values.readLatest(property))?.value).toBe(23);
+		expect(windows.hasRecovery(property.id)).toBe(true);
+		// Strict storage is outside this fixture: the rollback itself is the value service's contract.
+		const rollback = jest
+			.spyOn(values, 'writeStrictIfPersistedDifferent')
+			.mockResolvedValue({ changed: true, state: new PropertyValueState(20, new Date().toISOString()) });
+		await (reports as unknown as { recoverExpiredCommandWindows(): Promise<void> }).recoverExpiredCommandWindows();
+		expect(rollback).toHaveBeenCalledWith(expect.objectContaining({ id: property.id }), 20, optimisticState);
+		expect(windows.hasRecovery(property.id)).toBe(false);
+	});
 });

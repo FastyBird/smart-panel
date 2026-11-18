@@ -90,10 +90,13 @@ a heuristic, not a guarantee. A cached state that reaches Smart Panel after that
 large network, a slow bridge start, or a delayed connection) is treated as a new report, so that
 value counts as fresh although the device did not report it.
 
-Enabling `last_seen` avoids this for every message that carries a valid one, because the value then
-has its real age. Smart Panel ignores a `last_seen` that is missing, invalid, zero (a device
-Zigbee2MQTT has never heard from) or more than a minute ahead of its own clock; such messages fall
-back to the heuristic above. Keep the clocks of both machines synchronised (NTP).
+Enabling `last_seen` avoids this for every message that carries a valid one, because the value is
+then timed by the device's report instead of its arrival. That age is only as accurate as the
+Zigbee2MQTT host's clock. A `last_seen` slightly ahead of Smart Panel's clock (up to a minute) is
+treated as the arrival time, so with a gateway clock running ahead an older value can look fresh.
+Smart Panel ignores a `last_seen` that is missing, invalid, zero (a device Zigbee2MQTT has never
+heard from) or more than a minute ahead; such messages fall back to the heuristic above. Keep the
+clocks of both machines synchronised (NTP).
 
 If you cannot enable `last_seen` and want to reduce the risk:
 
