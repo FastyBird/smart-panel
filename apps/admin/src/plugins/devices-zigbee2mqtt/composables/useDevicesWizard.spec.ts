@@ -1,8 +1,11 @@
+import { computed, ref } from 'vue';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IWizardActionControl, IWizardBannerControl, IWizardProgressControl } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from '../devices-zigbee2mqtt.constants';
+import type { IZ2mBridgeHint } from '../utils/bridge-settings';
 import type { ApiWizardSession } from '../utils/wizard.transformers';
 
 import { useDevicesWizard } from './useDevicesWizard';
@@ -12,6 +15,19 @@ const backendClient = {
 	POST: vi.fn(),
 	DELETE: vi.fn(),
 };
+
+// The bridge settings fetch is its own composable: stubbed so the wizard's own backend calls stay exact.
+const bridgeHints = ref<IZ2mBridgeHint[]>([]);
+const fetchBridgeStatus = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('./useBridgeStatus', () => ({
+	useBridgeStatus: () => ({
+		status: ref(null),
+		hints: computed(() => bridgeHints.value),
+		loading: ref(false),
+		fetchStatus: fetchBridgeStatus,
+	}),
+}));
 
 const flashMessage = {
 	error: vi.fn(),
@@ -99,6 +115,7 @@ describe('useDevicesWizard', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.clearAllMocks();
+		bridgeHints.value = [];
 	});
 
 	afterEach(() => {
@@ -238,6 +255,35 @@ describe('useDevicesWizard', () => {
 		expect(banner.link?.to).toEqual({ name: 'config_module-config_plugin_edit', params: { plugin: 'devices-zigbee2mqtt-plugin' } });
 		// Pairing is impossible while the bridge is down, so no pairing controls are offered.
 		expect(adapter.controls.value.some((control) => control.type === 'action')).toBe(false);
+	});
+
+	it('shows bridge settings recommendations above the pairing controls while the bridge is online', async () => {
+		bridgeHints.value = [
+			{ id: 'lastSeen', severity: 'warning' },
+			{ id: 'retain', severity: 'info' },
+		];
+		backendClient.POST.mockResolvedValue({
+			data: { data: wizardSession },
+			response: { status: 200 },
+		});
+
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		expect(fetchBridgeStatus).toHaveBeenCalledTimes(1);
+		expect(adapter.controls.value.map((control) => control.id).slice(0, 2)).toEqual(['bridge-settings-lastSeen', 'bridge-settings-retain']);
+
+		const banner = findControl<IWizardBannerControl>(adapter.controls.value, 'bridge-settings-lastSeen');
+
+		expect(banner).toMatchObject({
+			type: 'banner',
+			severity: 'warning',
+			title: 'devicesZigbee2mqttPlugin.bridgeSettings.hints.lastSeen.title',
+			message: 'devicesZigbee2mqttPlugin.bridgeSettings.hints.lastSeen.message',
+		});
+		expect(banner.link?.to).toEqual({ name: 'config_module-config_plugin_edit', params: { plugin: 'devices-zigbee2mqtt-plugin' } });
+		expect(findControl<IWizardActionControl>(adapter.controls.value, 'permit-join').type).toBe('action');
 	});
 
 	it('offers no controls before the session is ready so the offline banner never flashes', () => {

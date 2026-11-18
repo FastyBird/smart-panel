@@ -1,5 +1,6 @@
 export * from './useDeviceAddForm';
 export * from './useDeviceAddFormMultiStep';
+export * from './useBridgeStatus';
 export * from './useDeviceAdoption';
 export * from './useDeviceEditForm';
 export * from './useDevicesWizard';

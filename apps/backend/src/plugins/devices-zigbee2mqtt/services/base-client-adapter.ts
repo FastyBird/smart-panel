@@ -10,6 +10,7 @@ import {
 import {
 	Z2mAdapterCallbacks,
 	Z2mBridgeEvent,
+	Z2mBridgeSettings,
 	Z2mBridgeState,
 	Z2mDevice,
 	Z2mDeviceAvailability,
@@ -83,6 +84,8 @@ export abstract class Z2mBaseClientAdapter {
 		Map<string, { sourceTime: Date | null; ieeeAddress: string | null; receivedAt: Date }>
 	>();
 	private lastSeenWarningLogged = false;
+	/** Freshness-related bridge settings from the last `bridge/info` of the connected bridge. */
+	private bridgeSettings: Z2mBridgeSettings | null = null;
 	private readonly sourceIdentities = new Map<string, ZigbeeSourceIdentity>();
 	private connectedState = false;
 	private bridgeOnlineState = false;
@@ -98,6 +101,8 @@ export abstract class Z2mBaseClientAdapter {
 		this.connectedState = value;
 		if (!value) {
 			this.sourceIdentities.clear();
+			// A reconnect may reach a different bridge: its settings arrive with its own bridge/info.
+			this.bridgeSettings = null;
 			this.callbacks.onSourceRegistryUnavailable?.();
 		}
 	}
@@ -157,6 +162,11 @@ export abstract class Z2mBaseClientAdapter {
 	 */
 	isBridgeOnline(): boolean {
 		return this.bridgeOnline;
+	}
+
+	/** Freshness-related settings of the connected bridge, or null before its `bridge/info` arrives. */
+	getBridgeSettings(): Z2mBridgeSettings | null {
+		return this.connected ? this.bridgeSettings : null;
 	}
 
 	getMeasurementReadiness(): { requiredProof: string; reasons: readonly string[] } {
@@ -491,8 +501,25 @@ export abstract class Z2mBaseClientAdapter {
 				let cacheState: boolean | null = null;
 				try {
 					const info = JSON.parse(message) as {
-						config?: { advanced?: { cache_state?: unknown; last_seen?: unknown } };
+						config?: {
+							advanced?: { cache_state?: unknown; cache_state_send_on_startup?: unknown; last_seen?: unknown };
+							device_options?: { retain?: unknown };
+							mqtt?: { force_disable_retain?: unknown };
+						};
 					};
+					// A display hint for the admin, never qualification evidence: a retained copy is accepted.
+					const config = info?.config;
+					if (this.connected && config && typeof config === 'object') {
+						const advanced = config.advanced ?? {};
+						this.bridgeSettings = Object.freeze({
+							lastSeen: typeof advanced.last_seen === 'string' ? advanced.last_seen : null,
+							cacheState: typeof advanced.cache_state === 'boolean' ? advanced.cache_state : null,
+							cacheStateSendOnStartup:
+								typeof advanced.cache_state_send_on_startup === 'boolean' ? advanced.cache_state_send_on_startup : null,
+							retain: config.mqtt?.force_disable_retain !== true && config.device_options?.retain === true,
+							receivedAt: new Date().toISOString(),
+						});
+					}
 					const value = info?.config?.advanced?.cache_state;
 					if (this.connected && !isRetained && typeof value === 'boolean') cacheState = value;
 					const lastSeen = info?.config?.advanced?.last_seen;
@@ -814,6 +841,7 @@ export abstract class Z2mBaseClientAdapter {
 	protected resetState(): void {
 		this.sourceGeneration++;
 		this.setCacheState(null);
+		this.bridgeSettings = null;
 		this.connected = false;
 		this.bridgeOnline = false;
 		this.deviceRegistry.clear();

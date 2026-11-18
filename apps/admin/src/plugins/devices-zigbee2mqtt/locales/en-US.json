@@ -332,5 +332,31 @@
 		"selection": {
 			"description": "Zigbee devices through your Zigbee2MQTT bridge."
 		}
+	},
+	"bridgeSettings": {
+		"title": "Bridge settings for fresh values",
+		"refresh": "Refresh",
+		"unavailable": {
+			"title": "Bridge settings not available yet",
+			"message": "They appear once the bridge is online and has reported its configuration. This section refreshes on its own."
+		},
+		"openConfig": "Open configuration",
+		"learnMore": "How these settings affect value freshness",
+		"ready": {
+			"title": "Bridge is set up for fresh values",
+			"message": "Zigbee2MQTT reports when each device last sent a message, so values keep their real age after a restart."
+		},
+		"hints": {
+			"lastSeen": {
+				"title": "Enable last_seen in Zigbee2MQTT",
+				"message": "Without it, values replayed after a Smart Panel or bridge restart have no known age. Sleeping battery devices then stay unusable for virtual devices and automations until they report again.",
+				"config": "advanced:\n  last_seen: ISO_8601"
+			},
+			"retain": {
+				"title": "Consider enabling retained states in Zigbee2MQTT",
+				"message": "With retained states, Smart Panel receives each device's last state as soon as it connects, even while Zigbee2MQTT keeps running. Without them, a sleeping device's state is known only after it next reports. Also make sure mqtt.force_disable_retain is not enabled, because it turns retained states off.",
+				"config": "device_options:\n  retain: true\nmqtt:\n  force_disable_retain: false"
+			}
+		}
 	}
 }

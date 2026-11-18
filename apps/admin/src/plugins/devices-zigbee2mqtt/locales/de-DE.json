@@ -332,5 +332,31 @@
 		"selection": {
 			"description": "Zigbee-Geräte über Ihre Zigbee2MQTT-Bridge."
 		}
+	},
+	"bridgeSettings": {
+		"title": "Bridge-Einstellungen für aktuelle Werte",
+		"refresh": "Aktualisieren",
+		"unavailable": {
+			"title": "Bridge-Einstellungen noch nicht verfügbar",
+			"message": "Sie erscheinen, sobald die Bridge online ist und ihre Konfiguration gemeldet hat. Dieser Bereich aktualisiert sich selbst."
+		},
+		"openConfig": "Konfiguration öffnen",
+		"learnMore": "Wie diese Einstellungen die Aktualität der Werte beeinflussen",
+		"ready": {
+			"title": "Bridge ist für aktuelle Werte eingerichtet",
+			"message": "Zigbee2MQTT meldet, wann jedes Gerät zuletzt eine Nachricht gesendet hat, sodass Werte nach einem Neustart ihr tatsächliches Alter behalten."
+		},
+		"hints": {
+			"lastSeen": {
+				"title": "last_seen in Zigbee2MQTT aktivieren",
+				"message": "Ohne diese Einstellung haben Werte, die nach einem Neustart von Smart Panel oder der Bridge erneut gesendet werden, kein bekanntes Alter. Schlafende Batteriegeräte bleiben dann für virtuelle Geräte und Automationen unbrauchbar, bis sie sich wieder melden.",
+				"config": "advanced:\n  last_seen: ISO_8601"
+			},
+			"retain": {
+				"title": "Gespeicherte Zustände (retain) in Zigbee2MQTT erwägen",
+				"message": "Mit gespeicherten Zuständen erhält Smart Panel den letzten Zustand jedes Geräts direkt beim Verbinden, auch während Zigbee2MQTT weiterläuft. Ohne sie ist der Zustand eines schlafenden Geräts erst nach seiner nächsten Meldung bekannt. Stelle außerdem sicher, dass mqtt.force_disable_retain nicht aktiviert ist, da es gespeicherte Zustände abschaltet.",
+				"config": "device_options:\n  retain: true\nmqtt:\n  force_disable_retain: false"
+			}
+		}
 	}
 }

@@ -68,6 +68,41 @@ describe('Zigbee live device report contract', () => {
 		jest.useRealTimers();
 	});
 
+	it('keeps only the freshness-related bridge settings from bridge/info, with retain off when force-disabled', async () => {
+		expect(adapter.getBridgeSettings()).toBeNull();
+		adapter.feed('bridge/info', {
+			config: {
+				advanced: { last_seen: 'ISO_8601', cache_state: true, cache_state_send_on_startup: false, network_key: [1] },
+				device_options: { retain: true },
+				mqtt: { password: 'secret' },
+			},
+		});
+		expect(adapter.getBridgeSettings()).toEqual({
+			lastSeen: 'ISO_8601',
+			cacheState: true,
+			cacheStateSendOnStartup: false,
+			retain: true,
+			receivedAt: new Date(base).toISOString(),
+		});
+		adapter.feed('bridge/info', {
+			config: {
+				advanced: { last_seen: 'disable' },
+				device_options: { retain: true },
+				mqtt: { force_disable_retain: true },
+			},
+		});
+		expect(adapter.getBridgeSettings()).toMatchObject({
+			lastSeen: 'disable',
+			cacheState: null,
+			cacheStateSendOnStartup: null,
+			retain: false,
+		});
+		// A reconnect may reach another bridge: its settings arrive with its own bridge/info.
+		await adapter.disconnect();
+		await adapter.connect();
+		expect(adapter.getBridgeSettings()).toBeNull();
+	});
+
 	it('treats device states inside the startup replay window as replays, not live reports', () => {
 		adapter.feed('ambient', { temperature: 25 });
 		expect(lastMetadata()).toMatchObject({

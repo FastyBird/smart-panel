@@ -417,6 +417,10 @@
 
 		<hr />
 
+		<zigbee2mqtt-bridge-settings />
+
+		<hr />
+
 		<el-alert
 			type="info"
 			:title="t('devicesZigbee2mqttPlugin.headings.aboutDiscovery')"
@@ -472,6 +476,7 @@ import {
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IZigbee2mqttConfigEditForm } from '../schemas/config.types';
 
+import Zigbee2mqttBridgeSettings from './zigbee2mqtt-bridge-settings.vue';
 import type { IZigbee2mqttConfigFormProps } from './zigbee2mqtt-config-form.types';
 
 defineOptions({

@@ -23,6 +23,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { Zigbee2mqttBridgeController } from './controllers/zigbee2mqtt-bridge.controller';
 import { Zigbee2mqttDiscoveredDevicesController } from './controllers/zigbee2mqtt-discovered-devices.controller';
 import { Zigbee2mqttWizardController } from './controllers/zigbee2mqtt-wizard.controller';
 import {
@@ -101,7 +102,7 @@ import { ZigbeeSampleSourcesService } from './services/zigbee-sample-sources.ser
 		ZigbeeNativeClimateAdapterService,
 		Zigbee2mqttService,
 	],
-	controllers: [Zigbee2mqttDiscoveredDevicesController, Zigbee2mqttWizardController],
+	controllers: [Zigbee2mqttBridgeController, Zigbee2mqttDiscoveredDevicesController, Zigbee2mqttWizardController],
 })
 export class DevicesZigbee2mqttPlugin {
 	constructor(

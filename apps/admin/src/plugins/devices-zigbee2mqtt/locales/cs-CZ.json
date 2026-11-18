@@ -332,5 +332,31 @@
 		"selection": {
 			"description": "Zařízení Zigbee připojená přes vaši bránu Zigbee2MQTT."
 		}
+	},
+	"bridgeSettings": {
+		"title": "Nastavení bridge pro aktuální hodnoty",
+		"refresh": "Obnovit",
+		"unavailable": {
+			"title": "Nastavení bridge zatím nejsou k dispozici",
+			"message": "Zobrazí se, jakmile bude bridge online a nahlásí svou konfiguraci. Tato sekce se obnovuje sama."
+		},
+		"openConfig": "Otevřít konfiguraci",
+		"learnMore": "Jak tato nastavení ovlivňují aktuálnost hodnot",
+		"ready": {
+			"title": "Bridge je nastaven pro aktuální hodnoty",
+			"message": "Zigbee2MQTT hlásí, kdy každé zařízení naposledy poslalo zprávu, takže hodnoty si po restartu zachovají skutečné stáří."
+		},
+		"hints": {
+			"lastSeen": {
+				"title": "Zapněte last_seen v Zigbee2MQTT",
+				"message": "Bez něj nemají hodnoty přehrané po restartu Smart Panelu nebo bridge známé stáří. Spící bateriová zařízení pak nelze použít ve virtuálních zařízeních a automatizacích, dokud se znovu neohlásí.",
+				"config": "advanced:\n  last_seen: ISO_8601"
+			},
+			"retain": {
+				"title": "Zvažte zapnutí uchovávaných stavů (retain) v Zigbee2MQTT",
+				"message": "S uchovávanými stavy Smart Panel dostane poslední stav každého zařízení hned po připojení, i když Zigbee2MQTT běží dál. Bez nich je stav spícího zařízení známý až po jeho dalším hlášení. Zkontrolujte také, že není zapnuté mqtt.force_disable_retain, které uchovávané stavy vypíná.",
+				"config": "device_options:\n  retain: true\nmqtt:\n  force_disable_retain: false"
+			}
+		}
 	}
 }

@@ -37,6 +37,7 @@ import {
 	transformWizardSessionResponse,
 } from '../utils/wizard.transformers';
 
+import { useBridgeStatus } from './useBridgeStatus';
 import { useFriendlyNameHumanizer } from './useFriendlyNameHumanizer';
 
 export const isAdoptableStatus = (status: IZ2mWizardDevice['status']): boolean => status === 'ready' || status === 'already_registered';
@@ -56,6 +57,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const logger = useLogger();
 	const flashMessage = useFlashMessage();
 	const { humanize } = useFriendlyNameHumanizer();
+	const bridgeStatus = useBridgeStatus();
 
 	const session = ref<IZ2mWizardSession | null>(null);
 	const formResult = ref<FormResultType>(FormResult.NONE);
@@ -214,6 +216,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	};
 
 	const startSession = async (): Promise<void> => {
+		// Recommendations only: the wizard works the same without them.
+		void bridgeStatus.fetchStatus();
 		formResult.value = FormResult.WORKING;
 		sessionGeneration += 1;
 		const startGeneration = sessionGeneration;
@@ -447,7 +451,21 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			];
 		}
 
+		// Settings that keep adopted devices' values usable by virtual devices and automations.
+		const bridgeHints: IWizardControl[] = bridgeStatus.hints.value.map((hint) => ({
+			type: 'banner',
+			id: `bridge-settings-${hint.id}`,
+			severity: hint.severity,
+			title: t(`devicesZigbee2mqttPlugin.bridgeSettings.hints.${hint.id}.title`),
+			message: t(`devicesZigbee2mqttPlugin.bridgeSettings.hints.${hint.id}.message`),
+			link: {
+				label: t('devicesZigbee2mqttPlugin.bridgeSettings.openConfig'),
+				to: { name: ConfigRouteNames.CONFIG_PLUGIN_EDIT, params: { plugin: DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } },
+			},
+		}));
+
 		return [
+			...bridgeHints,
 			{
 				type: 'progress',
 				id: 'pairing',

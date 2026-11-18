@@ -19,6 +19,7 @@ import {
 } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import {
+	Z2mBridgeSettings,
 	Z2mDevice,
 	Z2mDeviceStateMetadata,
 	Z2mMqttConfig,
@@ -238,6 +239,15 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 	 */
 	isBridgeOnline(): boolean {
 		return this.activeAdapter.isBridgeOnline();
+	}
+
+	/** Freshness-related settings the connected bridge reported, or null before it has. */
+	getBridgeSettings(): Z2mBridgeSettings | null {
+		return this.activeAdapter.getBridgeSettings();
+	}
+
+	getConnectionType(): 'mqtt' | 'ws' {
+		return this.config.connectionType === 'ws' ? 'ws' : 'mqtt';
 	}
 
 	/**
