@@ -1324,10 +1324,11 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 		if (!validation.valid || validation.value === undefined) {
 			// A valid measurement that fails only the command step is still a replay to hold while its
-			// command is pending; invalid measurements keep the fault path below.
+			// command is pending or being recovered; invalid measurements keep the fault path below.
 			if (
 				evidence?.replay === true &&
-				this.propertyCommandWindowService.get(canonicalPropertyId) !== null &&
+				(this.propertyCommandWindowService.get(canonicalPropertyId) !== null ||
+					this.propertyCommandWindowService.hasRecovery(canonicalPropertyId)) &&
 				validatePropertyCommandValue({ ...property, step: null }, value).valid
 			)
 				return { changed: false, state: null, held: true, forceValueEvent: false };

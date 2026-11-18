@@ -567,5 +567,11 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		await pending;
 		expect(windows.hasRecovery(property.id)).toBe(true);
 		expect((await values.readLatest(property))?.value).toBe(20);
+		// Also a replay whose value fails only the command step.
+		property.step = 0.5;
+		adapter.feed('ambient', { temperature: 21.3, last_seen: new Date().toISOString() }, true);
+		await pending;
+		expect(windows.hasRecovery(property.id)).toBe(true);
+		expect((await values.readLatest(property))?.value).toBe(20);
 	});
 });
