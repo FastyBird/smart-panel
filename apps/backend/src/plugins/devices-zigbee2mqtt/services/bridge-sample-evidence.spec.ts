@@ -573,5 +573,9 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		await pending;
 		expect(windows.hasRecovery(property.id)).toBe(true);
 		expect((await values.readLatest(property))?.value).toBe(20);
+		// The recovery then runs on the untouched state and applies the held report.
+		await (reports as unknown as { recoverExpiredCommandWindows(): Promise<void> }).recoverExpiredCommandWindows();
+		expect(windows.hasRecovery(property.id)).toBe(false);
+		expect((await values.readLatest(property))?.value).toBe(22);
 	});
 });

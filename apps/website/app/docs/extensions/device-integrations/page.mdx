@@ -83,21 +83,26 @@ device_options:
 
 Smart Panel logs a warning when it connects to a bridge that has `last_seen` disabled.
 
-Without `last_seen`, Smart Panel cannot tell a replayed state from a new report by its content. It
-treats messages as replays while Zigbee2MQTT is still publishing after it connects or the bridge comes
-online: until no message has arrived for 5 seconds, and at most for 60 seconds. A cached state that
-Zigbee2MQTT publishes after that (possible on a very large network or a slow bridge start) is treated
-as a new report, so that value counts as fresh although the device did not report it. With
-`last_seen` enabled this cannot happen, because every value carries its real age.
+Without a usable `last_seen`, Smart Panel cannot tell a replayed state from a new report by its
+content. It treats messages as replays while Zigbee2MQTT is still publishing after it connects or the
+bridge comes online: until no message has arrived for 5 seconds, and at most for 60 seconds. This is
+a heuristic, not a guarantee. A cached state that reaches Smart Panel after that (possible on a very
+large network, a slow bridge start, or a delayed connection) is treated as a new report, so that
+value counts as fresh although the device did not report it.
 
-If you cannot enable `last_seen` and need that guarantee:
+Enabling `last_seen` avoids this for every message that carries a valid one, because the value then
+has its real age. Smart Panel ignores a `last_seen` that is missing, invalid, zero (a device
+Zigbee2MQTT has never heard from) or more than a minute ahead of its own clock; such messages fall
+back to the heuristic above. Keep the clocks of both machines synchronised (NTP).
+
+If you cannot enable `last_seen` and want to reduce the risk:
 
 - **MQTT connection:** set `advanced.cache_state_send_on_startup: false`, so Zigbee2MQTT does not
   publish its cached states at startup.
 - **WebSocket connection:** the Zigbee2MQTT frontend sends a snapshot of all device states whenever
-  Smart Panel connects, regardless of that setting. The snapshot is sent at once on connection, so it
-  falls inside the window, but no setting turns it off. Use `last_seen` (or the MQTT connection) if
-  you need the guarantee.
+  Smart Panel connects, regardless of that setting, and no setting turns it off. It is sent right
+  after connecting, so it normally arrives inside the window, but a delayed delivery can still miss
+  it. Use `last_seen` (or the MQTT connection) if you need the stronger behaviour.
 
 <Callout>
 	A device that only reports on change and has no periodic reporting configured sends nothing while
