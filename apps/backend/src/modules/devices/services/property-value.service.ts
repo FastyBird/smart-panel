@@ -298,7 +298,19 @@ export class PropertyValueService {
 				}
 				// A replay proves the value, not its age. Load the stored state first so an unchanged
 				// replayed value keeps its existing timestamp instead of looking freshly reported.
-				if (!live && !this.valuesMap.has(key)) await this.readLatestInternal(property, false);
+				if (!live && !this.valuesMap.has(key)) {
+					try {
+						// Strict: a failed lookup is not a confirmed miss. Without the stored timestamp the
+						// replay would be persisted at its arrival time, so skip it and let a later
+						// replay or report retry.
+						await this.readLatestInternal(property, true);
+					} catch {
+						return { changed: false, state: null };
+					}
+					// The lookup awaited storage; the replay may have lost its authority meanwhile.
+					if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
+						return { changed: false, state: null };
+				}
 				const result = await this.writeInternal(
 					property,
 					key,
@@ -823,10 +835,11 @@ export class PropertyValueService {
 			if (ownedCurrent && !ownedCurrent()) return { changed: false, state: clonePropertyValueState(cached) };
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate.
 			// Freshness only moves forward; replays (refreshUnchangedTimestamp=false) never renew it.
-			const next = valueTimestamp ?? new Date();
+			// toISOString() also rejects an invalid timestamp (RangeError), as before.
+			const next = (valueTimestamp ?? new Date()).toISOString();
 			const previous = cached.lastUpdated === null ? NaN : Date.parse(cached.lastUpdated);
-			if (refreshUnchangedTimestamp && (!Number.isFinite(previous) || previous < next.getTime())) {
-				cached.lastUpdated = next.toISOString();
+			if (refreshUnchangedTimestamp && (!Number.isFinite(previous) || previous < Date.parse(next))) {
+				cached.lastUpdated = next;
 			}
 			this.bumpCacheVersion(key);
 			return { changed: false, state: cached };

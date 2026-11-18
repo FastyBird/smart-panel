@@ -13,8 +13,8 @@ describe('Zigbee frontend websocket sample evidence', () => {
 	const feed = (payload: unknown): void => send('ambient', payload);
 	const lastMetadata = (): Z2mDeviceStateMetadata => callback.mock.calls.at(-1)[2];
 	const passReplayWindow = (): void => {
-		now = new Date(now.getTime() + STARTUP_REPLAY_WINDOW_MS);
-		jest.setSystemTime(now);
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		now = new Date();
 	};
 	beforeEach(() => {
 		jest.useFakeTimers();
@@ -34,6 +34,7 @@ describe('Zigbee frontend websocket sample evidence', () => {
 	it('shows the connect snapshot without last_seen but does not count it as fresh', () => {
 		feed({ temperature: 25 });
 		expect(lastMetadata()).toMatchObject({
+			isReplay: true,
 			measurementFieldsAreLive: false,
 			qualificationReason: 'zigbee_startup_replay_window',
 		});

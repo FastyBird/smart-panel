@@ -57,8 +57,21 @@ export abstract class Z2mBaseClientAdapter {
 	}
 
 	private cacheState: boolean | null = null;
-	/** Device state messages before this instant may be Zigbee2MQTT's startup/connect cache replay. */
+	/**
+	 * Monotonic instant (performance.now()) before which device state messages may be Zigbee2MQTT's
+	 * startup/connect cache replay. Monotonic, so wall-clock corrections (NTP sync right after a
+	 * Raspberry Pi boots) cannot shorten or stretch the window.
+	 */
 	private liveReportsNotBefore = 0;
+	/**
+	 * Per-field evidence for the merged state cache, decided when the field's packet was received:
+	 * the packet's accepted source time (null when absent or rejected) and the device that sent it.
+	 * Replays reuse these decisions instead of re-deriving them at replay time.
+	 */
+	private readonly cachedFieldEvidence = new Map<
+		string,
+		Map<string, { sourceTime: Date | null; ieeeAddress: string | null }>
+	>();
 	private lastSeenWarningLogged = false;
 	private readonly sourceIdentities = new Map<string, ZigbeeSourceIdentity>();
 	private connectedState = false;
@@ -162,8 +175,9 @@ export abstract class Z2mBaseClientAdapter {
 		this.cacheState = value;
 	}
 
-	private openStartupReplayWindow(): void {
-		this.liveReportsNotBefore = Date.now() + STARTUP_REPLAY_WINDOW_MS;
+	/** Opened on connect and when the bridge comes online; protected so fixtures can control it. */
+	protected openStartupReplayWindow(durationMs = STARTUP_REPLAY_WINDOW_MS): void {
+		this.liveReportsNotBefore = performance.now() + durationMs;
 	}
 
 	private liveReportReason(
@@ -199,19 +213,23 @@ export abstract class Z2mBaseClientAdapter {
 		observedAt: Date,
 		isRetained: boolean,
 		options?: Pick<Z2mDeviceStateMetadata, 'isDup' | 'packetId' | 'isCached' | 'isCurrent'>,
+		decidedSourceTime?: Date | null,
 	): Z2mDeviceStateMetadata {
 		const generation = this.sourceGeneration;
 		const identity = this.sourceIdentities.get(friendlyName);
 		const online = this.connected && this.bridgeOnline;
 		const isCached = options?.isCached === true;
-		const afterReplayWindow = observedAt.getTime() >= this.liveReportsNotBefore;
-		const sourceTime = parseSourceTimestamp(state.last_seen, observedAt);
-		const isLive = online && (sourceTime !== null || (!isRetained && !isCached && afterReplayWindow));
+		const afterReplayWindow = performance.now() >= this.liveReportsNotBefore;
+		const sourceTime =
+			decidedSourceTime !== undefined ? decidedSourceTime : parseSourceTimestamp(state.last_seen, observedAt);
+		const isReplay = isRetained || isCached || !afterReplayWindow;
+		const isLive = online && (sourceTime !== null || !isReplay);
 
 		return {
 			observedAt,
 			isRetained,
 			isCached: options?.isCached,
+			isReplay,
 			...(sourceTime ? { sampledAt: sourceTime } : {}),
 			measurementFieldsAreLive: isLive,
 			sourceIdentity: identity ?? null,
@@ -236,16 +254,54 @@ export abstract class Z2mBaseClientAdapter {
 	}
 
 	/**
-	 * The merged state cached for a device, as a replay with its own sample evidence.
-	 * Used to process states that arrived before the device mapping was ready.
+	 * The merged state cached for a device, replayed with the evidence decided when each field was
+	 * received. Used to process states that arrived before the device mapping was ready.
+	 *
+	 * Fields are grouped by the source time of the packet that supplied them, so each value keeps its
+	 * own age. A field from a different physical device (a reused friendly name) is not replayed. A
+	 * field whose sender could not be identified is replayed for display only, without a source time.
 	 */
-	getCachedStateReplay(
-		friendlyName: string,
-	): { state: Record<string, unknown>; metadata: Z2mDeviceStateMetadata } | null {
+	getCachedStateReplays(friendlyName: string): { state: Record<string, unknown>; metadata: Z2mDeviceStateMetadata }[] {
 		const cached = this.stateCache.get(friendlyName);
-		if (!cached || Object.keys(cached).length === 0) return null;
-		const state = { ...cached };
-		return { state, metadata: this.buildStateMetadata(friendlyName, state, new Date(), false, { isCached: true }) };
+		if (!cached) return [];
+		const evidence = this.cachedFieldEvidence.get(friendlyName);
+		const currentIeee = this.sourceIdentities.get(friendlyName)?.ieeeAddress ?? null;
+		const groups = new Map<number | null, Record<string, unknown>>();
+		for (const [field, value] of Object.entries(cached)) {
+			const fieldEvidence = evidence?.get(field);
+			const sender = fieldEvidence?.ieeeAddress ?? null;
+			if (sender !== null && sender !== currentIeee) continue;
+			const sourceTime = sender !== null ? (fieldEvidence?.sourceTime ?? null) : null;
+			const key = sourceTime ? sourceTime.getTime() : null;
+			groups.set(key, { ...(groups.get(key) ?? {}), [field]: value });
+		}
+		const observedAt = new Date();
+		return [...groups.entries()]
+			.sort(([a], [b]) => (a ?? -Infinity) - (b ?? -Infinity))
+			.map(([time, state]) => ({
+				state,
+				metadata: this.buildStateMetadata(
+					friendlyName,
+					state,
+					observedAt,
+					false,
+					{ isCached: true },
+					time === null ? null : new Date(time),
+				),
+			}));
+	}
+
+	private recordCachedFieldEvidence(
+		friendlyName: string,
+		state: Record<string, unknown>,
+		metadata: Z2mDeviceStateMetadata,
+	): void {
+		const evidence =
+			this.cachedFieldEvidence.get(friendlyName) ??
+			new Map<string, { sourceTime: Date | null; ieeeAddress: string | null }>();
+		const entry = { sourceTime: metadata.sampledAt ?? null, ieeeAddress: metadata.sourceIdentity?.ieeeAddress ?? null };
+		for (const field of Object.keys(state)) evidence.set(field, entry);
+		this.cachedFieldEvidence.set(friendlyName, evidence);
 	}
 
 	/**
@@ -622,6 +678,7 @@ export abstract class Z2mBaseClientAdapter {
 			// ALWAYS store state in the global cache
 			const existingCachedState = this.stateCache.get(friendlyName) ?? {};
 			this.stateCache.set(friendlyName, { ...existingCachedState, ...state });
+			this.recordCachedFieldEvidence(friendlyName, state, metadata);
 
 			// Also update internal registry if device exists there
 			const device = this.deviceRegistry.get(friendlyName);
@@ -697,6 +754,7 @@ export abstract class Z2mBaseClientAdapter {
 		this.bridgeOnline = false;
 		this.deviceRegistry.clear();
 		this.stateCache.clear();
+		this.cachedFieldEvidence.clear();
 		this.nativeSamples.clear();
 		this.nativeEpochs.clear();
 		this.sourceIdentities.clear();

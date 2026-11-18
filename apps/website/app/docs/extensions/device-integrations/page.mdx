@@ -69,8 +69,8 @@ is available and falls back to safe defaults when it isn't:
 
 | Zigbee2MQTT setting | What it gives Smart Panel | Without it |
 |---|---|---|
-| `advanced.last_seen: ISO_8601` (**recommended**) | Every value is timed by the moment the device actually spoke. After a Smart Panel or bridge restart, values of sleeping battery devices are usable right away, with their real age. | Values replayed at startup are shown but stay non-fresh until each device reports again, which for battery sensors can take up to an hour. |
-| `device_options.retain: true` (MQTT connection) | The broker keeps each device's last state, so Smart Panel receives it as soon as it connects. Combined with `last_seen`, sleeping devices are fresh immediately. | When Smart Panel starts over MQTT, it learns the state of a sleeping device only when that device next reports. The WebSocket connection receives a snapshot either way. |
+| `advanced.last_seen: ISO_8601` (**recommended**) | Every value is timed by the moment the device actually spoke. After a Smart Panel or bridge restart, values of sleeping battery devices keep their real age, so they are usable right away as long as that age is within the freshness limit of the virtual device or automation using them. | Values replayed at startup are shown but stay non-fresh until each device reports again. How long that takes depends on when the device next sends a message. |
+| `device_options.retain: true` (MQTT connection) | The broker keeps each device's last state, so Smart Panel receives it as soon as it connects, even when Zigbee2MQTT was already running. Combined with `last_seen`, those values keep their real age. | If Smart Panel starts while Zigbee2MQTT is already running, it learns a sleeping device's state only when that device next reports. If Zigbee2MQTT starts while Smart Panel is connected, Zigbee2MQTT publishes its cached states itself (`cache_state_send_on_startup`), so retain is not needed for that case. The WebSocket connection receives a snapshot either way. |
 | `advanced.cache_state: false` | Per-value freshness: a value whose sensor stops reporting goes stale even if the device still reports other values, such as battery. | Freshness is per device. Leave `cache_state` enabled if other consumers of your bridge (for example Home Assistant) rely on full-state messages. |
 
 ```yaml
@@ -85,8 +85,10 @@ Smart Panel logs a warning when it connects to a bridge that has `last_seen` dis
 
 <Callout>
 	A device that only reports on change and has no periodic reporting configured sends nothing while
-	its value is stable, so its values will eventually be considered stale. Configure a periodic
-	reporting interval for the device in Zigbee2MQTT to keep it fresh.
+	its value is stable, so its values will eventually be considered stale. Where the device supports
+	it, configure periodic reporting in Zigbee2MQTT with a maximum interval shorter than the freshness
+	limit of the virtual device or automation using it. Some devices (for example the Xiaomi
+	WSDCGQ11LM) do not accept a reporting configuration and report on their own schedule.
 </Callout>
 
 ---

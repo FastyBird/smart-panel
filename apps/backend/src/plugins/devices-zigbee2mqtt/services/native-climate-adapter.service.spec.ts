@@ -25,6 +25,9 @@ class PacketAdapter extends Z2mBaseClientAdapter {
 		this.resetState();
 		return Promise.resolve();
 	}
+	reopenStartupReplayWindow(): void {
+		this.openStartupReplayWindow();
+	}
 	publishCommand(...args: Parameters<Z2mBaseClientAdapter['publishCommand']>): Promise<boolean> {
 		return this.send(...args);
 	}
@@ -104,7 +107,7 @@ describe('Zigbee native climate production profile', () => {
 		adapter.feed('bridge/state', { state: 'online' });
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
 		adapter.feed('bridge/devices', registry());
-		jest.setSystemTime(now);
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
 		device = Object.assign(new Zigbee2mqttDeviceEntity(), { id: 'device', identifier: 'trv', enabled: true });
 		service = new ZigbeeNativeClimateAdapterService(
 			{ getActiveAdapter: () => adapter } as unknown as Zigbee2mqttService,
@@ -232,6 +235,16 @@ describe('Zigbee native climate production profile', () => {
 		expect(observed.isCurrent()).toBe(true);
 		jest.advanceTimersByTime(75_001);
 		expect(observed.isCurrent()).toBe(false);
+	});
+
+	it('refuses a startup-window replay even when last_seen dates it recently', () => {
+		adapter.reopenStartupReplayWindow();
+		const recent = new Date(Date.now() - 1_000).toISOString();
+		adapter.feed('trv', { local_temperature: 20, last_seen: recent });
+		expect(unit.observe().available).toBe(false);
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		adapter.feed('trv', { local_temperature: 20, last_seen: new Date(Date.now() - 1_000).toISOString() });
+		expect(unit.observe()).toMatchObject({ available: true, temperature: 20 });
 	});
 
 	it('accepts cache-merged device reports but never upgrades stale source timestamps', () => {

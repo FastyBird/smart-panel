@@ -188,6 +188,13 @@ describe('Z2mDeviceMapperService', () => {
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 
+		it('should suppress occurrences on startup-window replays', async () => {
+			await service.updateDeviceState('sonoff-button', { action: 'single' }, { isReplay: true });
+
+			expect(channelInputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
 		it('should suppress occurrences on empty action reset messages', async () => {
 			await service.updateDeviceState('sonoff-button', { action: '' });
 			await service.updateDeviceState('sonoff-button', { action: '   ' });
@@ -589,7 +596,11 @@ describe('Z2mDeviceMapperService', () => {
 			{ isRetained: true, provenance: 'retained' },
 			{ isCached: true, provenance: 'cached' },
 		])('preserves replay source age and provenance, and never times a replay at epoch 0 %j', async (metadata) => {
-			await service.updateDeviceState('ambient', { temperature: 25, last_seen: '2026-10-12T10:00:00+02:00' }, metadata);
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25, last_seen: '2026-10-12T10:00:00+02:00' },
+				{ ...metadata, sampledAt: new Date('2026-10-12T08:00:00Z') },
+			);
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.anything(),
@@ -604,22 +615,30 @@ describe('Z2mDeviceMapperService', () => {
 			);
 		});
 
-		it('times a live report by last_seen, capping a gateway clock ahead of arrival', async () => {
+		it('times a sample only by the source time the adapter accepted, never by a raw last_seen', async () => {
 			const observedAt = new Date('2026-10-13T09:00:00Z');
+			const sampledAt = new Date('2026-10-13T08:59:58Z');
 			await service.updateDeviceState(
 				'ambient',
 				{ temperature: 25, last_seen: '2026-10-13T08:59:58Z' },
-				{ observedAt, measurementFieldsAreLive: true },
+				{ observedAt, sampledAt, measurementFieldsAreLive: true },
 			);
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.anything(),
-				expect.objectContaining({ sampledAt: new Date('2026-10-13T08:59:58Z') }),
+				expect.objectContaining({ sampledAt }),
+			);
+			// The adapter rejected this last_seen (epoch 0): the mapper must not parse it back.
+			await service.updateDeviceState('ambient', { temperature: 25, last_seen: 0 }, { observedAt });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: observedAt }),
 			);
 			await service.updateDeviceState(
 				'ambient',
-				{ temperature: 25, last_seen: '2026-10-13T09:00:03Z' },
-				{ observedAt, measurementFieldsAreLive: true },
+				{ temperature: 25 },
+				{ observedAt, sampledAt: new Date('2026-10-13T09:00:03Z') },
 			);
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
@@ -657,8 +676,10 @@ describe('Z2mDeviceMapperService', () => {
 				provenance: 'cached',
 				reason: 'zigbee_startup_replay_window',
 			});
+			channelsPropertiesService.reportSample.mockClear();
 			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
-			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(1);
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledWith(
 				'reading',
 				expect.anything(),
 				expect.objectContaining({ provenance: 'cached', sampledAt: observedAt }),

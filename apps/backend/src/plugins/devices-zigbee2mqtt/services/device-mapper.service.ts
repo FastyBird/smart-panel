@@ -465,7 +465,7 @@ export class Z2mDeviceMapperService {
 		metadata?: Z2mDeviceStateMetadata,
 	): Promise<void> {
 		// Suppress occurrences for retained startup messages or cached replays
-		if (metadata?.isRetained || metadata?.isCached) {
+		if (metadata?.isRetained || metadata?.isCached || metadata?.isReplay) {
 			return;
 		}
 
@@ -1489,24 +1489,18 @@ export class Z2mDeviceMapperService {
 		metadata: Z2mDeviceStateMetadata | undefined,
 		observedAt: Date,
 	): PropertySampleEvidence {
-		const timestamp = metadata?.sampledAt ?? state.last_seen;
-		const parsed =
-			timestamp instanceof Date
-				? new Date(timestamp)
-				: typeof timestamp === 'string' || typeof timestamp === 'number'
-					? new Date(timestamp)
-					: null;
 		// The adapter decides liveness: a fresh device report, or a replay timed by `last_seen`.
 		// Replay flags still suppress input occurrences (button actions) independently of this.
 		const provenance =
 			metadata?.measurementFieldsAreLive === true ? 'live' : metadata?.isRetained ? 'retained' : 'cached';
-		// Source time (last_seen) when usable, otherwise arrival time. A source time ahead of arrival is
-		// gateway clock skew and is capped. Replays (cached/retained) are timed the same way; the value
-		// service keeps the previous timestamp for an unchanged non-live value, so a replay never
-		// renews a value's age.
+		// The adapter is the only place that parses `last_seen` (parseSourceTimestamp), so a source time
+		// it rejected is never recovered here. Without one, the sample is timed by arrival. Replays are
+		// timed the same way; the value service keeps the previous timestamp for an unchanged non-live
+		// value, so a replay never renews a value's age.
+		const source = metadata?.sampledAt?.getTime();
 		const sampledAt =
-			parsed && Number.isFinite(parsed.getTime()) && parsed.getTime() <= observedAt.getTime()
-				? parsed
+			source !== undefined && Number.isFinite(source) && source > 0 && source <= observedAt.getTime()
+				? new Date(source)
 				: new Date(observedAt);
 		return {
 			sampledAt,

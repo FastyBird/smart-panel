@@ -53,7 +53,7 @@ describe('Zigbee live device report contract', () => {
 	const cacheMode = (cache_state: unknown): unknown => ({ config: { advanced: { cache_state } } });
 	const lastMetadata = (): Z2mDeviceStateMetadata => callback.mock.calls.at(-1)[2];
 	const passReplayWindow = (): void => {
-		jest.setSystemTime(Date.now() + STARTUP_REPLAY_WINDOW_MS);
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
 	};
 	beforeEach(async () => {
 		jest.useFakeTimers({ now: base });
@@ -107,7 +107,7 @@ describe('Zigbee live device report contract', () => {
 		expect(first.sourceIsCurrent()).toBe(true);
 	});
 
-	it('accepts replays timed by last_seen with their real age: retained, startup window and cached replay', () => {
+	it('accepts replays timed by last_seen with their real age: retained and startup window', () => {
 		const lastSeen = new Date(base - 20 * 60_000).toISOString();
 		adapter.feed('ambient', { temperature: 25, last_seen: lastSeen }, true);
 		expect(lastMetadata()).toMatchObject({
@@ -118,14 +118,26 @@ describe('Zigbee live device report contract', () => {
 		});
 		adapter.feed('ambient', { temperature: 25, last_seen: lastSeen });
 		expect(lastMetadata()).toMatchObject({ measurementFieldsAreLive: true, sampledAt: new Date(lastSeen) });
-		const replay = adapter.getCachedStateReplay('ambient');
-		expect(replay?.state).toEqual({ temperature: 25, last_seen: lastSeen });
-		expect(replay?.metadata).toMatchObject({
+		expect(lastMetadata()).toMatchObject({ isReplay: true, qualificationReason: 'zigbee_replay_timed_by_last_seen' });
+	});
+
+	it.each([0, '1970-01-01T00:00:00.000Z'])('treats a last_seen of epoch 0 (%p) as no source time', (lastSeen) => {
+		adapter.feed('ambient', { temperature: 25, last_seen: lastSeen });
+		expect(lastMetadata()).toMatchObject({ measurementFieldsAreLive: false, isReplay: true });
+		expect(lastMetadata().sampledAt).toBeUndefined();
+	});
+
+	it('replays cached state of an unidentified sender for display only, even with last_seen', () => {
+		adapter.feed('ambient', { temperature: 25, last_seen: new Date(base - 60_000).toISOString() });
+		const replays = adapter.getCachedStateReplays('ambient');
+		expect(replays).toHaveLength(1);
+		expect(replays[0].metadata).toMatchObject({
 			isCached: true,
-			measurementFieldsAreLive: true,
-			sampledAt: new Date(lastSeen),
+			isReplay: true,
+			measurementFieldsAreLive: false,
+			qualificationReason: 'zigbee_cached_replay_without_last_seen',
 		});
-		expect(replay?.metadata.sourceIsCurrent()).toBe(true);
+		expect(replays[0].metadata.sampledAt).toBeUndefined();
 	});
 
 	it('keeps replays without a trustworthy last_seen non-fresh, including our own cached replay', () => {
@@ -137,12 +149,12 @@ describe('Zigbee live device report contract', () => {
 		expect(lastMetadata().sampledAt).toBeUndefined();
 		adapter.feed('other', { temperature: 21 });
 		passReplayWindow();
-		expect(adapter.getCachedStateReplay('other')?.metadata).toMatchObject({
+		expect(adapter.getCachedStateReplays('other')[0].metadata).toMatchObject({
 			isCached: true,
 			measurementFieldsAreLive: false,
 			qualificationReason: 'zigbee_cached_replay_without_last_seen',
 		});
-		expect(adapter.getCachedStateReplay('unknown')).toBeNull();
+		expect(adapter.getCachedStateReplays('unknown')).toEqual([]);
 	});
 
 	it('time-stamps a live report by last_seen, and never makes a source-timed message live while offline', () => {
@@ -200,6 +212,10 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 	let reports: ChannelsPropertiesService;
 	let windows: PropertyCommandWindowService;
 	let pending: Promise<unknown>;
+	let storage: Record<
+		'isConnected' | 'writePoints' | 'enqueueWritePoint' | 'flushQueuedWrites' | 'query' | 'queryStrict',
+		jest.Mock
+	>;
 	const base = Date.parse('2026-10-13T10:00:00Z');
 	beforeEach(async () => {
 		jest.useFakeTimers({ now: base });
@@ -214,7 +230,7 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 			channel: 'channel',
 		});
 		const sources = new PropertyValueSourceRegistryService();
-		const storage = {
+		storage = {
 			isConnected: jest.fn(() => true),
 			writePoints: jest.fn().mockResolvedValue(undefined),
 			enqueueWritePoint: jest.fn().mockResolvedValue(undefined),
@@ -276,7 +292,7 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 
 	it('keeps a fresh age for an equal temperature confirmed by merged cache_state heartbeats', async () => {
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: true } } });
-		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS);
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
 		await sample(25);
 		expect(values.readQualifiedSample(property, 10_000)?.sampledAt.getTime()).toBe(base + STARTUP_REPLAY_WINDOW_MS);
 		// Hours later the sensor still reports the same value: the age keeps up with the reports.
@@ -311,9 +327,20 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		});
 	});
 
+	it('skips a cold-cache replay when the stored value cannot be looked up, instead of re-timing it', async () => {
+		storage.queryStrict.mockRejectedValueOnce(new Error('storage unavailable'));
+		await sample(25);
+		expect(storage.writePoints).not.toHaveBeenCalled();
+		expect(storage.enqueueWritePoint).not.toHaveBeenCalled();
+		expect(await values.readLatest(property)).toBeNull();
+		// A later replay retries the lookup.
+		await sample(25);
+		expect((await values.readLatest(property))?.value).toBe(25);
+	});
+
 	it('ignores fields absent from a cache_state=false report', async () => {
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
-		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS);
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
 		await sample(25);
 		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS + 1_000);
 		adapter.feed('ambient', { battery: 79 });
@@ -321,7 +348,7 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 	});
 
 	it('does not acknowledge an ordinary matching command from a retained replay; a device report confirms it', async () => {
-		jest.setSystemTime(base + STARTUP_REPLAY_WINDOW_MS);
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
 		await sample(20);
 		windows.open({
 			canonicalTarget: { deviceId: 'device', channelId: 'channel', propertyId: property.id },

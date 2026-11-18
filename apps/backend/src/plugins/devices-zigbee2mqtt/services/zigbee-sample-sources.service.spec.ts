@@ -35,7 +35,6 @@ import { resolvePropertyUnit } from '../../../modules/devices/utils/property-met
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { zigbeeSourceIdentity } from '../contracts/sample-source.contract';
-import { STARTUP_REPLAY_WINDOW_MS } from '../devices-zigbee2mqtt.constants';
 import { UpdateZigbee2mqttChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
 	Zigbee2mqttChannelEntity,
@@ -78,7 +77,12 @@ class FixtureAdapter extends Z2mBaseClientAdapter {
 	connect(): Promise<void> {
 		this.connected = true;
 		this.bridgeOnline = true;
+		// Test packets are device reports unless a test reopens the startup replay window.
+		this.openStartupReplayWindow(0);
 		return Promise.resolve();
+	}
+	reopenStartupReplayWindow(): void {
+		this.openStartupReplayWindow();
 	}
 	disconnect(): Promise<void> {
 		this.resetState();
@@ -112,8 +116,7 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 	let samplePending: Promise<void>;
 	let devices: { findOneBy: jest.Mock };
 	beforeEach(async () => {
-		// Connect one startup replay window before `base`, so test packets are device reports.
-		jest.useFakeTimers({ now: base - STARTUP_REPLAY_WINDOW_MS });
+		jest.useFakeTimers({ now: base });
 		database = await createSqliteDataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -228,7 +231,6 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 			},
 		});
 		await adapter.connect();
-		jest.setSystemTime(base);
 		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
 		adapter.feed('bridge/devices', [registry()]);
 		await registryPending;
@@ -340,6 +342,7 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		expect(values.readQualifiedSample(property, 10 * 60_000)).toBeNull();
 		jest.setSystemTime(base + 60_000);
 		await adapter.connect();
+		adapter.reopenStartupReplayWindow();
 		adapter.feed('bridge/devices', [registry()]);
 		await registryPending;
 		// Inside the startup replay window: without last_seen the age is unknown.
@@ -350,8 +353,33 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		await samplePending;
 		expect(values.readQualifiedSample(property, 10 * 60_000)).toMatchObject({ value: 26, sampledAt: lastSeen });
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
-		const replay = adapter.getCachedStateReplay('floor');
-		expect(replay?.metadata).toMatchObject({ isCached: true, measurementFieldsAreLive: true, sampledAt: lastSeen });
+		const replays = adapter.getCachedStateReplays('floor');
+		expect(replays).toHaveLength(1);
+		expect(replays[0].metadata).toMatchObject({ isCached: true, measurementFieldsAreLive: true, sampledAt: lastSeen });
+	});
+
+	it('replays each cached field with the age of the packet that supplied it', () => {
+		const older = new Date(base - 120_000);
+		const newer = new Date(base - 60_000);
+		adapter.feed('floor', { temperature: 25, last_seen: older.toISOString() });
+		adapter.feed('floor', { battery: 80, last_seen: newer.toISOString() });
+		const replays = adapter.getCachedStateReplays('floor');
+		expect(replays.map((replay) => [replay.state, replay.metadata.sampledAt])).toEqual([
+			[{ temperature: 25 }, older],
+			[{ battery: 80, last_seen: newer.toISOString() }, newer],
+		]);
+	});
+
+	it('never replays cached state from a previous device under a reused friendly name', async () => {
+		adapter.feed('floor', { temperature: 25, last_seen: new Date(base - 60_000).toISOString() });
+		expect(adapter.getCachedStateReplays('floor')).toHaveLength(1);
+		adapter.feed('bridge/devices', [registry(replacement)]);
+		await registryPending;
+		expect(adapter.getCachedStateReplays('floor')).toEqual([]);
+		adapter.feed('floor', { temperature: 19, last_seen: new Date(base - 1_000).toISOString() });
+		expect(adapter.getCachedStateReplays('floor').map((replay) => replay.state)).toEqual([
+			{ temperature: 19, last_seen: new Date(base - 1_000).toISOString() },
+		]);
 	});
 
 	it('revokes live qualification synchronously and fences a queued mapper when the name is reassigned', async () => {

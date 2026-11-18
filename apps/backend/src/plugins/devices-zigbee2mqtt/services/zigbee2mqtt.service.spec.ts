@@ -111,7 +111,7 @@ describe('Zigbee2mqttService', () => {
 		isBridgeOnline: jest.fn().mockReturnValue(false),
 		getRegisteredDevices: jest.fn().mockReturnValue([]),
 		getCachedState: jest.fn().mockReturnValue({}),
-		getCachedStateReplay: jest.fn().mockReturnValue(null),
+		getCachedStateReplays: jest.fn().mockReturnValue([]),
 		publishCommand: jest.fn().mockResolvedValue(true),
 		requestState: jest.fn().mockResolvedValue(true),
 		setPermitJoin: jest.fn().mockResolvedValue(true),

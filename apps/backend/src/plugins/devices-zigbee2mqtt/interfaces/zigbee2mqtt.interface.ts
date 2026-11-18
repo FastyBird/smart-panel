@@ -23,11 +23,18 @@ export interface Z2mDeviceStateMetadata {
 	/** Internal generation guard; never supplied through API DTOs. */
 	isCurrent?: () => boolean;
 	/**
-	 * The packet is a fresh report from the device itself (connected, bridge online, not retained,
-	 * not a startup replay). Freshness is device-level: with `cache_state: true` the payload also
-	 * carries merged cached fields, which are treated as confirmed unchanged by this report.
+	 * Evidence that the measurement fields are live, with `sampledAt` (or `observedAt`) as their time.
+	 * Not proof that the packet is a new device report: a replay timed by Zigbee2MQTT's `last_seen`
+	 * (an online retained packet, the startup snapshot, our cached replay) also sets it. Freshness is
+	 * device-level: with `cache_state: true` merged cached fields count as confirmed by the report.
+	 * Consumers that must reject replays check `isReplay`.
 	 */
 	measurementFieldsAreLive?: boolean;
+	/**
+	 * The packet replays earlier state rather than reporting something new: retained, our cached
+	 * replay, or inside the startup replay window. Replays never trigger input occurrences.
+	 */
+	isReplay?: boolean;
 	/** Stable connection/configuration authority, independent of individual packet arrival. */
 	sourceIsCurrent?: () => boolean;
 	sourceIdentity?: ZigbeeSourceIdentity | null;

@@ -11,9 +11,12 @@ describe('parseSourceTimestamp', () => {
 		expect(parseSourceTimestamp(raw, receivedAt)?.toISOString()).toBe(expected);
 	});
 
-	it.each([undefined, null, 'invalid', {}, true])('returns null for a missing or invalid value %p', (raw) => {
-		expect(parseSourceTimestamp(raw, receivedAt)).toBeNull();
-	});
+	it.each([undefined, null, 'invalid', {}, true, 0, -1, '1970-01-01T00:00:00Z'])(
+		'returns null for a missing, invalid, or epoch-0 value %p',
+		(raw) => {
+			expect(parseSourceTimestamp(raw, receivedAt)).toBeNull();
+		},
+	);
 
 	it('caps a small forward clock skew at the receive time and refuses a larger one', () => {
 		expect(parseSourceTimestamp('2026-10-13T12:00:05Z', receivedAt)).toEqual(receivedAt);
