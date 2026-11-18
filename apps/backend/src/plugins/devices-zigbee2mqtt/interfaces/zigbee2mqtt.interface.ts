@@ -7,6 +7,27 @@
 import type { ZigbeeSourceIdentity } from '../contracts/sample-source.contract';
 
 // =============================================================================
+// Bridge settings
+// =============================================================================
+
+/**
+ * The bridge settings that decide how fresh Zigbee values can be, as reported by the bridge itself
+ * (`bridge/info` config, which includes Zigbee2MQTT's defaults). Only these fields are kept.
+ */
+export interface Z2mBridgeSettings {
+	/** `advanced.last_seen`: `disable`, `ISO_8601`, `ISO_8601_local` or `epoch`; null when not reported */
+	readonly lastSeen: string | null;
+	/** `advanced.cache_state`; null when not reported */
+	readonly cacheState: boolean | null;
+	/** `advanced.cache_state_send_on_startup`; null when not reported */
+	readonly cacheStateSendOnStartup: boolean | null;
+	/** `device_options.retain`, false when `mqtt.force_disable_retain` is set */
+	readonly retain: boolean;
+	/** When Smart Panel received these settings */
+	readonly receivedAt: string;
+}
+
+// =============================================================================
 // MQTT Adapter Callbacks
 // =============================================================================
 

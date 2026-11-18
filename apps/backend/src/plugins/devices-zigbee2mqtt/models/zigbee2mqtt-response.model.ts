@@ -666,3 +666,102 @@ export class Z2mWizardAdoptionResponseModel extends BaseSuccessResponseModel<Z2m
 	@Expose()
 	declare data: Z2mWizardAdoptionModel;
 }
+
+// ============================================================================
+// Bridge status
+// ============================================================================
+
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginDataBridgeSettings' })
+export class Zigbee2mqttBridgeSettingsModel {
+	@ApiPropertyOptional({
+		name: 'last_seen',
+		description:
+			'Zigbee2MQTT `advanced.last_seen`: `disable`, `ISO_8601`, `ISO_8601_local` or `epoch`. Anything but ' +
+			'`disable` lets Smart Panel time every value by the device report.',
+		nullable: true,
+		example: 'ISO_8601',
+	})
+	@Expose({ name: 'last_seen' })
+	@IsString()
+	@IsOptional()
+	lastSeen: string | null;
+
+	@ApiPropertyOptional({
+		name: 'cache_state',
+		description: 'Zigbee2MQTT `advanced.cache_state`: whether every state message carries the full cached state',
+		nullable: true,
+		example: true,
+	})
+	@Expose({ name: 'cache_state' })
+	@IsBoolean()
+	@IsOptional()
+	cacheState: boolean | null;
+
+	@ApiPropertyOptional({
+		name: 'cache_state_send_on_startup',
+		description: 'Zigbee2MQTT `advanced.cache_state_send_on_startup`: whether cached states are published at startup',
+		nullable: true,
+		example: true,
+	})
+	@Expose({ name: 'cache_state_send_on_startup' })
+	@IsBoolean()
+	@IsOptional()
+	cacheStateSendOnStartup: boolean | null;
+
+	@ApiProperty({
+		description: 'Zigbee2MQTT `device_options.retain` (false when `mqtt.force_disable_retain` is set)',
+		example: false,
+	})
+	@Expose()
+	@IsBoolean()
+	retain: boolean;
+
+	@ApiProperty({
+		name: 'received_at',
+		description: 'When Smart Panel received these settings from the bridge',
+		format: 'date-time',
+		example: '2026-11-18T12:00:00.000Z',
+	})
+	@Expose({ name: 'received_at' })
+	@IsString()
+	receivedAt: string;
+}
+
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginDataBridgeStatus' })
+export class Zigbee2mqttBridgeStatusModel {
+	@ApiProperty({ description: 'Whether the Zigbee2MQTT bridge is currently online', example: true })
+	@Expose()
+	@IsBoolean()
+	online: boolean;
+
+	@ApiProperty({
+		name: 'connection_type',
+		description: 'How Smart Panel connects to the bridge',
+		enum: ['mqtt', 'ws'],
+		example: 'mqtt',
+	})
+	@Expose({ name: 'connection_type' })
+	@IsEnum(['mqtt', 'ws'])
+	connectionType: 'mqtt' | 'ws';
+
+	@ApiPropertyOptional({
+		description: 'Freshness-related bridge settings; null until the bridge has reported them',
+		type: () => Zigbee2mqttBridgeSettingsModel,
+		nullable: true,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => Zigbee2mqttBridgeSettingsModel)
+	@IsOptional()
+	settings: Zigbee2mqttBridgeSettingsModel | null;
+}
+
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginResBridgeStatus' })
+export class Zigbee2mqttBridgeStatusResponseModel extends BaseSuccessResponseModel<Zigbee2mqttBridgeStatusModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => Zigbee2mqttBridgeStatusModel,
+	})
+	@Expose()
+	declare data: Zigbee2mqttBridgeStatusModel;
+}

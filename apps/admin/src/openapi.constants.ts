@@ -268,6 +268,7 @@ export type DevicesWledPluginChannelPropertySchema = components['schemas']['Devi
 // Devices Zigbee2MQTT Plugin Schemas
 export type DevicesZigbee2mqttPluginUpdateConfigSchema = components['schemas']['DevicesZigbee2mqttPluginUpdateConfig'];
 export type DevicesZigbee2mqttPluginConfigSchema = components['schemas']['DevicesZigbee2mqttPluginDataConfig'];
+export type DevicesZigbee2mqttPluginBridgeStatusSchema = components['schemas']['DevicesZigbee2mqttPluginDataBridgeStatus'];
 export type DevicesZigbee2mqttPluginCreateDeviceSchema = components['schemas']['DevicesZigbee2mqttPluginCreateDevice'];
 export type DevicesZigbee2mqttPluginUpdateDeviceSchema = components['schemas']['DevicesZigbee2mqttPluginUpdateDevice'];
 export type DevicesZigbee2mqttPluginDeviceSchema = components['schemas']['DevicesZigbee2mqttPluginDataDevice'];
@@ -546,6 +547,7 @@ export type DevicesZigbee2mqttPluginDeleteWizardOperation = operations['delete-d
 export type DevicesZigbee2mqttPluginEnableWizardPermitJoinOperation = operations['enable-devices-zigbee2mqtt-plugin-wizard-permit-join'];
 export type DevicesZigbee2mqttPluginDisableWizardPermitJoinOperation = operations['disable-devices-zigbee2mqtt-plugin-wizard-permit-join'];
 export type DevicesZigbee2mqttPluginAdoptWizardOperation = operations['adopt-devices-zigbee2mqtt-plugin-wizard'];
+export type DevicesZigbee2mqttPluginGetBridgeOperation = operations['get-devices-zigbee2mqtt-plugin-bridge'];
 
 // Devices Home Assistant Plugin Operations
 export type DevicesHomeAssistantPluginGetDeviceOperation = operations['get-devices-home-assistant-plugin-device'];

@@ -332,5 +332,25 @@
 		"selection": {
 			"description": "Dispositivos Zigbee a través de su puente Zigbee2MQTT."
 		}
+	},
+	"bridgeSettings": {
+		"openConfig": "Abrir configuración",
+		"learnMore": "Cómo afectan estos ajustes a la actualidad de los valores",
+		"ready": {
+			"title": "El bridge está configurado para valores actualizados",
+			"message": "Zigbee2MQTT indica cuándo cada dispositivo envió su último mensaje, así que los valores conservan su antigüedad real tras un reinicio."
+		},
+		"hints": {
+			"lastSeen": {
+				"title": "Activa last_seen en Zigbee2MQTT",
+				"message": "Sin él, los valores reenviados tras reiniciar Smart Panel o el bridge no tienen una antigüedad conocida. Los dispositivos de batería en reposo no se pueden usar en dispositivos virtuales ni automatizaciones hasta que vuelvan a informar.",
+				"config": "advanced:\n  last_seen: ISO_8601"
+			},
+			"retain": {
+				"title": "Considera activar los estados retenidos (retain) en Zigbee2MQTT",
+				"message": "Con estados retenidos, Smart Panel recibe el último estado de cada dispositivo en cuanto se conecta, aunque Zigbee2MQTT siga en marcha. Sin ellos, el estado de un dispositivo en reposo solo se conoce cuando vuelve a informar.",
+				"config": "device_options:\n  retain: true"
+			}
+		}
 	}
 }

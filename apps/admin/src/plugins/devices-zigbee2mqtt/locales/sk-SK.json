@@ -332,5 +332,25 @@
 		"selection": {
 			"description": "Zariadenia Zigbee pripojené cez vašu bránu Zigbee2MQTT."
 		}
+	},
+	"bridgeSettings": {
+		"openConfig": "Otvoriť konfiguráciu",
+		"learnMore": "Ako tieto nastavenia ovplyvňujú aktuálnosť hodnôt",
+		"ready": {
+			"title": "Bridge je nastavený pre aktuálne hodnoty",
+			"message": "Zigbee2MQTT hlási, kedy každé zariadenie naposledy poslalo správu, takže hodnoty si po reštarte zachovajú skutočný vek."
+		},
+		"hints": {
+			"lastSeen": {
+				"title": "Zapnite last_seen v Zigbee2MQTT",
+				"message": "Bez neho nemajú hodnoty prehrané po reštarte Smart Panelu alebo bridge známy vek. Spiace batériové zariadenia potom nemožno použiť vo virtuálnych zariadeniach a automatizáciách, kým sa znova neohlásia.",
+				"config": "advanced:\n  last_seen: ISO_8601"
+			},
+			"retain": {
+				"title": "Zvážte zapnutie uchovávaných stavov (retain) v Zigbee2MQTT",
+				"message": "S uchovávanými stavmi Smart Panel dostane posledný stav každého zariadenia hneď po pripojení, aj keď Zigbee2MQTT beží ďalej. Bez nich je stav spiaceho zariadenia známy až po jeho ďalšom hlásení.",
+				"config": "device_options:\n  retain: true"
+			}
+		}
 	}
 }
