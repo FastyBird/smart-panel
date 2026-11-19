@@ -61,7 +61,6 @@
 				<el-button
 					v-if="enabledWizardOptions.length > 0"
 					type="primary"
-					class="px-4!"
 					@click="onWizard"
 				>
 					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
@@ -69,7 +68,7 @@
 				</el-button>
 				<el-button
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onDeviceCreate"
 				>
 					<template #icon>

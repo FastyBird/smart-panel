@@ -495,7 +495,7 @@ AU-0 … AU-27 are tracked as GitHub sub-issues of #1555.
 
 ## 13d. Admin UI Redesign (Epic)
 
-> [EPIC-ADMIN-UI-REDESIGN](epics/EPIC-ADMIN-UI-REDESIGN.md) — Status: :clipboard: Planned — GitHub #1657, milestone
+> [EPIC-ADMIN-UI-REDESIGN](epics/EPIC-ADMIN-UI-REDESIGN.md) — Status: :construction: In Progress — GitHub #1657, milestone
 > "Admin UI redesign"
 
 Move every admin screen and plugin form onto one design system: the approved theme, twelve shared wrappers plus two for
@@ -505,7 +505,7 @@ Protect epic, built on this epic's components.
 
 | #   | Phase                                                                                                    | Scope       | Status              |
 | --- | -------------------------------------------------------------------------------------------------------- | ----------- | ------------------- |
-| 1   | Theme and lint (AR-1, AR-2)                                                                              | admin, docs | :clipboard: Planned |
+| 1   | Theme and lint (AR-1, AR-2)                                                                              | admin, docs | :construction: In Progress |
 | 2   | Shell and shared components (AR-3 … AR-8)                                                                | admin       | :clipboard: Planned |
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :clipboard: Planned |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |

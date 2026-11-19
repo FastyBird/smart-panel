@@ -1,6 +1,6 @@
 # Admin UI design specification
 
-> **Status:** approved on 2026-11-19 after three design rounds. Implementation has not started; it is tracked in
+> **Status:** approved on 2026-11-19 after three design rounds. Implementation is in progress; it is tracked in
 > [`tasks/epics/EPIC-ADMIN-UI-REDESIGN.md`](../tasks/epics/EPIC-ADMIN-UI-REDESIGN.md).
 >
 > **Scope:** the Vue admin app (`apps/admin/`) and every admin plugin. The wall display app has its own spec,
@@ -13,8 +13,9 @@
 > [implementation handoff](https://claude.ai/artifact/FJwhyVns5dZmyqxECU7aWJ). This file is the repo copy of the
 > handoff and is authoritative when they differ.
 >
-> **Theme files:** [`admin-ui-theme/`](admin-ui-theme/) holds the approved `base.scss`, `dark.scss` and
-> `uno.theme.ts`. Phase 1 merges them into `apps/admin`; from then on the copies in `apps/admin` are the source.
+> **Theme files:** the approved theme lives in the admin app and is the source for every token:
+> [`base.scss`](../apps/admin/src/assets/styles/base.scss) and [`dark.scss`](../apps/admin/src/assets/styles/dark.scss)
+> in `apps/admin/src/assets/styles/`, and [`uno.theme.ts`](../apps/admin/uno.theme.ts) (used by `uno.config.ts`).
 
 ## How to use this spec
 
@@ -115,9 +116,11 @@ white text).
 
 ## 3. UnoCSS and lint
 
-UnoCSS has no palette of its own: `uno.theme.ts` points every theme colour at an Element Plus or `--fb-*` variable
+UnoCSS has no palette of its own: `apps/admin/uno.theme.ts` points every theme colour at an Element Plus or `--fb-*` variable
 and adds shortcuts for the semantic tokens, so utilities follow dark mode. The main text colour is `text-default`;
-`text-primary` stays the blue primary utility.
+`text-primary` stays the blue primary utility. The status text utilities (`text-primary`, `text-success`,
+`text-warning`, `text-danger`, `text-info`) resolve to the readable text shades (`--fb-primary-text`,
+`--fb-status-*-text`), because the base colours are for filled controls and fall below 4.5:1 as text in dark mode.
 
 | Replace | With |
 | --- | --- |
@@ -341,11 +344,10 @@ page right after.
 Four phases, each visible on its own, none breaking plugins mid-way. Progress is tracked in
 [`EPIC-ADMIN-UI-REDESIGN`](../tasks/epics/EPIC-ADMIN-UI-REDESIGN.md).
 
-1. **Theme and lint.** Merge the files from `admin-ui-theme/` into `apps/admin` (`src/assets/styles/base.scss`,
-   `src/assets/styles/dark.scss`, `uno.config.ts`); remove the 50 px button override and `px-4!`; set cards to
-   `shadow="never"`; replace the 11 `bg-primary/5` and `border-primary/20` uses; turn on the lint rules in warn mode;
-   delete `docs/admin-ui-theme/` and point every reference to it (this spec, the epic, the tree in `docs/readme.md`)
-   at the `apps/admin` files.
+1. **Theme and lint.** The approved theme is in `apps/admin` (`src/assets/styles/base.scss`,
+   `src/assets/styles/dark.scss`, and `uno.theme.ts` used by `uno.config.ts`); the 50 px button override and `px-4!`
+   on buttons are gone; cards are flat (`shadow="never"`); the 11 `bg-primary/5` and `border-primary/20` uses are
+   replaced. Then turn on the lint rules in warn mode.
 2. **Shell and shared components.** Build the twelve wrappers and the two plugin wrappers; regroup the sidebar; add
    the size-class shell (rail, tablet drawer); switch the phone app bar to the dark style; put `view-header` on
    every routed screen; global `size="large"` on touch.

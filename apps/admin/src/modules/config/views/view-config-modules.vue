@@ -8,7 +8,7 @@
 				<el-card
 					v-for="module in modules"
 					:key="String(module.type)"
-					shadow="hover"
+					shadow="never"
 					class="config-module-card"
 					body-class="p-4!"
 					@click="onModuleEdit(module.type)"

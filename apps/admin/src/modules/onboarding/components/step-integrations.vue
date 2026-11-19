@@ -17,13 +17,13 @@
 					v-for="integration in devicePlugins"
 					:key="integration.type"
 					class="rounded-lg border transition-all duration-300"
-					:class="integration.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+					:class="integration.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
 				>
 					<div class="flex items-center gap-4 p-3">
 						<el-icon
 							:size="32"
 							class="shrink-0"
-							:class="integration.enabled ? 'text-primary' : 'text-gray-400'"
+							:class="integration.enabled ? 'text-primary' : 'text-secondary'"
 						>
 							<icon :icon="getPluginIcon(integration.type)" />
 						</el-icon>
@@ -31,7 +31,7 @@
 							<div class="font-medium">{{ integration.name }}</div>
 							<div
 								v-if="integration.description"
-								class="text-xs text-gray-500 truncate"
+								class="text-xs text-secondary truncate"
 							>
 								{{ integration.description }}
 							</div>
@@ -47,7 +47,7 @@
 					<!-- Expanded section when enabled -->
 					<div
 						v-if="integration.enabled"
-						class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+						class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 					>
 						<div class="flex items-center gap-2 text-xs min-w-0">
 							<template v-if="isDiscovering(integration.type)">
@@ -57,11 +57,11 @@
 								>
 									<icon icon="mdi:loading" />
 								</el-icon>
-								<span class="text-gray-500">
+								<span class="text-secondary">
 									{{ t('onboardingModule.integrations.searching') }}
 									<span
 										v-if="getDiscoveryRemaining(integration.type) > 0"
-										class="text-gray-400 ml-1"
+										class="text-secondary ml-1"
 									>
 										({{ getDiscoveryRemaining(integration.type) }}s)
 									</span>
@@ -90,11 +90,11 @@
 							<template v-else-if="discoveryFinished(integration.type)">
 								<el-icon
 									:size="14"
-									class="text-gray-400"
+									class="text-secondary"
 								>
 									<icon icon="mdi:information-outline" />
 								</el-icon>
-								<span class="text-gray-500">
+								<span class="text-secondary">
 									{{
 										hasConfigForm(integration.type)
 											? t('onboardingModule.integrations.noDevicesYet')
@@ -109,7 +109,7 @@
 								>
 									<icon icon="mdi:power-plug-outline" />
 								</el-icon>
-								<span class="text-gray-500">
+								<span class="text-secondary">
 									{{ t('onboardingModule.integrations.enabled') }}
 								</span>
 							</template>
@@ -158,7 +158,7 @@
 
 				<div
 					v-if="devicePlugins.length === 0 && !isFetching"
-					class="text-center text-gray-400 py-4"
+					class="text-center text-secondary py-4"
 				>
 					{{ t('onboardingModule.integrations.noPlugins') }}
 				</div>
@@ -168,7 +168,7 @@
 		<!-- Summary bar -->
 		<div
 			v-if="enabledCount > 0"
-			class="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center gap-3"
+			class="mt-4 p-3 rounded-lg bg-primary-soft border border-primary-soft flex items-center gap-3"
 		>
 			<el-icon
 				:size="20"
@@ -176,7 +176,7 @@
 			>
 				<icon icon="mdi:check-decagram" />
 			</el-icon>
-			<span class="text-sm text-gray-600">
+			<span class="text-sm text-regular">
 				{{ t('onboardingModule.integrations.summary', { count: enabledCount }) }}
 			</span>
 			<span

@@ -65,7 +65,7 @@
 					:loading="remoteFormResult === FormResult.WORKING"
 					:disabled="remoteFormResult === FormResult.WORKING"
 					type="primary"
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onSave"
 				>
 					<template #icon>

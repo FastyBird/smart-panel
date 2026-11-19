@@ -71,7 +71,7 @@
 							v-for="provider in llmProviders"
 							:key="provider.type"
 							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
 						>
 							<div class="flex items-center gap-3 p-3">
 								<el-radio
@@ -88,7 +88,7 @@
 									<el-icon
 										:size="32"
 										class="shrink-0"
-										:class="provider.enabled ? 'text-primary' : 'text-gray-400'"
+										:class="provider.enabled ? 'text-primary' : 'text-secondary'"
 									>
 										<icon :icon="getPluginIcon(provider.type)" />
 									</el-icon>
@@ -104,7 +104,7 @@
 										</div>
 										<div
 											v-if="provider.description"
-											class="text-xs text-gray-500 truncate"
+											class="text-xs text-secondary truncate"
 										>
 											{{ provider.description }}
 										</div>
@@ -121,7 +121,7 @@
 							<!-- Expanded section when enabled -->
 							<div
 								v-if="provider.enabled"
-								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 							>
 								<div class="flex items-center gap-2 text-xs min-w-0">
 									<template v-if="provider.configured">
@@ -180,7 +180,7 @@
 							v-for="provider in ttsProviders"
 							:key="provider.type"
 							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
 						>
 							<div class="flex items-center gap-3 p-3">
 								<el-radio
@@ -197,7 +197,7 @@
 									<el-icon
 										:size="32"
 										class="shrink-0"
-										:class="provider.enabled ? 'text-primary' : 'text-gray-400'"
+										:class="provider.enabled ? 'text-primary' : 'text-secondary'"
 									>
 										<icon :icon="getPluginIcon(provider.type)" />
 									</el-icon>
@@ -205,7 +205,7 @@
 										<div class="font-medium">{{ provider.name }}</div>
 										<div
 											v-if="provider.description"
-											class="text-xs text-gray-500 truncate"
+											class="text-xs text-secondary truncate"
 										>
 											{{ provider.description }}
 										</div>
@@ -221,7 +221,7 @@
 
 							<div
 								v-if="provider.enabled"
-								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 							>
 								<div class="flex items-center gap-2 text-xs min-w-0">
 									<template v-if="provider.configured">
@@ -275,7 +275,7 @@
 							v-for="provider in sttProviders"
 							:key="provider.type"
 							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
 						>
 							<div class="flex items-center gap-3 p-3">
 								<el-radio
@@ -292,7 +292,7 @@
 									<el-icon
 										:size="32"
 										class="shrink-0"
-										:class="provider.enabled ? 'text-primary' : 'text-gray-400'"
+										:class="provider.enabled ? 'text-primary' : 'text-secondary'"
 									>
 										<icon :icon="getPluginIcon(provider.type)" />
 									</el-icon>
@@ -300,7 +300,7 @@
 										<div class="font-medium">{{ provider.name }}</div>
 										<div
 											v-if="provider.description"
-											class="text-xs text-gray-500 truncate"
+											class="text-xs text-secondary truncate"
 										>
 											{{ provider.description }}
 										</div>
@@ -316,7 +316,7 @@
 
 							<div
 								v-if="provider.enabled"
-								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 							>
 								<div class="flex items-center gap-2 text-xs min-w-0">
 									<template v-if="provider.configured">
@@ -371,7 +371,7 @@
 							v-for="provider in messagingProviders"
 							:key="provider.type"
 							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
 						>
 							<div class="flex items-center gap-3 p-3">
 								<el-radio
@@ -388,7 +388,7 @@
 									<el-icon
 										:size="32"
 										class="shrink-0"
-										:class="provider.enabled ? 'text-primary' : 'text-gray-400'"
+										:class="provider.enabled ? 'text-primary' : 'text-secondary'"
 									>
 										<icon :icon="getPluginIcon(provider.type)" />
 									</el-icon>
@@ -396,7 +396,7 @@
 										<div class="font-medium">{{ provider.name }}</div>
 										<div
 											v-if="provider.description"
-											class="text-xs text-gray-500 truncate"
+											class="text-xs text-secondary truncate"
 										>
 											{{ provider.description }}
 										</div>
@@ -412,7 +412,7 @@
 
 							<div
 								v-if="provider.enabled"
-								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 							>
 								<div class="flex items-center gap-2 text-xs min-w-0">
 									<template v-if="provider.configured">
@@ -497,15 +497,15 @@
 						</div>
 						<div
 							v-else
-							class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
+							class="flex items-center gap-3 p-3 rounded-lg bg-fill-light"
 						>
 							<el-icon
 								:size="20"
-								class="text-gray-400 shrink-0"
+								class="text-secondary shrink-0"
 							>
 								<icon icon="mdi:minus" />
 							</el-icon>
-							<span class="text-gray-400">{{ t('buddyModule.wizard.summaryLlmSkipped') }}</span>
+							<span class="text-secondary">{{ t('buddyModule.wizard.summaryLlmSkipped') }}</span>
 						</div>
 
 						<!-- Voice -->
@@ -523,15 +523,15 @@
 						</div>
 						<div
 							v-else-if="hasVoiceProviders"
-							class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
+							class="flex items-center gap-3 p-3 rounded-lg bg-fill-light"
 						>
 							<el-icon
 								:size="20"
-								class="text-gray-400 shrink-0"
+								class="text-secondary shrink-0"
 							>
 								<icon icon="mdi:minus" />
 							</el-icon>
-							<span class="text-gray-400">{{ t('buddyModule.wizard.summaryVoiceSkipped') }}</span>
+							<span class="text-secondary">{{ t('buddyModule.wizard.summaryVoiceSkipped') }}</span>
 						</div>
 
 						<!-- Messaging -->
@@ -549,15 +549,15 @@
 						</div>
 						<div
 							v-else-if="hasMessagingProviders"
-							class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
+							class="flex items-center gap-3 p-3 rounded-lg bg-fill-light"
 						>
 							<el-icon
 								:size="20"
-								class="text-gray-400 shrink-0"
+								class="text-secondary shrink-0"
 							>
 								<icon icon="mdi:minus" />
 							</el-icon>
-							<span class="text-gray-400">{{ t('buddyModule.wizard.summaryMessagingSkipped') }}</span>
+							<span class="text-secondary">{{ t('buddyModule.wizard.summaryMessagingSkipped') }}</span>
 						</div>
 					</div>
 				</div>

@@ -8,7 +8,6 @@
 			<el-button
 				type="danger"
 				plain
-				class="px-4!"
 				data-test-id="revoke-all-mcp-oauth"
 				@click="confirmGlobalRevoke"
 			>
@@ -21,7 +20,7 @@
 			<el-button
 				type="primary"
 				plain
-				class="px-4! ml-2!"
+				class="ml-2!"
 				data-test-id="create-mcp-oauth-client"
 				@click="openCreate"
 			>

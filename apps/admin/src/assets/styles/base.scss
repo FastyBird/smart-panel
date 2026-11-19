@@ -1,30 +1,77 @@
-$--colors: (
-	'primary': (
-		'base': #d9230f,
-	),
-	'success': (
-		'base': #469408,
-	),
-	'warning': (
-		'base': #d9831f,
-	),
-	'danger': (
-		'base': #db2828,
-	),
-	'error': (
-		'base': #db2828,
-	),
-	'info': (
-		'base': #029acf,
-	),
-);
+// FastyBird Smart Panel admin: light theme tokens and global component rules.
+// Spec: docs/admin-ui-design-spec.md (sections 1–3). Dark tokens live in ./dark.scss.
+// Buttons use the Element Plus 2.13.5 default padding; never add a horizontal padding override.
 
-@forward 'element-plus/theme-chalk/src/common/var' with (
-	$colors: $--colors,
-	$button-padding-horizontal: (
-		'default': 50px,
+@forward 'element-plus/theme-chalk/src/common/var.scss' with (
+	$colors: (
+		'white': #ffffff,
+		'black': #000000,
+		// actions, focus, switches. Brand red is NOT primary.
+		'primary': (
+				'base': #2563c9,
+			),
+		// white text 5.1:1
+		'success': (
+				'base': #2e7d32,
+			),
+		// white text 4.7:1
+		'warning': (
+				'base': #b25e00,
+			),
+		// white text 5.6:1
+		'danger': (
+				'base': #c62828,
+			),
+		'error': (
+			'base': #c62828,
+		),
+		// neutral grey-blue; blue belongs to primary
+		'info': (
+				'base': #5b6675,
+			),
 	),
-	// Break-point
+	$text-color: (
+		'primary': #1b1f26,
+		'regular': #343a45,
+		// 6.1:1 on white
+		'secondary': #5b6270,
+		// placeholder and disabled only, never content
+		'placeholder': #8b919b,
+		'disabled': #8b919b,
+	),
+	$bg-color: (
+		'': #ffffff,
+		// behind cards at every breakpoint, phone included
+		'page': #f3f4f6,
+		'overlay': #ffffff,
+	),
+	$border-color: (
+		'': #dcdfe5,
+		// cards, table rows
+		'light': #e8eaee,
+		'lighter': #eef0f3,
+		'extra-light': #f3f4f6,
+		'dark': #c9ced6,
+		'darker': #b4bac4,
+	),
+	$fill-color: (
+		// row hover, segmented track
+		'': #eceef1,
+		// table header, read-only values, code
+		'light': #f6f7f9,
+		'lighter': #fafbfc,
+		'extra-light': #fcfcfd,
+		'dark': #e4e7ec,
+		'darker': #dcdfe5,
+		'blank': #ffffff,
+	),
+	$border-radius: (
+		'base': 6px,
+		'small': 4px,
+		'round': 20px,
+		'circle': 100%,
+	),
+	// Element Plus grid breakpoints (el-col). Layout rules use the UnoCSS size classes instead.
 	$sm: 576px !default,
 	$md: 768px !default,
 	$lg: 992px !default,
@@ -43,14 +90,14 @@ $--colors: (
 }
 
 a {
-	color: var(--el-color-primary);
+	color: var(--fb-primary-text);
 }
 
 code {
 	border-radius: 2px;
 	padding: 2px 4px;
-	background-color: var(--el-color-primary-light-9);
-	color: var(--el-color-primary);
+	background-color: var(--el-fill-color-light);
+	color: var(--el-text-color-primary);
 }
 
 ::view-transition-old(root),
@@ -190,4 +237,106 @@ body {
 // so scrolling forms and collapse content cannot clip the outer edges.
 .el-radio-group:has(.el-radio-button) {
 	padding: 1px;
+}
+
+:root {
+	// Brand and shell
+	--fb-brand: #d9230f; // logo block, active nav marker, auth screens only
+	--fb-primary-text: var(--el-color-primary); // links, active tab label (dark mode lightens it)
+	--fb-text-muted: #6e7581; // captions, timestamps (4.7:1)
+	--fb-sidebar-bg: #1b1c1f; // desktop sidebar, phone app bar, phone menu drawer
+	--fb-sidebar-text: #a1a3aa;
+	--fb-sidebar-section: #82858d;
+	--fb-sidebar-active-bg: #2b2c31;
+	--fb-sidebar-active-text: #ffffff;
+
+	// Shape and elevation
+	--fb-radius-card: 8px;
+	--fb-radius-dialog: 12px;
+	--fb-shadow-sticky: 0 -4px 12px rgba(16, 24, 40, 0.06);
+	--fb-shadow-overlay: 0 6px 24px rgba(16, 24, 40, 0.12), 0 0 0 1px rgba(16, 24, 40, 0.04);
+
+	// Status: text, soft background, border (used by <status-tag>, alerts, graph nodes)
+	--fb-status-ok-text: #2e7d32;
+	--fb-status-ok-soft: #e8f3e9;
+	--fb-status-ok-border: #c5e1c7;
+	--fb-status-warn-text: #a35600;
+	--fb-status-warn-soft: #fdf1e2;
+	--fb-status-warn-border: #f3d3a8;
+	--fb-status-danger-text: #c62828;
+	--fb-status-danger-soft: #fbeaea;
+	--fb-status-danger-border: #f0bcbc;
+	--fb-status-info-text: #5b6675;
+	--fb-status-info-soft: #eef0f3;
+	--fb-status-info-border: #d6dae0;
+	--fb-status-primary-text: var(--fb-primary-text);
+	--fb-status-primary-soft: #e9f0fb;
+	--fb-status-primary-border: #c9d8f2;
+	// Critical severity = filled danger tag with white text (the only filled tag).
+
+	// Domain colours, shared with the wall display. Icon tiles only, never status.
+	--fb-domain-lights: #a35600;
+	--fb-domain-lights-soft: #fdf1e2;
+	--fb-domain-climate: #0277a8;
+	--fb-domain-climate-soft: #e3f2fa;
+	--fb-domain-covers: #00796b;
+	--fb-domain-covers-soft: #e0f2f1;
+	--fb-domain-media: #c2185b;
+	--fb-domain-media-soft: #fce4ec;
+	--fb-domain-sensors: #00838f;
+	--fb-domain-sensors-soft: #e0f7fa;
+	--fb-domain-energy: #2e7d32;
+	--fb-domain-energy-soft: #e8f3e9;
+	--fb-domain-cameras: #3949ab;
+	--fb-domain-cameras-soft: #e8eaf6; // admin-first; no display family yet
+}
+
+// Flat surfaces: cards never get a shadow; overlays do.
+.el-card {
+	--el-card-border-radius: var(--fb-radius-card);
+	--el-card-border-color: var(--el-border-color-light);
+	--el-card-padding: 16px;
+	box-shadow: none !important;
+}
+
+.el-dialog {
+	--el-dialog-border-radius: var(--fb-radius-dialog);
+	box-shadow: var(--fb-shadow-overlay);
+}
+
+.el-popover.el-popper,
+.el-dropdown__popper.el-popper,
+.el-select__popper.el-popper {
+	box-shadow: var(--fb-shadow-overlay);
+}
+
+// Primary links set the variable, so Element Plus's hover and disabled states still apply.
+.el-link.el-link--primary {
+	--el-link-text-color: var(--fb-primary-text);
+}
+
+.el-tabs__item.is-active {
+	color: var(--fb-primary-text);
+}
+
+// Interaction colours. Element Plus lightens on hover (filled hover = light-3, link-button hover = light-5,
+// link hover = light-3), which drops white-on-colour and colour-on-white below 4.5:1 with this palette.
+// Hover darkens instead, and pressed darkens further: Element Plus's dark-2 is a black mix in light mode but a
+// white mix in dark mode, which would drop white text to about 3.3:1. Plain, text and dashed buttons keep their
+// own variants. dark.scss overrides the text colours for dark surfaces.
+$fb-interaction-types: primary, success, warning, danger, info;
+
+@each $type in $fb-interaction-types {
+	.el-button--#{$type}:not(.is-plain):not(.is-text):not(.is-link):not(.is-dashed) {
+		--el-button-hover-bg-color: color-mix(in srgb, var(--el-color-#{$type}) 88%, black);
+		--el-button-hover-border-color: color-mix(in srgb, var(--el-color-#{$type}) 88%, black);
+		--el-button-active-bg-color: color-mix(in srgb, var(--el-color-#{$type}) 80%, black);
+		--el-button-active-border-color: color-mix(in srgb, var(--el-color-#{$type}) 80%, black);
+	}
+	.el-button--#{$type}.is-link {
+		--el-button-hover-link-text-color: var(--el-color-#{$type}-dark-2);
+	}
+	.el-link.el-link--#{$type} {
+		--el-link-hover-text-color: var(--el-color-#{$type}-dark-2);
+	}
 }

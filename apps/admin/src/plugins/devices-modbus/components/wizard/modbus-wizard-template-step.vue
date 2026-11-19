@@ -20,7 +20,7 @@
 		</div>
 
 		<el-card
-			shadow="hover"
+			shadow="never"
 			class="cursor-pointer"
 			:class="{ 'border-[var(--el-color-primary)]!': wizard.state.startedEmpty, 'opacity-50 pointer-events-none': wizard.applyingTemplate.value }"
 			role="button"
@@ -54,7 +54,7 @@
 			<el-card
 				v-for="template in templates"
 				:key="template.id"
-				shadow="hover"
+				shadow="never"
 				class="cursor-pointer"
 				role="button"
 				tabindex="0"

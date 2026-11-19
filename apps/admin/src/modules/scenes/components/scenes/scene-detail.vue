@@ -261,10 +261,10 @@ const formatDate = (date: Date): string => {
 
 <style scoped>
 .text-success {
-	color: var(--el-color-success);
+	color: var(--fb-status-ok-text);
 }
 
 .text-danger {
-	color: var(--el-color-danger);
+	color: var(--fb-status-danger-text);
 }
 </style>

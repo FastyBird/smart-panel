@@ -9,7 +9,6 @@ docs/
 ├── README.md                          # This file
 ├── admin-ui-design-spec.md            # Admin UI design system (authoritative for admin screens)
 ├── admin-ui-screens-and-plugins.md    # Current admin screens and plugin UI inventory
-├── admin-ui-theme/                    # Approved admin theme files, merged into apps/admin in phase 1
 ├── archive/                           # Superseded documents, kept for history
 ├── architecture.md                    # System architecture overview
 ├── automations-architecture.md        # Automations module: graph, engine, cards

@@ -5,7 +5,7 @@ Type: epic
 Scope: admin
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 Created: 2026-11-19
 GitHub: #1657 (milestone: Admin UI redesign)
 
@@ -20,7 +20,8 @@ I want every admin screen, including the newer ones and every plugin form, to fo
 - **Design spec (authoritative):** [`docs/admin-ui-design-spec.md`](../../docs/admin-ui-design-spec.md). It holds the
   tokens, UnoCSS rules, shared components, page templates, screen sizes, plugin slot contract, the cameras screens
   and the migration plan. Read it before any task in this epic.
-- **Theme files:** [`docs/admin-ui-theme/`](../../docs/admin-ui-theme/) (`base.scss`, `dark.scss`, `uno.theme.ts`),
+- **Theme files:** [`apps/admin/src/assets/styles/base.scss`](../../apps/admin/src/assets/styles/base.scss),
+  [`dark.scss`](../../apps/admin/src/assets/styles/dark.scss) and [`apps/admin/uno.theme.ts`](../../apps/admin/uno.theme.ts),
   approved after three design rounds and checked against Element Plus 2.13.5 and UnoCSS.
 - **Current-state inventory:** [`docs/admin-ui-screens-and-plugins.md`](../../docs/admin-ui-screens-and-plugins.md).
 - **Visual source:** the design canvas linked from the spec (about 170 boards: desktop, dark, tablet portrait,
@@ -69,7 +70,7 @@ dark, and updates all six locales.
 
 | ID | Issue | Phase | Task | Depends on | Status |
 |---|---|---|---|---|---|
-| AR-1 | #1658 | 1 | `feat(admin): adopt the redesign theme and UnoCSS tokens` | — | open |
+| AR-1 | #1658 | 1 | `feat(admin): adopt the redesign theme and UnoCSS tokens` | — | in review |
 | AR-2 | #1659 | 1 | `chore(admin): add the design system lint rules in warn mode` | AR-1 | open |
 | AR-3 | #1660 | 2 | `feat(admin): add state, status and data display components` | AR-1 | open |
 | AR-4 | #1661 | 2 | `feat(admin): add form footer, secret input and type picker components` | AR-1 | open |

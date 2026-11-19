@@ -22,7 +22,7 @@
 			<el-card
 				v-else
 				class="provider-card"
-				shadow="hover"
+				shadow="never"
 				header-class="py-2!"
 				body-class="py-3!"
 			>

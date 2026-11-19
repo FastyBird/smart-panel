@@ -56,7 +56,7 @@
 					<el-button
 						type="primary"
 						plain
-						class="px-4! ml-2!"
+						class="ml-2!"
 						:disabled="!canAddAnotherChannel"
 						@click="onChannelAdd"
 					>
@@ -68,7 +68,7 @@
 					</el-button>
 					<el-button
 						plain
-						class="px-4! ml-2!"
+						class="ml-2!"
 						@click="onDeviceEdit"
 					>
 						<template #icon>
@@ -77,7 +77,7 @@
 					</el-button>
 					<el-button
 						plain
-						class="px-4! ml-2!"
+						class="ml-2!"
 						@click="onDeviceControl"
 					>
 						<template #icon>
@@ -91,7 +91,7 @@
 					>
 						<el-button
 							plain
-							class="px-4! ml-2!"
+							class="ml-2!"
 						>
 							<template #icon>
 								<icon icon="mdi:cog" />

@@ -48,21 +48,18 @@
 				<el-button
 					v-if="currentStep === 2 && assignableZones.length > 0"
 					:type="showAdvancedZones ? 'primary' : 'default'"
-					class="px-4!"
 					@click="showAdvancedZones = !showAdvancedZones"
 				>
 					{{ showAdvancedZones ? t('spacesModule.wizard.basic') : t('spacesModule.wizard.advanced') }}
 				</el-button>
 				<el-button
 					link
-					class="px-4!"
 					@click="handleCancel"
 				>
 					{{ t('spacesModule.buttons.cancel.title') }}
 				</el-button>
 				<el-button
 					v-if="currentStep > 0"
-					class="px-4!"
 					@click="prevStep"
 				>
 					{{ t('spacesModule.buttons.previous.title') }}
@@ -70,7 +67,6 @@
 				<el-button
 					v-if="currentStep < 3"
 					type="primary"
-					class="px-4!"
 					@click="handleNext"
 				>
 					{{ t('spacesModule.buttons.next.title') }}
@@ -79,7 +75,6 @@
 					v-else
 					type="primary"
 					:loading="isLoading"
-					class="px-4!"
 					@click="handleFinish"
 				>
 					{{ t('spacesModule.buttons.finish.title') }}

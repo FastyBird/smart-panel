@@ -1,6 +1,6 @@
 <template>
 	<el-card
-		shadow="hover"
+		shadow="never"
 		class="space-domain-card"
 		body-class="p-4!"
 		@click="emit('click')"

@@ -6,7 +6,7 @@
 		<el-button
 			type="primary"
 			plain
-			class="px-4! ml-2!"
+			class="ml-2!"
 			@click="onAddDevice"
 		>
 			<template #icon>
@@ -19,7 +19,7 @@
 		<el-button
 			type="primary"
 			plain
-			class="px-4! ml-2!"
+			class="ml-2!"
 			@click="onAddScene"
 		>
 			<template #icon>
@@ -32,7 +32,7 @@
 		<el-button
 			type="primary"
 			plain
-			class="px-4! ml-2!"
+			class="ml-2!"
 			@click="onAddDisplay"
 		>
 			<template #icon>
@@ -44,7 +44,7 @@
 
 		<el-button
 			plain
-			class="px-4! ml-2!"
+			class="ml-2!"
 			data-test-id="edit-space"
 			@click="onSpaceEdit"
 		>

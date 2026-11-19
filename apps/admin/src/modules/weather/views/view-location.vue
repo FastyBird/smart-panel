@@ -59,7 +59,7 @@
 				<el-button
 					v-if="location"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onEdit"
 				>
 					<template #icon>
