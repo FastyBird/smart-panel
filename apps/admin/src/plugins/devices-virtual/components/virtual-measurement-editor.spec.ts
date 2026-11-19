@@ -448,7 +448,11 @@ describe('measurement editor dedicated quantity routing', () => {
 		await flushPromises();
 		expect(wrapper.find('[data-test-id="dew-point-editor"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('retained-rh');
-		expect(mocks.GET.mock.calls.map((call) => call[0])).toEqual(['/plugins/devices-virtual/producers/dew-points/{id}']);
+		// Only the dew point configuration is loaded; the sensor reporting guidance is advisory and fetched separately.
+		expect(mocks.GET.mock.calls.map((call) => call[0]).filter((path) => !path.includes('/source-reporting/'))).toEqual([
+			'/plugins/devices-virtual/producers/dew-points/{id}',
+		]);
+		expect(mocks.GET).toHaveBeenCalledWith('/plugins/devices-virtual/producers/source-reporting/{id}', { params: { path: { id: 't' } } });
 		wrapper.unmount();
 	});
 

@@ -407,9 +407,10 @@
 									:controls="false"
 								/>
 							</el-form-item>
-							<thermostat-source-reporting
-								:property="source.source_property"
+							<source-reporting
+								:properties="[source.source_property]"
 								:maximum-age-seconds="source.maximum_age_seconds"
+								:consequence="source.role"
 								@apply="source.maximum_age_seconds = $event"
 							/>
 							<div
@@ -919,9 +920,9 @@ import {
 	thermostatWizardSources,
 } from '../utils/thermostat-wizard-selection';
 
+import SourceReporting from './source-reporting.vue';
 import ThermostatMemberCard from './thermostat-member-card.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
-import ThermostatSourceReporting from './thermostat-source-reporting.vue';
 import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
 import VirtualPlacementFields from './virtual-placement-fields.vue';
 import VirtualThermostatComfort from './virtual-thermostat-comfort.vue';

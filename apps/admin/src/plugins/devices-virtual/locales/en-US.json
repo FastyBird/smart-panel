@@ -786,20 +786,7 @@
 			"closedValue": "Closed value (JSON literal or text)",
 			"addAmbient": "Add ambient",
 			"addFloor": "Add floor",
-			"addContact": "Add contact",
-			"reporting": {
-				"observed": "This sensor reports about every {typical} (longest gap {longest}).",
-				"fits": "The maximum age covers that.",
-				"unknown": {
-					"title": "Reporting interval not known yet",
-					"message": "Smart Panel has not seen enough reports from this sensor since it started. Battery radio sensors (Zigbee, Bluetooth) often report only every 30–60 minutes: set the maximum age a little longer than that, or come back later for a recommendation."
-				},
-				"tooShort": {
-					"title": "The maximum age is shorter than this sensor’s reporting interval",
-					"message": "Between reports the reading goes stale, and the thermostat stops heating or cooling until the next one arrives. A longer age keeps it working on a reading that can be up to that old.",
-					"apply": "Use {duration} ({seconds} s)"
-				}
-			}
+			"addContact": "Add contact"
 		},
 		"remove": "Remove",
 		"settings": {
@@ -935,6 +922,31 @@
 			"sourceRequired": "Choose an input source.",
 			"checking": "Checking…",
 			"notChecked": "Fix the highlighted settings, then check again."
+		}
+	},
+	"sourceReporting": {
+		"observed": "This sensor reports about every {typical} (longest gap {longest}).",
+		"observedSlowest": "The slowest of these sensors reports about every {typical} (longest gap {longest}).",
+		"fits": "The maximum age covers that.",
+		"unknown": {
+			"title": "Reporting interval not known yet",
+			"message": "Smart Panel has not seen enough reports from this sensor since it started. Battery radio sensors (Zigbee, Bluetooth) often report only every 30–60 minutes: set the maximum age a little longer than that, or come back later for a recommendation.",
+			"messageMany": "Smart Panel has not seen enough reports from some of these sensors since it started. Battery radio sensors (Zigbee, Bluetooth) often report only every 30–60 minutes: set the maximum age a little longer than that, or come back later for a recommendation."
+		},
+		"tooShort": {
+			"title": "The maximum age is shorter than this sensor’s reporting interval",
+			"titleMany": "The maximum age is shorter than the reporting interval of one of these sensors",
+			"message": "Between reports the reading goes stale. {consequence} A longer age keeps it usable, with a reading that can be up to that old.",
+			"apply": "Use {duration} ({seconds} s)"
+		},
+		"consequence": {
+			"ambient": "The thermostat stops heating and cooling until the next report arrives.",
+			"contact": "The window state counts as unknown, and the thermostat pauses until the next report arrives.",
+			"floor": "Heating is blocked until the next report arrives.",
+			"surface": "Cooling is blocked until the next report arrives.",
+			"aggregate": "The sensor is left out of the result, and the value becomes unavailable when fewer valid sources remain than the minimum.",
+			"converter": "The converted value is unavailable until the next report arrives.",
+			"dewPoint": "The dew point is unavailable until the next report arrives."
 		}
 	}
 }

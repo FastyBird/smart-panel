@@ -37,6 +37,7 @@ import { VirtualDevicesController } from './controllers/virtual-devices.controll
 import { VirtualDewPointConfigController } from './controllers/virtual-dew-point-config.controller';
 import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
+import { VirtualSourceReportingController } from './controllers/virtual-source-reporting.controller';
 import { VirtualThermostatAuthoringController } from './controllers/virtual-thermostat-authoring.controller';
 import { VirtualThermostatComfortController } from './controllers/virtual-thermostat-comfort.controller';
 import { VirtualThermostatConfigController } from './controllers/virtual-thermostat-config.controller';
@@ -121,6 +122,7 @@ import { VirtualNumericOperatorRegistry } from './services/virtual-numeric-opera
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
+import { VirtualSourceReportingService } from './services/virtual-source-reporting.service';
 import { VirtualThermostatAuthoringService } from './services/virtual-thermostat-authoring.service';
 import { VirtualThermostatAutomationService } from './services/virtual-thermostat-automation.service';
 import { VirtualThermostatClaimsService } from './services/virtual-thermostat-claims.service';
@@ -197,6 +199,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualThermostatConfigService,
 		VirtualThermostatComfortService,
 		VirtualThermostatAuthoringService,
+		VirtualSourceReportingService,
 		VirtualThermostatInputsService,
 		VirtualThermostatTransportService,
 		VirtualThermostatRuntimeService,
@@ -238,6 +241,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualThermostatComfortController,
 		VirtualThermostatAuthoringController,
 		VirtualMeasurementAuthoringController,
+		VirtualSourceReportingController,
 		VirtualTransformConfigController,
 		VirtualDevicesController,
 		VirtualProducerConfigController,

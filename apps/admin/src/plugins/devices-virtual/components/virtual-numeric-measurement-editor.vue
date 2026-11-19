@@ -361,6 +361,12 @@
 								/>
 							</el-form-item>
 						</div>
+						<source-reporting
+							:properties="model.inputs.map((input) => input.source_property)"
+							:maximum-age-seconds="model.maximumAgeSeconds"
+							:consequence="isTransform ? 'converter' : 'aggregate'"
+							@apply="model.maximumAgeSeconds = $event"
+						/>
 						<div
 							v-if="!isTransform && numericPolicy && model.aggregateOperator === AggregateOperator.weighted_mean"
 							class="grid grid-cols-1 sm:grid-cols-2 gap-x-4"
@@ -1015,6 +1021,7 @@ import {
 import { formatSourceSampleAge, sourceSampleAge } from '../utils/source-sample-age';
 import { transformDraftChecks } from '../utils/transform-draft-validation';
 
+import SourceReporting from './source-reporting.vue';
 import VirtualPlacementFields from './virtual-placement-fields.vue';
 import VirtualWizardCard from './virtual-wizard-card.vue';
 import VirtualWizardDescriptions from './virtual-wizard-descriptions.vue';

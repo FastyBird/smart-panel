@@ -83,6 +83,17 @@ than their reporting interval. The editor shows how often each selected sensor h
 started. It warns when the maximum age is shorter than the longest gap between reports, and offers a recommended
 value: the longest gap plus half of it, so one late report does not stop the thermostat.
 
+The same guidance appears wherever a virtual device has a maximum age: aggregate sensors, numeric converters, dew
+points, and a thermostat member's floor or cooled-surface probe. Aggregates, converters and dew points start with a
+maximum age of 60 seconds, which suits wired sensors but not radio ones. When one maximum age covers several sensors,
+as in an aggregate or a dew point, the advice follows the slowest of them. A stale source is left out of an
+aggregate, so the aggregate stays available while enough of its sources are fresh, but its value then comes from
+fewer sensors.
+
+A dew point also needs its temperature and humidity samples to be close in time (the **maximum skew**, 5 seconds by
+default). A combined temperature and humidity sensor sends both in one report, so it meets that. Two separate radio
+sensors report at unrelated times and would rarely do so; take both inputs from the same sensor.
+
 The trade-off is reaction time. With a maximum age of 90 minutes, the thermostat may act on a reading up to 90 minutes
 old, and it notices a sensor that stopped working only after that time. For a faster response, use a sensor that
 reports more often, or configure periodic reporting on the device where it supports it. For Zigbee2MQTT devices, see
