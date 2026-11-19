@@ -171,7 +171,8 @@ const concatenationParts = (node: unknown): ConcatPart[] => {
 const collectConcatenation = (node: TemplateNode, found: IClassToken[], owner: TemplateNode): void => {
 	const merged: ConcatPart[] = [];
 
-	for (const part of concatenationParts(node)) {
+	// Empty text (the quasis around `${x}`) does not touch anything, so it is left out
+	for (const part of concatenationParts(node).filter((item) => !('text' in item) || item.text !== '')) {
 		const previous = merged[merged.length - 1];
 
 		if ('text' in part && previous && 'text' in previous) {
@@ -282,7 +283,7 @@ const noGrayUtilities = classRule(
 	'Disallow gray-* utilities; use the theme text, fill and border shortcuts',
 	{ gray: '`{{token}}` uses the gray palette. Use a theme shortcut such as text-default, text-secondary, bg-fill or border-light.' },
 	// Classes with an exact replacement are reported by no-deprecated-classes instead
-	(token) => (GRAY_UTILITY.test(token) && !(bareClass(token) in DEPRECATED_CLASSES) ? { messageId: 'gray' } : null)
+	(token) => (GRAY_UTILITY.test(token) && !Object.hasOwn(DEPRECATED_CLASSES, bareClass(token)) ? { messageId: 'gray' } : null)
 );
 
 const noThemeOpacity = classRule(
@@ -295,7 +296,9 @@ const noDeprecatedClasses = classRule(
 	'Disallow the classes listed in DEPRECATED_CLASSES',
 	{ deprecated: '`{{token}}` is deprecated. Use `{{replacement}}`.' },
 	(token) => {
-		const replacement = DEPRECATED_CLASSES[bareClass(token)];
+		const name = bareClass(token);
+		// Own keys only: `constructor` or `toString` are classes, not inherited map entries
+		const replacement = Object.hasOwn(DEPRECATED_CLASSES, name) ? DEPRECATED_CLASSES[name] : undefined;
 
 		return replacement ? { messageId: 'deprecated', data: { replacement } } : null;
 	}
@@ -376,6 +379,38 @@ const styleRanges = (context: Rule.RuleContext): [number, number][] =>
 		.filter((child) => child.type === 'VElement' && child.name === 'style' && child.startTag && child.endTag)
 		.map((child) => [child.startTag!.range[1], child.endTag!.range[0]]);
 
+/** Block comments of a CSS block, skipping quoted strings (with escapes), so a quoted comment opener is not a comment */
+const cssCommentRanges = (text: string, start: number, end: number): [number, number][] => {
+	const ranges: [number, number][] = [];
+	let quote: string | null = null;
+
+	for (let index = start; index < end; index++) {
+		const char = text[index];
+
+		if (quote !== null) {
+			if (char === '\\') {
+				index++;
+			} else if (char === quote) {
+				quote = null;
+			}
+
+			continue;
+		}
+
+		if (char === '"' || char === "'") {
+			quote = char;
+		} else if (char === '/' && text[index + 1] === '*') {
+			const close = text.indexOf('*/', index + 2);
+			const stop = close === -1 || close + 2 > end ? end : close + 2;
+
+			ranges.push([index, stop]);
+			index = stop - 1;
+		}
+	}
+
+	return ranges;
+};
+
 /** Character ranges of comments: template comments and script comments from the parser, CSS comments in style blocks */
 const commentRanges = (context: Rule.RuleContext, text: string, styles: [number, number][]): [number, number][] => {
 	const ranges: [number, number][] = context.sourceCode.getAllComments().map((comment) => comment.range as [number, number]);
@@ -385,9 +420,7 @@ const commentRanges = (context: Rule.RuleContext, text: string, styles: [number,
 	}
 
 	for (const [start, end] of styles) {
-		for (const match of text.slice(start, end).matchAll(/\/\*[\s\S]*?\*\//g)) {
-			ranges.push([start + match.index, start + match.index + match[0].length]);
-		}
+		ranges.push(...cssCommentRanges(text, start, end));
 	}
 
 	return ranges;
@@ -421,7 +454,8 @@ const noHexColours: Rule.RuleModule = {
 				}
 
 				// In-page anchors (href="#add", to="#top") are not colours
-				if (/(?:href|to)=["']$/.test(before)) {
+				// Static or bound literal: href="#top", href = '#top', :href="'#top'", :to="`#top`"
+				if (/\b(?:href|to)\s*=\s*["'](?:\s*['"`])?$/.test(before)) {
 					continue;
 				}
 

@@ -40,7 +40,11 @@ describe('design system lint rules', () => {
 	});
 
 	tester.run('no-deprecated-classes', designSystemRules['no-deprecated-classes'], {
-		valid: [sfc('<div class="bg-brand text-secondary"></div>')],
+		valid: [
+			sfc('<div class="bg-brand text-secondary"></div>'),
+			// Inherited object members are not map entries
+			sfc('<div class="constructor toString __proto__ hasOwnProperty"></div>'),
+		],
 		invalid: [
 			{
 				...sfc('<div class="bg-brand-primary"></div>'),
@@ -72,6 +76,7 @@ describe('design system lint rules', () => {
 			sfc("<p :class=\"'text-primary' + '-soft'\"></p>"),
 			sfc('<p :class="\'text-\' + tone"></p>'),
 			sfc('<p :class="`text-${tone}`"></p>'),
+			sfc("<p :class=\"`${active ? 'text-default' : 'text-regular'}`\"></p>"),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
@@ -81,6 +86,8 @@ describe('design system lint rules', () => {
 			{ ...sfc("<p :class=\"'text-' + 'primary'\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"'text-sm ' + (on ? 'text-primary' : '') + ' ' + extra\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="`${size} text-primary`"></p>'), errors: [{ messageId: 'body' }] },
+			// A sole interpolation: the empty quasis around it do not touch its classes
+			{ ...sfc("<p :class=\"`${active ? 'text-primary' : 'text-default'}`\"></p>"), errors: [{ messageId: 'body' }] },
 		],
 	});
 
@@ -95,6 +102,9 @@ describe('design system lint rules', () => {
 	tester.run('no-hex-colors', designSystemRules['no-hex-colors'], {
 		valid: [
 			sfc('<a href="#add">Add</a>'),
+			sfc('<a href = "#abc">Up</a>'),
+			sfc('<a :href="\'#abc\'">Up</a>'),
+			sfc('<router-link :to="`#fade`">Up</router-link>'),
 			sfc('<div></div>', '<script setup lang="ts">\n// Fixes #1234\nconst id = 1;\n</script>'),
 			sfc('<div>See issue #123</div>'),
 			sfc('<div style="color: var(--el-color-danger)"></div>'),
@@ -110,6 +120,11 @@ describe('design system lint rules', () => {
 			// A universal selector is not a comment
 			{ ...sfc('<div></div>', '<style scoped>\n* { color: #fff; }\n</style>'), errors: [{ messageId: 'hex', line: 2 }] },
 			{ ...sfc('<div style="border: 1px solid #123"></div>'), errors: [{ messageId: 'hex' }] },
+			// Comment delimiters inside CSS strings are not comments
+			{
+				...sfc('<div></div>', '<style scoped>\n.x {\n\tcontent: "/*";\n\tcolor: #fff;\n\t--marker: "*/";\n}\n</style>'),
+				errors: [{ messageId: 'hex', line: 4 }],
+			},
 			// Comment markers inside script strings are not comments
 			{
 				...sfc('<div></div>', "<script setup lang=\"ts\">\nconst start = '<!--';\nconst colour = '#fff';\nconst end = '-->';\n</script>"),
