@@ -176,6 +176,24 @@ describe('useCameraSnapshot', () => {
 		wrapper.unmount();
 	});
 
+	it('keeps counting the age of the shown image while later refreshes fail', async () => {
+		getMock.mockResolvedValueOnce(blobResponse('3'));
+		getMock.mockResolvedValue(errorResponse(503, { message: 'Camera did not respond' }));
+
+		const { snapshot, wrapper } = mountHost('cam-1', { refreshMs: 5000 });
+		await flush();
+
+		expect(snapshot.ageSeconds.value).toBe(3);
+
+		await vi.advanceTimersByTimeAsync(10_000);
+
+		expect(snapshot.error.value).toBe('unavailable');
+		expect(snapshot.url.value).not.toBeNull();
+		expect(snapshot.ageSeconds.value).toBe(13);
+		wrapper.unmount();
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it('defaults the age to 0 when the header is absent', async () => {
 		getMock.mockResolvedValue(blobResponse());
 
@@ -356,8 +374,10 @@ describe('useCameraSnapshot', () => {
 		const { wrapper } = mountHost('cam-1', { refreshMs: null });
 		await flush();
 
-		expect(vi.getTimerCount()).toBe(0);
+		// Only the one second age clock of the shown image is left.
+		expect(vi.getTimerCount()).toBe(1);
 		wrapper.unmount();
+		expect(vi.getTimerCount()).toBe(0);
 	});
 
 	it('aborts the running request when the profile changes and loads the new profile', async () => {

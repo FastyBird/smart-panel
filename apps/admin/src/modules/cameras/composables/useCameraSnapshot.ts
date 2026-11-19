@@ -1,4 +1,4 @@
-import { type MaybeRefOrGetter, type Ref, onScopeDispose, ref, toValue, watch } from 'vue';
+import { type ComputedRef, type MaybeRefOrGetter, type Ref, computed, onScopeDispose, ref, toValue, watch } from 'vue';
 
 import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend } from '../../../common';
@@ -22,7 +22,8 @@ export interface IUseCameraSnapshotOptions {
 
 export interface IUseCameraSnapshot {
 	url: Ref<string | null>;
-	ageSeconds: Ref<number | null>;
+	/** The seconds since the shown image was taken; it keeps counting while later refreshes fail. */
+	ageSeconds: ComputedRef<number | null>;
 	takenAt: Ref<Date | null>;
 	/** The type of the current snapshot blob, such as `image/jpeg`. */
 	mimeType: Ref<string | null>;
@@ -61,8 +62,12 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	const backend = useBackend();
 
 	const url = ref<string | null>(null);
-	const ageSeconds = ref<number | null>(null);
 	const takenAt = ref<Date | null>(null);
+	/** The clock the age is measured against; it ticks once a second while an image is shown. */
+	const now = ref(Date.now());
+	const ageSeconds = computed<number | null>(() =>
+		takenAt.value === null ? null : Math.max(0, Math.floor((now.value - takenAt.value.getTime()) / 1000))
+	);
 	const mimeType = ref<string | null>(null);
 	const error = ref<CameraSnapshotError | null>(null);
 	const loading = ref(false);
@@ -71,6 +76,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	let requestId = 0;
 	let inFlight = false;
 	let timer: ReturnType<typeof setInterval> | null = null;
+	let clockTimer: ReturnType<typeof setInterval> | null = null;
 	let disposed = false;
 	/** Set by an answer that will not change on its own (no camera, module off); only another device or profile clears it. */
 	let halted = false;
@@ -156,8 +162,10 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 			revokeCurrent();
 			url.value = nextUrl;
 			mimeType.value = data.type || null;
-			ageSeconds.value = Number.isFinite(age) && age >= 0 ? age : 0;
-			takenAt.value = new Date(Date.now() - ageSeconds.value * 1000);
+			const loadedAt = Date.now();
+
+			now.value = loadedAt;
+			takenAt.value = new Date(loadedAt - (Number.isFinite(age) && age >= 0 ? age : 0) * 1000);
 			error.value = null;
 
 			return 'loaded';
@@ -211,6 +219,24 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 		}
 	}
 
+	const stopClock = (): void => {
+		if (clockTimer !== null) {
+			clearInterval(clockTimer);
+			clockTimer = null;
+		}
+	};
+
+	// The age only advances while an image is shown.
+	watch(url, (value) => {
+		stopClock();
+
+		if (value !== null && !disposed) {
+			clockTimer = setInterval((): void => {
+				now.value = Date.now();
+			}, 1000);
+		}
+	});
+
 	if (typeof document !== 'undefined') {
 		document.addEventListener('visibilitychange', onVisibilityChange);
 	}
@@ -222,7 +248,6 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 		() => {
 			abortRunning();
 			revokeCurrent();
-			ageSeconds.value = null;
 			takenAt.value = null;
 			mimeType.value = null;
 			error.value = null;
@@ -249,6 +274,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 		disposed = true;
 
 		stopTimer();
+		stopClock();
 
 		if (typeof document !== 'undefined') {
 			document.removeEventListener('visibilitychange', onVisibilityChange);
