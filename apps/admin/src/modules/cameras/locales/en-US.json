@@ -1,0 +1,11 @@
+{
+	"menu": {
+		"title": "Cameras"
+	},
+	"headings": {
+		"cameras": "Cameras"
+	},
+	"subHeadings": {
+		"cameras": "Live view and snapshots of every camera"
+	}
+}

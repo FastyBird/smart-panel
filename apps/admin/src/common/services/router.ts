@@ -3,10 +3,11 @@ import { createRouter, createWebHistory } from 'vue-router';
 import NProgress from 'nprogress';
 
 import { RouteNames } from '../../app.constants';
+import { resolveIngressBase } from '../utils/ingress.utils';
 
 // Detect HA ingress prefix for router base path
-const ingressMatch = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+)/);
-const routerBase = ingressMatch ? `${ingressMatch[1]}/` : '/';
+const ingressBase = resolveIngressBase(window.location.pathname);
+const routerBase = ingressBase ? `${ingressBase}/` : '/';
 
 export const router = createRouter({
 	history: createWebHistory(routerBase),

@@ -979,6 +979,9 @@ export type CamerasModuleReqCreateSessionSchema = components['schemas']['Cameras
 export type CamerasModuleStatusSchema = components['schemas']['CamerasModuleDataStatus'];
 export type CamerasModuleRelayStatusSchema = components['schemas']['CamerasModuleDataRelayStatus'];
 export type CamerasModuleSessionsStatusSchema = components['schemas']['CamerasModuleDataSessionsStatus'];
+export type CamerasModuleConfigSchema = components['schemas']['CamerasModuleDataConfig'];
+export type CamerasModuleUpdateConfigSchema = components['schemas']['CamerasModuleUpdateConfig'];
+export type CamerasModuleGo2rtcConfigSchema = components['schemas']['CamerasModuleDataGo2rtcConfig'];
 
 // Cameras Module Operations
 export type CamerasModuleGetCamerasOperation = operations['get-cameras-module-cameras'];
@@ -986,3 +989,12 @@ export type CamerasModuleGetCameraOperation = operations['get-cameras-module-cam
 export type CamerasModuleGetCameraSnapshotOperation = operations['get-cameras-module-camera-snapshot'];
 export type CamerasModuleCreateCameraSessionOperation = operations['create-cameras-module-camera-session'];
 export type CamerasModuleGetStatusOperation = operations['get-cameras-module-status'];
+
+// Cameras Module Enums
+// ====================
+export {
+	CamerasModuleCreateSessionTransport,
+	CamerasModuleDataGo2rtcConfigMode,
+	CamerasModuleDataRelayStatusState,
+	CamerasModuleDataRelayStatusReason,
+} from './openapi';
