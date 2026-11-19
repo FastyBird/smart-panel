@@ -4,7 +4,7 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 
 import { DevicesModuleDeviceConnectionStatus } from '../../../openapi.constants';
 import { devicesStoreKey } from '../../devices/store/keys';
-import { LIVE_CONNECT_TIMEOUT_MS, LIVE_RETRY_DELAYS_MS, LIVE_STABLE_AFTER_MS } from '../cameras.constants';
+import { LIVE_CONNECT_TIMEOUT_MS, LIVE_RETRY_DELAYS_MS, LIVE_SESSION_REQUEST_TIMEOUT_MS, LIVE_STABLE_AFTER_MS } from '../cameras.constants';
 import type { MseClientEvent, MseClientOptions } from '../live/mse-client';
 import { camerasStoreKey, relayStatusStoreKey } from '../store/keys';
 
@@ -675,6 +675,200 @@ describe('useLiveView', () => {
 		expect(postMock).toHaveBeenCalledTimes(2);
 		expect(postMock.mock.calls[1][1].body.data.profile).toBe('low');
 		expect(live.state.value).toBe('connecting');
+	});
+
+	it('fails a session request that does not settle in time as a retryable failure', async () => {
+		let signal!: AbortSignal;
+
+		postMock.mockImplementationOnce(
+			(_path: string, init: { signal: AbortSignal }) =>
+				new Promise((_resolve, reject) => {
+					signal = init.signal;
+					signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+				})
+		);
+		postMock.mockResolvedValue(sessionOk());
+
+		const live = mountLiveView();
+		live.start();
+		await flush();
+
+		await vi.advanceTimersByTimeAsync(LIVE_SESSION_REQUEST_TIMEOUT_MS - 1);
+		expect(live.state.value).toBe('requesting');
+		expect(signal.aborted).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(signal.aborted).toBe(true);
+		expect(live.state.value).toBe('error');
+		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[0]);
+		expect(mockLogger.warn).toHaveBeenCalledWith('Live view session request timed out.');
+
+		// The aborted request reports nothing more, and the backoff retries as usual.
+		await vi.advanceTimersByTimeAsync(LIVE_RETRY_DELAYS_MS[0]);
+		expect(postMock).toHaveBeenCalledTimes(2);
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it('bounds the relay status read that classifies a 503', async () => {
+		let resolveRelay!: (value: ReturnType<typeof relayStatusOf>) => void;
+
+		postMock.mockResolvedValue(failure(503, { message: 'Relay is not available' }));
+		relayStore.get.mockImplementationOnce(() => new Promise((resolve) => (resolveRelay = resolve)));
+
+		const live = mountLiveView();
+		live.start();
+		await flush();
+
+		expect(relayStore.get).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('requesting');
+
+		await vi.advanceTimersByTimeAsync(LIVE_SESSION_REQUEST_TIMEOUT_MS);
+		expect(live.state.value).toBe('error');
+		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[0]);
+
+		// A read that settles after the deadline belongs to the expired attempt.
+		resolveRelay(relayStatusOf('unavailable'));
+		await flush();
+
+		expect(live.state.value).toBe('error');
+		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[0]);
+	});
+
+	it('drops a relay failure that resolves while a profile change restarts the view', async () => {
+		let resolveRelay!: (value: ReturnType<typeof relayStatusOf>) => void;
+
+		postMock.mockResolvedValueOnce(failure(503, { message: 'Relay is not available' })).mockResolvedValue(sessionOk());
+		relayStore.get.mockImplementationOnce(() => new Promise((resolve) => (resolveRelay = resolve)));
+
+		const selected = ref<string | null>('high');
+		const live = mountLiveView({ profile: selected });
+		live.start();
+		await flush();
+
+		expect(live.state.value).toBe('requesting');
+
+		// The classifier still owns the attempt when the read resolves; the profile watcher runs before its caller resumes.
+		resolveRelay(relayStatusOf('unavailable'));
+		selected.value = 'low';
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(2);
+		expect(postMock.mock.calls[1][1].body.data.profile).toBe('low');
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it('starts a fresh attempt with a fresh retry budget when the profile changes during a backoff', async () => {
+		postMock.mockResolvedValue(failure(500, { message: 'boom' }));
+
+		const selected = ref<string | null>('high');
+		const live = mountLiveView({ profile: selected });
+		live.start();
+		await flush();
+
+		// The backoff timer retries the same selection and keeps counting.
+		for (const delay of LIVE_RETRY_DELAYS_MS.slice(0, -1)) {
+			await vi.advanceTimersByTimeAsync(delay);
+			await flush();
+		}
+
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length);
+		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[LIVE_RETRY_DELAYS_MS.length - 1]);
+
+		selected.value = 'low';
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length + 1);
+		expect(postMock.mock.calls[LIVE_RETRY_DELAYS_MS.length][1].body.data.profile).toBe('low');
+		expect(live.state.value).toBe('error');
+		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[0]);
+
+		// The old backoff was cancelled: only the new one fires.
+		await vi.advanceTimersByTimeAsync(LIVE_RETRY_DELAYS_MS[0]);
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length + 2);
+		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[1]);
+	});
+
+	it('resumes an auto started view when the device comes back online', async () => {
+		postMock.mockResolvedValue(sessionOk());
+
+		const live = mountLiveView({ autoStart: true });
+		await flush();
+		lastClient().emit({ type: 'media_started' });
+		await flush();
+
+		expect(live.state.value).toBe('playing');
+
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.disconnected);
+		await flush();
+
+		expect(live.state.value).toBe('offline');
+
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.connected);
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(2);
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it('starts an auto started view that mounted offline once the device is online', async () => {
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.disconnected);
+		postMock.mockResolvedValue(sessionOk());
+
+		const live = mountLiveView({ autoStart: true });
+		await flush();
+
+		expect(live.state.value).toBe('offline');
+		expect(postMock).not.toHaveBeenCalled();
+
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.connected);
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it.each<[string, (live: IUseLiveView) => void]>([
+		['stopped before the device went offline', (live) => live.stop()],
+		['stopped while the device was offline', () => undefined],
+	])('does not resume a view that was %s', async (when, stopBefore) => {
+		postMock.mockResolvedValue(sessionOk());
+
+		const live = mountLiveView({ autoStart: true });
+		await flush();
+
+		stopBefore(live);
+		await flush();
+
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.disconnected);
+		await flush();
+
+		if (when === 'stopped while the device was offline') {
+			live.stop();
+			await flush();
+		}
+
+		expect(live.state.value).toBe('offline');
+
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.connected);
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('snapshot');
+	});
+
+	it('does not start a view that never asked to play when the device comes back online', async () => {
+		const live = mountLiveView();
+		await flush();
+
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.disconnected);
+		await flush();
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.connected);
+		await flush();
+
+		expect(postMock).not.toHaveBeenCalled();
+		expect(live.state.value).toBe('snapshot');
 	});
 
 	it('auto starts when asked', async () => {

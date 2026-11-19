@@ -4,7 +4,7 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { injectStoresManager, useBackend, useLogger } from '../../../common';
 import { CamerasModuleCreateSessionTransport, CamerasModuleDataRelayStatusState } from '../../../openapi.constants';
 import { devicesStoreKey } from '../../devices/store/keys';
-import { CAMERAS_MODULE_PREFIX, LIVE_CONNECT_TIMEOUT_MS, LIVE_STABLE_AFTER_MS } from '../cameras.constants';
+import { CAMERAS_MODULE_PREFIX, LIVE_CONNECT_TIMEOUT_MS, LIVE_SESSION_REQUEST_TIMEOUT_MS, LIVE_STABLE_AFTER_MS } from '../cameras.constants';
 import { buildLiveSocketUrl, isDeviceOffline, isModuleDisabledError, readErrorMessage } from '../cameras.utils';
 import { canPlayProfileCodec, getMediaSourceCtor } from '../live/codecs';
 import {
@@ -81,10 +81,18 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 	let retryTimer: ReturnType<typeof setTimeout> | null = null;
 	let stableTimer: ReturnType<typeof setTimeout> | null = null;
 	let watchdogTimer: ReturnType<typeof setTimeout> | null = null;
+	let requestTimer: ReturnType<typeof setTimeout> | null = null;
 
 	let releasePolling: (() => void) | null = null;
 	/** Set once the relay was seen down while waiting in `relay_unavailable`, so only a change to `running` retries. */
 	let relaySeenDown = false;
+
+	/**
+	 * An auto started view keeps wanting to play until it is stopped: a device that comes back online resumes it, and
+	 * `start` or `retry` after a `stop` wants it again. A view started by hand only stays on the snapshot.
+	 */
+	const autoPlay = options.autoStart === true;
+	let wantsPlayback = autoPlay;
 
 	const send = (event: LiveViewEvent): void => {
 		if (disposed) {
@@ -117,7 +125,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 	};
 
 	const clearTimers = (): void => {
-		for (const timer of [retryTimer, stableTimer, watchdogTimer]) {
+		for (const timer of [retryTimer, stableTimer, watchdogTimer, requestTimer]) {
 			if (timer !== null) {
 				clearTimeout(timer);
 			}
@@ -126,6 +134,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		retryTimer = null;
 		stableTimer = null;
 		watchdogTimer = null;
+		requestTimer = null;
 	};
 
 	const teardownSession = (): void => {
@@ -317,7 +326,9 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		if (status === 503) {
 			const failure = await classifyRelayFailure(id);
 
-			if (failure !== null) {
+			// The classifier checked ownership before it returned, but a profile change can restart the view before this
+			// continuation runs; its failure must not reach the new attempt.
+			if (failure !== null && id === attemptId && !disposed) {
 				send({ type: 'session_failed', failure });
 			}
 
@@ -386,6 +397,16 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 			teardownSession();
 		}
 
+		if (next.state === 'requesting') {
+			// Bounds the whole request: the session POST, and the relay status read or profile fallback it may need.
+			requestTimer = setTimeout(() => {
+				requestTimer = null;
+				logger.warn('Live view session request timed out.');
+				requestController?.abort();
+				send({ type: 'session_failed', failure: 'failed' });
+			}, LIVE_SESSION_REQUEST_TIMEOUT_MS);
+		}
+
 		if (next.state === 'connecting') {
 			watchdogTimer = setTimeout(() => {
 				watchdogTimer = null;
@@ -413,6 +434,10 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 			const known = relayStatusStore.status;
 
 			relaySeenDown = known !== null && known.relay.state !== CamerasModuleDataRelayStatusState.running;
+		}
+
+		if (previous.state === 'offline' && next.state === 'snapshot' && wantsPlayback) {
+			send({ type: 'start' });
 		}
 
 		const waiting = RELAY_WAIT_STATES.has(next.state);
@@ -471,18 +496,31 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		{ immediate: true }
 	);
 
+	// A new selection starts a fresh attempt with a fresh retry budget, also while a backoff of the old one is pending;
+	// only the backoff timer of the same selection keeps the count.
 	watch([() => toValue(options.deviceId), () => toValue(options.profile)], () => {
-		if (ACTIVE_STATES.has(context.value.state)) {
+		const { state, retryInMs } = context.value;
+
+		if (ACTIVE_STATES.has(state) || (state === 'error' && retryInMs !== null)) {
 			send({ type: 'stop' });
 			send({ type: 'start' });
 		}
 	});
 
-	const start = (): void => send({ type: 'start' });
+	const start = (): void => {
+		wantsPlayback = autoPlay;
+		send({ type: 'start' });
+	};
 
-	const stop = (): void => send({ type: 'stop' });
+	const stop = (): void => {
+		wantsPlayback = false;
+		send({ type: 'stop' });
+	};
 
-	const retry = (): void => send({ type: 'retry' });
+	const retry = (): void => {
+		wantsPlayback = autoPlay;
+		send({ type: 'retry' });
+	};
 
 	onScopeDispose(() => {
 		disposed = true;
@@ -492,8 +530,8 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		releaseRelayPolling();
 	});
 
-	if (options.autoStart) {
-		start();
+	if (autoPlay) {
+		send({ type: 'start' });
 	}
 
 	return {
