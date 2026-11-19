@@ -17,8 +17,9 @@ export interface MseClientOptions {
 }
 
 /**
- * Failures of the client itself, reported like a socket close. The codes are outside the server's range, so the state
- * machine treats them as retryable errors.
+ * Failures of the client itself, reported like a socket close. The codes 4900–4902 are client-local: they are never
+ * sent over the wire, and the server must never use them (its codes are in `LIVE_CLOSE`). The state machine treats them
+ * as retryable errors.
  */
 export const MSE_CLIENT_CLOSE = {
 	CONNECT_FAILED: [4900, 'connect_failed'],
@@ -26,8 +27,14 @@ export const MSE_CLIENT_CLOSE = {
 	MEDIA_ERROR: [4902, 'media_error'],
 } as const;
 
-/** Media kept behind the playhead; older ranges are removed after each append. */
+/** Media kept behind the playhead: once more than `BUFFER_TRIM_AT_S` is buffered behind it, it is trimmed back. */
 const BUFFER_KEEP_S = 30;
+const BUFFER_TRIM_AT_S = 40;
+/**
+ * Fragments waiting for the source buffer (before it exists, or while ManagedMediaSource pauses streaming). The browser
+ * keeps reading the socket, so the server's backpressure never applies; above this the client gives up.
+ */
+export const MSE_MAX_QUEUED_BYTES = 16 * 1024 * 1024;
 /** When the playhead is further behind the buffered end, it jumps to the live edge. */
 const LIVE_EDGE_MAX_LAG_S = 5;
 const LIVE_EDGE_TARGET_LAG_S = 0.5;
@@ -52,6 +59,7 @@ export class MseClient {
 	private objectUrl: string | null = null;
 	private mime: string | null = null;
 	private queue: Operation[] = [];
+	private queuedBytes = 0;
 	private current: Operation | null = null;
 	private sourceOpen = false;
 	private streaming = true;
@@ -90,16 +98,22 @@ export class MseClient {
 		video.addEventListener('playing', () => this.onPlaying(), { signal });
 		video.addEventListener('error', () => this.fail(MSE_CLIENT_CLOSE.MEDIA_ERROR), { signal });
 
-		const source = new this.options.mediaSource();
+		try {
+			const source = new this.options.mediaSource();
 
-		this.source = source;
-		source.addEventListener('sourceopen', () => this.onSourceOpen(), { signal });
-		// Fired only by ManagedMediaSource: the browser asks to pause appends to save power.
-		source.addEventListener('endstreaming', () => (this.streaming = false), { signal });
-		source.addEventListener('startstreaming', () => this.onStartStreaming(), { signal });
+			this.source = source;
+			source.addEventListener('sourceopen', () => this.onSourceOpen(), { signal });
+			// Fired only by ManagedMediaSource: the browser asks to pause appends to save power.
+			source.addEventListener('endstreaming', () => (this.streaming = false), { signal });
+			source.addEventListener('startstreaming', () => this.onStartStreaming(), { signal });
 
-		this.objectUrl = URL.createObjectURL(source);
-		video.src = this.objectUrl;
+			this.objectUrl = URL.createObjectURL(source);
+			video.src = this.objectUrl;
+		} catch {
+			this.fail(MSE_CLIENT_CLOSE.MEDIA_ERROR);
+
+			return;
+		}
 
 		let socket: WebSocket;
 
@@ -127,6 +141,7 @@ export class MseClient {
 		this.closed = true;
 		this.listeners.abort();
 		this.queue = [];
+		this.queuedBytes = 0;
 		this.current = null;
 		this.socket?.close();
 		this.socket = null;
@@ -166,10 +181,27 @@ export class MseClient {
 
 	private onMessage(data: unknown): void {
 		if (data instanceof ArrayBuffer) {
-			this.queue.push({ kind: 'append', data, retried: false });
+			this.enqueueAppend({ kind: 'append', data, retried: false }, false);
+
+			if (this.queuedBytes > MSE_MAX_QUEUED_BYTES) {
+				this.fail(MSE_CLIENT_CLOSE.BUFFER_FULL);
+
+				return;
+			}
+
 			this.drain();
 		} else if (typeof data === 'string') {
 			this.onText(data);
+		}
+	}
+
+	private enqueueAppend(operation: Extract<Operation, { kind: 'append' }>, first: boolean): void {
+		this.queuedBytes += operation.data.byteLength;
+
+		if (first) {
+			this.queue.unshift(operation);
+		} else {
+			this.queue.push(operation);
 		}
 	}
 
@@ -253,6 +285,7 @@ export class MseClient {
 
 			try {
 				if (operation.kind === 'append') {
+					this.queuedBytes -= operation.data.byteLength;
 					buffer.appendBuffer(operation.data);
 				} else {
 					buffer.remove(operation.start, operation.end);
@@ -262,8 +295,8 @@ export class MseClient {
 			} catch (error) {
 				if (operation.kind === 'append' && !operation.retried && isQuotaExceeded(error)) {
 					// Free old media first, then retry this fragment once.
-					this.queue.unshift({ ...operation, retried: true });
-					this.trim();
+					this.enqueueAppend({ ...operation, retried: true }, true);
+					this.trim(true);
 
 					continue;
 				}
@@ -282,13 +315,13 @@ export class MseClient {
 
 		if (finished?.kind === 'append') {
 			this.seekToLiveEdge();
-			this.trim();
+			this.trim(false);
 
 			if (!this.playRequested) {
 				this.playRequested = true;
 				// Autoplay is muted; a rejection only means the user has to press play.
 				void Promise.resolve()
-					.then(() => this.options.video.play())
+					.then(() => (this.closed ? undefined : this.options.video.play()))
 					.catch(() => undefined);
 			}
 		}
@@ -311,8 +344,11 @@ export class MseClient {
 		}
 	}
 
-	/** Queues the removal of media older than `BUFFER_KEEP_S` ahead of the pending appends. */
-	private trim(): void {
+	/**
+	 * Queues the removal of media older than `BUFFER_KEEP_S` ahead of the pending appends, once more than
+	 * `BUFFER_TRIM_AT_S` is buffered behind the playhead, or always (`force`) to make room after a quota error.
+	 */
+	private trim(force: boolean): void {
 		const buffered = this.sourceBuffer?.buffered;
 
 		if (buffered === undefined || buffered.length === 0 || this.queue.some((operation) => operation.kind === 'remove')) {
@@ -320,9 +356,10 @@ export class MseClient {
 		}
 
 		const start = buffered.start(0);
-		const end = this.options.video.currentTime - BUFFER_KEEP_S;
+		const { currentTime } = this.options.video;
+		const end = currentTime - BUFFER_KEEP_S;
 
-		if (end > start) {
+		if (end > start && (force || currentTime - start > BUFFER_TRIM_AT_S)) {
 			this.queue.unshift({ kind: 'remove', start, end });
 		}
 	}

@@ -1,9 +1,10 @@
 import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MSE_CLIENT_CLOSE, MseClient, type MseClientEvent } from './mse-client';
+import { MSE_CLIENT_CLOSE, MSE_MAX_QUEUED_BYTES, MseClient, type MseClientEvent } from './mse-client';
 
 const SOCKET_URL = 'ws://panel.local/api/v1/modules/cameras/live?session=secret-token';
 const MIME = 'video/mp4; codecs="avc1.640029,mp4a.40.2"';
+const HALF_CAP = MSE_MAX_QUEUED_BYTES / 2;
 const OBJECT_URL = 'blob:live-1';
 
 class FakeSocket extends EventTarget {
@@ -206,6 +207,48 @@ describe('MseClient', () => {
 		expect(ctx.socket().sent).toEqual([JSON.stringify({ type: 'mse', value: 'avc1.640029,hvc1.1.6.L153.B0,mp4a.40.2,opus' })]);
 	});
 
+	it('adds the source buffer on the mse reply when sourceopen came first', () => {
+		const ctx = setup();
+
+		ctx.client.start();
+		ctx.source().open();
+		ctx.socket().open();
+
+		expect(ctx.source().addSourceBuffer).not.toHaveBeenCalled();
+
+		ctx.socket().text({ type: 'mse', value: MIME });
+		ctx.socket().binary(10);
+
+		expect(ctx.source().addSourceBuffer).toHaveBeenCalledWith(MIME);
+		expect(ctx.buffer().ops).toEqual(['append 10']);
+	});
+
+	it('fails with media_error and opens no socket when the media source cannot be created', () => {
+		const events: MseClientEvent[] = [];
+		const createSocket = vi.fn();
+		const Broken = class {
+			static isTypeSupported = (): boolean => true;
+
+			constructor() {
+				throw new DOMException('nope', 'NotSupportedError');
+			}
+		};
+		const client = new MseClient({
+			url: SOCKET_URL,
+			video: document.createElement('video'),
+			mediaSource: Broken as unknown as typeof MediaSource,
+			createSocket,
+			onEvent: (event) => events.push(event),
+		});
+		const [code, reason] = MSE_CLIENT_CLOSE.MEDIA_ERROR;
+
+		client.start();
+
+		expect(events).toEqual([{ type: 'closed', code, reason }]);
+		expect(createSocket).not.toHaveBeenCalled();
+		expect(createSpy).not.toHaveBeenCalled();
+	});
+
 	it('waits for sourceopen before adding the source buffer', () => {
 		const ctx = setup();
 
@@ -260,23 +303,75 @@ describe('MseClient', () => {
 		expect(buffer.concurrent).toBe(false);
 	});
 
-	it('trims the buffer to 30 s', () => {
+	it('trims the buffer to 30 s once more than 40 s are buffered', () => {
 		const ctx = setup();
 		const buffer = ready(ctx);
 
 		ctx.video.currentTime = 95;
 		ctx.socket().binary(1);
+		buffer.ranges = [[55, 96]];
+		buffer.finish();
+
+		// Exactly 40 s behind the playhead: nothing is removed yet.
+		expect(buffer.ops).toEqual(['append 1']);
+
+		ctx.socket().binary(2);
 		buffer.ranges = [[10, 96]];
 		buffer.finish();
 
-		expect(buffer.ops).toEqual(['append 1', 'remove 10-65']);
+		expect(buffer.ops).toEqual(['append 1', 'append 2', 'remove 10-65']);
 
 		buffer.ranges = [[65, 96]];
 		buffer.finish();
-		ctx.socket().binary(1);
+		ctx.socket().binary(3);
 		buffer.finish();
 
-		expect(buffer.ops).toEqual(['append 1', 'remove 10-65', 'append 1']);
+		expect(buffer.ops).toEqual(['append 1', 'append 2', 'remove 10-65', 'append 3']);
+	});
+
+	it('closes with buffer_full when more than 16 MiB wait while streaming is paused', () => {
+		const ctx = setup();
+		const buffer = ready(ctx);
+		const [code, reason] = MSE_CLIENT_CLOSE.BUFFER_FULL;
+
+		ctx.source().dispatchEvent(new Event('endstreaming'));
+		ctx.socket().binary(HALF_CAP);
+		ctx.socket().binary(HALF_CAP);
+
+		expect(ctx.events.some((event) => event.type === 'closed')).toBe(false);
+
+		ctx.socket().binary(1);
+
+		expect(buffer.ops).toEqual([]);
+		expect(ctx.events.at(-1)).toEqual({ type: 'closed', code, reason });
+		expect(ctx.socket().close).toHaveBeenCalledTimes(1);
+	});
+
+	it('closes with buffer_full when more than 16 MiB wait for the source buffer', () => {
+		const ctx = setup();
+		const [code, reason] = MSE_CLIENT_CLOSE.BUFFER_FULL;
+
+		ctx.client.start();
+		ctx.socket().open();
+		ctx.socket().text({ type: 'mse', value: MIME });
+		ctx.socket().binary(HALF_CAP);
+		ctx.socket().binary(HALF_CAP + 1);
+
+		expect(ctx.source().addSourceBuffer).not.toHaveBeenCalled();
+		expect(ctx.events.at(-1)).toEqual({ type: 'closed', code, reason });
+	});
+
+	it('counts appended fragments out of the queued bytes', () => {
+		const ctx = setup();
+		const buffer = ready(ctx);
+
+		for (let i = 0; i < 3; i++) {
+			ctx.socket().binary(HALF_CAP);
+			buffer.finish();
+		}
+
+		expect(buffer.ops).toEqual([`append ${HALF_CAP}`, `append ${HALF_CAP}`, `append ${HALF_CAP}`]);
+		expect(ctx.events.some((event) => event.type === 'closed')).toBe(false);
 	});
 
 	it('jumps to the live edge when more than 5 s behind', () => {
@@ -375,6 +470,38 @@ describe('MseClient', () => {
 		expect(ctx.events.at(-1)).toEqual({ type: 'closed', code: 1013, reason: 'session_limit' });
 		expect(revokeSpy).toHaveBeenCalledWith(OBJECT_URL);
 		expect(ctx.video.hasAttribute('src')).toBe(false);
+	});
+
+	it('does not call play after close', async () => {
+		const ctx = setup();
+		const buffer = ready(ctx);
+
+		ctx.socket().binary(1);
+		buffer.finish();
+		ctx.client.close();
+
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(ctx.play).not.toHaveBeenCalled();
+	});
+
+	it('tears down the socket, then the source, then the video and the object url', () => {
+		const ctx = setup();
+		const order: string[] = [];
+
+		ready(ctx);
+		ctx.socket().close.mockImplementation(() => order.push('socket.close'));
+		ctx.source().endOfStream.mockImplementation(() => order.push('endOfStream'));
+		vi.spyOn(ctx.video, 'removeAttribute').mockImplementation((name: string) => {
+			order.push(`removeAttribute ${name}`);
+		});
+		ctx.load.mockImplementation(() => order.push('load'));
+		revokeSpy.mockImplementation(() => order.push('revokeObjectURL'));
+
+		ctx.client.close();
+
+		expect(order).toEqual(['socket.close', 'endOfStream', 'removeAttribute src', 'load', 'revokeObjectURL']);
 	});
 
 	it('close is idempotent, releases the video and emits nothing', () => {
