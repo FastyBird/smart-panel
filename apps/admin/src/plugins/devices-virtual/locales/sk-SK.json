@@ -786,20 +786,7 @@
 			"closedValue": "Hodnota pre zatvorené (JSON literál alebo text)",
 			"addAmbient": "Pridať okolitú teplotu",
 			"addFloor": "Pridať podlahu",
-			"addContact": "Pridať kontakt",
-			"reporting": {
-				"observed": "Tento snímač hlási približne každých {typical} (najdlhšia medzera {longest}).",
-				"fits": "Maximálny vek to pokrýva.",
-				"unknown": {
-					"title": "Interval hlásení zatiaľ nie je známy",
-					"message": "Smart Panel od spustenia nezaznamenal dosť hlásení z tohto snímača. Batériové rádiové snímače (Zigbee, Bluetooth) často hlásia len každých 30–60 minút: nastavte maximálny vek o niečo dlhší, alebo sa neskôr vráťte pre odporúčanie."
-				},
-				"tooShort": {
-					"title": "Maximálny vek je kratší ako interval hlásení tohto snímača",
-					"message": "Medzi hláseniami hodnota zastará a termostat prestane kúriť alebo chladiť, kým nepríde ďalšia. Dlhší vek ho nechá pracovať s hodnotou, ktorá môže byť až takto stará.",
-					"apply": "Použiť {duration} ({seconds} s)"
-				}
-			}
+			"addContact": "Pridať kontakt"
 		},
 		"remove": "Odobrať",
 		"settings": {
@@ -935,6 +922,31 @@
 			"sourceRequired": "Vyberte vstupný zdroj.",
 			"checking": "Overujem…",
 			"notChecked": "Opravte označené nastavenia a spustite overenie znovu."
+		}
+	},
+	"sourceReporting": {
+		"observed": "Tento snímač hlási približne každých {typical} (najdlhšia medzera {longest}).",
+		"observedSlowest": "Najpomalší z týchto snímačov hlási približne každých {typical} (najdlhšia medzera {longest}).",
+		"fits": "Maximálny vek to pokrýva.",
+		"unknown": {
+			"title": "Interval hlásení zatiaľ nie je známy",
+			"message": "Smart Panel od spustenia nezaznamenal dosť hlásení z tohto snímača. Batériové rádiové snímače (Zigbee, Bluetooth) často hlásia len každých 30–60 minút: nastavte maximálny vek o niečo dlhší, alebo sa neskôr vráťte pre odporúčanie.",
+			"messageMany": "Smart Panel od spustenia nezaznamenal dosť hlásení z niektorých týchto snímačov. Batériové rádiové snímače (Zigbee, Bluetooth) často hlásia len každých 30–60 minút: nastavte maximálny vek o niečo dlhší, alebo sa neskôr vráťte pre odporúčanie."
+		},
+		"tooShort": {
+			"title": "Maximálny vek je kratší ako interval hlásení tohto snímača",
+			"titleMany": "Maximálny vek je kratší ako interval hlásení jedného z týchto snímačov",
+			"message": "Medzi hláseniami hodnota zastará. {consequence} Dlhší vek ju ponechá použiteľnú, s hodnotou, ktorá môže byť až takto stará.",
+			"apply": "Použiť {duration} ({seconds} s)"
+		},
+		"consequence": {
+			"ambient": "Termostat prestane kúriť aj chladiť, kým nepríde ďalšie hlásenie.",
+			"contact": "Stav okna sa považuje za neznámy a termostat sa pozastaví, kým nepríde ďalšie hlásenie.",
+			"floor": "Kúrenie je zablokované, kým nepríde ďalšie hlásenie.",
+			"surface": "Chladenie je zablokované, kým nepríde ďalšie hlásenie.",
+			"aggregate": "Snímač sa z výsledku vynechá a hodnota prestane byť dostupná, keď zostane menej platných zdrojov, ako je minimum.",
+			"converter": "Prevedená hodnota nie je dostupná, kým nepríde ďalšie hlásenie.",
+			"dewPoint": "Rosný bod nie je dostupný, kým nepríde ďalšie hlásenie."
 		}
 	}
 }

@@ -56,6 +56,7 @@ import {
 } from './models/native-thermostat-response.model';
 import * as NumericOperatorModels from './models/numeric-operator.model';
 import * as ProducerModels from './models/producer-response.model';
+import * as SourceReportingModels from './models/source-reporting-response.model';
 import * as ThermostatAuthoringModels from './models/thermostat-authoring-response.model';
 import * as ComfortModels from './models/thermostat-comfort-response.model';
 import * as InstallationModels from './models/thermostat-installation-response.model';
@@ -99,6 +100,7 @@ export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	...Object.values(ComfortModels),
 	CreateVirtualThermostatProducerDto,
 	...Object.values(ThermostatModels),
+	...Object.values(SourceReportingModels),
 	...Object.values(ThermostatAuthoringModels),
 	...Object.values(ProducerDtos),
 	...Object.values(ProducerModels),

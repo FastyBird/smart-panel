@@ -95,6 +95,13 @@
 						:min="1"
 					/>
 				</el-form-item>
+				<source-reporting
+					v-if="!disabled"
+					:properties="[member.protection.source_property]"
+					:maximum-age-seconds="member.protection.maximum_age_seconds"
+					consequence="floor"
+					@apply="member.protection.maximum_age_seconds = $event"
+				/>
 				<el-alert
 					v-for="reason in floorSources === undefined ? (context.value.value?.reasons ?? []) : []"
 					:key="reason"
@@ -169,6 +176,13 @@
 					:disabled="disabled"
 				/>
 			</el-form-item>
+			<source-reporting
+				v-if="!disabled"
+				:properties="[member.cooling_protection.surface_property]"
+				:maximum-age-seconds="member.cooling_protection.maximum_age_seconds"
+				consequence="surface"
+				@apply="member.cooling_protection.maximum_age_seconds = $event"
+			/>
 		</template>
 		<template v-if="member.retained">
 			<p>{{ label('observed') }}: {{ observation.activity }} · {{ label('pendingOn') }}: {{ runtime?.pending_on ?? 'unknown' }}</p>
@@ -231,6 +245,7 @@ import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
 import { RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS, type ThermostatMemberDraft } from '../services/thermostat-authoring';
 import { type ThermostatMemberContext, ThermostatMemberFreshness, type ThermostatMemberRuntime } from '../services/thermostat-members';
 
+import SourceReporting from './source-reporting.vue';
 import ThermostatMemberInstallation from './thermostat-member-installation.vue';
 import ThermostatMemberRecovery from './thermostat-member-recovery.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';

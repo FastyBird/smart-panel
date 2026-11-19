@@ -10,7 +10,6 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { toInstance } from '../../../common/utils/transform.utils';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import {
 	ApiCreatedSuccessResponse,
@@ -24,8 +23,6 @@ import { CreateVirtualThermostatProducerDto } from '../dto/thermostat-authoring.
 import {
 	VirtualCreatedThermostatResponseModel,
 	VirtualThermostatPropertyBindingResponseModel,
-	VirtualThermostatSourceReportingModel,
-	VirtualThermostatSourceReportingResponseModel,
 } from '../models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationResponseModel } from '../models/thermostat-response.model';
 import { VirtualThermostatAuthoringService } from '../services/virtual-thermostat-authoring.service';
@@ -50,27 +47,6 @@ export class VirtualThermostatAuthoringController {
 		if (!binding) throw new NotFoundException('Thermostat binding property does not exist.');
 		const response = new VirtualThermostatPropertyBindingResponseModel();
 		response.data = binding;
-		return response;
-	}
-
-	@ApiOperation({
-		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
-		summary: 'Describe how often a thermostat source reports',
-		description:
-			'Reports how often a candidate temperature or contact source has been reporting since Smart Panel started, ' +
-			'with a maximum sample age that suits it. Battery radio sensors often report only every 30-60 minutes. ' +
-			'Guidance only: it never qualifies a binding.',
-		operationId: 'get-devices-virtual-plugin-thermostat-source-reporting',
-	})
-	@ApiSuccessResponse(VirtualThermostatSourceReportingResponseModel, 'Source reporting profile')
-	@Get('source-reporting/:id')
-	async sourceReporting(
-		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-	): Promise<VirtualThermostatSourceReportingResponseModel> {
-		const reporting = await this.authoring.sourceReporting(id);
-		if (!reporting) throw new NotFoundException('Thermostat source property does not exist.');
-		const response = new VirtualThermostatSourceReportingResponseModel();
-		response.data = toInstance(VirtualThermostatSourceReportingModel, reporting);
 		return response;
 	}
 

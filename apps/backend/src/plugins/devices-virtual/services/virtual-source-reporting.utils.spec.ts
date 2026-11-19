@@ -1,4 +1,4 @@
-import { recommendedMaximumAgeSeconds } from './virtual-thermostat-reporting.utils';
+import { recommendedMaximumAgeSeconds } from './virtual-source-reporting.utils';
 
 describe('recommendedMaximumAgeSeconds', () => {
 	it('leaves room for one late report, rounded up to whole minutes', () => {

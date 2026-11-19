@@ -157,6 +157,14 @@
 							/>
 						</el-form-item>
 					</div>
+					<div v-show="at(2)">
+						<source-reporting
+							:properties="[model.dryBulb, model.humidity]"
+							:maximum-age-seconds="model.maximumAgeSeconds"
+							consequence="dewPoint"
+							@apply="model.maximumAgeSeconds = $event"
+						/>
+					</div>
 					<el-alert
 						v-show="at(2)"
 						:title="t('devicesVirtualPlugin.measurement.help.processingTitle')"
@@ -371,6 +379,7 @@ import { provideVirtualWizardPlacement, useVirtualWizardSourceGroups } from '../
 import { preferCanonicalMeasurementSources } from '../utils/measurement-authoring.utils';
 import { formatSourceSampleAge, sourceSampleAge } from '../utils/source-sample-age';
 
+import SourceReporting from './source-reporting.vue';
 import VirtualPlacementFields from './virtual-placement-fields.vue';
 import VirtualWizardCard from './virtual-wizard-card.vue';
 import VirtualWizardDescriptions from './virtual-wizard-descriptions.vue';

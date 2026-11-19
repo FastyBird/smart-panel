@@ -786,20 +786,7 @@
 			"closedValue": "Wert für geschlossen (JSON-Literal oder Text)",
 			"addAmbient": "Raumtemperatur hinzufügen",
 			"addFloor": "Boden hinzufügen",
-			"addContact": "Kontakt hinzufügen",
-			"reporting": {
-				"observed": "Dieser Sensor meldet etwa alle {typical} (längste Lücke {longest}).",
-				"fits": "Das maximale Alter deckt das ab.",
-				"unknown": {
-					"title": "Meldeintervall noch unbekannt",
-					"message": "Smart Panel hat seit dem Start noch nicht genug Meldungen dieses Sensors gesehen. Batteriebetriebene Funksensoren (Zigbee, Bluetooth) melden oft nur alle 30–60 Minuten: Stelle das maximale Alter etwas länger ein oder schau später für eine Empfehlung vorbei."
-				},
-				"tooShort": {
-					"title": "Das maximale Alter ist kürzer als das Meldeintervall dieses Sensors",
-					"message": "Zwischen den Meldungen veraltet der Wert, und der Thermostat hört auf zu heizen oder zu kühlen, bis die nächste eintrifft. Ein längeres Alter lässt ihn mit einem Wert weiterarbeiten, der bis zu so alt sein kann.",
-					"apply": "{duration} verwenden ({seconds} s)"
-				}
-			}
+			"addContact": "Kontakt hinzufügen"
 		},
 		"remove": "Entfernen",
 		"settings": {
@@ -935,6 +922,31 @@
 			"sourceRequired": "Wählen Sie eine Eingangsquelle.",
 			"checking": "Prüfung läuft…",
 			"notChecked": "Korrigieren Sie die markierten Einstellungen und prüfen Sie erneut."
+		}
+	},
+	"sourceReporting": {
+		"observed": "Dieser Sensor meldet etwa alle {typical} (längste Lücke {longest}).",
+		"observedSlowest": "Der langsamste dieser Sensoren meldet etwa alle {typical} (längste Lücke {longest}).",
+		"fits": "Das maximale Alter deckt das ab.",
+		"unknown": {
+			"title": "Meldeintervall noch unbekannt",
+			"message": "Smart Panel hat seit dem Start noch nicht genug Meldungen dieses Sensors gesehen. Batteriebetriebene Funksensoren (Zigbee, Bluetooth) melden oft nur alle 30–60 Minuten: Stelle das maximale Alter etwas länger ein oder schau später für eine Empfehlung vorbei.",
+			"messageMany": "Smart Panel hat seit dem Start noch nicht genug Meldungen einiger dieser Sensoren gesehen. Batteriebetriebene Funksensoren (Zigbee, Bluetooth) melden oft nur alle 30–60 Minuten: Stelle das maximale Alter etwas länger ein oder schau später für eine Empfehlung vorbei."
+		},
+		"tooShort": {
+			"title": "Das maximale Alter ist kürzer als das Meldeintervall dieses Sensors",
+			"titleMany": "Das maximale Alter ist kürzer als das Meldeintervall eines dieser Sensoren",
+			"message": "Zwischen den Meldungen veraltet der Wert. {consequence} Ein längeres Alter hält ihn nutzbar, mit einem Wert, der bis zu so alt sein kann.",
+			"apply": "{duration} verwenden ({seconds} s)"
+		},
+		"consequence": {
+			"ambient": "Der Thermostat hört auf zu heizen und zu kühlen, bis die nächste Meldung eintrifft.",
+			"contact": "Der Fensterzustand gilt als unbekannt, und der Thermostat pausiert, bis die nächste Meldung eintrifft.",
+			"floor": "Das Heizen ist gesperrt, bis die nächste Meldung eintrifft.",
+			"surface": "Das Kühlen ist gesperrt, bis die nächste Meldung eintrifft.",
+			"aggregate": "Der Sensor wird aus dem Ergebnis ausgelassen, und der Wert ist nicht verfügbar, sobald weniger gültige Quellen als das Minimum übrig bleiben.",
+			"converter": "Der umgerechnete Wert ist nicht verfügbar, bis die nächste Meldung eintrifft.",
+			"dewPoint": "Der Taupunkt ist nicht verfügbar, bis die nächste Meldung eintrifft."
 		}
 	}
 }

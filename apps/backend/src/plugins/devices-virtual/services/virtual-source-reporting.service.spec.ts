@@ -3,18 +3,13 @@ import { DataSource } from 'typeorm';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 
-import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
+import { VirtualSourceReportingService } from './virtual-source-reporting.service';
 
-describe('VirtualThermostatAuthoringService.sourceReporting', () => {
+describe('VirtualSourceReportingService', () => {
 	const findOne = jest.fn();
 	const readReportingProfile = jest.fn();
-	const service = new VirtualThermostatAuthoringService(
+	const service = new VirtualSourceReportingService(
 		{ manager: { findOne } } as unknown as DataSource,
-		null as never,
-		null as never,
-		null as never,
-		null as never,
-		null as never,
 		{ readReportingProfile } as unknown as PropertyValueService,
 	);
 	const property = (deviceType: string): ChannelPropertyEntity =>

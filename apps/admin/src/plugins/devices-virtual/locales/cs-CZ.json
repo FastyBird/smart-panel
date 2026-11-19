@@ -786,20 +786,7 @@
 			"closedValue": "Hodnota pro zavřeno (JSON literál nebo text)",
 			"addAmbient": "Přidat okolní teplotu",
 			"addFloor": "Přidat podlahu",
-			"addContact": "Přidat kontakt",
-			"reporting": {
-				"observed": "Toto čidlo hlásí zhruba každých {typical} (nejdelší mezera {longest}).",
-				"fits": "Maximální stáří to pokrývá.",
-				"unknown": {
-					"title": "Interval hlášení zatím není známý",
-					"message": "Smart Panel od spuštění nezaznamenal dost hlášení z tohoto čidla. Bateriová rádiová čidla (Zigbee, Bluetooth) často hlásí jen každých 30–60 minut: nastavte maximální stáří o něco delší, nebo se později vraťte pro doporučení."
-				},
-				"tooShort": {
-					"title": "Maximální stáří je kratší než interval hlášení tohoto čidla",
-					"message": "Mezi hlášeními hodnota zastará a termostat přestane topit nebo chladit, dokud nepřijde další. Delší stáří ho nechá pracovat s hodnotou, která může být až takto stará.",
-					"apply": "Použít {duration} ({seconds} s)"
-				}
-			}
+			"addContact": "Přidat kontakt"
 		},
 		"remove": "Odebrat",
 		"settings": {
@@ -935,6 +922,31 @@
 			"sourceRequired": "Vyberte vstupní zdroj.",
 			"checking": "Ověřuji…",
 			"notChecked": "Opravte označené nastavení a spusťte ověření znovu."
+		}
+	},
+	"sourceReporting": {
+		"observed": "Toto čidlo hlásí zhruba každých {typical} (nejdelší mezera {longest}).",
+		"observedSlowest": "Nejpomalejší z těchto čidel hlásí zhruba každých {typical} (nejdelší mezera {longest}).",
+		"fits": "Maximální stáří to pokrývá.",
+		"unknown": {
+			"title": "Interval hlášení zatím není známý",
+			"message": "Smart Panel od spuštění nezaznamenal dost hlášení z tohoto čidla. Bateriová rádiová čidla (Zigbee, Bluetooth) často hlásí jen každých 30–60 minut: nastavte maximální stáří o něco delší, nebo se později vraťte pro doporučení.",
+			"messageMany": "Smart Panel od spuštění nezaznamenal dost hlášení z některých těchto čidel. Bateriová rádiová čidla (Zigbee, Bluetooth) často hlásí jen každých 30–60 minut: nastavte maximální stáří o něco delší, nebo se později vraťte pro doporučení."
+		},
+		"tooShort": {
+			"title": "Maximální stáří je kratší než interval hlášení tohoto čidla",
+			"titleMany": "Maximální stáří je kratší než interval hlášení jednoho z těchto čidel",
+			"message": "Mezi hlášeními hodnota zastará. {consequence} Delší stáří ji ponechá použitelnou, s hodnotou, která může být až takto stará.",
+			"apply": "Použít {duration} ({seconds} s)"
+		},
+		"consequence": {
+			"ambient": "Termostat přestane topit i chladit, dokud nepřijde další hlášení.",
+			"contact": "Stav okna se považuje za neznámý a termostat se pozastaví, dokud nepřijde další hlášení.",
+			"floor": "Topení je zablokované, dokud nepřijde další hlášení.",
+			"surface": "Chlazení je zablokované, dokud nepřijde další hlášení.",
+			"aggregate": "Čidlo se z výsledku vynechá a hodnota přestane být dostupná, když zbude méně platných zdrojů, než je minimum.",
+			"converter": "Převedená hodnota není dostupná, dokud nepřijde další hlášení.",
+			"dewPoint": "Rosný bod není dostupný, dokud nepřijde další hlášení."
 		}
 	}
 }
