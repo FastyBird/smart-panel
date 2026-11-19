@@ -87,5 +87,66 @@
 		"switchCamera": "Prepnúť kameru",
 		"fps": "{fps} fps",
 		"snapshotFailed": "Snímku sa nepodarilo vytvoriť."
+	},
+	"config": {
+		"about": {
+			"title": "O nastavení kamier",
+			"text": "Živý náhľad zabezpečuje relay go2rtc. Snímky fungujú aj pri vypnutom relay."
+		},
+		"fields": {
+			"mode": {
+				"title": "Režim relay"
+			},
+			"binaryPath": {
+				"title": "Cesta k binárke go2rtc",
+				"validation": {
+					"invalid": "Zadajte absolútnu cestu k súboru, ktorého názov začína go2rtc."
+				}
+			},
+			"externalUrl": {
+				"title": "Adresa go2rtc",
+				"validation": {
+					"required": "Zadajte adresu go2rtc.",
+					"invalid": "Zadajte adresu http alebo https bez prihlasovacích údajov, dopytu a fragmentu."
+				}
+			},
+			"maxSessions": {
+				"title": "Najvyšší počet živých náhľadov",
+				"validation": {
+					"range": "Zadajte celé číslo od 1 do 32."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Najvyšší počet živých náhľadov na kameru",
+				"validation": {
+					"range": "Zadajte celé číslo od 1 do 16."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Spravovaný (spúšťa panel)",
+			"external": "Externý (vlastný go2rtc)",
+			"disabled": "Vypnuté"
+		},
+		"relayStates": {
+			"running": "Beží",
+			"starting": "Spúšťa sa",
+			"disabled": "Vypnuté",
+			"unavailable": "Nedostupné",
+			"error": "Chyba"
+		},
+		"relayPanel": {
+			"title": "Stav relay",
+			"mode": "Režim",
+			"state": "Stav",
+			"version": "Verzia",
+			"sessions": "Živé náhľady",
+			"maxPerCamera": "Limit na kameru",
+			"sessionsValue": "{active} z {max}"
+		},
+		"messages": {
+			"edited": "Nastavenie kamier bolo uložené.",
+			"notEdited": "Nastavenie kamier sa nepodarilo uložiť."
+		}
 	}
 }

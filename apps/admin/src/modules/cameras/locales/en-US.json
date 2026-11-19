@@ -87,5 +87,66 @@
 		"switchCamera": "Switch camera",
 		"fps": "{fps} fps",
 		"snapshotFailed": "Could not take a snapshot."
+	},
+	"config": {
+		"about": {
+			"title": "About Cameras settings",
+			"text": "Live view is served by a go2rtc relay. Snapshots keep working when the relay is off."
+		},
+		"fields": {
+			"mode": {
+				"title": "Relay mode"
+			},
+			"binaryPath": {
+				"title": "go2rtc binary path",
+				"validation": {
+					"invalid": "Enter an absolute path to a file whose name starts with go2rtc."
+				}
+			},
+			"externalUrl": {
+				"title": "go2rtc URL",
+				"validation": {
+					"required": "Enter the go2rtc URL.",
+					"invalid": "Enter an http or https URL without credentials, query or fragment."
+				}
+			},
+			"maxSessions": {
+				"title": "Maximum live views",
+				"validation": {
+					"range": "Enter a whole number from 1 to 32."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Maximum live views per camera",
+				"validation": {
+					"range": "Enter a whole number from 1 to 16."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Managed (run by the panel)",
+			"external": "External (your own go2rtc)",
+			"disabled": "Disabled"
+		},
+		"relayStates": {
+			"running": "Running",
+			"starting": "Starting",
+			"disabled": "Off",
+			"unavailable": "Unavailable",
+			"error": "Error"
+		},
+		"relayPanel": {
+			"title": "Relay status",
+			"mode": "Mode",
+			"state": "State",
+			"version": "Version",
+			"sessions": "Live views",
+			"maxPerCamera": "Limit per camera",
+			"sessionsValue": "{active} of {max}"
+		},
+		"messages": {
+			"edited": "Cameras settings were saved.",
+			"notEdited": "Cameras settings could not be saved."
+		}
 	}
 }

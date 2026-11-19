@@ -87,5 +87,66 @@
 		"switchCamera": "Przełącz kamerę",
 		"fps": "{fps} fps",
 		"snapshotFailed": "Nie udało się wykonać zrzutu."
+	},
+	"config": {
+		"about": {
+			"title": "O ustawieniach kamer",
+			"text": "Podgląd na żywo obsługuje relay go2rtc. Zdjęcia działają także przy wyłączonym relay."
+		},
+		"fields": {
+			"mode": {
+				"title": "Tryb relay"
+			},
+			"binaryPath": {
+				"title": "Ścieżka do pliku go2rtc",
+				"validation": {
+					"invalid": "Podaj bezwzględną ścieżkę do pliku, którego nazwa zaczyna się od go2rtc."
+				}
+			},
+			"externalUrl": {
+				"title": "Adres go2rtc",
+				"validation": {
+					"required": "Podaj adres go2rtc.",
+					"invalid": "Podaj adres http lub https bez danych logowania, zapytania i fragmentu."
+				}
+			},
+			"maxSessions": {
+				"title": "Maksymalna liczba podglądów na żywo",
+				"validation": {
+					"range": "Podaj liczbę całkowitą od 1 do 32."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Maksymalna liczba podglądów na żywo na kamerę",
+				"validation": {
+					"range": "Podaj liczbę całkowitą od 1 do 16."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Zarządzany (uruchamia panel)",
+			"external": "Zewnętrzny (własny go2rtc)",
+			"disabled": "Wyłączony"
+		},
+		"relayStates": {
+			"running": "Działa",
+			"starting": "Uruchamianie",
+			"disabled": "Wyłączony",
+			"unavailable": "Niedostępny",
+			"error": "Błąd"
+		},
+		"relayPanel": {
+			"title": "Stan relay",
+			"mode": "Tryb",
+			"state": "Stan",
+			"version": "Wersja",
+			"sessions": "Podglądy na żywo",
+			"maxPerCamera": "Limit na kamerę",
+			"sessionsValue": "{active} z {max}"
+		},
+		"messages": {
+			"edited": "Ustawienia kamer zostały zapisane.",
+			"notEdited": "Nie udało się zapisać ustawień kamer."
+		}
 	}
 }

@@ -87,5 +87,66 @@
 		"switchCamera": "Kamera wechseln",
 		"fps": "{fps} fps",
 		"snapshotFailed": "Das Standbild konnte nicht aufgenommen werden."
+	},
+	"config": {
+		"about": {
+			"title": "Über die Kameraeinstellungen",
+			"text": "Die Live-Ansicht wird über ein go2rtc-Relay bereitgestellt. Schnappschüsse funktionieren auch bei ausgeschaltetem Relay."
+		},
+		"fields": {
+			"mode": {
+				"title": "Relay-Modus"
+			},
+			"binaryPath": {
+				"title": "Pfad zur go2rtc-Binärdatei",
+				"validation": {
+					"invalid": "Geben Sie einen absoluten Pfad zu einer Datei ein, deren Name mit go2rtc beginnt."
+				}
+			},
+			"externalUrl": {
+				"title": "go2rtc-URL",
+				"validation": {
+					"required": "Geben Sie die go2rtc-URL ein.",
+					"invalid": "Geben Sie eine http- oder https-URL ohne Zugangsdaten, Abfrage oder Fragment ein."
+				}
+			},
+			"maxSessions": {
+				"title": "Maximale Live-Ansichten",
+				"validation": {
+					"range": "Geben Sie eine ganze Zahl von 1 bis 32 ein."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Maximale Live-Ansichten pro Kamera",
+				"validation": {
+					"range": "Geben Sie eine ganze Zahl von 1 bis 16 ein."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Verwaltet (vom Panel gestartet)",
+			"external": "Extern (eigenes go2rtc)",
+			"disabled": "Deaktiviert"
+		},
+		"relayStates": {
+			"running": "Läuft",
+			"starting": "Startet",
+			"disabled": "Aus",
+			"unavailable": "Nicht verfügbar",
+			"error": "Fehler"
+		},
+		"relayPanel": {
+			"title": "Relay-Status",
+			"mode": "Modus",
+			"state": "Status",
+			"version": "Version",
+			"sessions": "Live-Ansichten",
+			"maxPerCamera": "Limit pro Kamera",
+			"sessionsValue": "{active} von {max}"
+		},
+		"messages": {
+			"edited": "Die Kameraeinstellungen wurden gespeichert.",
+			"notEdited": "Die Kameraeinstellungen konnten nicht gespeichert werden."
+		}
 	}
 }

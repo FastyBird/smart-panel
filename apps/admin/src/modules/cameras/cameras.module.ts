@@ -14,18 +14,21 @@ import {
 	refreshLoadedStores,
 } from '../../common';
 import { DevicesModuleDeviceCategory } from '../../openapi.constants';
+import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
+import type { IModulesComponents } from '../config/config.types';
 import { DEVICES_MODULE_NAME } from '../devices/devices.constants';
 import type { IDevicesModuleElementComponents } from '../devices/devices.types';
 
 import { CAMERAS_MODULE_NAME } from './cameras.constants';
-import { CameraDeviceSection } from './components/components';
+import { CameraDeviceSection, CamerasConfigForm } from './components/components';
 import { locales } from './locales';
 import { ModuleRoutes } from './router';
+import { CamerasConfigEditFormSchema, CamerasConfigSchema, CamerasConfigUpdateReqSchema } from './schemas/config.schemas';
 import { registerCamerasStore } from './store/cameras.store';
 import { camerasStoreKey, relayStatusStoreKey } from './store/keys';
 import { registerRelayStatusStore } from './store/relay-status.store';
 
-const camerasAdminModuleKey: ModuleInjectionKey<IModule<IDevicesModuleElementComponents>> = Symbol('FB-Module-Cameras');
+const camerasAdminModuleKey: ModuleInjectionKey<IModule<IDevicesModuleElementComponents & IModulesComponents>> = Symbol('FB-Module-Cameras');
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
@@ -66,7 +69,20 @@ export default {
 						},
 					},
 				},
+				{
+					type: CONFIG_MODULE_MODULE_TYPE,
+					components: {
+						moduleConfigEditForm: CamerasConfigForm,
+					},
+					schemas: {
+						moduleConfigSchema: CamerasConfigSchema,
+						moduleConfigEditFormSchema: CamerasConfigEditFormSchema,
+						moduleConfigUpdateReqSchema: CamerasConfigUpdateReqSchema,
+					},
+					modules: [CONFIG_MODULE_NAME],
+				},
 			],
+			modules: [CONFIG_MODULE_NAME],
 			isCore: true,
 		});
 

@@ -87,5 +87,66 @@
 		"switchCamera": "Cambiar de cámara",
 		"fps": "{fps} fps",
 		"snapshotFailed": "No se pudo tomar la captura."
+	},
+	"config": {
+		"about": {
+			"title": "Acerca de los ajustes de cámaras",
+			"text": "La vista en directo la ofrece un relay go2rtc. Las instantáneas siguen funcionando con el relay apagado."
+		},
+		"fields": {
+			"mode": {
+				"title": "Modo del relay"
+			},
+			"binaryPath": {
+				"title": "Ruta del binario go2rtc",
+				"validation": {
+					"invalid": "Introduce una ruta absoluta a un archivo cuyo nombre empiece por go2rtc."
+				}
+			},
+			"externalUrl": {
+				"title": "URL de go2rtc",
+				"validation": {
+					"required": "Introduce la URL de go2rtc.",
+					"invalid": "Introduce una URL http o https sin credenciales, consulta ni fragmento."
+				}
+			},
+			"maxSessions": {
+				"title": "Máximo de vistas en directo",
+				"validation": {
+					"range": "Introduce un número entero de 1 a 32."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Máximo de vistas en directo por cámara",
+				"validation": {
+					"range": "Introduce un número entero de 1 a 16."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Gestionado (lo ejecuta el panel)",
+			"external": "Externo (tu propio go2rtc)",
+			"disabled": "Desactivado"
+		},
+		"relayStates": {
+			"running": "En marcha",
+			"starting": "Iniciando",
+			"disabled": "Apagado",
+			"unavailable": "No disponible",
+			"error": "Fallo"
+		},
+		"relayPanel": {
+			"title": "Estado del relay",
+			"mode": "Modo",
+			"state": "Estado",
+			"version": "Versión",
+			"sessions": "Vistas en directo",
+			"maxPerCamera": "Límite por cámara",
+			"sessionsValue": "{active} de {max}"
+		},
+		"messages": {
+			"edited": "Los ajustes de cámaras se han guardado.",
+			"notEdited": "No se pudieron guardar los ajustes de cámaras."
+		}
 	}
 }

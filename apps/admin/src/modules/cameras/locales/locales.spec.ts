@@ -45,6 +45,8 @@ const ALLOWED_IDENTICAL: Record<string, string[]> = {
 	'states.live': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
 	'dialog.fps': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
 	'profiles.columns.fps': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
+	// The correct German word for "version" is "Version".
+	'config.relayPanel.version': ['de-DE'],
 };
 
 describe('Cameras module locales', () => {
