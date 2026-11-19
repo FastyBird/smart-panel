@@ -40,6 +40,17 @@ describe('RelayStatusPanel', () => {
 		expect(wrapper.findAll('dd')[1].text()).toBe('camerasModule.config.relayStates.running');
 	});
 
+	it('says so when the first status read failed and there is no last known value', () => {
+		const wrapper = mountPanel(null, true);
+
+		expect(wrapper.find('[data-test-id="relay-status-stale"]').text()).toBe('camerasModule.relayStale');
+		expect(wrapper.find('dl').exists()).toBe(false);
+	});
+
+	it('renders nothing without a status that is current', () => {
+		expect(mountPanel(null).find('[data-test-id="relay-status-panel"]').exists()).toBe(false);
+	});
+
 	it('shows no stale line for a current status', () => {
 		expect(mountPanel(status(CamerasModuleDataRelayStatusState.running)).find('[data-test-id="relay-status-stale"]').exists()).toBe(false);
 	});

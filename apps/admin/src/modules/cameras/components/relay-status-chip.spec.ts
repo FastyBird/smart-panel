@@ -70,6 +70,15 @@ describe('RelayStatusChip', () => {
 		expect(chip.text()).toBe(text);
 	});
 
+	it('shows unknown with the could not be refreshed tooltip when the first status read failed', () => {
+		const wrapper = mountChip(null, true);
+		const chip = wrapper.find('[data-test-id="relay-status-chip"]');
+
+		expect(chip.attributes('data-type')).toBe('info');
+		expect(chip.text()).toBe('camerasModule.relayChip.unknown');
+		expect(wrapper.find('[data-tooltip]').attributes('data-tooltip')).toBe('camerasModule.relayStale');
+	});
+
 	it('shows a status that could not be refreshed as unknown instead of its last state', () => {
 		const wrapper = mountChip(status(CamerasModuleDataRelayStatusState.running), true);
 		const chip = wrapper.find('[data-test-id="relay-status-chip"]');

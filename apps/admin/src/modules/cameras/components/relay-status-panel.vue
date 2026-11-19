@@ -1,6 +1,6 @@
 <template>
 	<div
-		v-if="status !== null"
+		v-if="status !== null || stale"
 		data-test-id="relay-status-panel"
 	>
 		<el-alert
@@ -23,7 +23,10 @@
 			data-test-id="relay-status-reason"
 		/>
 
-		<dl class="relay-status-panel__list">
+		<dl
+			v-if="status !== null"
+			class="relay-status-panel__list"
+		>
 			<dt>{{ t('camerasModule.config.relayPanel.mode') }}</dt>
 			<dd>{{ t(`camerasModule.config.modes.${status.relay.mode}`) }}</dd>
 

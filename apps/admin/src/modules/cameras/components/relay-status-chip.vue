@@ -1,6 +1,6 @@
 <template>
 	<el-tooltip
-		v-if="status !== null"
+		v-if="status !== null || stale"
 		:content="tooltip ?? ''"
 		:disabled="tooltip === null"
 		placement="bottom"
