@@ -163,10 +163,17 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 
 		return Promise.all(
 			ids.map(async (deviceId): Promise<void> => {
+				const generation = listGeneration;
+
 				try {
 					await get({ deviceId });
 				} catch (error) {
 					if (error instanceof CamerasApiException && error.code === 404) {
+						// A list that completed meanwhile is newer than this 404, and a read after it may have re-cached the camera.
+						if (generation !== listGeneration) {
+							return;
+						}
+
 						detailIds.delete(deviceId);
 						delete data.value[deviceId];
 

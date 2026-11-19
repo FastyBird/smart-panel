@@ -187,4 +187,26 @@ describe('Cameras store', () => {
 		expect(store.findById('h')).toBeNull();
 		expect(store.isLoaded()).toBe(false);
 	});
+
+	it('keeps a camera that a newer list and read cached while its refresh read was answered with a 404', async () => {
+		let resolveStale!: (value: unknown) => void;
+
+		(mockBackendClient.GET as Mock)
+			.mockResolvedValueOnce(ok(cameraRes('h', 'Porch')))
+			.mockImplementationOnce(() => new Promise((resolve) => (resolveStale = resolve)));
+
+		await store.get({ deviceId: 'h' });
+
+		const refreshing = store.refresh();
+
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce(ok([cameraRes('h', 'Porch')])).mockResolvedValueOnce(ok(cameraRes('h', 'Porch again')));
+
+		await store.fetch();
+		await store.get({ deviceId: 'h' });
+
+		resolveStale(notFound);
+		await refreshing;
+
+		expect(store.findById('h')?.name).toBe('Porch again');
+	});
 });
