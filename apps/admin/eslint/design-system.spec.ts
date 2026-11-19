@@ -14,7 +14,9 @@ const tester = new RuleTester({
 	languageOptions: { parser: vueParser, ecmaVersion: 2022, sourceType: 'module' },
 });
 
-// Vitest runs the UnoCSS variant-group transformer over this file, so the fixtures avoid `md:(a b)` groups.
+// Vitest runs the UnoCSS variant-group transformer over this file, so fixtures with `prefix-(a b)` groups are
+// built from pieces the transformer does not recognise.
+const group = (prefix: string, items: string): string => [prefix, '(', items, ')'].join('');
 const sfc = (template: string, rest = ''): { code: string; filename: string } => ({
 	code: `<template>${template}</template>${rest}`,
 	filename: 'component.vue',
@@ -28,6 +30,8 @@ describe('design system lint rules', () => {
 			{ ...sfc("<div :class=\"active ? 'bg-gray-200' : ''\"></div>"), errors: [{ messageId: 'gray' }] },
 			{ ...sfc('<el-card body-class="dark:hover:bg-gray-800"></el-card>'), errors: [{ messageId: 'gray' }] },
 			{ ...sfc('<div class="border-t-gray-600 border-x-gray-600"></div>'), errors: [{ messageId: 'gray' }, { messageId: 'gray' }] },
+			// Utility groups are expanded first: the second item is checked
+			{ ...sfc(`<div class="${group('text-', 'sm gray-600')}"></div>`), errors: [{ messageId: 'gray', data: { token: 'text-gray-600' } }] },
 		],
 	});
 
@@ -52,6 +56,10 @@ describe('design system lint rules', () => {
 			},
 			{ ...sfc('<div :class="{ \'text-gray-500\': muted }"></div>'), errors: [{ messageId: 'deprecated' }] },
 			{ ...sfc('<div class="dark:fill-brand-primary"></div>'), errors: [{ messageId: 'deprecated' }] },
+			{
+				...sfc(`<div class="${group('bg-', 'fill gray-100')}"></div>`),
+				errors: [{ messageId: 'deprecated', data: { token: 'bg-gray-100', replacement: 'bg-fill' } }],
+			},
 		],
 	});
 
@@ -77,6 +85,10 @@ describe('design system lint rules', () => {
 			sfc('<p :class="\'text-\' + tone"></p>'),
 			sfc('<p :class="`text-${tone}`"></p>'),
 			sfc("<p :class=\"`${active ? 'text-default' : 'text-regular'}`\"></p>"),
+			// Objects and arrays in a template string become text, not Vue classes
+			sfc('<p :class="`${{ \'text-primary\': true }}`"></p>'),
+			sfc("<p :class=\"`${['text-primary', 'font-600']} x`\"></p>"),
+			sfc("<p :class=\"'a ' + { 'text-primary': on }\"></p>"),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
@@ -108,6 +120,9 @@ describe('design system lint rules', () => {
 			sfc('<div></div>', '<script setup lang="ts">\n// Fixes #1234\nconst id = 1;\n</script>'),
 			sfc('<div>See issue #123</div>'),
 			sfc('<div style="color: var(--el-color-danger)"></div>'),
+			// ID selectors are not colours
+			sfc('<div></div>', '<style>\n#abc { display: block; }\na:hover, #fade > span {\n\tcolor: var(--el-color-danger);\n}\n</style>'),
+			sfc('<div></div>', '<style lang="scss">\n.box {\n\t#bad {\n\t\tdisplay: none;\n\t}\n}\n</style>'),
 			sfc('<div><!-- colour was #f56c6c --></div>'),
 			sfc('<div></div>', '<style scoped>\n/* was #f56c6c */\n.box {\n\tcolor: var(--el-color-danger);\n}\n</style>'),
 		],
@@ -115,6 +130,8 @@ describe('design system lint rules', () => {
 			{ ...sfc('<div style="color: #f56c6c"></div>'), errors: [{ messageId: 'hex', data: { value: '#f56c6c' } }] },
 			{ ...sfc('<div></div>', '<script setup lang="ts">\nconst colour = \'#909399\';\n</script>'), errors: [{ messageId: 'hex' }] },
 			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder-color: #fff;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			// A selector ID and a declaration colour in the same block: only the colour is reported
+			{ ...sfc('<div></div>', '<style>\n#abc { color: #abc; }\n</style>'), errors: [{ messageId: 'hex', line: 2, column: 15 }] },
 			// Digits only, after a word: still a colour in CSS
 			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder: 1px solid #123;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
 			// A universal selector is not a comment

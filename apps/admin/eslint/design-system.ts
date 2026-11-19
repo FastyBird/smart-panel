@@ -6,6 +6,7 @@
  * `eslint.config.ts` decides where they warn and where they are errors.
  */
 import type { AST, Rule } from 'eslint';
+import { expandVariantGroup } from 'unocss';
 
 import { DEPRECATED_CLASSES } from '../uno.theme';
 
@@ -42,7 +43,11 @@ const bareClass = (token: string): string => {
 	return withoutVariants.replace(/^!|!$/g, '');
 };
 
-const splitClasses = (value: string): string[] => value.split(/\s+/).filter((token) => token.length > 0);
+/** Class tokens of a string, with variant and utility groups expanded as transformerVariantGroup does (`bg-(fill gray-100)`) */
+const splitClasses = (value: string): string[] =>
+	expandVariantGroup(value)
+		.split(/\s+/)
+		.filter((token) => token.length > 0);
 
 /**
  * Every class name a bound expression can produce. Only the parts Vue turns into classes are read: string
@@ -130,6 +135,61 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 	}
 };
 
+/**
+ * Classes of an operand of a concatenation or interpolation, where JavaScript turns the value into a string.
+ * Only values whose text is known are read: strings, nested concatenations and the branches of conditionals
+ * or logical expressions. Objects and arrays become `[object Object]` or comma-joined text, not Vue classes,
+ * so they are skipped like any other runtime value.
+ */
+const collectStringClasses = (node: unknown, found: IClassToken[], owner: TemplateNode): void => {
+	const current = node as TemplateNode | null;
+
+	switch (current?.type) {
+		case 'Literal':
+			if (typeof current.value === 'string') {
+				splitClasses(current.value).forEach((token) => found.push({ token, node: current }));
+			}
+
+			return;
+
+		case 'TemplateLiteral':
+			collectConcatenation(current, found, owner);
+
+			return;
+
+		case 'BinaryExpression':
+			if (current.operator === '+') {
+				collectConcatenation(current, found, owner);
+			}
+
+			return;
+
+		case 'ConditionalExpression':
+			collectStringClasses(current.consequent, found, owner);
+			collectStringClasses(current.alternate, found, owner);
+
+			return;
+
+		case 'LogicalExpression':
+			if (current.operator !== '&&') {
+				collectStringClasses(current.left, found, owner);
+			}
+
+			collectStringClasses(current.right, found, owner);
+
+			return;
+
+		case 'TSAsExpression':
+		case 'TSNonNullExpression':
+			collectStringClasses(current.expression, found, owner);
+
+			return;
+
+		default:
+			return;
+	}
+};
+
 type ConcatPart = { text: string; node: TemplateNode | null } | { dynamic: unknown };
 
 /** A `+` chain or template literal as static text and dynamic parts, in order */
@@ -191,7 +251,7 @@ const collectConcatenation = (node: TemplateNode, found: IClassToken[], owner: T
 			const openAfter = next !== undefined && (!('text' in next) || !/^\s/.test(next.text));
 
 			if (!openBefore && !openAfter) {
-				collectExpressionClasses(part.dynamic, found, owner);
+				collectStringClasses(part.dynamic, found, owner);
 			}
 
 			return;
@@ -426,6 +486,14 @@ const commentRanges = (context: Rule.RuleContext, text: string, styles: [number,
 	return ranges;
 };
 
+/** Whether the hash at `index` is followed by `{` before any `;` or `}`, which makes it part of a selector */
+const isCssSelectorHash = (text: string, index: number): boolean => {
+	const rest = text.slice(index);
+	const brace = rest.search(/[{;}]/);
+
+	return brace !== -1 && rest[brace] === '{';
+};
+
 const within = (index: number, ranges: [number, number][]): boolean => ranges.some(([start, end]) => index >= start && index < end);
 
 /** `issue #123`, `PR #1234`, `Fixes #123`: a number after a reference word in text or script, never in CSS */
@@ -456,6 +524,12 @@ const noHexColours: Rule.RuleModule = {
 				// In-page anchors (href="#add", to="#top") are not colours
 				// Static or bound literal: href="#top", href = '#top', :href="'#top'", :to="`#top`"
 				if (/\b(?:href|to)\s*=\s*["'](?:\s*['"`])?$/.test(before)) {
+					continue;
+				}
+
+				// CSS selectors (`#abc { … }`, `a, #abc:hover { … }`) are IDs: in a style block, a hash that reaches
+				// an opening brace before a declaration ends is part of a selector
+				if (within(index, styles) && isCssSelectorHash(text, index)) {
 					continue;
 				}
 
