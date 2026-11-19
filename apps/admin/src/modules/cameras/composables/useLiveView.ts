@@ -441,7 +441,8 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		if (next.state === 'error' && next.retryInMs !== null) {
 			retryTimer = setTimeout(() => {
 				retryTimer = null;
-				send({ type: 'retry_due' });
+				// Nothing can stream now; the playback intent stays, so the view restarts once it is available again.
+				send({ type: isAvailable() ? 'retry_due' : 'stop' });
 			}, next.retryInMs);
 		}
 

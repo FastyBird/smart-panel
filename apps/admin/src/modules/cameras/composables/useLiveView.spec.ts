@@ -916,6 +916,37 @@ describe('useLiveView', () => {
 		expect(live.state.value).toBe('connecting');
 	});
 
+	it('does not retry a failed request after the view stopped being available meanwhile', async () => {
+		let resolvePost!: (value: unknown) => void;
+
+		postMock.mockImplementationOnce(() => new Promise((resolve) => (resolvePost = resolve))).mockResolvedValue(sessionOk());
+
+		const available = ref(true);
+		const live = mountLiveView({ autoStart: true, profile: null, available });
+		await flush();
+
+		expect(live.state.value).toBe('requesting');
+
+		available.value = false;
+		await flush();
+
+		resolvePost(failure(500, { message: 'boom' }));
+		await flush();
+
+		expect(live.state.value).toBe('error');
+
+		await vi.advanceTimersByTimeAsync(LIVE_RETRY_DELAYS_MS[0] * 2);
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('snapshot');
+
+		available.value = true;
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(2);
+		expect(live.state.value).toBe('connecting');
+	});
+
 	it('does not start an auto started view that was stopped before a profile became available', async () => {
 		const available = ref(false);
 		const live = mountLiveView({ autoStart: true, available });
