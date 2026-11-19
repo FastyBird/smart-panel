@@ -70,6 +70,13 @@ export default defineConfig((config: UserConfig): UserConfig => {
 				],
 			},
 			proxy: {
+				// The camera live view is a WebSocket under `/api`; it must come first, as the first matching key wins.
+				'/api/v1/modules/cameras/live': {
+					target: `${env['FB_APP_HOST']}:${env['FB_BACKEND_PORT']}`,
+					changeOrigin: true,
+					secure: false,
+					ws: true,
+				},
 				'/api': {
 					target: `${env['FB_APP_HOST']}:${env['FB_BACKEND_PORT']}`,
 					changeOrigin: true,
