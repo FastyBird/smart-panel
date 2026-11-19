@@ -18,13 +18,20 @@ interface IClassToken {
 
 interface IParserServices {
 	defineTemplateBodyVisitor?: (templateVisitor: Record<string, (node: TemplateNode) => void>, scriptVisitor?: Rule.RuleListener) => Rule.RuleListener;
+	getDocumentFragment?: () => IDocumentFragment | null;
+}
+
+interface IDocumentFragment {
+	comments: { type: string; range: [number, number] }[];
+	children: { type: string; name?: string; startTag?: { range: [number, number] }; endTag?: { range: [number, number] } | null }[];
 }
 
 const THEME_COLOURS = '(?:primary|success|warning|danger|info|brand)';
 
-const GRAY_UTILITY = /(?:^|[:(!])(?:text|bg|border|fill|stroke|ring|divide|outline|placeholder|from|via|to|decoration|caret|accent)-gray-\d+/;
+const GRAY_UTILITY =
+	/(?:^|[:(!])(?:text|bg|border(?:-[trblxyse])?|fill|stroke|ring|divide|outline|placeholder|from|via|to|decoration|caret|accent)-gray-\d+/;
 const THEME_OPACITY = new RegExp(`(?:^|[:(!])(?:bg|text|border|fill)-${THEME_COLOURS}\\/\\d+`);
-const LEGACY_BREAKPOINT = /(?:^|[:(])(?:md|lg|xl):/;
+const LEGACY_BREAKPOINT = /(?:^|[:(!])(?:md|lg|xl):/;
 const HEX_COLOUR = /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/g;
 
 /** `dark:hover:!bg-gray-50!` → `bg-gray-50`; variant groups lose their parentheses */
@@ -59,13 +66,7 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 			return;
 
 		case 'TemplateLiteral':
-			for (const quasi of current.quasis as TemplateNode[]) {
-				const value = (quasi.value as { cooked?: string | null } | undefined)?.cooked ?? '';
-
-				splitClasses(value).forEach((token) => found.push({ token, node: owner }));
-			}
-
-			(current.expressions as unknown[]).forEach((expression) => collectExpressionClasses(expression, found, owner));
+			collectConcatenation(current, found, owner);
 
 			return;
 
@@ -112,8 +113,7 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 
 		case 'BinaryExpression':
 			if (current.operator === '+') {
-				collectExpressionClasses(current.left, found, owner);
-				collectExpressionClasses(current.right, found, owner);
+				collectConcatenation(current, found, owner);
 			}
 
 			return;
@@ -128,6 +128,86 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 		default:
 			return;
 	}
+};
+
+type ConcatPart = { text: string; node: TemplateNode | null } | { dynamic: unknown };
+
+/** A `+` chain or template literal as static text and dynamic parts, in order */
+const concatenationParts = (node: unknown): ConcatPart[] => {
+	const current = node as TemplateNode | null;
+
+	if (current?.type === 'BinaryExpression' && current.operator === '+') {
+		return [...concatenationParts(current.left), ...concatenationParts(current.right)];
+	}
+
+	if (current?.type === 'Literal' && typeof current.value === 'string') {
+		return [{ text: current.value, node: current }];
+	}
+
+	if (current?.type === 'TemplateLiteral') {
+		const quasis = current.quasis as TemplateNode[];
+		const expressions = current.expressions as unknown[];
+
+		return quasis.flatMap((quasi, index) => {
+			const text = (quasi.value as { cooked?: string | null } | undefined)?.cooked ?? '';
+			const parts: ConcatPart[] = [{ text, node: null }];
+
+			if (index < expressions.length) {
+				parts.push(...concatenationParts(expressions[index]));
+			}
+
+			return parts;
+		});
+	}
+
+	return [{ dynamic: node }];
+};
+
+/**
+ * Classes of a concatenation. Adjacent static text is joined first, so `'text-' + 'primary'` is read as
+ * `text-primary`. A token that touches a dynamic part (`'text-' + tone`) is incomplete and is not checked,
+ * and a dynamic part is only read when whitespace separates it from the text around it.
+ */
+const collectConcatenation = (node: TemplateNode, found: IClassToken[], owner: TemplateNode): void => {
+	const merged: ConcatPart[] = [];
+
+	for (const part of concatenationParts(node)) {
+		const previous = merged[merged.length - 1];
+
+		if ('text' in part && previous && 'text' in previous) {
+			merged[merged.length - 1] = { text: previous.text + part.text, node: null };
+		} else {
+			merged.push(part);
+		}
+	}
+
+	merged.forEach((part, index) => {
+		const previous = merged[index - 1];
+		const next = merged[index + 1];
+
+		if ('dynamic' in part) {
+			const openBefore = previous !== undefined && (!('text' in previous) || !/\s$/.test(previous.text));
+			const openAfter = next !== undefined && (!('text' in next) || !/^\s/.test(next.text));
+
+			if (!openBefore && !openAfter) {
+				collectExpressionClasses(part.dynamic, found, owner);
+			}
+
+			return;
+		}
+
+		const tokens = splitClasses(part.text);
+
+		if (previous !== undefined && !/^\s/.test(part.text)) {
+			tokens.shift();
+		}
+
+		if (next !== undefined && !/\s$/.test(part.text)) {
+			tokens.pop();
+		}
+
+		tokens.forEach((token) => found.push({ token, node: part.node ?? owner }));
+	});
 };
 
 const isClassAttributeName = (name: string): boolean => name === 'class' || name.endsWith('-class') || name.endsWith('Class');
@@ -287,30 +367,31 @@ const noCardShadow: Rule.RuleModule = {
 		}),
 };
 
-/** Character ranges of comments: HTML comments, script comments from the parser, CSS comments in style blocks */
-const commentRanges = (context: Rule.RuleContext, text: string): [number, number][] => {
+const documentFragment = (context: Rule.RuleContext): IDocumentFragment | null =>
+	(context.sourceCode.parserServices as IParserServices | undefined)?.getDocumentFragment?.() ?? null;
+
+/** Character ranges of the bodies of `<style>` blocks, from the parsed SFC */
+const styleRanges = (context: Rule.RuleContext): [number, number][] =>
+	(documentFragment(context)?.children ?? [])
+		.filter((child) => child.type === 'VElement' && child.name === 'style' && child.startTag && child.endTag)
+		.map((child) => [child.startTag!.range[1], child.endTag!.range[0]]);
+
+/** Character ranges of comments: template comments and script comments from the parser, CSS comments in style blocks */
+const commentRanges = (context: Rule.RuleContext, text: string, styles: [number, number][]): [number, number][] => {
 	const ranges: [number, number][] = context.sourceCode.getAllComments().map((comment) => comment.range as [number, number]);
 
-	for (const match of text.matchAll(/<!--[\s\S]*?-->/g)) {
-		ranges.push([match.index, match.index + match[0].length]);
+	for (const comment of documentFragment(context)?.comments ?? []) {
+		ranges.push(comment.range);
 	}
 
-	for (const block of styleRanges(text)) {
-		for (const match of text.slice(block[0], block[1]).matchAll(/\/\*[\s\S]*?\*\//g)) {
-			ranges.push([block[0] + match.index, block[0] + match.index + match[0].length]);
+	for (const [start, end] of styles) {
+		for (const match of text.slice(start, end).matchAll(/\/\*[\s\S]*?\*\//g)) {
+			ranges.push([start + match.index, start + match.index + match[0].length]);
 		}
 	}
 
 	return ranges;
 };
-
-/** Character ranges of the bodies of `<style>` blocks */
-const styleRanges = (text: string): [number, number][] =>
-	[...text.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map((match) => {
-		const start = match.index + match[0].indexOf('>') + 1;
-
-		return [start, start + (match[1] ?? '').length];
-	});
 
 const within = (index: number, ranges: [number, number][]): boolean => ranges.some(([start, end]) => index >= start && index < end);
 
@@ -327,8 +408,8 @@ const noHexColours: Rule.RuleModule = {
 	create: (context) => ({
 		Program(): void {
 			const text = context.sourceCode.text;
-			const comments = commentRanges(context, text);
-			const styles = styleRanges(text);
+			const styles = styleRanges(context);
+			const comments = commentRanges(context, text, styles);
 
 			for (const match of text.matchAll(HEX_COLOUR)) {
 				const value = match[0];

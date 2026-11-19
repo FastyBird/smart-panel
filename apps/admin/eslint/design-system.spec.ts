@@ -27,6 +27,7 @@ describe('design system lint rules', () => {
 			{ ...sfc('<div class="p-2 text-gray-600"></div>'), errors: [{ messageId: 'gray' }] },
 			{ ...sfc("<div :class=\"active ? 'bg-gray-200' : ''\"></div>"), errors: [{ messageId: 'gray' }] },
 			{ ...sfc('<el-card body-class="dark:hover:bg-gray-800"></el-card>'), errors: [{ messageId: 'gray' }] },
+			{ ...sfc('<div class="border-t-gray-600 border-x-gray-600"></div>'), errors: [{ messageId: 'gray' }, { messageId: 'gray' }] },
 		],
 	});
 
@@ -51,10 +52,11 @@ describe('design system lint rules', () => {
 	});
 
 	tester.run('no-legacy-breakpoints', designSystemRules['no-legacy-breakpoints'], {
-		valid: [sfc('<div class="tp:px-4 dt:px-6 sm:hidden"></div>'), sfc('<el-col :md="12"></el-col>')],
+		valid: [sfc('<div class="tp:px-4 dt:px-6 sm:hidden !tp:flex"></div>'), sfc('<el-col :md="12"></el-col>')],
 		invalid: [
 			{ ...sfc('<div class="md:flex"></div>'), errors: [{ messageId: 'breakpoint' }] },
 			{ ...sfc('<div class="dark:lg:hidden xl:px-4"></div>'), errors: [{ messageId: 'breakpoint' }, { messageId: 'breakpoint' }] },
+			{ ...sfc('<div class="!md:flex dark:!lg:hidden"></div>'), errors: [{ messageId: 'breakpoint' }, { messageId: 'breakpoint' }] },
 		],
 	});
 
@@ -66,12 +68,19 @@ describe('design system lint rules', () => {
 			sfc('<p :class="{ active: status === \'text-primary\' }"></p>'),
 			sfc("<p :class=\"status === 'text-primary' ? 'text-default' : 'text-regular'\"></p>"),
 			sfc("<p :class=\"[tone === 'text-primary' && 'font-600', name]\"></p>"),
+			// Concatenation: the joined class is checked, fragments that touch a dynamic part are not
+			sfc("<p :class=\"'text-primary' + '-soft'\"></p>"),
+			sfc('<p :class="\'text-\' + tone"></p>'),
+			sfc('<p :class="`text-${tone}`"></p>'),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"highlighted ? 'text-primary' : 'text-default'\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="{ \'text-primary\': highlighted }"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="[highlighted && \'text-primary\']"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc("<p :class=\"'text-' + 'primary'\"></p>"), errors: [{ messageId: 'body' }] },
+			{ ...sfc("<p :class=\"'text-sm ' + (on ? 'text-primary' : '') + ' ' + extra\"></p>"), errors: [{ messageId: 'body' }] },
+			{ ...sfc('<p :class="`${size} text-primary`"></p>'), errors: [{ messageId: 'body' }] },
 		],
 	});
 
@@ -101,6 +110,11 @@ describe('design system lint rules', () => {
 			// A universal selector is not a comment
 			{ ...sfc('<div></div>', '<style scoped>\n* { color: #fff; }\n</style>'), errors: [{ messageId: 'hex', line: 2 }] },
 			{ ...sfc('<div style="border: 1px solid #123"></div>'), errors: [{ messageId: 'hex' }] },
+			// Comment markers inside script strings are not comments
+			{
+				...sfc('<div></div>', "<script setup lang=\"ts\">\nconst start = '<!--';\nconst colour = '#fff';\nconst end = '-->';\n</script>"),
+				errors: [{ messageId: 'hex', line: 3 }],
+			},
 		],
 	});
 });
