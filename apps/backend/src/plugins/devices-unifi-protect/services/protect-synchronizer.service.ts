@@ -97,6 +97,7 @@ const DOORBELL_MAPPING = 'doorbell_event';
 const FAILURE_TEXT = 'UniFi Protect property update failed';
 const OBSERVER_FAILURE_TEXT = 'UniFi Protect device observer failed';
 const MAX_CACHED_DEVICES = 4096;
+
 const TAMPER_MAPPINGS: ReadonlySet<string> = new Set(['contact_tampered', 'sensor_motion_tampered']);
 const STALE_DETECTIONS: ReadonlySet<string> = new Set([
 	'camera_motion_detected',
@@ -111,6 +112,9 @@ const STALE_DETECTIONS: ReadonlySet<string> = new Set([
 const cacheKey = (modelKey: string, id: string): string => `${modelKey}\u0000${id}`;
 
 const removalKey = (protectDeviceId: string): string => `device_removed:${protectDeviceId}`;
+
+/** What a serial device refresh did; see `refreshDeviceOutcome`. */
+export type ProtectRefreshOutcome = 'refreshed' | 'not_held' | 'failed';
 
 @Injectable()
 export class ProtectSynchronizerService {
@@ -268,32 +272,48 @@ export class ProtectSynchronizerService {
 	 * the device is not cached, not adopted, a write failed, the queue is full or a reset intervened.
 	 */
 	refreshDevice(identity: ProtectConsoleIdentity, modelKey: string, id: string): Promise<boolean> {
+		return this.refreshDeviceOutcome(identity, modelKey, id).then((outcome) => outcome === 'refreshed');
+	}
+
+	/**
+	 * `refreshDevice` with the reason it did not refresh: `not_held` only when the serial queue reached the device and
+	 * found it not cached or not adopted (nothing here writes it); `failed` for a full queue, a failed write or a reset.
+	 */
+	refreshDeviceOutcome(identity: ProtectConsoleIdentity, modelKey: string, id: string): Promise<ProtectRefreshOutcome> {
 		if (this.pending >= PROTECT_MAX_PENDING_FRAMES) {
-			return Promise.resolve(false);
+			return Promise.resolve('failed');
 		}
 
-		let refreshed = false;
+		let outcome: ProtectRefreshOutcome = 'failed';
 
 		return this.run(async () => {
 			if (!this.cache.has(cacheKey(modelKey, id))) {
+				outcome = 'not_held';
+
 				return;
 			}
 
 			await this.ensureIndex(identity);
 
+			if (this.aborted()) {
+				return;
+			}
+
 			// The serial queue guarantees the object is fresh: every frame or snapshot queued ahead has been applied.
 			const raw = this.cache.get(cacheKey(modelKey, id)) ?? null;
-			const device = this.aborted() || raw === null ? undefined : this.adopted({ modelKey, id });
+			const device = raw === null ? undefined : this.adopted({ modelKey, id });
 
 			if (device === undefined || raw === null) {
+				outcome = 'not_held';
+
 				return;
 			}
 
 			// No rename propagation: the object is not new, so there is no name change to carry.
 			const written = await this.syncDevice(identity, device, modelKey, raw, raw, 'frame', {}, false);
 
-			refreshed = written && !this.aborted();
-		}).then(() => refreshed);
+			outcome = written && !this.aborted() ? 'refreshed' : 'failed';
+		}).then(() => outcome);
 	}
 
 	/** Number of snapshots enqueued so far; a reader that captured an older value read stale data. */

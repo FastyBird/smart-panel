@@ -1000,13 +1000,18 @@ export class ProtectAdoptionService {
 	/**
 	 * Writes the camera status from the store's current entry, not from this adoption's observation: a newer read may
 	 * have replaced it. The synchronizer's serial refresh orders the write against its own status writes; it is used
-	 * whenever the synchronizer holds the camera, and a direct write only when it does not (no realtime session).
+	 * whenever the synchronizer holds the camera, and a direct write only when its queue found it does not (not cached or
+	 * not adopted, e.g. no realtime session).
 	 */
 	private async persistStreamStatuses(prepared: ProtectPreparedMapping, panelDeviceId: string): Promise<boolean> {
 		const cameraId = prepared.device.protectDeviceId;
 
-		if (await this.synchronizer.refreshDevice(prepared.fresh.identity, 'camera', cameraId)) {
-			return true;
+		const outcome = await this.synchronizer.refreshDeviceOutcome(prepared.fresh.identity, 'camera', cameraId);
+
+		if (outcome !== 'not_held') {
+			// A full queue, a failed write or a reset is not proof the synchronizer lacks the camera: a direct write could
+			// race its queued status writes, so the status waits for the next refresh.
+			return outcome === 'refreshed';
 		}
 
 		// A read recorded while the write was persisting supersedes it: write again from that newer entry (bounded).

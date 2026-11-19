@@ -412,6 +412,18 @@ describe('ProtectSynchronizerService', () => {
 			expect(properties.update).not.toHaveBeenCalled();
 		});
 
+		it('reports an unadopted or uncached device as not held, and a refresh as refreshed', async () => {
+			await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe('not_held');
+
+			await prime();
+
+			await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', 'ffffffffffffffffffffffff')).resolves.toBe(
+				'not_held',
+			);
+			await expect(service.refreshDeviceOutcome(IDENTITY, 'light', CAMERA_ID)).resolves.toBe('not_held');
+			await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe('refreshed');
+		});
+
 		it('does not open the status gate from availability that arrived mid-sync', async () => {
 			let release: () => void = () => undefined;
 			const held = new Promise<void>((resolve) => {
@@ -444,6 +456,7 @@ describe('ProtectSynchronizerService', () => {
 				properties.update.mockRejectedValue(new Error('write failed'));
 
 				await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(false);
+				await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe('failed');
 			});
 
 			it('writes nothing and resolves false when a reset lands mid-refresh', async () => {
@@ -472,6 +485,7 @@ describe('ProtectSynchronizerService', () => {
 				(service as any).pending = PROTECT_MAX_PENDING_FRAMES;
 
 				await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(false);
+				await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe('failed');
 				expect(properties.update).not.toHaveBeenCalled();
 			});
 

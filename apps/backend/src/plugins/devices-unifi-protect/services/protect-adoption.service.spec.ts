@@ -367,7 +367,7 @@ describe('ProtectAdoptionService', () => {
 	let logged: unknown[][];
 	let service: ProtectAdoptionService;
 	let streamStore: ProtectStreamAvailabilityStore;
-	let synchronizer: { refreshDevice: jest.Mock };
+	let synchronizer: { refreshDeviceOutcome: jest.Mock };
 	let mapped: ProtectMappedDevice;
 	let rawCamera: Raw;
 	let contextRun: jest.SpyInstance;
@@ -462,7 +462,7 @@ describe('ProtectAdoptionService', () => {
 		};
 		streamStore = new ProtectStreamAvailabilityStore();
 		// Without a realtime session the synchronizer holds no camera: adoption writes the status itself.
-		synchronizer = { refreshDevice: jest.fn().mockResolvedValue(false) };
+		synchronizer = { refreshDeviceOutcome: jest.fn().mockResolvedValue('not_held') };
 		service = new ProtectAdoptionService(
 			preview as unknown as ProtectMappingPreviewService,
 			fakes.devicesService as unknown as DevicesService,
@@ -1003,18 +1003,29 @@ describe('ProtectAdoptionService', () => {
 		});
 
 		it('leaves the status write to the synchronizer when it holds the camera', async () => {
-			synchronizer.refreshDevice.mockResolvedValue(true);
+			synchronizer.refreshDeviceOutcome.mockResolvedValue('refreshed');
 			client.getRtspsStreams.mockResolvedValue(urls('high'));
 
 			const direct = jest.spyOn(service as any, 'updateStreamStatuses');
 			const result = await service.adoptOne(ENABLING);
 
 			expect(result).toMatchObject({ warnings: [], stream: { status: 'enabled' } });
-			expect(synchronizer.refreshDevice).toHaveBeenCalledWith(
+			expect(synchronizer.refreshDeviceOutcome).toHaveBeenCalledWith(
 				{ nvrId: 'nvr', nvrMacKey: 'mac' },
 				'camera',
 				'600cefafd5f365d6f83c4ef3',
 			);
+			expect(direct).not.toHaveBeenCalled();
+		});
+
+		it('writes no status directly when the synchronizer holds the camera but its refresh failed', async () => {
+			synchronizer.refreshDeviceOutcome.mockResolvedValue('failed');
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			const direct = jest.spyOn(service as any, 'updateStreamStatuses');
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({ warnings: ['values_incomplete'], stream: { status: 'enabled' } });
 			expect(direct).not.toHaveBeenCalled();
 		});
 
