@@ -48,8 +48,9 @@ I want every admin screen, including the newer ones and every plugin form, to fo
 ## 4. Acceptance criteria
 
 - [ ] Phase 1, theme and lint: theme files merged into `apps/admin`, button override and `px-4!` removed, cards flat,
-      `bg-primary/5` and `border-primary/20` replaced, lint rules on in warn mode, `docs/admin-ui-theme/` removed and
-      the spec pointing at the `apps/admin` files.
+      `bg-primary/5` and `border-primary/20` replaced, lint rules on in warn mode, `docs/admin-ui-theme/` removed, and
+      every reference to it updated to the `apps/admin` files: the spec header and section 10, section 2 of this
+      epic, and the documentation tree in `docs/readme.md`.
 - [ ] Phase 2, shell and shared components: wrappers built with unit tests, sidebar regrouped, rail and tablet
       drawer, dark phone app bar, `view-header` on every routed screen, `size="large"` on touch.
 - [ ] Phase 3, reference modules: Devices, Automations, Remote access, MCP, Notifications and the Cameras screens on

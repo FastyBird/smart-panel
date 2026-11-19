@@ -112,3 +112,20 @@
 .el-tabs__item.is-active {
   color: var(--fb-primary-text);
 }
+
+// Interaction colours. Element Plus lightens on hover (filled hover = light-3, link-button hover = light-5,
+// link hover = light-3), which drops white-on-colour and colour-on-white below 4.5:1 with this palette.
+// Hover darkens instead; active keeps Element Plus's dark-2. Plain, text and dashed buttons keep their own
+// variants. dark.scss overrides the text colours for dark surfaces.
+@each $type in (primary, success, warning, danger, info) {
+  .el-button--#{$type}:not(.is-plain):not(.is-text):not(.is-link):not(.is-dashed) {
+    --el-button-hover-bg-color: color-mix(in srgb, var(--el-color-#{$type}) 88%, black);
+    --el-button-hover-border-color: color-mix(in srgb, var(--el-color-#{$type}) 88%, black);
+  }
+  .el-button--#{$type}.is-link {
+    --el-button-hover-link-text-color: var(--el-color-#{$type}-dark-2);
+  }
+  .el-link.el-link--#{$type} {
+    --el-link-hover-text-color: var(--el-color-#{$type}-dark-2);
+  }
+}

@@ -300,4 +300,4 @@ Each template: desktop (≥ 1200), tablet (768–1199), phone (< 768), and dark 
 | Routes and menu | `apps/admin/src/modules/*/router/index.ts` (`meta.menu` = sort weight, higher first) |
 | Panel (display) design, for brand alignment | `docs/display-app-design-spec.md` |
 
-See also: [admin-ui-screens-and-plugins.md](admin-ui-screens-and-plugins.md), the full inventory of module screens and plugins.
+See also: [admin-ui-screens-and-plugins.md](../admin-ui-screens-and-plugins.md), the full inventory of module screens and plugins.

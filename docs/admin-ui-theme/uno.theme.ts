@@ -90,7 +90,7 @@ export const fbShortcuts: Record<string, string> = {
   'border-light': 'border-[var(--el-border-color-light)]',
 
   // Layout
-  'page-pad': 'px-3 py-3 tp:px-4 tp:py-4 dt:px-6', // 12 px phone, 16 px from tp, 24 px from dt
+  'page-pad': 'px-3 py-3 tp:px-4 tp:py-4 dt:px-6 dt:py-6', // 12 px phone, 16 px from tp, 24 px from dt
   'card-grid': 'grid gap-4 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]',
   'tile-grid': 'grid gap-4 grid-cols-[repeat(auto-fill,minmax(150px,1fr))]',
 }

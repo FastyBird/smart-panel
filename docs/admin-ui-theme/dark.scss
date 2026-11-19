@@ -86,13 +86,23 @@ html.dark {
       --el-tag-bg-color: var(--fb-status-#{$key}-soft);
       --el-tag-border-color: var(--fb-status-#{$key}-border);
     }
+    // Plain tags keep their transparent background; only text and border move to the status shades.
+    .el-tag--plain.el-tag--#{$type} {
+      --el-tag-text-color: var(--fb-status-#{$key}-text);
+      --el-tag-border-color: var(--fb-status-#{$key}-border);
+    }
     .el-button--#{$type}.is-plain,
     .el-button--#{$type}.is-text,
     .el-button--#{$type}.is-link {
       --el-button-text-color: var(--fb-status-#{$key}-text);
     }
+    // Hover text of link buttons and links: lighter still, never the generated dark mixes.
+    .el-button--#{$type}.is-link {
+      --el-button-hover-link-text-color: color-mix(in srgb, var(--fb-status-#{$key}-text) 80%, white);
+    }
     .el-link.el-link--#{$type} {
       --el-link-text-color: var(--fb-status-#{$key}-text);
+      --el-link-hover-text-color: color-mix(in srgb, var(--fb-status-#{$key}-text) 80%, white);
     }
   }
 

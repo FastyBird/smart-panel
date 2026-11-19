@@ -344,7 +344,8 @@ Four phases, each visible on its own, none breaking plugins mid-way. Progress is
 1. **Theme and lint.** Merge the files from `admin-ui-theme/` into `apps/admin` (`src/assets/styles/base.scss`,
    `src/assets/styles/dark.scss`, `uno.config.ts`); remove the 50 px button override and `px-4!`; set cards to
    `shadow="never"`; replace the 11 `bg-primary/5` and `border-primary/20` uses; turn on the lint rules in warn mode;
-   delete `docs/admin-ui-theme/` and point this spec at the `apps/admin` files.
+   delete `docs/admin-ui-theme/` and point every reference to it (this spec, the epic, the tree in `docs/readme.md`)
+   at the `apps/admin` files.
 2. **Shell and shared components.** Build the twelve wrappers and the two plugin wrappers; regroup the sidebar; add
    the size-class shell (rail, tablet drawer); switch the phone app bar to the dark style; put `view-header` on
    every routed screen; global `size="large"` on touch.
