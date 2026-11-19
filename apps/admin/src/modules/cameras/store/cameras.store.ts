@@ -70,9 +70,18 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 						next[camera.deviceId] = camera;
 					}
 
-					// Cameras missing from the response are gone, so the whole map is replaced.
+					// Listed cameras missing from the response are gone, so the list is replaced.
 					listGeneration++;
 					listed.value = new Set(Object.keys(next));
+
+					// A camera read through `get()` that the list leaves out (a hidden device) stays cached, off the list,
+					// until a detail read answers 404; a transient failure of that read must not lose it.
+					for (const deviceId of detailIds) {
+						if (!(deviceId in next) && deviceId in data.value) {
+							next[deviceId] = data.value[deviceId];
+						}
+					}
+
 					data.value = next;
 					loaded = true;
 

@@ -209,4 +209,30 @@ describe('Cameras store', () => {
 
 		expect(store.findById('h')?.name).toBe('Porch again');
 	});
+
+	it('keeps a hidden camera held through get across a list refresh whose detail read then fails', async () => {
+		(mockBackendClient.GET as Mock)
+			.mockResolvedValueOnce(ok([cameraRes('a', 'Alpha')]))
+			.mockResolvedValueOnce(ok(cameraRes('h', 'Hidden porch')))
+			.mockResolvedValueOnce(ok([cameraRes('a', 'Alpha')]))
+			.mockResolvedValueOnce({ data: undefined, error: { error: { message: 'Unavailable' } }, response: { status: 503 } });
+
+		await store.fetch();
+		await store.get({ deviceId: 'h' });
+
+		await expect(store.refresh()).rejects.toMatchObject({ code: 503 });
+
+		expect(store.findById('h')?.name).toBe('Hidden porch');
+		expect(store.findAll().map((c) => c.deviceId)).toEqual(['a']);
+	});
+
+	it('keeps a hidden camera held through get across a plain list fetch', async () => {
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce(ok(cameraRes('h', 'Hidden porch'))).mockResolvedValueOnce(ok([cameraRes('a', 'Alpha')]));
+
+		await store.get({ deviceId: 'h' });
+		await store.fetch();
+
+		expect(store.findById('h')?.name).toBe('Hidden porch');
+		expect(store.findAll().map((c) => c.deviceId)).toEqual(['a']);
+	});
 });
