@@ -100,12 +100,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElRadio, ElRadioGroup, type FormRules } from 'element-plus';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
 import { CamerasModuleDataGo2rtcConfigMode } from '../../../openapi.constants';
 import { FormResult, type FormResultType, Layout, type LayoutType, useConfigModuleEditForm } from '../../config';
 import type { IConfigModule } from '../../config/store/config-modules.store.types';
@@ -155,6 +155,10 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 		error: t('camerasModule.config.messages.notEdited'),
 	},
 });
+
+// Reset restores this whole model: `resetFields()` only resets the mounted form items, so an edit of a field the mode
+// hides would survive it.
+const initialModel: ICamerasConfigEditForm = deepClone(model);
 
 // `el-input` wants a string; the model keeps `null` for "no URL".
 const externalUrl = computed<string>({
@@ -241,9 +245,11 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
-			if (!formEl.value) return;
+			Object.assign(model, deepClone(initialModel));
 
-			formEl.value.resetFields();
+			void nextTick((): void => {
+				formEl.value?.clearValidate();
+			});
 		}
 	}
 );

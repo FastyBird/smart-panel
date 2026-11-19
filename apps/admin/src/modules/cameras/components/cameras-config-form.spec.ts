@@ -203,6 +203,43 @@ describe('CamerasConfigForm', () => {
 		}
 	);
 
+	it('restores fields the mode hides when the form is reset', async () => {
+		setup(CamerasModuleDataGo2rtcConfigMode.external);
+		model.go2rtc.externalUrl = 'http://192.168.1.5:1984';
+
+		const wrapper = mountForm();
+
+		await wrapper.find('input[name="externalUrl"]').setValue('http://10.0.0.9:1984');
+		await wrapper.find('input[type="radio"][value="managed"]').setValue(true);
+		await wrapper.find('input[name="binaryPath"]').setValue('/opt/go2rtc');
+		await wrapper.find('input[type="radio"][value="disabled"]').setValue(true);
+		model.maxSessions = 3;
+		await flushPromises();
+
+		expect(model.go2rtc).toEqual({
+			mode: CamerasModuleDataGo2rtcConfigMode.disabled,
+			binaryPath: '/opt/go2rtc',
+			externalUrl: 'http://10.0.0.9:1984',
+		});
+		expect(wrapper.find('[name="externalUrl"]').exists()).toBe(false);
+		expect(wrapper.find('[name="binaryPath"]').exists()).toBe(false);
+
+		await wrapper.setProps({ remoteFormReset: true });
+
+		expect(wrapper.emitted('update:remote-form-reset')?.[0]).toEqual([false]);
+		expect(model.go2rtc).toEqual({
+			mode: CamerasModuleDataGo2rtcConfigMode.external,
+			binaryPath: '/usr/local/lib/smart-panel/go2rtc/go2rtc',
+			externalUrl: 'http://192.168.1.5:1984',
+		});
+		expect(model.maxSessions).toBe(8);
+		expect((wrapper.find('input[name="externalUrl"]').element as HTMLInputElement).value).toBe('http://192.168.1.5:1984');
+
+		await wrapper.find('input[type="radio"][value="managed"]').setValue(true);
+
+		expect((wrapper.find('input[name="binaryPath"]').element as HTMLInputElement).value).toBe('/usr/local/lib/smart-panel/go2rtc/go2rtc');
+	});
+
 	it('tells the user when the form does not validate', async () => {
 		model.go2rtc.binaryPath = 'go2rtc';
 
