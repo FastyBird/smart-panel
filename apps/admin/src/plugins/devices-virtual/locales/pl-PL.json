@@ -948,5 +948,13 @@
 			"converter": "Przeliczona wartość jest niedostępna, dopóki nie nadejdzie kolejne zgłoszenie.",
 			"dewPoint": "Punkt rosy jest niedostępny, dopóki nie nadejdzie kolejne zgłoszenie."
 		}
+	},
+	"windowDetection": {
+		"requirement": "Wykrywanie okna wymaga odczytu temperatury w pomieszczeniu co najmniej co {required}.",
+		"fits": "Czujnik w pomieszczeniu zgłasza się mniej więcej co {typical}.",
+		"tooSlow": {
+			"title": "Czujnik w pomieszczeniu zgłasza się zbyt rzadko do wykrywania okna",
+			"message": "Zgłasza się mniej więcej co {typical}, a wykrywanie wymaga odczytu co najmniej co {required}. Czujniki zgłaszające zmiany przyspieszają, gdy temperatura spada, ale rzadko aż tak. Bez wystarczającej liczby odczytów wykrywanie nigdy nie wstrzymuje termostatu; jedynie przeoczy otwarte okno. Aby wykrywanie było niezawodne, dodaj kontaktron okienny."
+		}
 	}
 }

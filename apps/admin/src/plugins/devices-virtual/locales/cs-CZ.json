@@ -948,5 +948,13 @@
 			"converter": "Převedená hodnota není dostupná, dokud nepřijde další hlášení.",
 			"dewPoint": "Rosný bod není dostupný, dokud nepřijde další hlášení."
 		}
+	},
+	"windowDetection": {
+		"requirement": "Detekce okna potřebuje hodnotu teploty v místnosti alespoň každých {required}.",
+		"fits": "Čidlo v místnosti hlásí zhruba každých {typical}.",
+		"tooSlow": {
+			"title": "Čidlo v místnosti hlásí pro detekci okna příliš zřídka",
+			"message": "Hlásí zhruba každých {typical} a detekce potřebuje hodnotu alespoň každých {required}. Čidla, která hlásí při změně, při poklesu teploty zrychlí, ale málokdy tolik. Bez dostatku hodnot detekce termostat nikdy nepozastaví, jen přehlédne otevřené okno. Pro spolehlivou detekci přidejte okenní kontakt."
+		}
 	}
 }

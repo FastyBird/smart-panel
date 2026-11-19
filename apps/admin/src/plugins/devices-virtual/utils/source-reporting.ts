@@ -85,6 +85,10 @@ const DURATION_UNITS: [Intl.NumberFormatOptions['unit'], number][] = [
  */
 export const formatReportingDuration = (seconds: number | null, locale = 'en'): string => {
 	if (seconds === null || !Number.isFinite(seconds) || seconds < 0) return '—';
+	// A fractional duration under a minute (a requirement derived from millisecond settings) keeps three significant
+	// digits, so any positive value, however small, stays distinguishable from 0s and 1.5 s does not read as 2s.
+	if (seconds < 60 && !Number.isInteger(seconds))
+		return new Intl.NumberFormat(locale, { style: 'unit', unit: 'second', unitDisplay: 'narrow', maximumSignificantDigits: 3 }).format(seconds);
 	let rest = Math.round(seconds);
 	const parts: string[] = [];
 	for (const [unit, size] of DURATION_UNITS) {
@@ -96,4 +100,58 @@ export const formatReportingDuration = (seconds: number | null, locale = 'en'): 
 		if (parts.length === 1 && amount === 0) break;
 	}
 	return parts.join(' ');
+};
+
+const REPORTED_INTERVAL_ROUNDING_SECONDS = 0.5;
+
+/** The window-detection settings that decide how often the room temperature must be sampled. */
+export interface IWindowDetectionCadence {
+	sampleWindowMs: number | null;
+	minimumSamples: number | null;
+	maximumSampleAgeMs: number | null;
+}
+
+/**
+ * The longest time between room temperature readings that still lets window detection work: it needs
+ * `minimumSamples` readings inside `sampleWindowMs`, and the newest one younger than `maximumSampleAgeMs`.
+ * Kept exact (possibly fractional): millisecond settings can require sub-second readings.
+ * Null while the settings are incomplete or invalid.
+ */
+export const windowDetectionIntervalSeconds = (cadence: IWindowDetectionCadence): number | null => {
+	const { sampleWindowMs, minimumSamples, maximumSampleAgeMs } = cadence;
+	if (sampleWindowMs === null || minimumSamples === null || maximumSampleAgeMs === null) return null;
+	if (
+		![sampleWindowMs, minimumSamples, maximumSampleAgeMs].every(Number.isFinite) ||
+		sampleWindowMs <= 0 ||
+		maximumSampleAgeMs <= 0 ||
+		minimumSamples < 2
+	)
+		return null;
+	return Math.min(sampleWindowMs / (minimumSamples - 1), maximumSampleAgeMs) / 1000;
+};
+
+/**
+ * Whether the room temperature source reports often enough for window detection:
+ * - `none`: nothing known to compare (no source, a derived source, or incomplete settings)
+ * - `unknown`: not enough reports seen yet
+ * - `too_slow`: the source usually reports less often than detection needs, so detection rarely sees a drop
+ * - `fits`: the source usually reports often enough
+ * Detection without enough readings never pauses the thermostat; it only misses open windows.
+ */
+export type WindowDetectionAdvice =
+	| { kind: 'none'; requiredIntervalSeconds: number | null }
+	| { kind: 'unknown'; requiredIntervalSeconds: number }
+	| { kind: 'too_slow'; requiredIntervalSeconds: number; reporting: ISourceReporting }
+	| { kind: 'fits'; requiredIntervalSeconds: number; reporting: ISourceReporting };
+
+export const windowDetectionAdvice = (reporting: ISourceReporting | null, cadence: IWindowDetectionCadence): WindowDetectionAdvice => {
+	const requiredIntervalSeconds = windowDetectionIntervalSeconds(cadence);
+	if (requiredIntervalSeconds === null || reporting === null || reporting.sourceKind !== 'physical') return { kind: 'none', requiredIntervalSeconds };
+	// The median interval: a sensor that reports on change speeds up while the temperature falls, but one that
+	// usually reports less often than this will rarely produce enough readings in time.
+	if (reporting.typicalIntervalSeconds === null) return { kind: 'unknown', requiredIntervalSeconds };
+	// The endpoint rounds intervals to whole seconds, so the true interval can be up to half a second shorter.
+	if (reporting.typicalIntervalSeconds - REPORTED_INTERVAL_ROUNDING_SECONDS > requiredIntervalSeconds)
+		return { kind: 'too_slow', requiredIntervalSeconds, reporting };
+	return { kind: 'fits', requiredIntervalSeconds, reporting };
 };

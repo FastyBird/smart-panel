@@ -948,5 +948,13 @@
 			"converter": "El valor convertido no está disponible hasta que llega el siguiente informe.",
 			"dewPoint": "El punto de rocío no está disponible hasta que llega el siguiente informe."
 		}
+	},
+	"windowDetection": {
+		"requirement": "La detección de ventana necesita una lectura de temperatura de la habitación al menos cada {required}.",
+		"fits": "El sensor de la habitación informa aproximadamente cada {typical}.",
+		"tooSlow": {
+			"title": "El sensor de la habitación informa demasiado poco para detectar ventanas",
+			"message": "Informa aproximadamente cada {typical}, y la detección necesita una lectura al menos cada {required}. Los sensores que informan al cambiar aceleran mientras la temperatura baja, pero rara vez tanto. Sin lecturas suficientes la detección nunca pausa el termostato; solo pasa por alto ventanas abiertas. Para una detección fiable, añade un contacto de ventana."
+		}
 	}
 }

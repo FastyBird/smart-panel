@@ -948,5 +948,13 @@
 			"converter": "The converted value is unavailable until the next report arrives.",
 			"dewPoint": "The dew point is unavailable until the next report arrives."
 		}
+	},
+	"windowDetection": {
+		"requirement": "Window detection needs a room temperature reading at least every {required}.",
+		"fits": "The room sensor reports about every {typical}.",
+		"tooSlow": {
+			"title": "The room sensor reports too rarely for window detection",
+			"message": "It reports about every {typical}, and detection needs a reading at least every {required}. Sensors that report on change speed up while the temperature falls, but rarely that much. Without enough readings detection never pauses the thermostat; it only misses open windows. For reliable detection, add a window contact."
+		}
 	}
 }
