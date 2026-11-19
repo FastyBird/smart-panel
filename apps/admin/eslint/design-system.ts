@@ -81,7 +81,19 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 			return;
 
 		case 'ArrayExpression':
-			(current.elements as unknown[]).forEach((element) => collectExpressionClasses(element, found, owner));
+			for (const element of current.elements as (TemplateNode | null)[]) {
+				if (element?.type === 'SpreadElement') {
+					// Array spread iterates its operand: an array literal yields its items, a string its characters,
+					// other values are unknown at lint time
+					if ((element.argument as TemplateNode | undefined)?.type === 'ArrayExpression') {
+						collectExpressionClasses(element.argument, found, owner);
+					}
+
+					continue;
+				}
+
+				collectExpressionClasses(element, found, owner);
+			}
 
 			return;
 
@@ -133,7 +145,6 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 
 			return;
 
-		case 'SpreadElement':
 		case 'TSAsExpression':
 		case 'TSNonNullExpression':
 			collectExpressionClasses(current.argument ?? current.expression, found, owner);
@@ -533,9 +544,8 @@ const cssCode = (text: string, block: IStyleBlock): string => {
 	return chars.join('');
 };
 
-/** Whether the hash at `offset` of the code is followed by `{` before any `;` or `}`, which makes it part of a selector */
-/** At-rules whose prelude is a selector: `@extend #abc;`, `@at-root #abc { … }` */
-const SELECTOR_AT_RULES = ['extend', 'at-root'];
+/** At-rules whose prelude is a selector: `@extend #abc;`, `@at-root #abc { … }`, `@scope (#abc) to (.y) { … }` */
+const SELECTOR_AT_RULES = ['extend', 'at-root', 'scope'];
 
 /**
  * Whether the hash at `offset` of the code is part of a selector rather than a value.
@@ -554,11 +564,19 @@ const isCssSelectorHash = (code: string, offset: number, indented: boolean): boo
 	const atRule = /^@([\w-]+)/.exec(prelude);
 
 	if (atRule) {
+		// `@supports selector(#abc)`: the argument of selector() is a selector, whatever the at-rule
+		const openSelector = prelude.toLowerCase().lastIndexOf('selector(');
+
+		if (openSelector !== -1 && !prelude.slice(openSelector).includes(')')) {
+			return true;
+		}
+
 		return SELECTOR_AT_RULES.includes((atRule[1] ?? '').toLowerCase());
 	}
 
 	if (indented) {
-		return !/^[\w-]+\s*:/.test(prelude);
+		// Declarations: `color: …`, Sass variables `$tone: …`, Stylus assignments `tone = …`
+		return !/^(?:\$?[\w-]+\s*:|[\w$-]+\s*=)/.test(prelude);
 	}
 
 	const rest = code.slice(offset);
@@ -575,6 +593,32 @@ const ISSUE_REFERENCE = /\b(?:issues?|prs?|pull requests?|tickets?|fixes|fixed|c
 /** Fragment references in the template and script: href="#top", :href="'#top'", :to="`#top`", url(#gradient) */
 const FRAGMENT_REFERENCE = /(?:\b(?:href|to)\s*=\s*["'](?:\s*['"`])?|\burl\(\s*['"]?)$/i;
 
+/** Ranges of `#name` slot shorthands (`<template #add>`): directive keys, not colours */
+const slotShorthandRanges = (context: Rule.RuleContext): [number, number][] => {
+	const ranges: [number, number][] = [];
+	const visit = (node: TemplateNode | null | undefined): void => {
+		if (!node || node.type !== 'VElement') {
+			return;
+		}
+
+		const startTag = node.startTag as { attributes?: TemplateNode[] } | undefined;
+
+		for (const attribute of startTag?.attributes ?? []) {
+			const key = attribute.key as { name?: { rawName?: string }; range?: [number, number] } | undefined;
+
+			if (attribute.directive === true && key?.name?.rawName === '#' && key.range) {
+				ranges.push(key.range);
+			}
+		}
+
+		(node.children as TemplateNode[] | undefined)?.forEach(visit);
+	};
+
+	visit((context.sourceCode.ast as unknown as { templateBody?: TemplateNode | null }).templateBody);
+
+	return ranges;
+};
+
 const noHexColours: Rule.RuleModule = {
 	meta: {
 		type: 'suggestion',
@@ -590,6 +634,7 @@ const noHexColours: Rule.RuleModule = {
 			const comments: [number, number][] = [
 				...context.sourceCode.getAllComments().map((comment) => comment.range as [number, number]),
 				...(documentFragment(context)?.comments ?? []).map((comment) => comment.range),
+				...slotShorthandRanges(context),
 			];
 
 			const report = (index: number, value: string): void =>

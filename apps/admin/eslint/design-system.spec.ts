@@ -92,6 +92,8 @@ describe('design system lint rules', () => {
 			// Spreading an array or a string into an object gives index keys, not these classes
 			sfc('<p :class="{ ...[\'text-primary\'] }"></p>'),
 			sfc('<p :class="{ ...\'text-primary\' }"></p>'),
+			// Array spread iterates: a string spreads its characters
+			sfc('<p :class="[...\'text-primary\']"></p>'),
 			// A computed key is a property name: the array becomes `text-primary,font-600`
 			sfc("<p :class=\"{ [['text-primary', 'font-600']]: active }\"></p>"),
 		],
@@ -137,6 +139,13 @@ describe('design system lint rules', () => {
 			// Indented syntax: a line without `property:` is a selector
 			sfc('<div></div>', '<style lang="sass">\n#abc\n  display: block\na, #fade:hover\n  color: var(--el-color-danger)\n</style>'),
 			sfc('<div></div>', '<style lang="stylus">\n#abc\n  display: block\n</style>'),
+			// Slot shorthands are directive names
+			sfc('<el-table><template #add>x</template><template #fade="{ row }">{{ row }}</template></el-table>'),
+			// Selectors inside at-rules
+			sfc(
+				'<div></div>',
+				'<style>\n@scope (#abc) {\n\t.x { display: block; }\n}\n@supports selector(#fade > a) {\n\t.x { display: block; }\n}\n</style>'
+			),
 			// Selector at-rules
 			sfc('<div></div>', '<style lang="scss">\n.x {\n\t@extend #abc;\n}\n@at-root #fade {\n\tdisplay: none;\n}\n</style>'),
 			// ID selectors are not colours
@@ -151,6 +160,13 @@ describe('design system lint rules', () => {
 			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder-color: #fff;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
 			// Indented syntax: declarations are still checked
 			{ ...sfc('<div></div>', '<style lang="sass">\n#abc\n  color: #fff\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			// Sass variables are values
+			{ ...sfc('<div></div>', '<style lang="sass">\n$tone: #fff\n.x\n  color: $tone\n</style>'), errors: [{ messageId: 'hex', line: 2 }] },
+			// A colour condition next to selector() is still a value
+			{
+				...sfc('<div></div>', '<style>\n@supports selector(#abc) and (color: #fff) {\n\t.x { display: block; }\n}\n</style>'),
+				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
+			},
 			// At-rule conditions are values, not selectors
 			{
 				...sfc('<div></div>', '<style>\n@supports (color: #fff) {\n\t.x { display: block; }\n}\n</style>'),
