@@ -59,8 +59,20 @@ describe('design system lint rules', () => {
 	});
 
 	tester.run('no-primary-body-text', designSystemRules['no-primary-body-text'], {
-		valid: [sfc('<span class="text-primary"></span>'), sfc('<p class="text-default"></p>')],
-		invalid: [{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] }],
+		valid: [
+			sfc('<span class="text-primary"></span>'),
+			sfc('<p class="text-default"></p>'),
+			// Strings in conditions and object values are not classes Vue can emit
+			sfc('<p :class="{ active: status === \'text-primary\' }"></p>'),
+			sfc("<p :class=\"status === 'text-primary' ? 'text-default' : 'text-regular'\"></p>"),
+			sfc("<p :class=\"[tone === 'text-primary' && 'font-600', name]\"></p>"),
+		],
+		invalid: [
+			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc("<p :class=\"highlighted ? 'text-primary' : 'text-default'\"></p>"), errors: [{ messageId: 'body' }] },
+			{ ...sfc('<p :class="{ \'text-primary\': highlighted }"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc('<p :class="[highlighted && \'text-primary\']"></p>'), errors: [{ messageId: 'body' }] },
+		],
 	});
 
 	tester.run('no-card-shadow', designSystemRules['no-card-shadow'], {
@@ -77,11 +89,18 @@ describe('design system lint rules', () => {
 			sfc('<div></div>', '<script setup lang="ts">\n// Fixes #1234\nconst id = 1;\n</script>'),
 			sfc('<div>See issue #123</div>'),
 			sfc('<div style="color: var(--el-color-danger)"></div>'),
+			sfc('<div><!-- colour was #f56c6c --></div>'),
+			sfc('<div></div>', '<style scoped>\n/* was #f56c6c */\n.box {\n\tcolor: var(--el-color-danger);\n}\n</style>'),
 		],
 		invalid: [
 			{ ...sfc('<div style="color: #f56c6c"></div>'), errors: [{ messageId: 'hex', data: { value: '#f56c6c' } }] },
 			{ ...sfc('<div></div>', '<script setup lang="ts">\nconst colour = \'#909399\';\n</script>'), errors: [{ messageId: 'hex' }] },
 			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder-color: #fff;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			// Digits only, after a word: still a colour in CSS
+			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder: 1px solid #123;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			// A universal selector is not a comment
+			{ ...sfc('<div></div>', '<style scoped>\n* { color: #fff; }\n</style>'), errors: [{ messageId: 'hex', line: 2 }] },
+			{ ...sfc('<div style="border: 1px solid #123"></div>'), errors: [{ messageId: 'hex' }] },
 		],
 	});
 });

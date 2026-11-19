@@ -37,7 +37,12 @@ const bareClass = (token: string): string => {
 
 const splitClasses = (value: string): string[] => value.split(/\s+/).filter((token) => token.length > 0);
 
-/** Every class name a bound expression can produce: string literals, template text and object keys */
+/**
+ * Every class name a bound expression can produce. Only the parts Vue turns into classes are read: string
+ * literals, template text and its interpolations, array elements, object keys (not their boolean values),
+ * the result branches of a conditional (not its test), the right side of `&&`, both sides of `||`, `??` and
+ * string concatenation. Identifiers, calls and member expressions are runtime values and are skipped.
+ */
 const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: TemplateNode): void => {
 	if (node === null || typeof node !== 'object') {
 		return;
@@ -45,43 +50,83 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 
 	const current = node as TemplateNode;
 
-	if (current.type === 'Literal' && typeof current.value === 'string') {
-		splitClasses(current.value).forEach((token) => found.push({ token, node: current }));
+	switch (current.type) {
+		case 'Literal':
+			if (typeof current.value === 'string') {
+				splitClasses(current.value).forEach((token) => found.push({ token, node: current }));
+			}
 
-		return;
-	}
+			return;
 
-	if (current.type === 'TemplateElement') {
-		const value = (current.value as { cooked?: string | null } | undefined)?.cooked ?? '';
+		case 'TemplateLiteral':
+			for (const quasi of current.quasis as TemplateNode[]) {
+				const value = (quasi.value as { cooked?: string | null } | undefined)?.cooked ?? '';
 
-		splitClasses(value).forEach((token) => found.push({ token, node: owner }));
+				splitClasses(value).forEach((token) => found.push({ token, node: owner }));
+			}
 
-		return;
-	}
+			(current.expressions as unknown[]).forEach((expression) => collectExpressionClasses(expression, found, owner));
 
-	if (current.type === 'Property' && current.computed !== true) {
-		const key = current.key as TemplateNode;
+			return;
 
-		if (key.type === 'Identifier' && typeof key.name === 'string') {
-			found.push({ token: key.name, node: key });
-		}
+		case 'ArrayExpression':
+			(current.elements as unknown[]).forEach((element) => collectExpressionClasses(element, found, owner));
 
-		collectExpressionClasses(key.type === 'Literal' ? key : null, found, owner);
-		collectExpressionClasses(current.value, found, owner);
+			return;
 
-		return;
-	}
+		case 'ObjectExpression':
+			for (const property of current.properties as TemplateNode[]) {
+				if (property.type === 'SpreadElement') {
+					collectExpressionClasses(property.argument, found, owner);
 
-	for (const [key, child] of Object.entries(current)) {
-		if (key === 'parent' || key === 'loc' || key === 'range' || key === 'tokens' || key === 'comments') {
-			continue;
-		}
+					continue;
+				}
 
-		if (Array.isArray(child)) {
-			child.forEach((item) => collectExpressionClasses(item, found, owner));
-		} else if (child !== null && typeof child === 'object' && 'type' in child) {
-			collectExpressionClasses(child, found, owner);
-		}
+				const key = property.key as TemplateNode;
+
+				if (property.computed === true) {
+					collectExpressionClasses(key, found, owner);
+				} else if (key.type === 'Identifier' && typeof key.name === 'string') {
+					found.push({ token: key.name, node: key });
+				} else {
+					collectExpressionClasses(key, found, owner);
+				}
+			}
+
+			return;
+
+		case 'ConditionalExpression':
+			collectExpressionClasses(current.consequent, found, owner);
+			collectExpressionClasses(current.alternate, found, owner);
+
+			return;
+
+		case 'LogicalExpression':
+			if (current.operator !== '&&') {
+				collectExpressionClasses(current.left, found, owner);
+			}
+
+			collectExpressionClasses(current.right, found, owner);
+
+			return;
+
+		case 'BinaryExpression':
+			if (current.operator === '+') {
+				collectExpressionClasses(current.left, found, owner);
+				collectExpressionClasses(current.right, found, owner);
+			}
+
+			return;
+
+		case 'SpreadElement':
+		case 'TSAsExpression':
+		case 'TSNonNullExpression':
+			collectExpressionClasses(current.argument ?? current.expression, found, owner);
+
+			return;
+
+		default:
+			return;
 	}
 };
 
@@ -242,7 +287,35 @@ const noCardShadow: Rule.RuleModule = {
 		}),
 };
 
-const isCommentLine = (line: string): boolean => /^\s*(\/\/|\/\*|\*|<!--)/.test(line);
+/** Character ranges of comments: HTML comments, script comments from the parser, CSS comments in style blocks */
+const commentRanges = (context: Rule.RuleContext, text: string): [number, number][] => {
+	const ranges: [number, number][] = context.sourceCode.getAllComments().map((comment) => comment.range as [number, number]);
+
+	for (const match of text.matchAll(/<!--[\s\S]*?-->/g)) {
+		ranges.push([match.index, match.index + match[0].length]);
+	}
+
+	for (const block of styleRanges(text)) {
+		for (const match of text.slice(block[0], block[1]).matchAll(/\/\*[\s\S]*?\*\//g)) {
+			ranges.push([block[0] + match.index, block[0] + match.index + match[0].length]);
+		}
+	}
+
+	return ranges;
+};
+
+/** Character ranges of the bodies of `<style>` blocks */
+const styleRanges = (text: string): [number, number][] =>
+	[...text.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map((match) => {
+		const start = match.index + match[0].indexOf('>') + 1;
+
+		return [start, start + (match[1] ?? '').length];
+	});
+
+const within = (index: number, ranges: [number, number][]): boolean => ranges.some(([start, end]) => index >= start && index < end);
+
+/** `issue #123`, `PR #1234`, `Fixes #123`: a number after a reference word in text or script, never in CSS */
+const ISSUE_REFERENCE = /\b(?:issues?|prs?|pull requests?|tickets?|fixes|fixed|closes|closed|refs?|see)\s*$/i;
 
 const noHexColours: Rule.RuleModule = {
 	meta: {
@@ -254,16 +327,25 @@ const noHexColours: Rule.RuleModule = {
 	create: (context) => ({
 		Program(): void {
 			const text = context.sourceCode.text;
+			const comments = commentRanges(context, text);
+			const styles = styleRanges(text);
 
 			for (const match of text.matchAll(HEX_COLOUR)) {
 				const value = match[0];
 				const index = match.index;
-				const lineStart = text.lastIndexOf('\n', index) + 1;
-				const line = text.slice(lineStart, text.indexOf('\n', index) === -1 ? undefined : text.indexOf('\n', index));
-				const before = text.slice(Math.max(0, index - 6), index);
+				const before = text.slice(Math.max(0, index - 30), index);
 
-				// Issue references in comments (#123) and in-page anchors (href="#add") are not colours
-				if (isCommentLine(line) || /(href|to)=["']$/.test(before) || (/^#\d{3,4}$/.test(value) && /[a-z]\s$/i.test(text.slice(index - 2, index)))) {
+				if (within(index, comments)) {
+					continue;
+				}
+
+				// In-page anchors (href="#add", to="#top") are not colours
+				if (/(?:href|to)=["']$/.test(before)) {
+					continue;
+				}
+
+				// Issue references, outside style blocks and style attributes
+				if (/^#\d{3,4}$/.test(value) && !within(index, styles) && !/style=["'][^"']*$/.test(before) && ISSUE_REFERENCE.test(before)) {
 					continue;
 				}
 
