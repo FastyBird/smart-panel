@@ -2,7 +2,7 @@ import { type MaybeRefOrGetter, type Ref, onScopeDispose, ref, toValue, watch } 
 
 import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend } from '../../../common';
-import { CAMERAS_MODULE_PREFIX, SNAPSHOT_REFRESH_MS } from '../cameras.constants';
+import { CAMERAS_MODULE_PREFIX, SNAPSHOT_REFRESH_MS, SNAPSHOT_REQUEST_TIMEOUT_MS } from '../cameras.constants';
 import { isModuleDisabledError, readErrorMessage } from '../cameras.utils';
 
 export type CameraSnapshotError = 'offline' | 'busy' | 'unavailable' | 'module_disabled' | 'not_found' | 'failed';
@@ -110,16 +110,30 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 			query.profile = profile;
 		}
 
+		// The shared client sets no timeout: a stalled request would keep `inFlight` set and block every later refresh.
+		let deadline: ReturnType<typeof setTimeout> | null = null;
+
+		const timedOut = new Promise<never>((_resolve, reject) => {
+			deadline = setTimeout(() => {
+				deadline = null;
+				abortController.abort();
+				reject(new Error('Snapshot request timed out'));
+			}, SNAPSHOT_REQUEST_TIMEOUT_MS);
+		});
+
 		try {
 			const {
 				data,
 				error: apiError,
 				response,
-			} = (await backend.client.GET(`/${MODULES_PREFIX}/${CAMERAS_MODULE_PREFIX}/cameras/{deviceId}/snapshot`, {
-				params: { path: { deviceId: toValue(deviceId) }, query },
-				signal: abortController.signal,
-				parseAs: 'blob',
-			} as never)) as { data?: Blob; error?: unknown; response?: Response };
+			} = (await Promise.race([
+				backend.client.GET(`/${MODULES_PREFIX}/${CAMERAS_MODULE_PREFIX}/cameras/{deviceId}/snapshot`, {
+					params: { path: { deviceId: toValue(deviceId) }, query },
+					signal: abortController.signal,
+					parseAs: 'blob',
+				} as never),
+				timedOut,
+			])) as { data?: Blob; error?: unknown; response?: Response };
 
 			if (id !== requestId || disposed) {
 				return 'superseded';
@@ -156,6 +170,10 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 
 			return 'failed';
 		} finally {
+			if (deadline !== null) {
+				clearTimeout(deadline);
+			}
+
 			if (id === requestId) {
 				inFlight = false;
 				loading.value = false;

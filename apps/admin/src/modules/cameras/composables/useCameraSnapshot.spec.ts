@@ -4,6 +4,8 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 
 import { mount } from '@vue/test-utils';
 
+import { SNAPSHOT_REFRESH_MS, SNAPSHOT_REQUEST_TIMEOUT_MS } from '../cameras.constants';
+
 import { type CameraSnapshotError, useCameraSnapshot } from './useCameraSnapshot';
 
 const getMock = vi.fn();
@@ -296,6 +298,65 @@ describe('useCameraSnapshot', () => {
 		await vi.advanceTimersByTimeAsync(3500);
 
 		expect(getMock).toHaveBeenCalledTimes(1);
+		wrapper.unmount();
+	});
+
+	it('fails a stalled request at the deadline so the next tick reloads', async () => {
+		let signal!: AbortSignal;
+
+		getMock.mockImplementationOnce((_path: string, opts: { signal: AbortSignal }) => {
+			signal = opts.signal;
+
+			// Never settles, not even on abort.
+			return new Promise(() => undefined);
+		});
+		getMock.mockResolvedValue(blobResponse('1'));
+
+		const { snapshot, wrapper } = mountHost('cam-1', { refreshMs: SNAPSHOT_REFRESH_MS });
+		await flush();
+
+		await vi.advanceTimersByTimeAsync(SNAPSHOT_REQUEST_TIMEOUT_MS - 1);
+		expect(signal.aborted).toBe(false);
+		expect(snapshot.loading.value).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(signal.aborted).toBe(true);
+		expect(snapshot.error.value).toBe('failed');
+		expect(snapshot.loading.value).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(SNAPSHOT_REFRESH_MS);
+		expect(getMock).toHaveBeenCalledTimes(2);
+		expect(snapshot.url.value).toBe('blob:snap-1');
+		expect(snapshot.error.value).toBeNull();
+		wrapper.unmount();
+	});
+
+	it('reports a timed out explicit reload as failed', async () => {
+		getMock.mockResolvedValueOnce(blobResponse('1'));
+
+		const { snapshot, wrapper } = mountHost('cam-1', { refreshMs: null });
+		await flush();
+
+		getMock.mockImplementationOnce(() => new Promise(() => undefined));
+
+		const result = snapshot.reload({ hq: true });
+
+		await vi.advanceTimersByTimeAsync(SNAPSHOT_REQUEST_TIMEOUT_MS);
+
+		await expect(result).resolves.toBe('failed');
+		// The previous image stays; the error says it could not be refreshed.
+		expect(snapshot.url.value).toBe('blob:snap-1');
+		expect(snapshot.error.value).toBe('failed');
+		wrapper.unmount();
+	});
+
+	it('clears the deadline when the request completes', async () => {
+		getMock.mockResolvedValue(blobResponse('1'));
+
+		const { wrapper } = mountHost('cam-1', { refreshMs: null });
+		await flush();
+
+		expect(vi.getTimerCount()).toBe(0);
 		wrapper.unmount();
 	});
 

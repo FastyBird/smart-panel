@@ -14,6 +14,11 @@ export enum RouteNames {
 export const SNAPSHOT_REFRESH_MS = 10_000;
 
 /**
+ * How long one snapshot request may take before it is aborted as a retryable failure, so the next refresh can run.
+ */
+export const SNAPSHOT_REQUEST_TIMEOUT_MS = 10_000;
+
+/**
  * How often the relay status is polled while the cameras page is open.
  */
 export const RELAY_STATUS_POLL_MS = 10_000;
