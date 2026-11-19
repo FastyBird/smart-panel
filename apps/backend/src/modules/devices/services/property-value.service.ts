@@ -388,10 +388,11 @@ export class PropertyValueService {
 							provenance: 'live',
 							isCurrent: evidence.sourceIsCurrent ?? evidence.isCurrent,
 						});
-					} else if (result.changed && this.samples.has(key) && this.samples.get(key)?.value !== result.state.value) {
+					} else if (this.samples.has(key) && this.samples.get(key)?.value !== result.state.value) {
 						// A replay (after a reconnect, for example) updates what is displayed but never renews
 						// live authority. When it contradicts the qualified live value, that value can no longer
-						// be trusted for control, so it is withdrawn until the device reports again.
+						// be trusted for control, so it is withdrawn until the device reports again. Compared with
+						// the qualified sample, not the display: an optimistic command write may already show it.
 						this.samples.delete(key);
 						this.events?.emit(
 							EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,

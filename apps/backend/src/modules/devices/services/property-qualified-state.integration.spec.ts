@@ -324,6 +324,18 @@ describe('qualified samples and producer state', () => {
 		},
 	);
 
+	it('withdraws the live value when a replay contradicts it, even if an optimistic write already displays the replay', async () => {
+		await report(20);
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		await values.write(property, 23);
+		expect((await values.readLatest(property))?.value).toBe(23);
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		jest.setSystemTime(base + 1_000);
+		await report(23, evidence(base + 1_000, 'cached'));
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect(invalidated).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not launder replay age or persisted startup history into qualified inputs', async () => {
 		jest.setSystemTime(base + 60_000);
 		await report(20, evidence(base));
