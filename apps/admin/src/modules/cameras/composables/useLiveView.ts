@@ -407,6 +407,14 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 	function applyEffects(previous: LiveViewContext, next: LiveViewContext): void {
 		clearTimers();
 
+		// While nothing can stream, only a playing, idle or offline view may stay as it is; any other state (a reconnect,
+		// a retry, a failure) goes back to the snapshot before it requests anything. The playback intent stays.
+		if (!isAvailable() && !STAY_ON_UNAVAILABLE_STATES.has(next.state)) {
+			send({ type: 'stop' });
+
+			return;
+		}
+
 		if (next.state === 'requesting') {
 			teardownSession();
 			beginSession();
@@ -443,8 +451,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		if (next.state === 'error' && next.retryInMs !== null) {
 			retryTimer = setTimeout(() => {
 				retryTimer = null;
-				// Nothing can stream now; the playback intent stays, so the view restarts once it is available again.
-				send({ type: isAvailable() ? 'retry_due' : 'stop' });
+				send({ type: 'retry_due' });
 			}, next.retryInMs);
 		}
 
@@ -484,7 +491,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 
 			if (relaySeenDown) {
 				relaySeenDown = false;
-				send({ type: isAvailable() ? 'retry' : 'stop' });
+				send({ type: 'retry' });
 			}
 		}
 	);
@@ -531,8 +538,8 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 
 	// An auto started view that could not stream yet starts once it can, unless it was stopped meanwhile.
 	watch(isAvailable, (available) => {
-		// Nothing can stream now: abort an attempt in flight and drop a pending or terminal failure, so no retry posts a
-		// session. A playing view keeps playing and an offline one keeps saying so. The intent stays for the next change.
+		// Transitions are covered by the check in `applyEffects`; a state that is already active or failed when
+		// availability drops has to be stopped here. A playing view keeps playing and an offline one keeps saying so.
 		if (!available) {
 			if (!STAY_ON_UNAVAILABLE_STATES.has(context.value.state)) {
 				send({ type: 'stop' });

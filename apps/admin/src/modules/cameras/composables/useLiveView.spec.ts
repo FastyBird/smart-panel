@@ -1013,6 +1013,73 @@ describe('useLiveView', () => {
 		expect(live.state.value).toBe('connecting');
 	});
 
+	it('does not reconnect a playing view after max_lifetime once it stopped being available, and restarts it later', async () => {
+		postMock.mockResolvedValue(sessionOk());
+
+		const available = ref(true);
+		const live = mountLiveView({ autoStart: true, available });
+		await flush();
+		lastClient().emit({ type: 'media_started' });
+		await flush();
+
+		expect(live.state.value).toBe('playing');
+
+		available.value = false;
+		await flush();
+
+		expect(live.state.value).toBe('playing');
+
+		lastClient().emit({ type: 'closed', code: 4002, reason: 'max_lifetime' });
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('snapshot');
+
+		available.value = true;
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(2);
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it('restarts a final attempt that played, failed before it was stable and lost availability', async () => {
+		for (let i = 0; i < LIVE_RETRY_DELAYS_MS.length; i++) {
+			postMock.mockResolvedValueOnce(failure(500, { message: 'boom' }));
+		}
+
+		postMock.mockResolvedValue(sessionOk());
+
+		const available = ref(true);
+		const live = mountLiveView({ autoStart: true, available });
+		await flush();
+
+		for (const delay of LIVE_RETRY_DELAYS_MS) {
+			await vi.advanceTimersByTimeAsync(delay);
+			await flush();
+		}
+
+		lastClient().emit({ type: 'media_started' });
+		await flush();
+
+		expect(live.state.value).toBe('playing');
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length + 1);
+
+		available.value = false;
+		await flush();
+
+		lastClient().emit({ type: 'closed', code: 1006, reason: '' });
+		await flush();
+
+		expect(live.state.value).toBe('snapshot');
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length + 1);
+
+		available.value = true;
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length + 2);
+		expect(live.state.value).toBe('connecting');
+	});
+
 	it('does not start an auto started view that was stopped before a profile became available', async () => {
 		const available = ref(false);
 		const live = mountLiveView({ autoStart: true, available });
