@@ -93,17 +93,21 @@ const observed = (reporting: ISourceReporting, sources: number): string =>
 
 // Profiles of the selected sources by property id; a source is fetched once while it stays selected.
 const reportings = reactive(new Map<string, ISourceReporting | null>());
+// The active load of each selected source: a response of a superseded load (deselected, then selected again) is dropped.
+const loads = new Map<string, number>();
+let lastLoad = 0;
 
 const selected = computed<string[]>(() => [...new Set(props.properties.filter((id): id is string => typeof id === 'string' && id.length > 0))]);
 
 const load = async (id: string): Promise<void> => {
+	const token = ++lastLoad;
+	loads.set(id, token);
 	reportings.set(id, null);
 	try {
 		const { data } = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/producers/source-reporting/{id}`, {
 			params: { path: { id } },
 		});
-		// A source deselected while loading is not kept.
-		if (!reportings.has(id) || !data) return;
+		if (loads.get(id) !== token || !data) return;
 		reportings.set(id, transformSourceReporting(data.data));
 	} catch {
 		// Guidance only: without it the field works as before.
@@ -113,7 +117,11 @@ const load = async (id: string): Promise<void> => {
 watch(
 	selected,
 	(ids) => {
-		for (const id of [...reportings.keys()]) if (!ids.includes(id)) reportings.delete(id);
+		for (const id of [...reportings.keys()])
+			if (!ids.includes(id)) {
+				reportings.delete(id);
+				loads.delete(id);
+			}
 		for (const id of ids) if (!reportings.has(id)) void load(id);
 	},
 	{ immediate: true }

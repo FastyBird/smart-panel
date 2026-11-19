@@ -54,6 +54,31 @@ describe('SourceReporting', () => {
 		expect(wrapper.get('[data-test-id="source-reporting-unknown"]').text()).toContain('sourceReporting.unknown.messageMany');
 	});
 
+	it('keeps the response of the latest load when a source is deselected and selected again', async () => {
+		const pending: ((value: unknown) => void)[] = [];
+		mocks.GET.mockImplementation(() => new Promise((resolve) => pending.push(resolve)));
+		const wrapper = mount(SourceReporting, { props: { properties: ['radio'], maximumAgeSeconds: 60, consequence: 'aggregate' } });
+		await wrapper.setProps({ properties: ['wired'] });
+		await wrapper.setProps({ properties: ['radio'] });
+		expect(pending).toHaveLength(3);
+		pending[2]({ data: { data: { property: 'radio', ...profiles.radio } } });
+		await flushPromises();
+		pending[0]({ data: { data: { property: 'radio', ...profiles.wired } } });
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="source-reporting-too-short"]').exists()).toBe(true);
+	});
+
+	it('does not confirm the age while another selected source failed to load', async () => {
+		mocks.GET.mockImplementation((_path: string, { params }: { params: { path: { id: string } } }) =>
+			params.path.id === 'radio'
+				? Promise.reject(new Error('offline'))
+				: Promise.resolve({ data: { data: { property: 'wired', ...profiles.wired } } })
+		);
+		const wrapper = mount(SourceReporting, { props: { properties: ['wired', 'radio'], maximumAgeSeconds: 60, consequence: 'aggregate' } });
+		await flushPromises();
+		expect(wrapper.text()).toBe('');
+	});
+
 	it('stays silent when the guidance cannot be loaded', async () => {
 		mocks.GET.mockRejectedValue(new Error('offline'));
 		const wrapper = mount(SourceReporting, { props: { properties: ['radio'], maximumAgeSeconds: 60, consequence: 'ambient' } });

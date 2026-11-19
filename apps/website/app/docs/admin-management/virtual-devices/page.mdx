@@ -91,8 +91,10 @@ aggregate, so the aggregate stays available while enough of its sources are fres
 fewer sensors.
 
 A dew point also needs its temperature and humidity samples to be close in time (the **maximum skew**, 5 seconds by
-default). A combined temperature and humidity sensor sends both in one report, so it meets that. Two separate radio
-sensors report at unrelated times and would rarely do so; take both inputs from the same sensor.
+default). Two separate radio sensors report at unrelated times and would rarely meet that, so take both inputs from
+one combined temperature and humidity sensor. Most combined sensors send both values in the same report, but some
+report each value on its own schedule; check that yours sends both within the maximum skew (the dew point editor
+shows each input's age, and reports a skew error when they are too far apart), or configure its reporting so it does.
 
 The trade-off is reaction time. With a maximum age of 90 minutes, the thermostat may act on a reading up to 90 minutes
 old, and it notices a sensor that stopped working only after that time. For a faster response, use a sensor that

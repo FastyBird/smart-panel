@@ -28,6 +28,8 @@ export type SourceReportingConsequence = 'ambient' | 'contact' | 'floor' | 'surf
  * - `fits`: the age covers the observed gaps of every source
  *
  * With several sources the advice follows the slowest one, because one maximum age covers them all.
+ * A selected source whose profile is still loading or failed to load could be the slowest, so the age
+ * is never confirmed as fitting until every selected profile is known.
  * `sources` counts the physical sources the advice is about, so the wording can say "this sensor" or
  * "the slowest of these sensors".
  */
@@ -50,10 +52,11 @@ const slowest = (reportings: ISourceReporting[]): ISourceReporting =>
 	reportings.reduce((slow, reporting) => ((reporting.longestIntervalSeconds ?? 0) > (slow.longestIntervalSeconds ?? 0) ? reporting : slow));
 
 /**
- * @param reportings one entry per selected source; null while a source is not selected or its profile is not loaded
+ * @param reportings one entry per selected source; null while its profile is loading or could not be loaded
  */
 export const sourceAgeAdvice = (reportings: (ISourceReporting | null)[], maximumAgeSeconds: number | null): SourceAgeAdvice => {
 	const physical = reportings.filter((reporting): reporting is ISourceReporting => reporting !== null && reporting.sourceKind === 'physical');
+	const unresolved = reportings.some((reporting) => reporting === null);
 	if (!physical.length) return { kind: 'none' };
 	const sources = physical.length;
 	const known = physical.filter((reporting) => reporting.longestIntervalSeconds !== null);
@@ -65,6 +68,7 @@ export const sourceAgeAdvice = (reportings: (ISourceReporting | null)[], maximum
 		return { kind: 'too_short', reporting, recommended: reporting.recommendedMaximumAgeSeconds, sources };
 	}
 	if (known.length < physical.length) return { kind: 'unknown', sources };
+	if (unresolved) return { kind: 'none' };
 	return { kind: 'fits', reporting: slowest(known), sources };
 };
 

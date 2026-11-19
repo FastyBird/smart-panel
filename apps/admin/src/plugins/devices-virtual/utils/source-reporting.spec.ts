@@ -57,8 +57,14 @@ describe('sourceAgeAdvice', () => {
 		expect(sourceAgeAdvice([unknown, wired], 300)).toEqual({ kind: 'unknown', sources: 2 });
 	});
 
-	it('counts only physical sources and ignores sources not selected or loaded yet', () => {
-		expect(sourceAgeAdvice([null, { ...wired, sourceKind: 'derived' }, hourly], 3_600)).toEqual({ kind: 'fits', reporting: hourly, sources: 1 });
+	it('counts only physical sources', () => {
+		expect(sourceAgeAdvice([{ ...wired, sourceKind: 'derived' }, hourly], 3_600)).toEqual({ kind: 'fits', reporting: hourly, sources: 1 });
+	});
+
+	it('does not confirm an age while a selected profile is loading or failed, but still warns about a known short one', () => {
+		expect(sourceAgeAdvice([wired, null], 60)).toEqual({ kind: 'none' });
+		expect(sourceAgeAdvice([hourly, null], 300)).toMatchObject({ kind: 'too_short', reporting: hourly });
+		expect(sourceAgeAdvice([unknown, null], 300)).toMatchObject({ kind: 'unknown' });
 	});
 });
 
