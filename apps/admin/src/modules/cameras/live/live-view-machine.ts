@@ -39,7 +39,7 @@ export interface LiveViewContext {
 	attempt: number;
 	/** Delay before the next automatic attempt; `null` when none is scheduled. */
 	retryInMs: number | null;
-	/** A seamless reconnect (after `max_lifetime`): the UI keeps the last frame and shows no connecting overlay. */
+	/** A seamless reconnect (after `max_lifetime`): the UI shows the snapshot underneath, without the connecting overlay. */
 	reconnect: boolean;
 }
 

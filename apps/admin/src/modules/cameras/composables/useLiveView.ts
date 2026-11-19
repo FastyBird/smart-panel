@@ -30,7 +30,7 @@ export interface IUseLiveViewOptions {
 export interface IUseLiveView {
 	state: Readonly<Ref<LiveViewState>>;
 	retryInMs: Readonly<Ref<number | null>>;
-	/** A seamless session renewal is running: the view keeps the last frame and shows no connecting overlay. */
+	/** A seamless session renewal is running: the view shows the snapshot underneath, without the connecting overlay. */
 	reconnect: ComputedRef<boolean>;
 	mime: Readonly<Ref<string | null>>;
 	lastSeen: ComputedRef<Date | null>;
