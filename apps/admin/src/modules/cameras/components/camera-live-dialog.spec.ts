@@ -137,9 +137,9 @@ const cameras: ICamera[] = [
 	{ deviceId: 'cam-2', name: 'Garage', category: 'camera', type: 't', liveView: true, profiles: [profile('main')] },
 ];
 
-const mountDialog = (modelValue: string | null = 'cam-1'): VueWrapper =>
+const mountDialog = (modelValue: string | null = 'cam-1', list: ICamera[] = cameras): VueWrapper =>
 	mount(CameraLiveDialog, {
-		props: { cameras, modelValue },
+		props: { cameras: list, modelValue },
 		global: {
 			stubs: {
 				ElDialog: ElDialogStub,
@@ -199,6 +199,24 @@ describe('CameraLiveDialog', () => {
 		expect(wrapper.find('[data-test-id="camera-live-dialog"]').exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'CameraPlayer' }).props('deviceId')).toBe('cam-2');
 		expect(wrapper.findComponent({ name: 'CameraPlayer' }).props('profile')).toBe('main');
+	});
+
+	it('lists the open camera in the switcher so the selected value has a name', () => {
+		const wrapper = mountDialog();
+		const switcher = wrapper.findComponent({ name: 'ElSelect' });
+		const options = wrapper.findAllComponents({ name: 'ElOption' }).map((option) => [option.props('value'), option.props('label')]);
+
+		expect(switcher.props('modelValue')).toBe('cam-1');
+		expect(options).toEqual([
+			['cam-1', 'Front door'],
+			['cam-2', 'Garage'],
+		]);
+	});
+
+	it('hides the switcher when there is no other camera', () => {
+		const wrapper = mountDialog('cam-1', [cameras[0]]);
+
+		expect(wrapper.find('[data-test-id="switcher"]').exists()).toBe(false);
 	});
 
 	it('builds the transport line from the mime type and the profile', async () => {

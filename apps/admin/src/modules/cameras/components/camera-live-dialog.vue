@@ -53,7 +53,7 @@
 					</el-button>
 
 					<el-select
-						v-if="otherCameras.length > 0"
+						v-if="hasOtherCameras"
 						:model-value="camera.deviceId"
 						:aria-label="t('camerasModule.dialog.switchCamera')"
 						:placeholder="t('camerasModule.dialog.switchCamera')"
@@ -62,10 +62,10 @@
 						@update:model-value="onSwitchCamera"
 					>
 						<el-option
-							v-for="other in otherCameras"
-							:key="other.deviceId"
-							:value="other.deviceId"
-							:label="other.name"
+							v-for="item in cameras"
+							:key="item.deviceId"
+							:value="item.deviceId"
+							:label="item.name"
 						/>
 					</el-select>
 				</div>
@@ -139,7 +139,8 @@ const profileOptions = computed(() =>
 	}))
 );
 
-const otherCameras = computed<ICamera[]>(() => props.cameras.filter((item) => item.deviceId !== props.modelValue));
+// The switcher lists every camera, the open one too, so its selected value has a name; with no other camera it is hidden.
+const hasOtherCameras = computed<boolean>(() => props.cameras.some((item) => item.deviceId !== props.modelValue));
 
 const currentProfile = computed<ICameraProfile | null>(() => availableProfiles.value.find((profile) => profile.id === selectedProfile.value) ?? null);
 
@@ -179,7 +180,9 @@ const onProfileChange = (value: string | number | boolean): void => {
 };
 
 const onSwitchCamera = (deviceId: string): void => {
-	emit('update:modelValue', deviceId);
+	if (deviceId !== props.modelValue) {
+		emit('update:modelValue', deviceId);
+	}
 };
 
 const EXTENSIONS: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
