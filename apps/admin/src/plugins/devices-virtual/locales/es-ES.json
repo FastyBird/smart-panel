@@ -786,7 +786,20 @@
 			"closedValue": "Valor de cerrado (literal JSON o texto)",
 			"addAmbient": "Añadir ambiente",
 			"addFloor": "Añadir suelo",
-			"addContact": "Añadir contacto"
+			"addContact": "Añadir contacto",
+			"reporting": {
+				"observed": "Este sensor informa aproximadamente cada {typical} (intervalo más largo {longest}).",
+				"fits": "La antigüedad máxima lo cubre.",
+				"unknown": {
+					"title": "Intervalo de informes aún desconocido",
+					"message": "Smart Panel no ha recibido suficientes informes de este sensor desde que arrancó. Los sensores de radio a batería (Zigbee, Bluetooth) suelen informar solo cada 30–60 minutos: ajusta la antigüedad máxima un poco por encima, o vuelve más tarde para ver una recomendación."
+				},
+				"tooShort": {
+					"title": "La antigüedad máxima es menor que el intervalo de informes de este sensor",
+					"message": "Entre informes la lectura caduca y el termostato deja de calentar o enfriar hasta que llega el siguiente. Una antigüedad mayor le permite seguir funcionando con una lectura que puede tener hasta esa antigüedad.",
+					"apply": "Usar {duration} ({seconds} s)"
+				}
+			}
 		},
 		"remove": "Quitar",
 		"settings": {

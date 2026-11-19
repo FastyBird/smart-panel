@@ -3,7 +3,7 @@ import { validate } from 'class-validator';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { DataSource, EntityManager } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -29,6 +29,7 @@ import {
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { buildDeviceGraphQuery } from '../../../modules/devices/utils/device-graph-query.utils';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
@@ -42,13 +43,17 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
-import { VirtualCreatedThermostatModel } from '../models/thermostat-authoring-response.model';
+import {
+	VirtualCreatedThermostatModel,
+	VirtualThermostatSourceReportingModel,
+} from '../models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationModel } from '../models/thermostat-response.model';
 
 import { CatalogMember, CatalogWitness, thermostatCreationCatalog } from './thermostat-creation-catalog';
 import { RetainedOriginalCreatedResponse, thermostatCreationResponse } from './thermostat-creation-response';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import { recommendedMaximumAgeSeconds } from './virtual-thermostat-reporting.utils';
 
 type CreatedCatalogResponse = RetainedOriginalCreatedResponse &
 	Readonly<{ catalog: CatalogWitness; members: readonly CatalogMember[] }>;
@@ -68,6 +73,7 @@ export class VirtualThermostatAuthoringService {
 		private readonly devices: DevicesService,
 		private readonly validation: DeviceValidationService,
 		private readonly configurations: VirtualThermostatConfigService,
+		@Optional() private readonly values?: PropertyValueService,
 	) {}
 
 	async preview(dto: CreateVirtualThermostatProducerDto): Promise<VirtualThermostatConfigurationModel> {
@@ -337,6 +343,31 @@ export class VirtualThermostatAuthoringService {
 		const channel = property?.channel;
 		if (!channel || typeof channel === 'string' || typeof channel.device === 'string' || !channel.device) return null;
 		return { property: property.id, channel: channel.id, device: channel.device.id };
+	}
+
+	/**
+	 * How often a candidate source reports, so the admin can suggest a maximum sample age that suits it
+	 * (battery radio sensors often report only every 30-60 min). Guidance only: never qualification.
+	 */
+	async sourceReporting(id: string): Promise<VirtualThermostatSourceReportingModel | null> {
+		const property = await this.dataSource.manager.findOne(ChannelPropertyEntity, {
+			where: { id },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = property?.channel;
+		if (!channel || typeof channel === 'string' || typeof channel.device === 'string' || !channel.device) return null;
+		const derived = channel.device.type === 'virtual';
+		const profile = derived ? null : (this.values?.readReportingProfile(property) ?? null);
+		const toSeconds = (ms: number): number => Math.round(ms / 1000);
+		return {
+			property: property.id,
+			source_kind: derived ? 'derived' : 'physical',
+			reports: profile?.reports ?? 0,
+			typical_interval_seconds: profile ? toSeconds(profile.typicalIntervalMs) : null,
+			longest_interval_seconds: profile ? toSeconds(profile.longestIntervalMs) : null,
+			last_report_at: profile?.lastReportAt.toISOString() ?? null,
+			recommended_maximum_age_seconds: profile ? recommendedMaximumAgeSeconds(profile.longestIntervalMs) : null,
+		};
 	}
 
 	private async draft(manager: EntityManager, request: CreateVirtualThermostatProducerDto) {

@@ -786,7 +786,20 @@
 			"closedValue": "Wartość dla zamknięte (literał JSON lub tekst)",
 			"addAmbient": "Dodaj temperaturę otoczenia",
 			"addFloor": "Dodaj podłogę",
-			"addContact": "Dodaj kontaktron"
+			"addContact": "Dodaj kontaktron",
+			"reporting": {
+				"observed": "Ten czujnik zgłasza się mniej więcej co {typical} (najdłuższa przerwa {longest}).",
+				"fits": "Maksymalny wiek to obejmuje.",
+				"unknown": {
+					"title": "Interwał zgłoszeń jeszcze nieznany",
+					"message": "Smart Panel od uruchomienia nie odebrał wystarczająco wielu zgłoszeń z tego czujnika. Bateryjne czujniki radiowe (Zigbee, Bluetooth) często zgłaszają się tylko co 30–60 minut: ustaw maksymalny wiek nieco dłuższy albo wróć później po rekomendację."
+				},
+				"tooShort": {
+					"title": "Maksymalny wiek jest krótszy niż interwał zgłoszeń tego czujnika",
+					"message": "Między zgłoszeniami odczyt się przedawnia i termostat przestaje grzać lub chłodzić, dopóki nie nadejdzie kolejne. Dłuższy wiek pozwala mu pracować na odczycie, który może być aż tak stary.",
+					"apply": "Użyj {duration} ({seconds} s)"
+				}
+			}
 		},
 		"remove": "Usuń",
 		"settings": {

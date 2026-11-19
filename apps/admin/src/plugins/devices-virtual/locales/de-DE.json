@@ -786,7 +786,20 @@
 			"closedValue": "Wert für geschlossen (JSON-Literal oder Text)",
 			"addAmbient": "Raumtemperatur hinzufügen",
 			"addFloor": "Boden hinzufügen",
-			"addContact": "Kontakt hinzufügen"
+			"addContact": "Kontakt hinzufügen",
+			"reporting": {
+				"observed": "Dieser Sensor meldet etwa alle {typical} (längste Lücke {longest}).",
+				"fits": "Das maximale Alter deckt das ab.",
+				"unknown": {
+					"title": "Meldeintervall noch unbekannt",
+					"message": "Smart Panel hat seit dem Start noch nicht genug Meldungen dieses Sensors gesehen. Batteriebetriebene Funksensoren (Zigbee, Bluetooth) melden oft nur alle 30–60 Minuten: Stelle das maximale Alter etwas länger ein oder schau später für eine Empfehlung vorbei."
+				},
+				"tooShort": {
+					"title": "Das maximale Alter ist kürzer als das Meldeintervall dieses Sensors",
+					"message": "Zwischen den Meldungen veraltet der Wert, und der Thermostat hört auf zu heizen oder zu kühlen, bis die nächste eintrifft. Ein längeres Alter lässt ihn mit einem Wert weiterarbeiten, der bis zu so alt sein kann.",
+					"apply": "{duration} verwenden ({seconds} s)"
+				}
+			}
 		},
 		"remove": "Entfernen",
 		"settings": {

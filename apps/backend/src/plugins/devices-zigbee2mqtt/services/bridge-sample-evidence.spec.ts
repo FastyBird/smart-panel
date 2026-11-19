@@ -393,6 +393,32 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		expect((await values.readLatest(property))?.lastUpdated).toBe(new Date(later).toISOString());
 	});
 
+	it('profiles how often a device reports from its live reports, heartbeats included, never from replays', async () => {
+		const start = base + STARTUP_REPLAY_WINDOW_MS;
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(21);
+		expect(values.readReportingProfile(property)).toBeNull();
+		// An hourly battery heartbeat with an unchanged temperature, one report arriving 10 min late.
+		for (const at of [start + 3_600_000, start + 7_800_000]) {
+			jest.setSystemTime(at);
+			adapter.feed('ambient', { temperature: 21, battery: 90 });
+			await pending;
+		}
+		// A retained replay timed by last_seen is accepted as a newer measurement, but it re-sends an
+		// earlier report, so it says nothing about how often the device reports.
+		jest.setSystemTime(start + 8_000_000);
+		adapter.feed('ambient', { temperature: 21, last_seen: new Date(start + 7_900_000).toISOString() }, true);
+		await pending;
+		expect(values.readQualifiedSample(property, 3_600_000)?.sampledAt.getTime()).toBe(start + 7_900_000);
+		expect(values.readReportingProfile(property)).toEqual({
+			reports: 3,
+			typicalIntervalMs: 3_900_000,
+			longestIntervalMs: 4_200_000,
+			firstReportAt: new Date(start),
+			lastReportAt: new Date(start + 7_800_000),
+		});
+	});
+
 	it('makes a sleeping sensor usable right after startup when its replay carries last_seen', async () => {
 		const lastSeen = base - 20 * 60_000;
 		adapter.feed('ambient', { temperature: 21.5, last_seen: new Date(lastSeen).toISOString() }, true);

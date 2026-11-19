@@ -786,7 +786,20 @@
 			"closedValue": "Closed value (JSON literal or text)",
 			"addAmbient": "Add ambient",
 			"addFloor": "Add floor",
-			"addContact": "Add contact"
+			"addContact": "Add contact",
+			"reporting": {
+				"observed": "This sensor reports about every {typical} (longest gap {longest}).",
+				"fits": "The maximum age covers that.",
+				"unknown": {
+					"title": "Reporting interval not known yet",
+					"message": "Smart Panel has not seen enough reports from this sensor since it started. Battery radio sensors (Zigbee, Bluetooth) often report only every 30–60 minutes: set the maximum age a little longer than that, or come back later for a recommendation."
+				},
+				"tooShort": {
+					"title": "The maximum age is shorter than this sensor’s reporting interval",
+					"message": "Between reports the reading goes stale, and the thermostat stops heating or cooling until the next one arrives. A longer age keeps it working on a reading that can be up to that old.",
+					"apply": "Use {duration} ({seconds} s)"
+				}
+			}
 		},
 		"remove": "Remove",
 		"settings": {

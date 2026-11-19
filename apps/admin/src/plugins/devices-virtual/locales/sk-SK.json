@@ -786,7 +786,20 @@
 			"closedValue": "Hodnota pre zatvorené (JSON literál alebo text)",
 			"addAmbient": "Pridať okolitú teplotu",
 			"addFloor": "Pridať podlahu",
-			"addContact": "Pridať kontakt"
+			"addContact": "Pridať kontakt",
+			"reporting": {
+				"observed": "Tento snímač hlási približne každých {typical} (najdlhšia medzera {longest}).",
+				"fits": "Maximálny vek to pokrýva.",
+				"unknown": {
+					"title": "Interval hlásení zatiaľ nie je známy",
+					"message": "Smart Panel od spustenia nezaznamenal dosť hlásení z tohto snímača. Batériové rádiové snímače (Zigbee, Bluetooth) často hlásia len každých 30–60 minút: nastavte maximálny vek o niečo dlhší, alebo sa neskôr vráťte pre odporúčanie."
+				},
+				"tooShort": {
+					"title": "Maximálny vek je kratší ako interval hlásení tohto snímača",
+					"message": "Medzi hláseniami hodnota zastará a termostat prestane kúriť alebo chladiť, kým nepríde ďalšia. Dlhší vek ho nechá pracovať s hodnotou, ktorá môže byť až takto stará.",
+					"apply": "Použiť {duration} ({seconds} s)"
+				}
+			}
 		},
 		"remove": "Odobrať",
 		"settings": {

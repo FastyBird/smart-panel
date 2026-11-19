@@ -407,6 +407,11 @@
 									:controls="false"
 								/>
 							</el-form-item>
+							<thermostat-source-reporting
+								:property="source.source_property"
+								:maximum-age-seconds="source.maximum_age_seconds"
+								@apply="source.maximum_age_seconds = $event"
+							/>
 							<div
 								v-if="source.role === 'contact'"
 								class="thermostat-editor__fields"
@@ -916,6 +921,7 @@ import {
 
 import ThermostatMemberCard from './thermostat-member-card.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
+import ThermostatSourceReporting from './thermostat-source-reporting.vue';
 import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
 import VirtualPlacementFields from './virtual-placement-fields.vue';
 import VirtualThermostatComfort from './virtual-thermostat-comfort.vue';
