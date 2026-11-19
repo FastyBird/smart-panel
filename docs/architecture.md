@@ -129,6 +129,9 @@ The admin app mirrors the backend module structure:
 - **Plugins** - UI for plugin-specific configuration and management
 - **Pinia Stores** - State management for each module/plugin
 
+The admin design system (tokens, components, page templates, screen sizes, plugin slots) is defined in
+[`admin-ui-design-spec.md`](admin-ui-design-spec.md).
+
 ## Panel Architecture
 
 The panel app is designed for embedded displays:

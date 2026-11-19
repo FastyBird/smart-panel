@@ -1,5 +1,9 @@
 # Admin device setup and detail extensions
 
+> Visual layout, components and styling follow [`admin-ui-design-spec.md`](admin-ui-design-spec.md) (for example
+> `state-view` replaces `EmptyState`, and wizards use the template 9 widths). This document covers registration and
+> behaviour.
+
 Device plugins share an entry page for choosing what to add, followed by a common guided setup shell. The Devices list also retains **Manual configuration** for the existing raw forms. Cameras are outside this change.
 
 ## Guided setup

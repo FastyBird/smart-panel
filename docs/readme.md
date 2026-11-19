@@ -7,6 +7,10 @@ This directory contains developer documentation for the Smart Panel project.
 ```
 docs/
 ├── README.md                          # This file
+├── admin-ui-design-spec.md            # Admin UI design system (authoritative for admin screens)
+├── admin-ui-screens-and-plugins.md    # Current admin screens and plugin UI inventory
+├── admin-ui-theme/                    # Approved admin theme files, merged into apps/admin in phase 1
+├── archive/                           # Superseded documents, kept for history
 ├── architecture.md                    # System architecture overview
 ├── automations-architecture.md        # Automations module: graph, engine, cards
 ├── climate-domain.md                  # Climate domain implementation
@@ -31,6 +35,7 @@ docs/
 - [Development Guidelines](../.ai-rules/GUIDELINES.md) - Setup, build commands, coding style
 - [API Conventions](../.ai-rules/API_CONVENTIONS.md) - Backend API patterns
 - [Extensions System](./extensions.md) - How to build and register extensions
+- [Admin UI Design Spec](./admin-ui-design-spec.md) - Tokens, components, page templates, screen sizes and plugin slots for the admin
 - [Automations](./automations-architecture.md) - Automation graph model, run semantics and how to add cards
 - [Domain Architecture](./domains.md) - Domain definitions (lights, climate, media, security, sensors)
 - [Climate Domain](./climate-domain.md) - Climate domain implementation details
@@ -43,10 +48,6 @@ docs/
 ### For AI Tools
 
 AI tools (Claude Code, etc.) should primarily reference:
-1. `CLAUDE.md` - Quick reference for project commands, structure, and rules
-2. `.ai-rules/GUIDELINES.md` - Comprehensive development guidelines
-3. `.ai-rules/API_CONVENTIONS.md` - API design patterns
-4. `.ai-rules/CLIMATE_ARCHITECTURE.md` - Climate domain architecture
-5. `.ai-rules/MEDIA_ARCHITECTURE.md` - Media domain architecture
-6. `.ai-rules/OPTIMISTIC_UI_ARCHITECTURE.md` - Panel optimistic UI patterns
-7. `tasks/` - Task specifications for feature implementation
+1. `CLAUDE.md` (also `AGENTS.md`) - Quick reference for project commands, structure, rules and architecture documents
+2. `docs/admin-ui-design-spec.md` - Admin UI design system; read before any admin UI change
+3. `tasks/` - Task specifications for feature implementation

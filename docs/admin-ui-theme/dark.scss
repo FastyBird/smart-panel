@@ -1,0 +1,114 @@
+// FastyBird Smart Panel admin: dark theme tokens (html.dark).
+// Merge into apps/admin/src/assets/styles/dark.scss.
+// Filled controls keep the light base colours (white text stays >= 4.5:1);
+// text-like uses switch to the lighter shades set below.
+
+@forward 'element-plus/theme-chalk/src/dark/var.scss' with (
+  $colors: (
+    'primary': ('base': #3570d8),
+    'success': ('base': #2e7d32),
+    'warning': ('base': #b25e00),
+    'danger': ('base': #c62828),
+    'error': ('base': #c62828),
+    'info': ('base': #5b6675),
+  ),
+  $text-color: (
+    'primary': #e9eaec,
+    'regular': #cfd2d6,
+    'secondary': #a2a7af,
+    'placeholder': #6b7079,
+    'disabled': #6b7079,
+  ),
+  $bg-color: (
+    '': #1b1c1f,
+    'page': #121315,
+    'overlay': #232428,
+  ),
+  $border-color: (
+    '': #33353a,
+    'light': #2a2c30,
+    'lighter': #26282c,
+    'extra-light': #222327,
+    'dark': #4a4d54,
+    'darker': #5a5e66,
+  ),
+  $fill-color: (
+    '': #2a2b30,
+    'light': #222327,
+    'lighter': #1e1f22,
+    'extra-light': #1b1c1f,
+    'dark': #2c2e33,
+    'darker': #33353a,
+    'blank': transparent,
+  )
+);
+
+html.dark {
+  --fb-primary-text: #8ab4f8;
+  --fb-text-muted: #8a9099;
+  --fb-sidebar-bg: #0e0f10;
+  --fb-sidebar-text: #9a9ca3;
+  --fb-sidebar-active-bg: #1e1f22;
+
+  --fb-shadow-sticky: 0 -4px 12px rgba(0, 0, 0, 0.4);
+  --fb-shadow-overlay: 0 8px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+
+  --fb-status-ok-text: #6cc070;     --fb-status-ok-soft: #1d2e1f;     --fb-status-ok-border: #2c4a2f;
+  --fb-status-warn-text: #f0a742;   --fb-status-warn-soft: #33261a;   --fb-status-warn-border: #5a4223;
+  --fb-status-danger-text: #f2706b; --fb-status-danger-soft: #3a1f1f; --fb-status-danger-border: #5e2c2c;
+  --fb-status-info-text: #a3acb9;   --fb-status-info-soft: #272a2f;   --fb-status-info-border: #3a3e45;
+  --fb-status-primary-text: var(--fb-primary-text); --fb-status-primary-soft: #1c2a42; --fb-status-primary-border: #2a3d60;
+
+  --fb-domain-lights: #f0a742;  --fb-domain-lights-soft: #33261a;
+  --fb-domain-climate: #4fb3e8; --fb-domain-climate-soft: #16293a;
+  --fb-domain-covers: #4db6ac;  --fb-domain-covers-soft: #14302d;
+  --fb-domain-media: #f06292;   --fb-domain-media-soft: #3a1a28;
+  --fb-domain-sensors: #4dd0e1; --fb-domain-sensors-soft: #133236;
+  --fb-domain-energy: #6cc070;  --fb-domain-energy-soft: #1d2e1f;
+  --fb-domain-cameras: #7986cb; --fb-domain-cameras-soft: #1f2340;
+
+  // Status colours in dark mode, one approach for every component:
+  // filled controls (primary/success/warning/danger buttons, badges, the filled "dark" tag used for
+  // critical) keep the base colour with white text; anything that draws the status colour AS TEXT on a
+  // dark surface reads the lighter --fb-status-*-text shade instead. Element Plus's automatic dark mixes
+  // for --el-color-*-light-* stay as they are (they only drive backgrounds and borders).
+  // Selectors checked against Element Plus 2.13.5.
+  // Element Plus names the red type `danger` on tags, buttons and links, but `error` on alerts and
+  // messages, so the two groups loop over different maps. Primary is included: Element Plus 2.13 has
+  // primary tags, alerts and messages, which would otherwise keep the darker #3570d8 text.
+  $fb-types: (primary: primary, success: ok, warning: warn, danger: danger, info: info);
+  $fb-feedback-types: (primary: primary, success: ok, warning: warn, error: danger, info: info);
+
+  @each $type, $key in $fb-types {
+    // Soft tags only. Scoped to the light effect so the filled critical tag (.el-tag--dark) stays filled.
+    .el-tag--light.el-tag--#{$type} {
+      --el-tag-text-color: var(--fb-status-#{$key}-text);
+      --el-tag-bg-color: var(--fb-status-#{$key}-soft);
+      --el-tag-border-color: var(--fb-status-#{$key}-border);
+    }
+    .el-button--#{$type}.is-plain,
+    .el-button--#{$type}.is-text,
+    .el-button--#{$type}.is-link {
+      --el-button-text-color: var(--fb-status-#{$key}-text);
+    }
+    .el-link.el-link--#{$type} {
+      --el-link-text-color: var(--fb-status-#{$key}-text);
+    }
+  }
+
+  @each $type, $key in $fb-feedback-types {
+    .el-alert--#{$type}.is-light {
+      --el-alert-bg-color: var(--fb-status-#{$key}-soft);
+      color: var(--fb-status-#{$key}-text);
+      .el-alert__description {
+        color: var(--fb-status-#{$key}-text);
+      }
+    }
+    .el-message--#{$type} {
+      --el-message-text-color: var(--fb-status-#{$key}-text);
+    }
+  }
+
+  // No .el-menu-item rule here: the sidebar menu owns its colours through --fb-sidebar-*.
+  // Tabs and primary links get --fb-primary-text from base.scss.
+}
