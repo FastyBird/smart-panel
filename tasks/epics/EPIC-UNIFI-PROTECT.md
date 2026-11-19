@@ -103,7 +103,7 @@ Sub-issues of #1175. PR titles are the issue titles unless stated otherwise.
 | UP-8 (done) | #1184 | M2 | `feat(backend): sync UniFi Protect device state and events in real time` | UP-7 |
 | UP-9 (done) | #1185 | M2 | `feat(backend): control UniFi Protect floodlights and camera settings` | UP-8 |
 | UP-10 (done) | #1186 | M2 | `feat(backend): provide UniFi Protect camera streams and snapshots` | UP-2, UP-7 (UP-3 for live) |
-| UP-11 | #1187 | M3 | `feat(admin): add camera live view and snapshot components` | UP-2, UP-3 |
+| UP-11 (done) | #1187 | M3 | `feat(admin): add camera live view and snapshot components` | UP-2, UP-3 |
 | UP-12 | #1188 | M3 | `feat(admin): add UniFi Protect plugin configuration and adoption wizard` | UP-5, UP-6, UP-7 |
 | UP-13 | #1189 | M4 | `feat(panel): show camera snapshots on camera and doorbell detail pages` | UP-2 |
 | UP-14 | #1190 | M4 | `feat(panel): show the doorbell camera on ring and the source camera on alerts` | UP-8, UP-13 |

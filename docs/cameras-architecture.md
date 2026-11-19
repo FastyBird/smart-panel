@@ -545,6 +545,86 @@ session token. Logs carry ids, stream names, fixed reason codes and error class 
   - an external go2rtc's own config file and its backups, which are outside this backend's control: it keeps a source
     until the stream is deleted, and operators must protect that file and its backups.
 
+## Admin
+
+The admin app's `modules/cameras` renders the module. It reads the REST API above and never talks to go2rtc directly.
+
+### Screens
+
+- **Cameras page** (`/cameras`, sidebar entry after Spaces, any signed-in user): a grid of tiles with snapshots that
+  refresh every 10 seconds, only while the browser tab is visible and the tile is on screen. A tile opens the live
+  view dialog, which can switch between cameras.
+- **Device detail section**: a camera or doorbell device shows a camera section with the player and a stream profile
+  selector, plus a table of its profiles. It registers through the Devices module's `deviceCategorySection`
+  extension point for the `camera` and `doorbell` categories, so the Devices module needs no camera code.
+- **Module settings** (Configuration, Modules, Cameras; admins and owners, like every config route): relay mode
+  (managed, external, disabled), the binary path (managed only), the external URL (external only), `max_sessions`
+  (1 to 32) and `max_sessions_per_camera` (1 to 16). The form applies the backend's rules (binary path, external URL),
+  so a bad value is caught before the request. Beside the form, a status panel shows the relay mode, state, the reason
+  sentence, version and the `active` / `max` / `max_per_camera` counters, and nothing else.
+
+### Live view states
+
+`live/live-view-machine.ts` is a pure transition function; `composables/useLiveView.ts` creates the session, runs the
+MSE client and feeds every outcome to the machine as an event. Timers belong to the composable.
+
+| State | Reached from |
+|---|---|
+| `snapshot` | Idle; the snapshot is shown. |
+| `requesting` / `connecting` | Session request in flight / socket open and waiting for media. |
+| `playing` | Media started. After 10 s of playback the retry budget resets. |
+| `codec_unsupported` | The browser cannot play the profile's codec (checked before the request, or reported by the client). |
+| `offline` | The device is offline; leaves only when it comes back online. |
+| `relay_unavailable` | 503 on the session request while the relay is not running, or close `1013` with reason `relay_unavailable`. |
+| `camera_limit` / `total_limit` | Close `1013` with reason `camera_session_limit` / `session_limit`. |
+| `module_disabled` | 404 on the session request saying the module is off, or close `4001`. |
+| `error` | Anything else; retried automatically or after Retry. |
+
+HTTP answers to the session request:
+
+| Answer | Result |
+|---|---|
+| 200 | `session_created`, the client connects with the returned URL. |
+| 503 | The relay status is read: not running gives `relay_unavailable`, running gives a retryable `error`. |
+| 404, module off | `module_disabled`. |
+| 404, "Stream profile is not available" | Once per attempt, the camera is re-read and the first available profile is tried; none left gives `error`. |
+| 404, other | `error` without retry. |
+| 403 | `error` without retry. |
+| Other | Retryable `error`. |
+
+WebSocket close codes:
+
+| Code | Result |
+|---|---|
+| `1013` | By reason: `relay_unavailable`, `session_limit` (`total_limit`), `camera_session_limit` (`camera_limit`); any other reason is a retryable `error`. |
+| `4002` | The session reached its maximum lifetime. While playing, a seamless reconnect (the last frame stays, no overlay); a reconnect that never reached media counts as a failure, so it cannot loop. |
+| `4000`, `1003`, `1008` | `error` without retry (bad request or unsupported media). |
+| `4001` | `module_disabled`. |
+| Anything else, or a failed connect | Retryable `error`. |
+
+A retryable `error` retries after 2, 4, 8, 16 and 30 seconds, then stops and shows Retry. A manual Retry or Start
+resets the budget. The close reason is free text a proxy could fill, so only the code is logged.
+
+### Waiting for the relay or a free slot
+
+`relay_unavailable`, `camera_limit` and `total_limit` hold the relay status store's polling while they are shown.
+A relay that was seen down and comes back running triggers one retry; a relay that never looked down does not, so a
+socket refused for the relay while the status says running cannot loop.
+
+### Relay status polling
+
+The relay status store (`store/relay-status.store.ts`) polls `GET /cameras-module/status` every 10 seconds.
+`startPolling()` returns an idempotent release function and polling runs while at least one holder exists. The holders
+are the Cameras page, a live view waiting for the relay, and the module settings form (so the panel next to the form
+stays current). Failures log a fixed text and keep the last known status.
+
+### Device category section
+
+A camera or doorbell device gets its camera section from the Devices module's `deviceCategorySection` extension
+point. The section reads the camera through the cameras store and offers only available profiles. When live view is
+not possible (it is off, or no profile is available) it shows a snapshot with the reason sentence instead; the
+module-disabled and no-stream states link to the module settings for admins and owners.
+
 ## Not yet implemented
 
 - WebRTC transport (the relay disables its listeners).
