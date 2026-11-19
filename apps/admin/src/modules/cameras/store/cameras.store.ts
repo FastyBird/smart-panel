@@ -1,4 +1,4 @@
-import { ref, shallowRef } from 'vue';
+import { ref, shallowRef, toRaw } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
@@ -172,14 +172,14 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 
 		return Promise.all(
 			ids.map(async (deviceId): Promise<void> => {
-				const generation = listGeneration;
+				// A newer list entry or detail read replaces the cached object; a list that only carries it over does not.
+				const cached = toRaw(data.value[deviceId]);
 
 				try {
 					await get({ deviceId });
 				} catch (error) {
 					if (error instanceof CamerasApiException && error.code === 404) {
-						// A list that completed meanwhile is newer than this 404, and a read after it may have re-cached the camera.
-						if (generation !== listGeneration) {
+						if (toRaw(data.value[deviceId]) !== cached) {
 							return;
 						}
 
