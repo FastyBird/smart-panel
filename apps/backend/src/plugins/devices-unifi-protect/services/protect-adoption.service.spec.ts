@@ -367,7 +367,7 @@ describe('ProtectAdoptionService', () => {
 	let logged: unknown[][];
 	let service: ProtectAdoptionService;
 	let streamStore: ProtectStreamAvailabilityStore;
-	let synchronizer: { refreshDeviceOutcome: jest.Mock };
+	let synchronizer: { refreshDevice: jest.Mock };
 	let mapped: ProtectMappedDevice;
 	let rawCamera: Raw;
 	let contextRun: jest.SpyInstance;
@@ -462,7 +462,12 @@ describe('ProtectAdoptionService', () => {
 		};
 		streamStore = new ProtectStreamAvailabilityStore();
 		// Without a realtime session the synchronizer holds no camera: adoption writes the status itself.
-		synchronizer = { refreshDeviceOutcome: jest.fn().mockResolvedValue('not_held') };
+		synchronizer = {
+			refreshDevice: jest.fn(
+				(_identity: unknown, _modelKey: string, _id: string, whenNotHeld?: () => Promise<boolean>) =>
+					whenNotHeld === undefined ? Promise.resolve(false) : whenNotHeld(),
+			),
+		};
 		service = new ProtectAdoptionService(
 			preview as unknown as ProtectMappingPreviewService,
 			fakes.devicesService as unknown as DevicesService,
@@ -1003,23 +1008,24 @@ describe('ProtectAdoptionService', () => {
 		});
 
 		it('leaves the status write to the synchronizer when it holds the camera', async () => {
-			synchronizer.refreshDeviceOutcome.mockResolvedValue('refreshed');
+			synchronizer.refreshDevice.mockResolvedValue(true);
 			client.getRtspsStreams.mockResolvedValue(urls('high'));
 
 			const direct = jest.spyOn(service as any, 'updateStreamStatuses');
 			const result = await service.adoptOne(ENABLING);
 
 			expect(result).toMatchObject({ warnings: [], stream: { status: 'enabled' } });
-			expect(synchronizer.refreshDeviceOutcome).toHaveBeenCalledWith(
+			expect(synchronizer.refreshDevice).toHaveBeenCalledWith(
 				{ nvrId: 'nvr', nvrMacKey: 'mac' },
 				'camera',
 				'600cefafd5f365d6f83c4ef3',
+				expect.any(Function),
 			);
 			expect(direct).not.toHaveBeenCalled();
 		});
 
 		it('writes no status directly when the synchronizer holds the camera but its refresh failed', async () => {
-			synchronizer.refreshDeviceOutcome.mockResolvedValue('failed');
+			synchronizer.refreshDevice.mockResolvedValue(false);
 			client.getRtspsStreams.mockResolvedValue(urls('high'));
 
 			const direct = jest.spyOn(service as any, 'updateStreamStatuses');

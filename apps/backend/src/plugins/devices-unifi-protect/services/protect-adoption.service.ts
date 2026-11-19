@@ -999,39 +999,43 @@ export class ProtectAdoptionService {
 
 	/**
 	 * Writes the camera status from the store's current entry, not from this adoption's observation: a newer read may
-	 * have replaced it. The synchronizer's serial refresh orders the write against its own status writes; it is used
-	 * whenever the synchronizer holds the camera, and a direct write only when its queue found it does not (not cached or
-	 * not adopted, e.g. no realtime session).
+	 * have replaced it. Everything runs in the synchronizer's serial queue: its refresh when it holds the camera, and a
+	 * direct write only when it does not (not cached or not adopted, e.g. no realtime session), so a frame or snapshot
+	 * that makes the camera held afterwards is applied after this write, never interleaved with it. A full queue, a
+	 * failed write or a reset leaves the status to the next refresh.
 	 */
-	private async persistStreamStatuses(prepared: ProtectPreparedMapping, panelDeviceId: string): Promise<boolean> {
+	private persistStreamStatuses(prepared: ProtectPreparedMapping, panelDeviceId: string): Promise<boolean> {
+		return this.synchronizer.refreshDevice(prepared.fresh.identity, 'camera', prepared.device.protectDeviceId, () =>
+			this.writeStreamStatusesDirectly(prepared, panelDeviceId),
+		);
+	}
+
+	/** The direct write (inside the synchronizer's queue); never rejects. */
+	private async writeStreamStatusesDirectly(prepared: ProtectPreparedMapping, panelDeviceId: string): Promise<boolean> {
 		const cameraId = prepared.device.protectDeviceId;
 
-		const outcome = await this.synchronizer.refreshDeviceOutcome(prepared.fresh.identity, 'camera', cameraId);
+		try {
+			// A read recorded while the write was persisting supersedes it: write again from that newer entry (bounded).
+			for (let attempt = 0; attempt < MAX_STATUS_RECONCILE_ATTEMPTS; attempt++) {
+				const entry = this.isPreparedSession(prepared) ? this.streamAvailability.get(cameraId) : null;
 
-		if (outcome !== 'not_held') {
-			// A full queue, a failed write or a reset is not proof the synchronizer lacks the camera: a direct write could
-			// race its queued status writes, so the status waits for the next refresh.
-			return outcome === 'refreshed';
-		}
+				// The session ended: the next session's snapshot re-evaluates the status.
+				if (entry === null) {
+					return false;
+				}
 
-		// A read recorded while the write was persisting supersedes it: write again from that newer entry (bounded).
-		for (let attempt = 0; attempt < MAX_STATUS_RECONCILE_ATTEMPTS; attempt++) {
-			const entry = this.isPreparedSession(prepared) ? this.streamAvailability.get(cameraId) : null;
+				const written = await this.updateStreamStatuses(prepared, entry.availability, panelDeviceId);
 
-			// The session ended: the next session's snapshot re-evaluates the status.
-			if (entry === null) {
-				return false;
+				if (!written) {
+					return false;
+				}
+
+				if (this.streamAvailability.get(cameraId)?.observedAt === entry.observedAt) {
+					return true;
+				}
 			}
-
-			const written = await this.updateStreamStatuses(prepared, entry.availability, panelDeviceId);
-
-			if (!written) {
-				return false;
-			}
-
-			if (this.streamAvailability.get(cameraId)?.observedAt === entry.observedAt) {
-				return true;
-			}
+		} catch {
+			this.logger.warn('UniFi Protect stream status persistence was deferred until the next adoption');
 		}
 
 		return false;

@@ -113,9 +113,6 @@ const cacheKey = (modelKey: string, id: string): string => `${modelKey}\u0000${i
 
 const removalKey = (protectDeviceId: string): string => `device_removed:${protectDeviceId}`;
 
-/** What a serial device refresh did; see `refreshDeviceOutcome`. */
-export type ProtectRefreshOutcome = 'refreshed' | 'not_held' | 'failed';
-
 @Injectable()
 export class ProtectSynchronizerService {
 	private readonly logger = createExtensionLogger(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, 'ProtectSynchronizerService');
@@ -269,28 +266,28 @@ export class ProtectSynchronizerService {
 	/**
 	 * Serial; re-evaluates one adopted device's cached object with the current stream availability and writes what
 	 * changed (frame semantics, empty partial). Writes no cache entry, bumps no sequence, calls no observer. False when
-	 * the device is not cached, not adopted, a write failed, the queue is full or a reset intervened.
+	 * a write failed, the queue is full or a reset intervened. A device that is not cached or not adopted is not this
+	 * service's to write: `whenNotHeld` (another writer's own write) then runs inside the queue, so nothing this service
+	 * syncs afterwards (an add frame, a snapshot) can interleave with it; without one the result is false.
 	 */
-	refreshDevice(identity: ProtectConsoleIdentity, modelKey: string, id: string): Promise<boolean> {
-		return this.refreshDeviceOutcome(identity, modelKey, id).then((outcome) => outcome === 'refreshed');
-	}
-
-	/**
-	 * `refreshDevice` with the reason it did not refresh: `not_held` only when the serial queue reached the device and
-	 * found it not cached or not adopted (nothing here writes it); `failed` for a full queue, a failed write or a reset.
-	 */
-	refreshDeviceOutcome(identity: ProtectConsoleIdentity, modelKey: string, id: string): Promise<ProtectRefreshOutcome> {
+	refreshDevice(
+		identity: ProtectConsoleIdentity,
+		modelKey: string,
+		id: string,
+		whenNotHeld?: () => Promise<boolean>,
+	): Promise<boolean> {
 		if (this.pending >= PROTECT_MAX_PENDING_FRAMES) {
-			return Promise.resolve('failed');
+			return Promise.resolve(false);
 		}
 
-		let outcome: ProtectRefreshOutcome = 'failed';
+		let refreshed = false;
+		const notHeld = async (): Promise<void> => {
+			refreshed = whenNotHeld !== undefined && (await whenNotHeld()) && !this.aborted();
+		};
 
 		return this.run(async () => {
 			if (!this.cache.has(cacheKey(modelKey, id))) {
-				outcome = 'not_held';
-
-				return;
+				return notHeld();
 			}
 
 			await this.ensureIndex(identity);
@@ -304,16 +301,14 @@ export class ProtectSynchronizerService {
 			const device = raw === null ? undefined : this.adopted({ modelKey, id });
 
 			if (device === undefined || raw === null) {
-				outcome = 'not_held';
-
-				return;
+				return notHeld();
 			}
 
 			// No rename propagation: the object is not new, so there is no name change to carry.
 			const written = await this.syncDevice(identity, device, modelKey, raw, raw, 'frame', {}, false);
 
-			outcome = written && !this.aborted() ? 'refreshed' : 'failed';
-		}).then(() => outcome);
+			refreshed = written && !this.aborted();
+		}).then(() => refreshed);
 	}
 
 	/** Number of snapshots enqueued so far; a reader that captured an older value read stale data. */

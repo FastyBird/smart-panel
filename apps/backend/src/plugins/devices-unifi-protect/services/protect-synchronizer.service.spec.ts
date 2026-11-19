@@ -412,16 +412,76 @@ describe('ProtectSynchronizerService', () => {
 			expect(properties.update).not.toHaveBeenCalled();
 		});
 
-		it('reports an unadopted or uncached device as not held, and a refresh as refreshed', async () => {
-			await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe('not_held');
+		it('runs the not-held write for an uncached or unadopted device, and only for one', async () => {
+			const whenNotHeld = jest.fn().mockResolvedValue(true);
+
+			await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID, whenNotHeld)).resolves.toBe(true);
 
 			await prime();
 
-			await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', 'ffffffffffffffffffffffff')).resolves.toBe(
-				'not_held',
+			await expect(service.refreshDevice(IDENTITY, 'camera', 'ffffffffffffffffffffffff', whenNotHeld)).resolves.toBe(
+				true,
 			);
-			await expect(service.refreshDeviceOutcome(IDENTITY, 'light', CAMERA_ID)).resolves.toBe('not_held');
-			await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe('refreshed');
+			await expect(service.refreshDevice(IDENTITY, 'light', CAMERA_ID, whenNotHeld)).resolves.toBe(true);
+			expect(whenNotHeld).toHaveBeenCalledTimes(3);
+
+			whenNotHeld.mockClear();
+
+			await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID, whenNotHeld)).resolves.toBe(true);
+			expect(whenNotHeld).not.toHaveBeenCalled();
+
+			whenNotHeld.mockResolvedValue(false);
+
+			await expect(service.refreshDevice(IDENTITY, 'light', CAMERA_ID, whenNotHeld)).resolves.toBe(false);
+		});
+
+		it('applies a snapshot that caches the camera only after the not-held write finished', async () => {
+			const order: string[] = [];
+			let release: () => void = () => undefined;
+			const held = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const whenNotHeld = jest.fn(async () => {
+				order.push('fallback:start');
+				await held;
+				order.push('fallback:end');
+
+				return true;
+			});
+
+			const refreshed = service.refreshDevice(IDENTITY, 'camera', CAMERA_ID, whenNotHeld);
+
+			await new Promise((resolve) => setImmediate(resolve));
+
+			// The snapshot that makes the camera held arrives while the direct write is still persisting.
+			const applyNow = (service as any).applySnapshotNow.bind(service);
+
+			jest.spyOn(service as any, 'applySnapshotNow').mockImplementation(async (...args: unknown[]) => {
+				order.push('snapshot');
+				await applyNow(...args);
+			});
+			const snapshotApplied = service.applySnapshot(
+				IDENTITY,
+				snapshot([entry('camera', cameras[0]), entry('sensor', sensors[0])]),
+			);
+
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(order).toEqual(['fallback:start']);
+
+			release();
+			await expect(refreshed).resolves.toBe(true);
+			await snapshotApplied;
+
+			expect(order).toEqual(['fallback:start', 'fallback:end', 'snapshot']);
+		});
+
+		it('does not run the not-held write when the queue is full', async () => {
+			const whenNotHeld = jest.fn().mockResolvedValue(true);
+
+			(service as any).pending = PROTECT_MAX_PENDING_FRAMES;
+
+			await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID, whenNotHeld)).resolves.toBe(false);
+			expect(whenNotHeld).not.toHaveBeenCalled();
 		});
 
 		it('does not open the status gate from availability that arrived mid-sync', async () => {
@@ -456,7 +516,6 @@ describe('ProtectSynchronizerService', () => {
 				properties.update.mockRejectedValue(new Error('write failed'));
 
 				await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(false);
-				await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe('failed');
 			});
 
 			it('writes nothing and resolves false when a reset lands mid-refresh', async () => {
@@ -485,7 +544,6 @@ describe('ProtectSynchronizerService', () => {
 				(service as any).pending = PROTECT_MAX_PENDING_FRAMES;
 
 				await expect(service.refreshDevice(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe(false);
-				await expect(service.refreshDeviceOutcome(IDENTITY, 'camera', CAMERA_ID)).resolves.toBe('failed');
 				expect(properties.update).not.toHaveBeenCalled();
 			});
 
