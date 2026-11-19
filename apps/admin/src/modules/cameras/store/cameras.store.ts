@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
@@ -30,11 +30,23 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 
 	let loaded = false;
 
+	/** The cameras of the last list. The list leaves hidden devices out, which `get()` can still hold for a device page. */
+	const listed = shallowRef<ReadonlySet<ICamera['deviceId']>>(new Set());
+
+	/** Cameras read one by one through `get()`; a reconnect refresh reads again the ones the list does not cover. */
+	const detailIds = new Set<ICamera['deviceId']>();
+
+	/** Increased by every list that replaced the cache; a detail response that started before it is not cached. */
+	let listGeneration = 0;
+
 	let pendingFetchPromise: Promise<ICamera[]> | null = null;
 
-	const pendingGetPromises: Record<string, Promise<ICamera>> = {};
+	const pendingGetPromises: Record<string, { generation: number; promise: Promise<ICamera> }> = {};
 
-	const findAll = (): ICamera[] => Object.values(data.value).sort((a, b) => a.name.localeCompare(b.name));
+	const findAll = (): ICamera[] =>
+		Object.values(data.value)
+			.filter((camera) => !loaded || listed.value.has(camera.deviceId))
+			.sort((a, b) => a.name.localeCompare(b.name));
 
 	const findById = (deviceId: ICamera['deviceId']): ICamera | null => (deviceId in data.value ? data.value[deviceId] : null);
 
@@ -59,6 +71,8 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 					}
 
 					// Cameras missing from the response are gone, so the whole map is replaced.
+					listGeneration++;
+					listed.value = new Set(Object.keys(next));
 					data.value = next;
 					loaded = true;
 
@@ -82,9 +96,11 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 
 	const get = async (payload: ICamerasGetActionPayload): Promise<ICamera> => {
 		const pending = pendingGetPromises[payload.deviceId];
+		const generation = listGeneration;
 
-		if (pending) {
-			return pending;
+		// A read that started before the last list would not be cached; a newer caller needs one that is.
+		if (pending && pending.generation === generation) {
+			return pending.promise;
 		}
 
 		const getPromise = (async (): Promise<ICamera> => {
@@ -102,7 +118,11 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 				if (typeof responseData !== 'undefined') {
 					const camera = transformCameraResponse(responseData.data);
 
-					data.value[camera.deviceId] = camera;
+					// A list that completed meanwhile is newer; this response must not bring back a camera it removed.
+					if (generation === listGeneration) {
+						data.value[camera.deviceId] = camera;
+						detailIds.add(camera.deviceId);
+					}
 
 					return camera;
 				}
@@ -113,19 +133,51 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 			}
 		})();
 
-		pendingGetPromises[payload.deviceId] = getPromise;
+		const entry = { generation, promise: getPromise };
+
+		pendingGetPromises[payload.deviceId] = entry;
 
 		try {
 			return await getPromise;
 		} finally {
-			delete pendingGetPromises[payload.deviceId];
+			if (pendingGetPromises[payload.deviceId] === entry) {
+				delete pendingGetPromises[payload.deviceId];
+			}
 		}
 	};
 
-	// Reconnect refresh contract: re-read only what this store already holds.
-	const isLoaded = (): boolean => loaded;
+	// Reconnect refresh contract: re-read only what this store already holds, which includes cameras read only through
+	// `get()`, such as for a device page opened directly.
+	const isLoaded = (): boolean => loaded || Object.keys(data.value).length > 0;
 
-	const refresh = (): Promise<unknown> => fetch();
+	/**
+	 * Reads the list again when one was loaded, then each camera read through `get()` that the list does not cover, such
+	 * as a hidden device on its device page. A camera that is gone is dropped.
+	 */
+	const refresh = async (): Promise<unknown> => {
+		if (loaded) {
+			await fetch();
+		}
+
+		const ids = [...detailIds].filter((deviceId) => !loaded || !listed.value.has(deviceId));
+
+		return Promise.all(
+			ids.map(async (deviceId): Promise<void> => {
+				try {
+					await get({ deviceId });
+				} catch (error) {
+					if (error instanceof CamerasApiException && error.code === 404) {
+						detailIds.delete(deviceId);
+						delete data.value[deviceId];
+
+						return;
+					}
+
+					throw error;
+				}
+			})
+		);
+	};
 
 	return { semaphore, data, findAll, findById, fetch, get, isLoaded, refresh };
 });

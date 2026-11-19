@@ -104,4 +104,87 @@ describe('Cameras store', () => {
 		});
 		await expect(store.get({ deviceId: 'x' })).rejects.toBeInstanceOf(CamerasApiException);
 	});
+
+	const LIST_PATH = '/modules/cameras/cameras';
+	const DETAIL_PATH = '/modules/cameras/cameras/{deviceId}';
+
+	const notFound = { data: undefined, error: { error: { message: 'Camera not found' } }, response: { status: 404 } };
+
+	it('does not let a detail response that started before a completed list restore a camera the list removed', async () => {
+		let resolveDetail!: (value: unknown) => void;
+
+		(mockBackendClient.GET as Mock)
+			.mockResolvedValueOnce(ok([cameraRes('a', 'Alpha'), cameraRes('b', 'Bravo')]))
+			.mockImplementationOnce(() => new Promise((resolve) => (resolveDetail = resolve)))
+			.mockResolvedValueOnce(ok([cameraRes('a', 'Alpha')]));
+
+		await store.fetch();
+
+		const detail = store.get({ deviceId: 'b' });
+
+		await store.fetch();
+
+		resolveDetail(ok(cameraRes('b', 'Bravo')));
+
+		expect((await detail).deviceId).toBe('b');
+		expect(store.findById('b')).toBeNull();
+		expect(store.findAll().map((c) => c.deviceId)).toEqual(['a']);
+
+		// A detail read that starts after the list is cached as usual.
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce(ok(cameraRes('b', 'Bravo')));
+
+		await store.get({ deviceId: 'b' });
+
+		expect(store.findById('b')?.name).toBe('Bravo');
+	});
+
+	it('counts a camera held only through get as loaded and refreshes it by reading it again', async () => {
+		expect(store.isLoaded()).toBe(false);
+
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce(ok(cameraRes('h', 'Hidden porch')));
+
+		await store.get({ deviceId: 'h' });
+
+		expect(store.isLoaded()).toBe(true);
+
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce(ok(cameraRes('h', 'Porch')));
+
+		await store.refresh();
+
+		const [path, init] = (mockBackendClient.GET as Mock).mock.calls[1];
+
+		expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+		expect(path).toBe(DETAIL_PATH);
+		expect(init.params.path.deviceId).toBe('h');
+		expect(store.findById('h')?.name).toBe('Porch');
+	});
+
+	it('refreshes the list, then a camera held through get that the list leaves out, keeping it off the list', async () => {
+		(mockBackendClient.GET as Mock)
+			.mockResolvedValueOnce(ok([cameraRes('a', 'Alpha')]))
+			.mockResolvedValueOnce(ok(cameraRes('h', 'Hidden porch')))
+			.mockResolvedValueOnce(ok([cameraRes('a', 'Alpha')]))
+			.mockResolvedValueOnce(ok(cameraRes('h', 'Porch')));
+
+		await store.fetch();
+		await store.get({ deviceId: 'h' });
+
+		expect(store.findAll().map((c) => c.deviceId)).toEqual(['a']);
+
+		await store.refresh();
+
+		expect((mockBackendClient.GET as Mock).mock.calls.map(([path]) => path)).toEqual([LIST_PATH, DETAIL_PATH, LIST_PATH, DETAIL_PATH]);
+		expect(store.findById('h')?.name).toBe('Porch');
+		expect(store.findAll().map((c) => c.deviceId)).toEqual(['a']);
+	});
+
+	it('drops a camera held through get that is gone when it is refreshed', async () => {
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce(ok(cameraRes('h', 'Porch'))).mockResolvedValueOnce(notFound);
+
+		await store.get({ deviceId: 'h' });
+		await store.refresh();
+
+		expect(store.findById('h')).toBeNull();
+		expect(store.isLoaded()).toBe(false);
+	});
 });
