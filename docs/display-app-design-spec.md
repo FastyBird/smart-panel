@@ -6,7 +6,7 @@
 >
 > **Status:** describes the app as implemented in `apps/panel/`. Where something is a stub or known-incomplete, it is called out explicitly.
 >
-> **Companion documents:** `docs/architecture.md`, `docs/domains.md`, `docs/climate-architecture.md`, `docs/media-architecture.md`, `docs/optimistic-ui-architecture.md`, `docs/spaces-rooms-and-zones.md`, `docs/features.md`.
+> **Companion documents:** `docs/architecture.md`, `docs/domains.md`, `docs/climate-architecture.md`, `docs/media-architecture.md`, `docs/optimistic-ui-architecture.md`, `docs/spaces-rooms-and-zones.md`, `docs/features.md`. The admin app has its own spec: `docs/admin-ui-design-spec.md`.
 
 ---
 

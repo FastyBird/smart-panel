@@ -208,7 +208,9 @@ export class AppModule {}
 
 ### 4. Create Admin Extension (Optional)
 
-If your extension has a UI, create the admin module:
+If your extension has a UI, create the admin module. Its screens and forms must follow
+[`admin-ui-design-spec.md`](admin-ui-design-spec.md): plugins render only inside the host's slots (section 7 of the
+spec), using the shared components and theme tokens.
 
 ```typescript
 // apps/admin/src/modules/my-module/index.ts
