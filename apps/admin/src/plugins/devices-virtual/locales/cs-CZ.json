@@ -651,6 +651,10 @@
 			"graph_ineligible": "Graf závislostí zdrojů není dostupný",
 			"missing_input_role": "Vyberte oba požadované typy zdrojů",
 			"graph_validation_pending": "Probíhá kontrola závislostí zdrojů"
+		},
+		"separateDevices": {
+			"title": "Teplota a vlhkost pocházejí z různých zařízení",
+			"message": "Samostatná čidla hlásí hodnoty v nezávislých časech, takže jejich měření jsou jen zřídka v rámci nejvyššího rozdílu časů vzorků ({skew} s) a rosný bod je často nedostupný. Vyberte oba vstupy z jednoho kombinovaného čidla teploty a vlhkosti."
 		}
 	},
 	"nativeThermostat": {

@@ -92,7 +92,7 @@ fewer sensors.
 
 A dew point also needs its temperature and humidity samples to be close in time (the **maximum skew**, 5 seconds by
 default). Two separate radio sensors report at unrelated times and would rarely meet that, so take both inputs from
-one combined temperature and humidity sensor. Most combined sensors send both values in the same report, but some
+one combined temperature and humidity sensor; the editor warns when they come from different devices. Most combined sensors send both values in the same report, but some
 report each value on its own schedule; check that yours sends both within the maximum skew (the dew point editor
 shows each input's age, and reports a skew error when they are too far apart), or configure its reporting so it does.
 

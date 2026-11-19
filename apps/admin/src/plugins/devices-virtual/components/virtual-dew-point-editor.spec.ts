@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 	POST: vi.fn(),
 	PUT: vi.fn(),
 	sourceValues: {} as Record<string, { value: number; lastUpdated: string | null }>,
+	channelDevices: {} as Record<string, string>,
 }));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../modules/devices/store/keys', () => ({
@@ -44,7 +45,7 @@ vi.mock('../../../common', () => ({
 							permissions: ['ro'],
 						}
 					: key === 'channels'
-						? { id, name: id, device: 'device', category: id === 'tc' ? 'temperature' : 'humidity' }
+						? { id, name: id, device: mocks.channelDevices[id] ?? 'device', category: id === 'tc' ? 'temperature' : 'humidity' }
 						: { id, name: 'Fixture' },
 		}),
 	}),
@@ -81,9 +82,26 @@ const reviewSources = (wrapper: ReturnType<typeof mount>) =>
 beforeEach(() => {
 	vi.resetAllMocks();
 	mocks.sourceValues = {};
+	mocks.channelDevices = {};
 });
 afterEach(() => vi.useRealTimers());
 describe('dew point repair and diagnostic editor', () => {
+	it('warns only when temperature and humidity come from different devices', async () => {
+		const sameDevice = mount(VirtualDewPointEditor, { props: { wizard: true } });
+		await flushPromises();
+		await chooseInputs(sameDevice);
+		expect(sameDevice.find('[data-test-id="dew-point-separate-devices"]').exists()).toBe(false);
+		sameDevice.unmount();
+
+		mocks.channelDevices = { tc: 'thermometer', rhc: 'hygrometer' };
+		const separate = mount(VirtualDewPointEditor, { props: { wizard: true } });
+		await flushPromises();
+		expect(separate.find('[data-test-id="dew-point-separate-devices"]').exists()).toBe(false);
+		await chooseInputs(separate);
+		expect(separate.get('[data-test-id="dew-point-separate-devices"]').text()).toContain('devicesVirtualPlugin.dewPoint.separateDevices.title');
+		separate.unmount();
+	});
+
 	it('keeps cached source values visible with an unknown measurement time', async () => {
 		vi.useFakeTimers();
 		mocks.sourceValues = { t: { value: 16.8, lastUpdated: new Date(0).toISOString() }, rh: { value: 55, lastUpdated: null } };

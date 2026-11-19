@@ -651,6 +651,10 @@
 			"graph_ineligible": "Las dependencias de fuentes no están disponibles",
 			"missing_input_role": "Seleccione ambos tipos de fuente requeridos",
 			"graph_validation_pending": "Comprobando dependencias de fuentes"
+		},
+		"separateDevices": {
+			"title": "La temperatura y la humedad proceden de dispositivos distintos",
+			"message": "Los sensores separados informan en momentos independientes, por lo que sus lecturas rara vez quedan dentro del desfase temporal máximo ({skew} s) y el punto de rocío a menudo no está disponible. Elija ambas entradas de un único sensor combinado de temperatura y humedad."
 		}
 	},
 	"nativeThermostat": {

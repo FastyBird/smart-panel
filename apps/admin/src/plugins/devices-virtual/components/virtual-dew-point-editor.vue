@@ -157,6 +157,17 @@
 							/>
 						</el-form-item>
 					</div>
+					<el-alert
+						v-if="separateDevices"
+						v-show="at(1) || at(2)"
+						type="warning"
+						:title="t('devicesVirtualPlugin.dewPoint.separateDevices.title')"
+						:description="t('devicesVirtualPlugin.dewPoint.separateDevices.message', { skew: model.maximumSkewSeconds })"
+						:closable="false"
+						show-icon
+						class="mb-2"
+						data-test-id="dew-point-separate-devices"
+					/>
 					<div v-show="at(2)">
 						<source-reporting
 							:properties="[model.dryBulb, model.humidity]"
@@ -458,6 +469,16 @@ function candidates(role: string) {
 		return [{ id: p.id, label: `${device.name} / ${channel.name} / ${p.name ?? quantity}` }];
 	});
 }
+const sourceDevice = (propertyId: string | null): string | null => {
+	const property = propertyId ? properties.findById(propertyId) : null;
+	return (property && channels.findById(property.channel)?.device) ?? null;
+};
+// Separate sensors report at unrelated times, so their samples rarely fall within the maximum skew.
+const separateDevices = computed<boolean>(() => {
+	const dryBulb = sourceDevice(model.dryBulb),
+		humidity = sourceDevice(model.humidity);
+	return dryBulb !== null && humidity !== null && dryBulb !== humidity;
+});
 // Same four steps as the numeric editor; see there for why the form is shown a section at a time.
 const stepped = computed<boolean>(() => props.wizard === true && !props.outputId);
 const step = ref(0);

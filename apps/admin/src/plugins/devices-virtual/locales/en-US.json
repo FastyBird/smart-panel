@@ -651,6 +651,10 @@
 			"graph_ineligible": "Source dependency graph is unavailable",
 			"missing_input_role": "Select both required source types",
 			"graph_validation_pending": "Source dependency graph is being checked"
+		},
+		"separateDevices": {
+			"title": "Temperature and humidity come from different devices",
+			"message": "Separate sensors report at unrelated times, so their readings are rarely within the maximum timestamp skew ({skew} s) and the dew point is often unavailable. Choose both inputs from one combined temperature and humidity sensor."
 		}
 	},
 	"nativeThermostat": {
