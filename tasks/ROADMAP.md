@@ -12,6 +12,7 @@ Every open epic has a GitHub milestone and an epic issue whose sub-issues are ti
 | UniFi Protect | UniFi Protect | #1175 |
 | Matter | Matter | #1191 |
 | Automations | Automations | #1555 |
+| Admin UI redesign | Admin UI redesign | #1657 |
 | Space security domain and activity modes | Space modes and security | #1287 |
 | Animated Buddy face | Buddy face | #1253 |
 | Buddy hardening | Buddy hardening | #1264 |
@@ -492,6 +493,27 @@ AU-0 … AU-27 are tracked as GitHub sub-issues of #1555.
 
 ---
 
+## 13d. Admin UI Redesign (Epic)
+
+> [EPIC-ADMIN-UI-REDESIGN](epics/EPIC-ADMIN-UI-REDESIGN.md) — Status: :clipboard: Planned — GitHub #1657, milestone
+> "Admin UI redesign"
+
+Move every admin screen and plugin form onto one design system: the approved theme, twelve shared wrappers plus two for
+plugins, ten page templates, five size classes and the plugin slot contract. Spec: `docs/admin-ui-design-spec.md`.
+Tasks AR-1 … AR-29 are tracked as GitHub sub-issues of #1657; the Cameras screens are UP-11 and UP-12 of the UniFi
+Protect epic, built on this epic's components.
+
+| #   | Phase                                                                                                    | Scope       | Status              |
+| --- | -------------------------------------------------------------------------------------------------------- | ----------- | ------------------- |
+| 1   | Theme and lint (AR-1, AR-2)                                                                              | admin, docs | :clipboard: Planned |
+| 2   | Shell and shared components (AR-3 … AR-8)                                                                | admin       | :clipboard: Planned |
+| 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :clipboard: Planned |
+| 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
+
+**Next up:** AR-1, the theme.
+
+---
+
 ## 14. Technical Debt
 
 | #   | Task                                                                                  | Scope          | Status                  |
@@ -572,6 +594,7 @@ AU-0 … AU-27 are tracked as GitHub sub-issues of #1555.
 | UniFi Protect (milestones)       | 0      | 0           | 7       | 7       |
 | Matter Epic (milestones)         | 0      | 0           | 5       | 5       |
 | Automations Epic (phases)        | 0      | 0           | 5       | 5       |
-| **Total**                        | **96** | **7**       | **44**  | **147** |
+| Admin UI Redesign Epic (phases)  | 0      | 0           | 4       | 4       |
+| **Total**                        | **96** | **7**       | **48**  | **151** |
 
-The Remote access, UniFi Protect, Matter and Automations epics are counted per milestone or phase row; superseded tasks are not counted.
+The Remote access, UniFi Protect, Matter, Automations and Admin UI redesign epics are counted per milestone or phase row; superseded tasks are not counted.
