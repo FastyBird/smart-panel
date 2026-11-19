@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RELAY_STATUS_POLL_MS } from '../cameras.constants';
+import { RELAY_STATUS_POLL_MS, RELAY_STATUS_TIMEOUT_MS } from '../cameras.constants';
 
 import { useRelayStatus } from './relay-status.store';
 
@@ -93,6 +93,53 @@ describe('Relay status store', () => {
 
 		releaseA();
 		releaseB();
+	});
+
+	it('clears the read deadline once the read settles', async () => {
+		await store.get();
+
+		const [, init] = (mockBackendClient.GET as Mock).mock.calls[0];
+
+		expect(init.signal).toBeInstanceOf(AbortSignal);
+		expect(init.signal.aborted).toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('aborts a stalled read after the deadline, so the next poll starts a new one', async () => {
+		const signals: AbortSignal[] = [];
+
+		(mockBackendClient.GET as Mock).mockImplementationOnce(
+			(_path: string, init: { signal: AbortSignal }) =>
+				new Promise((_resolve, reject) => {
+					signals.push(init.signal);
+					init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+				})
+		);
+
+		const release = store.startPolling();
+		const stalled = store.get();
+
+		expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
+
+		const outcome = stalled.then(
+			() => 'resolved',
+			() => 'rejected'
+		);
+
+		await vi.advanceTimersByTimeAsync(RELAY_STATUS_TIMEOUT_MS - 1);
+		expect(signals[0].aborted).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(signals[0].aborted).toBe(true);
+		expect(await outcome).toBe('rejected');
+		expect(mockLogger.warn).toHaveBeenCalledWith('Failed to poll the relay status.');
+
+		await vi.advanceTimersByTimeAsync(RELAY_STATUS_POLL_MS - RELAY_STATUS_TIMEOUT_MS);
+
+		expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+		expect(store.status?.relay.state).toBe('running');
+
+		release();
 	});
 
 	it('the release function is idempotent', async () => {

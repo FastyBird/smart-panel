@@ -32,3 +32,14 @@ export const LIVE_STABLE_AFTER_MS = 10_000;
  * How long a live socket may stay in `connecting` without media before it counts as a failed attempt.
  */
 export const LIVE_CONNECT_TIMEOUT_MS = 15_000;
+
+/**
+ * How long a live view may stay in `requesting` (the session request, plus any relay status read or profile fallback
+ * it needs) before the attempt counts as a retryable failure.
+ */
+export const LIVE_SESSION_REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * How long one relay status read may take before it is aborted, so polling can start a new one.
+ */
+export const RELAY_STATUS_TIMEOUT_MS = 8_000;

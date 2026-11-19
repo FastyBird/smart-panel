@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend, useLogger } from '../../../common';
-import { CAMERAS_MODULE_PREFIX, RELAY_STATUS_POLL_MS } from '../cameras.constants';
+import { CAMERAS_MODULE_PREFIX, RELAY_STATUS_POLL_MS, RELAY_STATUS_TIMEOUT_MS } from '../cameras.constants';
 import { CamerasApiException } from '../cameras.exceptions';
 import { readErrorMessage } from '../cameras.utils';
 
@@ -27,15 +27,27 @@ export const useRelayStatus = defineStore<'cameras_module-relay_status', RelaySt
 			}
 
 			const getPromise = (async (): Promise<IRelayStatus> => {
-				const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${CAMERAS_MODULE_PREFIX}/status`, {});
+				// Without a deadline a stalled read would stay pending, and every later poll would wait on it.
+				const controller = new AbortController();
+				const deadline = setTimeout((): void => controller.abort(), RELAY_STATUS_TIMEOUT_MS);
 
-				if (typeof responseData !== 'undefined') {
-					status.value = transformRelayStatusResponse(responseData.data);
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${CAMERAS_MODULE_PREFIX}/status`, { signal: controller.signal });
 
-					return status.value;
+					if (typeof responseData !== 'undefined') {
+						status.value = transformRelayStatusResponse(responseData.data);
+
+						return status.value;
+					}
+
+					throw new CamerasApiException(readErrorMessage(error) ?? 'Failed to fetch relay status.', response?.status ?? 500);
+				} finally {
+					clearTimeout(deadline);
 				}
-
-				throw new CamerasApiException(readErrorMessage(error) ?? 'Failed to fetch relay status.', response?.status ?? 500);
 			})();
 
 			pendingGetPromise = getPromise;
