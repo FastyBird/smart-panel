@@ -267,7 +267,7 @@ onBeforeMount(async (): Promise<void> => {
 }
 
 .text-danger {
-	color: var(--el-color-danger) !important;
+	color: var(--fb-status-danger-text) !important;
 }
 
 .action-detail-popover {

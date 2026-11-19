@@ -403,14 +403,14 @@ const onFilterByEnabled = (enabled: boolean): void => {
 
 <style scoped>
 .text-primary {
-	color: var(--el-color-primary);
+	color: var(--fb-primary-text);
 }
 
 .text-success {
-	color: var(--el-color-success);
+	color: var(--fb-status-ok-text);
 }
 
 .text-danger {
-	color: var(--el-color-danger);
+	color: var(--fb-status-danger-text);
 }
 </style>

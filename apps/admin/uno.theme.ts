@@ -50,8 +50,9 @@ export const fbTheme = {
 // Opacity modifiers (bg-primary/10, text-danger/50) do NOT work: the colours are CSS variables, so
 // UnoCSS renders them solid. They are forbidden by lint; use the *-soft shortcuts below instead.
 //
-// Note: `text-primary` stays the primary (blue) colour utility from the theme above.
-// Main text colour is `text-default`.
+// Status text: `text-primary`, `text-success`, `text-warning`, `text-danger` and `text-info` resolve to the
+// readable text shades (--fb-primary-text, --fb-status-*-text), not to the filled-control base colours, which
+// are below 4.5:1 as text on dark surfaces. `text-primary` stays blue. Main text colour is `text-default`.
 export const fbShortcuts: Record<string, string> = {
 	// Text colours
 	'text-default': 'text-[var(--el-text-color-primary)]',
@@ -60,6 +61,11 @@ export const fbShortcuts: Record<string, string> = {
 	'text-muted': 'text-[var(--fb-text-muted)]',
 	'text-placeholder': 'text-[var(--el-text-color-placeholder)]',
 	'text-link': 'text-[var(--fb-primary-text)]',
+	'text-primary': 'text-[var(--fb-primary-text)]',
+	'text-success': 'text-[var(--fb-status-ok-text)]',
+	'text-warning': 'text-[var(--fb-status-warn-text)]',
+	'text-danger': 'text-[var(--fb-status-danger-text)]',
+	'text-info': 'text-[var(--fb-status-info-text)]',
 
 	// Type scale
 	'text-title': 'text-[20px] leading-[28px] font-600 text-default',

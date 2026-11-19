@@ -118,7 +118,9 @@ white text).
 
 UnoCSS has no palette of its own: `apps/admin/uno.theme.ts` points every theme colour at an Element Plus or `--fb-*` variable
 and adds shortcuts for the semantic tokens, so utilities follow dark mode. The main text colour is `text-default`;
-`text-primary` stays the blue primary utility.
+`text-primary` stays the blue primary utility. The status text utilities (`text-primary`, `text-success`,
+`text-warning`, `text-danger`, `text-info`) resolve to the readable text shades (`--fb-primary-text`,
+`--fb-status-*-text`), because the base colours are for filled controls and fall below 4.5:1 as text in dark mode.
 
 | Replace | With |
 | --- | --- |
