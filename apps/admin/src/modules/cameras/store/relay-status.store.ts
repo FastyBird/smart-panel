@@ -1,0 +1,113 @@
+import { type Ref, ref } from 'vue';
+
+import { type Pinia, type Store, defineStore } from 'pinia';
+
+import { z } from 'zod';
+
+import { MODULES_PREFIX } from '../../../app.constants';
+import { useBackend, useLogger } from '../../../common';
+import { CAMERAS_MODULE_PREFIX, RELAY_STATUS_POLL_MS } from '../cameras.constants';
+import { CamerasApiException } from '../cameras.exceptions';
+import { readErrorMessage } from '../cameras.utils';
+
+import { RelayStatusSchema } from './relay-status.store.schemas';
+import { transformRelayStatusResponse } from './relay-status.transformers';
+
+export type IRelayStatus = z.infer<typeof RelayStatusSchema>;
+
+export interface IRelayStatusStoreState {
+	status: Ref<IRelayStatus | null>;
+}
+
+export interface IRelayStatusStoreActions {
+	get: () => Promise<IRelayStatus>;
+	startPolling: () => () => void;
+	isLoaded: () => boolean;
+	refresh: () => Promise<unknown>;
+}
+
+export type RelayStatusStoreSetup = IRelayStatusStoreState & IRelayStatusStoreActions;
+
+export const useRelayStatus = defineStore<'cameras_module-relay_status', RelayStatusStoreSetup>(
+	'cameras_module-relay_status',
+	(): RelayStatusStoreSetup => {
+		const backend = useBackend();
+		const logger = useLogger();
+
+		const status = ref<IRelayStatus | null>(null);
+
+		let pendingGetPromise: Promise<IRelayStatus> | null = null;
+
+		const get = async (): Promise<IRelayStatus> => {
+			if (pendingGetPromise) {
+				return pendingGetPromise;
+			}
+
+			const getPromise = (async (): Promise<IRelayStatus> => {
+				const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${CAMERAS_MODULE_PREFIX}/status`, {});
+
+				if (typeof responseData !== 'undefined') {
+					status.value = transformRelayStatusResponse(responseData.data);
+
+					return status.value;
+				}
+
+				throw new CamerasApiException(readErrorMessage(error) ?? 'Failed to fetch relay status.', response?.status ?? 500);
+			})();
+
+			pendingGetPromise = getPromise;
+
+			try {
+				return await getPromise;
+			} finally {
+				pendingGetPromise = null;
+			}
+		};
+
+		let holders = 0;
+		let timer: ReturnType<typeof setInterval> | null = null;
+
+		const poll = (): void => {
+			get().catch((): void => {
+				logger.warn('Failed to poll the relay status.');
+			});
+		};
+
+		const startPolling = (): (() => void) => {
+			holders++;
+
+			if (holders === 1) {
+				poll();
+
+				timer = setInterval(poll, RELAY_STATUS_POLL_MS);
+			}
+
+			let released = false;
+
+			return (): void => {
+				if (released) {
+					return;
+				}
+
+				released = true;
+				holders--;
+
+				if (holders === 0 && timer !== null) {
+					clearInterval(timer);
+
+					timer = null;
+				}
+			};
+		};
+
+		const isLoaded = (): boolean => status.value !== null;
+
+		const refresh = (): Promise<unknown> => get();
+
+		return { status, get, startPolling, isLoaded, refresh };
+	}
+);
+
+export const registerRelayStatusStore = (pinia: Pinia): Store<string, IRelayStatusStoreState, object, IRelayStatusStoreActions> => {
+	return useRelayStatus(pinia);
+};

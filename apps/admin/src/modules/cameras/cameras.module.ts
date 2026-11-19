@@ -5,17 +5,29 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { type IModule, type ModuleInjectionKey, injectModulesManager } from '../../common';
+import {
+	type IModule,
+	type ModuleInjectionKey,
+	injectDataRefreshRegistry,
+	injectModulesManager,
+	injectStoresManager,
+	refreshLoadedStores,
+} from '../../common';
 
 import { CAMERAS_MODULE_NAME } from './cameras.constants';
 import { locales } from './locales';
 import { ModuleRoutes } from './router';
+import { registerCamerasStore } from './store/cameras.store';
+import { camerasStoreKey, relayStatusStoreKey } from './store/keys';
+import { registerRelayStatusStore } from './store/relay-status.store';
 
 const camerasAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Cameras');
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const modulesManager = injectModulesManager(app);
+		const storesManager = injectStoresManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -23,6 +35,15 @@ export default {
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
+
+		const camerasStore = registerCamerasStore(options.store);
+		const relayStatusStore = registerRelayStatusStore(options.store);
+
+		app.provide(camerasStoreKey, camerasStore);
+		storesManager.addStore(camerasStoreKey, camerasStore);
+
+		app.provide(relayStatusStoreKey, relayStatusStore);
+		storesManager.addStore(relayStatusStoreKey, relayStatusStore);
 
 		modulesManager.addModule(camerasAdminModuleKey, {
 			type: CAMERAS_MODULE_NAME,
@@ -39,5 +60,8 @@ export default {
 				options.router.addRoute(AppRouteNames.ROOT, route);
 			});
 		}
+
+		// Re-read what the stores already hold after a reconnect.
+		dataRefreshRegistry.register(camerasAdminModuleKey, (): Promise<void> => refreshLoadedStores([camerasStore, relayStatusStore]));
 	},
 };
