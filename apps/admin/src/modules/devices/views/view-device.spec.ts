@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
 	fetch: vi.fn(),
 	tab: 'plugin:virtual',
 	pluginsManager: undefined as unknown as PluginsManager,
+	sections: [] as unknown[],
 }));
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
@@ -79,6 +80,7 @@ vi.mock('../../config', () => ({ useConfigPlugins: () => ({ enabled: () => false
 vi.mock('../devices.mapping', () => ({ deviceChannelsSpecificationOrder: {} }));
 vi.mock('../composables/composables', async () => ({
 	useDevicesPlugins: (await import('../composables/useDevicesPlugins')).useDevicesPlugins,
+	useDeviceCategorySections: () => ref(mocks.sections),
 	useDevice: () => ({ device: mocks.device, isLoading: ref(false), fetchDevice: mocks.fetch }),
 	useDeviceValidation: () => ({ issues: ref([]), fetchValidation: mocks.fetch }),
 	useDeviceLogs: () => ({
@@ -114,6 +116,7 @@ describe('ViewDevice plugin detail section mount gate', () => {
 			} as unknown as IPluginOptions
 		);
 		mocks.device = ref<IDevice | null>(device(DEVICES_VIRTUAL_TYPE));
+		mocks.sections = [];
 	});
 
 	it('mounts the virtual sources section for an existing virtual device even with the plugin disabled', async () => {
@@ -179,5 +182,27 @@ describe('ViewDevice plugin detail section mount gate', () => {
 		await flushPromises();
 		expect(wrapper.findComponent({ name: 'VirtualDeviceSources' }).exists()).toBe(false);
 		expect(wrapper.findComponent({ name: 'DeviceDetail' }).exists()).toBe(true);
+	});
+
+	it.each([
+		['overview', true],
+		['logs', false],
+	])('tells the category sections whether the overview tab is active (%s)', async (tab, active) => {
+		const CategorySection = defineComponent({
+			name: 'CategorySection',
+			props: { device: { type: Object, required: true }, active: Boolean },
+			template: '<div />',
+		});
+
+		mocks.sections = [{ id: 'camera', categories: ['lighting'], component: CategorySection }];
+		mocks.tab = tab;
+
+		const wrapper = mountView();
+		await flushPromises();
+
+		const section = wrapper.findComponent({ name: 'CategorySection' });
+
+		expect(section.exists()).toBe(true);
+		expect(section.props('active')).toBe(active);
 	});
 });

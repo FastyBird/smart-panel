@@ -1,0 +1,128 @@
+import { describe, expect, it } from 'vitest';
+
+import { locales } from './index';
+
+const flatten = (value: Record<string, unknown>, prefix = ''): string[] =>
+	Object.entries(value).flatMap(([key, child]) => {
+		const path = prefix ? `${prefix}.${key}` : key;
+		return child && typeof child === 'object' && !Array.isArray(child) ? flatten(child as Record<string, unknown>, path) : [path];
+	});
+
+const readPath = (messages: Record<string, unknown>, path: string): unknown =>
+	path.split('.').reduce<unknown>((current, key) => (current as Record<string, unknown> | undefined)?.[key], messages);
+
+const assertNoStaleExceptions = (
+	allowedIdentical: Record<string, string[]>,
+	allLocales: Record<string, Record<string, unknown>>,
+	knownKeys: string[],
+	knownLocales: string[]
+): void => {
+	for (const [path, exemptLocales] of Object.entries(allowedIdentical)) {
+		// `readPath` resolves an unknown path to `undefined` on both sides of the comparison below,
+		// which would otherwise make a misspelled path compare as "equal" and pass silently.
+		expect(knownKeys, `ALLOWED_IDENTICAL references unknown key "${path}"`).toContain(path);
+
+		for (const locale of exemptLocales) {
+			// Same failure mode as above, but for a misspelled locale code.
+			expect(knownLocales, `ALLOWED_IDENTICAL["${path}"] references unknown locale "${locale}"`).toContain(locale);
+
+			const englishValue = readPath(allLocales['en-US'], path);
+			const localeValue = readPath(allLocales[locale], path);
+
+			expect(localeValue, `${locale}.${path} no longer matches en-US - remove it from ALLOWED_IDENTICAL`).toEqual(englishValue);
+		}
+	}
+};
+
+/**
+ * Keys that are legitimately allowed to keep the exact same value as `en-US` in the listed
+ * locales - a deliberate translation choice (a shared loanword, or simply the correct native
+ * word), never an untranslated leftover. Every other key must differ from `en-US` in every other
+ * locale, which the test below enforces.
+ */
+const ALLOWED_IDENTICAL: Record<string, string[]> = {
+	// Words that are the same in every language (`MSE`, `H.264`, `AAC`, `go2rtc`, `LIVE`, `FPS`).
+	'states.live': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
+	'dialog.fps': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
+	'profiles.columns.fps': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
+	// The correct German word for "version" is "Version".
+	'config.relayPanel.version': ['de-DE'],
+};
+
+describe('Cameras module locales', () => {
+	const localeNames = Object.keys(locales);
+	const referenceKeys = flatten(locales['en-US']).sort();
+
+	it('loads all six locales', () => {
+		expect(localeNames.sort()).toEqual(['cs-CZ', 'de-DE', 'en-US', 'es-ES', 'pl-PL', 'sk-SK']);
+	});
+
+	it.each(localeNames)('%s has the exact same key tree as en-US', (locale) => {
+		expect(flatten(locales[locale]).sort()).toEqual(referenceKeys);
+	});
+
+	it.each(localeNames)('%s has no blank translations', (locale) => {
+		const blank = flatten(locales[locale]).filter((path) => {
+			const value = readPath(locales[locale], path);
+
+			return typeof value !== 'string' || value.trim() === '';
+		});
+
+		expect(blank).toEqual([]);
+	});
+
+	describe.each(localeNames.filter((locale) => locale !== 'en-US'))('%s', (locale) => {
+		it('translates every value that is not an explicitly allowed exception', () => {
+			const untranslated = referenceKeys.filter((path) => {
+				const englishValue = readPath(locales['en-US'], path);
+				const localeValue = readPath(locales[locale], path);
+
+				if (englishValue !== localeValue) {
+					return false;
+				}
+
+				return !(ALLOWED_IDENTICAL[path] ?? []).includes(locale);
+			});
+
+			expect(untranslated, `${locale} left these keys identical to en-US: ${untranslated.join(', ')}`).toEqual([]);
+		});
+
+		it('preserves every en-US interpolation placeholder', () => {
+			const mismatched = referenceKeys.filter((path) => {
+				const englishValue = readPath(locales['en-US'], path);
+				const localeValue = readPath(locales[locale], path);
+
+				if (typeof englishValue !== 'string' || typeof localeValue !== 'string') {
+					return false;
+				}
+
+				const englishPlaceholders = [...englishValue.matchAll(/{[a-zA-Z]+}/g)].map((match) => match[0]).sort();
+				const localePlaceholders = [...localeValue.matchAll(/{[a-zA-Z]+}/g)].map((match) => match[0]).sort();
+
+				return JSON.stringify(englishPlaceholders) !== JSON.stringify(localePlaceholders);
+			});
+
+			expect(mismatched, `${locale} lost or changed a placeholder in: ${mismatched.join(', ')}`).toEqual([]);
+		});
+	});
+
+	it('does not declare an exception it no longer needs', () => {
+		// Guards the exception table itself: every listed (path, locale) pair must actually still be
+		// identical to en-US, or the "exception" is dead weight hiding a real translation gap.
+		assertNoStaleExceptions(ALLOWED_IDENTICAL, locales, referenceKeys, localeNames);
+	});
+
+	it('fails fast when an exception references a misspelled key or locale', () => {
+		// `readPath` resolves an unknown path/locale to `undefined` on both sides of the comparison,
+		// which would otherwise make a typo in ALLOWED_IDENTICAL compare as "equal" and pass silently.
+		const fixtureLocales = {
+			'en-US': { greeting: 'Hello' },
+			'xx-XX': { greeting: 'Bonjour' },
+		};
+		const knownKeys = ['greeting'];
+		const knownLocales = ['en-US', 'xx-XX'];
+
+		expect(() => assertNoStaleExceptions({ 'greeting.typo': ['xx-XX'] }, fixtureLocales, knownKeys, knownLocales)).toThrow();
+		expect(() => assertNoStaleExceptions({ greeting: ['xx-XX-typo'] }, fixtureLocales, knownKeys, knownLocales)).toThrow();
+	});
+});

@@ -1,3 +1,4 @@
+export * from './ingress.utils';
 export * from './api-error.utils';
 export * from './first-load.utils';
 export * from './format.utils';

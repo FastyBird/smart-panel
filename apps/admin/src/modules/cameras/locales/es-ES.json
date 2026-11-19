@@ -1,0 +1,162 @@
+{
+	"menu": {
+		"title": "Cámaras"
+	},
+	"headings": {
+		"cameras": "Cámaras"
+	},
+	"subHeadings": {
+		"cameras": "Vista en directo e instantáneas de todas las cámaras"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "hace {seconds} s",
+		"play": "Reproducir vista en directo",
+		"liveOff": "Vista en directo desactivada",
+		"codecUnsupported": "Este navegador no puede reproducir esta transmisión. Prueba con Chrome, Edge o Safari.",
+		"offline": "La cámara está sin conexión",
+		"lastSeen": "Visto por última vez {time}",
+		"relayUnavailable": "La vista en directo no está disponible",
+		"cameraLimit": "Demasiados espectadores en esta cámara ({max})",
+		"cameraLimitNoMax": "Demasiados espectadores en esta cámara",
+		"totalLimit": "Demasiadas vistas en directo abiertas ({max})",
+		"totalLimitNoMax": "Demasiadas vistas en directo abiertas",
+		"moduleDisabled": "El módulo de cámaras está desactivado.",
+		"error": "La vista en directo ha fallado",
+		"retryingIn": "Reintentando en {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Cámara sin conexión, captura no actualizada",
+		"busy": "Cámara ocupada, captura no actualizada",
+		"unavailable": "Captura no disponible",
+		"failed": "No se pudo cargar la captura"
+	},
+	"buttons": {
+		"retry": "Reintentar",
+		"openSettings": "Abrir ajustes de cámaras",
+		"snapshot": "Captura",
+		"mute": "Silenciar",
+		"unmute": "Activar sonido",
+		"fullScreen": "Pantalla completa"
+	},
+	"relayReasons": {
+		"mode_disabled": "La vista en directo está desactivada. Las instantáneas siguen funcionando.",
+		"module_disabled": "El módulo de cámaras está desactivado.",
+		"binary_path_invalid": "La ruta de go2rtc debe ser una ruta absoluta a un archivo llamado go2rtc.",
+		"binary_missing": "No se encontró go2rtc en esta ruta.",
+		"binary_not_executable": "Se encontró go2rtc, pero no se puede ejecutar. Revisa sus permisos.",
+		"external_url_missing": "El modo externo necesita la URL de go2rtc.",
+		"external_unreachable": "El go2rtc externo no responde.",
+		"start_timeout": "go2rtc no se inició a tiempo.",
+		"port_in_use": "Otro programa está usando el puerto del relé.",
+		"crashed": "go2rtc se detuvo de forma inesperada. Se reinicia automáticamente."
+	},
+	"reasons": {
+		"stream_not_enabled": "No hay ninguna transmisión activada para esta cámara. Activa una en los ajustes de la cámara.",
+		"camera_offline": "La cámara está sin conexión.",
+		"console_unavailable": "No se puede acceder a la consola que gestiona esta cámara.",
+		"stream_state_unknown": "No se pudo leer el estado de la transmisión.",
+		"stream_tls_unverified": "No se pudo verificar el certificado de la transmisión.",
+		"unknown": "Esta transmisión no está disponible."
+	},
+	"profiles": {
+		"selector": "Perfil de transmisión",
+		"columns": {
+			"name": "Perfil",
+			"resolution": "Resolución",
+			"fps": "FPS",
+			"videoCodec": "Códec de vídeo",
+			"audioCodec": "Códec de audio",
+			"availability": "Disponibilidad"
+		},
+		"available": "Disponible",
+		"unavailable": "No disponible"
+	},
+	"section": {
+		"heading": "Cámara",
+		"noStream": "Este dispositivo no ofrece una transmisión de cámara.",
+		"noLiveView": "La vista en directo no está disponible para esta cámara.",
+		"loadFailed": "No se pudo cargar la cámara."
+	},
+	"relayChip": {
+		"running": "Vista en directo activada",
+		"starting": "Iniciando",
+		"disabled": "Vista en directo desactivada",
+		"unavailable": "Vista en directo no disponible",
+		"unknown": "Estado de la vista en directo desconocido"
+	},
+	"relayStale": "No se pudo actualizar el estado",
+	"grid": {
+		"allSpaces": "Todas",
+		"spaces": "Espacios",
+		"empty": "Aún no hay cámaras. Adopta cámaras desde una integración de cámaras, como UniFi Protect.",
+		"loadFailed": "No se pudieron cargar las cámaras."
+	},
+	"dialog": {
+		"switchCamera": "Cambiar de cámara",
+		"fps": "{fps} fps",
+		"snapshotFailed": "No se pudo tomar la captura."
+	},
+	"config": {
+		"about": {
+			"title": "Acerca de los ajustes de cámaras",
+			"text": "La vista en directo la ofrece un relay go2rtc. Las instantáneas siguen funcionando con el relay apagado."
+		},
+		"fields": {
+			"mode": {
+				"title": "Modo del relay"
+			},
+			"binaryPath": {
+				"title": "Ruta del binario go2rtc",
+				"validation": {
+					"invalid": "Introduce una ruta absoluta a un archivo cuyo nombre empiece por go2rtc."
+				}
+			},
+			"externalUrl": {
+				"title": "URL de go2rtc",
+				"validation": {
+					"required": "Introduce la URL de go2rtc.",
+					"invalid": "Introduce una URL http o https sin credenciales, consulta ni fragmento."
+				}
+			},
+			"maxSessions": {
+				"title": "Máximo de vistas en directo",
+				"validation": {
+					"range": "Introduce un número entero de 1 a 32."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Máximo de vistas en directo por cámara",
+				"validation": {
+					"range": "Introduce un número entero de 1 a 16."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Gestionado (lo ejecuta el panel)",
+			"external": "Externo (tu propio go2rtc)",
+			"disabled": "Desactivado"
+		},
+		"relayStates": {
+			"running": "En marcha",
+			"starting": "Iniciando",
+			"disabled": "Apagado",
+			"unavailable": "No disponible",
+			"error": "Fallo"
+		},
+		"relayPanel": {
+			"title": "Estado del relay",
+			"mode": "Modo",
+			"state": "Estado",
+			"version": "Versión",
+			"sessions": "Vistas en directo",
+			"maxPerCamera": "Límite por cámara",
+			"sessionsValue": "{active} de {max}"
+		},
+		"messages": {
+			"edited": "Los ajustes de cámaras se han guardado.",
+			"notEdited": "No se pudieron guardar los ajustes de cámaras.",
+			"invalid": "Algunos ajustes no son válidos. Revísalos e inténtalo de nuevo."
+		}
+	}
+}

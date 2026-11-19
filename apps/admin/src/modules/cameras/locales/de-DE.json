@@ -1,0 +1,162 @@
+{
+	"menu": {
+		"title": "Kameras"
+	},
+	"headings": {
+		"cameras": "Kameras"
+	},
+	"subHeadings": {
+		"cameras": "Live-Ansicht und Schnappschüsse aller Kameras"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "vor {seconds} s",
+		"play": "Live-Ansicht abspielen",
+		"liveOff": "Live-Ansicht aus",
+		"codecUnsupported": "Dieser Browser kann diesen Stream nicht abspielen. Versuchen Sie Chrome, Edge oder Safari.",
+		"offline": "Kamera ist offline",
+		"lastSeen": "Zuletzt gesehen {time}",
+		"relayUnavailable": "Live-Ansicht ist nicht verfügbar",
+		"cameraLimit": "Zu viele Zuschauer bei dieser Kamera ({max})",
+		"cameraLimitNoMax": "Zu viele Zuschauer bei dieser Kamera",
+		"totalLimit": "Zu viele Live-Ansichten geöffnet ({max})",
+		"totalLimitNoMax": "Zu viele Live-Ansichten geöffnet",
+		"moduleDisabled": "Das Kameramodul ist ausgeschaltet.",
+		"error": "Live-Ansicht fehlgeschlagen",
+		"retryingIn": "Neuer Versuch in {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Kamera offline, Standbild nicht aktuell",
+		"busy": "Kamera ausgelastet, Standbild nicht aktuell",
+		"unavailable": "Standbild nicht verfügbar",
+		"failed": "Standbild konnte nicht geladen werden"
+	},
+	"buttons": {
+		"retry": "Erneut versuchen",
+		"openSettings": "Kameraeinstellungen öffnen",
+		"snapshot": "Standbild",
+		"mute": "Stumm",
+		"unmute": "Ton an",
+		"fullScreen": "Vollbild"
+	},
+	"relayReasons": {
+		"mode_disabled": "Die Live-Ansicht ist ausgeschaltet. Schnappschüsse funktionieren weiterhin.",
+		"module_disabled": "Das Kameramodul ist ausgeschaltet.",
+		"binary_path_invalid": "Der go2rtc-Pfad muss ein absoluter Pfad zu einer Datei namens go2rtc sein.",
+		"binary_missing": "go2rtc wurde unter diesem Pfad nicht gefunden.",
+		"binary_not_executable": "go2rtc wurde gefunden, kann aber nicht ausgeführt werden. Prüfen Sie die Berechtigungen.",
+		"external_url_missing": "Der externe Modus benötigt die go2rtc-URL.",
+		"external_unreachable": "Das externe go2rtc antwortet nicht.",
+		"start_timeout": "go2rtc wurde nicht rechtzeitig gestartet.",
+		"port_in_use": "Ein anderes Programm verwendet den Relay-Port.",
+		"crashed": "go2rtc wurde unerwartet beendet. Es startet automatisch neu."
+	},
+	"reasons": {
+		"stream_not_enabled": "Für diese Kamera ist kein Stream aktiviert. Aktivieren Sie einen in den Kameraeinstellungen.",
+		"camera_offline": "Die Kamera ist offline.",
+		"console_unavailable": "Die Konsole, die diese Kamera verwaltet, ist nicht erreichbar.",
+		"stream_state_unknown": "Der Stream-Status konnte nicht gelesen werden.",
+		"stream_tls_unverified": "Das Stream-Zertifikat konnte nicht überprüft werden.",
+		"unknown": "Dieser Stream ist nicht verfügbar."
+	},
+	"profiles": {
+		"selector": "Stream-Profil",
+		"columns": {
+			"name": "Profil",
+			"resolution": "Auflösung",
+			"fps": "FPS",
+			"videoCodec": "Video-Codec",
+			"audioCodec": "Audio-Codec",
+			"availability": "Verfügbarkeit"
+		},
+		"available": "Verfügbar",
+		"unavailable": "Nicht verfügbar"
+	},
+	"section": {
+		"heading": "Kamera",
+		"noStream": "Dieses Gerät stellt keinen Kamera-Stream bereit.",
+		"noLiveView": "Für diese Kamera ist keine Live-Ansicht verfügbar.",
+		"loadFailed": "Die Kamera konnte nicht geladen werden."
+	},
+	"relayChip": {
+		"running": "Live-Ansicht an",
+		"starting": "Startet",
+		"disabled": "Live-Ansicht aus",
+		"unavailable": "Live-Ansicht nicht verfügbar",
+		"unknown": "Status der Live-Ansicht unbekannt"
+	},
+	"relayStale": "Status konnte nicht aktualisiert werden",
+	"grid": {
+		"allSpaces": "Alle",
+		"spaces": "Räume",
+		"empty": "Noch keine Kameras. Übernehmen Sie Kameras aus einer Kamera-Integration wie UniFi Protect.",
+		"loadFailed": "Die Kameras konnten nicht geladen werden."
+	},
+	"dialog": {
+		"switchCamera": "Kamera wechseln",
+		"fps": "{fps} fps",
+		"snapshotFailed": "Das Standbild konnte nicht aufgenommen werden."
+	},
+	"config": {
+		"about": {
+			"title": "Über die Kameraeinstellungen",
+			"text": "Die Live-Ansicht wird über ein go2rtc-Relay bereitgestellt. Schnappschüsse funktionieren auch bei ausgeschaltetem Relay."
+		},
+		"fields": {
+			"mode": {
+				"title": "Relay-Modus"
+			},
+			"binaryPath": {
+				"title": "Pfad zur go2rtc-Binärdatei",
+				"validation": {
+					"invalid": "Geben Sie einen absoluten Pfad zu einer Datei ein, deren Name mit go2rtc beginnt."
+				}
+			},
+			"externalUrl": {
+				"title": "go2rtc-URL",
+				"validation": {
+					"required": "Geben Sie die go2rtc-URL ein.",
+					"invalid": "Geben Sie eine http- oder https-URL ohne Zugangsdaten, Abfrage oder Fragment ein."
+				}
+			},
+			"maxSessions": {
+				"title": "Maximale Live-Ansichten",
+				"validation": {
+					"range": "Geben Sie eine ganze Zahl von 1 bis 32 ein."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Maximale Live-Ansichten pro Kamera",
+				"validation": {
+					"range": "Geben Sie eine ganze Zahl von 1 bis 16 ein."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Verwaltet (vom Panel gestartet)",
+			"external": "Extern (eigenes go2rtc)",
+			"disabled": "Deaktiviert"
+		},
+		"relayStates": {
+			"running": "Läuft",
+			"starting": "Startet",
+			"disabled": "Aus",
+			"unavailable": "Nicht verfügbar",
+			"error": "Fehler"
+		},
+		"relayPanel": {
+			"title": "Relay-Status",
+			"mode": "Modus",
+			"state": "Status",
+			"version": "Version",
+			"sessions": "Live-Ansichten",
+			"maxPerCamera": "Limit pro Kamera",
+			"sessionsValue": "{active} von {max}"
+		},
+		"messages": {
+			"edited": "Die Kameraeinstellungen wurden gespeichert.",
+			"notEdited": "Die Kameraeinstellungen konnten nicht gespeichert werden.",
+			"invalid": "Einige Einstellungen sind ungültig. Prüfen Sie sie und versuchen Sie es erneut."
+		}
+	}
+}

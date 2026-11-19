@@ -1,0 +1,162 @@
+{
+	"menu": {
+		"title": "Kamery"
+	},
+	"headings": {
+		"cameras": "Kamery"
+	},
+	"subHeadings": {
+		"cameras": "Podgląd na żywo i zdjęcia ze wszystkich kamer"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "{seconds} s temu",
+		"play": "Odtwórz podgląd na żywo",
+		"liveOff": "Podgląd na żywo wyłączony",
+		"codecUnsupported": "Ta przeglądarka nie może odtworzyć tego strumienia. Spróbuj użyć Chrome, Edge lub Safari.",
+		"offline": "Kamera jest offline",
+		"lastSeen": "Ostatnio widziana {time}",
+		"relayUnavailable": "Podgląd na żywo jest niedostępny",
+		"cameraLimit": "Zbyt wielu widzów tej kamery ({max})",
+		"cameraLimitNoMax": "Zbyt wielu widzów tej kamery",
+		"totalLimit": "Zbyt wiele otwartych podglądów na żywo ({max})",
+		"totalLimitNoMax": "Zbyt wiele otwartych podglądów na żywo",
+		"moduleDisabled": "Moduł Kamery jest wyłączony.",
+		"error": "Podgląd na żywo nie powiódł się",
+		"retryingIn": "Ponowna próba za {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Kamera offline, zrzut nieaktualny",
+		"busy": "Kamera zajęta, zrzut nieaktualny",
+		"unavailable": "Zrzut niedostępny",
+		"failed": "Nie udało się wczytać zrzutu"
+	},
+	"buttons": {
+		"retry": "Spróbuj ponownie",
+		"openSettings": "Otwórz ustawienia kamer",
+		"snapshot": "Zrzut",
+		"mute": "Wycisz",
+		"unmute": "Włącz dźwięk",
+		"fullScreen": "Pełny ekran"
+	},
+	"relayReasons": {
+		"mode_disabled": "Podgląd na żywo jest wyłączony. Zdjęcia nadal działają.",
+		"module_disabled": "Moduł Kamery jest wyłączony.",
+		"binary_path_invalid": "Ścieżka go2rtc musi być bezwzględną ścieżką do pliku o nazwie go2rtc.",
+		"binary_missing": "Nie znaleziono go2rtc pod tą ścieżką.",
+		"binary_not_executable": "Znaleziono go2rtc, ale nie można go uruchomić. Sprawdź jego uprawnienia.",
+		"external_url_missing": "Tryb zewnętrzny wymaga adresu URL go2rtc.",
+		"external_unreachable": "Zewnętrzny go2rtc nie odpowiada.",
+		"start_timeout": "go2rtc nie uruchomił się na czas.",
+		"port_in_use": "Inny program używa portu przekaźnika.",
+		"crashed": "go2rtc nieoczekiwanie się zatrzymał. Uruchomi się ponownie automatycznie."
+	},
+	"reasons": {
+		"stream_not_enabled": "Dla tej kamery nie włączono żadnego strumienia. Włącz go w ustawieniach kamery.",
+		"camera_offline": "Kamera jest offline.",
+		"console_unavailable": "Konsola zarządzająca tą kamerą jest niedostępna.",
+		"stream_state_unknown": "Nie udało się odczytać stanu strumienia.",
+		"stream_tls_unverified": "Nie udało się zweryfikować certyfikatu strumienia.",
+		"unknown": "Ten strumień jest niedostępny."
+	},
+	"profiles": {
+		"selector": "Profil strumienia",
+		"columns": {
+			"name": "Profil",
+			"resolution": "Rozdzielczość",
+			"fps": "FPS",
+			"videoCodec": "Kodek wideo",
+			"audioCodec": "Kodek audio",
+			"availability": "Dostępność"
+		},
+		"available": "Dostępny",
+		"unavailable": "Niedostępny"
+	},
+	"section": {
+		"heading": "Kamera",
+		"noStream": "To urządzenie nie udostępnia strumienia z kamery.",
+		"noLiveView": "Podgląd na żywo jest niedostępny dla tej kamery.",
+		"loadFailed": "Nie udało się załadować kamery."
+	},
+	"relayChip": {
+		"running": "Podgląd na żywo włączony",
+		"starting": "Uruchamianie",
+		"disabled": "Podgląd na żywo wyłączony",
+		"unavailable": "Podgląd na żywo niedostępny",
+		"unknown": "Stan podglądu na żywo nieznany"
+	},
+	"relayStale": "Nie udało się odświeżyć stanu",
+	"grid": {
+		"allSpaces": "Wszystkie",
+		"spaces": "Przestrzenie",
+		"empty": "Nie ma jeszcze kamer. Dodaj kamery z integracji kamer, na przykład UniFi Protect.",
+		"loadFailed": "Nie udało się wczytać kamer."
+	},
+	"dialog": {
+		"switchCamera": "Przełącz kamerę",
+		"fps": "{fps} fps",
+		"snapshotFailed": "Nie udało się wykonać zrzutu."
+	},
+	"config": {
+		"about": {
+			"title": "O ustawieniach kamer",
+			"text": "Podgląd na żywo obsługuje relay go2rtc. Zdjęcia działają także przy wyłączonym relay."
+		},
+		"fields": {
+			"mode": {
+				"title": "Tryb relay"
+			},
+			"binaryPath": {
+				"title": "Ścieżka do pliku go2rtc",
+				"validation": {
+					"invalid": "Podaj bezwzględną ścieżkę do pliku, którego nazwa zaczyna się od go2rtc."
+				}
+			},
+			"externalUrl": {
+				"title": "Adres go2rtc",
+				"validation": {
+					"required": "Podaj adres go2rtc.",
+					"invalid": "Podaj adres http lub https bez danych logowania, zapytania i fragmentu."
+				}
+			},
+			"maxSessions": {
+				"title": "Maksymalna liczba podglądów na żywo",
+				"validation": {
+					"range": "Podaj liczbę całkowitą od 1 do 32."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Maksymalna liczba podglądów na żywo na kamerę",
+				"validation": {
+					"range": "Podaj liczbę całkowitą od 1 do 16."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Zarządzany (uruchamia panel)",
+			"external": "Zewnętrzny (własny go2rtc)",
+			"disabled": "Wyłączony"
+		},
+		"relayStates": {
+			"running": "Działa",
+			"starting": "Uruchamianie",
+			"disabled": "Wyłączony",
+			"unavailable": "Niedostępny",
+			"error": "Błąd"
+		},
+		"relayPanel": {
+			"title": "Stan relay",
+			"mode": "Tryb",
+			"state": "Stan",
+			"version": "Wersja",
+			"sessions": "Podglądy na żywo",
+			"maxPerCamera": "Limit na kamerę",
+			"sessionsValue": "{active} z {max}"
+		},
+		"messages": {
+			"edited": "Ustawienia kamer zostały zapisane.",
+			"notEdited": "Nie udało się zapisać ustawień kamer.",
+			"invalid": "Niektóre ustawienia są nieprawidłowe. Sprawdź je i spróbuj ponownie."
+		}
+	}
+}

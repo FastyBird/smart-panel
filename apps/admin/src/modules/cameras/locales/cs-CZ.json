@@ -1,0 +1,162 @@
+{
+	"menu": {
+		"title": "Kamery"
+	},
+	"headings": {
+		"cameras": "Kamery"
+	},
+	"subHeadings": {
+		"cameras": "Živý náhled a snímky ze všech kamer"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "před {seconds} s",
+		"play": "Přehrát živý náhled",
+		"liveOff": "Živé zobrazení vypnuto",
+		"codecUnsupported": "Tento prohlížeč nedokáže přehrát tento stream. Zkuste Chrome, Edge nebo Safari.",
+		"offline": "Kamera je offline",
+		"lastSeen": "Naposledy viděna {time}",
+		"relayUnavailable": "Živý náhled není dostupný",
+		"cameraLimit": "Příliš mnoho diváků u této kamery ({max})",
+		"cameraLimitNoMax": "Příliš mnoho diváků u této kamery",
+		"totalLimit": "Příliš mnoho otevřených živých náhledů ({max})",
+		"totalLimitNoMax": "Příliš mnoho otevřených živých náhledů",
+		"moduleDisabled": "Modul Kamery je vypnutý.",
+		"error": "Živý náhled selhal",
+		"retryingIn": "Další pokus za {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Kamera je offline, snímek není aktuální",
+		"busy": "Kamera je vytížená, snímek není aktuální",
+		"unavailable": "Snímek není k dispozici",
+		"failed": "Snímek se nepodařilo načíst"
+	},
+	"buttons": {
+		"retry": "Zkusit znovu",
+		"openSettings": "Otevřít nastavení kamer",
+		"snapshot": "Snímek",
+		"mute": "Ztlumit",
+		"unmute": "Zapnout zvuk",
+		"fullScreen": "Celá obrazovka"
+	},
+	"relayReasons": {
+		"mode_disabled": "Živý náhled je vypnutý. Snímky stále fungují.",
+		"module_disabled": "Modul Kamery je vypnutý.",
+		"binary_path_invalid": "Cesta ke go2rtc musí být absolutní cesta k souboru go2rtc.",
+		"binary_missing": "go2rtc nebyl na této cestě nalezen.",
+		"binary_not_executable": "go2rtc byl nalezen, ale nelze jej spustit. Zkontrolujte jeho oprávnění.",
+		"external_url_missing": "Externí režim vyžaduje adresu go2rtc.",
+		"external_unreachable": "Externí go2rtc neodpovídá.",
+		"start_timeout": "go2rtc se nespustil včas.",
+		"port_in_use": "Port relé používá jiný program.",
+		"crashed": "go2rtc se neočekávaně zastavil. Spustí se automaticky znovu."
+	},
+	"reasons": {
+		"stream_not_enabled": "Pro tuto kameru není zapnutý žádný stream. Zapněte jej v nastavení kamery.",
+		"camera_offline": "Kamera je offline.",
+		"console_unavailable": "Konzole, která tuto kameru spravuje, není dostupná.",
+		"stream_state_unknown": "Stav streamu se nepodařilo zjistit.",
+		"stream_tls_unverified": "Certifikát streamu se nepodařilo ověřit.",
+		"unknown": "Tento stream není dostupný."
+	},
+	"profiles": {
+		"selector": "Profil streamu",
+		"columns": {
+			"name": "Profil",
+			"resolution": "Rozlišení",
+			"fps": "FPS",
+			"videoCodec": "Video kodek",
+			"audioCodec": "Audio kodek",
+			"availability": "Dostupnost"
+		},
+		"available": "Dostupný",
+		"unavailable": "Nedostupný"
+	},
+	"section": {
+		"heading": "Kamera",
+		"noStream": "Toto zařízení neposkytuje stream z kamery.",
+		"noLiveView": "Pro tuto kameru není živý náhled dostupný.",
+		"loadFailed": "Kameru se nepodařilo načíst."
+	},
+	"relayChip": {
+		"running": "Živé zobrazení zapnuto",
+		"starting": "Spouští se",
+		"disabled": "Živé zobrazení vypnuto",
+		"unavailable": "Živé zobrazení není dostupné",
+		"unknown": "Stav živého zobrazení neznámý"
+	},
+	"relayStale": "Stav se nepodařilo obnovit",
+	"grid": {
+		"allSpaces": "Vše",
+		"spaces": "Prostory",
+		"empty": "Zatím nejsou žádné kamery. Přidejte kamery z integrace kamer, například UniFi Protect.",
+		"loadFailed": "Kamery se nepodařilo načíst."
+	},
+	"dialog": {
+		"switchCamera": "Přepnout kameru",
+		"fps": "{fps} fps",
+		"snapshotFailed": "Snímek se nepodařilo pořídit."
+	},
+	"config": {
+		"about": {
+			"title": "O nastavení kamer",
+			"text": "Živý náhled zajišťuje relay go2rtc. Snímky fungují i při vypnutém relay."
+		},
+		"fields": {
+			"mode": {
+				"title": "Režim relay"
+			},
+			"binaryPath": {
+				"title": "Cesta k binárce go2rtc",
+				"validation": {
+					"invalid": "Zadejte absolutní cestu k souboru, jehož název začíná go2rtc."
+				}
+			},
+			"externalUrl": {
+				"title": "Adresa go2rtc",
+				"validation": {
+					"required": "Zadejte adresu go2rtc.",
+					"invalid": "Zadejte adresu http nebo https bez přihlašovacích údajů, dotazu a fragmentu."
+				}
+			},
+			"maxSessions": {
+				"title": "Nejvyšší počet živých náhledů",
+				"validation": {
+					"range": "Zadejte celé číslo od 1 do 32."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Nejvyšší počet živých náhledů na kameru",
+				"validation": {
+					"range": "Zadejte celé číslo od 1 do 16."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Spravovaný (spouští panel)",
+			"external": "Externí (vlastní go2rtc)",
+			"disabled": "Vypnuto"
+		},
+		"relayStates": {
+			"running": "Běží",
+			"starting": "Spouští se",
+			"disabled": "Vypnuto",
+			"unavailable": "Nedostupné",
+			"error": "Chyba"
+		},
+		"relayPanel": {
+			"title": "Stav relay",
+			"mode": "Režim",
+			"state": "Stav",
+			"version": "Verze",
+			"sessions": "Živé náhledy",
+			"maxPerCamera": "Limit na kameru",
+			"sessionsValue": "{active} z {max}"
+		},
+		"messages": {
+			"edited": "Nastavení kamer bylo uloženo.",
+			"notEdited": "Nastavení kamer se nepodařilo uložit.",
+			"invalid": "Některá nastavení nejsou platná. Zkontrolujte je a zkuste to znovu."
+		}
+	}
+}

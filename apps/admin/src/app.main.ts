@@ -22,6 +22,7 @@ import {
 	RouterGuards,
 	SocketsPlugin,
 	StoresManager,
+	buildApiBase,
 	injectAccountManager,
 	logger,
 	provideBackendClient,
@@ -31,6 +32,7 @@ import {
 	providePluginsManager,
 	provideRouterGuards,
 	provideStoresManager,
+	resolveIngressBase,
 	router,
 } from './common';
 import { provideLogger } from './common';
@@ -40,6 +42,7 @@ import i18n from './locales';
 import { AuthModule } from './modules/auth';
 import { AutomationsModule } from './modules/automations';
 import { BuddyModule } from './modules/buddy';
+import { CamerasModule } from './modules/cameras';
 import { ConfigModule } from './modules/config';
 import { DashboardModule } from './modules/dashboard';
 import { DevicesModule } from './modules/devices';
@@ -153,12 +156,11 @@ app.config.globalProperties['dataRefreshRegistry'] = dataRefreshRegistry;
 provideDataRefreshRegistry(app, dataRefreshRegistry);
 
 // Detect HA ingress prefix from current URL
-const ingressMatch = window.location.pathname.match(/^(\/api\/hassio_ingress\/[^/]+)/);
-const ingressBase = ingressMatch ? ingressMatch[1] : '';
+const ingressBase = resolveIngressBase(window.location.pathname);
 
 // Backend
 const backendClient = createClient<OpenApiPaths>({
-	baseUrl: `${window.location.origin}${ingressBase}/api/v1`,
+	baseUrl: buildApiBase(window.location),
 });
 app.config.globalProperties['backend'] = backendClient;
 provideBackendClient(app, backendClient);
@@ -216,6 +218,7 @@ app.use(SecurityModule, moduleOptions);
 app.use(EnergyModule, moduleOptions);
 app.use(BuddyModule, moduleOptions);
 app.use(RemoteAccessModule, moduleOptions);
+app.use(CamerasModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {

@@ -1,0 +1,162 @@
+{
+	"menu": {
+		"title": "Cameras"
+	},
+	"headings": {
+		"cameras": "Cameras"
+	},
+	"subHeadings": {
+		"cameras": "Live view and snapshots of every camera"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "{seconds} s ago",
+		"play": "Play live view",
+		"liveOff": "Live view off",
+		"codecUnsupported": "This browser cannot play this stream. Try Chrome, Edge or Safari.",
+		"offline": "Camera is offline",
+		"lastSeen": "Last seen {time}",
+		"relayUnavailable": "Live view is not available",
+		"cameraLimit": "Too many viewers on this camera ({max})",
+		"cameraLimitNoMax": "Too many viewers on this camera",
+		"totalLimit": "Too many live views open ({max})",
+		"totalLimitNoMax": "Too many live views open",
+		"moduleDisabled": "The Cameras module is turned off.",
+		"error": "Live view failed",
+		"retryingIn": "Retrying in {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Camera offline, snapshot not updated",
+		"busy": "Camera busy, snapshot not updated",
+		"unavailable": "Snapshot not available",
+		"failed": "Could not load the snapshot"
+	},
+	"buttons": {
+		"retry": "Retry",
+		"openSettings": "Open Cameras settings",
+		"snapshot": "Snapshot",
+		"mute": "Mute",
+		"unmute": "Unmute",
+		"fullScreen": "Full screen"
+	},
+	"relayReasons": {
+		"mode_disabled": "Live view is turned off. Snapshots still work.",
+		"module_disabled": "The Cameras module is turned off.",
+		"binary_path_invalid": "The go2rtc path must be an absolute path to a file named go2rtc.",
+		"binary_missing": "go2rtc was not found at this path.",
+		"binary_not_executable": "go2rtc was found but cannot be run. Check its permissions.",
+		"external_url_missing": "External mode needs the go2rtc URL.",
+		"external_unreachable": "The external go2rtc does not answer.",
+		"start_timeout": "go2rtc did not start in time.",
+		"port_in_use": "Another program is using the relay port.",
+		"crashed": "go2rtc stopped unexpectedly. It restarts automatically."
+	},
+	"reasons": {
+		"stream_not_enabled": "No stream is enabled for this camera. Turn one on in the camera settings.",
+		"camera_offline": "The camera is offline.",
+		"console_unavailable": "The console that manages this camera is not reachable.",
+		"stream_state_unknown": "The stream state could not be read.",
+		"stream_tls_unverified": "The stream certificate could not be verified.",
+		"unknown": "This stream is not available."
+	},
+	"profiles": {
+		"selector": "Stream profile",
+		"columns": {
+			"name": "Profile",
+			"resolution": "Resolution",
+			"fps": "FPS",
+			"videoCodec": "Video codec",
+			"audioCodec": "Audio codec",
+			"availability": "Availability"
+		},
+		"available": "Available",
+		"unavailable": "Unavailable"
+	},
+	"section": {
+		"heading": "Camera",
+		"noStream": "This device does not provide a camera stream.",
+		"noLiveView": "Live view is not available for this camera.",
+		"loadFailed": "Could not load the camera."
+	},
+	"relayChip": {
+		"running": "Live view on",
+		"starting": "Starting",
+		"disabled": "Live view off",
+		"unavailable": "Live view unavailable",
+		"unknown": "Live view status unknown"
+	},
+	"relayStale": "Status could not be refreshed",
+	"grid": {
+		"allSpaces": "All",
+		"spaces": "Spaces",
+		"empty": "No cameras yet. Adopt cameras from a camera integration such as UniFi Protect.",
+		"loadFailed": "Could not load the cameras."
+	},
+	"dialog": {
+		"switchCamera": "Switch camera",
+		"fps": "{fps} fps",
+		"snapshotFailed": "Could not take a snapshot."
+	},
+	"config": {
+		"about": {
+			"title": "About Cameras settings",
+			"text": "Live view is served by a go2rtc relay. Snapshots keep working when the relay is off."
+		},
+		"fields": {
+			"mode": {
+				"title": "Relay mode"
+			},
+			"binaryPath": {
+				"title": "go2rtc binary path",
+				"validation": {
+					"invalid": "Enter an absolute path to a file whose name starts with go2rtc."
+				}
+			},
+			"externalUrl": {
+				"title": "go2rtc URL",
+				"validation": {
+					"required": "Enter the go2rtc URL.",
+					"invalid": "Enter an http or https URL without credentials, query or fragment."
+				}
+			},
+			"maxSessions": {
+				"title": "Maximum live views",
+				"validation": {
+					"range": "Enter a whole number from 1 to 32."
+				}
+			},
+			"maxSessionsPerCamera": {
+				"title": "Maximum live views per camera",
+				"validation": {
+					"range": "Enter a whole number from 1 to 16."
+				}
+			}
+		},
+		"modes": {
+			"managed": "Managed (run by the panel)",
+			"external": "External (your own go2rtc)",
+			"disabled": "Disabled"
+		},
+		"relayStates": {
+			"running": "Running",
+			"starting": "Starting",
+			"disabled": "Off",
+			"unavailable": "Unavailable",
+			"error": "Error"
+		},
+		"relayPanel": {
+			"title": "Relay status",
+			"mode": "Mode",
+			"state": "State",
+			"version": "Version",
+			"sessions": "Live views",
+			"maxPerCamera": "Limit per camera",
+			"sessionsValue": "{active} of {max}"
+		},
+		"messages": {
+			"edited": "Cameras settings were saved.",
+			"notEdited": "Cameras settings could not be saved.",
+			"invalid": "Some settings are not valid. Check them and try again."
+		}
+	}
+}
