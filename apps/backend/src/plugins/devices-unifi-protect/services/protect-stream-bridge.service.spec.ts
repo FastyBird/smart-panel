@@ -211,7 +211,33 @@ describe('ProtectStreamBridgeService', () => {
 		return state;
 	};
 
+	let bindGates: (() => void)[];
+
+	const holdNextBind = (): { release: () => void } => {
+		const listening = deferred<void>();
+		const realCreate = jest.requireActual<typeof net>('net').createServer;
+
+		createServerMock.mockImplementationOnce((...args: Parameters<typeof net.createServer>) => {
+			const server = realCreate(...args);
+			const listen = (port: number, host: string, callback: () => void): net.Server =>
+				net.Server.prototype.listen.call(server, port, host, callback) as net.Server;
+
+			(server as unknown as { listen: (port: number, host: string, callback: () => void) => net.Server }).listen = (
+				port,
+				host,
+				callback,
+			) => listen(port, host, () => void listening.promise.then(callback));
+
+			return server;
+		});
+
+		bindGates.push(() => listening.resolve());
+
+		return { release: () => listening.resolve() };
+	};
+
 	beforeEach(() => {
+		bindGates = [];
 		connector = new FakeConnector();
 		go2rtc = new FakeGo2rtc();
 		pluginConfig = { enabled: true, streamHostOverride: null };
@@ -245,6 +271,8 @@ describe('ProtectStreamBridgeService', () => {
 
 	afterEach(async () => {
 		clients.forEach((socket) => socket.destroy());
+		// A bind gate a failing test left held would block `onModuleDestroy()` on the same callback.
+		bindGates.splice(0).forEach((release) => release());
 		await service.onModuleDestroy();
 		jest.useRealTimers();
 		jest.restoreAllMocks();
@@ -880,27 +908,6 @@ describe('ProtectStreamBridgeService', () => {
 			expect(connectMock).not.toHaveBeenCalled();
 		});
 
-		const holdNextBind = (): { release: () => void } => {
-			const listening = deferred<void>();
-			const realCreate = jest.requireActual<typeof net>('net').createServer;
-
-			createServerMock.mockImplementationOnce((...args: Parameters<typeof net.createServer>) => {
-				const server = realCreate(...args);
-				const listen = (port: number, host: string, callback: () => void): net.Server =>
-					net.Server.prototype.listen.call(server, port, host, callback) as net.Server;
-
-				(server as unknown as { listen: (port: number, host: string, callback: () => void) => net.Server }).listen = (
-					port,
-					host,
-					callback,
-				) => listen(port, host, () => void listening.promise.then(callback));
-
-				return server;
-			});
-
-			return { release: () => listening.resolve() };
-		};
-
 		it('settles a prepare cancelled while its listener is still binding', async () => {
 			const bind = holdNextBind();
 			const controller = new AbortController();
@@ -920,8 +927,14 @@ describe('ProtectStreamBridgeService', () => {
 		});
 
 		it('settles a prepare whose deadline passes while its listener is still binding', async () => {
+			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+
 			const bind = holdNextBind();
 			const result = service.prepare(PORT, { deadlineMs: 50 }).catch((error: unknown) => error);
+
+			// The deadline only runs out once the server is listening with its bind callback held.
+			await waitFor(() => servers().length === 1 && servers()[0].listening);
+			jest.advanceTimersByTime(50);
 
 			await expect(result).resolves.toMatchObject({ category: 'timeout' });
 			expect(connectMock).not.toHaveBeenCalled();
@@ -1271,16 +1284,124 @@ describe('ProtectStreamBridgeService', () => {
 			await waitFor(() => connectMock.mock.calls[1][0].signal?.aborted === true);
 		});
 
+		const flightWaiters = (): number =>
+			[...(service as unknown as { preflights: Map<string, { waiters: number }> }).preflights.values()].reduce(
+				(sum, flight) => sum + flight.waiters,
+				0,
+			);
+
+		it('times a caller out when the handshake finishes after its deadline but before its timer runs', async () => {
+			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+
+			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const [bridgeEnd] = duplexPair();
+
+			connectMock.mockImplementationOnce(() => verification.promise);
+
+			const result = service.prepare(PORT, { deadlineMs: 50 }).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1 && flightWaiters() === 1);
+
+			// The clock passes the deadline without the caller's timer having fired yet.
+			jest.setSystemTime(Date.now() + 100);
+			verification.resolve({ socket: bridgeEnd as unknown as tls.TLSSocket, fingerprint: PIN });
+
+			await expect(result).resolves.toMatchObject({ category: 'timeout' });
+			expect(service.getVerification(UPSTREAM)).toBe('verified');
+		});
+
+		it('does not let a new caller join an aborted pre-flight, and waits for it to settle', async () => {
+			const first = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const controller = new AbortController();
+
+			connectMock.mockImplementationOnce(() => first.promise);
+
+			const abandoned = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1 && flightWaiters() === 1);
+			controller.abort();
+			await expect(abandoned).resolves.toMatchObject({ category: 'cancelled' });
+			await waitFor(() => connectMock.mock.calls[0][0].signal?.aborted === true);
+
+			let settled = false;
+			const next = service.prepare(PORT).then((endpoint) => {
+				settled = true;
+
+				return endpoint;
+			});
+
+			await tick();
+			await tick();
+
+			// The aborted flight is still counted and the new caller has not started a handshake beside it.
+			expect(settled).toBe(false);
+			expect(connectMock).toHaveBeenCalledTimes(1);
+			expect((service as unknown as { preflights: Map<string, unknown> }).preflights.size).toBe(1);
+
+			first.reject(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'tls'));
+
+			await expect(next).resolves.toMatchObject({ host: '127.0.0.1' });
+			expect(connectMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('bounds the wait for an aborted pre-flight by the new caller own deadline', async () => {
+			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+
+			const first = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const controller = new AbortController();
+
+			connectMock.mockImplementationOnce(() => first.promise);
+
+			const abandoned = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1 && flightWaiters() === 1);
+			controller.abort();
+			await expect(abandoned).resolves.toMatchObject({ category: 'cancelled' });
+
+			const next = service.prepare(PORT, { deadlineMs: 50 }).catch((error: unknown) => error);
+
+			await tick();
+			await tick();
+			jest.advanceTimersByTime(50);
+
+			await expect(next).resolves.toMatchObject({ category: 'timeout' });
+			expect(connectMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps a listener acquired by a pending caller when another caller leaves first', async () => {
+			const bind = holdNextBind();
+			const controller = new AbortController();
+			const leaving = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
+			const staying = service.prepare(PORT);
+
+			await waitFor(() => servers().length === 1 && servers()[0].listening);
+
+			// The leaving caller cancels while its handshake starts, before the staying caller has resumed.
+			connectMock.mockImplementationOnce(() => {
+				controller.abort();
+
+				return Promise.resolve({ socket: duplexPair()[0] as unknown as tls.TLSSocket, fingerprint: PIN });
+			});
+			bind.release();
+
+			await expect(leaving).resolves.toMatchObject({ category: 'cancelled' });
+			await expect(staying).resolves.toMatchObject({ host: '127.0.0.1' });
+			expect(openServers()).toHaveLength(1);
+		});
+
 		it('times a short-deadline caller out alone while a longer joiner is verified', async () => {
 			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
 			const [bridgeEnd] = duplexPair();
 
 			connectMock.mockImplementationOnce(() => verification.promise);
 
+			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+
 			const short = service.prepare(PORT, { deadlineMs: 50 }).catch((error: unknown) => error);
 			const long = service.prepare(PORT, { deadlineMs: 5000 });
 
-			await waitFor(() => connectMock.mock.calls.length === 1);
+			await waitFor(() => connectMock.mock.calls.length === 1 && flightWaiters() === 2);
+			jest.advanceTimersByTime(50);
 			await expect(short).resolves.toMatchObject({ category: 'timeout' });
 
 			expect(connectMock.mock.calls[0][0].handshakeTimeoutMs).toBe(PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS);
@@ -1298,10 +1419,13 @@ describe('ProtectStreamBridgeService', () => {
 
 			connectMock.mockImplementationOnce(() => verification.promise);
 
+			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+
 			const short = service.prepare(PORT, { deadlineMs: 50 }).catch((error: unknown) => error);
 			const remaining = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
 
-			await waitFor(() => connectMock.mock.calls.length === 1);
+			await waitFor(() => connectMock.mock.calls.length === 1 && flightWaiters() === 2);
+			jest.advanceTimersByTime(50);
 			await expect(short).resolves.toMatchObject({ category: 'timeout' });
 			await tick();
 			expect(connectMock.mock.calls[0][0].signal?.aborted).toBe(false);

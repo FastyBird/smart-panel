@@ -978,6 +978,30 @@ describe('ProtectAdoptionService', () => {
 			expect(statusOf('camera.main')).toBe('unavailable');
 		});
 
+		it('writes again from a newer read recorded while the direct status write was persisting', async () => {
+			const id = '600cefafd5f365d6f83c4ef3';
+			const disabled = { high: false, medium: false, low: false, package: false };
+			const update = (service as any).updateStreamStatuses.bind(service);
+			const direct = jest.spyOn(service as any, 'updateStreamStatuses');
+
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+			direct.mockImplementationOnce(async (...args: unknown[]) => {
+				const written = await update(...args);
+
+				// The background read lands after the write read the persisted values, before it returned.
+				streamStore.set(id, disabled, streamStore.nextObservation());
+
+				return written;
+			});
+			direct.mockImplementation(update);
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({ warnings: [], stream: { status: 'enabled' } });
+			expect(direct).toHaveBeenCalledTimes(2);
+			expect(statusOf('camera.main')).toBe('unavailable');
+		});
+
 		it('leaves the status write to the synchronizer when it holds the camera', async () => {
 			synchronizer.refreshDevice.mockResolvedValue(true);
 			client.getRtspsStreams.mockResolvedValue(urls('high'));

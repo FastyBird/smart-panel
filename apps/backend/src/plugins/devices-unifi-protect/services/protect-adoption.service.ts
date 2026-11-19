@@ -60,6 +60,8 @@ import { ProtectSynchronizerService } from './protect-synchronizer.service';
 const CONNECTION_STATE_IDENTIFIER = 'connection_state';
 const STATUS_IDENTIFIER = 'status';
 const STREAM_CHANNELS = ['camera.main', 'camera.package'] as const;
+/** Direct status writes repeated when a newer stream read lands meanwhile; the next read's refresh covers the rest. */
+const MAX_STATUS_RECONCILE_ATTEMPTS = 3;
 
 const FAILURE_MESSAGES: Record<ProtectAdoptionFailureCode, string> = {
 	[ProtectAdoptionFailureCode.UNAVAILABLE]: 'The UniFi Protect console is not connected',
@@ -1007,14 +1009,27 @@ export class ProtectAdoptionService {
 			return true;
 		}
 
-		const entry = this.isPreparedSession(prepared) ? this.streamAvailability.get(cameraId) : null;
+		// A read recorded while the write was persisting supersedes it: write again from that newer entry (bounded).
+		for (let attempt = 0; attempt < MAX_STATUS_RECONCILE_ATTEMPTS; attempt++) {
+			const entry = this.isPreparedSession(prepared) ? this.streamAvailability.get(cameraId) : null;
 
-		// The session ended: the next session's snapshot re-evaluates the status.
-		if (entry === null) {
-			return false;
+			// The session ended: the next session's snapshot re-evaluates the status.
+			if (entry === null) {
+				return false;
+			}
+
+			const written = await this.updateStreamStatuses(prepared, entry.availability, panelDeviceId);
+
+			if (!written) {
+				return false;
+			}
+
+			if (this.streamAvailability.get(cameraId)?.observedAt === entry.observedAt) {
+				return true;
+			}
 		}
 
-		return this.updateStreamStatuses(prepared, entry.availability, panelDeviceId);
+		return false;
 	}
 
 	/** Re-evaluates camera.main/camera.package status and writes only the values that changed. */

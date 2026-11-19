@@ -27,6 +27,16 @@ const expected = (name: string): { channels: unknown[] } =>
 	JSON.parse(readFileSync(join(FIXTURES, 'expected', `${name}.json`), 'utf8')) as { channels: unknown[] };
 
 const IDENTITY = { nvrId: '68b3ace392bf98c9fb76f70c', nvrMacKey: '0cea14003a69' };
+const waitUntil = async (predicate: () => boolean): Promise<void> => {
+	for (let round = 0; round < 500 && !predicate(); round += 1) {
+		await new Promise<void>((resolve) => setImmediate(resolve));
+	}
+
+	if (!predicate()) {
+		throw new Error('condition not reached');
+	}
+};
+
 const NONE = { high: null, medium: null, low: null, package: null };
 
 describe('ProtectMappingPreviewService', () => {
@@ -105,6 +115,34 @@ describe('ProtectMappingPreviewService', () => {
 		// The newer read records "disabled" first; the prepared snapshot (high enabled) must not replace it.
 		store.set(id, { high: false, medium: false, low: false, package: false }, readStamp);
 
+		expect(store.set(id, prepared.streams as never, prepared.streamsObservedAt)).toBe(false);
+		expect(store.get(id)?.availability.high).toBe(false);
+	});
+
+	it('does not let a prepared observation replace a newer disabled one recorded during the read', async () => {
+		serve(fixture('cameras.json')[0], 'camera');
+
+		const id = '600cefafd5f365d6f83c4ef3';
+		let finishRead!: (streams: Record<string, string | null>) => void;
+
+		client.getRtspsStreams.mockImplementationOnce(
+			() => new Promise((resolve) => (finishRead = resolve as typeof finishRead)),
+		);
+
+		const pending = service.prepare(id, 'camera');
+
+		await waitUntil(() => client.getRtspsStreams.mock.calls.length > 0);
+
+		// A newer observation (disabled) is recorded while the read is still pending.
+		const newer = store.nextObservation();
+
+		store.set(id, { high: false, medium: false, low: false, package: false }, newer);
+		finishRead({ ...NONE, high: 'rtsps://h/SENTINELALIAS1' });
+
+		const prepared = await pending;
+
+		expect(prepared.streamsObservedAt).not.toBeNull();
+		expect(prepared.streamsObservedAt).toBeLessThan(newer);
 		expect(store.set(id, prepared.streams as never, prepared.streamsObservedAt)).toBe(false);
 		expect(store.get(id)?.availability.high).toBe(false);
 	});

@@ -319,24 +319,31 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 		}
 
-		// The bind is single-flight and may finish after this caller gave up: its deadline and signal still settle the call.
-		const acquiring = this.acquireListener(relay, route, upstream.port);
+		// The bind is single-flight and may finish after this caller gave up: its deadline and signal still settle the
+		// call. The caller reserves the listener (a claim) the moment it is available, before this caller resumes, so
+		// another caller leaving cannot close a listener this one has acquired but not yet resumed with.
+		const acquiring = this.acquireListener(relay, route, upstream.port).then((acquired) => {
+			acquired.claims += 1;
+
+			return acquired;
+		});
 		let listener: BridgeListener;
 
 		try {
 			listener = await this.withBudget(acquiring, budget, cancel);
 		} catch (error) {
-			// A listener whose bind completes after every caller left is released; one another caller still awaits is kept
-			// (`releaseIfUnused` re-checks claims, hand-out and connections once those callers have run).
+			// The reservation of a caller that gave up is released once the listener exists; a listener nobody else
+			// holds is then closed (`releaseIfUnused` re-checks claims, hand-out and connections).
 			acquiring.then(
-				(late) => setImmediate(() => this.releaseIfUnused(late)),
+				(late) => {
+					late.claims -= 1;
+					this.releaseIfUnused(late);
+				},
 				() => undefined,
 			);
 
 			throw error;
 		}
-
-		listener.claims += 1;
 
 		try {
 			if (!isCurrent() || listener.closed) {
@@ -351,6 +358,12 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			// failed or closed meanwhile is never handed out.
 			if (!isCurrent() || listener.closed) {
 				throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
+			}
+
+			// The wait may resolve just past this caller's deadline, before its timer ran: such a caller times out
+			// alone, the shared handshake is untouched.
+			if (budget.remaining(1) <= 0) {
+				throw bridgeError(ProtectErrorCategory.TIMEOUT);
 			}
 
 			listener.handedOut = true;
@@ -369,7 +382,7 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 	 * Every caller waits with its own deadline and signal; the handshake runs with the full timeout and is aborted only
 	 * while it is running and no caller waits for it any more.
 	 */
-	private preflight(
+	private async preflight(
 		host: string,
 		port: number,
 		plan: ProtectTlsConnectPlan,
@@ -380,6 +393,20 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		const key = `${sessionGeneration}:${verificationKey(host, port)}`;
 		let flight = this.preflights.get(key);
 
+		// A flight whose last waiter left is aborted but stays counted until it settles: it is not joinable. This caller
+		// waits for it within its own budget, then admits again.
+		while (flight !== undefined && flight.controller.signal.aborted && !flight.settled) {
+			await this.withBudget(
+				flight.promise.then(
+					() => undefined,
+					() => undefined,
+				),
+				budget,
+				signal,
+			);
+			flight = this.preflights.get(key);
+		}
+
 		if (flight === undefined) {
 			if (budget.remaining(1) <= 0) {
 				throw bridgeError(ProtectErrorCategory.TIMEOUT);
@@ -388,13 +415,13 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			if (this.occupiedSlots >= PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS) {
 				this.logRefused('limit');
 
-				return Promise.reject(bridgeError(ProtectErrorCategory.UNAVAILABLE));
+				throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 			}
 
 			if (!this.consumeHandshake()) {
 				this.logRefused('rate');
 
-				return Promise.reject(bridgeError(ProtectErrorCategory.UNAVAILABLE));
+				throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 			}
 
 			const controller = new AbortController();
