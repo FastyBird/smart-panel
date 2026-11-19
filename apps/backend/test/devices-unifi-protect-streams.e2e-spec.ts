@@ -99,7 +99,6 @@ describe('UniFi Protect streams (e2e)', () => {
 	let logSpies: jest.SpyInstance[] = [];
 	let emitSpies: jest.SpyInstance[] = [];
 	let relaySpies: jest.SpyInstance[] = [];
-	let bridgeUrl = '';
 	let writesAfterAdoption = 0;
 	// Every response the suite received, inspected for the sentinels at the end.
 	const observed: unknown[] = [];
@@ -409,7 +408,6 @@ describe('UniFi Protect streams (e2e)', () => {
 		expect(source.url).not.toContain('enableSrtp');
 		expect(toGo2rtcSource(source)).toBe(source.url);
 
-		bridgeUrl = source.url;
 		fake.rtspRequestLines.length = 0;
 
 		const client = await connectRaw(source.url);
@@ -423,6 +421,7 @@ describe('UniFi Protect streams (e2e)', () => {
 	});
 
 	it('bridges to stream_host_override', async () => {
+		const bridgeUrl = (await resolve(CAMERA, 'high')).url;
 		const before = await connectRaw(bridgeUrl);
 
 		await eventually(() => expect(text(before)).toContain('RTSP/1.0 200 OK'), 5000);
@@ -456,6 +455,8 @@ describe('UniFi Protect streams (e2e)', () => {
 	});
 
 	it('fails closed when the stream port presents another certificate', async () => {
+		// The endpoint is resolved while the console still presents the pinned certificate.
+		const bridgeUrl = (await resolve(CAMERA, 'high')).url;
 		const statusBefore = await cameraStatus(CAMERA);
 		const bytesBefore = fake.rtspsBytesReceived.length;
 
