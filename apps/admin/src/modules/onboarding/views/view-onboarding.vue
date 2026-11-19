@@ -1,7 +1,7 @@
 <template>
 	<div class="fixed inset-0 flex items-center justify-center bg-[var(--el-bg-color-page)] p-4">
 		<el-card
-			shadow="always"
+			shadow="never"
 			class="w-full max-w-2xl max-h-full flex flex-col overflow-hidden"
 			body-class="p-0! flex-1 overflow-auto"
 		>

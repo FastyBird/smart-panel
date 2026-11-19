@@ -8,7 +8,6 @@
 			<el-button
 				type="primary"
 				plain
-				class="px-4!"
 				data-test-id="create-mcp-client"
 				@click="openCreate"
 			>

@@ -2,7 +2,7 @@
 	<el-card
 		class="extension-card"
 		:class="{ 'extension-card--disabled': !extension.enabled }"
-		shadow="hover"
+		shadow="never"
 		header-class="py-2!"
 		body-class="py-3!"
 		footer-class="py-2! px-4!"

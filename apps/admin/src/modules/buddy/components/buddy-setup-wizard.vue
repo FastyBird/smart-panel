@@ -71,7 +71,7 @@
 							v-for="provider in llmProviders"
 							:key="provider.type"
 							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-gray-200'"
 						>
 							<div class="flex items-center gap-3 p-3">
 								<el-radio
@@ -121,7 +121,7 @@
 							<!-- Expanded section when enabled -->
 							<div
 								v-if="provider.enabled"
-								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 							>
 								<div class="flex items-center gap-2 text-xs min-w-0">
 									<template v-if="provider.configured">
@@ -180,7 +180,7 @@
 							v-for="provider in ttsProviders"
 							:key="provider.type"
 							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-gray-200'"
 						>
 							<div class="flex items-center gap-3 p-3">
 								<el-radio
@@ -221,7 +221,7 @@
 
 							<div
 								v-if="provider.enabled"
-								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 							>
 								<div class="flex items-center gap-2 text-xs min-w-0">
 									<template v-if="provider.configured">
@@ -275,7 +275,7 @@
 							v-for="provider in sttProviders"
 							:key="provider.type"
 							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-gray-200'"
 						>
 							<div class="flex items-center gap-3 p-3">
 								<el-radio
@@ -316,7 +316,7 @@
 
 							<div
 								v-if="provider.enabled"
-								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 							>
 								<div class="flex items-center gap-2 text-xs min-w-0">
 									<template v-if="provider.configured">
@@ -371,7 +371,7 @@
 							v-for="provider in messagingProviders"
 							:key="provider.type"
 							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary/5' : 'border-gray-200'"
+							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-gray-200'"
 						>
 							<div class="flex items-center gap-3 p-3">
 								<el-radio
@@ -412,7 +412,7 @@
 
 							<div
 								v-if="provider.enabled"
-								class="border-t border-primary/20 px-3 py-2 flex items-center justify-between gap-2"
+								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 							>
 								<div class="flex items-center gap-2 text-xs min-w-0">
 									<template v-if="provider.configured">

@@ -6,7 +6,7 @@
 		<el-dropdown trigger="click">
 			<el-button
 				plain
-				class="px-4! ml-2!"
+				class="ml-2!"
 			>
 				<template #icon>
 					<icon icon="mdi:package-variant-closed" />
@@ -36,7 +36,7 @@
 		<el-button
 			v-if="remotePageChanged"
 			plain
-			class="px-4! ml-2!"
+			class="ml-2!"
 			@click="onDiscard"
 		>
 			<template #icon>
@@ -48,7 +48,7 @@
 		<el-button
 			v-if="!remotePageChanged"
 			plain
-			class="px-4! ml-2!"
+			class="ml-2!"
 			@click="onClose"
 		>
 			<template #icon>
@@ -61,7 +61,7 @@
 			type="primary"
 			plain
 			:disabled="remotePageChanged === false"
-			class="px-4! ml-2!"
+			class="ml-2!"
 			@click="onSave"
 		>
 			<template #icon>

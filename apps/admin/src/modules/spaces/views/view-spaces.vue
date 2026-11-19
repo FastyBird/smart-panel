@@ -50,7 +50,6 @@
 			<div class="flex items-center">
 				<el-button
 					v-if="enabledWizardOptions.length > 0"
-					class="px-4!"
 					@click="onWizard"
 				>
 					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
@@ -59,7 +58,7 @@
 				<el-button
 					type="primary"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onAddSpace"
 				>
 					<template #icon>
@@ -166,7 +165,7 @@
 			<el-card
 				v-for="item in wizardOptions"
 				:key="item.value"
-				shadow="hover"
+				shadow="never"
 				class="spaces-wizard-plugin-card"
 				:class="{ 'spaces-wizard-plugin-card--disabled': item.disabled }"
 				body-class="p-4!"

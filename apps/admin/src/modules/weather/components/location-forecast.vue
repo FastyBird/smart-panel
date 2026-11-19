@@ -3,7 +3,7 @@
 		<el-card
 			v-for="(day, index) in props.forecast"
 			:key="index"
-			shadow="hover"
+			shadow="never"
 			body-class="p-3! text-center"
 		>
 			<div class="font-medium mb-2">

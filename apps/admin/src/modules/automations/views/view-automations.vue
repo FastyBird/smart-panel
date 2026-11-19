@@ -89,7 +89,7 @@
 				<el-button
 					type="primary"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					data-test-id="automations-add"
 					@click="onAutomationCreate"
 				>
@@ -102,7 +102,7 @@
 
 				<el-button
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					data-test-id="automations-from-template"
 					@click="onAutomationFromTemplate"
 				>
@@ -115,7 +115,7 @@
 
 				<el-button
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					data-test-id="automations-import"
 					@click="onAutomationImport"
 				>

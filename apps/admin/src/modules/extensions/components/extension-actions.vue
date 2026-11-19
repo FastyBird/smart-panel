@@ -26,7 +26,7 @@
 						<el-card
 							v-for="action in category.actions"
 							:key="action.id"
-							shadow="hover"
+							shadow="never"
 							body-class="p-4!"
 						>
 							<div class="flex items-start gap-3">

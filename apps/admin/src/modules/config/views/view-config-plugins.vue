@@ -8,7 +8,7 @@
 				<el-card
 					v-for="plugin in plugins"
 					:key="String(plugin.type)"
-					shadow="hover"
+					shadow="never"
 					class="config-plugin-card"
 					body-class="p-4!"
 					@click="onPluginEdit(plugin.type)"

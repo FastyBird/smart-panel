@@ -27,7 +27,6 @@
 						<el-button
 							type="primary"
 							plain
-							class="px-4!"
 							size="small"
 							:disabled="!canAddAnotherProperty"
 							data-test-id="add-property"
@@ -41,7 +40,7 @@
 						</el-button>
 						<el-button
 							plain
-							class="ml-2! px-4!"
+							class="ml-2!"
 							size="small"
 							data-test-id="edit-channel"
 							@click="emit('channel-edit', props.channel.id)"
@@ -53,7 +52,7 @@
 						<el-button
 							type="warning"
 							plain
-							class="ml-2! px-4!"
+							class="ml-2!"
 							size="small"
 							data-test-id="remove-channel"
 							@click="emit('channel-remove', props.channel.id)"

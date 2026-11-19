@@ -55,7 +55,7 @@
 				<el-button
 					type="primary"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onDataSourceAdd"
 				>
 					<template #icon>
@@ -66,7 +66,7 @@
 				</el-button>
 				<el-button
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onPageEdit"
 				>
 					<template #icon>

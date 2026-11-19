@@ -51,7 +51,7 @@
 					v-if="hasConfiguration"
 					type="primary"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onOpenConfiguration"
 				>
 					<template #icon>
@@ -63,7 +63,7 @@
 				<el-button
 					:type="extension.enabled ? 'danger' : 'success'"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					:disabled="!extension.canToggleEnabled"
 					@click="onToggleEnabled"
 				>
@@ -76,7 +76,7 @@
 				<el-button
 					v-if="extension.links?.documentation"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="openLink(extension.links.documentation)"
 				>
 					<template #icon>
@@ -86,7 +86,7 @@
 				<el-button
 					v-if="extension.links?.repository"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="openLink(extension.links.repository)"
 				>
 					<template #icon>
@@ -96,7 +96,7 @@
 				<el-button
 					v-if="extension.links?.bugsTracking"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="openLink(extension.links.bugsTracking)"
 				>
 					<template #icon>

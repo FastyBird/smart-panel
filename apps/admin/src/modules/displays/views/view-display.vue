@@ -46,7 +46,7 @@
 			<div class="flex items-center">
 				<el-button
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onEdit"
 				>
 					<template #icon>
@@ -56,7 +56,7 @@
 				<el-button
 					type="warning"
 					plain
-					class="px-4! ml-2!"
+					class="ml-2!"
 					@click="onManageTokens"
 				>
 					<template #icon>
