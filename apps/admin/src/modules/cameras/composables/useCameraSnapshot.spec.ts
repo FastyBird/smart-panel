@@ -78,6 +78,16 @@ describe('useCameraSnapshot', () => {
 		vi.restoreAllMocks();
 	});
 
+	it('exposes the blob type of the current snapshot', async () => {
+		getMock.mockResolvedValue({ data: new Blob(['x'], { type: 'image/webp' }), response: { headers: new Headers() } });
+
+		const { snapshot, wrapper } = mountHost('cam-1', { refreshMs: null });
+		await flush();
+
+		expect(snapshot.mimeType.value).toBe('image/webp');
+		wrapper.unmount();
+	});
+
 	it('revokes the previous object URL when a new snapshot replaces it', async () => {
 		getMock.mockResolvedValue(blobResponse('1'));
 

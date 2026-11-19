@@ -26,7 +26,12 @@
 	},
 	"buttons": {
 		"retry": "Erneut versuchen",
-		"openSettings": "Kameraeinstellungen öffnen"
+		"openSettings": "Kameraeinstellungen öffnen",
+		"snapshot": "Standbild",
+		"mute": "Stumm",
+		"unmute": "Ton an",
+		"fullScreen": "Vollbild",
+		"close": "Schließen"
 	},
 	"relayReasons": {
 		"mode_disabled": "Die Live-Ansicht ist ausgeschaltet. Schnappschüsse funktionieren weiterhin.",
@@ -66,5 +71,21 @@
 		"noStream": "Dieses Gerät stellt keinen Kamera-Stream bereit.",
 		"noLiveView": "Für diese Kamera ist keine Live-Ansicht verfügbar.",
 		"loadFailed": "Die Kamera konnte nicht geladen werden."
+	},
+	"relayChip": {
+		"running": "Live-Ansicht an",
+		"starting": "Startet",
+		"disabled": "Live-Ansicht aus",
+		"unavailable": "Live-Ansicht nicht verfügbar"
+	},
+	"grid": {
+		"allSpaces": "Alle",
+		"spaces": "Räume",
+		"empty": "Noch keine Kameras. Übernehmen Sie Kameras aus einer Kamera-Integration wie UniFi Protect.",
+		"loadFailed": "Die Kameras konnten nicht geladen werden."
+	},
+	"dialog": {
+		"switchCamera": "Kamera wechseln",
+		"fps": "{fps} fps"
 	}
 }

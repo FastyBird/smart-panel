@@ -176,10 +176,12 @@ const props = withDefaults(defineProps<ICameraPlayerProps>(), {
 	profile: null,
 	autoStart: false,
 	muted: true,
+	snapshotActive: true,
 });
 
 const emit = defineEmits<{
 	(e: 'state-change', state: LiveViewState): void;
+	(e: 'mime-change', mime: string | null): void;
 }>();
 
 const { t } = useI18n();
@@ -191,7 +193,7 @@ const video = ref<HTMLVideoElement | null>(null);
 // A video that has not started is paused; the `play` event clears it, so blocked autoplay keeps it set.
 const paused = ref(true);
 
-const { state, retryInMs, reconnect, lastSeen, start, stop, retry } = useLiveView({
+const { state, retryInMs, reconnect, lastSeen, mime, start, stop, retry } = useLiveView({
 	deviceId: toRef(props, 'deviceId'),
 	profile: () => props.profile ?? null,
 	video,
@@ -201,7 +203,7 @@ const { state, retryInMs, reconnect, lastSeen, start, stop, retry } = useLiveVie
 const snapshot = useCameraSnapshot(() => props.deviceId, {
 	profile: () => props.profile ?? null,
 	refreshMs: props.variant === 'tile' ? SNAPSHOT_REFRESH_MS : null,
-	active: () => state.value !== 'playing',
+	active: () => props.snapshotActive && state.value !== 'playing',
 });
 
 const isConnecting = computed<boolean>(() => state.value === 'connecting' || state.value === 'requesting');
@@ -292,6 +294,7 @@ const onResume = (): void => {
 };
 
 watch(state, (next) => emit('state-change', next));
+watch(mime, (next) => emit('mime-change', next));
 
 watch(
 	() => props.profile,

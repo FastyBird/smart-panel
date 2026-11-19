@@ -5,4 +5,6 @@ export interface ICameraPlayerProps {
 	variant: 'tile' | 'large';
 	autoStart?: boolean;
 	muted?: boolean;
+	/** `false` pauses the snapshot refresh, such as for a tile that is off screen. */
+	snapshotActive?: boolean;
 }

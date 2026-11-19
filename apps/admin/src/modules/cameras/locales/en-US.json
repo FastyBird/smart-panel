@@ -26,7 +26,12 @@
 	},
 	"buttons": {
 		"retry": "Retry",
-		"openSettings": "Open Cameras settings"
+		"openSettings": "Open Cameras settings",
+		"snapshot": "Snapshot",
+		"mute": "Mute",
+		"unmute": "Unmute",
+		"fullScreen": "Full screen",
+		"close": "Close"
 	},
 	"relayReasons": {
 		"mode_disabled": "Live view is turned off. Snapshots still work.",
@@ -66,5 +71,21 @@
 		"noStream": "This device does not provide a camera stream.",
 		"noLiveView": "Live view is not available for this camera.",
 		"loadFailed": "Could not load the camera."
+	},
+	"relayChip": {
+		"running": "Live view on",
+		"starting": "Starting",
+		"disabled": "Live view off",
+		"unavailable": "Live view unavailable"
+	},
+	"grid": {
+		"allSpaces": "All",
+		"spaces": "Spaces",
+		"empty": "No cameras yet. Adopt cameras from a camera integration such as UniFi Protect.",
+		"loadFailed": "Could not load the cameras."
+	},
+	"dialog": {
+		"switchCamera": "Switch camera",
+		"fps": "{fps} fps"
 	}
 }

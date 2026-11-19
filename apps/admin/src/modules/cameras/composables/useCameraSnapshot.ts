@@ -18,6 +18,8 @@ export interface IUseCameraSnapshot {
 	url: Ref<string | null>;
 	ageSeconds: Ref<number | null>;
 	takenAt: Ref<Date | null>;
+	/** The type of the current snapshot blob, such as `image/jpeg`. */
+	mimeType: Ref<string | null>;
 	error: Ref<CameraSnapshotError | null>;
 	loading: Ref<boolean>;
 	reload: (options?: { hq?: boolean }) => Promise<void>;
@@ -55,6 +57,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	const url = ref<string | null>(null);
 	const ageSeconds = ref<number | null>(null);
 	const takenAt = ref<Date | null>(null);
+	const mimeType = ref<string | null>(null);
 	const error = ref<CameraSnapshotError | null>(null);
 	const loading = ref(false);
 
@@ -125,6 +128,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 
 			revokeCurrent();
 			url.value = nextUrl;
+			mimeType.value = data.type || null;
 			ageSeconds.value = Number.isFinite(age) && age >= 0 ? age : 0;
 			takenAt.value = new Date(Date.now() - ageSeconds.value * 1000);
 			error.value = null;
@@ -176,6 +180,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 			revokeCurrent();
 			ageSeconds.value = null;
 			takenAt.value = null;
+			mimeType.value = null;
 			error.value = null;
 
 			if (isVisible() && isActive()) {
@@ -209,5 +214,5 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 		revokeCurrent();
 	});
 
-	return { url, ageSeconds, takenAt, error, loading, reload };
+	return { url, ageSeconds, takenAt, mimeType, error, loading, reload };
 };

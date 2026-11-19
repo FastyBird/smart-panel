@@ -26,7 +26,12 @@
 	},
 	"buttons": {
 		"retry": "Skúsiť znova",
-		"openSettings": "Otvoriť nastavenia kamier"
+		"openSettings": "Otvoriť nastavenia kamier",
+		"snapshot": "Snímka",
+		"mute": "Stlmiť",
+		"unmute": "Zapnúť zvuk",
+		"fullScreen": "Celá obrazovka",
+		"close": "Zavrieť"
 	},
 	"relayReasons": {
 		"mode_disabled": "Živý náhľad je vypnutý. Snímky stále fungujú.",
@@ -66,5 +71,21 @@
 		"noStream": "Toto zariadenie neposkytuje stream z kamery.",
 		"noLiveView": "Pre túto kameru nie je živý náhľad dostupný.",
 		"loadFailed": "Kameru sa nepodarilo načítať."
+	},
+	"relayChip": {
+		"running": "Živé zobrazenie zapnuté",
+		"starting": "Spúšťa sa",
+		"disabled": "Živé zobrazenie vypnuté",
+		"unavailable": "Živé zobrazenie nie je dostupné"
+	},
+	"grid": {
+		"allSpaces": "Všetky",
+		"spaces": "Priestory",
+		"empty": "Zatiaľ nie sú žiadne kamery. Pridajte kamery z integrácie kamier, napríklad UniFi Protect.",
+		"loadFailed": "Kamery sa nepodarilo načítať."
+	},
+	"dialog": {
+		"switchCamera": "Prepnúť kameru",
+		"fps": "{fps} fps"
 	}
 }

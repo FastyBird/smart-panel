@@ -26,7 +26,12 @@
 	},
 	"buttons": {
 		"retry": "Reintentar",
-		"openSettings": "Abrir ajustes de cámaras"
+		"openSettings": "Abrir ajustes de cámaras",
+		"snapshot": "Captura",
+		"mute": "Silenciar",
+		"unmute": "Activar sonido",
+		"fullScreen": "Pantalla completa",
+		"close": "Cerrar"
 	},
 	"relayReasons": {
 		"mode_disabled": "La vista en directo está desactivada. Las instantáneas siguen funcionando.",
@@ -66,5 +71,21 @@
 		"noStream": "Este dispositivo no ofrece una transmisión de cámara.",
 		"noLiveView": "La vista en directo no está disponible para esta cámara.",
 		"loadFailed": "No se pudo cargar la cámara."
+	},
+	"relayChip": {
+		"running": "Vista en directo activada",
+		"starting": "Iniciando",
+		"disabled": "Vista en directo desactivada",
+		"unavailable": "Vista en directo no disponible"
+	},
+	"grid": {
+		"allSpaces": "Todas",
+		"spaces": "Espacios",
+		"empty": "Aún no hay cámaras. Adopta cámaras desde una integración de cámaras, como UniFi Protect.",
+		"loadFailed": "No se pudieron cargar las cámaras."
+	},
+	"dialog": {
+		"switchCamera": "Cambiar de cámara",
+		"fps": "{fps} fps"
 	}
 }

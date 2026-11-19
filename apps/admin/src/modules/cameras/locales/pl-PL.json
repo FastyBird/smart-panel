@@ -26,7 +26,12 @@
 	},
 	"buttons": {
 		"retry": "Spróbuj ponownie",
-		"openSettings": "Otwórz ustawienia kamer"
+		"openSettings": "Otwórz ustawienia kamer",
+		"snapshot": "Zrzut",
+		"mute": "Wycisz",
+		"unmute": "Włącz dźwięk",
+		"fullScreen": "Pełny ekran",
+		"close": "Zamknij"
 	},
 	"relayReasons": {
 		"mode_disabled": "Podgląd na żywo jest wyłączony. Zdjęcia nadal działają.",
@@ -66,5 +71,21 @@
 		"noStream": "To urządzenie nie udostępnia strumienia z kamery.",
 		"noLiveView": "Podgląd na żywo jest niedostępny dla tej kamery.",
 		"loadFailed": "Nie udało się załadować kamery."
+	},
+	"relayChip": {
+		"running": "Podgląd na żywo włączony",
+		"starting": "Uruchamianie",
+		"disabled": "Podgląd na żywo wyłączony",
+		"unavailable": "Podgląd na żywo niedostępny"
+	},
+	"grid": {
+		"allSpaces": "Wszystkie",
+		"spaces": "Przestrzenie",
+		"empty": "Nie ma jeszcze kamer. Dodaj kamery z integracji kamer, na przykład UniFi Protect.",
+		"loadFailed": "Nie udało się wczytać kamer."
+	},
+	"dialog": {
+		"switchCamera": "Przełącz kamerę",
+		"fps": "{fps} fps"
 	}
 }

@@ -26,7 +26,12 @@
 	},
 	"buttons": {
 		"retry": "Zkusit znovu",
-		"openSettings": "Otevřít nastavení kamer"
+		"openSettings": "Otevřít nastavení kamer",
+		"snapshot": "Snímek",
+		"mute": "Ztlumit",
+		"unmute": "Zapnout zvuk",
+		"fullScreen": "Celá obrazovka",
+		"close": "Zavřít"
 	},
 	"relayReasons": {
 		"mode_disabled": "Živý náhled je vypnutý. Snímky stále fungují.",
@@ -66,5 +71,21 @@
 		"noStream": "Toto zařízení neposkytuje stream z kamery.",
 		"noLiveView": "Pro tuto kameru není živý náhled dostupný.",
 		"loadFailed": "Kameru se nepodařilo načíst."
+	},
+	"relayChip": {
+		"running": "Živé zobrazení zapnuto",
+		"starting": "Spouští se",
+		"disabled": "Živé zobrazení vypnuto",
+		"unavailable": "Živé zobrazení není dostupné"
+	},
+	"grid": {
+		"allSpaces": "Vše",
+		"spaces": "Prostory",
+		"empty": "Zatím nejsou žádné kamery. Přidejte kamery z integrace kamer, například UniFi Protect.",
+		"loadFailed": "Kamery se nepodařilo načíst."
+	},
+	"dialog": {
+		"switchCamera": "Přepnout kameru",
+		"fps": "{fps} fps"
 	}
 }

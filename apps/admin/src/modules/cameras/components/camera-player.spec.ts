@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 	snapshot: { url: undefined as unknown as { value: string | null }, ageSeconds: undefined as unknown as { value: number | null } },
 	snapshotArgs: [] as unknown[][],
 	relayStatus: undefined as unknown as { value: unknown },
+	mime: undefined as unknown as { value: string | null },
 	role: undefined as unknown as { value: string },
 	start: vi.fn(),
 	stop: vi.fn(),
@@ -50,7 +51,7 @@ vi.mock('../composables/useLiveView', () => ({
 		retryInMs: mocks.retryInMs,
 		reconnect: mocks.reconnect,
 		lastSeen: computed(() => mocks.lastSeen.value),
-		mime: ref(null),
+		mime: mocks.mime,
 		start: mocks.start,
 		stop: mocks.stop,
 		retry: mocks.retry,
@@ -67,6 +68,7 @@ vi.mock('../composables/useCameraSnapshot', () => ({
 			takenAt: ref(null),
 			error: ref(null),
 			loading: ref(false),
+			mimeType: ref(null),
 			reload: vi.fn(),
 		};
 	},
@@ -97,6 +99,7 @@ describe('CameraPlayer', () => {
 		mocks.snapshot.url = ref<string | null>('blob:snapshot');
 		mocks.snapshot.ageSeconds = ref<number | null>(3);
 		mocks.relayStatus = ref(null);
+		mocks.mime = ref<string | null>(null);
 		mocks.role = ref(UsersModuleUserRole.admin);
 	});
 
@@ -302,6 +305,24 @@ describe('CameraPlayer', () => {
 		expect(options.active()).toBe(false);
 
 		wrapper.unmount();
+	});
+
+	it('holds the snapshot back while snapshotActive is false', () => {
+		const wrapper = mountPlayer({ variant: 'tile', snapshotActive: false });
+		const options = mocks.snapshotArgs[0][1] as { active: () => boolean };
+
+		expect(options.active()).toBe(false);
+
+		wrapper.unmount();
+	});
+
+	it('emits the negotiated mime type', async () => {
+		const wrapper = mountPlayer();
+
+		mocks.mime.value = 'video/mp4; codecs="avc1.640029"';
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('mime-change')?.[0]).toEqual(['video/mp4; codecs="avc1.640029"']);
 	});
 
 	it('does not refresh the large player snapshot on a timer', () => {

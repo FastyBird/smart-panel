@@ -43,6 +43,7 @@ const assertNoStaleExceptions = (
 const ALLOWED_IDENTICAL: Record<string, string[]> = {
 	// Words that are the same in every language (`MSE`, `H.264`, `AAC`, `go2rtc`, `LIVE`, `FPS`).
 	'states.live': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
+	'dialog.fps': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
 	'profiles.columns.fps': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
 };
 
