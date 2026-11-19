@@ -14,6 +14,8 @@ export type IRelayStatus = z.infer<typeof RelayStatusSchema>;
 
 export interface IRelayStatusStoreState {
 	status: Ref<IRelayStatus | null>;
+	/** Set when the last read failed or timed out, cleared by the next successful one. */
+	stale: Ref<boolean>;
 }
 
 export interface IRelayStatusStoreActions {

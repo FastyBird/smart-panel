@@ -18,6 +18,8 @@ export const useRelayStatus = defineStore<'cameras_module-relay_status', RelaySt
 		const logger = useLogger();
 
 		const status = ref<IRelayStatus | null>(null);
+		/** The last read failed or timed out, so `status` is the last known one, not the current one. */
+		const stale = ref(false);
 
 		let pendingGetPromise: Promise<IRelayStatus> | null = null;
 
@@ -40,11 +42,16 @@ export const useRelayStatus = defineStore<'cameras_module-relay_status', RelaySt
 
 					if (typeof responseData !== 'undefined') {
 						status.value = transformRelayStatusResponse(responseData.data);
+						stale.value = false;
 
 						return status.value;
 					}
 
 					throw new CamerasApiException(readErrorMessage(error) ?? 'Failed to fetch relay status.', response?.status ?? 500);
+				} catch (error) {
+					stale.value = true;
+
+					throw error;
 				} finally {
 					clearTimeout(deadline);
 				}
@@ -99,7 +106,7 @@ export const useRelayStatus = defineStore<'cameras_module-relay_status', RelaySt
 
 		const refresh = (): Promise<unknown> => get();
 
-		return { status, get, startPolling, isLoaded, refresh };
+		return { status, stale, get, startPolling, isLoaded, refresh };
 	}
 );
 

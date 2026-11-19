@@ -46,9 +46,9 @@ const status = (state: CamerasModuleDataRelayStatusState, reason: CamerasModuleD
 	sessions: { active: 0, max: 8, maxPerCamera: 4 },
 });
 
-const mountChip = (value: IRelayStatus | null): VueWrapper =>
+const mountChip = (value: IRelayStatus | null, stale = false): VueWrapper =>
 	mount(RelayStatusChip, {
-		props: { status: value },
+		props: { status: value, stale },
 		global: { stubs: { RouterLink: RouterLinkStub, ElTag: ElTagStub, ElTooltip: ElTooltipStub } },
 	});
 
@@ -68,6 +68,15 @@ describe('RelayStatusChip', () => {
 
 		expect(chip.attributes('data-type')).toBe(type);
 		expect(chip.text()).toBe(text);
+	});
+
+	it('shows a status that could not be refreshed as unknown instead of its last state', () => {
+		const wrapper = mountChip(status(CamerasModuleDataRelayStatusState.running), true);
+		const chip = wrapper.find('[data-test-id="relay-status-chip"]');
+
+		expect(chip.attributes('data-type')).toBe('info');
+		expect(chip.text()).toBe('camerasModule.relayChip.unknown');
+		expect(wrapper.find('[data-tooltip]').attributes('data-tooltip')).toBe('camerasModule.relayStale');
 	});
 
 	it('uses the reason sentence for crashed', () => {

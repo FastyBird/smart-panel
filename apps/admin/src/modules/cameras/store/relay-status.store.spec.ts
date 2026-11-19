@@ -142,6 +142,48 @@ describe('Relay status store', () => {
 		release();
 	});
 
+	it('marks the last known status stale after a failed poll and clears it after the next successful one', async () => {
+		const release = store.startPolling();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(store.status?.relay.state).toBe('running');
+		expect(store.stale).toBe(false);
+
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } });
+		await vi.advanceTimersByTimeAsync(RELAY_STATUS_POLL_MS);
+
+		// The last known status stays, flagged as not current.
+		expect(store.status?.relay.state).toBe('running');
+		expect(store.stale).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(RELAY_STATUS_POLL_MS);
+
+		expect(store.stale).toBe(false);
+
+		release();
+	});
+
+	it('marks the status stale when a read times out', async () => {
+		await store.get();
+
+		(mockBackendClient.GET as Mock).mockImplementationOnce(
+			(_path: string, init: { signal: AbortSignal }) =>
+				new Promise((_resolve, reject) => {
+					init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+				})
+		);
+
+		const outcome = store.get().then(
+			() => 'resolved',
+			() => 'rejected'
+		);
+
+		await vi.advanceTimersByTimeAsync(RELAY_STATUS_TIMEOUT_MS);
+
+		expect(await outcome).toBe('rejected');
+		expect(store.stale).toBe(true);
+	});
+
 	it('the release function is idempotent', async () => {
 		const releaseA = store.startPolling();
 		const releaseB = store.startPolling();

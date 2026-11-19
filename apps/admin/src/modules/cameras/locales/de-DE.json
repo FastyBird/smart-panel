@@ -82,8 +82,10 @@
 		"running": "Live-Ansicht an",
 		"starting": "Startet",
 		"disabled": "Live-Ansicht aus",
-		"unavailable": "Live-Ansicht nicht verfügbar"
+		"unavailable": "Live-Ansicht nicht verfügbar",
+		"unknown": "Status der Live-Ansicht unbekannt"
 	},
+	"relayStale": "Status konnte nicht aktualisiert werden",
 	"grid": {
 		"allSpaces": "Alle",
 		"spaces": "Räume",

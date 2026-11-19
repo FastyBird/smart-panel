@@ -97,7 +97,10 @@
 				</el-check-tag>
 			</div>
 
-			<relay-status-chip :status="relayStatusStore.status" />
+			<relay-status-chip
+				:status="relayStatusStore.status"
+				:stale="relayStatusStore.stale"
+			/>
 		</div>
 
 		<div class="cameras-grid__tiles">

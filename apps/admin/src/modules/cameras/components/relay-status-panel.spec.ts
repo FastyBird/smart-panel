@@ -20,7 +20,7 @@ const status = (
 	sessions: { active: 2, max: 8, maxPerCamera: 4 },
 });
 
-const mountPanel = (value: IRelayStatus | null) => mount(RelayStatusPanel, { props: { status: value } });
+const mountPanel = (value: IRelayStatus | null, stale = false) => mount(RelayStatusPanel, { props: { status: value, stale } });
 
 describe('RelayStatusPanel', () => {
 	it.each(Object.values(CamerasModuleDataRelayStatusReason))('shows the banner text for %s', (reason) => {
@@ -31,6 +31,17 @@ describe('RelayStatusPanel', () => {
 
 	it('shows no banner without a reason', () => {
 		expect(mountPanel(status(CamerasModuleDataRelayStatusState.running)).find('[data-test-id="relay-status-reason"]').exists()).toBe(false);
+	});
+
+	it('says when the status could not be refreshed and keeps the last known values', () => {
+		const wrapper = mountPanel(status(CamerasModuleDataRelayStatusState.running), true);
+
+		expect(wrapper.find('[data-test-id="relay-status-stale"]').text()).toBe('camerasModule.relayStale');
+		expect(wrapper.findAll('dd')[1].text()).toBe('camerasModule.config.relayStates.running');
+	});
+
+	it('shows no stale line for a current status', () => {
+		expect(mountPanel(status(CamerasModuleDataRelayStatusState.running)).find('[data-test-id="relay-status-stale"]').exists()).toBe(false);
 	});
 
 	it('shows nothing but the allowed fields', () => {

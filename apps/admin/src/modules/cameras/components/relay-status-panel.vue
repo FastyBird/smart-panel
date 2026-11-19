@@ -4,6 +4,16 @@
 		data-test-id="relay-status-panel"
 	>
 		<el-alert
+			v-if="stale"
+			type="warning"
+			show-icon
+			:closable="false"
+			:title="t('camerasModule.relayStale')"
+			class="mb-2"
+			data-test-id="relay-status-stale"
+		/>
+
+		<el-alert
 			v-if="reasonText !== null"
 			type="warning"
 			show-icon
@@ -46,7 +56,9 @@ defineOptions({
 	name: 'RelayStatusPanel',
 });
 
-const props = defineProps<IRelayStatusPanelProps>();
+const props = withDefaults(defineProps<IRelayStatusPanelProps>(), {
+	stale: false,
+});
 
 const { t } = useI18n();
 

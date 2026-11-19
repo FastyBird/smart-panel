@@ -82,8 +82,10 @@
 		"running": "Vista en directo activada",
 		"starting": "Iniciando",
 		"disabled": "Vista en directo desactivada",
-		"unavailable": "Vista en directo no disponible"
+		"unavailable": "Vista en directo no disponible",
+		"unknown": "Estado de la vista en directo desconocido"
 	},
+	"relayStale": "No se pudo actualizar el estado",
 	"grid": {
 		"allSpaces": "Todas",
 		"spaces": "Espacios",

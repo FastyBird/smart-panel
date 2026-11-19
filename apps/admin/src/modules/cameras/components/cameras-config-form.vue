@@ -94,6 +94,7 @@
 
 		<relay-status-panel
 			:status="relayStatus"
+			:stale="relayStatusStore.stale"
 			class="mt-2"
 		/>
 	</el-form>

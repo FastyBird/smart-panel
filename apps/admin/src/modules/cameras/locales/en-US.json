@@ -82,8 +82,10 @@
 		"running": "Live view on",
 		"starting": "Starting",
 		"disabled": "Live view off",
-		"unavailable": "Live view unavailable"
+		"unavailable": "Live view unavailable",
+		"unknown": "Live view status unknown"
 	},
+	"relayStale": "Status could not be refreshed",
 	"grid": {
 		"allSpaces": "All",
 		"spaces": "Spaces",

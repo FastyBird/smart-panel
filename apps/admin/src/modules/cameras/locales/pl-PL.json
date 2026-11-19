@@ -82,8 +82,10 @@
 		"running": "Podgląd na żywo włączony",
 		"starting": "Uruchamianie",
 		"disabled": "Podgląd na żywo wyłączony",
-		"unavailable": "Podgląd na żywo niedostępny"
+		"unavailable": "Podgląd na żywo niedostępny",
+		"unknown": "Stan podglądu na żywo nieznany"
 	},
+	"relayStale": "Nie udało się odświeżyć stanu",
 	"grid": {
 		"allSpaces": "Wszystkie",
 		"spaces": "Przestrzenie",

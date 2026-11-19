@@ -82,8 +82,10 @@
 		"running": "Živé zobrazenie zapnuté",
 		"starting": "Spúšťa sa",
 		"disabled": "Živé zobrazenie vypnuté",
-		"unavailable": "Živé zobrazenie nie je dostupné"
+		"unavailable": "Živé zobrazenie nie je dostupné",
+		"unknown": "Stav živého zobrazenia neznámy"
 	},
+	"relayStale": "Stav sa nepodarilo obnoviť",
 	"grid": {
 		"allSpaces": "Všetky",
 		"spaces": "Priestory",

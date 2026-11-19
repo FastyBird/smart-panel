@@ -48,13 +48,20 @@ defineOptions({
 	name: 'RelayStatusChip',
 });
 
-const props = defineProps<IRelayStatusChipProps>();
+const props = withDefaults(defineProps<IRelayStatusChipProps>(), {
+	stale: false,
+});
 
 const { t } = useI18n();
 
 const { canOpenSettings, settingsRoute } = useCamerasSettingsLink();
 
+// A status that could not be refreshed may be wrong, so the chip does not claim a state it cannot confirm.
 const tagType = computed<'success' | 'warning' | 'info' | 'danger'>(() => {
+	if (props.stale) {
+		return 'info';
+	}
+
 	switch (props.status?.relay.state) {
 		case CamerasModuleDataRelayStatusState.running:
 			return 'success';
@@ -68,6 +75,10 @@ const tagType = computed<'success' | 'warning' | 'info' | 'danger'>(() => {
 });
 
 const label = computed<string>(() => {
+	if (props.stale) {
+		return t('camerasModule.relayChip.unknown');
+	}
+
 	switch (props.status?.relay.state) {
 		case CamerasModuleDataRelayStatusState.running:
 			return t('camerasModule.relayChip.running');
@@ -81,6 +92,10 @@ const label = computed<string>(() => {
 });
 
 const tooltip = computed<string | null>(() => {
+	if (props.stale) {
+		return t('camerasModule.relayStale');
+	}
+
 	const reason = props.status?.relay.reason ?? null;
 
 	return reason !== null ? t(`camerasModule.relayReasons.${reason}`) : null;

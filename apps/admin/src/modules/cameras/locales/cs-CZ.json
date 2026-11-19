@@ -82,8 +82,10 @@
 		"running": "Živé zobrazení zapnuto",
 		"starting": "Spouští se",
 		"disabled": "Živé zobrazení vypnuto",
-		"unavailable": "Živé zobrazení není dostupné"
+		"unavailable": "Živé zobrazení není dostupné",
+		"unknown": "Stav živého zobrazení neznámý"
 	},
+	"relayStale": "Stav se nepodařilo obnovit",
 	"grid": {
 		"allSpaces": "Vše",
 		"spaces": "Prostory",
