@@ -457,6 +457,25 @@ describe('Zigbee device report freshness at sample and ordinary acknowledgement 
 		expect(storage.enqueueWritePoint).not.toHaveBeenCalled();
 	});
 
+	it('shows a value that changed while disconnected from its replay after a reconnect, without making it fresh', async () => {
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(21);
+		const liveAt = base + STARTUP_REPLAY_WINDOW_MS;
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(21);
+		await adapter.disconnect();
+		jest.setSystemTime(liveAt + 60_000);
+		await adapter.connect();
+		adapter.feed('bridge/state', { state: 'online' });
+		// The replay after the reconnect has no last_seen: its age is unknown.
+		await sample(19);
+		expect(await values.readLatest(property)).toMatchObject({ value: 19, lastUpdated: new Date(liveAt).toISOString() });
+		expect(values.readQualifiedSample(property, 3_600_000)).toBeNull();
+		// The next real report makes it fresh again.
+		jest.advanceTimersByTime(STARTUP_REPLAY_WINDOW_MS);
+		await sample(19);
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(19);
+	});
+
 	it('keeps the stored age for a changed untimed replay and still admits a later timed replay', async () => {
 		const storedAt = base - 30 * 60_000;
 		storage.queryStrict.mockResolvedValueOnce([

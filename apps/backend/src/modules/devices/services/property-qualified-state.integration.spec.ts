@@ -298,16 +298,29 @@ describe('qualified samples and producer state', () => {
 	});
 
 	it.each(['cached', 'retained'] as const)(
-		'allows initial %s display replay but never qualifies or replaces a live epoch',
+		'displays a newer %s replay after a live report without qualifying it, and withdraws the contradicted live value',
 		async (provenance) => {
 			await report(20, evidence(base, provenance));
 			expect(values.readQualifiedSample(property, 10_000)).toBeNull();
 			await report(20);
 			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+			// A replay at the live report's own time never wins the tie.
+			await report(19, evidence(base, provenance));
+			expect((await values.readLatest(property))?.value).toBe(20);
 			jest.setSystemTime(base + 1_000);
+			// An unchanged replay keeps the live value qualified.
+			await report(20, evidence(base + 1_000, provenance));
+			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+			expect(invalidated).not.toHaveBeenCalled();
+			// A changed replay (a value that changed while disconnected) is displayed but never qualified.
 			await report(21, evidence(base + 1_000, provenance));
 			await report(null, evidence(base + 1_000, provenance));
-			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+			expect((await values.readLatest(property))?.value).toBe(21);
+			expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+			expect(invalidated).toHaveBeenCalledTimes(1);
+			jest.setSystemTime(base + 2_000);
+			await report(22, evidence(base + 2_000));
+			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(22);
 		},
 	);
 
@@ -833,13 +846,14 @@ describe('qualified samples and producer state', () => {
 			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(22);
 		});
 
-		it('fences cached replay even when the first live clock evidence was nonfinite', async () => {
+		it('displays a cached replay without qualifying it when the first live clock evidence was nonfinite', async () => {
 			await write(21, evidence(Number.NaN));
 			await write(99, evidence(base, 'cached'));
 			await write(99, evidence(base, 'retained'));
-			expect(accepted).not.toHaveBeenCalled();
-			expect(await values.readLatest(property)).toBeNull();
-			await write(22, evidence());
+			expect((await values.readLatest(property))?.value).toBe(99);
+			expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+			jest.setSystemTime(base + 1);
+			await write(22, evidence(base + 1));
 			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(22);
 		});
 
