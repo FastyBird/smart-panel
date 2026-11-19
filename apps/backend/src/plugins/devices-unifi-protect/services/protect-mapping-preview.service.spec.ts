@@ -17,6 +17,7 @@ import { ProtectPreviewWarningCode, ProtectPreviewWarningSeverity } from '../mod
 
 import { ProtectInventoryService } from './protect-inventory.service';
 import { ProtectMappingPreviewService } from './protect-mapping-preview.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 
 type Raw = Record<string, unknown>;
 
@@ -35,6 +36,7 @@ describe('ProtectMappingPreviewService', () => {
 	let adopted: Map<string, ProtectDeviceEntity>;
 	let loader: ProtectMappingLoaderService;
 	let service: ProtectMappingPreviewService;
+	let store: ProtectStreamAvailabilityStore;
 
 	const serve = (raw: Raw, modelKey: ProtectModelKey): void => {
 		inventory.fetchDevice.mockResolvedValue({
@@ -50,6 +52,7 @@ describe('ProtectMappingPreviewService', () => {
 			loader,
 			validation as unknown as DeviceValidationService,
 			{ getPluginConfig: () => ({ defaultStreamQuality: 'medium' }) } as unknown as ConfigService,
+			store,
 		);
 	};
 
@@ -60,6 +63,7 @@ describe('ProtectMappingPreviewService', () => {
 		validation = new (class {
 			validateDeviceStructure = jest.fn(() => ({ isValid: true, issues: [] }));
 		})();
+		store = new ProtectStreamAvailabilityStore();
 		loader = new ProtectMappingLoaderService();
 		loader.onModuleInit();
 		build();
@@ -87,6 +91,24 @@ describe('ProtectMappingPreviewService', () => {
 		expect(plain.ready_to_adopt).toBe(true);
 	});
 
+	it('stamps the prepared streams before a read that starts in the same millisecond', async () => {
+		jest.spyOn(Date, 'now').mockReturnValue(5_000);
+		serve(fixture('cameras.json')[0], 'camera');
+
+		const id = '600cefafd5f365d6f83c4ef3';
+		const prepared = await service.prepare(id, 'camera');
+		const readStamp = store.nextObservation();
+
+		expect(prepared.streamsObservedAt).not.toBeNull();
+		expect(prepared.streamsObservedAt).toBeLessThan(readStamp);
+
+		// The newer read records "disabled" first; the prepared snapshot (high enabled) must not replace it.
+		store.set(id, { high: false, medium: false, low: false, package: false }, readStamp);
+
+		expect(store.set(id, prepared.streams as never, prepared.streamsObservedAt as number)).toBe(false);
+		expect(store.get(id)?.availability.high).toBe(false);
+	});
+
 	it('does not load the adopted devices when preparing', async () => {
 		serve(fixture('cameras.json')[0], 'camera');
 
@@ -106,6 +128,7 @@ describe('ProtectMappingPreviewService', () => {
 					throw new Error('no config');
 				},
 			} as unknown as ConfigService,
+			store,
 		);
 
 		const preview = await service.preview('600cefafd5f365d6f83c4ef3', 'camera');

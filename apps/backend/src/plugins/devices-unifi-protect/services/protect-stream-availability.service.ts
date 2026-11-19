@@ -66,8 +66,6 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 	private readonly lastState = new Map<string, unknown>();
 	private readonly attemptedAt = new Map<string, number>();
 	private readonly ports = new Map<string, ProtectStreamPorts>();
-	/** Last observation time handed out; strictly increasing so two reads never share one. */
-	private lastObservation = 0;
 	/** Keyed `<generation>:<camera>`; joined by every caller of that camera in that session. */
 	private readonly inflight = new Map<string, Promise<void>>();
 	private readonly waiting: string[] = [];
@@ -125,7 +123,7 @@ export class ProtectStreamAvailabilityService implements OnModuleInit, OnModuleD
 
 		const stamp = Date.now();
 		// The request start orders reads: a response that completes after a newer request's must not replace it.
-		const observedAt = (this.lastObservation = Math.max(stamp, this.lastObservation + 1));
+		const observedAt = this.store.nextObservation();
 
 		this.attemptedAt.set(cameraId, stamp);
 

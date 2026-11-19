@@ -931,6 +931,29 @@ describe('ProtectAdoptionService', () => {
 			});
 		});
 
+		it('keeps the enabled result of a POST newer than a read that recorded disabled meanwhile', async () => {
+			let clock = 1_000_000;
+
+			jest.spyOn(Date, 'now').mockImplementation(() => clock);
+
+			const id = '600cefafd5f365d6f83c4ef3';
+			const disabled = { high: false, medium: false, low: false, package: false };
+
+			// The initial GET sees nothing enabled; a background read then starts and records "disabled" before the POST.
+			client.getRtspsStreams.mockImplementation(() => {
+				clock += 10;
+				streamStore.set(id, disabled, Date.now(), Date.now());
+				clock += 10;
+
+				return Promise.resolve(urls());
+			});
+			client.createRtspsStreams.mockImplementation(() => Promise.resolve(urls('high', 'medium')));
+
+			await service.adoptOne(ENABLING);
+
+			expect(streamStore.get(id)?.availability).toEqual({ high: true, medium: true, low: false, package: false });
+		});
+
 		it('records the prepared availability when the console rejects the stream request', async () => {
 			client.createRtspsStreams.mockRejectedValue(new Error('console down'));
 

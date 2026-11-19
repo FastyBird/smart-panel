@@ -30,6 +30,7 @@ import {
 
 import { readDefaultStreamQuality } from './protect-default-stream-quality';
 import { ProtectFreshDevice, ProtectInventoryService } from './protect-inventory.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 
 export interface ProtectPreparedMapping {
 	fresh: ProtectFreshDevice;
@@ -57,13 +58,14 @@ export class ProtectMappingPreviewService {
 		private readonly mappingLoader: ProtectMappingLoaderService,
 		private readonly deviceValidation: DeviceValidationService,
 		private readonly configService: ConfigService,
+		private readonly streamAvailability: ProtectStreamAvailabilityStore,
 	) {}
 
 	/** Fresh reads of the device (and of its streams for a camera); throws the adoption errors. */
 	async prepare(deviceId: string, modelKey: ProtectModelKey): Promise<ProtectPreparedMapping> {
 		const fresh = await this.inventory.fetchDevice(deviceId, modelKey);
 		const raw = fresh.entry.raw;
-		const streamsObservedAt = modelKey === 'camera' ? Date.now() : null;
+		const streamsObservedAt = modelKey === 'camera' ? this.streamAvailability.nextObservation() : null;
 		const streams = modelKey === 'camera' ? await this.readStreams(fresh, deviceId) : null;
 		const result = this.evaluate(fresh, streams);
 

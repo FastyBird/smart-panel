@@ -22,7 +22,7 @@ describe('ProtectStreamAvailabilityStore', () => {
 		expect(store.set(ID, { ...input, package: true })).toBe(true);
 	});
 
-	it('ignores an observation older than the stored one, but keeps an equal or newer one', () => {
+	it('ignores an observation that is not newer than the stored one', () => {
 		const store = new ProtectStreamAvailabilityStore();
 		const off = { high: false, medium: false, low: false, package: false };
 		const on = { ...off, high: true };
@@ -36,7 +36,22 @@ describe('ProtectStreamAvailabilityStore', () => {
 
 		expect(store.set(ID, on, 101, 210)).toBe(true);
 		expect(store.get(ID)).toEqual({ availability: on, readAt: 210, observedAt: 101 });
-		expect(store.set(ID, off, 101, 220)).toBe(true);
+
+		// A tie is not newer either: the stored entry stays.
+		expect(store.accepts(ID, 101)).toBe(false);
+		expect(store.set(ID, off, 101, 220)).toBe(false);
+		expect(store.get(ID)).toEqual({ availability: on, readAt: 210, observedAt: 101 });
+	});
+
+	it('hands out strictly increasing observation times, even within one millisecond', () => {
+		const store = new ProtectStreamAvailabilityStore();
+
+		jest.spyOn(Date, 'now').mockReturnValue(7_000);
+
+		const stamps = [store.nextObservation(), store.nextObservation(), store.nextObservation()];
+
+		expect(stamps).toEqual([7_000, 7_001, 7_002]);
+		jest.restoreAllMocks();
 	});
 
 	it('forgets everything on clear', () => {

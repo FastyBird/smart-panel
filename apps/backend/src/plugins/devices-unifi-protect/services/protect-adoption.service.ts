@@ -918,14 +918,18 @@ export class ProtectAdoptionService {
 		}
 
 		const quality = selection.stream?.quality ?? readDefaultStreamQuality(this.configService);
-		const enablementStartedAt = Date.now();
 		let result: ProtectStreamEnablementResult;
 
 		try {
-			result = await this.streams.ensureStreams(prepared.fresh.client, prepared.device.protectDeviceId, {
-				quality,
-				packageCamera: prepared.fresh.entry.raw.hasPackageCamera === true,
-			});
+			result = await this.streams.ensureStreams(
+				prepared.fresh.client,
+				prepared.device.protectDeviceId,
+				{
+					quality,
+					packageCamera: prepared.fresh.entry.raw.hasPackageCamera === true,
+				},
+				() => this.streamAvailability.nextObservation(),
+			);
 		} catch {
 			this.logger.warn('RTSPS stream enablement finished (failed)');
 			this.recordAvailability(prepared, prepared.streams, prepared.streamsObservedAt);
@@ -948,7 +952,7 @@ export class ProtectAdoptionService {
 			// A failed enablement: the console state read before it is the best knowledge there is.
 			this.recordAvailability(prepared, prepared.streams, prepared.streamsObservedAt);
 		} else {
-			this.recordAvailability(prepared, result.availability, enablementStartedAt);
+			this.recordAvailability(prepared, result.availability, result.observedAt);
 
 			try {
 				complete = await this.updateStreamStatuses(prepared, result.availability, panelDeviceId);
@@ -969,7 +973,11 @@ export class ProtectAdoptionService {
 	): void {
 		if (availability !== null) {
 			// `observedAt` is when the console was asked, so a read recorded meanwhile is never overwritten by this one.
-			this.streamAvailability.set(prepared.device.protectDeviceId, availability, observedAt ?? Date.now());
+			this.streamAvailability.set(
+				prepared.device.protectDeviceId,
+				availability,
+				observedAt ?? this.streamAvailability.nextObservation(),
+			);
 		}
 	}
 
