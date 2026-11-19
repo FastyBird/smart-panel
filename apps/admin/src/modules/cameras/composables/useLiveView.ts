@@ -51,6 +51,8 @@ const PROFILE_NOT_AVAILABLE_MESSAGE = 'Stream profile is not available';
 const REFETCH_FAILED = Symbol('refetch-failed');
 
 /** States that own a session request or a running client. */
+const STAY_ON_UNAVAILABLE_STATES: ReadonlySet<LiveViewState> = new Set<LiveViewState>(['snapshot', 'playing', 'offline']);
+
 const ACTIVE_STATES: ReadonlySet<LiveViewState> = new Set<LiveViewState>(['requesting', 'connecting', 'playing']);
 
 /**
@@ -482,7 +484,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 
 			if (relaySeenDown) {
 				relaySeenDown = false;
-				send({ type: 'retry' });
+				send({ type: isAvailable() ? 'retry' : 'stop' });
 			}
 		}
 	);
@@ -529,9 +531,12 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 
 	// An auto started view that could not stream yet starts once it can, unless it was stopped meanwhile.
 	watch(isAvailable, (available) => {
-		// A pending backoff must not post a session while nothing can stream; the intent stays for the next change.
-		if (!available && context.value.state === 'error') {
-			send({ type: 'stop' });
+		// Nothing can stream now: abort an attempt in flight and drop a pending or terminal failure, so no retry posts a
+		// session. A playing view keeps playing and an offline one keeps saying so. The intent stays for the next change.
+		if (!available) {
+			if (!STAY_ON_UNAVAILABLE_STATES.has(context.value.state)) {
+				send({ type: 'stop' });
+			}
 
 			return;
 		}

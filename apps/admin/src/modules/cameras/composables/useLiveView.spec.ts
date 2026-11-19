@@ -930,10 +930,13 @@ describe('useLiveView', () => {
 		available.value = false;
 		await flush();
 
+		// The stop happens when availability drops; the aborted request's failure changes nothing.
+		expect(live.state.value).toBe('snapshot');
+
 		resolvePost(failure(500, { message: 'boom' }));
 		await flush();
 
-		expect(live.state.value).toBe('error');
+		expect(live.state.value).toBe('snapshot');
 
 		await vi.advanceTimersByTimeAsync(LIVE_RETRY_DELAYS_MS[0] * 2);
 
@@ -944,6 +947,69 @@ describe('useLiveView', () => {
 		await flush();
 
 		expect(postMock).toHaveBeenCalledTimes(2);
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it('does not retry a relay that comes back after the view stopped being available during a request', async () => {
+		let resolvePost!: (value: unknown) => void;
+
+		relayNext = 'unavailable';
+		postMock.mockImplementationOnce(() => new Promise((resolve) => (resolvePost = resolve))).mockResolvedValue(sessionOk());
+
+		const available = ref(true);
+		const live = mountLiveView({ autoStart: true, profile: null, available });
+		await flush();
+
+		expect(live.state.value).toBe('requesting');
+
+		available.value = false;
+		await flush();
+
+		resolvePost(failure(503, { message: 'Relay is not available' }));
+		await flush();
+
+		relayNext = 'running';
+		await relayStore.get();
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('snapshot');
+	});
+
+	it('restarts a view whose final attempt failed after it stopped being available', async () => {
+		let resolveFinal!: (value: unknown) => void;
+
+		for (let i = 0; i < LIVE_RETRY_DELAYS_MS.length; i++) {
+			postMock.mockResolvedValueOnce(failure(500, { message: 'boom' }));
+		}
+
+		postMock.mockImplementationOnce(() => new Promise((resolve) => (resolveFinal = resolve))).mockResolvedValue(sessionOk());
+
+		const available = ref(true);
+		const live = mountLiveView({ autoStart: true, profile: null, available });
+		await flush();
+
+		for (const delay of LIVE_RETRY_DELAYS_MS) {
+			await vi.advanceTimersByTimeAsync(delay);
+			await flush();
+		}
+
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length + 1);
+		expect(live.state.value).toBe('requesting');
+
+		available.value = false;
+		await flush();
+
+		resolveFinal(failure(500, { message: 'boom' }));
+		await flush();
+
+		expect(live.state.value).toBe('snapshot');
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length + 1);
+
+		available.value = true;
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(LIVE_RETRY_DELAYS_MS.length + 2);
 		expect(live.state.value).toBe('connecting');
 	});
 
