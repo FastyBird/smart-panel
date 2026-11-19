@@ -124,11 +124,14 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 				if (typeof responseData !== 'undefined') {
 					const camera = transformCameraResponse(responseData.data);
 
+					// A camera read through `get()` is held for the device page whether or not this response is cached, so a
+					// later list that leaves it out carries it over and a refresh reads it again.
+					detailIds.add(camera.deviceId);
+
 					// A list or read that changed this camera meanwhile is newer; this response must not bring back a camera
 					// the list removed. A list that only carried the same object over does not make it stale.
 					if (toRaw(data.value[camera.deviceId]) === cached) {
 						data.value[camera.deviceId] = camera;
-						detailIds.add(camera.deviceId);
 					}
 
 					return camera;

@@ -280,4 +280,28 @@ describe('Cameras store', () => {
 		expect(store.findById('h')?.name).toBe('Porch renamed');
 		expect(store.findAll()).toEqual([]);
 	});
+
+	it('holds a camera whose first get finished after a list cached it, so a later list that leaves it out carries it over', async () => {
+		let resolveDetail!: (value: unknown) => void;
+
+		(mockBackendClient.GET as Mock)
+			.mockImplementationOnce(() => new Promise((resolve) => (resolveDetail = resolve)))
+			.mockResolvedValueOnce(ok([cameraRes('h', 'Listed')]))
+			.mockResolvedValueOnce(ok([]));
+
+		const detail = store.get({ deviceId: 'h' });
+
+		await store.fetch();
+
+		resolveDetail(ok(cameraRes('h', 'Detail')));
+		await detail;
+
+		// The list entry is newer than the detail response, so it is not overwritten.
+		expect(store.findById('h')?.name).toBe('Listed');
+
+		await store.fetch();
+
+		expect(store.findById('h')?.name).toBe('Listed');
+		expect(store.findAll()).toEqual([]);
+	});
 });
