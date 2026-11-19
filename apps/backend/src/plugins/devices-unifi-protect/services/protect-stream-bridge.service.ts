@@ -179,6 +179,7 @@ interface PreflightFlight {
 	promise: Promise<void>;
 	controller: AbortController;
 	waiters: number;
+	settled: boolean;
 }
 
 /**
@@ -365,7 +366,8 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 	 * One verified handshake that only reports: the socket is destroyed at once, nothing is written. Concurrent calls
 	 * for one upstream and session share one handshake; the shared handshake consumes the M5 allowance and holds a slot
 	 * of the connection cap until it settles. An exhausted allowance or cap rejects `unavailable` with no handshake.
-	 * Every caller waits with its own deadline and signal; the handshake is aborted only when all of them gave up.
+	 * Every caller waits with its own deadline and signal; the handshake runs with the full timeout and is aborted only
+	 * while it is running and no caller waits for it any more.
 	 */
 	private preflight(
 		host: string,
@@ -379,9 +381,7 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		let flight = this.preflights.get(key);
 
 		if (flight === undefined) {
-			const handshakeTimeoutMs = budget.remaining(PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS);
-
-			if (handshakeTimeoutMs <= 0) {
+			if (budget.remaining(1) <= 0) {
 				throw bridgeError(ProtectErrorCategory.TIMEOUT);
 			}
 
@@ -398,17 +398,20 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			}
 
 			const controller = new AbortController();
-			const started: PreflightFlight = { promise: Promise.resolve(), controller, waiters: 0 };
+			const started: PreflightFlight = { promise: Promise.resolve(), controller, waiters: 0, settled: false };
 
 			this.preflights.set(key, started);
 			started.promise = this.handshake(
 				host,
 				port,
 				plan,
-				handshakeTimeoutMs,
+				// The full timeout: the handshake is shared, so no single caller's deadline may cut it short.
+				PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS,
 				AbortSignal.any([controller.signal, this.lifetime.signal]),
 				sessionGeneration,
 			).finally(() => {
+				started.settled = true;
+
 				if (this.preflights.get(key) === started) {
 					this.preflights.delete(key);
 				}
@@ -421,19 +424,21 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		const joined = flight;
 
 		joined.waiters += 1;
-		signal.addEventListener(
-			'abort',
-			() => {
-				joined.waiters -= 1;
 
-				if (joined.waiters <= 0) {
-					joined.controller.abort();
-				}
-			},
-			{ once: true },
-		);
+		const wait = this.withBudget(joined.promise, budget, signal);
+		// Whatever the outcome (success, failure, deadline, abort) this caller stops counting; the handshake is
+		// aborted only when it is still running and nobody waits for it any more.
+		const leave = (): void => {
+			joined.waiters -= 1;
 
-		return this.withBudget(joined.promise, budget, signal);
+			if (joined.waiters <= 0 && !joined.settled) {
+				joined.controller.abort();
+			}
+		};
+
+		wait.then(leave, leave);
+
+		return wait;
 	}
 
 	private async handshake(

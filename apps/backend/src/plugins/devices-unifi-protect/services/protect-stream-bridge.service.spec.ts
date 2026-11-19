@@ -1,5 +1,5 @@
 import { lookup } from 'dns/promises';
-import { EventEmitter } from 'events';
+import { EventEmitter, getEventListeners } from 'events';
 import * as net from 'net';
 import { AddressInfo } from 'net';
 import { Duplex, duplexPair } from 'stream';
@@ -1250,20 +1250,78 @@ describe('ProtectStreamBridgeService', () => {
 			expect(service.getVerification(UPSTREAM)).toBe('unknown');
 		});
 
-		it('bounds the pre-flight by the remaining source budget', async () => {
+		it('bounds each caller by its own budget and signal, not the shared handshake', async () => {
 			await service.prepare(PORT, { deadlineMs: 1200 });
 
-			expect(upstreams[0].options.handshakeTimeoutMs).toBeLessThanOrEqual(1200);
-			expect(upstreams[0].options.handshakeTimeoutMs).toBeGreaterThan(0);
+			// The shared handshake runs with the full timeout; the caller's deadline is enforced on its own wait.
+			expect(upstreams[0].options.handshakeTimeoutMs).toBe(PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS);
 
+			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
 			const controller = new AbortController();
 
-			await service.prepare(PORT, { signal: controller.signal });
+			connectMock.mockImplementationOnce(() => verification.promise);
 
-			// The caller's signal, joined with the bridge's own lifetime (module destroy cancels too).
-			expect(upstreams[1].options.signal?.aborted).toBe(false);
+			const waiting = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 2);
+			expect(connectMock.mock.calls[1][0].signal?.aborted).toBe(false);
 			controller.abort();
-			expect(upstreams[1].options.signal?.aborted).toBe(true);
+
+			await expect(waiting).resolves.toMatchObject({ category: 'cancelled' });
+			await waitFor(() => connectMock.mock.calls[1][0].signal?.aborted === true);
+		});
+
+		it('times a short-deadline caller out alone while a longer joiner is verified', async () => {
+			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const [bridgeEnd] = duplexPair();
+
+			connectMock.mockImplementationOnce(() => verification.promise);
+
+			const short = service.prepare(PORT, { deadlineMs: 50 }).catch((error: unknown) => error);
+			const long = service.prepare(PORT, { deadlineMs: 5000 });
+
+			await waitFor(() => connectMock.mock.calls.length === 1);
+			await expect(short).resolves.toMatchObject({ category: 'timeout' });
+
+			expect(connectMock.mock.calls[0][0].handshakeTimeoutMs).toBe(PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS);
+			expect(connectMock.mock.calls[0][0].signal?.aborted).toBe(false);
+
+			verification.resolve({ socket: bridgeEnd as unknown as tls.TLSSocket, fingerprint: PIN });
+
+			await expect(long).resolves.toMatchObject({ host: '127.0.0.1' });
+			expect(connectMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('stops counting a waiter whose deadline passed, so the last waiter aborts the handshake', async () => {
+			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const controller = new AbortController();
+
+			connectMock.mockImplementationOnce(() => verification.promise);
+
+			const short = service.prepare(PORT, { deadlineMs: 50 }).catch((error: unknown) => error);
+			const remaining = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1);
+			await expect(short).resolves.toMatchObject({ category: 'timeout' });
+			await tick();
+			expect(connectMock.mock.calls[0][0].signal?.aborted).toBe(false);
+
+			controller.abort();
+
+			await expect(remaining).resolves.toMatchObject({ category: 'cancelled' });
+			await waitFor(() => connectMock.mock.calls[0][0].signal?.aborted === true);
+		});
+
+		it('leaves no abort listener on the service lifetime after settled prepares', async () => {
+			const lifetime = (service as unknown as { lifetime: AbortController }).lifetime.signal;
+			const baseline = getEventListeners(lifetime, 'abort').length;
+
+			for (let index = 0; index < 5; index += 1) {
+				await service.prepare(PORT);
+			}
+
+			await tick();
+			expect(getEventListeners(lifetime, 'abort').length).toBe(baseline);
 		});
 
 		it('rejects at once when no budget is left', async () => {
