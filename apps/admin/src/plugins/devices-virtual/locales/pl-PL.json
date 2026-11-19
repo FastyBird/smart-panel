@@ -651,6 +651,10 @@
 			"graph_ineligible": "Zależności źródeł są niedostępne",
 			"missing_input_role": "Wybierz oba wymagane typy źródeł",
 			"graph_validation_pending": "Trwa sprawdzanie zależności źródeł"
+		},
+		"separateDevices": {
+			"title": "Temperatura i wilgotność pochodzą z różnych urządzeń",
+			"message": "Oddzielne czujniki raportują w niezależnych momentach, więc ich odczyty rzadko mieszczą się w maksymalnym przesunięciu czasu próbek ({skew} s), a punkt rosy jest często niedostępny. Wybierz oba wejścia z jednego połączonego czujnika temperatury i wilgotności."
 		}
 	},
 	"nativeThermostat": {

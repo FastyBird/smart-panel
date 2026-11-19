@@ -651,6 +651,10 @@
 			"graph_ineligible": "Quellabhängigkeiten sind nicht verfügbar",
 			"missing_input_role": "Wählen Sie beide erforderlichen Quelltypen",
 			"graph_validation_pending": "Quellabhängigkeiten werden geprüft"
+		},
+		"separateDevices": {
+			"title": "Temperatur und Luftfeuchtigkeit stammen von verschiedenen Geräten",
+			"message": "Getrennte Sensoren melden zu unabhängigen Zeitpunkten, daher liegen ihre Messwerte selten innerhalb des maximalen Zeitversatzes ({skew} s) und der Taupunkt ist oft nicht verfügbar. Wählen Sie beide Eingänge von einem kombinierten Temperatur- und Feuchtesensor."
 		}
 	},
 	"nativeThermostat": {
