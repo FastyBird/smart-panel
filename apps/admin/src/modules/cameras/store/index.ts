@@ -2,7 +2,7 @@ export * from './keys';
 
 export { registerCamerasStore, useCameras } from './cameras.store';
 export { registerRelayStatusStore, useRelayStatus } from './relay-status.store';
-export type { IRelayStatus, IRelayStatusStoreActions, IRelayStatusStoreState, RelayStatusStoreSetup } from './relay-status.store';
+export type { IRelayStatus, IRelayStatusStoreActions, IRelayStatusStoreState, RelayStatusStoreSetup } from './relay-status.store.types';
 export type {
 	ICamera,
 	ICameraProfile,

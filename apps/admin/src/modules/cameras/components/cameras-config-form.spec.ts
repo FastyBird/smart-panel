@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
-import { camelToSnake } from '../../../common';
 import { CamerasModuleDataGo2rtcConfigMode } from '../../../openapi.constants';
-import { FormResult } from '../../config';
+import { ConfigApiException, ConfigValidationException, FormResult } from '../../config';
+import { transformConfigModuleUpdateRequest } from '../../config/store/config-modules.store.transformers';
 import type { ICamerasConfigEditForm } from '../schemas/config.schemas';
-import { CamerasConfigUpdateReqSchema } from '../schemas/config.schemas';
+import { CamerasConfigEditFormSchema, CamerasConfigUpdateReqSchema } from '../schemas/config.schemas';
 
 import CamerasConfigForm from './cameras-config-form.vue';
 
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 	release: vi.fn(),
 	startPolling: vi.fn(),
 	status: { value: null as unknown },
+	flashError: vi.fn(),
 }));
 
 vi.mock('vue-i18n', () => ({
@@ -29,6 +30,7 @@ vi.mock('../../../common', async () => {
 
 	return {
 		...actual,
+		useFlashMessage: () => ({ error: mocks.flashError, success: vi.fn(), info: vi.fn(), warning: vi.fn() }),
 		injectStoresManager: () => ({
 			getStore: () => ({
 				startPolling: mocks.startPolling,
@@ -64,29 +66,44 @@ const mountForm = () =>
 describe('CamerasConfigForm', () => {
 	let model: ICamerasConfigEditForm;
 	let sent: unknown;
+	let formResult: ReturnType<typeof ref<string>>;
 
 	const setup = (mode: CamerasModuleDataGo2rtcConfigMode) => {
 		model = makeModel(mode);
 		sent = undefined;
+		formResult = ref<string>(FormResult.NONE);
 
 		mocks.editForm.mockReset().mockReturnValue({
 			formEl: ref(undefined),
 			model,
 			formChanged: ref(false),
-			// Stands in for the request the generic hook builds: the edit model in snake_case through the module schema.
+			// What the generic hook and the config store do: gate the model with the edit form schema, then build the
+			// request with the real transformer and the module's update request schema.
 			submit: vi.fn().mockImplementation(async () => {
-				sent = CamerasConfigUpdateReqSchema.parse(camelToSnake({ ...model }));
+				const parsed = CamerasConfigEditFormSchema.safeParse(model);
+
+				if (!parsed.success) {
+					throw new ConfigValidationException('Failed to validate create module model.');
+				}
+
+				sent = transformConfigModuleUpdateRequest(parsed.data as never, CamerasConfigUpdateReqSchema);
 
 				return 'saved';
 			}),
-			formResult: ref(FormResult.NONE),
+			formResult,
 		});
+	};
+
+	const submit = async (wrapper: ReturnType<typeof mountForm>): Promise<void> => {
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
 	};
 
 	beforeEach(() => {
 		mocks.release.mockReset();
 		mocks.startPolling.mockReset().mockReturnValue(mocks.release);
 		mocks.status.value = null;
+		mocks.flashError.mockReset();
 
 		setup(CamerasModuleDataGo2rtcConfigMode.managed);
 	});
@@ -117,8 +134,7 @@ describe('CamerasConfigForm', () => {
 	it('sends the update request with snake_case keys', async () => {
 		const wrapper = mountForm();
 
-		await wrapper.setProps({ remoteFormSubmit: true });
-		await flushPromises();
+		await submit(wrapper);
 
 		expect(sent).toEqual({
 			type: 'cameras-module',
@@ -128,6 +144,47 @@ describe('CamerasConfigForm', () => {
 			max_sessions_per_camera: 4,
 		});
 		expect(wrapper.emitted('update:remote-form-submit')?.[0]).toEqual([false]);
+		expect(mocks.flashError).not.toHaveBeenCalled();
+	});
+
+	it('saves outside managed mode with an invalid stored binary path and leaves the path out', async () => {
+		setup(CamerasModuleDataGo2rtcConfigMode.external);
+		model.go2rtc.binaryPath = 'go2rtc';
+		model.go2rtc.externalUrl = 'http://192.168.1.5:1984';
+
+		await submit(mountForm());
+
+		expect(sent).toEqual({
+			type: 'cameras-module',
+			enabled: true,
+			go2rtc: { mode: 'external', external_url: 'http://192.168.1.5:1984' },
+			max_sessions: 8,
+			max_sessions_per_camera: 4,
+		});
+		expect(mocks.flashError).not.toHaveBeenCalled();
+	});
+
+	it('tells the user when the form does not validate', async () => {
+		model.go2rtc.binaryPath = 'go2rtc';
+
+		await submit(mountForm());
+
+		expect(sent).toBeUndefined();
+		expect(mocks.flashError).toHaveBeenCalledWith('camerasModule.config.messages.invalid');
+	});
+
+	it('does not add a second message when saving failed, which the edit form already reported', async () => {
+		const wrapper = mountForm();
+
+		(mocks.editForm.mock.results[0].value.submit as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+			formResult.value = FormResult.ERROR;
+
+			throw new ConfigApiException('Failed to update module config.', 500);
+		});
+
+		await submit(wrapper);
+
+		expect(mocks.flashError).not.toHaveBeenCalled();
 	});
 
 	it('polls the relay status while mounted and releases it on unmount', () => {

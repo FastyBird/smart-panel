@@ -11,7 +11,7 @@ import {
 	CamerasModuleDataRelayStatusState,
 	UsersModuleUserRole,
 } from '../../../openapi.constants';
-import type { IRelayStatus } from '../store/relay-status.store';
+import type { IRelayStatus } from '../store/relay-status.store.types';
 
 import RelayStatusChip from './relay-status-chip.vue';
 

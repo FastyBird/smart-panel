@@ -1,8 +1,6 @@
-import { type Ref, ref } from 'vue';
+import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
-
-import { z } from 'zod';
 
 import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend, useLogger } from '../../../common';
@@ -10,23 +8,8 @@ import { CAMERAS_MODULE_PREFIX, RELAY_STATUS_POLL_MS } from '../cameras.constant
 import { CamerasApiException } from '../cameras.exceptions';
 import { readErrorMessage } from '../cameras.utils';
 
-import { RelayStatusSchema } from './relay-status.store.schemas';
+import type { IRelayStatus, IRelayStatusStoreActions, IRelayStatusStoreState, RelayStatusStoreSetup } from './relay-status.store.types';
 import { transformRelayStatusResponse } from './relay-status.transformers';
-
-export type IRelayStatus = z.infer<typeof RelayStatusSchema>;
-
-export interface IRelayStatusStoreState {
-	status: Ref<IRelayStatus | null>;
-}
-
-export interface IRelayStatusStoreActions {
-	get: () => Promise<IRelayStatus>;
-	startPolling: () => () => void;
-	isLoaded: () => boolean;
-	refresh: () => Promise<unknown>;
-}
-
-export type RelayStatusStoreSetup = IRelayStatusStoreState & IRelayStatusStoreActions;
 
 export const useRelayStatus = defineStore<'cameras_module-relay_status', RelayStatusStoreSetup>(
 	'cameras_module-relay_status',

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import { CamerasModuleDataGo2rtcConfigMode, CamerasModuleDataRelayStatusReason, CamerasModuleDataRelayStatusState } from '../../../openapi.constants';
-import type { IRelayStatus } from '../store/relay-status.store';
+import type { IRelayStatus } from '../store/relay-status.store.types';
 
 import RelayStatusPanel from './relay-status-panel.vue';
 

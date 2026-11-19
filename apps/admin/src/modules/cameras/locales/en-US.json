@@ -153,7 +153,8 @@
 		},
 		"messages": {
 			"edited": "Cameras settings were saved.",
-			"notEdited": "Cameras settings could not be saved."
+			"notEdited": "Cameras settings could not be saved.",
+			"invalid": "Some settings are not valid. Check them and try again."
 		}
 	}
 }

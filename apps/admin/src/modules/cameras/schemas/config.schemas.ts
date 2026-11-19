@@ -65,7 +65,6 @@ export const isValidGo2rtcExternalUrl = (value: unknown): value is string => {
 const ModeSchema = z.nativeEnum(CamerasModuleDataGo2rtcConfigMode);
 const MaxSessionsSchema = z.number().int().min(MAX_SESSIONS_MIN).max(MAX_SESSIONS_MAX);
 const MaxSessionsPerCameraSchema = z.number().int().min(MAX_SESSIONS_PER_CAMERA_MIN).max(MAX_SESSIONS_PER_CAMERA_MAX);
-const BinaryPathSchema = z.string().refine(isValidGo2rtcBinaryPath);
 
 // STORE STATE
 // ===========
@@ -86,18 +85,23 @@ export const CamerasConfigSchema = ConfigModuleSchema.extend({
 // =========
 
 // The form model's gate: `useConfigModuleEditForm`'s `submit()` parses the live model against it before sending.
-// An empty external URL becomes `null`, and external mode requires a valid one.
+// The binary path is checked only in managed mode, the only mode that uses it, so a stored invalid path cannot block
+// saving another mode. An empty external URL becomes `null`, and external mode requires a valid one.
 export const CamerasConfigEditFormSchema = ConfigModuleEditFormSchema.extend({
 	go2rtc: z
 		.object({
 			mode: ModeSchema,
-			binaryPath: BinaryPathSchema,
+			binaryPath: z.string(),
 			externalUrl: z
 				.string()
 				.nullable()
 				.transform((value): string | null => (value === null || value.trim() === '' ? null : value.trim())),
 		})
 		.superRefine((go2rtc, context) => {
+			if (go2rtc.mode === CamerasModuleDataGo2rtcConfigMode.managed && !isValidGo2rtcBinaryPath(go2rtc.binaryPath)) {
+				context.addIssue({ code: 'custom', path: ['binaryPath'], message: 'Invalid binary path' });
+			}
+
 			if (go2rtc.externalUrl !== null && !isValidGo2rtcExternalUrl(go2rtc.externalUrl)) {
 				context.addIssue({ code: 'custom', path: ['externalUrl'], message: 'Invalid external URL' });
 			} else if (go2rtc.mode === CamerasModuleDataGo2rtcConfigMode.external && go2rtc.externalUrl === null) {
@@ -113,14 +117,23 @@ export type ICamerasConfigEditForm = z.infer<typeof CamerasConfigEditFormSchema>
 // BACKEND API
 // ===========
 
+// The binary path is sent only with managed mode (or with no mode, as a partial update), and must be valid then.
 export const CamerasConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigModuleUpdateReqSchema.and(
 	z.object({
 		type: z.literal(CAMERAS_MODULE_NAME),
 		go2rtc: z
 			.object({
 				mode: ModeSchema.optional(),
-				binary_path: BinaryPathSchema.optional(),
+				binary_path: z.string().optional(),
 				external_url: z.string().nullable().optional(),
+			})
+			.transform(({ binary_path, ...go2rtc }) =>
+				go2rtc.mode === undefined || go2rtc.mode === CamerasModuleDataGo2rtcConfigMode.managed ? { ...go2rtc, binary_path } : go2rtc
+			)
+			.superRefine((go2rtc, context) => {
+				if ('binary_path' in go2rtc && go2rtc.binary_path !== undefined && !isValidGo2rtcBinaryPath(go2rtc.binary_path)) {
+					context.addIssue({ code: 'custom', path: ['binary_path'], message: 'Invalid binary path' });
+				}
 			})
 			.optional(),
 		max_sessions: MaxSessionsSchema.optional(),

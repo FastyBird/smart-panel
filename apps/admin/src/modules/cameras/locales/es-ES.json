@@ -153,7 +153,8 @@
 		},
 		"messages": {
 			"edited": "Los ajustes de cámaras se han guardado.",
-			"notEdited": "No se pudieron guardar los ajustes de cámaras."
+			"notEdited": "No se pudieron guardar los ajustes de cámaras.",
+			"invalid": "Algunos ajustes no son válidos. Revísalos e inténtalo de nuevo."
 		}
 	}
 }

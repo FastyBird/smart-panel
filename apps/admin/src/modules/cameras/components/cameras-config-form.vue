@@ -105,13 +105,13 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElRadio, ElRadioGroup, type FormRules } from 'element-plus';
 
-import { injectStoresManager } from '../../../common';
+import { injectStoresManager, useFlashMessage } from '../../../common';
 import { CamerasModuleDataGo2rtcConfigMode } from '../../../openapi.constants';
 import { FormResult, type FormResultType, Layout, type LayoutType, useConfigModuleEditForm } from '../../config';
 import type { IConfigModule } from '../../config/store/config-modules.store.types';
 import { type ICamerasConfigEditForm, isValidGo2rtcBinaryPath, isValidGo2rtcExternalUrl } from '../schemas/config.schemas';
 import { relayStatusStoreKey } from '../store/keys';
-import type { IRelayStatus } from '../store/relay-status.store';
+import type { IRelayStatus } from '../store/relay-status.store.types';
 
 import RelayStatusPanel from './relay-status-panel.vue';
 
@@ -144,6 +144,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 const modes = [CamerasModuleDataGo2rtcConfigMode.managed, CamerasModuleDataGo2rtcConfigMode.external, CamerasModuleDataGo2rtcConfigMode.disabled];
 
@@ -223,8 +224,12 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			submit().catch(() => {
-				// The form is not valid
+			submit().catch((): void => {
+				// A failed save is already reported by the edit form, which marks the result as an error first; anything
+				// else is a model that did not validate, which would otherwise fail without a word.
+				if (formResult.value !== FormResult.ERROR) {
+					flashMessage.error(t('camerasModule.config.messages.invalid'));
+				}
 			});
 		}
 	}

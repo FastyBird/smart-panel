@@ -153,7 +153,8 @@
 		},
 		"messages": {
 			"edited": "Nastavenie kamier bolo uložené.",
-			"notEdited": "Nastavenie kamier sa nepodarilo uložiť."
+			"notEdited": "Nastavenie kamier sa nepodarilo uložiť.",
+			"invalid": "Niektoré nastavenia nie sú platné. Skontrolujte ich a skúste to znova."
 		}
 	}
 }

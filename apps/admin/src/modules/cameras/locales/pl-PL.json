@@ -153,7 +153,8 @@
 		},
 		"messages": {
 			"edited": "Ustawienia kamer zostały zapisane.",
-			"notEdited": "Nie udało się zapisać ustawień kamer."
+			"notEdited": "Nie udało się zapisać ustawień kamer.",
+			"invalid": "Niektóre ustawienia są nieprawidłowe. Sprawdź je i spróbuj ponownie."
 		}
 	}
 }

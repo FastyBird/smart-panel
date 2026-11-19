@@ -2,8 +2,8 @@ import { logger, snakeToCamel } from '../../../common';
 import type { CamerasModuleStatusSchema } from '../../../openapi.constants';
 import { CamerasValidationException } from '../cameras.exceptions';
 
-import type { IRelayStatus } from './relay-status.store';
 import { RelayStatusSchema } from './relay-status.store.schemas';
+import type { IRelayStatus } from './relay-status.store.types';
 
 export const transformRelayStatusResponse = (response: CamerasModuleStatusSchema): IRelayStatus => {
 	const parsed = RelayStatusSchema.safeParse(snakeToCamel(response));
