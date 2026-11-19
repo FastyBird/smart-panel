@@ -89,6 +89,9 @@ describe('design system lint rules', () => {
 			sfc('<p :class="`${{ \'text-primary\': true }}`"></p>'),
 			sfc("<p :class=\"`${['text-primary', 'font-600']} x`\"></p>"),
 			sfc("<p :class=\"'a ' + { 'text-primary': on }\"></p>"),
+			// Spreading an array or a string into an object gives index keys, not these classes
+			sfc('<p :class="{ ...[\'text-primary\'] }"></p>'),
+			sfc('<p :class="{ ...\'text-primary\' }"></p>'),
 			// A computed key is a property name: the array becomes `text-primary,font-600`
 			sfc("<p :class=\"{ [['text-primary', 'font-600']]: active }\"></p>"),
 		],
@@ -97,6 +100,8 @@ describe('design system lint rules', () => {
 			{ ...sfc("<p :class=\"highlighted ? 'text-primary' : 'text-default'\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="{ \'text-primary\': highlighted }"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="[highlighted && \'text-primary\']"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc('<p :class="{ ...{ \'text-primary\': on } }"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc('<p :class="[...[\'text-primary\']]"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"'text-' + 'primary'\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"'text-sm ' + (on ? 'text-primary' : '') + ' ' + extra\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="`${size} text-primary`"></p>'), errors: [{ messageId: 'body' }] },
@@ -129,6 +134,11 @@ describe('design system lint rules', () => {
 			sfc('<div></div>', '<style lang="scss">\n// previous colour #fff\n.x { color: var(--el-color-primary); content: "#fff"; }\n</style>'),
 			// A semicolon in a selector's attribute string does not end it
 			sfc('<div></div>', '<style>\n#abc[data-x="a;b"] { display: block; }\n</style>'),
+			// Indented syntax: a line without `property:` is a selector
+			sfc('<div></div>', '<style lang="sass">\n#abc\n  display: block\na, #fade:hover\n  color: var(--el-color-danger)\n</style>'),
+			sfc('<div></div>', '<style lang="stylus">\n#abc\n  display: block\n</style>'),
+			// Selector at-rules
+			sfc('<div></div>', '<style lang="scss">\n.x {\n\t@extend #abc;\n}\n@at-root #fade {\n\tdisplay: none;\n}\n</style>'),
 			// ID selectors are not colours
 			sfc('<div></div>', '<style>\n#abc { display: block; }\na:hover, #fade > span {\n\tcolor: var(--el-color-danger);\n}\n</style>'),
 			sfc('<div></div>', '<style lang="scss">\n.box {\n\t#bad {\n\t\tdisplay: none;\n\t}\n}\n</style>'),
@@ -139,6 +149,14 @@ describe('design system lint rules', () => {
 			{ ...sfc('<div style="color: #f56c6c"></div>'), errors: [{ messageId: 'hex', data: { value: '#f56c6c' } }] },
 			{ ...sfc('<div></div>', '<script setup lang="ts">\nconst colour = \'#909399\';\n</script>'), errors: [{ messageId: 'hex' }] },
 			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder-color: #fff;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			// Indented syntax: declarations are still checked
+			{ ...sfc('<div></div>', '<style lang="sass">\n#abc\n  color: #fff\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			// At-rule conditions are values, not selectors
+			{
+				...sfc('<div></div>', '<style>\n@supports (color: #fff) {\n\t.x { display: block; }\n}\n</style>'),
+				errors: [{ messageId: 'hex', line: 2 }],
+			},
+			{ ...sfc('<div></div>', '<style>\n@container style(--tone: #abc) {\n\t.x { display: block; }\n}\n</style>'), errors: [{ messageId: 'hex' }] },
 			// A brace inside a comment does not turn a declaration into a selector
 			{ ...sfc('<div></div>', '<style>\n.x { color: #fff /* { */; }\n</style>'), errors: [{ messageId: 'hex', line: 2 }] },
 			// `//` is not a comment in plain CSS

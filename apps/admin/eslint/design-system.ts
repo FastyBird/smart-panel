@@ -88,7 +88,11 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 		case 'ObjectExpression':
 			for (const property of current.properties as TemplateNode[]) {
 				if (property.type === 'SpreadElement') {
-					collectExpressionClasses(property.argument, found, owner);
+					// Object spread copies own keys: an object literal's keys are classes, but an array or a string
+					// spreads index keys (`0`, `1`), and other values are unknown at lint time
+					if ((property.argument as TemplateNode | undefined)?.type === 'ObjectExpression') {
+						collectExpressionClasses(property.argument, found, owner);
+					}
 
 					continue;
 				}
@@ -444,6 +448,8 @@ interface IStyleBlock {
 	end: number;
 	/** SCSS, Sass, Less and Stylus also have `//` line comments */
 	lineComments: boolean;
+	/** Sass (indented) and Stylus: rules have no braces, a line is a selector or a declaration */
+	indented: boolean;
 }
 
 /** The bodies of the `<style>` blocks, from the parsed SFC */
@@ -457,6 +463,7 @@ const styleBlocks = (context: Rule.RuleContext): IStyleBlock[] =>
 				start: child.startTag!.range[1],
 				end: child.endTag!.range[0],
 				lineComments: typeof lang === 'string' && ['scss', 'sass', 'less', 'styl', 'stylus'].includes(lang.toLowerCase()),
+				indented: typeof lang === 'string' && ['sass', 'styl', 'stylus'].includes(lang.toLowerCase()),
 			};
 		});
 
@@ -527,7 +534,33 @@ const cssCode = (text: string, block: IStyleBlock): string => {
 };
 
 /** Whether the hash at `offset` of the code is followed by `{` before any `;` or `}`, which makes it part of a selector */
-const isCssSelectorHash = (code: string, offset: number): boolean => {
+/** At-rules whose prelude is a selector: `@extend #abc;`, `@at-root #abc { … }` */
+const SELECTOR_AT_RULES = ['extend', 'at-root'];
+
+/**
+ * Whether the hash at `offset` of the code is part of a selector rather than a value.
+ *
+ * - The statement it belongs to starts after the last `{`, `}` or `;` (or, in indented syntax, at its line).
+ * - An at-rule prelude is a value (`@supports (color: #fff)`), except for `@extend` and `@at-root`.
+ * - Indented syntax: a line is a declaration when it starts with `property:`; any other line is a selector.
+ * - Otherwise the hash is in a selector when `{` follows before the statement ends with `;` or `}`.
+ */
+const isCssSelectorHash = (code: string, offset: number, indented: boolean): boolean => {
+	const before = code.slice(0, offset);
+	const statementStart = indented
+		? before.lastIndexOf('\n') + 1
+		: Math.max(before.lastIndexOf('{'), before.lastIndexOf('}'), before.lastIndexOf(';')) + 1;
+	const prelude = before.slice(statementStart).trimStart();
+	const atRule = /^@([\w-]+)/.exec(prelude);
+
+	if (atRule) {
+		return SELECTOR_AT_RULES.includes((atRule[1] ?? '').toLowerCase());
+	}
+
+	if (indented) {
+		return !/^[\w-]+\s*:/.test(prelude);
+	}
+
 	const rest = code.slice(offset);
 	const brace = rest.search(/[{;}]/);
 
@@ -589,7 +622,7 @@ const noHexColours: Rule.RuleModule = {
 				const code = cssCode(text, block);
 
 				for (const match of code.matchAll(HEX_COLOUR)) {
-					if (!isCssSelectorHash(code, match.index)) {
+					if (!isCssSelectorHash(code, match.index, block.indented)) {
 						report(block.start + match.index, match[0]);
 					}
 				}
