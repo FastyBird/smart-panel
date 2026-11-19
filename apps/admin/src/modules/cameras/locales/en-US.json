@@ -12,7 +12,6 @@
 		"live": "LIVE",
 		"snapshotAge": "{seconds} s ago",
 		"play": "Play live view",
-		"connecting": "Connecting",
 		"codecUnsupported": "This browser cannot play this stream. Try Chrome, Edge or Safari.",
 		"offline": "Camera is offline",
 		"lastSeen": "Last seen {time}",
@@ -50,7 +49,6 @@
 		"unknown": "This stream is not available."
 	},
 	"profiles": {
-		"heading": "Stream profiles",
 		"selector": "Stream profile",
 		"columns": {
 			"name": "Profile",
@@ -67,6 +65,6 @@
 		"heading": "Camera",
 		"noStream": "This device does not provide a camera stream.",
 		"noLiveView": "Live view is not available for this camera.",
-		"snapshotUnavailable": "No snapshot is available."
+		"loadFailed": "Could not load the camera."
 	}
 }

@@ -42,10 +42,23 @@
 		</empty-state>
 
 		<empty-state
-			v-else-if="loadError !== null"
+			v-else-if="loadError === 'not_found'"
 			icon="mdi:cctv-off"
 			:description="t('camerasModule.section.noStream')"
 		/>
+
+		<empty-state
+			v-else-if="loadError === 'failed'"
+			icon="mdi:alert-circle-outline"
+			:description="t('camerasModule.section.loadFailed')"
+		>
+			<el-button
+				data-test-id="camera-section-retry"
+				@click="load"
+			>
+				{{ t('camerasModule.buttons.retry') }}
+			</el-button>
+		</empty-state>
 
 		<div
 			v-else-if="camera !== null"
@@ -88,7 +101,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElLink, ElOption, ElSelect, ElText } from 'element-plus';
+import { ElButton, ElCard, ElLink, ElOption, ElSelect, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -119,7 +132,7 @@ const { t } = useI18n();
 const camerasStore = injectStoresManager().getStore(camerasStoreKey);
 const { profile: currentUser } = useSession();
 
-const loadError = ref<'module_disabled' | 'failed' | null>(null);
+const loadError = ref<'module_disabled' | 'not_found' | 'failed' | null>(null);
 const selectedProfile = ref<string | null>(null);
 
 const camera = computed<ICamera | null>(() => camerasStore.findById(props.device.id));
@@ -138,20 +151,35 @@ const settingsRoute = { name: ConfigRouteNames.CONFIG_MODULE_EDIT, params: { mod
 const snapshot = useCameraSnapshot(() => props.device.id, { active: () => camera.value !== null && !canPlay.value });
 
 const unavailableSentence = computed<string>(() => {
+	if (camera.value?.liveView === false) {
+		return t('camerasModule.section.noLiveView');
+	}
+
 	const reason = camera.value?.profiles.find((profile) => !profile.available)?.unavailableReason ?? null;
 
 	return reason !== null ? t(cameraReasonSentenceKey(reason)) : t('camerasModule.section.noLiveView');
 });
 
+let loadId = 0;
+
 const load = async (): Promise<void> => {
+	const id = ++loadId;
+
 	loadError.value = null;
 
 	try {
 		await camerasStore.get({ deviceId: props.device.id });
 	} catch (error) {
-		const code = error instanceof CamerasApiException ? error.code : null;
+		// A response for a device the section has since switched away from changes nothing.
+		if (id !== loadId) {
+			return;
+		}
 
-		loadError.value = code !== null && isModuleDisabledError(code, { message: (error as Error).message }) ? 'module_disabled' : 'failed';
+		if (error instanceof CamerasApiException && error.code === 404) {
+			loadError.value = isModuleDisabledError(error.code, { message: error.message }) ? 'module_disabled' : 'not_found';
+		} else {
+			loadError.value = 'failed';
+		}
 	}
 };
 

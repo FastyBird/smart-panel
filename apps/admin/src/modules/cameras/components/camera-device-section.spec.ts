@@ -1,5 +1,5 @@
 /* eslint-disable vue/one-component-per-file, vue/require-prop-types */
-import { computed, defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, reactive, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -127,7 +127,7 @@ const mountSection = async (): Promise<VueWrapper> => {
 describe('CameraDeviceSection', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mocks.cameras = {};
+		mocks.cameras = reactive({});
 		mocks.role = ref(UsersModuleUserRole.admin);
 		mocks.get.mockImplementation(() => Promise.resolve(mocks.cameras['cam-1']));
 	});
@@ -192,5 +192,55 @@ describe('CameraDeviceSection', () => {
 		mocks.get.mockRejectedValue(new CamerasApiException('Cameras module is disabled', 404));
 
 		expect((await mountSection()).find('[data-test-id="settings-link"]').exists()).toBe(false);
+	});
+
+	it('shows a load failure with Retry for a 503 and reloads on Retry', async () => {
+		mocks.get.mockRejectedValueOnce(new CamerasApiException('Service unavailable', 503));
+
+		const wrapper = await mountSection();
+
+		expect(wrapper.find('[data-test-id="empty-state"]').text()).toBe('camerasModule.section.loadFailed');
+
+		mocks.cameras['cam-1'] = camera();
+
+		await wrapper.find('[data-test-id="camera-section-retry"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.get).toHaveBeenCalledTimes(2);
+		expect(wrapper.find('[data-test-id="empty-state"]').exists()).toBe(false);
+		expect(wrapper.findComponent(CameraPlayerStub).exists()).toBe(true);
+	});
+
+	it('shows a load failure for a rejected network call, not the no stream state', async () => {
+		mocks.get.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+		const wrapper = await mountSection();
+
+		expect(wrapper.find('[data-test-id="empty-state"]').text()).toBe('camerasModule.section.loadFailed');
+		expect(wrapper.find('[data-test-id="camera-section-retry"]').exists()).toBe(true);
+	});
+
+	it('shows the live view reason first for a camera with live view off', async () => {
+		mocks.cameras['cam-1'] = camera({ liveView: false, profiles: [profile('high', false, 'camera_offline')] });
+
+		expect((await mountSection()).find('[data-test-id="camera-section-reason"]').text()).toBe('camerasModule.section.noLiveView');
+	});
+
+	it('ignores a slow failure for the previous device after a switch', async () => {
+		let rejectFirst: (error: Error) => void = () => undefined;
+
+		mocks.get.mockImplementationOnce(() => new Promise((_, reject) => (rejectFirst = reject)));
+		mocks.get.mockImplementationOnce(() => Promise.resolve(mocks.cameras['cam-2']));
+		mocks.cameras['cam-2'] = camera({ deviceId: 'cam-2' });
+
+		const wrapper = await mountSection();
+
+		await wrapper.setProps({ device: { id: 'cam-2', category: DevicesModuleDeviceCategory.camera } });
+		await flushPromises();
+
+		rejectFirst(new CamerasApiException('Service unavailable', 503));
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="empty-state"]').exists()).toBe(false);
 	});
 });

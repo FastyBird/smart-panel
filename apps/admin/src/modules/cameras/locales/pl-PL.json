@@ -12,7 +12,6 @@
 		"live": "LIVE",
 		"snapshotAge": "{seconds} s temu",
 		"play": "Odtwórz podgląd na żywo",
-		"connecting": "Łączenie",
 		"codecUnsupported": "Ta przeglądarka nie może odtworzyć tego strumienia. Spróbuj użyć Chrome, Edge lub Safari.",
 		"offline": "Kamera jest offline",
 		"lastSeen": "Ostatnio widziana {time}",
@@ -50,7 +49,6 @@
 		"unknown": "Ten strumień jest niedostępny."
 	},
 	"profiles": {
-		"heading": "Profile strumienia",
 		"selector": "Profil strumienia",
 		"columns": {
 			"name": "Profil",
@@ -67,6 +65,6 @@
 		"heading": "Kamera",
 		"noStream": "To urządzenie nie udostępnia strumienia z kamery.",
 		"noLiveView": "Podgląd na żywo jest niedostępny dla tej kamery.",
-		"snapshotUnavailable": "Zdjęcie jest niedostępne."
+		"loadFailed": "Nie udało się załadować kamery."
 	}
 }

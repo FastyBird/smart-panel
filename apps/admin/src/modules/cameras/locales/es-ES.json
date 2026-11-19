@@ -12,7 +12,6 @@
 		"live": "LIVE",
 		"snapshotAge": "hace {seconds} s",
 		"play": "Reproducir vista en directo",
-		"connecting": "Conectando",
 		"codecUnsupported": "Este navegador no puede reproducir esta transmisión. Prueba con Chrome, Edge o Safari.",
 		"offline": "La cámara está sin conexión",
 		"lastSeen": "Visto por última vez {time}",
@@ -50,7 +49,6 @@
 		"unknown": "Esta transmisión no está disponible."
 	},
 	"profiles": {
-		"heading": "Perfiles de transmisión",
 		"selector": "Perfil de transmisión",
 		"columns": {
 			"name": "Perfil",
@@ -67,6 +65,6 @@
 		"heading": "Cámara",
 		"noStream": "Este dispositivo no ofrece una transmisión de cámara.",
 		"noLiveView": "La vista en directo no está disponible para esta cámara.",
-		"snapshotUnavailable": "No hay ninguna instantánea disponible."
+		"loadFailed": "No se pudo cargar la cámara."
 	}
 }
