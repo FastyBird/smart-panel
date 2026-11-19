@@ -15,6 +15,7 @@ import CameraDeviceSection from './camera-device-section.vue';
 const mocks = vi.hoisted(() => ({
 	cameras: {} as Record<string, unknown>,
 	get: vi.fn(),
+	stop: vi.fn(),
 	role: undefined as unknown as { value: string },
 }));
 
@@ -44,21 +45,14 @@ vi.mock('../../auth/composables/useSession', () => ({
 	useSession: () => ({ profile: computed(() => ({ role: mocks.role.value })) }),
 }));
 
-vi.mock('../composables/useCameraSnapshot', () => ({
-	useCameraSnapshot: () => ({
-		url: ref('blob:snapshot'),
-		ageSeconds: ref(0),
-		takenAt: ref(null),
-		error: ref(null),
-		loading: ref(false),
-		reload: vi.fn(),
-	}),
-}));
-
 const CameraPlayerStub = defineComponent({
 	name: 'CameraPlayer',
-	props: ['deviceId', 'profile', 'variant'],
-	setup: () => () => h('div', { 'data-test-id': 'camera-player-stub' }),
+	props: ['deviceId', 'profile', 'variant', 'snapshotActive'],
+	setup: (_, { expose }) => {
+		expose({ stop: mocks.stop });
+
+		return () => h('div', { 'data-test-id': 'camera-player-stub' });
+	},
 });
 
 const ElSelectStub = defineComponent({
@@ -72,7 +66,7 @@ const ElSelectStub = defineComponent({
 const ElOptionStub = defineComponent({
 	name: 'ElOption',
 	props: ['value', 'label'],
-	setup: (props) => () => h('i', { 'data-test-id': 'profile-option' }, String(props.value)),
+	setup: (props) => () => h('i', { 'data-test-id': 'profile-option', title: props.label }, String(props.value)),
 });
 const CameraProfilesTableStub = defineComponent({
 	name: 'CameraProfilesTable',
@@ -104,9 +98,9 @@ const camera = (overrides: Partial<ICamera> = {}): ICamera => ({
 
 const device = { id: 'cam-1', category: DevicesModuleDeviceCategory.camera } as IDevice;
 
-const mountSection = async (): Promise<VueWrapper> => {
+const mountSection = async (props: { active?: boolean } = {}): Promise<VueWrapper> => {
 	const wrapper = mount(CameraDeviceSection, {
-		props: { device },
+		props: { device, ...props },
 		global: {
 			stubs: {
 				CameraPlayer: CameraPlayerStub,
@@ -148,25 +142,40 @@ describe('CameraDeviceSection', () => {
 		expect((await mountSection()).find('[data-test-id="profiles-table"]').exists()).toBe(true);
 	});
 
-	it('never offers live view for a camera without an available profile', async () => {
-		mocks.cameras['cam-1'] = camera({ profiles: [profile('high', false, 'camera_offline')] });
+	it('labels the profiles by resolution like the live dialog', async () => {
+		mocks.cameras['cam-1'] = camera({ profiles: [profile('high'), { ...profile('medium'), width: null, height: null }] });
 
 		const wrapper = await mountSection();
 
-		expect(wrapper.findComponent(CameraPlayerStub).exists()).toBe(false);
-		expect(wrapper.find('img').attributes('src')).toBe('blob:snapshot');
-		expect(wrapper.find('[data-test-id="camera-section-reason"]').text()).toContain('camerasModule.reasons.camera_offline');
-		expect(wrapper.find('[data-test-id="camera-player-play"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-test-id="profile-option"]').map((option) => option.attributes('title'))).toEqual(['1280\u00d7720', 'medium']);
 	});
 
-	it('never offers live view for a camera with live view turned off', async () => {
-		mocks.cameras['cam-1'] = camera({ liveView: false });
+	it.each([
+		['without an available profile', { profiles: [profile('high', false, 'camera_offline')] }],
+		['with live view turned off', { liveView: false }],
+	])('leaves a camera %s to the player and offers no profile selector', async (_, overrides) => {
+		mocks.cameras['cam-1'] = camera(overrides);
 
 		const wrapper = await mountSection();
 
-		expect(wrapper.findComponent(CameraPlayerStub).exists()).toBe(false);
-		expect(wrapper.find('img').exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="camera-section-reason"]').exists()).toBe(true);
+		// The player shows the snapshot and the reason itself; the section keeps no second snapshot of its own.
+		expect(wrapper.findComponent(CameraPlayerStub).exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="select"]').exists()).toBe(false);
+		expect(wrapper.find('img').exists()).toBe(false);
+	});
+
+	it('stops the player and pauses snapshots while its tab is hidden', async () => {
+		mocks.cameras['cam-1'] = camera();
+
+		const wrapper = await mountSection();
+
+		expect(wrapper.findComponent(CameraPlayerStub).props('snapshotActive')).toBe(true);
+		expect(mocks.stop).not.toHaveBeenCalled();
+
+		await wrapper.setProps({ active: false });
+
+		expect(mocks.stop).toHaveBeenCalledTimes(1);
+		expect(wrapper.findComponent(CameraPlayerStub).props('snapshotActive')).toBe(false);
 	});
 
 	it('shows the empty state on 404', async () => {
@@ -218,12 +227,6 @@ describe('CameraDeviceSection', () => {
 
 		expect(wrapper.find('[data-test-id="empty-state"]').text()).toBe('camerasModule.section.loadFailed');
 		expect(wrapper.find('[data-test-id="camera-section-retry"]').exists()).toBe(true);
-	});
-
-	it('shows the live view reason first for a camera with live view off', async () => {
-		mocks.cameras['cam-1'] = camera({ liveView: false, profiles: [profile('high', false, 'camera_offline')] });
-
-		expect((await mountSection()).find('[data-test-id="camera-section-reason"]').text()).toBe('camerasModule.section.noLiveView');
 	});
 
 	it('ignores a slow failure for the previous device after a switch', async () => {

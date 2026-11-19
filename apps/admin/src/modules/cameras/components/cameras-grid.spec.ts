@@ -197,6 +197,28 @@ describe('CamerasGrid', () => {
 		expect(wrapper.find('[data-test-id="cameras-grid-load-failed"]').exists()).toBe(true);
 	});
 
+	it('offers Retry after a load failure and shows the cameras once a retry succeeds', async () => {
+		mocks.cameras.value = [];
+		mocks.fetch.mockRejectedValueOnce(new CamerasApiException('Service unavailable', 503));
+
+		const wrapper = await mountGrid();
+
+		expect(wrapper.find('[data-test-id="cameras-grid-load-failed"]').exists()).toBe(true);
+
+		mocks.fetch.mockImplementationOnce(async () => {
+			mocks.cameras.value = [camera('cam-1', 'Front door')];
+
+			return mocks.cameras.value;
+		});
+
+		await wrapper.find('[data-test-id="cameras-grid-retry"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.fetch).toHaveBeenCalledTimes(2);
+		expect(wrapper.find('[data-test-id="cameras-grid-load-failed"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-test-id="tile"]')).toHaveLength(1);
+	});
+
 	it('holds relay polling while mounted and releases it on unmount', async () => {
 		const wrapper = await mountGrid();
 

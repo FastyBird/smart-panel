@@ -10,7 +10,7 @@
 				<strong>{{ t('camerasModule.section.heading') }}</strong>
 
 				<el-select
-					v-if="canPlay"
+					v-if="liveAvailable"
 					v-model="selectedProfile"
 					size="small"
 					class="ml-auto w-40"
@@ -20,7 +20,7 @@
 						v-for="item in availableProfiles"
 						:key="item.id"
 						:value="item.id"
-						:label="item.id"
+						:label="cameraProfileLabel(item)"
 					/>
 				</el-select>
 			</div>
@@ -32,7 +32,7 @@
 			:description="t('camerasModule.states.moduleDisabled')"
 		>
 			<router-link
-				v-if="isAdmin"
+				v-if="canOpenSettings"
 				:to="settingsRoute"
 			>
 				<el-link type="primary">
@@ -65,32 +65,13 @@
 			class="flex flex-col gap-4"
 		>
 			<camera-player
-				v-if="canPlay"
 				:key="device.id"
+				ref="player"
 				:device-id="device.id"
 				:profile="selectedProfile"
+				:snapshot-active="active"
 				variant="large"
 			/>
-
-			<div
-				v-else
-				class="camera-section__snapshot"
-			>
-				<img
-					v-if="snapshot.url.value !== null"
-					:src="snapshot.url.value"
-					alt=""
-					class="camera-section__image"
-				/>
-
-				<el-text
-					class="block mt-2"
-					type="info"
-					data-test-id="camera-section-reason"
-				>
-					{{ unavailableSentence }}
-				</el-text>
-			</div>
 
 			<camera-profiles-table :camera="camera" />
 		</div>
@@ -101,36 +82,35 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElLink, ElOption, ElSelect, ElText } from 'element-plus';
+import { ElButton, ElCard, ElLink, ElOption, ElSelect } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { EmptyState, injectStoresManager } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi.constants';
-import { useSession } from '../../auth/composables/useSession';
-import { RouteNames as ConfigRouteNames } from '../../config/config.constants';
-import { CAMERAS_MODULE_NAME } from '../cameras.constants';
 import { CamerasApiException } from '../cameras.exceptions';
-import { isModuleDisabledError } from '../cameras.utils';
-import { useCameraSnapshot } from '../composables/useCameraSnapshot';
+import { cameraProfileLabel, isLiveViewAvailable, isModuleDisabledException } from '../cameras.utils';
+import { useCamerasSettingsLink } from '../composables/useCamerasSettingsLink';
 import type { ICamera, ICameraProfile } from '../store';
 import { camerasStoreKey } from '../store/keys';
 
 import type { ICameraDeviceSectionProps } from './camera-device-section.types';
 import CameraPlayer from './camera-player.vue';
-import { cameraReasonSentenceKey } from './camera-profiles-table.types';
 import CameraProfilesTable from './camera-profiles-table.vue';
 
 defineOptions({
 	name: 'CameraDeviceSection',
 });
 
-const props = defineProps<ICameraDeviceSectionProps>();
+const props = withDefaults(defineProps<ICameraDeviceSectionProps>(), {
+	active: true,
+});
 
 const { t } = useI18n();
 
 const camerasStore = injectStoresManager().getStore(camerasStoreKey);
-const { profile: currentUser } = useSession();
+const { canOpenSettings, settingsRoute } = useCamerasSettingsLink();
+
+const player = ref<InstanceType<typeof CameraPlayer> | null>(null);
 
 const loadError = ref<'module_disabled' | 'not_found' | 'failed' | null>(null);
 const selectedProfile = ref<string | null>(null);
@@ -139,26 +119,8 @@ const camera = computed<ICamera | null>(() => camerasStore.findById(props.device
 
 const availableProfiles = computed<ICameraProfile[]>(() => camera.value?.profiles.filter((profile) => profile.available) ?? []);
 
-// A camera with live view turned off or without an available profile never starts a session.
-const canPlay = computed<boolean>(() => camera.value !== null && camera.value.liveView && availableProfiles.value.length > 0);
-
-const isAdmin = computed<boolean>(
-	() => currentUser.value?.role === UsersModuleUserRole.admin || currentUser.value?.role === UsersModuleUserRole.owner
-);
-
-const settingsRoute = { name: ConfigRouteNames.CONFIG_MODULE_EDIT, params: { module: CAMERAS_MODULE_NAME } };
-
-const snapshot = useCameraSnapshot(() => props.device.id, { active: () => camera.value !== null && !canPlay.value });
-
-const unavailableSentence = computed<string>(() => {
-	if (camera.value?.liveView === false) {
-		return t('camerasModule.section.noLiveView');
-	}
-
-	const reason = camera.value?.profiles.find((profile) => !profile.available)?.unavailableReason ?? null;
-
-	return reason !== null ? t(cameraReasonSentenceKey(reason)) : t('camerasModule.section.noLiveView');
-});
+// The player itself never starts a session for such a camera and says why; the selector would offer nothing.
+const liveAvailable = computed<boolean>(() => isLiveViewAvailable(camera.value));
 
 let loadId = 0;
 
@@ -175,8 +137,10 @@ const load = async (): Promise<void> => {
 			return;
 		}
 
-		if (error instanceof CamerasApiException && error.code === 404) {
-			loadError.value = isModuleDisabledError(error.code, { message: error.message }) ? 'module_disabled' : 'not_found';
+		if (isModuleDisabledException(error)) {
+			loadError.value = 'module_disabled';
+		} else if (error instanceof CamerasApiException && error.code === 404) {
+			loadError.value = 'not_found';
 		} else {
 			loadError.value = 'failed';
 		}
@@ -192,6 +156,16 @@ watch(
 	{ immediate: true }
 );
 
+// The overview tab stays mounted while another tab is open; a live view must not keep streaming behind it.
+watch(
+	() => props.active,
+	(active) => {
+		if (!active) {
+			player.value?.stop();
+		}
+	}
+);
+
 watch(
 	availableProfiles,
 	(profiles) => {
@@ -202,14 +176,3 @@ watch(
 	{ immediate: true }
 );
 </script>
-
-<style scoped>
-.camera-section__image {
-	display: block;
-	width: 100%;
-	max-height: 360px;
-	object-fit: contain;
-	background-color: var(--el-fill-color-darker);
-	border-radius: var(--el-border-radius-base);
-}
-</style>

@@ -12,6 +12,7 @@
 		"live": "LIVE",
 		"snapshotAge": "vor {seconds} s",
 		"play": "Live-Ansicht abspielen",
+		"liveOff": "Live-Ansicht aus",
 		"codecUnsupported": "Dieser Browser kann diesen Stream nicht abspielen. Versuchen Sie Chrome, Edge oder Safari.",
 		"offline": "Kamera ist offline",
 		"lastSeen": "Zuletzt gesehen {time}",
@@ -23,6 +24,12 @@
 		"moduleDisabled": "Das Kameramodul ist ausgeschaltet.",
 		"error": "Live-Ansicht fehlgeschlagen",
 		"retryingIn": "Neuer Versuch in {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Kamera offline, Standbild nicht aktuell",
+		"busy": "Kamera ausgelastet, Standbild nicht aktuell",
+		"unavailable": "Standbild nicht verfügbar",
+		"failed": "Standbild konnte nicht geladen werden"
 	},
 	"buttons": {
 		"retry": "Erneut versuchen",

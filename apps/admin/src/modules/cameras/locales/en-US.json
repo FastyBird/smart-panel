@@ -12,6 +12,7 @@
 		"live": "LIVE",
 		"snapshotAge": "{seconds} s ago",
 		"play": "Play live view",
+		"liveOff": "Live view off",
 		"codecUnsupported": "This browser cannot play this stream. Try Chrome, Edge or Safari.",
 		"offline": "Camera is offline",
 		"lastSeen": "Last seen {time}",
@@ -23,6 +24,12 @@
 		"moduleDisabled": "The Cameras module is turned off.",
 		"error": "Live view failed",
 		"retryingIn": "Retrying in {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Camera offline, snapshot not updated",
+		"busy": "Camera busy, snapshot not updated",
+		"unavailable": "Snapshot not available",
+		"failed": "Could not load the snapshot"
 	},
 	"buttons": {
 		"retry": "Retry",

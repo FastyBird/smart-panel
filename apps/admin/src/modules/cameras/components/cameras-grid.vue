@@ -8,7 +8,7 @@
 			icon="mdi:power-plug-off-outline"
 		>
 			<router-link
-				v-if="isAdmin"
+				v-if="canOpenSettings"
 				:to="settingsRoute"
 			>
 				<el-link
@@ -28,7 +28,15 @@
 		<empty-state
 			:description="t('camerasModule.grid.loadFailed')"
 			icon="mdi:alert-circle-outline"
-		/>
+		>
+			<el-button
+				:loading="loading"
+				data-test-id="cameras-grid-retry"
+				@click="load"
+			>
+				{{ t('camerasModule.buttons.retry') }}
+			</el-button>
+		</empty-state>
 	</div>
 
 	<div
@@ -94,17 +102,13 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCheckTag, ElLink } from 'element-plus';
+import { ElButton, ElCheckTag, ElLink } from 'element-plus';
 
 import { EmptyState, injectStoresManager } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi.constants';
-import { useSession } from '../../auth/composables/useSession';
-import { RouteNames as ConfigRouteNames } from '../../config/config.constants';
 import { devicesStoreKey } from '../../devices/store/keys';
 import { spacesStoreKey } from '../../spaces/store/keys';
-import { CAMERAS_MODULE_NAME } from '../cameras.constants';
-import { CamerasApiException } from '../cameras.exceptions';
-import { isModuleDisabledError } from '../cameras.utils';
+import { isModuleDisabledException } from '../cameras.utils';
+import { useCamerasSettingsLink } from '../composables/useCamerasSettingsLink';
 import type { ICamera } from '../store';
 import { camerasStoreKey, relayStatusStoreKey } from '../store/keys';
 
@@ -124,18 +128,13 @@ const relayStatusStore = storesManager.getStore(relayStatusStoreKey);
 const devicesStore = storesManager.getStore(devicesStoreKey);
 const spacesStore = storesManager.getStore(spacesStoreKey);
 
-const { profile: currentUser } = useSession();
+const { canOpenSettings, settingsRoute } = useCamerasSettingsLink();
 
 const loaded = ref(false);
+const loading = ref(false);
 const loadError = ref<'module_disabled' | 'failed' | null>(null);
 const selectedRoom = ref<string | null>(null);
 const openId = ref<string | null>(null);
-
-const isAdmin = computed<boolean>(
-	() => currentUser.value?.role === UsersModuleUserRole.admin || currentUser.value?.role === UsersModuleUserRole.owner
-);
-
-const settingsRoute = { name: ConfigRouteNames.CONFIG_MODULE_EDIT, params: { module: CAMERAS_MODULE_NAME } };
 
 const cameras = computed<ICamera[]>(() => camerasStore.findAll());
 
@@ -174,20 +173,20 @@ watch(rooms, (next) => {
 });
 
 const load = async (): Promise<void> => {
-	loadError.value = null;
+	loading.value = true;
 
 	try {
 		await camerasStore.fetch();
 	} catch (error) {
-		loadError.value =
-			error instanceof CamerasApiException && error.code === 404 && isModuleDisabledError(error.code, { message: error.message })
-				? 'module_disabled'
-				: 'failed';
+		loadError.value = isModuleDisabledException(error) ? 'module_disabled' : 'failed';
 		loaded.value = true;
 
 		return;
+	} finally {
+		loading.value = false;
 	}
 
+	loadError.value = null;
 	loaded.value = true;
 
 	// The rooms only decorate the grid; the cameras show without them.

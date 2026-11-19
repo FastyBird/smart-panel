@@ -15,7 +15,14 @@ const mocks = vi.hoisted(() => ({
 	retryInMs: undefined as unknown as { value: number | null },
 	reconnect: undefined as unknown as { value: boolean },
 	lastSeen: undefined as unknown as { value: Date | null },
-	snapshot: { url: undefined as unknown as { value: string | null }, ageSeconds: undefined as unknown as { value: number | null } },
+	snapshot: {
+		url: undefined as unknown as { value: string | null },
+		ageSeconds: undefined as unknown as { value: number | null },
+		error: undefined as unknown as { value: string | null },
+	},
+	camera: undefined as unknown as { value: unknown },
+	liveViewOptions: [] as { autoStart?: boolean }[],
+	locale: undefined as unknown as { value: string },
 	snapshotArgs: [] as unknown[][],
 	relayStatus: undefined as unknown as { value: unknown },
 	mime: undefined as unknown as { value: string | null },
@@ -28,15 +35,18 @@ const mocks = vi.hoisted(() => ({
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
 		t: (key: string, params?: Record<string, unknown>) => (params ? `${key}|${JSON.stringify(params)}` : key),
+		locale: mocks.locale,
 	}),
 }));
 
 vi.mock('../../../common', () => ({
 	injectStoresManager: () => ({
+		// One object stands in for the cameras and the relay status store.
 		getStore: () => ({
 			get status() {
 				return mocks.relayStatus.value;
 			},
+			findById: () => mocks.camera.value,
 		}),
 	}),
 }));
@@ -46,16 +56,20 @@ vi.mock('../../auth/composables/useSession', () => ({
 }));
 
 vi.mock('../composables/useLiveView', () => ({
-	useLiveView: () => ({
-		state: mocks.state,
-		retryInMs: mocks.retryInMs,
-		reconnect: mocks.reconnect,
-		lastSeen: computed(() => mocks.lastSeen.value),
-		mime: mocks.mime,
-		start: mocks.start,
-		stop: mocks.stop,
-		retry: mocks.retry,
-	}),
+	useLiveView: (options: { autoStart?: boolean }) => {
+		mocks.liveViewOptions.push(options);
+
+		return {
+			state: mocks.state,
+			retryInMs: mocks.retryInMs,
+			reconnect: mocks.reconnect,
+			lastSeen: computed(() => mocks.lastSeen.value),
+			mime: mocks.mime,
+			start: mocks.start,
+			stop: mocks.stop,
+			retry: mocks.retry,
+		};
+	},
 }));
 
 vi.mock('../composables/useCameraSnapshot', () => ({
@@ -66,13 +80,46 @@ vi.mock('../composables/useCameraSnapshot', () => ({
 			url: mocks.snapshot.url,
 			ageSeconds: mocks.snapshot.ageSeconds,
 			takenAt: ref(null),
-			error: ref(null),
+			error: mocks.snapshot.error,
 			loading: ref(false),
 			mimeType: ref(null),
 			reload: vi.fn(),
 		};
 	},
 }));
+
+const camera = (overrides: Record<string, unknown> = {}) => ({
+	deviceId: 'cam-1',
+	name: 'Front door',
+	category: 'camera',
+	type: 't',
+	liveView: true,
+	profiles: [
+		{
+			id: 'low',
+			channelId: null,
+			width: null,
+			height: null,
+			fps: null,
+			videoCodec: 'h264',
+			audioCodec: null,
+			available: false,
+			unavailableReason: 'camera_offline',
+		},
+		{
+			id: 'high',
+			channelId: null,
+			width: null,
+			height: null,
+			fps: null,
+			videoCodec: 'h264',
+			audioCodec: null,
+			available: true,
+			unavailableReason: null,
+		},
+	],
+	...overrides,
+});
 
 const RouterLinkStub = { props: ['to'], template: '<a data-test-id="settings-link" :data-to="JSON.stringify(to)"><slot /></a>' };
 
@@ -92,6 +139,10 @@ describe('CameraPlayer', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.snapshotArgs.length = 0;
+		mocks.liveViewOptions.length = 0;
+		mocks.snapshot.error = ref<string | null>(null);
+		mocks.locale = ref('en-US');
+		mocks.camera = ref(camera());
 		mocks.state = ref<LiveViewState>('snapshot');
 		mocks.retryInMs = ref<number | null>(null);
 		mocks.reconnect = ref(false);
@@ -212,6 +263,92 @@ describe('CameraPlayer', () => {
 		await wrapper.vm.$nextTick();
 
 		expect(video.muted).toBe(true);
+	});
+
+	it.each([
+		['live view turned off', { liveView: false }, 'camerasModule.section.noLiveView'],
+		[
+			'no available profile',
+			{
+				profiles: [
+					{
+						id: 'low',
+						channelId: null,
+						width: null,
+						height: null,
+						fps: null,
+						videoCodec: 'h264',
+						audioCodec: null,
+						available: false,
+						unavailableReason: 'camera_offline',
+					},
+				],
+			},
+			'camerasModule.reasons.camera_offline',
+		],
+	])('never starts a session for a camera with %s and says why', async (_, overrides, sentence) => {
+		mocks.camera.value = camera(overrides);
+
+		const wrapper = mountPlayer({ autoStart: true });
+
+		expect(mocks.liveViewOptions[0].autoStart).toBe(false);
+		expect(find(wrapper, 'camera-player-play').exists()).toBe(false);
+		expect(find(wrapper, 'camera-player-live-off').text()).toContain('camerasModule.states.liveOff');
+		expect(find(wrapper, 'camera-player-unavailable').text()).toBe(sentence);
+
+		(wrapper.vm as unknown as { start: () => void }).start();
+
+		expect(mocks.start).not.toHaveBeenCalled();
+	});
+
+	it('treats a camera missing from the store as unable to stream', () => {
+		mocks.camera.value = null;
+
+		const wrapper = mountPlayer({ autoStart: true });
+
+		expect(mocks.liveViewOptions[0].autoStart).toBe(false);
+		expect(find(wrapper, 'camera-player-live-off').exists()).toBe(true);
+	});
+
+	it('auto starts a camera that can stream and shows no live off badge', () => {
+		const wrapper = mountPlayer({ autoStart: true });
+
+		expect(mocks.liveViewOptions[0].autoStart).toBe(true);
+		expect(find(wrapper, 'camera-player-live-off').exists()).toBe(false);
+	});
+
+	it('shows only the badge, not the sentence, in a tile', () => {
+		mocks.camera.value = camera({ liveView: false });
+
+		const wrapper = mountPlayer({ variant: 'tile' });
+
+		expect(find(wrapper, 'camera-player-live-off').exists()).toBe(true);
+		expect(find(wrapper, 'camera-player-unavailable').exists()).toBe(false);
+	});
+
+	it.each(['offline', 'busy', 'unavailable', 'failed'])('shows a one line notice for the %s snapshot error instead of the age', (error) => {
+		mocks.snapshot.error.value = error;
+
+		const wrapper = mountPlayer();
+
+		expect(find(wrapper, 'camera-player-snapshot-error').text()).toBe(`camerasModule.snapshotErrors.${error}`);
+		expect(find(wrapper, 'camera-player-age').exists()).toBe(false);
+	});
+
+	it.each(['not_found', 'module_disabled'])('shows no snapshot notice for %s', (error) => {
+		mocks.snapshot.error.value = error;
+
+		expect(find(mountPlayer(), 'camera-player-snapshot-error').exists()).toBe(false);
+	});
+
+	it('formats the last seen time in the app locale', () => {
+		setState('offline');
+		mocks.locale.value = 'de-DE';
+		mocks.lastSeen.value = new Date('2026-11-19T10:00:00Z');
+
+		const expected = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' }).format(mocks.lastSeen.value);
+
+		expect(find(mountPlayer(), 'camera-player-offline').text()).toContain(`camerasModule.states.lastSeen|${JSON.stringify({ time: expected })}`);
 	});
 
 	it('names the supported browsers when the codec is unsupported', () => {

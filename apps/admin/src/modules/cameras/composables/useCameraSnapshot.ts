@@ -66,6 +66,8 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	let inFlight = false;
 	let timer: ReturnType<typeof setInterval> | null = null;
 	let disposed = false;
+	/** Set by an answer that will not change on its own (no camera, module off); only another device or profile clears it. */
+	let halted = false;
 
 	const isActive = (): boolean => (options.active === undefined ? true : toValue(options.active));
 	const isVisible = (): boolean => typeof document === 'undefined' || document.visibilityState === 'visible';
@@ -120,6 +122,11 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 			if (apiError !== undefined || !data) {
 				error.value = mapError(response?.status ?? 0, apiError, response?.headers);
 
+				if (error.value === 'not_found' || error.value === 'module_disabled') {
+					halted = true;
+					stopTimer();
+				}
+
 				return;
 			}
 
@@ -148,13 +155,13 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	const reload = (reloadOptions?: { hq?: boolean }): Promise<void> => load(reloadOptions?.hq ?? options.hq ?? false);
 
 	const onTick = (): void => {
-		if (!inFlight && isVisible() && isActive()) {
+		if (!halted && !inFlight && isVisible() && isActive()) {
 			void reload();
 		}
 	};
 
 	const onVisibilityChange = (): void => {
-		if (!inFlight && isVisible() && isActive()) {
+		if (!halted && !inFlight && isVisible() && isActive()) {
 			void reload();
 		}
 	};
@@ -162,10 +169,17 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	const startTimer = (): void => {
 		const interval = options.refreshMs === undefined ? SNAPSHOT_REFRESH_MS : options.refreshMs;
 
-		if (interval !== null && interval > 0) {
+		if (timer === null && interval !== null && interval > 0) {
 			timer = setInterval(onTick, interval);
 		}
 	};
+
+	function stopTimer(): void {
+		if (timer !== null) {
+			clearInterval(timer);
+			timer = null;
+		}
+	}
 
 	if (typeof document !== 'undefined') {
 		document.addEventListener('visibilitychange', onVisibilityChange);
@@ -182,6 +196,8 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 			takenAt.value = null;
 			mimeType.value = null;
 			error.value = null;
+			halted = false;
+			startTimer();
 
 			if (isVisible() && isActive()) {
 				void reload();
@@ -190,7 +206,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	);
 
 	watch(isActive, (active) => {
-		if (active && !inFlight && isVisible()) {
+		if (active && !halted && !inFlight && isVisible()) {
 			void reload();
 		}
 	});
@@ -202,9 +218,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	onScopeDispose(() => {
 		disposed = true;
 
-		if (timer !== null) {
-			clearInterval(timer);
-		}
+		stopTimer();
 
 		if (typeof document !== 'undefined') {
 			document.removeEventListener('visibilitychange', onVisibilityChange);

@@ -2,7 +2,8 @@ import { resolveIngressBase } from '../../common/utils/ingress.utils';
 import { DevicesModuleDeviceConnectionStatus } from '../../openapi.constants';
 import type { IDevice } from '../devices/store/devices.store.types';
 
-import { CamerasException } from './cameras.exceptions';
+import { CamerasApiException, CamerasException } from './cameras.exceptions';
+import type { ICamera, ICameraProfile } from './store/cameras.store.types';
 
 const MODULE_DISABLED_MESSAGE = 'Cameras module is disabled';
 
@@ -66,6 +67,21 @@ export const readErrorMessage = (error: unknown): string | null => {
 
 export const isModuleDisabledError = (status: number, error: unknown): boolean =>
 	status === 404 && readErrorMessage(error) === MODULE_DISABLED_MESSAGE;
+
+/** A store call rejected because the cameras module is turned off. */
+export const isModuleDisabledException = (error: unknown): boolean =>
+	error instanceof CamerasApiException && error.code === 404 && error.message === MODULE_DISABLED_MESSAGE;
+
+/**
+ * Whether a session can be requested for the camera: the backend offers live view and at least one profile is
+ * available. Anything else would only end in a refused session request.
+ */
+export const isLiveViewAvailable = (camera: ICamera | null | undefined): boolean =>
+	!!camera && camera.liveView && camera.profiles.some((profile) => profile.available);
+
+/** The readable name of a stream profile: its resolution when known, its id otherwise. */
+export const cameraProfileLabel = (profile: ICameraProfile): string =>
+	profile.width != null && profile.height != null ? `${profile.width}\u00d7${profile.height}` : profile.id;
 
 /**
  * `null` when the device or its connection status is unknown, so callers can tell "offline" from "no idea".

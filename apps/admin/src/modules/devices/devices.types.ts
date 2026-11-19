@@ -81,6 +81,9 @@ export interface IDeviceDetailTab {
 /**
  * Content a module renders on the device detail page for every device of the listed categories, regardless of the
  * device's plugin. The host owns the page chrome and the order; the section renders cards only.
+ *
+ * The component receives `device` and `active`. The overview tab that holds it stays mounted while another tab is
+ * open, so `active` is `false` then and the section must stop anything that runs in the background, such as a stream.
  */
 export interface IDeviceCategorySection {
 	id: string;

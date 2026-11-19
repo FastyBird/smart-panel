@@ -160,6 +160,7 @@
 							v-for="section in categorySections"
 							:key="`${section.id}:${device.id}`"
 							:device="device"
+							:active="activeTab === 'overview'"
 						/>
 					</template>
 

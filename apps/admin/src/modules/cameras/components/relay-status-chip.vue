@@ -6,7 +6,7 @@
 		placement="bottom"
 	>
 		<router-link
-			v-if="isAdmin"
+			v-if="canOpenSettings"
 			:to="settingsRoute"
 			class="relay-status-chip"
 			data-test-id="relay-status-chip-link"
@@ -39,10 +39,8 @@ import { useI18n } from 'vue-i18n';
 
 import { ElTag, ElTooltip } from 'element-plus';
 
-import { CamerasModuleDataRelayStatusState, UsersModuleUserRole } from '../../../openapi.constants';
-import { useSession } from '../../auth/composables/useSession';
-import { RouteNames as ConfigRouteNames } from '../../config/config.constants';
-import { CAMERAS_MODULE_NAME } from '../cameras.constants';
+import { CamerasModuleDataRelayStatusState } from '../../../openapi.constants';
+import { useCamerasSettingsLink } from '../composables/useCamerasSettingsLink';
 
 import type { IRelayStatusChipProps } from './relay-status-chip.types';
 
@@ -54,13 +52,7 @@ const props = defineProps<IRelayStatusChipProps>();
 
 const { t } = useI18n();
 
-const { profile: currentUser } = useSession();
-
-const isAdmin = computed<boolean>(
-	() => currentUser.value?.role === UsersModuleUserRole.admin || currentUser.value?.role === UsersModuleUserRole.owner
-);
-
-const settingsRoute = { name: ConfigRouteNames.CONFIG_MODULE_EDIT, params: { module: CAMERAS_MODULE_NAME } };
+const { canOpenSettings, settingsRoute } = useCamerasSettingsLink();
 
 const tagType = computed<'success' | 'warning' | 'info' | 'danger'>(() => {
 	switch (props.status?.relay.state) {

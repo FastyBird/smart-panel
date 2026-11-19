@@ -185,6 +185,52 @@ describe('useCameraSnapshot', () => {
 		wrapper.unmount();
 	});
 
+	it.each([
+		['not_found', errorResponse(404, { error: { message: 'Not Found', details: { reason: 'Camera not found' } } })],
+		['module_disabled', errorResponse(404, { message: 'Cameras module is disabled' })],
+	])('stops refreshing after %s and refreshes again for another device', async (expected, response) => {
+		getMock.mockResolvedValue(response);
+
+		const deviceId = ref('cam-1');
+		const { snapshot, wrapper } = mountHost(deviceId, { refreshMs: 1000 });
+		await flush();
+
+		expect(snapshot.error.value).toBe(expected);
+		expect(getMock).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(3000);
+		setVisibility('hidden');
+		setVisibility('visible');
+		await flush();
+
+		expect(getMock).toHaveBeenCalledTimes(1);
+
+		getMock.mockResolvedValue(blobResponse('0'));
+		deviceId.value = 'cam-2';
+		await flush();
+
+		expect(getMock).toHaveBeenCalledTimes(2);
+
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(getMock).toHaveBeenCalledTimes(3);
+		wrapper.unmount();
+	});
+
+	it('keeps refreshing after a retryable snapshot error', async () => {
+		getMock.mockResolvedValue(errorResponse(503, { message: 'Camera is busy' }));
+
+		const { snapshot, wrapper } = mountHost('cam-1', { refreshMs: 1000 });
+		await flush();
+
+		expect(snapshot.error.value).toBe('busy');
+
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(getMock).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
+	});
+
 	it('does not refresh while the page is hidden and reloads when it becomes visible', async () => {
 		getMock.mockResolvedValue(blobResponse('1'));
 

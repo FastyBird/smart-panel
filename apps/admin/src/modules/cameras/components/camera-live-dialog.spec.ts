@@ -25,9 +25,8 @@ vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string, params?: Record<string, unknown>) => (params ? `${key}|${JSON.stringify(params)}` : key) }),
 }));
 
-vi.mock('element-plus', async (importOriginal) => ({
-	...(await importOriginal<typeof import('element-plus')>()),
-	ElMessage: { error: mocks.message },
+vi.mock('../../../common', () => ({
+	useFlashMessage: () => ({ error: mocks.message, success: vi.fn(), info: vi.fn(), warning: vi.fn() }),
 }));
 
 vi.mock('./camera-player.vue', async () => {

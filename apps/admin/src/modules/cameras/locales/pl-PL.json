@@ -12,6 +12,7 @@
 		"live": "LIVE",
 		"snapshotAge": "{seconds} s temu",
 		"play": "Odtwórz podgląd na żywo",
+		"liveOff": "Podgląd na żywo wyłączony",
 		"codecUnsupported": "Ta przeglądarka nie może odtworzyć tego strumienia. Spróbuj użyć Chrome, Edge lub Safari.",
 		"offline": "Kamera jest offline",
 		"lastSeen": "Ostatnio widziana {time}",
@@ -23,6 +24,12 @@
 		"moduleDisabled": "Moduł Kamery jest wyłączony.",
 		"error": "Podgląd na żywo nie powiódł się",
 		"retryingIn": "Ponowna próba za {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Kamera offline, zrzut nieaktualny",
+		"busy": "Kamera zajęta, zrzut nieaktualny",
+		"unavailable": "Zrzut niedostępny",
+		"failed": "Nie udało się wczytać zrzutu"
 	},
 	"buttons": {
 		"retry": "Spróbuj ponownie",

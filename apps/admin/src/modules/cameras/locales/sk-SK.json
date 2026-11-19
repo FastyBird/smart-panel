@@ -12,6 +12,7 @@
 		"live": "LIVE",
 		"snapshotAge": "pred {seconds} s",
 		"play": "Prehrať živý náhľad",
+		"liveOff": "Živé zobrazenie vypnuté",
 		"codecUnsupported": "Tento prehliadač nedokáže prehrať tento stream. Skúste Chrome, Edge alebo Safari.",
 		"offline": "Kamera je offline",
 		"lastSeen": "Naposledy videná {time}",
@@ -23,6 +24,12 @@
 		"moduleDisabled": "Modul Kamery je vypnutý.",
 		"error": "Živý náhľad zlyhal",
 		"retryingIn": "Ďalší pokus o {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Kamera je offline, snímka nie je aktuálna",
+		"busy": "Kamera je vyťažená, snímka nie je aktuálna",
+		"unavailable": "Snímka nie je k dispozícii",
+		"failed": "Snímku sa nepodarilo načítať"
 	},
 	"buttons": {
 		"retry": "Skúsiť znova",

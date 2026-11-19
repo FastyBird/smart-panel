@@ -25,35 +25,64 @@
 			@emptied="paused = true"
 		/>
 
-		<div
-			v-if="state === 'snapshot'"
-			class="camera-player__overlay camera-player__overlay--corner"
-		>
-			<el-tag
-				v-if="snapshotAge !== null"
-				size="small"
-				effect="dark"
-				class="camera-player__age"
-				data-test-id="camera-player-age"
+		<template v-if="state === 'snapshot'">
+			<div
+				v-if="!liveAvailable"
+				class="camera-player__notice"
+				data-test-id="camera-player-live-off"
 			>
-				{{ t('camerasModule.states.snapshotAge', { seconds: snapshotAge }) }}
-			</el-tag>
+				<el-tag
+					type="info"
+					size="small"
+					effect="dark"
+				>
+					{{ t('camerasModule.states.liveOff') }}
+				</el-tag>
 
-			<el-button
-				v-if="controls"
-				circle
-				type="primary"
-				size="large"
-				class="camera-player__play"
-				:aria-label="t('camerasModule.states.play')"
-				data-test-id="camera-player-play"
-				@click="start"
-			>
-				<el-icon :size="24">
-					<icon icon="mdi:play" />
-				</el-icon>
-			</el-button>
-		</div>
+				<span
+					v-if="variant === 'large'"
+					class="camera-player__notice-text"
+					data-test-id="camera-player-unavailable"
+				>
+					{{ unavailableSentence }}
+				</span>
+			</div>
+
+			<div class="camera-player__overlay camera-player__overlay--corner">
+				<span
+					v-if="snapshotErrorText !== null"
+					class="camera-player__snapshot-error"
+					data-test-id="camera-player-snapshot-error"
+				>
+					{{ snapshotErrorText }}
+				</span>
+
+				<el-tag
+					v-else-if="snapshotAge !== null"
+					size="small"
+					effect="dark"
+					class="camera-player__age"
+					data-test-id="camera-player-age"
+				>
+					{{ t('camerasModule.states.snapshotAge', { seconds: snapshotAge }) }}
+				</el-tag>
+
+				<el-button
+					v-if="controls && liveAvailable"
+					circle
+					type="primary"
+					size="large"
+					class="camera-player__play"
+					:aria-label="t('camerasModule.states.play')"
+					data-test-id="camera-player-play"
+					@click="startLive"
+				>
+					<el-icon :size="24">
+						<icon icon="mdi:play" />
+					</el-icon>
+				</el-button>
+			</div>
+		</template>
 
 		<template v-else-if="isConnecting">
 			<div
@@ -158,16 +187,17 @@ import { ElButton, ElIcon, ElLink, ElTag } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi.constants';
-import { useSession } from '../../auth/composables/useSession';
-import { RouteNames as ConfigRouteNames } from '../../config/config.constants';
-import { CAMERAS_MODULE_NAME, SNAPSHOT_REFRESH_MS } from '../cameras.constants';
-import { useCameraSnapshot } from '../composables/useCameraSnapshot';
+import { SNAPSHOT_REFRESH_MS } from '../cameras.constants';
+import { isLiveViewAvailable } from '../cameras.utils';
+import { type CameraSnapshotError, useCameraSnapshot } from '../composables/useCameraSnapshot';
+import { useCamerasSettingsLink } from '../composables/useCamerasSettingsLink';
 import { useLiveView } from '../composables/useLiveView';
 import type { LiveViewState } from '../live/live-view-machine';
-import { relayStatusStoreKey } from '../store/keys';
+import type { ICamera } from '../store';
+import { camerasStoreKey, relayStatusStoreKey } from '../store/keys';
 
 import type { ICameraPlayerProps } from './camera-player.types';
+import { cameraReasonSentenceKey } from './camera-profiles-table.types';
 
 defineOptions({
 	name: 'CameraPlayer',
@@ -186,10 +216,17 @@ const emit = defineEmits<{
 	(e: 'mime-change', mime: string | null): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
-const relayStatusStore = injectStoresManager().getStore(relayStatusStoreKey);
-const { profile: currentUser } = useSession();
+const storesManager = injectStoresManager();
+const camerasStore = storesManager.getStore(camerasStoreKey);
+const relayStatusStore = storesManager.getStore(relayStatusStoreKey);
+const { canOpenSettings, settingsRoute } = useCamerasSettingsLink();
+
+const camera = computed<ICamera | null>(() => camerasStore.findById(props.deviceId));
+
+// Without live view or an available profile a session request can only be refused, so none is ever made.
+const liveAvailable = computed<boolean>(() => isLiveViewAvailable(camera.value));
 
 const video = ref<HTMLVideoElement | null>(null);
 // A video that has not started is paused; the `play` event clears it, so blocked autoplay keeps it set.
@@ -199,8 +236,14 @@ const { state, retryInMs, reconnect, lastSeen, mime, start, stop, retry } = useL
 	deviceId: toRef(props, 'deviceId'),
 	profile: () => props.profile ?? null,
 	video,
-	autoStart: props.autoStart,
+	autoStart: props.autoStart && liveAvailable.value,
 });
+
+const startLive = (): void => {
+	if (liveAvailable.value) {
+		start();
+	}
+};
 
 const snapshot = useCameraSnapshot(() => props.deviceId, {
 	profile: () => props.profile ?? null,
@@ -214,11 +257,25 @@ const snapshotAge = computed<number | null>(() =>
 	snapshot.ageSeconds.value !== null && snapshot.ageSeconds.value > 0 ? snapshot.ageSeconds.value : null
 );
 
-const isAdmin = computed<boolean>(
-	() => currentUser.value?.role === UsersModuleUserRole.admin || currentUser.value?.role === UsersModuleUserRole.owner
-);
+const unavailableSentence = computed<string>(() => {
+	if (camera.value === null || !camera.value.liveView) {
+		return t('camerasModule.section.noLiveView');
+	}
 
-const settingsRoute = { name: ConfigRouteNames.CONFIG_MODULE_EDIT, params: { module: CAMERAS_MODULE_NAME } };
+	const reason = camera.value.profiles.find((profile) => !profile.available)?.unavailableReason ?? null;
+
+	return reason !== null ? t(cameraReasonSentenceKey(reason)) : t('camerasModule.section.noLiveView');
+});
+
+const SHOWN_SNAPSHOT_ERRORS: ReadonlySet<CameraSnapshotError> = new Set<CameraSnapshotError>(['offline', 'busy', 'unavailable', 'failed']);
+
+const snapshotErrorText = computed<string | null>(() => {
+	const error = snapshot.error.value;
+
+	return error !== null && SHOWN_SNAPSHOT_ERRORS.has(error) ? t(`camerasModule.snapshotErrors.${error}`) : null;
+});
+
+const formatDateTime = (date: Date): string => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 
 const sessionLimit = computed<number | null>(() => {
 	const sessions = relayStatusStore.status?.sessions;
@@ -270,7 +327,7 @@ const title = computed<string>(() => {
 const detail = computed<string | null>(() => {
 	switch (state.value) {
 		case 'offline':
-			return lastSeen.value !== null ? t('camerasModule.states.lastSeen', { time: lastSeen.value.toLocaleString() }) : null;
+			return lastSeen.value !== null ? t('camerasModule.states.lastSeen', { time: formatDateTime(lastSeen.value) }) : null;
 		case 'relay_unavailable':
 			return relayReason.value !== null ? t(`camerasModule.relayReasons.${relayReason.value}`) : null;
 		case 'error':
@@ -288,7 +345,7 @@ const showRetry = computed<boolean>(
 		(state.value === 'error' && retryInMs.value === null)
 );
 
-const showSettingsLink = computed<boolean>(() => (state.value === 'relay_unavailable' || state.value === 'module_disabled') && isAdmin.value);
+const showSettingsLink = computed<boolean>(() => (state.value === 'relay_unavailable' || state.value === 'module_disabled') && canOpenSettings.value);
 
 const onResume = (): void => {
 	// Autoplay was blocked; a click is the user gesture that allows playback.
@@ -309,12 +366,12 @@ watch(
 	() => props.profile,
 	() => {
 		if (state.value === 'codec_unsupported') {
-			start();
+			startLive();
 		}
 	}
 );
 
-defineExpose({ start, stop, retry, video });
+defineExpose({ start: startLive, stop, retry, video });
 </script>
 
 <style scoped>
@@ -380,8 +437,37 @@ defineExpose({ start, stop, retry, video });
 	left: 8px;
 }
 
-.camera-player__age {
+.camera-player__age,
+.camera-player__snapshot-error {
 	margin-right: auto;
+}
+
+.camera-player__snapshot-error {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding: 2px 8px;
+	font-size: var(--el-font-size-extra-small);
+	background-color: var(--el-overlay-color-light);
+	border-radius: var(--el-border-radius-small);
+}
+
+.camera-player__notice {
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	right: 8px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.camera-player__notice-text {
+	padding: 2px 8px;
+	font-size: var(--el-font-size-small);
+	background-color: var(--el-overlay-color-light);
+	border-radius: var(--el-border-radius-small);
 }
 
 .camera-player--tile .camera-player__message-icon {

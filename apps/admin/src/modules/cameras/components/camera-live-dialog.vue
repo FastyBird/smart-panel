@@ -96,10 +96,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElMessage, ElOption, ElSegmented, ElSelect } from 'element-plus';
+import { ElButton, ElDialog, ElOption, ElSegmented, ElSelect } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { useFlashMessage } from '../../../common';
+import { cameraProfileLabel } from '../cameras.utils';
 import { useCameraSnapshot } from '../composables/useCameraSnapshot';
 import { describeMime } from '../live/codecs';
 import type { ICamera, ICameraProfile } from '../store';
@@ -118,6 +120,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 const player = ref<InstanceType<typeof CameraPlayer> | null>(null);
 const selectedProfile = ref<string | null>(null);
@@ -131,7 +134,7 @@ const availableProfiles = computed<ICameraProfile[]>(() => camera.value?.profile
 
 const profileOptions = computed(() =>
 	availableProfiles.value.map((profile) => ({
-		label: profile.width != null && profile.height != null ? `${profile.width}\u00d7${profile.height}` : profile.id,
+		label: cameraProfileLabel(profile),
 		value: profile.id,
 	}))
 );
@@ -190,7 +193,7 @@ const onSnapshot = async (): Promise<void> => {
 
 	// A failed reload keeps the previous image; downloading it would pass it off as a fresh one.
 	if (snapshot.error.value !== null || snapshot.url.value === null) {
-		ElMessage.error(t('camerasModule.dialog.snapshotFailed'));
+		flashMessage.error(t('camerasModule.dialog.snapshotFailed'));
 
 		return;
 	}

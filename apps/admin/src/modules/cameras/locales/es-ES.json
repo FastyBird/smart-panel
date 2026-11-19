@@ -12,6 +12,7 @@
 		"live": "LIVE",
 		"snapshotAge": "hace {seconds} s",
 		"play": "Reproducir vista en directo",
+		"liveOff": "Vista en directo desactivada",
 		"codecUnsupported": "Este navegador no puede reproducir esta transmisión. Prueba con Chrome, Edge o Safari.",
 		"offline": "La cámara está sin conexión",
 		"lastSeen": "Visto por última vez {time}",
@@ -23,6 +24,12 @@
 		"moduleDisabled": "El módulo de cámaras está desactivado.",
 		"error": "La vista en directo ha fallado",
 		"retryingIn": "Reintentando en {seconds} s"
+	},
+	"snapshotErrors": {
+		"offline": "Cámara sin conexión, captura no actualizada",
+		"busy": "Cámara ocupada, captura no actualizada",
+		"unavailable": "Captura no disponible",
+		"failed": "No se pudo cargar la captura"
 	},
 	"buttons": {
 		"retry": "Reintentar",

@@ -70,7 +70,7 @@ The previous `deviceDetailSection`, `deviceWizardAdapter` registration property 
 
 ## Category sections
 
-A module can show content on the device detail page for every device of given categories, whatever the device's plugin. Register an element with `modules: [DEVICES_MODULE_NAME]` and `components.deviceCategorySection = { id, categories, component, order? }` on the module (not a plugin). The host reads them through `useDeviceCategorySections(device)` and renders the matching sections sorted by `order`, inside the Overview tab above the channel list, passing `device`. Sections render cards only: no page chrome and no save footer. The Cameras module uses this slot to show the live player and stream profiles on every `camera` and `doorbell` device.
+A module can show content on the device detail page for every device of given categories, whatever the device's plugin. Register an element with `modules: [DEVICES_MODULE_NAME]` and `components.deviceCategorySection = { id, categories, component, order? }` on the module (not a plugin). The host reads them through `useDeviceCategorySections(device)` and renders the matching sections sorted by `order`, inside the Overview tab above the channel list, passing `device` and `active`. The Overview tab stays mounted while another tab is open, so `active` is `false` then, and a section must stop anything running in the background, such as a live stream. Sections render cards only: no page chrome and no save footer. The Cameras module uses this slot to show the live player and stream profiles on every `camera` and `doorbell` device.
 
 ## Space modes
 
