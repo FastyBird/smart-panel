@@ -13,7 +13,7 @@ const observers: { callback: IntersectionObserverCallback; observe: ReturnType<t
 
 const CameraPlayerStub = defineComponent({
 	name: 'CameraPlayer',
-	props: ['deviceId', 'variant', 'snapshotActive'],
+	props: ['deviceId', 'variant', 'snapshotActive', 'controls'],
 	setup: (props) => () => h('button', { 'data-test-id': 'player-stub', 'data-active': String(props.snapshotActive) }),
 });
 
@@ -71,6 +71,15 @@ describe('CameraTile', () => {
 		await wrapper.find('[data-test-id="camera-tile"]').trigger('keydown.enter');
 
 		expect(wrapper.emitted('open')).toEqual([['cam-1']]);
+	});
+
+	it('opens on Space and hides the inline player controls', async () => {
+		const wrapper = mountTile();
+
+		await wrapper.find('[data-test-id="camera-tile"]').trigger('keydown.space');
+
+		expect(wrapper.emitted('open')).toEqual([['cam-1']]);
+		expect(wrapper.findComponent(CameraPlayerStub).props('controls')).toBe(false);
 	});
 
 	it('pauses the snapshot while off screen and resumes when visible', async () => {

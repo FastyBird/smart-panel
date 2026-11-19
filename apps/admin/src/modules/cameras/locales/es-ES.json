@@ -30,8 +30,7 @@
 		"snapshot": "Captura",
 		"mute": "Silenciar",
 		"unmute": "Activar sonido",
-		"fullScreen": "Pantalla completa",
-		"close": "Cerrar"
+		"fullScreen": "Pantalla completa"
 	},
 	"relayReasons": {
 		"mode_disabled": "La vista en directo está desactivada. Las instantáneas siguen funcionando.",
@@ -86,6 +85,7 @@
 	},
 	"dialog": {
 		"switchCamera": "Cambiar de cámara",
-		"fps": "{fps} fps"
+		"fps": "{fps} fps",
+		"snapshotFailed": "No se pudo tomar la captura."
 	}
 }

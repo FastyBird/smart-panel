@@ -307,6 +307,19 @@ describe('CameraPlayer', () => {
 		wrapper.unmount();
 	});
 
+	it('hides the inline controls when controls is false', () => {
+		expect(find(mountPlayer({ controls: false }), 'camera-player-play').exists()).toBe(false);
+		expect(find(mountPlayer({ controls: true }), 'camera-player-play').exists()).toBe(true);
+
+		setState('relay_unavailable');
+
+		const wrapper = mountPlayer({ controls: false });
+
+		expect(find(wrapper, 'camera-player-retry').exists()).toBe(false);
+		expect(find(wrapper, 'camera-player-settings').exists()).toBe(false);
+		expect(find(wrapper, 'camera-player-relay_unavailable').exists()).toBe(true);
+	});
+
 	it('holds the snapshot back while snapshotActive is false', () => {
 		const wrapper = mountPlayer({ variant: 'tile', snapshotActive: false });
 		const options = mocks.snapshotArgs[0][1] as { active: () => boolean };

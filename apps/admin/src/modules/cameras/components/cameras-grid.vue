@@ -91,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElCheckTag, ElLink } from 'element-plus';
@@ -165,6 +165,13 @@ const rooms = computed<{ id: string; name: string }[]>(() => {
 const visibleCameras = computed<ICamera[]>(() =>
 	selectedRoom.value === null ? cameras.value : cameras.value.filter((camera) => roomIdOf(camera) === selectedRoom.value)
 );
+
+// A refresh can leave the selected room without cameras; show everything again then.
+watch(rooms, (next) => {
+	if (selectedRoom.value !== null && !next.some((room) => room.id === selectedRoom.value)) {
+		selectedRoom.value = null;
+	}
+});
 
 const load = async (): Promise<void> => {
 	loadError.value = null;

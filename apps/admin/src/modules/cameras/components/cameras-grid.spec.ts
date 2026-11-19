@@ -12,9 +12,9 @@ import type { ICamera } from '../store';
 import CamerasGrid from './cameras-grid.vue';
 
 const mocks = vi.hoisted(() => ({
-	cameras: [] as unknown[],
+	cameras: undefined as unknown as { value: unknown[] },
 	rooms: {} as Record<string, string>,
-	deviceRooms: {} as Record<string, string | null>,
+	deviceRooms: undefined as unknown as { value: Record<string, string | null> },
 	fetch: vi.fn(),
 	devicesFetch: vi.fn(),
 	spacesFetch: vi.fn(),
@@ -32,9 +32,9 @@ vi.mock('../../../common', async () => {
 	const { spacesStoreKey } = await import('../../spaces/store/keys');
 
 	const stores = new Map<symbol, unknown>([
-		[camerasStoreKey, { fetch: mocks.fetch, findAll: () => mocks.cameras }],
+		[camerasStoreKey, { fetch: mocks.fetch, findAll: () => mocks.cameras.value }],
 		[relayStatusStoreKey, { status: null, startPolling: mocks.startPolling }],
-		[devicesStoreKey, { fetch: mocks.devicesFetch, findById: (id: string) => ({ roomId: mocks.deviceRooms[id] ?? null }) }],
+		[devicesStoreKey, { fetch: mocks.devicesFetch, findById: (id: string) => ({ roomId: mocks.deviceRooms.value[id] ?? null }) }],
 		[spacesStoreKey, { fetch: mocks.spacesFetch, findById: (id: string) => (mocks.rooms[id] ? { id, name: mocks.rooms[id] } : null) }],
 	]);
 
@@ -102,9 +102,9 @@ const mountGrid = async (): Promise<VueWrapper> => {
 describe('CamerasGrid', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mocks.cameras = [camera('cam-1', 'Front door'), camera('cam-2', 'Kitchen'), camera('cam-3', 'Yard')];
+		mocks.cameras = ref([camera('cam-1', 'Front door'), camera('cam-2', 'Kitchen'), camera('cam-3', 'Yard')]);
 		mocks.rooms = { 'room-a': 'Hall', 'room-b': 'Kitchen room' };
-		mocks.deviceRooms = { 'cam-1': 'room-a', 'cam-2': 'room-b', 'cam-3': null };
+		mocks.deviceRooms = ref<Record<string, string | null>>({ 'cam-1': 'room-a', 'cam-2': 'room-b', 'cam-3': null });
 		mocks.fetch.mockResolvedValue([]);
 		mocks.devicesFetch.mockResolvedValue([]);
 		mocks.spacesFetch.mockResolvedValue([]);
@@ -143,6 +143,18 @@ describe('CamerasGrid', () => {
 		expect(wrapper.findAll('[data-test-id="tile"]')).toHaveLength(3);
 	});
 
+	it('resets the selection to All when the selected room loses its cameras', async () => {
+		const wrapper = await mountGrid();
+
+		await wrapper.findAll('.cameras-grid__chips button')[2].trigger('click');
+
+		mocks.cameras.value = [camera('cam-1', 'Front door'), camera('cam-3', 'Yard')];
+		await flushPromises();
+
+		expect(wrapper.findAll('.cameras-grid__chips button')[0].attributes('data-checked')).toBe('true');
+		expect(wrapper.findAll('[data-test-id="tile"]')).toHaveLength(2);
+	});
+
 	it('opens the dialog for the clicked tile', async () => {
 		const wrapper = await mountGrid();
 
@@ -154,7 +166,7 @@ describe('CamerasGrid', () => {
 	});
 
 	it('shows the empty state without cameras', async () => {
-		mocks.cameras = [];
+		mocks.cameras.value = [];
 
 		const wrapper = await mountGrid();
 
@@ -162,7 +174,7 @@ describe('CamerasGrid', () => {
 	});
 
 	it('shows the module turned off state with a settings link for admins', async () => {
-		mocks.cameras = [];
+		mocks.cameras.value = [];
 		mocks.fetch.mockRejectedValue(new CamerasApiException('Cameras module is disabled', 404));
 
 		const wrapper = await mountGrid();
@@ -177,7 +189,7 @@ describe('CamerasGrid', () => {
 	});
 
 	it('shows a load failure for any other error', async () => {
-		mocks.cameras = [];
+		mocks.cameras.value = [];
 		mocks.fetch.mockRejectedValue(new CamerasApiException('boom', 500));
 
 		const wrapper = await mountGrid();

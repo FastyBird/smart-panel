@@ -96,7 +96,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElOption, ElSegmented, ElSelect } from 'element-plus';
+import { ElButton, ElDialog, ElMessage, ElOption, ElSegmented, ElSelect } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -129,7 +129,12 @@ const camera = computed<ICamera | null>(() => props.cameras.find((item) => item.
 
 const availableProfiles = computed<ICameraProfile[]>(() => camera.value?.profiles.filter((profile) => profile.available) ?? []);
 
-const profileOptions = computed(() => availableProfiles.value.map((profile) => ({ label: profile.id, value: profile.id })));
+const profileOptions = computed(() =>
+	availableProfiles.value.map((profile) => ({
+		label: profile.width != null && profile.height != null ? `${profile.width}\u00d7${profile.height}` : profile.id,
+		value: profile.id,
+	}))
+);
 
 const otherCameras = computed<ICamera[]>(() => props.cameras.filter((item) => item.deviceId !== props.modelValue));
 
@@ -183,7 +188,10 @@ const onSnapshot = async (): Promise<void> => {
 
 	await snapshot.reload({ hq: true });
 
-	if (snapshot.url.value === null) {
+	// A failed reload keeps the previous image; downloading it would pass it off as a fresh one.
+	if (snapshot.error.value !== null || snapshot.url.value === null) {
+		ElMessage.error(t('camerasModule.dialog.snapshotFailed'));
+
 		return;
 	}
 
@@ -204,6 +212,13 @@ const onFullscreen = (): void => {
 watch(
 	camera,
 	(next, previous) => {
+		// The open camera was removed: clear the model so the stale id cannot reopen the dialog.
+		if (next === null && props.modelValue !== null) {
+			emit('update:modelValue', null);
+
+			return;
+		}
+
 		if (next?.deviceId !== previous?.deviceId) {
 			mime.value = null;
 		}

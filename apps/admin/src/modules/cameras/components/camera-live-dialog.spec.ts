@@ -11,6 +11,8 @@ import CameraLiveDialog from './camera-live-dialog.vue';
 
 const mocks = vi.hoisted(() => ({
 	stop: vi.fn(),
+	message: vi.fn(),
+	error: undefined as unknown as { value: string | null },
 	reload: vi.fn(),
 	url: undefined as unknown as { value: string | null },
 	mimeType: undefined as unknown as { value: string | null },
@@ -21,6 +23,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string, params?: Record<string, unknown>) => (params ? `${key}|${JSON.stringify(params)}` : key) }),
+}));
+
+vi.mock('element-plus', async (importOriginal) => ({
+	...(await importOriginal<typeof import('element-plus')>()),
+	ElMessage: { error: mocks.message },
 }));
 
 vi.mock('./camera-player.vue', async () => {
@@ -48,7 +55,7 @@ vi.mock('../composables/useCameraSnapshot', () => ({
 		ageSeconds: ref(0),
 		takenAt: ref(null),
 		mimeType: mocks.mimeType,
-		error: ref(null),
+		error: mocks.error,
 		loading: ref(false),
 		reload: mocks.reload,
 	}),
@@ -77,8 +84,12 @@ const ElSegmentedStub = defineComponent({
 		() =>
 			h(
 				'div',
-				(props.options as { value: string }[]).map((option) =>
-					h('button', { 'data-test-id': `profile-${option.value}`, onClick: () => emit('update:modelValue', option.value) })
+				(props.options as { value: string; label: string }[]).map((option) =>
+					h('button', {
+						'data-test-id': `profile-${option.value}`,
+						title: (option as { label: string }).label,
+						onClick: () => emit('update:modelValue', option.value),
+					})
 				)
 			),
 });
@@ -148,6 +159,7 @@ describe('CameraLiveDialog', () => {
 		mocks.playerProps.length = 0;
 		mocks.url = ref<string | null>('blob:snap');
 		mocks.mimeType = ref<string | null>('image/png');
+		mocks.error = ref<string | null>(null);
 		mocks.reload.mockResolvedValue(undefined);
 	});
 
@@ -242,6 +254,57 @@ describe('CameraLiveDialog', () => {
 		expect(clicks[0].download).toMatch(/^Front door-\d{4}-\d{2}-\d{2}T[\d-]+Z\.png$/);
 
 		click.mockRestore();
+	});
+
+	it('does not download the previous image when a new snapshot fails', async () => {
+		const wrapper = mountDialog();
+		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+		mocks.reload.mockImplementation(() => {
+			mocks.error.value = 'failed';
+
+			return Promise.resolve();
+		});
+
+		await wrapper.find('[data-test-id="camera-live-dialog-snapshot"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.url.value).toBe('blob:snap');
+		expect(click).not.toHaveBeenCalled();
+		expect(mocks.message).toHaveBeenCalledWith('camerasModule.dialog.snapshotFailed');
+
+		click.mockRestore();
+	});
+
+	it('reports a failed snapshot when there is no image at all', async () => {
+		const wrapper = mountDialog();
+		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+		mocks.url.value = null;
+		mocks.error.value = 'offline';
+
+		await wrapper.find('[data-test-id="camera-live-dialog-snapshot"]').trigger('click');
+		await flushPromises();
+
+		expect(click).not.toHaveBeenCalled();
+		expect(mocks.message).toHaveBeenCalledWith('camerasModule.dialog.snapshotFailed');
+
+		click.mockRestore();
+	});
+
+	it('labels profiles with their resolution, falling back to the id', () => {
+		const wrapper = mountDialog();
+
+		expect(wrapper.find('[data-test-id="profile-high"]').attributes('title')).toBe('1280\u00d7720');
+		expect(wrapper.find('[data-test-id="profile-medium"]').attributes('title')).toBe('medium');
+	});
+
+	it('clears the model when the open camera disappears', async () => {
+		const wrapper = mountDialog();
+
+		await wrapper.setProps({ cameras: [cameras[1]] });
+
+		expect(wrapper.emitted('update:modelValue')).toEqual([[null]]);
 	});
 
 	it('toggles mute and requests full screen on the player element', async () => {

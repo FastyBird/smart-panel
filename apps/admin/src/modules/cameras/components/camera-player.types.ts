@@ -7,4 +7,6 @@ export interface ICameraPlayerProps {
 	muted?: boolean;
 	/** `false` pauses the snapshot refresh, such as for a tile that is off screen. */
 	snapshotActive?: boolean;
+	/** `false` hides the play, resume, retry and settings controls, such as in a tile that opens the dialog on click. */
+	controls?: boolean;
 }

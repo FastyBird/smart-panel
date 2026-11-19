@@ -8,12 +8,14 @@
 		data-test-id="camera-tile"
 		@click.capture.stop="emit('open', camera.deviceId)"
 		@keydown.enter.self.prevent="emit('open', camera.deviceId)"
+		@keydown.space.self.prevent="emit('open', camera.deviceId)"
 	>
 		<camera-player
 			:key="camera.deviceId"
 			:device-id="camera.deviceId"
 			variant="tile"
 			:snapshot-active="visible"
+			:controls="false"
 		/>
 
 		<div class="camera-tile__caption">

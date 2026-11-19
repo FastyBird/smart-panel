@@ -30,8 +30,7 @@
 		"snapshot": "Snímek",
 		"mute": "Ztlumit",
 		"unmute": "Zapnout zvuk",
-		"fullScreen": "Celá obrazovka",
-		"close": "Zavřít"
+		"fullScreen": "Celá obrazovka"
 	},
 	"relayReasons": {
 		"mode_disabled": "Živý náhled je vypnutý. Snímky stále fungují.",
@@ -86,6 +85,7 @@
 	},
 	"dialog": {
 		"switchCamera": "Přepnout kameru",
-		"fps": "{fps} fps"
+		"fps": "{fps} fps",
+		"snapshotFailed": "Snímek se nepodařilo pořídit."
 	}
 }

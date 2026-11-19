@@ -30,8 +30,7 @@
 		"snapshot": "Snapshot",
 		"mute": "Mute",
 		"unmute": "Unmute",
-		"fullScreen": "Full screen",
-		"close": "Close"
+		"fullScreen": "Full screen"
 	},
 	"relayReasons": {
 		"mode_disabled": "Live view is turned off. Snapshots still work.",
@@ -86,6 +85,7 @@
 	},
 	"dialog": {
 		"switchCamera": "Switch camera",
-		"fps": "{fps} fps"
+		"fps": "{fps} fps",
+		"snapshotFailed": "Could not take a snapshot."
 	}
 }

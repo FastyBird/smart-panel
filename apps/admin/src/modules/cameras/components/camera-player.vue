@@ -40,6 +40,7 @@
 			</el-tag>
 
 			<el-button
+				v-if="controls"
 				circle
 				type="primary"
 				size="large"
@@ -81,7 +82,7 @@
 			</el-tag>
 
 			<div
-				v-if="paused"
+				v-if="paused && controls"
 				class="camera-player__overlay"
 			>
 				<el-button
@@ -119,7 +120,7 @@
 			</span>
 
 			<div
-				v-if="showRetry || showSettingsLink"
+				v-if="controls && (showRetry || showSettingsLink)"
 				class="camera-player__actions"
 			>
 				<el-button
@@ -177,6 +178,7 @@ const props = withDefaults(defineProps<ICameraPlayerProps>(), {
 	autoStart: false,
 	muted: true,
 	snapshotActive: true,
+	controls: true,
 });
 
 const emit = defineEmits<{

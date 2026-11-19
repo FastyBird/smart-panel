@@ -30,8 +30,7 @@
 		"snapshot": "Standbild",
 		"mute": "Stumm",
 		"unmute": "Ton an",
-		"fullScreen": "Vollbild",
-		"close": "Schließen"
+		"fullScreen": "Vollbild"
 	},
 	"relayReasons": {
 		"mode_disabled": "Die Live-Ansicht ist ausgeschaltet. Schnappschüsse funktionieren weiterhin.",
@@ -86,6 +85,7 @@
 	},
 	"dialog": {
 		"switchCamera": "Kamera wechseln",
-		"fps": "{fps} fps"
+		"fps": "{fps} fps",
+		"snapshotFailed": "Das Standbild konnte nicht aufgenommen werden."
 	}
 }

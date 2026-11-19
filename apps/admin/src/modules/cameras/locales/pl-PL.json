@@ -30,8 +30,7 @@
 		"snapshot": "Zrzut",
 		"mute": "Wycisz",
 		"unmute": "Włącz dźwięk",
-		"fullScreen": "Pełny ekran",
-		"close": "Zamknij"
+		"fullScreen": "Pełny ekran"
 	},
 	"relayReasons": {
 		"mode_disabled": "Podgląd na żywo jest wyłączony. Zdjęcia nadal działają.",
@@ -86,6 +85,7 @@
 	},
 	"dialog": {
 		"switchCamera": "Przełącz kamerę",
-		"fps": "{fps} fps"
+		"fps": "{fps} fps",
+		"snapshotFailed": "Nie udało się wykonać zrzutu."
 	}
 }
