@@ -236,7 +236,8 @@ const { state, retryInMs, reconnect, lastSeen, mime, start, stop, retry } = useL
 	deviceId: toRef(props, 'deviceId'),
 	profile: () => props.profile ?? null,
 	video,
-	autoStart: props.autoStart && liveAvailable.value,
+	autoStart: props.autoStart,
+	available: liveAvailable,
 });
 
 const startLive = (): void => {
@@ -361,15 +362,6 @@ watch(state, (next) => {
 	emit('state-change', next);
 });
 watch(mime, (next) => emit('mime-change', next));
-
-watch(
-	() => props.profile,
-	() => {
-		if (state.value === 'codec_unsupported') {
-			startLive();
-		}
-	}
-);
 
 defineExpose({ start: startLive, stop, retry, video });
 </script>

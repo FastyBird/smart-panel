@@ -24,7 +24,13 @@ export interface IUseLiveViewOptions {
 	/** The stream profile to open; `null` lets the backend pick the first available one. */
 	profile: MaybeRefOrGetter<string | null>;
 	video: Ref<HTMLVideoElement | null>;
+	/** Asks to play as soon as a session can be requested, and again after the device comes back online. */
 	autoStart?: boolean;
+	/**
+	 * Whether a session can be requested at all (the camera offers live view with an available profile); defaults to
+	 * always. Without it no automatic start or restart is made, and an auto started view starts once it turns true.
+	 */
+	available?: MaybeRefOrGetter<boolean>;
 }
 
 export interface IUseLiveView {
@@ -46,6 +52,13 @@ const REFETCH_FAILED = Symbol('refetch-failed');
 
 /** States that own a session request or a running client. */
 const ACTIVE_STATES: ReadonlySet<LiveViewState> = new Set<LiveViewState>(['requesting', 'connecting', 'playing']);
+
+/**
+ * Failures of the previous selection that a new selection can resolve, so it starts again: a terminal error and an
+ * unsupported codec. The per camera session limit restarts only for another camera; the relay, the total limit and a
+ * disabled module do not depend on the selection.
+ */
+const SELECTION_RESTART_STATES: ReadonlySet<LiveViewState> = new Set<LiveViewState>(['error', 'codec_unsupported']);
 
 /** States that wait for the relay or for a free session slot, polling the relay status meanwhile. */
 const RELAY_WAIT_STATES: ReadonlySet<LiveViewState> = new Set<LiveViewState>(['relay_unavailable', 'camera_limit', 'total_limit']);
@@ -93,6 +106,8 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 	 */
 	const autoPlay = options.autoStart === true;
 	let wantsPlayback = autoPlay;
+
+	const isAvailable = (): boolean => toValue(options.available ?? true);
 
 	const send = (event: LiveViewEvent): void => {
 		if (disposed) {
@@ -436,7 +451,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 			relaySeenDown = known !== null && known.relay.state !== CamerasModuleDataRelayStatusState.running;
 		}
 
-		if (previous.state === 'offline' && next.state === 'snapshot' && wantsPlayback) {
+		if (previous.state === 'offline' && next.state === 'snapshot' && wantsPlayback && isAvailable()) {
 			send({ type: 'start' });
 		}
 
@@ -496,13 +511,24 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		{ immediate: true }
 	);
 
-	// A new selection starts a fresh attempt with a fresh retry budget, also while a backoff of the old one is pending;
-	// only the backoff timer of the same selection keeps the count.
-	watch([() => toValue(options.deviceId), () => toValue(options.profile)], () => {
-		const { state, retryInMs } = context.value;
+	// A new selection starts a fresh attempt with a fresh retry budget: while active, during a backoff of the old one, and
+	// after a failure the new selection may not share. Only the backoff timer of the same selection keeps the count. A
+	// selection that cannot stream only stops the old one.
+	watch([() => toValue(options.deviceId), () => toValue(options.profile)], ([deviceId], [previousDeviceId]) => {
+		const { state } = context.value;
 
-		if (ACTIVE_STATES.has(state) || (state === 'error' && retryInMs !== null)) {
+		if (ACTIVE_STATES.has(state) || SELECTION_RESTART_STATES.has(state) || (state === 'camera_limit' && deviceId !== previousDeviceId)) {
 			send({ type: 'stop' });
+
+			if (isAvailable()) {
+				send({ type: 'start' });
+			}
+		}
+	});
+
+	// An auto started view that could not stream yet starts once it can, unless it was stopped meanwhile.
+	watch(isAvailable, (available) => {
+		if (available && wantsPlayback && context.value.state === 'snapshot') {
 			send({ type: 'start' });
 		}
 	});
@@ -530,7 +556,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		releaseRelayPolling();
 	});
 
-	if (autoPlay) {
+	if (autoPlay && isAvailable()) {
 		send({ type: 'start' });
 	}
 

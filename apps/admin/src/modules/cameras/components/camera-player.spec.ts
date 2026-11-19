@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { type MaybeRefOrGetter, computed, ref, toValue } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 		error: undefined as unknown as { value: string | null },
 	},
 	camera: undefined as unknown as { value: unknown },
-	liveViewOptions: [] as { autoStart?: boolean }[],
+	liveViewOptions: [] as { autoStart?: boolean; available?: MaybeRefOrGetter<boolean> }[],
 	locale: undefined as unknown as { value: string },
 	snapshotArgs: [] as unknown[][],
 	relayStatus: undefined as unknown as { value: unknown },
@@ -56,7 +56,7 @@ vi.mock('../../auth/composables/useSession', () => ({
 }));
 
 vi.mock('../composables/useLiveView', () => ({
-	useLiveView: (options: { autoStart?: boolean }) => {
+	useLiveView: (options: { autoStart?: boolean; available?: MaybeRefOrGetter<boolean> }) => {
 		mocks.liveViewOptions.push(options);
 
 		return {
@@ -291,7 +291,9 @@ describe('CameraPlayer', () => {
 
 		const wrapper = mountPlayer({ autoStart: true });
 
-		expect(mocks.liveViewOptions[0].autoStart).toBe(false);
+		// The auto start intent stays; the live view waits until the camera can stream.
+		expect(mocks.liveViewOptions[0].autoStart).toBe(true);
+		expect(toValue(mocks.liveViewOptions[0].available)).toBe(false);
 		expect(find(wrapper, 'camera-player-play').exists()).toBe(false);
 		expect(find(wrapper, 'camera-player-live-off').text()).toContain('camerasModule.states.liveOff');
 		expect(find(wrapper, 'camera-player-unavailable').text()).toBe(sentence);
@@ -306,14 +308,30 @@ describe('CameraPlayer', () => {
 
 		const wrapper = mountPlayer({ autoStart: true });
 
-		expect(mocks.liveViewOptions[0].autoStart).toBe(false);
+		expect(toValue(mocks.liveViewOptions[0].available)).toBe(false);
 		expect(find(wrapper, 'camera-player-live-off').exists()).toBe(true);
+	});
+
+	it('tells the live view when a camera that could not stream gains an available profile', async () => {
+		mocks.camera.value = camera({ liveView: false });
+
+		const wrapper = mountPlayer({ autoStart: true });
+
+		expect(mocks.liveViewOptions[0].autoStart).toBe(true);
+		expect(toValue(mocks.liveViewOptions[0].available)).toBe(false);
+
+		mocks.camera.value = camera();
+		await wrapper.vm.$nextTick();
+
+		expect(toValue(mocks.liveViewOptions[0].available)).toBe(true);
+		expect(find(wrapper, 'camera-player-live-off').exists()).toBe(false);
 	});
 
 	it('auto starts a camera that can stream and shows no live off badge', () => {
 		const wrapper = mountPlayer({ autoStart: true });
 
 		expect(mocks.liveViewOptions[0].autoStart).toBe(true);
+		expect(toValue(mocks.liveViewOptions[0].available)).toBe(true);
 		expect(find(wrapper, 'camera-player-live-off').exists()).toBe(false);
 	});
 
@@ -519,17 +537,9 @@ describe('CameraPlayer', () => {
 		expect((mocks.snapshotArgs[0][1] as { refreshMs: number | null }).refreshMs).toBeNull();
 	});
 
-	it('starts again when the profile changes while the codec is unsupported', async () => {
+	it('leaves restarting a changed profile to the live view', async () => {
 		setState('codec_unsupported');
 
-		const wrapper = mountPlayer({ profile: 'high' });
-
-		await wrapper.setProps({ profile: 'low' });
-
-		expect(mocks.start).toHaveBeenCalledTimes(1);
-	});
-
-	it('does not start on a profile change in another state', async () => {
 		const wrapper = mountPlayer({ profile: 'high' });
 
 		await wrapper.setProps({ profile: 'low' });

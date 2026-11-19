@@ -790,6 +790,155 @@ describe('useLiveView', () => {
 		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[1]);
 	});
 
+	it('restarts a newly selected profile after a terminal error with a fresh retry budget', async () => {
+		postMock.mockResolvedValueOnce(failure(403, { message: 'Forbidden' })).mockResolvedValue(failure(500, { message: 'boom' }));
+
+		const selected = ref<string | null>('high');
+		const live = mountLiveView({ profile: selected });
+		live.start();
+		await flush();
+
+		expect(live.state.value).toBe('error');
+		expect(live.retryInMs.value).toBeNull();
+
+		selected.value = 'low';
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(2);
+		expect(postMock.mock.calls[1][1].body.data.profile).toBe('low');
+		expect(live.state.value).toBe('error');
+		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[0]);
+	});
+
+	it('restarts a newly selected profile after the codec of the old one was unsupported', async () => {
+		postMock.mockResolvedValue(sessionOk());
+
+		const selected = ref<string | null>('hevc');
+		const live = mountLiveView({ profile: selected });
+		live.start();
+		await flush();
+
+		expect(live.state.value).toBe('codec_unsupported');
+		expect(postMock).not.toHaveBeenCalled();
+
+		selected.value = 'high';
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(postMock.mock.calls[0][1].body.data.profile).toBe('high');
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it('restarts after the per camera session limit only when another camera is selected', async () => {
+		postMock.mockResolvedValue(sessionOk());
+
+		const deviceId = ref('cam-1');
+		const selected = ref<string | null>('high');
+		const live = mountLiveView({ deviceId, profile: selected });
+		live.start();
+		await flush();
+		lastClient().emit({ type: 'closed', code: 1013, reason: 'camera_session_limit' });
+		await flush();
+
+		expect(live.state.value).toBe('camera_limit');
+
+		selected.value = 'low';
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('camera_limit');
+
+		deviceId.value = 'cam-2';
+		selected.value = null;
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(2);
+		expect(postMock.mock.calls[1][1].params.path.deviceId).toBe('cam-2');
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it('only stops the old selection when the new one cannot stream', async () => {
+		postMock.mockResolvedValue(sessionOk());
+
+		const available = ref(true);
+		const selected = ref<string | null>('high');
+		const live = mountLiveView({ profile: selected, available });
+		await startPlaying(live);
+
+		available.value = false;
+		selected.value = 'low';
+		await flush();
+
+		expect(lastClient().closed).toBe(true);
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('snapshot');
+	});
+
+	it('starts an auto started view once a profile becomes available', async () => {
+		postMock.mockResolvedValue(sessionOk());
+
+		const available = ref(false);
+		const live = mountLiveView({ autoStart: true, available });
+		await flush();
+
+		expect(postMock).not.toHaveBeenCalled();
+		expect(live.state.value).toBe('snapshot');
+
+		available.value = true;
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('connecting');
+	});
+
+	it('does not start an auto started view that was stopped before a profile became available', async () => {
+		const available = ref(false);
+		const live = mountLiveView({ autoStart: true, available });
+		await flush();
+
+		live.stop();
+		available.value = true;
+		await flush();
+
+		expect(postMock).not.toHaveBeenCalled();
+		expect(live.state.value).toBe('snapshot');
+	});
+
+	it('does not start a view that never asked to play when a profile becomes available', async () => {
+		const available = ref(false);
+		const live = mountLiveView({ available });
+		await flush();
+
+		available.value = true;
+		await flush();
+
+		expect(postMock).not.toHaveBeenCalled();
+		expect(live.state.value).toBe('snapshot');
+	});
+
+	it('keeps the auto start intent of a view that comes back online before a profile is available', async () => {
+		postMock.mockResolvedValue(sessionOk());
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.disconnected);
+
+		const available = ref(false);
+		const live = mountLiveView({ autoStart: true, available });
+		await flush();
+
+		expect(live.state.value).toBe('offline');
+
+		devicesStore.data['cam-1'] = device(DevicesModuleDeviceConnectionStatus.connected);
+		await flush();
+
+		expect(postMock).not.toHaveBeenCalled();
+		expect(live.state.value).toBe('snapshot');
+
+		available.value = true;
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('connecting');
+	});
+
 	it('resumes an auto started view when the device comes back online', async () => {
 		postMock.mockResolvedValue(sessionOk());
 
