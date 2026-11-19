@@ -1,4 +1,5 @@
 import * as net from 'net';
+import * as tls from 'tls';
 
 import { Logger } from '@nestjs/common';
 
@@ -254,5 +255,47 @@ describe('ProtectStreamBridgeService (loopback integration)', () => {
 
 		expect(refused.error).toBe('ECONNREFUSED');
 		expect(bridge.connectionCount).toBe(0);
+	});
+	describe('fake console byte counters across reset()', () => {
+		/** A bare TLS client of the fake console's RTSPS port that has completed its handshake. */
+		const rtspsClient = (): Promise<tls.TLSSocket> =>
+			new Promise((resolve, reject) => {
+				const socket = tls.connect({ host: '127.0.0.1', port: fake.rtspsPort, rejectUnauthorized: false }, () =>
+					resolve(socket),
+				);
+
+				socket.on('error', reject);
+				clients.push(socket);
+			});
+
+		it('ignores a connection that outlives reset() instead of writing NaN', async () => {
+			const old = await rtspsClient();
+
+			await waitFor(() => fake.rtspsBytesReceived.length === 1);
+			fake.reset();
+			old.write('abc');
+			await waitFor(() => fake.rtspsBytesReceived.length > 0 || old.bytesWritten >= 3);
+			await tick();
+			await tick();
+
+			expect(fake.rtspsBytesReceived).toEqual([]);
+		});
+
+		it('does not add the old connection bytes to a connection opened after reset()', async () => {
+			const old = await rtspsClient();
+
+			await waitFor(() => fake.rtspsBytesReceived.length === 1);
+			fake.reset();
+
+			const fresh = await rtspsClient();
+
+			await waitFor(() => fake.rtspsBytesReceived.length === 1);
+			old.write('0123456789');
+			fresh.write('ab');
+			await waitFor(() => fake.rtspsBytesReceived[0] >= 2);
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			expect(fake.rtspsBytesReceived).toEqual([2]);
+		});
 	});
 });

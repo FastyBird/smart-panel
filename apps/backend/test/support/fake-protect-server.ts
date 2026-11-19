@@ -162,6 +162,8 @@ export class FakeProtectServer {
 	/** Decrypted bytes received on each RTSP connection that completed its handshake, in accept order. */
 	readonly rtspsBytesReceived: number[] = [];
 
+	/** Bumped by `reset()`: a connection opened earlier no longer counts into `rtspsBytesReceived`. */
+	private recordingGeneration = 0;
 	private options: FakeProtectServerOptions;
 	private readonly queue: { match: RegExp; response: FakeProtectResponse; method?: string }[] = [];
 	private readonly streams = new Map<string, Set<ProtectRtspsQuality>>();
@@ -364,6 +366,7 @@ export class FakeProtectServer {
 		this.patches.length = 0;
 		this.rtspRequestLines.length = 0;
 		this.rtspsBytesReceived.length = 0;
+		this.recordingGeneration += 1;
 		this.rtspAnswers.length = 0;
 		this.options = { ...this.options, rtspsCertificate: 'mirror' };
 	}
@@ -429,11 +432,19 @@ export class FakeProtectServer {
 
 	/** Reads text RTSP requests (bounded; bodies are not expected), records each request line and answers each once. */
 	private serveRtsp(socket: tls.TLSSocket): void {
+		const generation = this.recordingGeneration;
 		const index = this.rtspsBytesReceived.push(0) - 1;
+		let bytes = 0;
 		let pending = '';
 
 		socket.on('data', (chunk: Buffer) => {
-			this.rtspsBytesReceived[index] += chunk.length;
+			bytes += chunk.length;
+
+			// Only a connection of the current recording writes its count; one that outlived reset() stays out.
+			if (generation === this.recordingGeneration && index < this.rtspsBytesReceived.length) {
+				this.rtspsBytesReceived[index] = bytes;
+			}
+
 			pending += chunk.toString('latin1');
 
 			let end = pending.indexOf(RTSP_HEADER_END);
