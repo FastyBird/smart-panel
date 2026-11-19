@@ -318,7 +318,22 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			throw bridgeError(ProtectErrorCategory.UNAVAILABLE);
 		}
 
-		const listener = await this.acquireListener(relay, route, upstream.port);
+		// The bind is single-flight and may finish after this caller gave up: its deadline and signal still settle the call.
+		const acquiring = this.acquireListener(relay, route, upstream.port);
+		let listener: BridgeListener;
+
+		try {
+			listener = await this.withBudget(acquiring, budget, cancel);
+		} catch (error) {
+			// A listener whose bind completes after every caller left is released; one another caller still awaits is kept
+			// (`releaseIfUnused` re-checks claims, hand-out and connections once those callers have run).
+			acquiring.then(
+				(late) => setImmediate(() => this.releaseIfUnused(late)),
+				() => undefined,
+			);
+
+			throw error;
+		}
 
 		listener.claims += 1;
 

@@ -875,8 +875,81 @@ describe('ProtectStreamBridgeService', () => {
 			await destroying;
 
 			expect(openServers()).toHaveLength(0);
-			await expect(result).resolves.toMatchObject({ category: 'unavailable' });
+			// Destroy aborts the bind wait like any other step of a prepare (the pre-flight case above is `cancelled` too).
+			await expect(result).resolves.toMatchObject({ category: 'cancelled' });
 			expect(connectMock).not.toHaveBeenCalled();
+		});
+
+		const holdNextBind = (): { release: () => void } => {
+			const listening = deferred<void>();
+			const realCreate = jest.requireActual<typeof net>('net').createServer;
+
+			createServerMock.mockImplementationOnce((...args: Parameters<typeof net.createServer>) => {
+				const server = realCreate(...args);
+				const listen = (port: number, host: string, callback: () => void): net.Server =>
+					net.Server.prototype.listen.call(server, port, host, callback) as net.Server;
+
+				(server as unknown as { listen: (port: number, host: string, callback: () => void) => net.Server }).listen = (
+					port,
+					host,
+					callback,
+				) => listen(port, host, () => void listening.promise.then(callback));
+
+				return server;
+			});
+
+			return { release: () => listening.resolve() };
+		};
+
+		it('settles a prepare cancelled while its listener is still binding', async () => {
+			const bind = holdNextBind();
+			const controller = new AbortController();
+			const result = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
+
+			await waitFor(() => servers().length === 1 && servers()[0].listening);
+
+			controller.abort();
+
+			await expect(result).resolves.toMatchObject({ category: 'cancelled' });
+			expect(connectMock).not.toHaveBeenCalled();
+
+			bind.release();
+
+			// Nobody holds the late listener: it is closed rather than left open for a port squatter's benefit.
+			await waitFor(() => openServers().length === 0);
+		});
+
+		it('settles a prepare whose deadline passes while its listener is still binding', async () => {
+			const bind = holdNextBind();
+			const result = service.prepare(PORT, { deadlineMs: 50 }).catch((error: unknown) => error);
+
+			await expect(result).resolves.toMatchObject({ category: 'timeout' });
+			expect(connectMock).not.toHaveBeenCalled();
+
+			bind.release();
+
+			await waitFor(() => openServers().length === 0);
+		});
+
+		it('keeps a late listener that another prepare is still waiting for', async () => {
+			const bind = holdNextBind();
+			const controller = new AbortController();
+			const abandoned = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
+			const waiting = service.prepare(PORT);
+
+			await waitFor(() => servers().length === 1 && servers()[0].listening);
+
+			controller.abort();
+			await expect(abandoned).resolves.toMatchObject({ category: 'cancelled' });
+
+			bind.release();
+
+			const endpoint = await waiting;
+
+			expect(openServers()).toHaveLength(1);
+			expect(endpoint.port).toBe(
+				servers()[0].address() === null ? -1 : (servers()[0].address() as net.AddressInfo).port,
+			);
 		});
 
 		it('closes the listeners when the plugin is disabled', async () => {
