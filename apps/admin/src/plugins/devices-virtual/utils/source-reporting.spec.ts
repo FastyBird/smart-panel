@@ -98,6 +98,9 @@ describe('formatReportingDuration', () => {
 		expect(formatReportingDuration(0)).toBe('0s');
 		expect(formatReportingDuration(90_000)).toBe('1d 1h');
 		expect(formatReportingDuration(0.75)).toBe('0.75s');
+		expect(formatReportingDuration(0.0005)).toBe('0.0005s');
+		expect(formatReportingDuration(1.5)).toBe('1.5s');
+		expect(formatReportingDuration(100 / 3)).toBe('33.3s');
 	});
 
 	it('shows a dash for a missing or invalid duration', () => {

@@ -85,9 +85,10 @@ const DURATION_UNITS: [Intl.NumberFormatOptions['unit'], number][] = [
  */
 export const formatReportingDuration = (seconds: number | null, locale = 'en'): string => {
 	if (seconds === null || !Number.isFinite(seconds) || seconds < 0) return '—';
-	// A sub-second duration (a requirement derived from millisecond settings) keeps its fraction instead of reading as 0s or 1s.
-	if (seconds > 0 && seconds < 1)
-		return new Intl.NumberFormat(locale, { style: 'unit', unit: 'second', unitDisplay: 'narrow', maximumFractionDigits: 2 }).format(seconds);
+	// A fractional duration under a minute (a requirement derived from millisecond settings) keeps three significant
+	// digits, so any positive value, however small, stays distinguishable from 0s and 1.5 s does not read as 2s.
+	if (seconds < 60 && !Number.isInteger(seconds))
+		return new Intl.NumberFormat(locale, { style: 'unit', unit: 'second', unitDisplay: 'narrow', maximumSignificantDigits: 3 }).format(seconds);
 	let rest = Math.round(seconds);
 	const parts: string[] = [];
 	for (const [unit, size] of DURATION_UNITS) {
