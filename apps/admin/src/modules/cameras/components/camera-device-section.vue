@@ -156,6 +156,14 @@ watch(
 	{ immediate: true }
 );
 
+// The store replaces a camera object whenever it reads it again, so a new one after a failed load (a reconnect refresh,
+// the cameras list) is fresh data that resolves the failure.
+watch(camera, (next, previous) => {
+	if (loadError.value !== null && next !== null && next !== previous) {
+		loadError.value = null;
+	}
+});
+
 // The overview tab stays mounted while another tab is open; a live view must not keep streaming behind it.
 watch(
 	() => props.active,

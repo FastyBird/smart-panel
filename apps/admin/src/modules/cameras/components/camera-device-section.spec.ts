@@ -220,6 +220,26 @@ describe('CameraDeviceSection', () => {
 		expect(wrapper.findComponent(CameraPlayerStub).exists()).toBe(true);
 	});
 
+	it.each([
+		['a failed load', new CamerasApiException('Service unavailable', 503), 'camerasModule.section.loadFailed'],
+		['a 404', new CamerasApiException('Camera not found', 404), 'camerasModule.section.noStream'],
+	])('shows the camera once a store refresh brings fresh data after %s', async (_, error, sentence) => {
+		mocks.cameras['cam-1'] = camera();
+		mocks.get.mockRejectedValueOnce(error);
+
+		const wrapper = await mountSection();
+
+		expect(wrapper.find('[data-test-id="empty-state"]').text()).toBe(sentence);
+
+		// What the store does when a reconnect refresh or the cameras list reads the camera again.
+		mocks.cameras['cam-1'] = camera();
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="empty-state"]').exists()).toBe(false);
+		expect(wrapper.findComponent(CameraPlayerStub).exists()).toBe(true);
+		expect(mocks.get).toHaveBeenCalledTimes(1);
+	});
+
 	it('shows a load failure for a rejected network call, not the no stream state', async () => {
 		mocks.get.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
