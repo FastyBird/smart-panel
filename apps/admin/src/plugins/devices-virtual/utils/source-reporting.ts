@@ -85,6 +85,9 @@ const DURATION_UNITS: [Intl.NumberFormatOptions['unit'], number][] = [
  */
 export const formatReportingDuration = (seconds: number | null, locale = 'en'): string => {
 	if (seconds === null || !Number.isFinite(seconds) || seconds < 0) return '—';
+	// A sub-second duration (a requirement derived from millisecond settings) keeps its fraction instead of reading as 0s or 1s.
+	if (seconds > 0 && seconds < 1)
+		return new Intl.NumberFormat(locale, { style: 'unit', unit: 'second', unitDisplay: 'narrow', maximumFractionDigits: 2 }).format(seconds);
 	let rest = Math.round(seconds);
 	const parts: string[] = [];
 	for (const [unit, size] of DURATION_UNITS) {
@@ -98,6 +101,8 @@ export const formatReportingDuration = (seconds: number | null, locale = 'en'): 
 	return parts.join(' ');
 };
 
+const REPORTED_INTERVAL_ROUNDING_SECONDS = 0.5;
+
 /** The window-detection settings that decide how often the room temperature must be sampled. */
 export interface IWindowDetectionCadence {
 	sampleWindowMs: number | null;
@@ -108,6 +113,7 @@ export interface IWindowDetectionCadence {
 /**
  * The longest time between room temperature readings that still lets window detection work: it needs
  * `minimumSamples` readings inside `sampleWindowMs`, and the newest one younger than `maximumSampleAgeMs`.
+ * Kept exact (possibly fractional): millisecond settings can require sub-second readings.
  * Null while the settings are incomplete or invalid.
  */
 export const windowDetectionIntervalSeconds = (cadence: IWindowDetectionCadence): number | null => {
@@ -120,7 +126,7 @@ export const windowDetectionIntervalSeconds = (cadence: IWindowDetectionCadence)
 		minimumSamples < 2
 	)
 		return null;
-	return Math.floor(Math.min(sampleWindowMs / (minimumSamples - 1), maximumSampleAgeMs) / 1000);
+	return Math.min(sampleWindowMs / (minimumSamples - 1), maximumSampleAgeMs) / 1000;
 };
 
 /**
@@ -143,6 +149,8 @@ export const windowDetectionAdvice = (reporting: ISourceReporting | null, cadenc
 	// The median interval: a sensor that reports on change speeds up while the temperature falls, but one that
 	// usually reports less often than this will rarely produce enough readings in time.
 	if (reporting.typicalIntervalSeconds === null) return { kind: 'unknown', requiredIntervalSeconds };
-	if (reporting.typicalIntervalSeconds > requiredIntervalSeconds) return { kind: 'too_slow', requiredIntervalSeconds, reporting };
+	// The endpoint rounds intervals to whole seconds, so the true interval can be up to half a second shorter.
+	if (reporting.typicalIntervalSeconds - REPORTED_INTERVAL_ROUNDING_SECONDS > requiredIntervalSeconds)
+		return { kind: 'too_slow', requiredIntervalSeconds, reporting };
 	return { kind: 'fits', requiredIntervalSeconds, reporting };
 };

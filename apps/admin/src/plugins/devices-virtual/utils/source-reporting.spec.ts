@@ -97,6 +97,7 @@ describe('formatReportingDuration', () => {
 		expect(formatReportingDuration(45)).toBe('45s');
 		expect(formatReportingDuration(0)).toBe('0s');
 		expect(formatReportingDuration(90_000)).toBe('1d 1h');
+		expect(formatReportingDuration(0.75)).toBe('0.75s');
 	});
 
 	it('shows a dash for a missing or invalid duration', () => {
@@ -112,6 +113,9 @@ describe('windowDetectionIntervalSeconds', () => {
 		expect(windowDetectionIntervalSeconds(detection)).toBe(90);
 		expect(windowDetectionIntervalSeconds({ ...detection, minimumSamples: 2 })).toBe(120);
 		expect(windowDetectionIntervalSeconds({ ...detection, sampleWindowMs: 600_000, maximumSampleAgeMs: 300_000 })).toBe(300);
+		expect(windowDetectionIntervalSeconds({ ...detection, sampleWindowMs: 1_500 })).toBe(0.75);
+		expect(windowDetectionIntervalSeconds({ ...detection, sampleWindowMs: 200_000 })).toBe(100);
+		expect(windowDetectionIntervalSeconds({ sampleWindowMs: 100_000, minimumSamples: 4, maximumSampleAgeMs: 120_000 })).toBeCloseTo(33.333, 3);
 	});
 
 	it('has no requirement while the settings are incomplete or invalid', () => {
@@ -124,6 +128,15 @@ describe('windowDetectionIntervalSeconds', () => {
 describe('windowDetectionAdvice', () => {
 	it('warns when the room sensor usually reports less often than detection needs', () => {
 		expect(windowDetectionAdvice(hourly, detection)).toEqual({ kind: 'too_slow', requiredIntervalSeconds: 90, reporting: hourly });
+	});
+
+	it('allows for the whole-second rounding of reported intervals at a fractional requirement', () => {
+		const subsecond = { ...detection, sampleWindowMs: 1_500 };
+		// A sensor reporting every 0.6 s is reported as 1 s: it meets a 0.75 s requirement.
+		expect(windowDetectionAdvice({ ...wired, typicalIntervalSeconds: 1 }, subsecond)).toMatchObject({ kind: 'fits', requiredIntervalSeconds: 0.75 });
+		expect(windowDetectionAdvice({ ...wired, typicalIntervalSeconds: 2 }, subsecond)).toMatchObject({ kind: 'too_slow' });
+		expect(windowDetectionAdvice({ ...wired, typicalIntervalSeconds: 90 }, detection)).toMatchObject({ kind: 'fits' });
+		expect(windowDetectionAdvice({ ...wired, typicalIntervalSeconds: 91 }, detection)).toMatchObject({ kind: 'too_slow' });
 	});
 
 	it('confirms a room sensor that reports often enough', () => {
