@@ -7,5 +7,66 @@
 	},
 	"subHeadings": {
 		"cameras": "Živý náhľad a snímky zo všetkých kamier"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "pred {seconds} s",
+		"play": "Prehrať živý náhľad",
+		"connecting": "Pripájanie",
+		"codecUnsupported": "Tento prehliadač nedokáže prehrať tento stream. Skúste Chrome, Edge alebo Safari.",
+		"offline": "Kamera je offline",
+		"lastSeen": "Naposledy videná {time}",
+		"relayUnavailable": "Živý náhľad nie je dostupný",
+		"cameraLimit": "Príliš veľa divákov pri tejto kamere ({max})",
+		"cameraLimitNoMax": "Príliš veľa divákov pri tejto kamere",
+		"totalLimit": "Príliš veľa otvorených živých náhľadov ({max})",
+		"totalLimitNoMax": "Príliš veľa otvorených živých náhľadov",
+		"moduleDisabled": "Modul Kamery je vypnutý.",
+		"error": "Živý náhľad zlyhal",
+		"retryingIn": "Ďalší pokus o {seconds} s"
+	},
+	"buttons": {
+		"retry": "Skúsiť znova",
+		"openSettings": "Otvoriť nastavenia kamier"
+	},
+	"relayReasons": {
+		"mode_disabled": "Živý náhľad je vypnutý. Snímky stále fungujú.",
+		"module_disabled": "Modul Kamery je vypnutý.",
+		"binary_path_invalid": "Cesta ku go2rtc musí byť absolútna cesta k súboru go2rtc.",
+		"binary_missing": "go2rtc sa na tejto ceste nenašiel.",
+		"binary_not_executable": "go2rtc sa našiel, ale nedá sa spustiť. Skontrolujte jeho oprávnenia.",
+		"external_url_missing": "Externý režim vyžaduje adresu go2rtc.",
+		"external_unreachable": "Externý go2rtc neodpovedá.",
+		"start_timeout": "go2rtc sa nespustil včas.",
+		"port_in_use": "Port relé používa iný program.",
+		"crashed": "go2rtc sa neočakávane zastavil. Spustí sa automaticky znova."
+	},
+	"reasons": {
+		"stream_not_enabled": "Pre túto kameru nie je zapnutý žiadny stream. Zapnite ho v nastaveniach kamery.",
+		"camera_offline": "Kamera je offline.",
+		"console_unavailable": "Konzola, ktorá túto kameru spravuje, nie je dostupná.",
+		"stream_state_unknown": "Stav streamu sa nepodarilo zistiť.",
+		"stream_tls_unverified": "Certifikát streamu sa nepodarilo overiť.",
+		"unknown": "Tento stream nie je dostupný."
+	},
+	"profiles": {
+		"heading": "Profily streamu",
+		"selector": "Profil streamu",
+		"columns": {
+			"name": "Profil",
+			"resolution": "Rozlíšenie",
+			"fps": "FPS",
+			"videoCodec": "Video kodek",
+			"audioCodec": "Audio kodek",
+			"availability": "Dostupnosť"
+		},
+		"available": "Dostupný",
+		"unavailable": "Nedostupný"
+	},
+	"section": {
+		"heading": "Kamera",
+		"noStream": "Toto zariadenie neposkytuje stream z kamery.",
+		"noLiveView": "Pre túto kameru nie je živý náhľad dostupný.",
+		"snapshotUnavailable": "Snímka nie je dostupná."
 	}
 }

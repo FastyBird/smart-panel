@@ -154,6 +154,15 @@
 				</template>
 
 				<el-scrollbar class="h-full">
+					<template v-if="device">
+						<component
+							:is="section.component"
+							v-for="section in categorySections"
+							:key="`${section.id}:${device.id}`"
+							:device="device"
+						/>
+					</template>
+
 					<el-space
 						v-if="sortedChannels"
 						direction="vertical"
@@ -454,6 +463,7 @@ import {
 	useChannelsActions,
 	useChannelsPropertiesActions,
 	useDevice,
+	useDeviceCategorySections,
 	useDeviceControls,
 	useDeviceLogs,
 	useDeviceSpecification,
@@ -491,6 +501,7 @@ const deviceId = computed(() => props.id);
 
 const { device, isLoading, fetchDevice } = useDevice({ id: deviceId });
 const { getElement: getDevicePluginElement } = useDevicesPlugins();
+const categorySections = useDeviceCategorySections(device);
 const deviceDetailTabs = computed(() =>
 	device.value
 		? (getDevicePluginElement(device.value.type)?.components?.deviceDetailTabs ?? []).filter((tab) => !tab.visible || tab.visible(device.value!))

@@ -7,5 +7,66 @@
 	},
 	"subHeadings": {
 		"cameras": "Live view and snapshots of every camera"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "{seconds} s ago",
+		"play": "Play live view",
+		"connecting": "Connecting",
+		"codecUnsupported": "This browser cannot play this stream. Try Chrome, Edge or Safari.",
+		"offline": "Camera is offline",
+		"lastSeen": "Last seen {time}",
+		"relayUnavailable": "Live view is not available",
+		"cameraLimit": "Too many viewers on this camera ({max})",
+		"cameraLimitNoMax": "Too many viewers on this camera",
+		"totalLimit": "Too many live views open ({max})",
+		"totalLimitNoMax": "Too many live views open",
+		"moduleDisabled": "The Cameras module is turned off.",
+		"error": "Live view failed",
+		"retryingIn": "Retrying in {seconds} s"
+	},
+	"buttons": {
+		"retry": "Retry",
+		"openSettings": "Open Cameras settings"
+	},
+	"relayReasons": {
+		"mode_disabled": "Live view is turned off. Snapshots still work.",
+		"module_disabled": "The Cameras module is turned off.",
+		"binary_path_invalid": "The go2rtc path must be an absolute path to a file named go2rtc.",
+		"binary_missing": "go2rtc was not found at this path.",
+		"binary_not_executable": "go2rtc was found but cannot be run. Check its permissions.",
+		"external_url_missing": "External mode needs the go2rtc URL.",
+		"external_unreachable": "The external go2rtc does not answer.",
+		"start_timeout": "go2rtc did not start in time.",
+		"port_in_use": "Another program is using the relay port.",
+		"crashed": "go2rtc stopped unexpectedly. It restarts automatically."
+	},
+	"reasons": {
+		"stream_not_enabled": "No stream is enabled for this camera. Turn one on in the camera settings.",
+		"camera_offline": "The camera is offline.",
+		"console_unavailable": "The console that manages this camera is not reachable.",
+		"stream_state_unknown": "The stream state could not be read.",
+		"stream_tls_unverified": "The stream certificate could not be verified.",
+		"unknown": "This stream is not available."
+	},
+	"profiles": {
+		"heading": "Stream profiles",
+		"selector": "Stream profile",
+		"columns": {
+			"name": "Profile",
+			"resolution": "Resolution",
+			"fps": "FPS",
+			"videoCodec": "Video codec",
+			"audioCodec": "Audio codec",
+			"availability": "Availability"
+		},
+		"available": "Available",
+		"unavailable": "Unavailable"
+	},
+	"section": {
+		"heading": "Camera",
+		"noStream": "This device does not provide a camera stream.",
+		"noLiveView": "Live view is not available for this camera.",
+		"snapshotUnavailable": "No snapshot is available."
 	}
 }

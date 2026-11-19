@@ -7,5 +7,66 @@
 	},
 	"subHeadings": {
 		"cameras": "Vista en directo e instantáneas de todas las cámaras"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "hace {seconds} s",
+		"play": "Reproducir vista en directo",
+		"connecting": "Conectando",
+		"codecUnsupported": "Este navegador no puede reproducir esta transmisión. Prueba con Chrome, Edge o Safari.",
+		"offline": "La cámara está sin conexión",
+		"lastSeen": "Visto por última vez {time}",
+		"relayUnavailable": "La vista en directo no está disponible",
+		"cameraLimit": "Demasiados espectadores en esta cámara ({max})",
+		"cameraLimitNoMax": "Demasiados espectadores en esta cámara",
+		"totalLimit": "Demasiadas vistas en directo abiertas ({max})",
+		"totalLimitNoMax": "Demasiadas vistas en directo abiertas",
+		"moduleDisabled": "El módulo de cámaras está desactivado.",
+		"error": "La vista en directo ha fallado",
+		"retryingIn": "Reintentando en {seconds} s"
+	},
+	"buttons": {
+		"retry": "Reintentar",
+		"openSettings": "Abrir ajustes de cámaras"
+	},
+	"relayReasons": {
+		"mode_disabled": "La vista en directo está desactivada. Las instantáneas siguen funcionando.",
+		"module_disabled": "El módulo de cámaras está desactivado.",
+		"binary_path_invalid": "La ruta de go2rtc debe ser una ruta absoluta a un archivo llamado go2rtc.",
+		"binary_missing": "No se encontró go2rtc en esta ruta.",
+		"binary_not_executable": "Se encontró go2rtc, pero no se puede ejecutar. Revisa sus permisos.",
+		"external_url_missing": "El modo externo necesita la URL de go2rtc.",
+		"external_unreachable": "El go2rtc externo no responde.",
+		"start_timeout": "go2rtc no se inició a tiempo.",
+		"port_in_use": "Otro programa está usando el puerto del relé.",
+		"crashed": "go2rtc se detuvo de forma inesperada. Se reinicia automáticamente."
+	},
+	"reasons": {
+		"stream_not_enabled": "No hay ninguna transmisión activada para esta cámara. Activa una en los ajustes de la cámara.",
+		"camera_offline": "La cámara está sin conexión.",
+		"console_unavailable": "No se puede acceder a la consola que gestiona esta cámara.",
+		"stream_state_unknown": "No se pudo leer el estado de la transmisión.",
+		"stream_tls_unverified": "No se pudo verificar el certificado de la transmisión.",
+		"unknown": "Esta transmisión no está disponible."
+	},
+	"profiles": {
+		"heading": "Perfiles de transmisión",
+		"selector": "Perfil de transmisión",
+		"columns": {
+			"name": "Perfil",
+			"resolution": "Resolución",
+			"fps": "FPS",
+			"videoCodec": "Códec de vídeo",
+			"audioCodec": "Códec de audio",
+			"availability": "Disponibilidad"
+		},
+		"available": "Disponible",
+		"unavailable": "No disponible"
+	},
+	"section": {
+		"heading": "Cámara",
+		"noStream": "Este dispositivo no ofrece una transmisión de cámara.",
+		"noLiveView": "La vista en directo no está disponible para esta cámara.",
+		"snapshotUnavailable": "No hay ninguna instantánea disponible."
 	}
 }

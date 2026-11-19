@@ -13,15 +13,19 @@ import {
 	injectStoresManager,
 	refreshLoadedStores,
 } from '../../common';
+import { DevicesModuleDeviceCategory } from '../../openapi.constants';
+import { DEVICES_MODULE_NAME } from '../devices/devices.constants';
+import type { IDevicesModuleElementComponents } from '../devices/devices.types';
 
 import { CAMERAS_MODULE_NAME } from './cameras.constants';
+import { CameraDeviceSection } from './components/components';
 import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { registerCamerasStore } from './store/cameras.store';
 import { camerasStoreKey, relayStatusStoreKey } from './store/keys';
 import { registerRelayStatusStore } from './store/relay-status.store';
 
-const camerasAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Cameras');
+const camerasAdminModuleKey: ModuleInjectionKey<IModule<IDevicesModuleElementComponents>> = Symbol('FB-Module-Cameras');
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
@@ -49,7 +53,20 @@ export default {
 			type: CAMERAS_MODULE_NAME,
 			name: 'Cameras',
 			description: 'Live view and snapshots of every camera.',
-			elements: [],
+			elements: [
+				{
+					type: CAMERAS_MODULE_NAME,
+					modules: [DEVICES_MODULE_NAME],
+					components: {
+						deviceCategorySection: {
+							id: 'camera',
+							categories: [DevicesModuleDeviceCategory.camera, DevicesModuleDeviceCategory.doorbell],
+							component: CameraDeviceSection,
+							order: 0,
+						},
+					},
+				},
+			],
 			isCore: true,
 		});
 

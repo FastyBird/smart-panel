@@ -30,6 +30,8 @@ export interface IUseLiveViewOptions {
 export interface IUseLiveView {
 	state: Readonly<Ref<LiveViewState>>;
 	retryInMs: Readonly<Ref<number | null>>;
+	/** A seamless session renewal is running: the view keeps the last frame and shows no connecting overlay. */
+	reconnect: ComputedRef<boolean>;
 	mime: Readonly<Ref<string | null>>;
 	lastSeen: ComputedRef<Date | null>;
 	start: () => void;
@@ -491,6 +493,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 	return {
 		state: computed(() => context.value.state),
 		retryInMs: computed(() => context.value.retryInMs),
+		reconnect: computed(() => context.value.reconnect),
 		mime: computed(() => mime.value),
 		lastSeen: computed(() => device.value?.status.lastChanged ?? null),
 		start,

@@ -7,5 +7,66 @@
 	},
 	"subHeadings": {
 		"cameras": "Podgląd na żywo i zdjęcia ze wszystkich kamer"
+	},
+	"states": {
+		"live": "LIVE",
+		"snapshotAge": "{seconds} s temu",
+		"play": "Odtwórz podgląd na żywo",
+		"connecting": "Łączenie",
+		"codecUnsupported": "Ta przeglądarka nie może odtworzyć tego strumienia. Spróbuj użyć Chrome, Edge lub Safari.",
+		"offline": "Kamera jest offline",
+		"lastSeen": "Ostatnio widziana {time}",
+		"relayUnavailable": "Podgląd na żywo jest niedostępny",
+		"cameraLimit": "Zbyt wielu widzów tej kamery ({max})",
+		"cameraLimitNoMax": "Zbyt wielu widzów tej kamery",
+		"totalLimit": "Zbyt wiele otwartych podglądów na żywo ({max})",
+		"totalLimitNoMax": "Zbyt wiele otwartych podglądów na żywo",
+		"moduleDisabled": "Moduł Kamery jest wyłączony.",
+		"error": "Podgląd na żywo nie powiódł się",
+		"retryingIn": "Ponowna próba za {seconds} s"
+	},
+	"buttons": {
+		"retry": "Spróbuj ponownie",
+		"openSettings": "Otwórz ustawienia kamer"
+	},
+	"relayReasons": {
+		"mode_disabled": "Podgląd na żywo jest wyłączony. Zdjęcia nadal działają.",
+		"module_disabled": "Moduł Kamery jest wyłączony.",
+		"binary_path_invalid": "Ścieżka go2rtc musi być bezwzględną ścieżką do pliku o nazwie go2rtc.",
+		"binary_missing": "Nie znaleziono go2rtc pod tą ścieżką.",
+		"binary_not_executable": "Znaleziono go2rtc, ale nie można go uruchomić. Sprawdź jego uprawnienia.",
+		"external_url_missing": "Tryb zewnętrzny wymaga adresu URL go2rtc.",
+		"external_unreachable": "Zewnętrzny go2rtc nie odpowiada.",
+		"start_timeout": "go2rtc nie uruchomił się na czas.",
+		"port_in_use": "Inny program używa portu przekaźnika.",
+		"crashed": "go2rtc nieoczekiwanie się zatrzymał. Uruchomi się ponownie automatycznie."
+	},
+	"reasons": {
+		"stream_not_enabled": "Dla tej kamery nie włączono żadnego strumienia. Włącz go w ustawieniach kamery.",
+		"camera_offline": "Kamera jest offline.",
+		"console_unavailable": "Konsola zarządzająca tą kamerą jest niedostępna.",
+		"stream_state_unknown": "Nie udało się odczytać stanu strumienia.",
+		"stream_tls_unverified": "Nie udało się zweryfikować certyfikatu strumienia.",
+		"unknown": "Ten strumień jest niedostępny."
+	},
+	"profiles": {
+		"heading": "Profile strumienia",
+		"selector": "Profil strumienia",
+		"columns": {
+			"name": "Profil",
+			"resolution": "Rozdzielczość",
+			"fps": "FPS",
+			"videoCodec": "Kodek wideo",
+			"audioCodec": "Kodek audio",
+			"availability": "Dostępność"
+		},
+		"available": "Dostępny",
+		"unavailable": "Niedostępny"
+	},
+	"section": {
+		"heading": "Kamera",
+		"noStream": "To urządzenie nie udostępnia strumienia z kamery.",
+		"noLiveView": "Podgląd na żywo jest niedostępny dla tej kamery.",
+		"snapshotUnavailable": "Zdjęcie jest niedostępne."
 	}
 }

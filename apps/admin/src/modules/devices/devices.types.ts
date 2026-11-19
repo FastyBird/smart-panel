@@ -3,6 +3,8 @@ eslint-disable @typescript-eslint/no-empty-object-type
 */
 import type { Component, ComponentOptionsMixin, DefineComponent } from 'vue';
 
+import type { DevicesModuleDeviceCategory } from '../../openapi.constants';
+
 import { type IChannelAddFormProps, channelAddFormEmits } from './components/channels/channel-add-form.types';
 import { type IChannelEditFormProps, channelEditFormEmits } from './components/channels/channel-edit-form.types';
 import { type IChannelPropertyAddFormProps, channelPropertyAddFormEmits } from './components/channels/channel-property-add-form.types';
@@ -75,6 +77,21 @@ export interface IDeviceDetailTab {
 	component: Component;
 	visible?: (device: IDevice) => boolean;
 }
+
+/**
+ * Content a module renders on the device detail page for every device of the listed categories, regardless of the
+ * device's plugin. The host owns the page chrome and the order; the section renders cards only.
+ */
+export interface IDeviceCategorySection {
+	id: string;
+	categories: DevicesModuleDeviceCategory[];
+	component: Component;
+	order?: number;
+}
+
+export type IDevicesModuleElementComponents = {
+	deviceCategorySection?: IDeviceCategorySection;
+};
 
 export type IDevicePluginRoutes = Record<string, never>;
 

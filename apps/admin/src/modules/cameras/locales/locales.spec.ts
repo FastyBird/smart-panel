@@ -41,7 +41,9 @@ const assertNoStaleExceptions = (
  * locale, which the test below enforces.
  */
 const ALLOWED_IDENTICAL: Record<string, string[]> = {
-	// Filled in as later tasks add words that are the same in every language (`MSE`, `H.264`, `AAC`, `go2rtc`, `LIVE`).
+	// Words that are the same in every language (`MSE`, `H.264`, `AAC`, `go2rtc`, `LIVE`, `FPS`).
+	'states.live': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
+	'profiles.columns.fps': ['cs-CZ', 'de-DE', 'es-ES', 'pl-PL', 'sk-SK'],
 };
 
 describe('Cameras module locales', () => {

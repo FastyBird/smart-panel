@@ -232,6 +232,27 @@ describe('useLiveView', () => {
 		expect(live.state.value).toBe('connecting');
 	});
 
+	it('exposes reconnect while a session is renewed after max_lifetime and clears it once media flows again', async () => {
+		postMock.mockResolvedValueOnce(sessionOk('one')).mockResolvedValueOnce(sessionOk('two'));
+
+		const live = mountLiveView();
+		await startPlaying(live);
+
+		expect(live.reconnect.value).toBe(false);
+
+		lastClient().emit({ type: 'closed', code: 4002, reason: 'max_lifetime' });
+		await flush();
+
+		expect(live.state.value).toBe('connecting');
+		expect(live.reconnect.value).toBe(true);
+
+		lastClient().emit({ type: 'media_started' });
+		await flush();
+
+		expect(live.state.value).toBe('playing');
+		expect(live.reconnect.value).toBe(false);
+	});
+
 	it('posts the session with the profile, the mse transport and an abort signal', async () => {
 		postMock.mockResolvedValueOnce(sessionOk());
 

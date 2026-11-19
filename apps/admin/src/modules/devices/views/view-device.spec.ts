@@ -79,6 +79,7 @@ vi.mock('../../config', () => ({ useConfigPlugins: () => ({ enabled: () => false
 vi.mock('../devices.mapping', () => ({ deviceChannelsSpecificationOrder: {} }));
 vi.mock('../composables/composables', async () => ({
 	useDevicesPlugins: (await import('../composables/useDevicesPlugins')).useDevicesPlugins,
+	useDeviceCategorySections: () => ref([]),
 	useDevice: () => ({ device: mocks.device, isLoading: ref(false), fetchDevice: mocks.fetch }),
 	useDeviceValidation: () => ({ issues: ref([]), fetchValidation: mocks.fetch }),
 	useDeviceLogs: () => ({
