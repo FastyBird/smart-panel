@@ -317,6 +317,19 @@ describe('useLiveView', () => {
 		expect(live.retryInMs.value).toBeNull();
 	});
 
+	it('treats a failed camera refetch during the profile fallback as a retryable failure', async () => {
+		camerasStore.get.mockRejectedValue(new Error('network'));
+		postMock.mockResolvedValue(notFound('Stream profile is not available'));
+
+		const live = mountLiveView();
+		live.start();
+		await flush();
+
+		expect(postMock).toHaveBeenCalledTimes(1);
+		expect(live.state.value).toBe('error');
+		expect(live.retryInMs.value).toBe(LIVE_RETRY_DELAYS_MS[0]);
+	});
+
 	it('maps a module disabled 404 to module_disabled', async () => {
 		postMock.mockResolvedValue(notFound('Cameras module is disabled'));
 

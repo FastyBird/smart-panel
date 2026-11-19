@@ -176,6 +176,44 @@ describe('CameraPlayer', () => {
 		play.mockRestore();
 	});
 
+	it('offers the play button when playing starts with the video still paused (blocked autoplay)', async () => {
+		setState('connecting');
+
+		const wrapper = mountPlayer();
+
+		setState('playing');
+		await wrapper.vm.$nextTick();
+
+		expect((wrapper.find('video').element as HTMLVideoElement).paused).toBe(true);
+		expect(find(wrapper, 'camera-player-live').exists()).toBe(true);
+		expect(find(wrapper, 'camera-player-resume').exists()).toBe(true);
+	});
+
+	it('applies the muted prop again once playing starts, after the client muted the video', async () => {
+		setState('connecting');
+
+		const wrapper = mountPlayer({ muted: false });
+		const video = wrapper.find('video').element as HTMLVideoElement;
+
+		// The MSE client mutes the video for autoplay on every (re)connect.
+		video.muted = true;
+
+		setState('playing');
+		await wrapper.vm.$nextTick();
+
+		expect(video.muted).toBe(false);
+
+		await wrapper.setProps({ muted: true });
+
+		video.muted = true;
+		setState('connecting');
+		await wrapper.vm.$nextTick();
+		setState('playing');
+		await wrapper.vm.$nextTick();
+
+		expect(video.muted).toBe(true);
+	});
+
 	it('names the supported browsers when the codec is unsupported', () => {
 		setState('codec_unsupported');
 

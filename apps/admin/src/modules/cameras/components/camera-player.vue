@@ -295,7 +295,14 @@ const onResume = (): void => {
 	void video.value?.play()?.catch((): void => undefined);
 };
 
-watch(state, (next) => emit('state-change', next));
+watch(state, (next) => {
+	// The MSE client mutes the video on every (re)connect so autoplay is allowed; the binding only reacts to prop changes.
+	if (next === 'playing' && video.value !== null) {
+		video.value.muted = props.muted;
+	}
+
+	emit('state-change', next);
+});
 watch(mime, (next) => emit('mime-change', next));
 
 watch(

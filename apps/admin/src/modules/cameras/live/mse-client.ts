@@ -41,8 +41,9 @@ const LIVE_EDGE_TARGET_LAG_S = 0.5;
 
 type Operation = { kind: 'append'; data: ArrayBuffer; retried: boolean } | { kind: 'remove'; start: number; end: number };
 
-const isQuotaExceeded = (error: unknown): boolean =>
-	typeof error === 'object' && error !== null && 'name' in error && error.name === 'QuotaExceededError';
+const hasErrorName = (error: unknown, name: string): boolean => typeof error === 'object' && error !== null && 'name' in error && error.name === name;
+
+const isQuotaExceeded = (error: unknown): boolean => hasErrorName(error, 'QuotaExceededError');
 
 const openSocket = (url: string): WebSocket => new WebSocket(url);
 
@@ -95,7 +96,7 @@ export class MseClient {
 		video.muted = true;
 		video.playsInline = true;
 		video.disableRemotePlayback = true;
-		video.addEventListener('playing', () => this.onPlaying(), { signal });
+		video.addEventListener('playing', () => this.onMediaStarted(), { signal });
 		video.addEventListener('error', () => this.fail(MSE_CLIENT_CLOSE.MEDIA_ERROR), { signal });
 
 		try {
@@ -245,8 +246,9 @@ export class MseClient {
 		this.drain();
 	}
 
-	private onPlaying(): void {
-		if (!this.mediaStarted) {
+	/** Media flows: reported once, on the first `playing` event or when autoplay was blocked. */
+	private onMediaStarted(): void {
+		if (!this.closed && !this.mediaStarted) {
 			this.mediaStarted = true;
 			this.options.onEvent({ type: 'media_started' });
 		}
@@ -319,10 +321,15 @@ export class MseClient {
 
 			if (!this.playRequested) {
 				this.playRequested = true;
-				// Autoplay is muted; a rejection only means the user has to press play.
+				// Autoplay is muted, but a browser can still block it (`NotAllowedError`). Media is flowing then, so the
+				// view moves on to playing with the video paused and offers its play button; other rejections change nothing.
 				void Promise.resolve()
 					.then(() => (this.closed ? undefined : this.options.video.play()))
-					.catch(() => undefined);
+					.catch((error: unknown) => {
+						if (hasErrorName(error, 'NotAllowedError')) {
+							this.onMediaStarted();
+						}
+					});
 			}
 		}
 

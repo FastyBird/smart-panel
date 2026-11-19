@@ -444,7 +444,6 @@ describe('MseClient', () => {
 		const ctx = setup();
 		const buffer = ready(ctx);
 
-		ctx.play.mockImplementation(() => Promise.reject(new DOMException('blocked', 'NotAllowedError')));
 		ctx.socket().binary(1);
 		buffer.finish();
 
@@ -459,6 +458,64 @@ describe('MseClient', () => {
 		ctx.video.dispatchEvent(new Event('playing'));
 
 		expect(ctx.events).toEqual([{ type: 'mime', mime: MIME }, { type: 'media_started' }]);
+	});
+
+	it('emits media_started once when autoplay is blocked, so the view can offer play', async () => {
+		const ctx = setup();
+		const buffer = ready(ctx);
+
+		ctx.play.mockImplementation(() => Promise.reject(new DOMException('blocked', 'NotAllowedError')));
+		ctx.socket().binary(1);
+		buffer.finish();
+
+		for (let i = 0; i < 4; i++) {
+			await Promise.resolve();
+		}
+
+		expect(ctx.play).toHaveBeenCalledTimes(1);
+		expect(ctx.events).toEqual([{ type: 'mime', mime: MIME }, { type: 'media_started' }]);
+
+		// The user presses play later: the playing event must not report the start again.
+		ctx.video.dispatchEvent(new Event('playing'));
+
+		expect(ctx.events).toEqual([{ type: 'mime', mime: MIME }, { type: 'media_started' }]);
+	});
+
+	it('does not emit media_started when play fails for another reason', async () => {
+		const ctx = setup();
+		const buffer = ready(ctx);
+
+		ctx.play.mockImplementation(() => Promise.reject(new DOMException('aborted', 'AbortError')));
+		ctx.socket().binary(1);
+		buffer.finish();
+
+		for (let i = 0; i < 4; i++) {
+			await Promise.resolve();
+		}
+
+		expect(ctx.events).toEqual([{ type: 'mime', mime: MIME }]);
+	});
+
+	it('does not emit media_started for a blocked play that settles after close', async () => {
+		const ctx = setup();
+		const buffer = ready(ctx);
+		let reject: (error: unknown) => void = () => undefined;
+
+		ctx.play.mockImplementation(() => new Promise<void>((_, rejectPlay) => (reject = rejectPlay)));
+		ctx.socket().binary(1);
+		buffer.finish();
+
+		await Promise.resolve();
+		await Promise.resolve();
+
+		ctx.client.close();
+		reject(new DOMException('blocked', 'NotAllowedError'));
+
+		for (let i = 0; i < 4; i++) {
+			await Promise.resolve();
+		}
+
+		expect(ctx.events).toEqual([{ type: 'mime', mime: MIME }]);
 	});
 
 	it('reports the close code and reason', () => {

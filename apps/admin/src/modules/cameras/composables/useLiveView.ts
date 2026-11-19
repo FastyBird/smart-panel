@@ -41,6 +41,9 @@ export interface IUseLiveView {
 
 const PROFILE_NOT_AVAILABLE_MESSAGE = 'Stream profile is not available';
 
+/** The camera could not be read again during the profile fallback; a profile id can never collide with it. */
+const REFETCH_FAILED = Symbol('refetch-failed');
+
 /** States that own a session request or a running client. */
 const ACTIVE_STATES: ReadonlySet<LiveViewState> = new Set<LiveViewState>(['requesting', 'connecting', 'playing']);
 
@@ -248,8 +251,11 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		}
 	};
 
-	/** The first available profile of a freshly read camera, or `null` when the camera has none. */
-	const refetchFallbackProfile = async (deviceId: string): Promise<string | null> => {
+	/**
+	 * The first available profile of a freshly read camera, `null` when the camera has none, or `REFETCH_FAILED` when it
+	 * could not be read, which is retryable.
+	 */
+	const refetchFallbackProfile = async (deviceId: string): Promise<string | null | typeof REFETCH_FAILED> => {
 		try {
 			const camera = await camerasStore.get({ deviceId });
 
@@ -257,7 +263,7 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 		} catch {
 			logger.warn('Failed to reload the camera profiles for the live view.');
 
-			return null;
+			return REFETCH_FAILED;
 		}
 	};
 
@@ -332,8 +338,8 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 					return;
 				}
 
-				if (fallback === null) {
-					send({ type: 'session_failed', failure: 'not_found' });
+				if (fallback === null || fallback === REFETCH_FAILED) {
+					send({ type: 'session_failed', failure: fallback === REFETCH_FAILED ? 'failed' : 'not_found' });
 
 					return;
 				}
