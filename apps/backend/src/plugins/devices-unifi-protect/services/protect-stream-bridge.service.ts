@@ -175,6 +175,12 @@ class PrepareBudget {
 	}
 }
 
+interface PreflightFlight {
+	promise: Promise<void>;
+	controller: AbortController;
+	waiters: number;
+}
+
 /**
  * The verified hop between go2rtc and the console's RTSPS port (D1, D11, D12). go2rtc gets a plain `rtsp://` URL to a
  * bridge listener; each accepted connection opens its own TLS connection to the console, verified exactly like the API
@@ -201,6 +207,8 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 	private readonly closing = new Set<Promise<void>>();
 	private readonly verification = new Map<string, VerificationEntry>();
 	private readonly handshakes: number[] = [];
+	/** Pre-flights in flight, keyed `<session>:<host>:<port>`; each holds one slot of the connection cap. */
+	private readonly preflights = new Map<string, PreflightFlight>();
 
 	private sessionGeneration = 0;
 	private destroyed = false;
@@ -216,6 +224,11 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		@Optional() @Inject(PROTECT_TRUSTED_CA) trustedCa?: string,
 	) {
 		this.ca = withExtraCa(trustedCa);
+	}
+
+	/** Slots counted against PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS: open connections and pre-flights in flight. */
+	private get occupiedSlots(): number {
+		return this.connections.size + this.preflights.size;
 	}
 
 	get connectionCount(): number {
@@ -246,6 +259,7 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		this.routes.clear();
 		this.verification.clear();
 		this.handshakes.length = 0;
+		this.preflights.clear();
 
 		// A bind still in flight sees `destroyed` when it completes and closes its listener at once.
 		await Promise.allSettled([...this.opening.values()]);
@@ -332,8 +346,13 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		}
 	}
 
-	/** One verified handshake that only reports: the socket is destroyed at once, nothing is written. */
-	private async preflight(
+	/**
+	 * One verified handshake that only reports: the socket is destroyed at once, nothing is written. Concurrent calls
+	 * for one upstream and session share one handshake; the shared handshake consumes the M5 allowance and holds a slot
+	 * of the connection cap until it settles. An exhausted allowance or cap rejects `unavailable` with no handshake.
+	 * Every caller waits with its own deadline and signal; the handshake is aborted only when all of them gave up.
+	 */
+	private preflight(
 		host: string,
 		port: number,
 		plan: ProtectTlsConnectPlan,
@@ -341,12 +360,75 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 		signal: AbortSignal,
 		sessionGeneration: number,
 	): Promise<void> {
-		const handshakeTimeoutMs = budget.remaining(PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS);
+		const key = `${sessionGeneration}:${verificationKey(host, port)}`;
+		let flight = this.preflights.get(key);
 
-		if (handshakeTimeoutMs <= 0) {
-			throw bridgeError(ProtectErrorCategory.TIMEOUT);
+		if (flight === undefined) {
+			const handshakeTimeoutMs = budget.remaining(PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS);
+
+			if (handshakeTimeoutMs <= 0) {
+				throw bridgeError(ProtectErrorCategory.TIMEOUT);
+			}
+
+			if (this.occupiedSlots >= PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS) {
+				this.logRefused('limit');
+
+				return Promise.reject(bridgeError(ProtectErrorCategory.UNAVAILABLE));
+			}
+
+			if (!this.consumeHandshake()) {
+				this.logRefused('rate');
+
+				return Promise.reject(bridgeError(ProtectErrorCategory.UNAVAILABLE));
+			}
+
+			const controller = new AbortController();
+			const started: PreflightFlight = { promise: Promise.resolve(), controller, waiters: 0 };
+
+			this.preflights.set(key, started);
+			started.promise = this.handshake(
+				host,
+				port,
+				plan,
+				handshakeTimeoutMs,
+				AbortSignal.any([controller.signal, this.lifetime.signal]),
+				sessionGeneration,
+			).finally(() => {
+				if (this.preflights.get(key) === started) {
+					this.preflights.delete(key);
+				}
+			});
+			// Never an unhandled rejection when every waiter has given up.
+			started.promise.catch(() => undefined);
+			flight = started;
 		}
 
+		const joined = flight;
+
+		joined.waiters += 1;
+		signal.addEventListener(
+			'abort',
+			() => {
+				joined.waiters -= 1;
+
+				if (joined.waiters <= 0) {
+					joined.controller.abort();
+				}
+			},
+			{ once: true },
+		);
+
+		return this.withBudget(joined.promise, budget, signal);
+	}
+
+	private async handshake(
+		host: string,
+		port: number,
+		plan: ProtectTlsConnectPlan,
+		handshakeTimeoutMs: number,
+		signal: AbortSignal,
+		sessionGeneration: number,
+	): Promise<void> {
 		let verified: Awaited<ReturnType<typeof connectVerifiedProtectTls>>;
 
 		try {
@@ -813,7 +895,7 @@ export class ProtectStreamBridgeService implements OnModuleInit, OnModuleDestroy
 			return;
 		}
 
-		if (this.connections.size >= PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS) {
+		if (this.occupiedSlots >= PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS) {
 			socket.destroy();
 			this.logRefused('limit');
 

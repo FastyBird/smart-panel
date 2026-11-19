@@ -1198,6 +1198,117 @@ describe('ProtectStreamBridgeService', () => {
 			expect(connectMock).not.toHaveBeenCalled();
 		});
 
+		it('makes one pre-flight handshake for concurrent prepares of one port', async () => {
+			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const [bridgeEnd] = duplexPair();
+
+			connectMock.mockImplementationOnce(() => verification.promise);
+
+			const results = Array.from({ length: 40 }, () => service.prepare(PORT));
+
+			await waitFor(() => connectMock.mock.calls.length === 1);
+			await tick();
+			verification.resolve({ socket: bridgeEnd as unknown as tls.TLSSocket, fingerprint: PIN });
+
+			const endpoints = await Promise.all(results);
+
+			expect(connectMock).toHaveBeenCalledTimes(1);
+			expect(new Set(endpoints.map((endpoint) => endpoint.port)).size).toBe(1);
+			expect(service.getVerification(UPSTREAM)).toBe('verified');
+		});
+
+		it('shares a failed handshake and lets a joiner give up on its own signal', async () => {
+			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const controller = new AbortController();
+
+			connectMock.mockImplementationOnce(() => verification.promise);
+
+			const patient = service.prepare(PORT).catch((error: unknown) => error);
+			const impatient = service.prepare(PORT, { signal: controller.signal }).catch((error: unknown) => error);
+
+			await waitFor(() => connectMock.mock.calls.length === 1);
+			controller.abort();
+
+			await expect(impatient).resolves.toMatchObject({ category: 'cancelled' });
+
+			verification.reject(new ProtectApiError(ProtectErrorCategory.UNREACHABLE, 'tls'));
+
+			await expect(patient).resolves.toMatchObject({ category: 'unreachable' });
+			expect(connectMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('counts pre-flights toward the handshake allowance', async () => {
+			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+
+			for (let index = 0; index < PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES; index += 1) {
+				// Alternating ports keep every pre-flight separate from the last without reaching the listener cap.
+				await service.prepare({ port: 7441 + (index % PROTECT_STREAM_BRIDGE_MAX_LISTENERS) });
+				service.handleConfigUpdated();
+			}
+
+			// A completed pre-flight is not joined: each one above made (and consumed) its own handshake.
+			expect(connectMock).toHaveBeenCalledTimes(PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES);
+
+			await expect(service.prepare(PORT)).rejects.toMatchObject({ category: 'unavailable' });
+			expect(connectMock).toHaveBeenCalledTimes(PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES);
+
+			jest.advanceTimersByTime(PROTECT_STREAM_BRIDGE_HANDSHAKE_WINDOW_MS);
+
+			await expect(service.prepare(PORT)).resolves.toMatchObject({ host: '127.0.0.1' });
+			expect(connectMock).toHaveBeenCalledTimes(PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES + 1);
+		});
+
+		it('holds a connection slot during a pre-flight and releases it afterwards', async () => {
+			const endpoint = await service.prepare(PORT);
+			const open: { closed: boolean }[] = [];
+
+			for (let index = 0; index < PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS - 1; index += 1) {
+				open.push(await connectClient(endpoint.port));
+			}
+
+			await waitFor(() => service.connectionCount === PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS - 1);
+
+			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
+			const [bridgeEnd] = duplexPair();
+
+			connectMock.mockImplementationOnce(() => verification.promise);
+
+			// Fifteen connections plus this pre-flight fill the cap, so the next connection is refused.
+			const pending = service.prepare({ port: 7442 });
+
+			await waitFor(() => connectMock.mock.calls.length === 1 + (PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS - 1) + 1);
+
+			const refused = await connectClient(endpoint.port);
+			const another = await connectClient(endpoint.port);
+
+			await waitFor(() => refused.closed && another.closed);
+			expect(linesWith(logged, 'UniFi Protect stream bridge refused a connection (limit)')).not.toHaveLength(0);
+
+			verification.resolve({ socket: bridgeEnd as unknown as tls.TLSSocket, fingerprint: PIN });
+			await pending;
+
+			// The slot is free again: one more connection is accepted.
+			const accepted = await connectClient(endpoint.port);
+
+			await waitFor(() => service.connectionCount === PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS);
+			expect(accepted.closed).toBe(false);
+		});
+
+		it('rejects a prepare at the connection cap without a handshake', async () => {
+			const endpoint = await service.prepare(PORT);
+
+			for (let index = 0; index < PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS; index += 1) {
+				await connectClient(endpoint.port);
+			}
+
+			await waitFor(() => service.connectionCount === PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS);
+
+			const calls = connectMock.mock.calls.length;
+
+			await expect(service.prepare({ port: 7442 })).rejects.toMatchObject({ category: 'unavailable' });
+			expect(connectMock.mock.calls.length).toBe(calls);
+		});
+
 		it('rejects a pre-flight whose session ended meanwhile', async () => {
 			const verification = deferred<Awaited<ReturnType<typeof connectVerifiedProtectTls>>>();
 			const [bridgeEnd] = duplexPair();
