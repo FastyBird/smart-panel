@@ -219,6 +219,29 @@ describe('CamerasGrid', () => {
 		expect(wrapper.findAll('[data-test-id="tile"]')).toHaveLength(1);
 	});
 
+	it('keeps the cached cameras on a failed refresh, shows the failure with Retry and clears it once a retry succeeds', async () => {
+		mocks.fetch.mockRejectedValueOnce(new CamerasApiException('Service unavailable', 503));
+
+		const wrapper = await mountGrid();
+
+		expect(wrapper.findAll('[data-test-id="tile"]')).toHaveLength(3);
+		expect(wrapper.find('[data-test-id="cameras-grid-load-failed"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="cameras-grid-refresh-failed"]').text()).toContain('camerasModule.grid.loadFailed');
+
+		await wrapper.find('[data-test-id="cameras-grid-refresh-retry"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.fetch).toHaveBeenCalledTimes(2);
+		expect(wrapper.find('[data-test-id="cameras-grid-refresh-failed"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-test-id="tile"]')).toHaveLength(3);
+	});
+
+	it('shows no refresh failure after a successful load', async () => {
+		const wrapper = await mountGrid();
+
+		expect(wrapper.find('[data-test-id="cameras-grid-refresh-failed"]').exists()).toBe(false);
+	});
+
 	it('holds relay polling while mounted and releases it on unmount', async () => {
 		const wrapper = await mountGrid();
 

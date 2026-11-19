@@ -53,6 +53,25 @@
 		v-else-if="cameras.length > 0"
 		class="cameras-grid"
 	>
+		<el-alert
+			v-if="loadError === 'failed'"
+			type="error"
+			:title="t('camerasModule.grid.loadFailed')"
+			:closable="false"
+			show-icon
+			data-test-id="cameras-grid-refresh-failed"
+		>
+			<el-button
+				:loading="loading"
+				size="small"
+				class="mt-1"
+				data-test-id="cameras-grid-refresh-retry"
+				@click="load"
+			>
+				{{ t('camerasModule.buttons.retry') }}
+			</el-button>
+		</el-alert>
+
 		<div class="cameras-grid__filters">
 			<div
 				class="cameras-grid__chips"
@@ -102,7 +121,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCheckTag, ElLink } from 'element-plus';
+import { ElAlert, ElButton, ElCheckTag, ElLink } from 'element-plus';
 
 import { EmptyState, injectStoresManager } from '../../../common';
 import { devicesStoreKey } from '../../devices/store/keys';
