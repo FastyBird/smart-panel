@@ -258,4 +258,26 @@ describe('Cameras store', () => {
 
 		expect(store.findById('h')).toBeNull();
 	});
+
+	it('caches a detail response for a hidden camera that a list only carried over while the read was held back', async () => {
+		let resolveDetail!: (value: unknown) => void;
+
+		(mockBackendClient.GET as Mock)
+			.mockResolvedValueOnce(ok(cameraRes('h', 'Porch')))
+			.mockImplementationOnce(() => new Promise((resolve) => (resolveDetail = resolve)));
+
+		await store.get({ deviceId: 'h' });
+
+		const refreshing = store.refresh();
+
+		(mockBackendClient.GET as Mock).mockResolvedValueOnce(ok([]));
+
+		await store.fetch();
+
+		resolveDetail(ok(cameraRes('h', 'Porch renamed')));
+		await refreshing;
+
+		expect(store.findById('h')?.name).toBe('Porch renamed');
+		expect(store.findAll()).toEqual([]);
+	});
 });

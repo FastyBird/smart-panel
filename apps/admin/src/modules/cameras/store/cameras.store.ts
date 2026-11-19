@@ -36,12 +36,9 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 	/** Cameras read one by one through `get()`; a reconnect refresh reads again the ones the list does not cover. */
 	const detailIds = new Set<ICamera['deviceId']>();
 
-	/** Increased by every list that replaced the cache; a detail response that started before it is not cached. */
-	let listGeneration = 0;
-
 	let pendingFetchPromise: Promise<ICamera[]> | null = null;
 
-	const pendingGetPromises: Record<string, { generation: number; promise: Promise<ICamera> }> = {};
+	const pendingGetPromises: Record<string, { cached: ICamera | undefined; promise: Promise<ICamera> }> = {};
 
 	const findAll = (): ICamera[] =>
 		Object.values(data.value)
@@ -71,7 +68,6 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 					}
 
 					// Listed cameras missing from the response are gone, so the list is replaced.
-					listGeneration++;
 					listed.value = new Set(Object.keys(next));
 
 					// A camera read through `get()` that the list leaves out (a hidden device) stays cached, off the list,
@@ -105,10 +101,11 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 
 	const get = async (payload: ICamerasGetActionPayload): Promise<ICamera> => {
 		const pending = pendingGetPromises[payload.deviceId];
-		const generation = listGeneration;
+		// The cached object this read starts from; a newer list entry or read replaces it, a carried over one does not.
+		const cached = toRaw(data.value[payload.deviceId]);
 
-		// A read that started before the last list would not be cached; a newer caller needs one that is.
-		if (pending && pending.generation === generation) {
+		// A read that started from another cached object would not be cached; a newer caller needs one that is.
+		if (pending && pending.cached === cached) {
 			return pending.promise;
 		}
 
@@ -127,8 +124,9 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 				if (typeof responseData !== 'undefined') {
 					const camera = transformCameraResponse(responseData.data);
 
-					// A list that completed meanwhile is newer; this response must not bring back a camera it removed.
-					if (generation === listGeneration) {
+					// A list or read that changed this camera meanwhile is newer; this response must not bring back a camera
+					// the list removed. A list that only carried the same object over does not make it stale.
+					if (toRaw(data.value[camera.deviceId]) === cached) {
 						data.value[camera.deviceId] = camera;
 						detailIds.add(camera.deviceId);
 					}
@@ -142,7 +140,7 @@ export const useCameras = defineStore<'cameras_module-cameras', CamerasStoreSetu
 			}
 		})();
 
-		const entry = { generation, promise: getPromise };
+		const entry = { cached, promise: getPromise };
 
 		pendingGetPromises[payload.deviceId] = entry;
 
