@@ -46,7 +46,26 @@ describe('ProtectAdoptionStreamsService', () => {
 			enabledQualities: ['high', 'medium'],
 			failureCategory: null,
 			availability: { high: true, medium: true, low: false, package: false },
+			observedAt: expect.any(Number) as number,
 		});
+	});
+
+	it('stamps the result with the request that produced it', async () => {
+		let tick = 0;
+		const observe = (): number => (tick += 10);
+
+		client.getRtspsStreams.mockResolvedValue(streams('high'));
+		client.createRtspsStreams.mockResolvedValue(streams('high', 'medium'));
+		// GET stamped 10, POST stamped 20.
+		await expect(
+			service.ensureStreams(client as never, 'camera-1', { quality: 'medium', packageCamera: false }, observe),
+		).resolves.toMatchObject({ outcome: ProtectStreamOutcome.ENABLED, observedAt: 20 });
+
+		tick = 0;
+		client.getRtspsStreams.mockResolvedValue(streams('high', 'medium'));
+		await expect(
+			service.ensureStreams(client as never, 'camera-1', { quality: 'medium', packageCamera: false }, observe),
+		).resolves.toMatchObject({ outcome: ProtectStreamOutcome.ALREADY_ENABLED, observedAt: 10 });
 	});
 
 	it('adds the package quality for a package camera', async () => {

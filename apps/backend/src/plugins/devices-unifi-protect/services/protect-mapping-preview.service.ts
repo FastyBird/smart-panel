@@ -30,11 +30,14 @@ import {
 
 import { readDefaultStreamQuality } from './protect-default-stream-quality';
 import { ProtectFreshDevice, ProtectInventoryService } from './protect-inventory.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 
 export interface ProtectPreparedMapping {
 	fresh: ProtectFreshDevice;
 	device: ProtectMappedDevice;
 	streams: ProtectStreamAvailability | null;
+	/** When the streams were requested from the console (null for a non-camera); orders them against newer reads. */
+	streamsObservedAt: number | null;
 	warnings: ProtectMappingPreviewWarningModel[];
 	readyToAdopt: boolean;
 }
@@ -55,12 +58,14 @@ export class ProtectMappingPreviewService {
 		private readonly mappingLoader: ProtectMappingLoaderService,
 		private readonly deviceValidation: DeviceValidationService,
 		private readonly configService: ConfigService,
+		private readonly streamAvailability: ProtectStreamAvailabilityStore,
 	) {}
 
 	/** Fresh reads of the device (and of its streams for a camera); throws the adoption errors. */
 	async prepare(deviceId: string, modelKey: ProtectModelKey): Promise<ProtectPreparedMapping> {
 		const fresh = await this.inventory.fetchDevice(deviceId, modelKey);
 		const raw = fresh.entry.raw;
+		const streamsObservedAt = modelKey === 'camera' ? this.streamAvailability.nextObservation() : null;
 		const streams = modelKey === 'camera' ? await this.readStreams(fresh, deviceId) : null;
 		const result = this.evaluate(fresh, streams);
 
@@ -120,7 +125,7 @@ export class ProtectMappingPreviewService {
 			);
 		}
 
-		return { fresh, device: result.device, streams, warnings, readyToAdopt };
+		return { fresh, device: result.device, streams, streamsObservedAt, warnings, readyToAdopt };
 	}
 
 	async preview(deviceId: string, modelKey: ProtectModelKey): Promise<ProtectMappingPreviewModel> {

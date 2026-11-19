@@ -181,6 +181,19 @@ export function syncableMappingNames(mappings: ProtectResolvedMappings): Readonl
 	return names;
 }
 
+/** Mapping names whose value is the derived stream status; the synchronizer writes them only from known state. */
+export function streamStatusMappingNames(mappings: ProtectResolvedMappings): ReadonlySet<string> {
+	const names = new Set<string>();
+
+	for (const property of mappings.properties) {
+		if (property.value !== null && 'stream_status' in property.value) {
+			names.add(property.name);
+		}
+	}
+
+	return names;
+}
+
 export interface ProtectValueChange {
 	channelIdentifier: string;
 	mappingName: string;

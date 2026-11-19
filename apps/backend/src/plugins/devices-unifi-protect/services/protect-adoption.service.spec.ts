@@ -25,6 +25,8 @@ import { ProtectAdoptionLockService } from './protect-adoption-lock.service';
 import { ProtectAdoptionStreamsService } from './protect-adoption-streams.service';
 import { ProtectAdoptionService } from './protect-adoption.service';
 import { ProtectMappingPreviewService } from './protect-mapping-preview.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
+import { ProtectSynchronizerService } from './protect-synchronizer.service';
 
 type Raw = Record<string, any>;
 
@@ -364,6 +366,8 @@ describe('ProtectAdoptionService', () => {
 	let config: { getPluginConfig: jest.Mock };
 	let logged: unknown[][];
 	let service: ProtectAdoptionService;
+	let streamStore: ProtectStreamAvailabilityStore;
+	let synchronizer: { refreshDevice: jest.Mock };
 	let mapped: ProtectMappedDevice;
 	let rawCamera: Raw;
 	let contextRun: jest.SpyInstance;
@@ -384,9 +388,10 @@ describe('ProtectAdoptionService', () => {
 	};
 
 	const prepared = (device: ProtectMappedDevice, readyToAdopt = true) => ({
-		fresh: { client, entry: { raw: rawCamera } },
+		fresh: { client, identity: { nvrId: 'nvr', nvrMacKey: 'mac' }, entry: { raw: rawCamera } },
 		device,
 		streams: { high: true, medium: false, low: false, package: false },
+		streamsObservedAt: 1_000,
 		warnings: [],
 		readyToAdopt,
 	});
@@ -455,6 +460,14 @@ describe('ProtectAdoptionService', () => {
 				return result.device;
 			}),
 		};
+		streamStore = new ProtectStreamAvailabilityStore();
+		// Without a realtime session the synchronizer holds no camera: adoption writes the status itself.
+		synchronizer = {
+			refreshDevice: jest.fn(
+				(_identity: unknown, _modelKey: string, _id: string, whenNotHeld?: () => Promise<boolean>) =>
+					whenNotHeld === undefined ? Promise.resolve(false) : whenNotHeld(),
+			),
+		};
 		service = new ProtectAdoptionService(
 			preview as unknown as ProtectMappingPreviewService,
 			fakes.devicesService as unknown as DevicesService,
@@ -468,6 +481,8 @@ describe('ProtectAdoptionService', () => {
 			loader,
 			new ProtectAdoptionStreamsService(),
 			config as never,
+			streamStore,
+			synchronizer as unknown as ProtectSynchronizerService,
 		);
 	});
 
@@ -912,6 +927,184 @@ describe('ProtectAdoptionService', () => {
 	describe('stream enablement', () => {
 		const statusOf = (channelIdentifier: string) =>
 			fakes.values.get(fakes.propertyId(channelIdentifier, 'status'))?.value;
+
+		it('records stream availability for the synchronizer', async () => {
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			await service.adoptOne(ENABLING);
+
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')?.availability).toEqual({
+				high: true,
+				medium: true,
+				low: false,
+				package: false,
+			});
+		});
+
+		it('keeps the enabled result of a POST newer than a read that recorded disabled meanwhile', async () => {
+			let clock = 1_000_000;
+
+			jest.spyOn(Date, 'now').mockImplementation(() => clock);
+
+			const id = '600cefafd5f365d6f83c4ef3';
+			const disabled = { high: false, medium: false, low: false, package: false };
+
+			// The initial GET sees nothing enabled; a background read then starts and records "disabled" before the POST.
+			client.getRtspsStreams.mockImplementation(() => {
+				clock += 10;
+				streamStore.set(id, disabled, Date.now(), Date.now());
+				clock += 10;
+
+				return Promise.resolve(urls());
+			});
+			client.createRtspsStreams.mockImplementation(() => Promise.resolve(urls('high', 'medium')));
+
+			await service.adoptOne(ENABLING);
+
+			expect(streamStore.get(id)?.availability).toEqual({ high: true, medium: true, low: false, package: false });
+		});
+
+		it('writes the status from a newer read instead of the rejected observation of the enablement', async () => {
+			const id = '600cefafd5f365d6f83c4ef3';
+			const disabled = { high: false, medium: false, low: false, package: false };
+
+			// The enablement read is stamped first; a background read stamped after it completes before it.
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+			client.createRtspsStreams.mockImplementation(() => {
+				streamStore.set(id, disabled, streamStore.nextObservation());
+
+				return Promise.resolve(urls('high', 'medium'));
+			});
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result.stream).toMatchObject({ status: 'enabled' });
+			expect(streamStore.get(id)?.availability).toEqual(disabled);
+			expect(statusOf('camera.main')).toBe('unavailable');
+		});
+
+		it('writes again from a newer read recorded while the direct status write was persisting', async () => {
+			const id = '600cefafd5f365d6f83c4ef3';
+			const disabled = { high: false, medium: false, low: false, package: false };
+			const update = (service as any).updateStreamStatuses.bind(service);
+			const direct = jest.spyOn(service as any, 'updateStreamStatuses');
+
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+			direct.mockImplementationOnce(async (...args: unknown[]) => {
+				const written = await update(...args);
+
+				// The background read lands after the write read the persisted values, before it returned.
+				streamStore.set(id, disabled, streamStore.nextObservation());
+
+				return written;
+			});
+			direct.mockImplementation(update);
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({ warnings: [], stream: { status: 'enabled' } });
+			expect(direct).toHaveBeenCalledTimes(2);
+			expect(statusOf('camera.main')).toBe('unavailable');
+		});
+
+		it('leaves the status write to the synchronizer when it holds the camera', async () => {
+			synchronizer.refreshDevice.mockResolvedValue(true);
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			const direct = jest.spyOn(service as any, 'updateStreamStatuses');
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({ warnings: [], stream: { status: 'enabled' } });
+			expect(synchronizer.refreshDevice).toHaveBeenCalledWith(
+				{ nvrId: 'nvr', nvrMacKey: 'mac' },
+				'camera',
+				'600cefafd5f365d6f83c4ef3',
+				expect.any(Function),
+			);
+			expect(direct).not.toHaveBeenCalled();
+		});
+
+		it('writes no status directly when the synchronizer holds the camera but its refresh failed', async () => {
+			synchronizer.refreshDevice.mockResolvedValue(false);
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			const direct = jest.spyOn(service as any, 'updateStreamStatuses');
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({ warnings: ['values_incomplete'], stream: { status: 'enabled' } });
+			expect(direct).not.toHaveBeenCalled();
+		});
+
+		it('records nothing and sends no stream request once the prepared session has ended', async () => {
+			const createDevice = fakes.devicesService.create.getMockImplementation()!;
+
+			streamStore.nextObservation();
+			fakes.devicesService.create.mockImplementation(async (...args: unknown[]) => {
+				const created = await (createDevice as (...input: unknown[]) => Promise<unknown>)(...args);
+
+				// The console session ends while the device is persisted.
+				streamStore.clear();
+
+				return created;
+			});
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(client.getRtspsStreams).not.toHaveBeenCalled();
+			expect(client.createRtspsStreams).not.toHaveBeenCalled();
+			expect(result.stream).toMatchObject({ status: 'failed', failureCategory: 'unavailable' });
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')).toBeNull();
+		});
+
+		it('stops the enablement between requests when the session ends during it', async () => {
+			client.getRtspsStreams.mockImplementation(() => {
+				streamStore.clear();
+
+				return Promise.resolve(urls());
+			});
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(client.createRtspsStreams).not.toHaveBeenCalled();
+			expect(result.stream).toMatchObject({ status: 'failed', failureCategory: 'unavailable' });
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')).toBeNull();
+		});
+
+		it('records the prepared availability when the console rejects the stream request', async () => {
+			client.createRtspsStreams.mockRejectedValue(new Error('console down'));
+
+			await service.adoptOne(ENABLING);
+
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')?.availability).toEqual({
+				high: true,
+				medium: false,
+				low: false,
+				package: false,
+			});
+		});
+
+		it('does not overwrite a newer read with the stale prepared availability', async () => {
+			// A read requested after the prepare saw the stream disabled while adoption was persisting.
+			streamStore.set('600cefafd5f365d6f83c4ef3', { high: false, medium: false, low: false, package: false }, 2_000);
+
+			await service.adoptOne(SELECTION);
+
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')).toMatchObject({
+				availability: { high: false, medium: false, low: false, package: false },
+				observedAt: 2_000,
+			});
+		});
+
+		it('records the prepared availability when stream enablement is declined', async () => {
+			await service.adoptOne(SELECTION);
+
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')?.availability).toEqual({
+				high: true,
+				medium: false,
+				low: false,
+				package: false,
+			});
+		});
 
 		it('enables the stream after the device is persisted and updates the camera status', async () => {
 			client.getRtspsStreams.mockResolvedValue(urls('high'));

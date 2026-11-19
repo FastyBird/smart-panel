@@ -28,10 +28,12 @@ import {
 	diffMappedValues,
 	mappedConnectionState,
 	mergeProtectItem,
+	streamStatusMappingNames,
 	syncableMappingNames,
 	valueKey,
 } from './protect-frame-merge';
 import { ProtectInventoryEntry } from './protect-inventory.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 
 export interface ProtectSnapshot {
 	/** True when all three console lists were read. */
@@ -95,6 +97,7 @@ const DOORBELL_MAPPING = 'doorbell_event';
 const FAILURE_TEXT = 'UniFi Protect property update failed';
 const OBSERVER_FAILURE_TEXT = 'UniFi Protect device observer failed';
 const MAX_CACHED_DEVICES = 4096;
+
 const TAMPER_MAPPINGS: ReadonlySet<string> = new Set(['contact_tampered', 'sensor_motion_tampered']);
 const STALE_DETECTIONS: ReadonlySet<string> = new Set([
 	'camera_motion_detected',
@@ -157,6 +160,7 @@ export class ProtectSynchronizerService {
 	private taskGeneration = 0;
 
 	private syncable: { mappings: ProtectResolvedMappings; names: ReadonlySet<string> } | null = null;
+	private withStatus: { mappings: ProtectResolvedMappings; names: ReadonlySet<string> } | null = null;
 	private sources: { mappings: ProtectResolvedMappings; names: ReadonlyMap<string, ReadonlySet<string>> } | null = null;
 	private readonly failureLog = new ProtectFailureLogLimiter();
 
@@ -173,6 +177,7 @@ export class ProtectSynchronizerService {
 		private readonly propertyValue: PropertyValueService,
 		private readonly notifications: NotificationsService,
 		private readonly occurrences: ChannelInputOccurrencesService,
+		private readonly streamAvailability: ProtectStreamAvailabilityStore,
 	) {}
 
 	/** Serial; resolves when applied. Replaces the cache, diffs against stored values, reconciles removals. */
@@ -251,6 +256,59 @@ export class ProtectSynchronizerService {
 
 			applied = (await this.applyDeviceObject(identity, entry.modelKey, entry.id, entry.raw, 'add')) === 'applied';
 		}).then(() => applied);
+	}
+
+	/** True when the device is adopted (indexed under that model key); false until the index was first built. */
+	isAdopted(modelKey: string, id: string): boolean {
+		return this.adopted({ modelKey, id }) !== undefined;
+	}
+
+	/**
+	 * Serial; re-evaluates one adopted device's cached object with the current stream availability and writes what
+	 * changed (frame semantics, empty partial). Writes no cache entry, bumps no sequence, calls no observer. False when
+	 * a write failed, the queue is full or a reset intervened. A device that is not cached or not adopted is not this
+	 * service's to write: `whenNotHeld` (another writer's own write) then runs inside the queue, so nothing this service
+	 * syncs afterwards (an add frame, a snapshot) can interleave with it; without one the result is false.
+	 */
+	refreshDevice(
+		identity: ProtectConsoleIdentity,
+		modelKey: string,
+		id: string,
+		whenNotHeld?: () => Promise<boolean>,
+	): Promise<boolean> {
+		if (this.pending >= PROTECT_MAX_PENDING_FRAMES) {
+			return Promise.resolve(false);
+		}
+
+		let refreshed = false;
+		const notHeld = async (): Promise<void> => {
+			refreshed = whenNotHeld !== undefined && (await whenNotHeld()) && !this.aborted();
+		};
+
+		return this.run(async () => {
+			if (!this.cache.has(cacheKey(modelKey, id))) {
+				return notHeld();
+			}
+
+			await this.ensureIndex(identity);
+
+			if (this.aborted()) {
+				return;
+			}
+
+			// The serial queue guarantees the object is fresh: every frame or snapshot queued ahead has been applied.
+			const raw = this.cache.get(cacheKey(modelKey, id)) ?? null;
+			const device = raw === null ? undefined : this.adopted({ modelKey, id });
+
+			if (device === undefined || raw === null) {
+				return notHeld();
+			}
+
+			// No rename propagation: the object is not new, so there is no name change to carry.
+			const written = await this.syncDevice(identity, device, modelKey, raw, raw, 'frame', {}, false);
+
+			refreshed = written && !this.aborted();
+		}).then(() => refreshed);
 	}
 
 	/** Number of snapshots enqueued so far; a reader that captured an older value read stale data. */
@@ -1074,13 +1132,16 @@ export class ProtectSynchronizerService {
 		previousRaw: Readonly<Record<string, unknown>> | null,
 		mode: SyncMode,
 		partial: Readonly<Record<string, unknown>> | null,
+		propagateRenames = true,
 	): Promise<boolean> {
 		const mappings = this.mappingLoader.getMappings();
+		// Read once: the evaluated status and the gate that lets it be written must come from the same availability.
+		const availability = modelKey === 'camera' ? this.streamAvailability.get(device.protectDeviceId) : null;
 		const result = evaluateProtectMapping(mappings, {
 			nvr: { id: identity.nvrId, macKey: identity.nvrMacKey },
 			modelKey: modelKey as 'camera' | 'sensor' | 'light',
 			device: raw,
-			streams: null,
+			streams: availability?.availability ?? null,
 		});
 
 		if (result.ok && mode === 'snapshot') {
@@ -1104,7 +1165,13 @@ export class ProtectSynchronizerService {
 
 		await this.resolveRemoval(device);
 
-		const written = await this.writeChanges(device, mapped, mappings, partial);
+		const written = await this.writeChanges(
+			device,
+			mapped,
+			mappings,
+			partial,
+			this.syncedNames(mappings, raw, availability !== null),
+		);
 
 		await this.writeConnectionState(device, mapped);
 
@@ -1119,7 +1186,9 @@ export class ProtectSynchronizerService {
 			await this.resetStaleDetections(device);
 		}
 
-		await this.propagateRename(device, modelKey, raw, previousRaw);
+		if (propagateRenames) {
+			await this.propagateRename(device, modelKey, raw, previousRaw);
+		}
 
 		return written;
 	}
@@ -1242,11 +1311,36 @@ export class ProtectSynchronizerService {
 		return this.syncable.names;
 	}
 
+	/**
+	 * The stream status is derived, so it is synced only from known state: a camera that is not CONNECTED (offline,
+	 * initializing) or whose stream availability is known. A CONNECTED camera with unknown availability keeps its
+	 * stored status.
+	 */
+	private syncedNames(
+		mappings: ProtectResolvedMappings,
+		raw: Readonly<Record<string, unknown>>,
+		availabilityKnown: boolean,
+	): ReadonlySet<string> {
+		if (raw.state === 'CONNECTED' && !availabilityKnown) {
+			return this.syncableNames(mappings);
+		}
+
+		if (this.withStatus?.mappings !== mappings) {
+			this.withStatus = {
+				mappings,
+				names: new Set([...this.syncableNames(mappings), ...streamStatusMappingNames(mappings)]),
+			};
+		}
+
+		return this.withStatus.names;
+	}
+
 	private async writeChanges(
 		device: IndexedDevice,
 		mapped: ProtectMappedDevice,
 		mappings: ProtectResolvedMappings,
 		partial: Readonly<Record<string, unknown>> | null,
+		names: ReadonlySet<string>,
 	): Promise<boolean> {
 		let allWritten = true;
 
@@ -1273,7 +1367,7 @@ export class ProtectSynchronizerService {
 			}
 		}
 
-		for (const change of diffMappedValues(stored, mapped, this.syncableNames(mappings))) {
+		for (const change of diffMappedValues(stored, mapped, names)) {
 			const key = valueKey(change.channelIdentifier, change.mappingName);
 			const property = device.properties.get(key);
 

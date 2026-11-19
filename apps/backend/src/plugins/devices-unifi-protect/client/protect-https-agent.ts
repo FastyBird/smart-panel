@@ -6,10 +6,10 @@ import * as tls from 'tls';
 import { PROTECT_TLS_INSPECT_TIMEOUT_MS } from '../devices-unifi-protect.constants';
 import { ProtectApiError, ProtectErrorCategory, toProtectApiError } from '../errors/protect-api.error';
 
+import { connectVerifiedProtectTls } from './protect-tls-connect';
 import {
 	ProtectTlsConnectPlan,
 	ProtectTlsSettings,
-	fingerprintsEqual,
 	peerFingerprint,
 	planProtectTls,
 	resolveProtectServername,
@@ -28,7 +28,8 @@ export interface ProtectAgentOptions {
 
 const DEFAULT_KEEP_ALIVE_INITIAL_DELAY_MS = 30_000;
 
-const withExtraCa = (trustedCa: string | Buffer | undefined): (string | Buffer)[] | undefined =>
+/** System roots plus the extra trusted CA (tests only); undefined keeps Node's default store. */
+export const withExtraCa = (trustedCa: string | Buffer | undefined): (string | Buffer)[] | undefined =>
 	trustedCa === undefined ? undefined : [...tls.rootCertificates, trustedCa];
 
 /**
@@ -75,74 +76,32 @@ export class ProtectHttpsAgent extends https.Agent {
 		_options: tls.ConnectionOptions,
 		callback?: (error: Error | null, socket?: Duplex) => void,
 	): undefined {
-		let settled = false;
-
-		const settle = (error: Error | null, socket?: tls.TLSSocket): void => {
-			if (settled) {
-				return;
-			}
-
-			settled = true;
-			clearTimeout(timer);
-			connection.removeListener('error', onError);
-			connection.removeListener('secureConnect', onSecureConnect);
-			// A late error (a reset after settling, or while the socket is being destroyed) must never go unhandled.
-			connection.on('error', () => undefined);
-
-			if (error === null && this.closed) {
-				// The agent was closed during the handshake; Node would otherwise pool the finished socket.
-				error = new ProtectApiError(ProtectErrorCategory.CANCELLED, 'tls');
-			}
-
-			if (error !== null) {
-				connection.destroy();
-			} else {
-				// A renegotiating peer could swap the certificate we just verified.
-				connection.disableRenegotiation();
-			}
-
-			callback?.(error, error === null ? socket : undefined);
-		};
-
-		const onError = (error: Error): void => settle(toProtectApiError(error, 'tls'));
-
-		const onSecureConnect = (): void => {
-			const fingerprint = peerFingerprint(connection.getPeerCertificate());
-
-			this.peerFingerprintValue = fingerprint;
-
-			if (this.plan.pinnedFingerprint !== null) {
-				if (fingerprint === null || !fingerprintsEqual(fingerprint, this.plan.pinnedFingerprint)) {
-					settle(new ProtectApiError(ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH, 'tls'));
+		connectVerifiedProtectTls({
+			host: this.host,
+			port: this.port,
+			plan: this.plan,
+			ca: this.ca,
+			handshakeTimeoutMs: this.handshakeTimeoutMs,
+			keepAlive: { enabled: this.options.keepAlive === true, initialDelayMs: this.options.keepAliveInitialDelay ?? 0 },
+			onPeerFingerprint: (fingerprint) => {
+				this.peerFingerprintValue = fingerprint;
+			},
+		}).then(
+			({ socket }) => {
+				if (this.closed) {
+					// The agent was closed during the handshake; Node would otherwise pool the finished socket.
+					socket.destroy();
+					callback?.(new ProtectApiError(ProtectErrorCategory.CANCELLED, 'tls'));
 
 					return;
 				}
-			} else if (!connection.authorized) {
-				// rejectUnauthorized already failed the handshake; this guards against an unverified verify-mode socket.
-				settle(new ProtectApiError(ProtectErrorCategory.TLS_UNTRUSTED, 'tls'));
 
-				return;
-			}
-
-			settle(null, connection);
-		};
-
-		const connection = tls.connect({
-			host: this.host,
-			port: this.port,
-			servername: this.plan.servername,
-			rejectUnauthorized: this.plan.rejectUnauthorized,
-			ca: this.ca,
-		});
-
-		connection.setKeepAlive(this.options.keepAlive === true, this.options.keepAliveInitialDelay ?? 0);
-		const timer = setTimeout(
-			() => settle(new ProtectApiError(ProtectErrorCategory.TIMEOUT, 'tls')),
-			this.handshakeTimeoutMs,
+				callback?.(null, socket);
+			},
+			(error: unknown) => {
+				callback?.(error instanceof Error ? error : toProtectApiError(error, 'tls'));
+			},
 		);
-
-		connection.once('error', onError);
-		connection.once('secureConnect', onSecureConnect);
 
 		return undefined;
 	}

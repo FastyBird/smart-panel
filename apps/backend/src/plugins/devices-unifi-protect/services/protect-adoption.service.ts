@@ -37,7 +37,7 @@ import {
 	ProtectDeviceNotFoundError,
 	ProtectUnsupportedDeviceError,
 } from '../errors/protect-adoption.error';
-import { ProtectErrorCategory } from '../errors/protect-api.error';
+import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.error';
 import { ProtectMappedChannel, ProtectMappedDevice, ProtectMappedProperty } from '../mappings/mapping-evaluator';
 import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
 import { ProtectModelKey } from '../mappings/mapping.types';
@@ -54,10 +54,14 @@ import { ProtectAdoptionLockService } from './protect-adoption-lock.service';
 import { ProtectAdoptionStreamsService, ProtectStreamEnablementResult } from './protect-adoption-streams.service';
 import { readDefaultStreamQuality } from './protect-default-stream-quality';
 import { ProtectMappingPreviewService, ProtectPreparedMapping } from './protect-mapping-preview.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
+import { ProtectSynchronizerService } from './protect-synchronizer.service';
 
 const CONNECTION_STATE_IDENTIFIER = 'connection_state';
 const STATUS_IDENTIFIER = 'status';
 const STREAM_CHANNELS = ['camera.main', 'camera.package'] as const;
+/** Direct status writes repeated when a newer stream read lands meanwhile; the next read's refresh covers the rest. */
+const MAX_STATUS_RECONCILE_ATTEMPTS = 3;
 
 const FAILURE_MESSAGES: Record<ProtectAdoptionFailureCode, string> = {
 	[ProtectAdoptionFailureCode.UNAVAILABLE]: 'The UniFi Protect console is not connected',
@@ -129,6 +133,8 @@ export class ProtectAdoptionService {
 		private readonly mappingLoader: ProtectMappingLoaderService,
 		private readonly streams: ProtectAdoptionStreamsService,
 		private readonly configService: ConfigService,
+		private readonly streamAvailability: ProtectStreamAvailabilityStore,
+		private readonly synchronizer: ProtectSynchronizerService,
 	) {}
 
 	/** Never rejects: every failure is an item result. */
@@ -902,6 +908,8 @@ export class ProtectAdoptionService {
 		}
 
 		if (selection.stream?.enabled === false) {
+			this.recordAvailability(prepared, prepared.streams, prepared.streamsObservedAt);
+
 			return {
 				stream: this.streamModel(
 					ProtectStreamOutcome.NOT_REQUESTED,
@@ -917,12 +925,27 @@ export class ProtectAdoptionService {
 		let result: ProtectStreamEnablementResult;
 
 		try {
-			result = await this.streams.ensureStreams(prepared.fresh.client, prepared.device.protectDeviceId, {
-				quality,
-				packageCamera: prepared.fresh.entry.raw.hasPackageCamera === true,
-			});
+			// The prepared client belongs to the session the prepare ran in: once it ended, no request goes out on it.
+			const observe = (): number => {
+				if (!this.isPreparedSession(prepared)) {
+					throw new ProtectApiError(ProtectErrorCategory.UNAVAILABLE, 'cameras/{id}/rtsps-stream');
+				}
+
+				return this.streamAvailability.nextObservation();
+			};
+
+			result = await this.streams.ensureStreams(
+				prepared.fresh.client,
+				prepared.device.protectDeviceId,
+				{
+					quality,
+					packageCamera: prepared.fresh.entry.raw.hasPackageCamera === true,
+				},
+				observe,
+			);
 		} catch {
 			this.logger.warn('RTSPS stream enablement finished (failed)');
+			this.recordAvailability(prepared, prepared.streams, prepared.streamsObservedAt);
 
 			return {
 				stream: this.streamModel(
@@ -938,9 +961,14 @@ export class ProtectAdoptionService {
 		const stream = this.streamModel(result.outcome, result.quality, result.enabledQualities, result.failureCategory);
 		let complete = true;
 
-		if (result.availability !== null) {
+		if (result.availability === null) {
+			// A failed enablement: the console state read before it is the best knowledge there is.
+			this.recordAvailability(prepared, prepared.streams, prepared.streamsObservedAt);
+		} else {
+			this.recordAvailability(prepared, result.availability, result.observedAt);
+
 			try {
-				complete = await this.updateStreamStatuses(prepared, result.availability, panelDeviceId);
+				complete = await this.persistStreamStatuses(prepared, panelDeviceId);
 			} catch {
 				complete = false;
 				this.logger.warn('UniFi Protect stream status persistence was deferred until the next adoption');
@@ -948,6 +976,69 @@ export class ProtectAdoptionService {
 		}
 
 		return { stream, complete };
+	}
+
+	/** True while the session the prepare read the camera in is still running (its stamp was not cleared). */
+	private isPreparedSession(prepared: ProtectPreparedMapping): boolean {
+		return prepared.streamsObservedAt !== null && this.streamAvailability.isCurrent(prepared.streamsObservedAt);
+	}
+
+	/**
+	 * Shares what the console reported with the synchronizer (booleans only), before any status write. `observedAt` is
+	 * when the console was asked: the store ignores it when a newer read is already recorded or its session has ended.
+	 */
+	private recordAvailability(
+		prepared: ProtectPreparedMapping,
+		availability: ProtectPreparedMapping['streams'],
+		observedAt: number | null,
+	): void {
+		if (availability !== null && observedAt !== null) {
+			this.streamAvailability.set(prepared.device.protectDeviceId, availability, observedAt);
+		}
+	}
+
+	/**
+	 * Writes the camera status from the store's current entry, not from this adoption's observation: a newer read may
+	 * have replaced it. Everything runs in the synchronizer's serial queue: its refresh when it holds the camera, and a
+	 * direct write only when it does not (not cached or not adopted, e.g. no realtime session), so a frame or snapshot
+	 * that makes the camera held afterwards is applied after this write, never interleaved with it. A full queue, a
+	 * failed write or a reset leaves the status to the next refresh.
+	 */
+	private persistStreamStatuses(prepared: ProtectPreparedMapping, panelDeviceId: string): Promise<boolean> {
+		return this.synchronizer.refreshDevice(prepared.fresh.identity, 'camera', prepared.device.protectDeviceId, () =>
+			this.writeStreamStatusesDirectly(prepared, panelDeviceId),
+		);
+	}
+
+	/** The direct write (inside the synchronizer's queue); never rejects. */
+	private async writeStreamStatusesDirectly(prepared: ProtectPreparedMapping, panelDeviceId: string): Promise<boolean> {
+		const cameraId = prepared.device.protectDeviceId;
+
+		try {
+			// A read recorded while the write was persisting supersedes it: write again from that newer entry (bounded).
+			for (let attempt = 0; attempt < MAX_STATUS_RECONCILE_ATTEMPTS; attempt++) {
+				const entry = this.isPreparedSession(prepared) ? this.streamAvailability.get(cameraId) : null;
+
+				// The session ended: the next session's snapshot re-evaluates the status.
+				if (entry === null) {
+					return false;
+				}
+
+				const written = await this.updateStreamStatuses(prepared, entry.availability, panelDeviceId);
+
+				if (!written) {
+					return false;
+				}
+
+				if (this.streamAvailability.get(cameraId)?.observedAt === entry.observedAt) {
+					return true;
+				}
+			}
+		} catch {
+			this.logger.warn('UniFi Protect stream status persistence was deferred until the next adoption');
+		}
+
+		return false;
 	}
 
 	/** Re-evaluates camera.main/camera.package status and writes only the values that changed. */

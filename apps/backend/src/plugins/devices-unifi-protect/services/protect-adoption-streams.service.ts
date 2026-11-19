@@ -22,6 +22,8 @@ export interface ProtectStreamEnablementResult {
 	failureCategory: ProtectErrorCategory | null;
 	/** For the camera status values; presence booleans, never URLs. */
 	availability: ProtectStreamAvailability | null;
+	/** When the console request that produced `availability` started (the observation clock); null without one. */
+	observedAt: number | null;
 }
 
 export interface ProtectStreamRequest {
@@ -38,14 +40,16 @@ export class ProtectAdoptionStreamsService {
 
 	/**
 	 * Enables the wanted RTSPS qualities without switching off any stream another integration created. The console
-	 * answers carry bearer aliases: they are reduced to booleans in the statement that reads them. Never rejects.
+	 * answers carry bearer aliases: they are reduced to booleans in the statement that reads them. Never rejects, except
+	 * with what `observe` throws: it runs before every request, so a caller whose session ended stops the next one.
 	 */
 	async ensureStreams(
 		client: ProtectApiClient,
 		cameraId: string,
 		request: ProtectStreamRequest,
+		observe: () => number = Date.now,
 	): Promise<ProtectStreamEnablementResult> {
-		const result = await this.run(client, cameraId, request);
+		const result = await this.run(client, cameraId, request, observe);
 
 		this.logger.log(`RTSPS stream enablement finished (${result.outcome})`);
 
@@ -56,9 +60,11 @@ export class ProtectAdoptionStreamsService {
 		client: ProtectApiClient,
 		cameraId: string,
 		request: ProtectStreamRequest,
+		observe: () => number,
 	): Promise<ProtectStreamEnablementResult> {
 		const wanted: ProtectRtspsQuality[] = [request.quality, ...(request.packageCamera ? (['package'] as const) : [])];
 		let current: ProtectStreamAvailability;
+		const readAt = observe();
 
 		try {
 			current = toStreamAvailability(await client.getRtspsStreams(cameraId));
@@ -67,16 +73,18 @@ export class ProtectAdoptionStreamsService {
 		}
 
 		if (wanted.every((quality) => current[quality])) {
-			return this.done(ProtectStreamOutcome.ALREADY_ENABLED, request, current);
+			return this.done(ProtectStreamOutcome.ALREADY_ENABLED, request, current, readAt);
 		}
 
 		const body = PROTECT_RTSPS_QUALITIES.filter((quality) => current[quality] || wanted.includes(quality));
+
+		const postAt = observe();
 
 		try {
 			const created = toStreamAvailability(await client.createRtspsStreams(cameraId, body));
 
 			if (wanted.every((quality) => created[quality])) {
-				return this.done(ProtectStreamOutcome.ENABLED, request, created);
+				return this.done(ProtectStreamOutcome.ENABLED, request, created, postAt);
 			}
 
 			return this.failed(request, ProtectErrorCategory.PROTOCOL, created);
@@ -90,11 +98,13 @@ export class ProtectAdoptionStreamsService {
 			// 400/409: the streams may already exist; one re-read decides.
 			let lastRead = current;
 
+			const rereadAt = observe();
+
 			try {
 				const reread = toStreamAvailability(await client.getRtspsStreams(cameraId));
 
 				if (wanted.every((quality) => reread[quality])) {
-					return this.done(ProtectStreamOutcome.ALREADY_ENABLED, request, reread);
+					return this.done(ProtectStreamOutcome.ALREADY_ENABLED, request, reread, rereadAt);
 				}
 
 				lastRead = reread;
@@ -110,6 +120,7 @@ export class ProtectAdoptionStreamsService {
 		outcome: ProtectStreamOutcome,
 		request: ProtectStreamRequest,
 		availability: ProtectStreamAvailability,
+		observedAt: number,
 	): ProtectStreamEnablementResult {
 		return {
 			outcome,
@@ -117,6 +128,7 @@ export class ProtectAdoptionStreamsService {
 			enabledQualities: enabledOf(availability),
 			failureCategory: null,
 			availability,
+			observedAt,
 		};
 	}
 
@@ -132,6 +144,7 @@ export class ProtectAdoptionStreamsService {
 			enabledQualities: lastRead === null ? null : enabledOf(lastRead),
 			failureCategory: category,
 			availability: null,
+			observedAt: null,
 		};
 	}
 

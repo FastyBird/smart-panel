@@ -129,7 +129,7 @@ export class ProtectUpdatePluginConfigDto extends UpdatePluginConfigDto {
 
 	@ApiPropertyOptional({
 		description:
-			'Host name or IP address clients use for camera streams instead of the console host. Send null to clear it.',
+			"Host name or IP address Smart Panel connects to for the console's camera streams instead of the console host. Send null to clear it.",
 		nullable: true,
 		maxLength: MAX_PROTECT_HOST_LENGTH,
 		name: 'stream_host_override',

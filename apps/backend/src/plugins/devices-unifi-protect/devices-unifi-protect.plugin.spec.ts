@@ -1,6 +1,11 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
+import { Logger } from '@nestjs/common';
+
+import { CamerasModule } from '../../modules/cameras/cameras.module';
+import { ICameraStreamProvider } from '../../modules/cameras/platforms/camera-stream.provider';
+import { CameraStreamProviderRegistryService } from '../../modules/cameras/services/camera-stream-provider.registry.service';
 import { ConfigSecretsService } from '../../modules/config/services/config-secrets.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
@@ -70,6 +75,10 @@ import {
 	PROTECT_REALTIME_TIMINGS,
 	ProtectRealtimeService,
 } from './services/protect-realtime.service';
+import { ProtectStreamAvailabilityService } from './services/protect-stream-availability.service';
+import { ProtectStreamAvailabilityStore } from './services/protect-stream-availability.store';
+import { ProtectStreamBridgeService } from './services/protect-stream-bridge.service';
+import { UnifiProtectStreamProvider } from './services/protect-stream.provider';
 import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
 const SECRET_FIELDS = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];
@@ -97,6 +106,9 @@ describe('DevicesUnifiProtectPlugin', () => {
 		};
 		const platformRegistry = { register: jest.fn() };
 		const devicePlatform = {} as UnifiProtectDevicePlatform;
+		const registration = { dispose: jest.fn() };
+		const streamProviders = { register: jest.fn().mockReturnValue(registration) };
+		const streamProvider = { getType: () => DEVICES_UNIFI_PROTECT_TYPE } as unknown as UnifiProtectStreamProvider;
 		const plugin = new DevicesUnifiProtectPlugin(
 			configMapper as unknown as PluginsTypeMapperService,
 			devicesMapper as unknown as DevicesTypeMapperService,
@@ -110,6 +122,8 @@ describe('DevicesUnifiProtectPlugin', () => {
 			factoryReset as unknown as FactoryResetRegistryService,
 			platformRegistry as unknown as PlatformRegistryService,
 			devicePlatform,
+			streamProviders as unknown as CameraStreamProviderRegistryService,
+			streamProvider,
 		);
 
 		return {
@@ -126,6 +140,9 @@ describe('DevicesUnifiProtectPlugin', () => {
 			factoryReset,
 			platformRegistry,
 			devicePlatform,
+			streamProviders,
+			streamProvider,
+			registration,
 			runFactoryReset: () => {
 				if (!resetHandler) {
 					throw new Error('factory reset handler was not registered');
@@ -187,6 +204,10 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(metadata.readme).toContain('## Control');
 		expect(metadata.readme).toContain('microphone volume');
 		expect(metadata.readme).not.toContain('never changes other console settings');
+		expect(metadata.readme).toContain('## Streams and snapshots');
+		expect(metadata.readme).toContain('stream_tls_unverified');
+		expect(metadata.readme).not.toContain('rtspx');
+		expect(metadata.readme).not.toContain('Host clients use');
 	});
 
 	it('registers the connector as a managed service and a factory-reset handler', async () => {
@@ -295,6 +316,69 @@ describe('DevicesUnifiProtectPlugin', () => {
 		});
 	});
 
+	it('registers the stream provider for the plugin type', () => {
+		const { plugin, streamProviders, streamProvider } = build();
+
+		plugin.onModuleInit();
+
+		expect(streamProviders.register).toHaveBeenCalledTimes(1);
+		expect(streamProviders.register).toHaveBeenCalledWith(streamProvider);
+	});
+
+	it('serves the provider from the real registry until destroy', () => {
+		const { plugin, streamProviders, streamProvider } = build();
+		const registry = new CameraStreamProviderRegistryService();
+
+		streamProviders.register.mockImplementation((provider: ICameraStreamProvider) => registry.register(provider));
+
+		plugin.onModuleInit();
+
+		expect(registry.get({ type: DEVICES_UNIFI_PROTECT_TYPE })).toBe(streamProvider);
+
+		plugin.onModuleDestroy();
+
+		expect(registry.get({ type: DEVICES_UNIFI_PROTECT_TYPE })).toBeNull();
+	});
+
+	it('releases the stream provider on destroy', () => {
+		const { plugin, registration } = build();
+
+		plugin.onModuleInit();
+		plugin.onModuleDestroy();
+		plugin.onModuleDestroy();
+
+		expect(registration.dispose).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not fail destroy when the stream provider was never registered', () => {
+		const { plugin, streamProviders, registration } = build();
+
+		streamProviders.register.mockReturnValue(null);
+
+		expect(() => plugin.onModuleDestroy()).not.toThrow();
+		expect(registration.dispose).not.toHaveBeenCalled();
+	});
+
+	it('logs once when the provider type is already taken', () => {
+		const { plugin, streamProviders } = build();
+		const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+		streamProviders.register.mockReturnValue(null);
+
+		try {
+			plugin.onModuleInit();
+			plugin.onModuleDestroy();
+
+			const lines = warn.mock.calls.filter((call) =>
+				String(call[0]).includes('UniFi Protect stream provider was not registered'),
+			);
+
+			expect(lines).toHaveLength(1);
+		} finally {
+			warn.mockRestore();
+		}
+	});
+
 	it('registers every extra swagger model', () => {
 		const { plugin, swaggerRegistry } = build();
 
@@ -329,12 +413,22 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(JSON.stringify(projected)).not.toContain('PROTECT_SENTINEL_KEY_7f3a9c0d1e2b4a6f');
 	});
 
-	it('provides the config validator and imports the device, config and extension modules', () => {
+	it('provides the config validator and imports the device, config, extension and cameras modules', () => {
 		const providers = Reflect.getMetadata('providers', DevicesUnifiProtectPlugin) as unknown[];
 		const imports = Reflect.getMetadata('imports', DevicesUnifiProtectPlugin) as unknown[];
 
 		expect(providers).toContain(ProtectConfigValidatorService);
-		expect(imports).toHaveLength(5);
+		expect(providers).toEqual(
+			expect.arrayContaining([
+				ProtectStreamAvailabilityStore,
+				ProtectStreamAvailabilityService,
+				ProtectStreamBridgeService,
+				UnifiProtectStreamProvider,
+			]),
+		);
+		expect(imports).toHaveLength(6);
+		// The stream bridge needs the relay's state (`Go2rtcService`), which the cameras module exports.
+		expect(imports).toContain(CamerasModule);
 	});
 
 	it('is wired into the application router', () => {

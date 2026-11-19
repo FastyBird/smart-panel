@@ -12,6 +12,7 @@ import {
 	mappedValueMap,
 	mergeProtectItem,
 	parseProtectFrame,
+	streamStatusMappingNames,
 	syncableMappingNames,
 } from './protect-frame-merge';
 
@@ -55,6 +56,16 @@ describe('protect frame merge', () => {
 
 	const camera = (): Raw => structuredClone(fixture('cameras.json')[0]);
 	const sensor = (): Raw => structuredClone(fixture('sensors.json')[0]);
+
+	it('names the stream status mappings', () => {
+		const names = streamStatusMappingNames(mappings);
+
+		expect([...names].sort()).toEqual(['camera_main_status', 'camera_package_status']);
+
+		for (const name of names) {
+			expect(syncableMappingNames(mappings).has(name)).toBe(false);
+		}
+	});
 
 	it('parses every recorded device and event frame', () => {
 		for (const name of ['ws-devices.jsonl', 'ws-events.jsonl']) {

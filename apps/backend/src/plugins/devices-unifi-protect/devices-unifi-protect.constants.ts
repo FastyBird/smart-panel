@@ -118,3 +118,33 @@ export const PROTECT_COMMAND_QUEUE_WAIT_MS = 12_000;
 export const PROTECT_COMMAND_MAX_WAITING_PER_DEVICE = 4;
 export const PROTECT_COMMAND_MAX_WAITERS = 64;
 export const PROTECT_COMMAND_TIMEOUT_MS = 24_000;
+
+export const PROTECT_STREAM_READ_DEADLINE_MS = 8_000;
+export const PROTECT_SNAPSHOT_DEADLINE_MS = 8_000;
+/** The core gives a provider 10 s to resolve a source; one shared budget stays below it. */
+export const PROTECT_STREAM_SOURCE_BUDGET_MS = 9_000;
+export const PROTECT_STREAM_AVAILABILITY_TTL_MS = 60_000;
+export const PROTECT_STREAM_REFRESH_MAX_QUEUED = 256;
+export const PROTECT_RTSPS_DEFAULT_PORT = 7441;
+export const PROTECT_STREAM_ALIAS_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
+export const PROTECT_STREAM_BRIDGE_MAX_CONNECTIONS = 16;
+/** Below go2rtc's own 5 s RTSP read deadline, so the bridge fails before go2rtc gives up. */
+export const PROTECT_STREAM_BRIDGE_HANDSHAKE_TIMEOUT_MS = 4_000;
+export const PROTECT_STREAM_BRIDGE_IDLE_TIMEOUT_MS = 60_000;
+/** Accepted connections that may start an upstream handshake per window, across every bridge listener. */
+export const PROTECT_STREAM_BRIDGE_MAX_HANDSHAKES = 32;
+export const PROTECT_STREAM_BRIDGE_HANDSHAKE_WINDOW_MS = 10_000;
+/** Bridge listeners open at once (one per relay and console stream port); a console has very few stream ports. */
+export const PROTECT_STREAM_BRIDGE_MAX_LISTENERS = 8;
+export const PROTECT_RTSP_MAX_HEADER_BYTES = 16 * 1024;
+export const PROTECT_RTSP_MAX_BODY_BYTES = 64 * 1024;
+
+export const PROTECT_PROFILE_UNAVAILABLE_REASONS = [
+	'stream_not_enabled',
+	'camera_offline',
+	'console_unavailable',
+	'stream_state_unknown',
+	'stream_tls_unverified',
+] as const;
+
+export type ProtectProfileUnavailableReason = (typeof PROTECT_PROFILE_UNAVAILABLE_REASONS)[number];

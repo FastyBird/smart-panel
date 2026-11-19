@@ -17,6 +17,7 @@ import { ProtectPreviewWarningCode, ProtectPreviewWarningSeverity } from '../mod
 
 import { ProtectInventoryService } from './protect-inventory.service';
 import { ProtectMappingPreviewService } from './protect-mapping-preview.service';
+import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
 
 type Raw = Record<string, unknown>;
 
@@ -26,6 +27,16 @@ const expected = (name: string): { channels: unknown[] } =>
 	JSON.parse(readFileSync(join(FIXTURES, 'expected', `${name}.json`), 'utf8')) as { channels: unknown[] };
 
 const IDENTITY = { nvrId: '68b3ace392bf98c9fb76f70c', nvrMacKey: '0cea14003a69' };
+const waitUntil = async (predicate: () => boolean): Promise<void> => {
+	for (let round = 0; round < 500 && !predicate(); round += 1) {
+		await new Promise<void>((resolve) => setImmediate(resolve));
+	}
+
+	if (!predicate()) {
+		throw new Error('condition not reached');
+	}
+};
+
 const NONE = { high: null, medium: null, low: null, package: null };
 
 describe('ProtectMappingPreviewService', () => {
@@ -35,6 +46,7 @@ describe('ProtectMappingPreviewService', () => {
 	let adopted: Map<string, ProtectDeviceEntity>;
 	let loader: ProtectMappingLoaderService;
 	let service: ProtectMappingPreviewService;
+	let store: ProtectStreamAvailabilityStore;
 
 	const serve = (raw: Raw, modelKey: ProtectModelKey): void => {
 		inventory.fetchDevice.mockResolvedValue({
@@ -50,6 +62,7 @@ describe('ProtectMappingPreviewService', () => {
 			loader,
 			validation as unknown as DeviceValidationService,
 			{ getPluginConfig: () => ({ defaultStreamQuality: 'medium' }) } as unknown as ConfigService,
+			store,
 		);
 	};
 
@@ -60,6 +73,7 @@ describe('ProtectMappingPreviewService', () => {
 		validation = new (class {
 			validateDeviceStructure = jest.fn(() => ({ isValid: true, issues: [] }));
 		})();
+		store = new ProtectStreamAvailabilityStore();
 		loader = new ProtectMappingLoaderService();
 		loader.onModuleInit();
 		build();
@@ -87,6 +101,52 @@ describe('ProtectMappingPreviewService', () => {
 		expect(plain.ready_to_adopt).toBe(true);
 	});
 
+	it('stamps the prepared streams before a read that starts in the same millisecond', async () => {
+		jest.spyOn(Date, 'now').mockReturnValue(5_000);
+		serve(fixture('cameras.json')[0], 'camera');
+
+		const id = '600cefafd5f365d6f83c4ef3';
+		const prepared = await service.prepare(id, 'camera');
+		const readStamp = store.nextObservation();
+
+		expect(prepared.streamsObservedAt).not.toBeNull();
+		expect(prepared.streamsObservedAt).toBeLessThan(readStamp);
+
+		// The newer read records "disabled" first; the prepared snapshot (high enabled) must not replace it.
+		store.set(id, { high: false, medium: false, low: false, package: false }, readStamp);
+
+		expect(store.set(id, prepared.streams as never, prepared.streamsObservedAt)).toBe(false);
+		expect(store.get(id)?.availability.high).toBe(false);
+	});
+
+	it('does not let a prepared observation replace a newer disabled one recorded during the read', async () => {
+		serve(fixture('cameras.json')[0], 'camera');
+
+		const id = '600cefafd5f365d6f83c4ef3';
+		let finishRead!: (streams: Record<string, string | null>) => void;
+
+		client.getRtspsStreams.mockImplementationOnce(
+			() => new Promise((resolve) => (finishRead = resolve as typeof finishRead)),
+		);
+
+		const pending = service.prepare(id, 'camera');
+
+		await waitUntil(() => client.getRtspsStreams.mock.calls.length > 0);
+
+		// A newer observation (disabled) is recorded while the read is still pending.
+		const newer = store.nextObservation();
+
+		store.set(id, { high: false, medium: false, low: false, package: false }, newer);
+		finishRead({ ...NONE, high: 'rtsps://h/SENTINELALIAS1' });
+
+		const prepared = await pending;
+
+		expect(prepared.streamsObservedAt).not.toBeNull();
+		expect(prepared.streamsObservedAt).toBeLessThan(newer);
+		expect(store.set(id, prepared.streams as never, prepared.streamsObservedAt)).toBe(false);
+		expect(store.get(id)?.availability.high).toBe(false);
+	});
+
 	it('does not load the adopted devices when preparing', async () => {
 		serve(fixture('cameras.json')[0], 'camera');
 
@@ -106,6 +166,7 @@ describe('ProtectMappingPreviewService', () => {
 					throw new Error('no config');
 				},
 			} as unknown as ConfigService,
+			store,
 		);
 
 		const preview = await service.preview('600cefafd5f365d6f83c4ef3', 'camera');

@@ -346,6 +346,26 @@ describe('ProtectApiClient against the fake console', () => {
 		expect(fake.requests).toHaveLength(2);
 	});
 
+	it('sends the package channel and the HQ flag as query parameters', async () => {
+		const extra = await FakeProtectServer.start({ cameraFixtures: ['cameras.json', 'cameras-doorbell.json'] });
+		const client = new ProtectApiClient({
+			host: extra.host,
+			port: extra.port,
+			apiKey: FAKE_PROTECT_API_KEY,
+			tls: { mode: 'pinned', serverName: null, fingerprintSha256: PROTECT_TEST_TLS.fingerprints.selfSigned },
+		});
+
+		try {
+			const snapshot = await client.getSnapshot('5f0000000000000000000a02', { highQuality: true, channel: 'package' });
+
+			expect(snapshot.contentType).toBe('image/jpeg');
+			expect(extra.requests[extra.requests.length - 1].query).toEqual({ highQuality: 'true', channel: 'package' });
+		} finally {
+			client.close();
+			await extra.stop();
+		}
+	});
+
 	it('ends a hung snapshot within its timeout', async () => {
 		fake.set({ hangPaths: [/snapshot/] });
 
