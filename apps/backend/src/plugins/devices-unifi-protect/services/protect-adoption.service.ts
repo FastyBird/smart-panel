@@ -37,7 +37,7 @@ import {
 	ProtectDeviceNotFoundError,
 	ProtectUnsupportedDeviceError,
 } from '../errors/protect-adoption.error';
-import { ProtectErrorCategory } from '../errors/protect-api.error';
+import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.error';
 import { ProtectMappedChannel, ProtectMappedDevice, ProtectMappedProperty } from '../mappings/mapping-evaluator';
 import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
 import { ProtectModelKey } from '../mappings/mapping.types';
@@ -55,6 +55,7 @@ import { ProtectAdoptionStreamsService, ProtectStreamEnablementResult } from './
 import { readDefaultStreamQuality } from './protect-default-stream-quality';
 import { ProtectMappingPreviewService, ProtectPreparedMapping } from './protect-mapping-preview.service';
 import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
+import { ProtectSynchronizerService } from './protect-synchronizer.service';
 
 const CONNECTION_STATE_IDENTIFIER = 'connection_state';
 const STATUS_IDENTIFIER = 'status';
@@ -131,6 +132,7 @@ export class ProtectAdoptionService {
 		private readonly streams: ProtectAdoptionStreamsService,
 		private readonly configService: ConfigService,
 		private readonly streamAvailability: ProtectStreamAvailabilityStore,
+		private readonly synchronizer: ProtectSynchronizerService,
 	) {}
 
 	/** Never rejects: every failure is an item result. */
@@ -921,6 +923,15 @@ export class ProtectAdoptionService {
 		let result: ProtectStreamEnablementResult;
 
 		try {
+			// The prepared client belongs to the session the prepare ran in: once it ended, no request goes out on it.
+			const observe = (): number => {
+				if (!this.isPreparedSession(prepared)) {
+					throw new ProtectApiError(ProtectErrorCategory.UNAVAILABLE, 'cameras/{id}/rtsps-stream');
+				}
+
+				return this.streamAvailability.nextObservation();
+			};
+
 			result = await this.streams.ensureStreams(
 				prepared.fresh.client,
 				prepared.device.protectDeviceId,
@@ -928,7 +939,7 @@ export class ProtectAdoptionService {
 					quality,
 					packageCamera: prepared.fresh.entry.raw.hasPackageCamera === true,
 				},
-				() => this.streamAvailability.nextObservation(),
+				observe,
 			);
 		} catch {
 			this.logger.warn('RTSPS stream enablement finished (failed)');
@@ -955,7 +966,7 @@ export class ProtectAdoptionService {
 			this.recordAvailability(prepared, result.availability, result.observedAt);
 
 			try {
-				complete = await this.updateStreamStatuses(prepared, result.availability, panelDeviceId);
+				complete = await this.persistStreamStatuses(prepared, panelDeviceId);
 			} catch {
 				complete = false;
 				this.logger.warn('UniFi Protect stream status persistence was deferred until the next adoption');
@@ -965,20 +976,45 @@ export class ProtectAdoptionService {
 		return { stream, complete };
 	}
 
-	/** Shares what the console reported with the synchronizer (booleans only), before any status write. */
+	/** True while the session the prepare read the camera in is still running (its stamp was not cleared). */
+	private isPreparedSession(prepared: ProtectPreparedMapping): boolean {
+		return prepared.streamsObservedAt !== null && this.streamAvailability.isCurrent(prepared.streamsObservedAt);
+	}
+
+	/**
+	 * Shares what the console reported with the synchronizer (booleans only), before any status write. `observedAt` is
+	 * when the console was asked: the store ignores it when a newer read is already recorded or its session has ended.
+	 */
 	private recordAvailability(
 		prepared: ProtectPreparedMapping,
 		availability: ProtectPreparedMapping['streams'],
 		observedAt: number | null,
 	): void {
-		if (availability !== null) {
-			// `observedAt` is when the console was asked, so a read recorded meanwhile is never overwritten by this one.
-			this.streamAvailability.set(
-				prepared.device.protectDeviceId,
-				availability,
-				observedAt ?? this.streamAvailability.nextObservation(),
-			);
+		if (availability !== null && observedAt !== null) {
+			this.streamAvailability.set(prepared.device.protectDeviceId, availability, observedAt);
 		}
+	}
+
+	/**
+	 * Writes the camera status from the store's current entry, not from this adoption's observation: a newer read may
+	 * have replaced it. The synchronizer's serial refresh orders the write against its own status writes; it is used
+	 * whenever the synchronizer holds the camera, and a direct write only when it does not (no realtime session).
+	 */
+	private async persistStreamStatuses(prepared: ProtectPreparedMapping, panelDeviceId: string): Promise<boolean> {
+		const cameraId = prepared.device.protectDeviceId;
+
+		if (await this.synchronizer.refreshDevice(prepared.fresh.identity, 'camera', cameraId)) {
+			return true;
+		}
+
+		const entry = this.isPreparedSession(prepared) ? this.streamAvailability.get(cameraId) : null;
+
+		// The session ended: the next session's snapshot re-evaluates the status.
+		if (entry === null) {
+			return false;
+		}
+
+		return this.updateStreamStatuses(prepared, entry.availability, panelDeviceId);
 	}
 
 	/** Re-evaluates camera.main/camera.package status and writes only the values that changed. */

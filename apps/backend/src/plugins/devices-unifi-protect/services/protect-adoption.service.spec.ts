@@ -26,6 +26,7 @@ import { ProtectAdoptionStreamsService } from './protect-adoption-streams.servic
 import { ProtectAdoptionService } from './protect-adoption.service';
 import { ProtectMappingPreviewService } from './protect-mapping-preview.service';
 import { ProtectStreamAvailabilityStore } from './protect-stream-availability.store';
+import { ProtectSynchronizerService } from './protect-synchronizer.service';
 
 type Raw = Record<string, any>;
 
@@ -366,6 +367,7 @@ describe('ProtectAdoptionService', () => {
 	let logged: unknown[][];
 	let service: ProtectAdoptionService;
 	let streamStore: ProtectStreamAvailabilityStore;
+	let synchronizer: { refreshDevice: jest.Mock };
 	let mapped: ProtectMappedDevice;
 	let rawCamera: Raw;
 	let contextRun: jest.SpyInstance;
@@ -386,7 +388,7 @@ describe('ProtectAdoptionService', () => {
 	};
 
 	const prepared = (device: ProtectMappedDevice, readyToAdopt = true) => ({
-		fresh: { client, entry: { raw: rawCamera } },
+		fresh: { client, identity: { nvrId: 'nvr', nvrMacKey: 'mac' }, entry: { raw: rawCamera } },
 		device,
 		streams: { high: true, medium: false, low: false, package: false },
 		streamsObservedAt: 1_000,
@@ -459,6 +461,8 @@ describe('ProtectAdoptionService', () => {
 			}),
 		};
 		streamStore = new ProtectStreamAvailabilityStore();
+		// Without a realtime session the synchronizer holds no camera: adoption writes the status itself.
+		synchronizer = { refreshDevice: jest.fn().mockResolvedValue(false) };
 		service = new ProtectAdoptionService(
 			preview as unknown as ProtectMappingPreviewService,
 			fakes.devicesService as unknown as DevicesService,
@@ -473,6 +477,7 @@ describe('ProtectAdoptionService', () => {
 			new ProtectAdoptionStreamsService(),
 			config as never,
 			streamStore,
+			synchronizer as unknown as ProtectSynchronizerService,
 		);
 	});
 
@@ -952,6 +957,76 @@ describe('ProtectAdoptionService', () => {
 			await service.adoptOne(ENABLING);
 
 			expect(streamStore.get(id)?.availability).toEqual({ high: true, medium: true, low: false, package: false });
+		});
+
+		it('writes the status from a newer read instead of the rejected observation of the enablement', async () => {
+			const id = '600cefafd5f365d6f83c4ef3';
+			const disabled = { high: false, medium: false, low: false, package: false };
+
+			// The enablement read is stamped first; a background read stamped after it completes before it.
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+			client.createRtspsStreams.mockImplementation(() => {
+				streamStore.set(id, disabled, streamStore.nextObservation());
+
+				return Promise.resolve(urls('high', 'medium'));
+			});
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result.stream).toMatchObject({ status: 'enabled' });
+			expect(streamStore.get(id)?.availability).toEqual(disabled);
+			expect(statusOf('camera.main')).toBe('unavailable');
+		});
+
+		it('leaves the status write to the synchronizer when it holds the camera', async () => {
+			synchronizer.refreshDevice.mockResolvedValue(true);
+			client.getRtspsStreams.mockResolvedValue(urls('high'));
+
+			const direct = jest.spyOn(service as any, 'updateStreamStatuses');
+			const result = await service.adoptOne(ENABLING);
+
+			expect(result).toMatchObject({ warnings: [], stream: { status: 'enabled' } });
+			expect(synchronizer.refreshDevice).toHaveBeenCalledWith(
+				{ nvrId: 'nvr', nvrMacKey: 'mac' },
+				'camera',
+				'600cefafd5f365d6f83c4ef3',
+			);
+			expect(direct).not.toHaveBeenCalled();
+		});
+
+		it('records nothing and sends no stream request once the prepared session has ended', async () => {
+			const createDevice = fakes.devicesService.create.getMockImplementation()!;
+
+			streamStore.nextObservation();
+			fakes.devicesService.create.mockImplementation(async (...args: unknown[]) => {
+				const created = await (createDevice as (...input: unknown[]) => Promise<unknown>)(...args);
+
+				// The console session ends while the device is persisted.
+				streamStore.clear();
+
+				return created;
+			});
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(client.getRtspsStreams).not.toHaveBeenCalled();
+			expect(client.createRtspsStreams).not.toHaveBeenCalled();
+			expect(result.stream).toMatchObject({ status: 'failed', failureCategory: 'unavailable' });
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')).toBeNull();
+		});
+
+		it('stops the enablement between requests when the session ends during it', async () => {
+			client.getRtspsStreams.mockImplementation(() => {
+				streamStore.clear();
+
+				return Promise.resolve(urls());
+			});
+
+			const result = await service.adoptOne(ENABLING);
+
+			expect(client.createRtspsStreams).not.toHaveBeenCalled();
+			expect(result.stream).toMatchObject({ status: 'failed', failureCategory: 'unavailable' });
+			expect(streamStore.get('600cefafd5f365d6f83c4ef3')).toBeNull();
 		});
 
 		it('records the prepared availability when the console rejects the stream request', async () => {

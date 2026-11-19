@@ -63,6 +63,22 @@ describe('ProtectStreamAvailabilityStore', () => {
 		expect(store.get(ID)).toBeNull();
 	});
 
+	it('rejects an observation stamped before the store was cleared, even one still in flight', () => {
+		const store = new ProtectStreamAvailabilityStore();
+		const before = store.nextObservation();
+
+		store.clear();
+
+		expect(store.isCurrent(before)).toBe(false);
+		expect(store.set(ID, { high: true, medium: false, low: false, package: false }, before)).toBe(false);
+		expect(store.get(ID)).toBeNull();
+
+		const after = store.nextObservation();
+
+		expect(store.isCurrent(after)).toBe(true);
+		expect(store.set(ID, { high: true, medium: false, low: false, package: false }, after)).toBe(true);
+	});
+
 	it('never keeps anything but booleans', () => {
 		const store = new ProtectStreamAvailabilityStore();
 

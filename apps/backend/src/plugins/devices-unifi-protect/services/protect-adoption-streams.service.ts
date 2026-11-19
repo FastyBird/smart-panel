@@ -40,7 +40,8 @@ export class ProtectAdoptionStreamsService {
 
 	/**
 	 * Enables the wanted RTSPS qualities without switching off any stream another integration created. The console
-	 * answers carry bearer aliases: they are reduced to booleans in the statement that reads them. Never rejects.
+	 * answers carry bearer aliases: they are reduced to booleans in the statement that reads them. Never rejects, except
+	 * with what `observe` throws: it runs before every request, so a caller whose session ended stops the next one.
 	 */
 	async ensureStreams(
 		client: ProtectApiClient,
