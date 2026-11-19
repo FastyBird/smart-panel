@@ -105,7 +105,7 @@ describe('ProtectMappingPreviewService', () => {
 		// The newer read records "disabled" first; the prepared snapshot (high enabled) must not replace it.
 		store.set(id, { high: false, medium: false, low: false, package: false }, readStamp);
 
-		expect(store.set(id, prepared.streams as never, prepared.streamsObservedAt as number)).toBe(false);
+		expect(store.set(id, prepared.streams as never, prepared.streamsObservedAt)).toBe(false);
 		expect(store.get(id)?.availability.high).toBe(false);
 	});
 

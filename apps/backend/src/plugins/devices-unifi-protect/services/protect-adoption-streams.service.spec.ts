@@ -46,7 +46,7 @@ describe('ProtectAdoptionStreamsService', () => {
 			enabledQualities: ['high', 'medium'],
 			failureCategory: null,
 			availability: { high: true, medium: true, low: false, package: false },
-			observedAt: expect.any(Number),
+			observedAt: expect.any(Number) as number,
 		});
 	});
 
