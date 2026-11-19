@@ -89,6 +89,8 @@ describe('design system lint rules', () => {
 			sfc('<p :class="`${{ \'text-primary\': true }}`"></p>'),
 			sfc("<p :class=\"`${['text-primary', 'font-600']} x`\"></p>"),
 			sfc("<p :class=\"'a ' + { 'text-primary': on }\"></p>"),
+			// A computed key is a property name: the array becomes `text-primary,font-600`
+			sfc("<p :class=\"{ [['text-primary', 'font-600']]: active }\"></p>"),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
@@ -120,6 +122,13 @@ describe('design system lint rules', () => {
 			sfc('<div></div>', '<script setup lang="ts">\n// Fixes #1234\nconst id = 1;\n</script>'),
 			sfc('<div>See issue #123</div>'),
 			sfc('<div style="color: var(--el-color-danger)"></div>'),
+			// Fragment references are not colours
+			sfc('<svg><rect filter="url(#fade)" fill="url(\'#abc\')" /></svg>'),
+			sfc('<div></div>', '<style>\n.x {\n\tfilter: url(#fade);\n\tmask: url("#bad");\n}\n</style>'),
+			// SCSS line comments, and colours inside strings, are not declarations
+			sfc('<div></div>', '<style lang="scss">\n// previous colour #fff\n.x { color: var(--el-color-primary); content: "#fff"; }\n</style>'),
+			// A semicolon in a selector's attribute string does not end it
+			sfc('<div></div>', '<style>\n#abc[data-x="a;b"] { display: block; }\n</style>'),
 			// ID selectors are not colours
 			sfc('<div></div>', '<style>\n#abc { display: block; }\na:hover, #fade > span {\n\tcolor: var(--el-color-danger);\n}\n</style>'),
 			sfc('<div></div>', '<style lang="scss">\n.box {\n\t#bad {\n\t\tdisplay: none;\n\t}\n}\n</style>'),
@@ -130,6 +139,10 @@ describe('design system lint rules', () => {
 			{ ...sfc('<div style="color: #f56c6c"></div>'), errors: [{ messageId: 'hex', data: { value: '#f56c6c' } }] },
 			{ ...sfc('<div></div>', '<script setup lang="ts">\nconst colour = \'#909399\';\n</script>'), errors: [{ messageId: 'hex' }] },
 			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder-color: #fff;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			// A brace inside a comment does not turn a declaration into a selector
+			{ ...sfc('<div></div>', '<style>\n.x { color: #fff /* { */; }\n</style>'), errors: [{ messageId: 'hex', line: 2 }] },
+			// `//` is not a comment in plain CSS
+			{ ...sfc('<div></div>', '<style>\n.x { color: #fff; } // not a comment #000\n</style>'), errors: [{ messageId: 'hex' }, { messageId: 'hex' }] },
 			// A selector ID and a declaration colour in the same block: only the colour is reported
 			{ ...sfc('<div></div>', '<style>\n#abc { color: #abc; }\n</style>'), errors: [{ messageId: 'hex', line: 2, column: 15 }] },
 			// Digits only, after a word: still a colour in CSS

@@ -22,9 +22,14 @@ interface IParserServices {
 	getDocumentFragment?: () => IDocumentFragment | null;
 }
 
+interface IStartTag {
+	range: [number, number];
+	attributes?: { directive?: boolean; key?: { name?: unknown }; value?: { value?: unknown } | null }[];
+}
+
 interface IDocumentFragment {
 	comments: { type: string; range: [number, number] }[];
-	children: { type: string; name?: string; startTag?: { range: [number, number] }; endTag?: { range: [number, number] } | null }[];
+	children: { type: string; name?: string; startTag?: IStartTag; endTag?: { range: [number, number] } | null }[];
 }
 
 const THEME_COLOURS = '(?:primary|success|warning|danger|info|brand)';
@@ -91,7 +96,8 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 				const key = property.key as TemplateNode;
 
 				if (property.computed === true) {
-					collectExpressionClasses(key, found, owner);
+					// A computed key becomes a property name by string coercion, so it is read as a string
+					collectStringClasses(key, found, owner);
 				} else if (key.type === 'Identifier' && typeof key.name === 'string') {
 					found.push({ token: key.name, node: key });
 				} else {
@@ -433,62 +439,96 @@ const noCardShadow: Rule.RuleModule = {
 const documentFragment = (context: Rule.RuleContext): IDocumentFragment | null =>
 	(context.sourceCode.parserServices as IParserServices | undefined)?.getDocumentFragment?.() ?? null;
 
-/** Character ranges of the bodies of `<style>` blocks, from the parsed SFC */
-const styleRanges = (context: Rule.RuleContext): [number, number][] =>
+interface IStyleBlock {
+	start: number;
+	end: number;
+	/** SCSS, Sass, Less and Stylus also have `//` line comments */
+	lineComments: boolean;
+}
+
+/** The bodies of the `<style>` blocks, from the parsed SFC */
+const styleBlocks = (context: Rule.RuleContext): IStyleBlock[] =>
 	(documentFragment(context)?.children ?? [])
 		.filter((child) => child.type === 'VElement' && child.name === 'style' && child.startTag && child.endTag)
-		.map((child) => [child.startTag!.range[1], child.endTag!.range[0]]);
+		.map((child) => {
+			const lang = child.startTag?.attributes?.find((attribute) => attribute.directive !== true && attribute.key?.name === 'lang')?.value?.value;
 
-/** Block comments of a CSS block, skipping quoted strings (with escapes), so a quoted comment opener is not a comment */
-const cssCommentRanges = (text: string, start: number, end: number): [number, number][] => {
-	const ranges: [number, number][] = [];
-	let quote: string | null = null;
+			return {
+				start: child.startTag!.range[1],
+				end: child.endTag!.range[0],
+				lineComments: typeof lang === 'string' && ['scss', 'sass', 'less', 'styl', 'stylus'].includes(lang.toLowerCase()),
+			};
+		});
 
-	for (let index = start; index < end; index++) {
-		const char = text[index];
-
-		if (quote !== null) {
-			if (char === '\\') {
-				index++;
-			} else if (char === quote) {
-				quote = null;
+/**
+ * The code of a style block with comments, quoted strings and `url(…)` contents blanked out (same length, so
+ * offsets stay valid). Colours are only looked for, and selectors only recognised, in what remains.
+ */
+const cssCode = (text: string, block: IStyleBlock): string => {
+	const chars = text.slice(block.start, block.end).split('');
+	const blank = (from: number, to: number): void => {
+		for (let index = from; index < to; index++) {
+			if (chars[index] !== '\n') {
+				chars[index] = ' ';
 			}
-
-			continue;
 		}
+	};
+
+	let index = 0;
+
+	while (index < chars.length) {
+		const char = chars[index];
+		const rest = (length: number): string => chars.slice(index, index + length).join('');
 
 		if (char === '"' || char === "'") {
-			quote = char;
-		} else if (char === '/' && text[index + 1] === '*') {
-			const close = text.indexOf('*/', index + 2);
-			const stop = close === -1 || close + 2 > end ? end : close + 2;
+			let stop = index + 1;
 
-			ranges.push([index, stop]);
-			index = stop - 1;
+			while (stop < chars.length && chars[stop] !== char && chars[stop] !== '\n') {
+				stop += chars[stop] === '\\' ? 2 : 1;
+			}
+
+			blank(index, Math.min(stop + 1, chars.length));
+			index = stop + 1;
+		} else if (rest(2) === '/*') {
+			const close = chars.join('').indexOf('*/', index + 2);
+			const stop = close === -1 ? chars.length : close + 2;
+
+			blank(index, stop);
+			index = stop;
+		} else if (block.lineComments && rest(2) === '//') {
+			const close = chars.indexOf('\n', index);
+			const stop = close === -1 ? chars.length : close;
+
+			blank(index, stop);
+			index = stop;
+		} else if (/^url\(/i.test(rest(4)) && !/[\w-]/.test(chars[index - 1] ?? '')) {
+			// url(#gradient), url(data:…): references, not colours. A quoted argument is a string and is blanked above.
+			let open = index + 4;
+
+			while (open < chars.length && /\s/.test(chars[open] ?? '')) {
+				open++;
+			}
+
+			if (chars[open] === '"' || chars[open] === "'") {
+				index = open;
+			} else {
+				const close = chars.indexOf(')', open);
+				const stop = close === -1 ? chars.length : close;
+
+				blank(open, stop);
+				index = stop + 1;
+			}
+		} else {
+			index++;
 		}
 	}
 
-	return ranges;
+	return chars.join('');
 };
 
-/** Character ranges of comments: template comments and script comments from the parser, CSS comments in style blocks */
-const commentRanges = (context: Rule.RuleContext, text: string, styles: [number, number][]): [number, number][] => {
-	const ranges: [number, number][] = context.sourceCode.getAllComments().map((comment) => comment.range as [number, number]);
-
-	for (const comment of documentFragment(context)?.comments ?? []) {
-		ranges.push(comment.range);
-	}
-
-	for (const [start, end] of styles) {
-		ranges.push(...cssCommentRanges(text, start, end));
-	}
-
-	return ranges;
-};
-
-/** Whether the hash at `index` is followed by `{` before any `;` or `}`, which makes it part of a selector */
-const isCssSelectorHash = (text: string, index: number): boolean => {
-	const rest = text.slice(index);
+/** Whether the hash at `offset` of the code is followed by `{` before any `;` or `}`, which makes it part of a selector */
+const isCssSelectorHash = (code: string, offset: number): boolean => {
+	const rest = code.slice(offset);
 	const brace = rest.search(/[{;}]/);
 
 	return brace !== -1 && rest[brace] === '{';
@@ -498,6 +538,9 @@ const within = (index: number, ranges: [number, number][]): boolean => ranges.so
 
 /** `issue #123`, `PR #1234`, `Fixes #123`: a number after a reference word in text or script, never in CSS */
 const ISSUE_REFERENCE = /\b(?:issues?|prs?|pull requests?|tickets?|fixes|fixed|closes|closed|refs?|see)\s*$/i;
+
+/** Fragment references in the template and script: href="#top", :href="'#top'", :to="`#top`", url(#gradient) */
+const FRAGMENT_REFERENCE = /(?:\b(?:href|to)\s*=\s*["'](?:\s*['"`])?|\burl\(\s*['"]?)$/i;
 
 const noHexColours: Rule.RuleModule = {
 	meta: {
@@ -509,40 +552,47 @@ const noHexColours: Rule.RuleModule = {
 	create: (context) => ({
 		Program(): void {
 			const text = context.sourceCode.text;
-			const styles = styleRanges(context);
-			const comments = commentRanges(context, text, styles);
+			const blocks = styleBlocks(context);
+			const styles = blocks.map((block): [number, number] => [block.start, block.end]);
+			const comments: [number, number][] = [
+				...context.sourceCode.getAllComments().map((comment) => comment.range as [number, number]),
+				...(documentFragment(context)?.comments ?? []).map((comment) => comment.range),
+			];
 
-			for (const match of text.matchAll(HEX_COLOUR)) {
-				const value = match[0];
-				const index = match.index;
-				const before = text.slice(Math.max(0, index - 30), index);
-
-				if (within(index, comments)) {
-					continue;
-				}
-
-				// In-page anchors (href="#add", to="#top") are not colours
-				// Static or bound literal: href="#top", href = '#top', :href="'#top'", :to="`#top`"
-				if (/\b(?:href|to)\s*=\s*["'](?:\s*['"`])?$/.test(before)) {
-					continue;
-				}
-
-				// CSS selectors (`#abc { … }`, `a, #abc:hover { … }`) are IDs: in a style block, a hash that reaches
-				// an opening brace before a declaration ends is part of a selector
-				if (within(index, styles) && isCssSelectorHash(text, index)) {
-					continue;
-				}
-
-				// Issue references, outside style blocks and style attributes
-				if (/^#\d{3,4}$/.test(value) && !within(index, styles) && !/style=["'][^"']*$/.test(before) && ISSUE_REFERENCE.test(before)) {
-					continue;
-				}
-
+			const report = (index: number, value: string): void =>
 				context.report({
 					loc: { start: context.sourceCode.getLocFromIndex(index), end: context.sourceCode.getLocFromIndex(index + value.length) },
 					messageId: 'hex',
 					data: { value },
 				});
+
+			// Template and script
+			for (const match of text.matchAll(HEX_COLOUR)) {
+				const value = match[0];
+				const index = match.index;
+				const before = text.slice(Math.max(0, index - 30), index);
+
+				if (within(index, styles) || within(index, comments) || FRAGMENT_REFERENCE.test(before)) {
+					continue;
+				}
+
+				// Issue references, never in style attributes
+				if (/^#\d{3,4}$/.test(value) && !/style=["'][^"']*$/.test(before) && ISSUE_REFERENCE.test(before)) {
+					continue;
+				}
+
+				report(index, value);
+			}
+
+			// Style blocks: only their code, and only declaration values, not selectors
+			for (const block of blocks) {
+				const code = cssCode(text, block);
+
+				for (const match of code.matchAll(HEX_COLOUR)) {
+					if (!isCssSelectorHash(code, match.index)) {
+						report(block.start + match.index, match[0]);
+					}
+				}
 			}
 		},
 	}),
