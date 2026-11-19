@@ -189,10 +189,16 @@ const onSnapshot = async (): Promise<void> => {
 		return;
 	}
 
-	await snapshot.reload({ hq: true });
+	const deviceId = camera.value.deviceId;
+	const result = await snapshot.reload({ hq: true });
+
+	// Another camera or profile, or a newer reload, cancelled this one: it neither failed nor produced an image.
+	if (result === 'superseded' || camera.value?.deviceId !== deviceId) {
+		return;
+	}
 
 	// A failed reload keeps the previous image; downloading it would pass it off as a fresh one.
-	if (snapshot.error.value !== null || snapshot.url.value === null) {
+	if (result === 'failed' || snapshot.url.value === null) {
 		flashMessage.error(t('camerasModule.dialog.snapshotFailed'));
 
 		return;

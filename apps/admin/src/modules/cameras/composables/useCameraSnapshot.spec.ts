@@ -123,6 +123,46 @@ describe('useCameraSnapshot', () => {
 		expect(signal.aborted).toBe(true);
 	});
 
+	it('tells the caller whether its reload loaded, failed or was superseded', async () => {
+		getMock.mockResolvedValueOnce(blobResponse('1'));
+
+		const deviceId = ref('cam-1');
+		const { snapshot, wrapper } = mountHost(() => deviceId.value, { refreshMs: null, active: () => false });
+
+		expect(await snapshot.reload()).toBe('loaded');
+
+		getMock.mockResolvedValueOnce(errorResponse(500, { message: 'boom' }));
+		expect(await snapshot.reload()).toBe('failed');
+
+		getMock.mockRejectedValueOnce(new TypeError('network'));
+		expect(await snapshot.reload()).toBe('failed');
+
+		// A newer reload supersedes a pending one.
+		let resolveFirst!: (value: unknown) => void;
+		getMock.mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)));
+		const first = snapshot.reload();
+		getMock.mockResolvedValueOnce(blobResponse('2'));
+		const second = snapshot.reload();
+		resolveFirst(blobResponse('3'));
+
+		expect(await first).toBe('superseded');
+		expect(await second).toBe('loaded');
+		expect(snapshot.url.value).toBe('blob:snap-2');
+
+		// Switching the device aborts a pending reload without reporting an error.
+		getMock.mockImplementationOnce(
+			(_path: string, opts: { signal: AbortSignal }) =>
+				new Promise((_resolve, reject) => opts.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))))
+		);
+		const cancelled = snapshot.reload();
+		deviceId.value = 'cam-2';
+		await flush();
+
+		expect(await cancelled).toBe('superseded');
+		expect(snapshot.error.value).toBeNull();
+		wrapper.unmount();
+	});
+
 	it('reads the age from X-Snapshot-Age', async () => {
 		getMock.mockResolvedValue(blobResponse('7'));
 

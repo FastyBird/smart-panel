@@ -159,7 +159,12 @@ describe('CameraLiveDialog', () => {
 		mocks.url = ref<string | null>('blob:snap');
 		mocks.mimeType = ref<string | null>('image/png');
 		mocks.error = ref<string | null>(null);
-		mocks.reload.mockResolvedValue(undefined);
+		// A reload of this click sets a new image, as the real composable does.
+		mocks.reload.mockImplementation(async () => {
+			mocks.url.value = 'blob:fresh';
+
+			return 'loaded';
+		});
 	});
 
 	it('plays the first available profile with auto start, muted', () => {
@@ -249,7 +254,7 @@ describe('CameraLiveDialog', () => {
 
 		expect(mocks.reload).toHaveBeenCalledWith({ hq: true });
 		expect(clicks).toHaveLength(1);
-		expect(clicks[0].href).toBe('blob:snap');
+		expect(clicks[0].href).toBe('blob:fresh');
 		expect(clicks[0].download).toMatch(/^Front door-\d{4}-\d{2}-\d{2}T[\d-]+Z\.png$/);
 
 		click.mockRestore();
@@ -262,7 +267,7 @@ describe('CameraLiveDialog', () => {
 		mocks.reload.mockImplementation(() => {
 			mocks.error.value = 'failed';
 
-			return Promise.resolve();
+			return Promise.resolve('failed');
 		});
 
 		await wrapper.find('[data-test-id="camera-live-dialog-snapshot"]').trigger('click');
@@ -281,12 +286,50 @@ describe('CameraLiveDialog', () => {
 
 		mocks.url.value = null;
 		mocks.error.value = 'offline';
+		mocks.reload.mockResolvedValue('failed');
 
 		await wrapper.find('[data-test-id="camera-live-dialog-snapshot"]').trigger('click');
 		await flushPromises();
 
 		expect(click).not.toHaveBeenCalled();
 		expect(mocks.message).toHaveBeenCalledWith('camerasModule.dialog.snapshotFailed');
+
+		click.mockRestore();
+	});
+
+	it('neither downloads nor reports a failure when the reload was superseded', async () => {
+		const wrapper = mountDialog();
+		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+		// A cancelled reload leaves the previous image and no error behind.
+		mocks.reload.mockResolvedValue('superseded');
+
+		await wrapper.find('[data-test-id="camera-live-dialog-snapshot"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.url.value).toBe('blob:snap');
+		expect(click).not.toHaveBeenCalled();
+		expect(mocks.message).not.toHaveBeenCalled();
+
+		click.mockRestore();
+	});
+
+	it('ignores a snapshot of the previous camera after switching cameras', async () => {
+		const wrapper = mountDialog();
+		const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+		let finish!: (result: string) => void;
+
+		mocks.reload.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
+
+		await wrapper.find('[data-test-id="camera-live-dialog-snapshot"]').trigger('click');
+		await wrapper.setProps({ modelValue: 'cam-2' });
+
+		mocks.error.value = null;
+		finish('failed');
+		await flushPromises();
+
+		expect(click).not.toHaveBeenCalled();
+		expect(mocks.message).not.toHaveBeenCalled();
 
 		click.mockRestore();
 	});

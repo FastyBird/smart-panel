@@ -7,6 +7,12 @@ import { isModuleDisabledError, readErrorMessage } from '../cameras.utils';
 
 export type CameraSnapshotError = 'offline' | 'busy' | 'unavailable' | 'module_disabled' | 'not_found' | 'failed';
 
+/**
+ * How one reload ended: `loaded` set a new image, `failed` set `error`, and `superseded` means a later reload, another
+ * device or profile, or disposal cancelled it, so it changed nothing.
+ */
+export type CameraSnapshotLoadResult = 'loaded' | 'failed' | 'superseded';
+
 export interface IUseCameraSnapshotOptions {
 	profile?: MaybeRefOrGetter<string | null>;
 	hq?: boolean;
@@ -22,7 +28,7 @@ export interface IUseCameraSnapshot {
 	mimeType: Ref<string | null>;
 	error: Ref<CameraSnapshotError | null>;
 	loading: Ref<boolean>;
-	reload: (options?: { hq?: boolean }) => Promise<void>;
+	reload: (options?: { hq?: boolean }) => Promise<CameraSnapshotLoadResult>;
 }
 
 const mapError = (status: number, error: unknown, headers: Headers | undefined): CameraSnapshotError => {
@@ -87,7 +93,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 		loading.value = false;
 	};
 
-	const load = async (hq: boolean): Promise<void> => {
+	const load = async (hq: boolean): Promise<CameraSnapshotLoadResult> => {
 		abortRunning();
 
 		const id = ++requestId;
@@ -116,7 +122,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 			} as never)) as { data?: Blob; error?: unknown; response?: Response };
 
 			if (id !== requestId || disposed) {
-				return;
+				return 'superseded';
 			}
 
 			if (apiError !== undefined || !data) {
@@ -127,7 +133,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 					stopTimer();
 				}
 
-				return;
+				return 'failed';
 			}
 
 			const age = Number(response?.headers.get('X-Snapshot-Age'));
@@ -139,10 +145,16 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 			ageSeconds.value = Number.isFinite(age) && age >= 0 ? age : 0;
 			takenAt.value = new Date(Date.now() - ageSeconds.value * 1000);
 			error.value = null;
+
+			return 'loaded';
 		} catch {
-			if (id === requestId && !disposed) {
-				error.value = 'failed';
+			if (id !== requestId || disposed) {
+				return 'superseded';
 			}
+
+			error.value = 'failed';
+
+			return 'failed';
 		} finally {
 			if (id === requestId) {
 				inFlight = false;
@@ -152,7 +164,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 		}
 	};
 
-	const reload = (reloadOptions?: { hq?: boolean }): Promise<void> => load(reloadOptions?.hq ?? options.hq ?? false);
+	const reload = (reloadOptions?: { hq?: boolean }): Promise<CameraSnapshotLoadResult> => load(reloadOptions?.hq ?? options.hq ?? false);
 
 	const onTick = (): void => {
 		if (!halted && !inFlight && isVisible() && isActive()) {
