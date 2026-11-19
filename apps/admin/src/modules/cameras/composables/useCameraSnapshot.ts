@@ -1,4 +1,4 @@
-import { type MaybeRefOrGetter, type Ref, onUnmounted, ref, toValue, watch } from 'vue';
+import { type MaybeRefOrGetter, type Ref, onScopeDispose, ref, toValue, watch } from 'vue';
 
 import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend } from '../../../common';
@@ -75,6 +75,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	};
 
 	const abortRunning = (): void => {
+		requestId++;
 		controller?.abort();
 		controller = null;
 		inFlight = false;
@@ -149,7 +150,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	};
 
 	const onVisibilityChange = (): void => {
-		if (isVisible() && isActive()) {
+		if (!inFlight && isVisible() && isActive()) {
 			void reload();
 		}
 	};
@@ -184,7 +185,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 	);
 
 	watch(isActive, (active) => {
-		if (active && isVisible()) {
+		if (active && !inFlight && isVisible()) {
 			void reload();
 		}
 	});
@@ -193,7 +194,7 @@ export const useCameraSnapshot = (deviceId: MaybeRefOrGetter<string>, options: I
 		void reload();
 	}
 
-	onUnmounted(() => {
+	onScopeDispose(() => {
 		disposed = true;
 
 		if (timer !== null) {

@@ -1,6 +1,6 @@
-import { defineComponent, h, nextTick, ref } from 'vue';
+import { defineComponent, effectScope, h, nextTick, ref } from 'vue';
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
@@ -60,20 +60,22 @@ const flush = async (): Promise<void> => {
 
 describe('useCameraSnapshot', () => {
 	let counter: number;
-	let revoke: ReturnType<typeof vi.fn>;
+	let revoke: Mock<(url: string) => void>;
+	let createSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		vi.useFakeTimers();
 		counter = 0;
-		revoke = vi.fn();
+		revoke = vi.fn<(url: string) => void>();
 		getMock.mockReset();
-		vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => `blob:snap-${++counter}`), revokeObjectURL: revoke }));
+		createSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:snap-${++counter}`);
+		vi.spyOn(URL, 'revokeObjectURL').mockImplementation(revoke);
 		Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
-		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
 	});
 
 	it('revokes the previous object URL when a new snapshot replaces it', async () => {
@@ -233,5 +235,121 @@ describe('useCameraSnapshot', () => {
 
 		expect(getMock.mock.calls.map((call) => call[1].params.query.hq)).toEqual(['false', 'true', 'false']);
 		wrapper.unmount();
+	});
+
+	const abortable = (signalHolder: { signal?: AbortSignal }) => (_path: string, opts: { signal: AbortSignal }) => {
+		signalHolder.signal = opts.signal;
+
+		return new Promise((_resolve, reject) => {
+			opts.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+		});
+	};
+
+	it('does not set an error or clear state when a hidden page aborts on a profile change', async () => {
+		const holder: { signal?: AbortSignal } = {};
+		getMock.mockImplementationOnce(abortable(holder));
+
+		const profile = ref<string | null>('main');
+		const { snapshot, wrapper } = mountHost('cam-1', { refreshMs: null, profile, active: ref(true) });
+		await flush();
+
+		setVisibility('hidden');
+		profile.value = 'sub';
+		await flush();
+
+		expect(holder.signal?.aborted).toBe(true);
+		expect(snapshot.error.value).toBeNull();
+		expect(snapshot.loading.value).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('creates no object URL for a late resolve after abort or unmount', async () => {
+		let resolveFirst!: (value: unknown) => void;
+		getMock.mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)));
+
+		const { wrapper } = mountHost('cam-1', { refreshMs: null });
+		await flush();
+		wrapper.unmount();
+
+		resolveFirst(blobResponse('1'));
+		await flush();
+
+		expect(createSpy).not.toHaveBeenCalled();
+	});
+
+	it('discards a late resolve of an aborted request when the device changes', async () => {
+		let resolveFirst!: (value: unknown) => void;
+		getMock.mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)));
+		getMock.mockResolvedValueOnce(blobResponse('1'));
+
+		const deviceId = ref('cam-1');
+		const { snapshot, wrapper } = mountHost(deviceId, { refreshMs: null });
+		await flush();
+
+		deviceId.value = 'cam-2';
+		await flush();
+		resolveFirst(blobResponse('9'));
+		await flush();
+
+		expect(getMock.mock.calls[1]?.[1].params.path.deviceId).toBe('cam-2');
+		expect(createSpy).toHaveBeenCalledTimes(1);
+		expect(snapshot.url.value).toBe('blob:snap-1');
+		wrapper.unmount();
+	});
+
+	it('does not load while inactive and loads when it becomes active', async () => {
+		getMock.mockResolvedValue(blobResponse('1'));
+
+		const active = ref(false);
+		const { wrapper } = mountHost('cam-1', { refreshMs: 1000, active });
+		await vi.advanceTimersByTimeAsync(3500);
+		expect(getMock).not.toHaveBeenCalled();
+
+		active.value = true;
+		await flush();
+		expect(getMock).toHaveBeenCalledTimes(1);
+		wrapper.unmount();
+	});
+
+	it('removes the timer and the visibility listener on unmount', async () => {
+		getMock.mockResolvedValue(blobResponse('1'));
+
+		const { wrapper } = mountHost('cam-1', { refreshMs: 1000 });
+		await flush();
+		wrapper.unmount();
+		getMock.mockClear();
+
+		await vi.advanceTimersByTimeAsync(3500);
+		setVisibility('hidden');
+		setVisibility('visible');
+		await flush();
+
+		expect(getMock).not.toHaveBeenCalled();
+	});
+
+	it('does not abort a request that is running when the page becomes visible', async () => {
+		const holder: { signal?: AbortSignal } = {};
+		getMock.mockImplementationOnce(abortable(holder));
+
+		const { wrapper } = mountHost('cam-1', { refreshMs: null });
+		await flush();
+		setVisibility('visible');
+		await flush();
+
+		expect(holder.signal?.aborted).toBe(false);
+		expect(getMock).toHaveBeenCalledTimes(1);
+		wrapper.unmount();
+	});
+
+	it('cleans up inside an effect scope', async () => {
+		getMock.mockResolvedValue(blobResponse('1'));
+
+		const scope = effectScope();
+		const snapshot = scope.run(() => useCameraSnapshot('cam-1', { refreshMs: null }))!;
+		await flush();
+		scope.stop();
+
+		expect(revoke).toHaveBeenCalledWith('blob:snap-1');
+		void snapshot;
 	});
 });
