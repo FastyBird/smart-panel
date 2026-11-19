@@ -164,6 +164,45 @@ describe('CamerasConfigForm', () => {
 		expect(mocks.flashError).not.toHaveBeenCalled();
 	});
 
+	it.each([CamerasModuleDataGo2rtcConfigMode.disabled, CamerasModuleDataGo2rtcConfigMode.managed])(
+		'saves after an invalid url edit in external mode and a switch to %s mode, leaving the url out',
+		async (mode) => {
+			setup(CamerasModuleDataGo2rtcConfigMode.external);
+
+			const wrapper = mountForm();
+
+			await wrapper.find('input[name="externalUrl"]').setValue('not-a-url');
+			await wrapper.find(`input[type="radio"][value="${mode}"]`).setValue(true);
+
+			expect(model.go2rtc.mode).toBe(mode);
+			expect(model.go2rtc.externalUrl).toBe('not-a-url');
+			expect(wrapper.find('[name="externalUrl"]').exists()).toBe(false);
+
+			await submit(wrapper);
+
+			expect(sent).toEqual({
+				type: 'cameras-module',
+				enabled: true,
+				go2rtc: { mode, ...(mode === CamerasModuleDataGo2rtcConfigMode.managed ? { binary_path: '/usr/local/lib/smart-panel/go2rtc/go2rtc' } : {}) },
+				max_sessions: 8,
+				max_sessions_per_camera: 4,
+			});
+			expect(mocks.flashError).not.toHaveBeenCalled();
+
+			// Back in external mode the invalid URL is visible again and blocks saving.
+			sent = undefined;
+			await wrapper.setProps({ remoteFormSubmit: false });
+			await wrapper.find('input[type="radio"][value="external"]').setValue(true);
+
+			expect((wrapper.find('input[name="externalUrl"]').element as HTMLInputElement).value).toBe('not-a-url');
+
+			await submit(wrapper);
+
+			expect(sent).toBeUndefined();
+			expect(mocks.flashError).toHaveBeenCalledWith('camerasModule.config.messages.invalid');
+		}
+	);
+
 	it('tells the user when the form does not validate', async () => {
 		model.go2rtc.binaryPath = 'go2rtc';
 

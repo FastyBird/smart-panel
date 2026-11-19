@@ -93,6 +93,16 @@ describe('Cameras config schemas', () => {
 		expect(CamerasConfigEditFormSchema.safeParse(withGo2rtc({ ...external, externalUrl: 'https://relay.example.com/go2rtc' })).success).toBe(true);
 	});
 
+	it('checks the external url only in external mode', () => {
+		for (const mode of [CamerasModuleDataGo2rtcConfigMode.managed, CamerasModuleDataGo2rtcConfigMode.disabled]) {
+			expect(CamerasConfigEditFormSchema.safeParse(withGo2rtc({ mode, externalUrl: 'not-a-url' })).success, mode).toBe(true);
+		}
+
+		expect(
+			CamerasConfigEditFormSchema.safeParse(withGo2rtc({ mode: CamerasModuleDataGo2rtcConfigMode.external, externalUrl: 'not-a-url' })).success
+		).toBe(false);
+	});
+
 	it('does not need an external url outside external mode, and turns an empty one into null', () => {
 		const parsed = CamerasConfigEditFormSchema.safeParse(withGo2rtc({ mode: CamerasModuleDataGo2rtcConfigMode.disabled, externalUrl: '' }));
 
@@ -128,6 +138,23 @@ describe('Cameras config schemas', () => {
 			});
 		}
 	);
+
+	it.each([CamerasModuleDataGo2rtcConfigMode.managed, CamerasModuleDataGo2rtcConfigMode.disabled])(
+		'leaves an invalid external url out of the %s mode request and keeps a valid one',
+		(mode) => {
+			const binaryPath = mode === CamerasModuleDataGo2rtcConfigMode.managed ? { binary_path: valid.go2rtc.binaryPath } : {};
+			const request = (externalUrl: string) => (toRequest(withGo2rtc({ mode, externalUrl })) as { go2rtc?: unknown }).go2rtc;
+
+			expect(request('not-a-url')).toEqual({ mode, ...binaryPath });
+			expect(request('http://192.168.1.5:1984')).toEqual({ mode, ...binaryPath, external_url: 'http://192.168.1.5:1984' });
+		}
+	);
+
+	it('refuses an external mode request with an invalid external url', () => {
+		expect(() => toRequest(withGo2rtc({ mode: CamerasModuleDataGo2rtcConfigMode.external, externalUrl: 'not-a-url' }))).toThrow(
+			ConfigValidationException
+		);
+	});
 
 	it('refuses a managed mode request with an invalid binary path', () => {
 		expect(() => toRequest(withGo2rtc({ binaryPath: 'go2rtc' }))).toThrow(ConfigValidationException);
