@@ -97,3 +97,52 @@ export const formatReportingDuration = (seconds: number | null, locale = 'en'): 
 	}
 	return parts.join(' ');
 };
+
+/** The window-detection settings that decide how often the room temperature must be sampled. */
+export interface IWindowDetectionCadence {
+	sampleWindowMs: number | null;
+	minimumSamples: number | null;
+	maximumSampleAgeMs: number | null;
+}
+
+/**
+ * The longest time between room temperature readings that still lets window detection work: it needs
+ * `minimumSamples` readings inside `sampleWindowMs`, and the newest one younger than `maximumSampleAgeMs`.
+ * Null while the settings are incomplete or invalid.
+ */
+export const windowDetectionIntervalSeconds = (cadence: IWindowDetectionCadence): number | null => {
+	const { sampleWindowMs, minimumSamples, maximumSampleAgeMs } = cadence;
+	if (sampleWindowMs === null || minimumSamples === null || maximumSampleAgeMs === null) return null;
+	if (
+		![sampleWindowMs, minimumSamples, maximumSampleAgeMs].every(Number.isFinite) ||
+		sampleWindowMs <= 0 ||
+		maximumSampleAgeMs <= 0 ||
+		minimumSamples < 2
+	)
+		return null;
+	return Math.floor(Math.min(sampleWindowMs / (minimumSamples - 1), maximumSampleAgeMs) / 1000);
+};
+
+/**
+ * Whether the room temperature source reports often enough for window detection:
+ * - `none`: nothing known to compare (no source, a derived source, or incomplete settings)
+ * - `unknown`: not enough reports seen yet
+ * - `too_slow`: the source usually reports less often than detection needs, so detection rarely sees a drop
+ * - `fits`: the source usually reports often enough
+ * Detection without enough readings never pauses the thermostat; it only misses open windows.
+ */
+export type WindowDetectionAdvice =
+	| { kind: 'none'; requiredIntervalSeconds: number | null }
+	| { kind: 'unknown'; requiredIntervalSeconds: number }
+	| { kind: 'too_slow'; requiredIntervalSeconds: number; reporting: ISourceReporting }
+	| { kind: 'fits'; requiredIntervalSeconds: number; reporting: ISourceReporting };
+
+export const windowDetectionAdvice = (reporting: ISourceReporting | null, cadence: IWindowDetectionCadence): WindowDetectionAdvice => {
+	const requiredIntervalSeconds = windowDetectionIntervalSeconds(cadence);
+	if (requiredIntervalSeconds === null || reporting === null || reporting.sourceKind !== 'physical') return { kind: 'none', requiredIntervalSeconds };
+	// The median interval: a sensor that reports on change speeds up while the temperature falls, but one that
+	// usually reports less often than this will rarely produce enough readings in time.
+	if (reporting.typicalIntervalSeconds === null) return { kind: 'unknown', requiredIntervalSeconds };
+	if (reporting.typicalIntervalSeconds > requiredIntervalSeconds) return { kind: 'too_slow', requiredIntervalSeconds, reporting };
+	return { kind: 'fits', requiredIntervalSeconds, reporting };
+};

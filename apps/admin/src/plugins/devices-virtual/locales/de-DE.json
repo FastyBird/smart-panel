@@ -948,5 +948,13 @@
 			"converter": "Der umgerechnete Wert ist nicht verfügbar, bis die nächste Meldung eintrifft.",
 			"dewPoint": "Der Taupunkt ist nicht verfügbar, bis die nächste Meldung eintrifft."
 		}
+	},
+	"windowDetection": {
+		"requirement": "Die Fenstererkennung braucht mindestens alle {required} einen Raumtemperaturwert.",
+		"fits": "Der Raumsensor meldet etwa alle {typical}.",
+		"tooSlow": {
+			"title": "Der Raumsensor meldet zu selten für die Fenstererkennung",
+			"message": "Er meldet etwa alle {typical}, und die Erkennung braucht mindestens alle {required} einen Wert. Sensoren, die bei Änderung melden, werden schneller, während die Temperatur fällt, aber selten so sehr. Ohne genug Werte pausiert die Erkennung den Thermostat nie; sie übersieht nur offene Fenster. Für eine zuverlässige Erkennung füge einen Fensterkontakt hinzu."
+		}
 	}
 }

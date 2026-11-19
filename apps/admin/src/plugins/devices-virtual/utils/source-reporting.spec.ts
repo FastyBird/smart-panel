@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { type ISourceReporting, formatReportingDuration, sourceAgeAdvice, transformSourceReporting } from './source-reporting';
+import {
+	type ISourceReporting,
+	formatReportingDuration,
+	sourceAgeAdvice,
+	transformSourceReporting,
+	windowDetectionAdvice,
+	windowDetectionIntervalSeconds,
+} from './source-reporting';
 
 const hourly: ISourceReporting = {
 	sourceKind: 'physical',
@@ -95,5 +102,38 @@ describe('formatReportingDuration', () => {
 	it('shows a dash for a missing or invalid duration', () => {
 		expect(formatReportingDuration(null)).toBe('—');
 		expect(formatReportingDuration(-1)).toBe('—');
+	});
+});
+
+const detection = { sampleWindowMs: 180_000, minimumSamples: 3, maximumSampleAgeMs: 120_000 };
+
+describe('windowDetectionIntervalSeconds', () => {
+	it('derives the longest gap between readings that still fills the sample window in time', () => {
+		expect(windowDetectionIntervalSeconds(detection)).toBe(90);
+		expect(windowDetectionIntervalSeconds({ ...detection, minimumSamples: 2 })).toBe(120);
+		expect(windowDetectionIntervalSeconds({ ...detection, sampleWindowMs: 600_000, maximumSampleAgeMs: 300_000 })).toBe(300);
+	});
+
+	it('has no requirement while the settings are incomplete or invalid', () => {
+		expect(windowDetectionIntervalSeconds({ ...detection, minimumSamples: null })).toBeNull();
+		expect(windowDetectionIntervalSeconds({ ...detection, sampleWindowMs: 0 })).toBeNull();
+		expect(windowDetectionIntervalSeconds({ ...detection, minimumSamples: 1 })).toBeNull();
+	});
+});
+
+describe('windowDetectionAdvice', () => {
+	it('warns when the room sensor usually reports less often than detection needs', () => {
+		expect(windowDetectionAdvice(hourly, detection)).toEqual({ kind: 'too_slow', requiredIntervalSeconds: 90, reporting: hourly });
+	});
+
+	it('confirms a room sensor that reports often enough', () => {
+		expect(windowDetectionAdvice(wired, detection)).toEqual({ kind: 'fits', requiredIntervalSeconds: 90, reporting: wired });
+	});
+
+	it('keeps only the requirement when the cadence is unknown or the source is derived or missing', () => {
+		expect(windowDetectionAdvice(unknown, detection)).toEqual({ kind: 'unknown', requiredIntervalSeconds: 90 });
+		expect(windowDetectionAdvice({ ...wired, sourceKind: 'derived' }, detection)).toEqual({ kind: 'none', requiredIntervalSeconds: 90 });
+		expect(windowDetectionAdvice(null, detection)).toEqual({ kind: 'none', requiredIntervalSeconds: 90 });
+		expect(windowDetectionAdvice(hourly, { ...detection, minimumSamples: null })).toEqual({ kind: 'none', requiredIntervalSeconds: null });
 	});
 });

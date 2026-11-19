@@ -101,6 +101,14 @@ old, and it notices a sensor that stopped working only after that time. For a fa
 reports more often, or configure periodic reporting on the device where it supports it. For Zigbee2MQTT devices, see
 [value freshness](/docs/extensions/device-integrations#zigbee2mqtt-value-freshness).
 
+Automatic window detection (without a contact) looks for a fast drop of the room temperature while heating, or a
+fast rise while cooling. With the recommended settings it needs at least three readings within three minutes, none
+older than two minutes, so a room temperature reading at least every 90 seconds. The editor shows that requirement
+and warns when the room sensor usually reports less often. Sensors that report on change speed up while the
+temperature falls, but a battery radio sensor rarely reports that often. Without enough readings detection cannot
+start a pause, so it misses open windows but never stops the thermostat by mistake. With a slow room sensor, bind a
+window contact instead.
+
 <Callout>
   Window contacts usually report only when they open or close. They stay usable between changes only if the device
   also sends heartbeats (most battery contacts do, together with their battery level) and the maximum age covers the

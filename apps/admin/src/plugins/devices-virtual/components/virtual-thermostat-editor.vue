@@ -300,6 +300,11 @@
 										/>
 									</el-form-item>
 								</div>
+								<window-detection-reporting
+									v-if="draft.heuristic"
+									:property="draft.sources.find((source) => source.role === ThermostatSourceRole.ambient)?.source_property"
+									:cadence="draft.heuristic"
+								/>
 								<div class="thermostat-editor__fields">
 									<el-form-item
 										v-if="!create || hasContact"
@@ -935,6 +940,7 @@ import VirtualWizardReviewSection from './virtual-wizard-review-section.vue';
 import type { VirtualWizardSource } from './virtual-wizard-source-picker.types';
 import VirtualWizardSourcePicker from './virtual-wizard-source-picker.vue';
 import VirtualWizardSummary from './virtual-wizard-summary.vue';
+import WindowDetectionReporting from './window-detection-reporting.vue';
 
 const props = defineProps<{ deviceId?: string; create?: boolean }>();
 const emit = defineEmits<{ created: [deviceId: string]; busy: [value: boolean] }>();
