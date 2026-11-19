@@ -119,7 +119,7 @@ export const DEPRECATED_CLASSES: Record<string, string> = {
 	'border-primary/20': 'border-primary-soft',
 };
 
-// Lint (ESLint vue/no-restricted-class or a Stylelint/grep step), error level once a folder is migrated:
+// Lint (eslint/design-system.ts, configured in eslint.config.ts), error level once a folder is migrated:
 //   - hex colours and gray-* utilities in .vue files
 //   - opacity modifiers on theme colours: /\b(bg|text|border|fill)-(primary|success|warning|danger|info|brand)\/\d+/
 //   - text-primary used for body text (it is the blue utility; main text is text-default)

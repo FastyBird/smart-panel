@@ -144,14 +144,20 @@ and adds shortcuts for the semantic tokens, so utilities follow dark mode. The m
 (`bg-primary/10`) do not work, because the colours are CSS variables: UnoCSS renders them solid. Use the `*-soft`
 shortcuts.
 
-Enforce in CI (warn during migration, error once a folder is migrated):
+Enforced in CI by the local ESLint plugin [`apps/admin/eslint/design-system.ts`](../apps/admin/eslint/design-system.ts)
+(rule names in brackets). The rules warn during the migration. A folder that has been migrated is added to
+`DESIGN_SYSTEM_MIGRATED_FOLDERS` in `apps/admin/eslint.config.ts`, which turns them into errors there;
+`DESIGN_SYSTEM_EXCEPTIONS` lists the temporary allow-list entries.
 
-1. No hex colours and no `gray-*` utilities in `src/**/*.vue` (allow-list: the automation canvas during migration).
-2. No opacity modifiers on theme colours: `/\b(bg|text|border|fill)-(primary|success|warning|danger|info|brand)\/\d+/`.
-3. No `text-primary` for body text.
-4. No `shadow="hover"` or `shadow="always"` on `el-card`; `shadow="never"` is the global default.
-5. No keys of `DEPRECATED_CLASSES`.
-6. The same checks in the plugin template repository, so third-party plugins inherit them.
+1. No hex colours (`no-hex-colors`, anywhere in a `.vue` file; allow-list: the automation canvas during the
+   migration) and no `gray-*` utilities (`no-gray-utilities`) in `src/**/*.vue`.
+2. No opacity modifiers on theme colours (`no-theme-opacity`):
+   `/\b(bg|text|border|fill)-(primary|success|warning|danger|info|brand)\/\d+/`.
+3. No `text-primary` for body text (`no-primary-body-text`; checked on `<p>` elements, the case lint can recognise).
+4. No `shadow="hover"` or `shadow="always"` on `el-card` (`no-card-shadow`); `shadow="never"` is the global default.
+5. No keys of `DEPRECATED_CLASSES` (`no-deprecated-classes`, which names the replacement), and no `md:`, `lg:` or
+   `xl:` in class names (`no-legacy-breakpoints`).
+6. The same checks in the plugin template repository, so third-party plugins inherit them (AR-27).
 
 ## 4. Shared components
 
