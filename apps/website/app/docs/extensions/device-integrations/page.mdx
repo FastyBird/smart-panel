@@ -92,8 +92,9 @@ value counts as fresh although the device did not report it.
 
 The same applies after a reconnect. A value that changed while Smart Panel was disconnected is shown
 from the replay, but it is not fresh: until the device reports again, virtual devices and automations
-treat it as unavailable, as they do any value of unknown age. An unchanged replay keeps the value's
-existing freshness.
+treat it as unavailable, as they do any value of unknown age. An unchanged replay does not renew the
+value's freshness either: after a reconnect, every value stays unavailable to them until its device
+reports again.
 
 Enabling `last_seen` avoids this for every message that carries a valid one, because the value is
 then timed by the device's report instead of its arrival. That age is only as accurate as the
