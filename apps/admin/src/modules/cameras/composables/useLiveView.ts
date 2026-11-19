@@ -528,6 +528,13 @@ export const useLiveView = (options: IUseLiveViewOptions): IUseLiveView => {
 
 	// An auto started view that could not stream yet starts once it can, unless it was stopped meanwhile.
 	watch(isAvailable, (available) => {
+		// A pending backoff must not post a session while nothing can stream; the intent stays for the next change.
+		if (!available && context.value.state === 'error') {
+			send({ type: 'stop' });
+
+			return;
+		}
+
 		if (available && wantsPlayback && context.value.state === 'snapshot') {
 			send({ type: 'start' });
 		}
