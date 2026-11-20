@@ -8,6 +8,7 @@ import {
 	buildTestRequest,
 	formatProtectDate,
 	isSameProtectTarget,
+	protectConnectionKey,
 	protectTestTarget,
 	protectTrustable,
 } from './protect-config-form.utils';
@@ -176,6 +177,29 @@ describe('protect test targets', () => {
 		expect(
 			isSameProtectTarget({ ...base, tlsMode: pinned, serverName: 'a.id.ui.direct' }, { ...base, tlsMode: pinned, serverName: 'b.id.ui.direct' })
 		).toBe(true);
+	});
+});
+
+describe('protectConnectionKey', () => {
+	it('changes with every connection field a test runs with, compared as the backend would, and never holds the key', () => {
+		const pinned = saved({ tls: { mode: 'pinned', serverName: null, fingerprintSha256: FINGERPRINT } });
+		const key = protectConnectionKey(pinned);
+
+		expect(protectConnectionKey(edited(pinned, { host: ' 192.168.1.10 ' }))).toBe(key);
+		expect(protectConnectionKey(edited(pinned, { tls: { ...pinned.tls, fingerprintSha256: FINGERPRINT.toUpperCase() } }))).toBe(key);
+		expect(protectConnectionKey(edited(pinned, { host: '192.168.1.11' }))).not.toBe(key);
+		expect(protectConnectionKey(edited(pinned, { port: 8443 }))).not.toBe(key);
+		expect(protectConnectionKey(edited(pinned, { tls: { ...pinned.tls, mode: 'verify' } }))).not.toBe(key);
+		expect(protectConnectionKey(edited(pinned, { tls: { ...pinned.tls, fingerprintSha256: 'cd'.repeat(32) } }))).not.toBe(key);
+		expect(protectConnectionKey(edited(pinned, { apiKey: 'typed-key' }))).toBe(key);
+		expect(protectConnectionKey(edited(pinned, { apiKey: 'typed-key' }))).not.toContain('typed-key');
+
+		const verify = saved();
+
+		expect(protectConnectionKey(edited(verify, { tls: { ...verify.tls, serverName: ' ABC123.id.ui.direct ' } }))).toBe(protectConnectionKey(verify));
+		expect(protectConnectionKey(edited(verify, { tls: { ...verify.tls, serverName: 'def456.id.ui.direct' } }))).not.toBe(
+			protectConnectionKey(verify)
+		);
 	});
 });
 

@@ -300,6 +300,7 @@ import {
 	buildTestRequest,
 	findProtectProbe,
 	isSameProtectTarget,
+	protectConnectionKey,
 	protectTestTarget,
 	protectTrustable,
 } from './protect-config-form.utils';
@@ -376,11 +377,38 @@ const testHint = computed<ProtectTestHint | null>((): ProtectTestHint | null => 
 	return 'disabled' in plan ? plan.hint : null;
 });
 
-/** A result counts only for the host, port and TLS mode it was run for (compared as the backend normalises a host). */
+/**
+ * Bumped by every edit of what a test runs with: host, port, TLS mode, server name, pin, and the API key (a typed value,
+ * marking it for removal, going back to the stored one). Only the form holds it; no store keeps the key or anything
+ * derived from it. Synchronous, so an edit made right before a test (as trusting a certificate does) is counted first.
+ */
+const connectionEdit = ref<number>(0);
+
+watch(
+	[(): string => protectConnectionKey(model), (): unknown => model.apiKey],
+	(): void => {
+		connectionEdit.value++;
+	},
+	{ flush: 'sync' }
+);
+
+/** The connection edit the last test this form started ran under; null before its first test. */
+const testedEdit = ref<number | null>(null);
+
+/**
+ * An outcome counts only while the connection is still the one this form tested: any edit since, even one made while
+ * the test ran, retires it.
+ */
+const testIsCurrent = computed<boolean>((): boolean => testedEdit.value === connectionEdit.value);
+
+/**
+ * A result counts only for the connection it was run with: no connection edit since the test started, and the host,
+ * port and TLS mode it was run for (compared as the backend normalises a host).
+ */
 const currentTest = computed<IProtectTestConnection | null>((): IProtectTestConnection | null => {
 	const last = statusStore.lastTest;
 
-	return last !== null && isSameProtectTarget(last.target, formTarget.value) ? last.result : null;
+	return last !== null && testIsCurrent.value && isSameProtectTarget(last.target, formTarget.value) ? last.result : null;
 });
 
 const trustable = computed<ProtectTrustable>((): ProtectTrustable => protectTrustable(currentTest.value, model.tls));
@@ -390,8 +418,8 @@ const failedTarget = ref<IProtectTestTarget | null>(null);
 /** The backend's reason for a refused test request, shown under the generic sentence. */
 const failedDetail = ref<string | null>(null);
 
-const timedOut = computed<boolean>((): boolean => isSameProtectTarget(timedOutTarget.value, formTarget.value));
-const requestFailed = computed<boolean>((): boolean => isSameProtectTarget(failedTarget.value, formTarget.value));
+const timedOut = computed<boolean>((): boolean => testIsCurrent.value && isSameProtectTarget(timedOutTarget.value, formTarget.value));
+const requestFailed = computed<boolean>((): boolean => testIsCurrent.value && isSameProtectTarget(failedTarget.value, formTarget.value));
 
 const suggestedServerName = computed<string | null>((): string | null => currentTest.value?.suggestedServerName ?? null);
 
@@ -429,6 +457,7 @@ const runTest = async (): Promise<void> => {
 	timedOutTarget.value = null;
 	failedTarget.value = null;
 	failedDetail.value = null;
+	testedEdit.value = connectionEdit.value;
 
 	try {
 		const outcome = await statusStore.testConnection(plan.request, plan.target);
@@ -567,7 +596,8 @@ const rules = computed<FormRules<IProtectConfigEditForm>>(() => ({
 }));
 
 onMounted((): void => {
-	// A result from an earlier visit is not this form's; one still running will land and be judged by its target.
+	// A result from an earlier visit is not this form's. One still running lands in the store but stays hidden: this form
+	// shows only the tests it ran, under the connection it holds (`testedEdit`).
 	if (!statusStore.testing) {
 		statusStore.clearLastTest();
 	}

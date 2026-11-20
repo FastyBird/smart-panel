@@ -209,6 +209,23 @@ const mountForm = (config: IProtectConfig = savedConfig()) => {
 	return mount(ProtectConfigForm, { props: { config } });
 };
 
+type Wrapper = ReturnType<typeof mountForm>;
+
+/** Runs a test from the form; the store answers with `result` for the target the form sent. */
+const runTestWith = async (wrapper: Wrapper, result: IProtectTestConnection): Promise<void> => {
+	statusStore.testConnection.mockImplementationOnce(async (_request: unknown, target: IProtectTestResult['target']) => {
+		statusStore.lastTest = { result, target, at: Date.now() };
+
+		return statusStore.lastTest;
+	});
+
+	await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
+	await flushPromises();
+};
+
+const passingResult = (): IProtectTestConnection =>
+	testResult({ success: true, errorCategory: null, error: null, certificate: { ...certificateOf(NEW_FINGERPRINT), trusted: true } });
+
 describe('ProtectConfigForm', () => {
 	beforeEach(() => {
 		release = vi.fn();
@@ -268,14 +285,14 @@ describe('ProtectConfigForm', () => {
 
 		await flushPromises();
 
-		statusStore.lastTest = lastTestFor(
+		await runTestWith(
+			wrapper,
 			testResult({
 				errorCategory: DevicesUnifiProtectPluginErrorCategory.validation,
 				suggestedServerName: 'abc123.id.ui.direct',
 				certificate: { ...certificateOf(NEW_FINGERPRINT), trusted: true },
 			})
 		);
-		await nextTick();
 
 		await wrapper.get('[data-test-id="protect-fill-suggested"]').trigger('click');
 
@@ -300,16 +317,15 @@ describe('ProtectConfigForm', () => {
 		await flushPromises();
 
 		model.apiKey = 'typed-key';
-		statusStore.lastTest = lastTestFor(testResult({ mode: 'candidate' }));
-		await nextTick();
+		await runTestWith(wrapper, testResult({ mode: 'candidate' }));
 
 		await wrapper.get('[data-test-id="protect-certificate-trust"]').trigger('click');
 		await flushPromises();
 
 		expect(model.tls.mode).toBe('pinned');
 		expect(model.tls.fingerprintSha256).toBe(NEW_FINGERPRINT);
-		expect(statusStore.testConnection).toHaveBeenCalledTimes(1);
-		expect(statusStore.testConnection).toHaveBeenCalledWith(
+		expect(statusStore.testConnection).toHaveBeenCalledTimes(2);
+		expect(statusStore.testConnection).toHaveBeenLastCalledWith(
 			{
 				data: {
 					mode: 'candidate',
@@ -328,15 +344,15 @@ describe('ProtectConfigForm', () => {
 
 		await flushPromises();
 
-		statusStore.lastTest = lastTestFor(testResult());
-		await nextTick();
+		await runTestWith(wrapper, testResult());
 
 		await wrapper.get('[data-test-id="protect-certificate-trust"]').trigger('click');
 		await flushPromises();
 
 		expect(model.tls.mode).toBe('pinned');
 		expect(model.tls.fingerprintSha256).toBe(NEW_FINGERPRINT);
-		expect(statusStore.testConnection).not.toHaveBeenCalled();
+		// Only the saved test that found the certificate: the pinned candidate needs a typed key.
+		expect(statusStore.testConnection).toHaveBeenCalledTimes(1);
 		expect(wrapper.get('[data-test-id="protect-test-hint"]').text()).toBe('devicesUnifiProtectPlugin.testConnection.hints.needs_key');
 	});
 
@@ -346,16 +362,14 @@ describe('ProtectConfigForm', () => {
 		await flushPromises();
 
 		model.apiKey = 'typed-key';
-		statusStore.lastTest = lastTestFor(
+		await runTestWith(
+			wrapper,
 			testResult({
 				tlsMode: DevicesUnifiProtectPluginTlsMode.pinned,
 				errorCategory: DevicesUnifiProtectPluginErrorCategory.tls_fingerprint_mismatch,
 				error: 'The certificate does not match the pinned fingerprint.',
-			}),
-			'192.168.1.10',
-			DevicesUnifiProtectPluginTlsMode.pinned
+			})
 		);
-		await nextTick();
 
 		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="protect-certificate-changed"]').exists()).toBe(true);
@@ -363,15 +377,15 @@ describe('ProtectConfigForm', () => {
 		await wrapper.get('[data-test-id="protect-certificate-replace"]').trigger('click');
 
 		expect(model.tls.fingerprintSha256).toBe(OLD_FINGERPRINT);
-		expect(statusStore.testConnection).not.toHaveBeenCalled();
+		expect(statusStore.testConnection).toHaveBeenCalledTimes(1);
 
 		await wrapper.get('[data-test-id="protect-certificate-confirm"]').trigger('click');
 		await flushPromises();
 
 		expect(model.tls.mode).toBe('pinned');
 		expect(model.tls.fingerprintSha256).toBe(NEW_FINGERPRINT);
-		expect(statusStore.testConnection).toHaveBeenCalledTimes(1);
-		expect(statusStore.testConnection.mock.calls[0][0]).toMatchObject({ data: { mode: 'candidate', tls: { fingerprint_sha256: NEW_FINGERPRINT } } });
+		expect(statusStore.testConnection).toHaveBeenCalledTimes(2);
+		expect(statusStore.testConnection.mock.calls[1][0]).toMatchObject({ data: { mode: 'candidate', tls: { fingerprint_sha256: NEW_FINGERPRINT } } });
 	});
 
 	it('offers no trust for a passing test or for a result of a previous host', async () => {
@@ -379,8 +393,7 @@ describe('ProtectConfigForm', () => {
 
 		await flushPromises();
 
-		statusStore.lastTest = lastTestFor(testResult({ success: true, errorCategory: null, error: null, certificate: certificateOf(NEW_FINGERPRINT) }));
-		await nextTick();
+		await runTestWith(wrapper, testResult({ success: true, errorCategory: null, error: null, certificate: certificateOf(NEW_FINGERPRINT) }));
 
 		expect(wrapper.find('[data-test-id="protect-certificate"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(false);
@@ -393,7 +406,12 @@ describe('ProtectConfigForm', () => {
 		expect(wrapper.find('[data-test-id="protect-test-failure"]').exists()).toBe(false);
 
 		// The same console typed in another case is still the tested one.
-		statusStore.lastTest = lastTestFor(testResult(), 'unifi.local');
+		model.host = 'unifi.local';
+		model.apiKey = 'typed-key';
+		await runTestWith(wrapper, testResult({ mode: 'candidate' }));
+
+		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(true);
+
 		model.host = ' UniFi.Local ';
 		await nextTick();
 
@@ -450,8 +468,7 @@ describe('ProtectConfigForm', () => {
 
 		await flushPromises();
 
-		statusStore.lastTest = lastTestFor(testResult());
-		await nextTick();
+		await runTestWith(wrapper, testResult());
 
 		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(true);
 
@@ -461,9 +478,96 @@ describe('ProtectConfigForm', () => {
 		expect(wrapper.find('[data-test-id="protect-test-failure"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(false);
 
+		// Going back is an edit too: the result stays retired until the connection is tested again.
 		await wrapper.get('input[name="serverName"]').setValue('');
 
+		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(false);
+
+		await runTestWith(wrapper, testResult());
+
 		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(true);
+	});
+
+	it('hides a passing result once the API key is edited', async () => {
+		const wrapper = mountForm();
+
+		await flushPromises();
+		await runTestWith(wrapper, passingResult());
+
+		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(true);
+
+		// A typed key is not the stored key the saved test passed with.
+		await wrapper.get('input[name="apiKey"]').setValue('other-key');
+
+		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="protect-certificate"]').exists()).toBe(false);
+
+		await runTestWith(wrapper, testResult({ ...passingResult(), mode: 'candidate' }));
+
+		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(true);
+
+		// Clearing the typed key goes back to the stored one: an edit as well.
+		await wrapper.get('input[name="apiKey"]').setValue('');
+
+		expect(model.apiKey).toBeUndefined();
+		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(false);
+
+		await runTestWith(wrapper, passingResult());
+
+		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(true);
+
+		// And so is marking the key for removal.
+		await wrapper.get('button[name="apiKey-remove"]').trigger('click');
+
+		expect(model.apiKey).toBeNull();
+		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(false);
+	});
+
+	it('hides a passing result once the pinned fingerprint is edited', async () => {
+		const wrapper = mountForm(savedConfig({ mode: DevicesUnifiProtectPluginTlsMode.pinned, serverName: null, fingerprintSha256: OLD_FINGERPRINT }));
+
+		await flushPromises();
+		await runTestWith(wrapper, { ...passingResult(), tlsMode: DevicesUnifiProtectPluginTlsMode.pinned });
+
+		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(true);
+
+		// Same host, port and mode, but the result was for the old pin.
+		await wrapper.get('input[name="fingerprintSha256"]').setValue(NEW_FINGERPRINT);
+
+		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="protect-certificate"]').exists()).toBe(false);
+	});
+
+	it.each([
+		['a passing result', passingResult, 'protect-test-success'],
+		['an untrusted certificate', () => testResult(), 'protect-test-failure'],
+	])('does not show %s of a test that was running when the connection was edited, nor offer trust for it', async (_name, result, testId) => {
+		const wrapper = mountForm();
+
+		await flushPromises();
+
+		let answer: (() => void) | undefined;
+
+		statusStore.testConnection.mockImplementationOnce(
+			(_request: unknown, target: IProtectTestResult['target']) =>
+				new Promise((resolve) => {
+					answer = () => {
+						statusStore.lastTest = { result: result(), target, at: Date.now() };
+						resolve(statusStore.lastTest);
+					};
+				})
+		);
+
+		await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
+		await wrapper.get('input[name="apiKey"]').setValue('other-key');
+
+		answer?.();
+		await flushPromises();
+
+		expect(statusStore.lastTest).not.toBeNull();
+		expect(wrapper.find(`[data-test-id="${testId}"]`).exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="protect-certificate"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(false);
 	});
 
 	it('refreshes the saved snapshot after a save, so a saved key enables the saved test and a removed key disables it', async () => {

@@ -65,6 +65,20 @@ export const isSameProtectTarget = (a: IProtectTestTarget | null, b: IProtectTes
 	a.tlsMode === b.tlsMode &&
 	(a.tlsMode !== DevicesUnifiProtectPluginTlsMode.verify || normalizeServerName(a.serverName) === normalizeServerName(b.serverName));
 
+/**
+ * The connection settings a test runs with, except the API key, compared as the backend would (host and server name
+ * normalised, the pin as a save stores it). A change of this value is a connection edit; retyping the same host in
+ * another case is not. The key is left out so it never ends up in a derived value; the form watches it on its own.
+ */
+export const protectConnectionKey = (model: Pick<IProtectConnectionFields, 'host' | 'port' | 'tls'>): string =>
+	JSON.stringify([
+		normalizeProtectHost(model.host),
+		model.port,
+		model.tls.mode,
+		effectiveServerName(model.tls),
+		normalizePin(model.tls.fingerprintSha256),
+	]);
+
 const connectionChanged = (model: IProtectConnectionFields, initial: IProtectConnectionFields): boolean => {
 	if (normalizeProtectHost(model.host) !== normalizeProtectHost(initial.host) || model.port !== initial.port || model.tls.mode !== initial.tls.mode) {
 		return true;
