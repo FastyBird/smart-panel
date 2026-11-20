@@ -19,7 +19,7 @@ import { ProtectApiException, ProtectTimeoutException } from '../devices-unifi-p
 
 import { startProtectDeadline } from './protect.deadline';
 import { transformProtectStatus, transformProtectTestConnection } from './protect.transformers';
-import type { IProtectStatus, IProtectTestResult, IProtectTestTarget, IProtectTestTimeout } from './protect.types';
+import type { IProtectStatus, IProtectTestResult, IProtectTestSuperseded, IProtectTestTarget, IProtectTestTimeout } from './protect.types';
 
 const isPageVisible = (): boolean => typeof document === 'undefined' || document.visibilityState === 'visible';
 
@@ -35,12 +35,9 @@ export const useProtectStatus = defineStore('devices_unifi_protect_plugin-status
 	const testing = ref(false);
 
 	let pendingFetch: Promise<IProtectStatus> | null = null;
+	let pendingFresh: Promise<IProtectStatus> | null = null;
 
-	const fetch = (): Promise<IProtectStatus> => {
-		if (pendingFetch) {
-			return pendingFetch;
-		}
-
+	const read = (): Promise<IProtectStatus> => {
 		const request = (async (): Promise<IProtectStatus> => {
 			// Without a deadline a stalled read would stay pending, and every later poll would wait on it.
 			const deadline = startProtectDeadline(PROTECT_STATUS_DEADLINE_MS);
@@ -77,7 +74,9 @@ export const useProtectStatus = defineStore('devices_unifi_protect_plugin-status
 		pendingFetch = request;
 
 		const release = (): void => {
-			pendingFetch = null;
+			if (pendingFetch === request) {
+				pendingFetch = null;
+			}
 		};
 
 		request.then(release, release);
@@ -85,12 +84,43 @@ export const useProtectStatus = defineStore('devices_unifi_protect_plugin-status
 		return request;
 	};
 
+	/**
+	 * Concurrent reads share one request. `fresh` is for a caller that just changed something on the backend (a save or a
+	 * test): a read already in flight may have started before the change, so it waits for that read and starts another one,
+	 * which concurrent fresh callers share.
+	 */
+	const fetch = (options: { fresh?: boolean } = {}): Promise<IProtectStatus> => {
+		if (!pendingFetch) {
+			return read();
+		}
+
+		if (!options.fresh) {
+			return pendingFetch;
+		}
+
+		if (pendingFresh) {
+			return pendingFresh;
+		}
+
+		const next = pendingFetch
+			.catch((): void => undefined)
+			.then((): Promise<IProtectStatus> => {
+				pendingFresh = null;
+
+				return pendingFetch ?? read();
+			});
+
+		pendingFresh = next;
+
+		return next;
+	};
+
 	let testRun = 0;
 
 	const testConnection = async (
 		request: DevicesUnifiProtectPluginTestConnectionRequestSchema,
 		target: IProtectTestTarget | null
-	): Promise<IProtectTestResult | IProtectTestTimeout> => {
+	): Promise<IProtectTestResult | IProtectTestTimeout | IProtectTestSuperseded> => {
 		const run = ++testRun;
 		const deadline = startProtectDeadline(PROTECT_TEST_CONNECTION_DEADLINE_MS);
 
@@ -106,11 +136,11 @@ export const useProtectStatus = defineStore('devices_unifi_protect_plugin-status
 			if (data) {
 				const result: IProtectTestResult = { result: transformProtectTestConnection(data.data), target, at: Date.now() };
 
-				if (run === testRun) {
-					lastTest.value = result;
+				if (run !== testRun) {
+					return { superseded: true };
 				}
 
-				return result;
+				return (lastTest.value = result);
 			}
 
 			throw new ProtectApiException(
@@ -118,6 +148,11 @@ export const useProtectStatus = defineStore('devices_unifi_protect_plugin-status
 				response?.status
 			);
 		} catch (error) {
+			// A newer test owns the state now, so this caller's outcome, failure included, no longer counts.
+			if (run !== testRun) {
+				return { superseded: true };
+			}
+
 			// The deadline is the client giving up, not a failed test: the console may simply be slow.
 			if (deadline.expired()) {
 				return { timedOut: true };

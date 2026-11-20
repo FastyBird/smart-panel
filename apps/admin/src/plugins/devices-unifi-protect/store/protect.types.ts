@@ -37,6 +37,11 @@ export interface IProtectTestTimeout {
 	timedOut: true;
 }
 
+/** A connection test whose result no longer counts because a newer test started. */
+export interface IProtectTestSuperseded {
+	superseded: true;
+}
+
 export interface IProtectProbeInput {
 	host: string;
 	port?: number;

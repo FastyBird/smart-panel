@@ -24,25 +24,49 @@ import type { IProtectDiscovery, IProtectProbe, IProtectProbeInput } from './pro
 
 const BASE = `/${PLUGINS_PREFIX}/${DEVICES_UNIFI_PROTECT_PLUGIN_PREFIX}/discovery`;
 
-export const protectProbeKey = (host: string, port: number): string => `${host}:${port}`;
+/** Keys a probe the way the backend normalizes its host (trimmed, lower case), so a typed host finds its entry. */
+export const protectProbeKey = (host: string, port: number = PROTECT_DEFAULT_PORT): string => `${host.trim().toLowerCase()}:${port}`;
 
 export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-discovery', () => {
 	const backend = useBackend();
 
 	const discovery = ref<IProtectDiscovery | null>(null);
-	/** Probe results by `host:port`. */
+	/** Probe results by `host:port`, see `protectProbeKey`. */
 	const probes = ref<Record<string, IProtectProbe>>({});
 	const scanning = ref(false);
-	const probing = ref(false);
+	/** Probes in flight by `host:port`, so one slow probe does not mark another as busy. */
+	const probingKeys = ref<Record<string, number>>({});
 
-	const fetch = async (): Promise<IProtectDiscovery> => {
+	const isProbing = (host: string, port?: number): boolean => (probingKeys.value[protectProbeKey(host, port)] ?? 0) > 0;
+
+	/**
+	 * Bumped whenever a result is applied. A plain read that started before the bump is older than what the store holds
+	 * and is dropped. A scan, and the read that follows a scan timeout, always apply: they are the newest knowledge.
+	 */
+	let generation = 0;
+
+	const apply = (value: IProtectDiscovery): void => {
+		discovery.value = value;
+		generation++;
+	};
+
+	const read = async (force: boolean): Promise<IProtectDiscovery> => {
+		const startedAt = generation;
 		const deadline = startProtectDeadline(PROTECT_STATUS_DEADLINE_MS);
 
 		try {
 			const { data, error, response } = await backend.client.GET(BASE, { signal: deadline.signal });
 
 			if (data) {
-				return (discovery.value = transformProtectDiscovery(data.data));
+				const value = transformProtectDiscovery(data.data);
+
+				if (force || startedAt === generation) {
+					apply(value);
+
+					return value;
+				}
+
+				return discovery.value ?? value;
 			}
 
 			throw new ProtectApiException(
@@ -60,6 +84,28 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 		}
 	};
 
+	let pendingFetch: Promise<IProtectDiscovery> | null = null;
+
+	const fetch = (): Promise<IProtectDiscovery> => {
+		if (pendingFetch) {
+			return pendingFetch;
+		}
+
+		const request = read(false);
+
+		pendingFetch = request;
+
+		const release = (): void => {
+			if (pendingFetch === request) {
+				pendingFetch = null;
+			}
+		};
+
+		request.then(release, release);
+
+		return request;
+	};
+
 	let pendingScan: Promise<IProtectDiscovery> | null = null;
 
 	const runScan = async (): Promise<IProtectDiscovery> => {
@@ -69,7 +115,11 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 			const { data, error, response } = await backend.client.POST(`${BASE}/scan`, { signal: deadline.signal });
 
 			if (data) {
-				return (discovery.value = transformProtectDiscovery(data.data));
+				const value = transformProtectDiscovery(data.data);
+
+				apply(value);
+
+				return value;
 			}
 
 			throw new ProtectApiException(
@@ -79,7 +129,7 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 		} catch (error) {
 			if (deadline.expired()) {
 				// The client gave up but the backend keeps scanning and caches the result, so show that instead of an error.
-				return fetch();
+				return read(true);
 			}
 
 			throw error;
@@ -111,8 +161,9 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 
 	const probe = async (input: IProtectProbeInput): Promise<IProtectProbe> => {
 		const deadline = startProtectDeadline(PROTECT_PROBE_DEADLINE_MS);
+		const inFlightKey = protectProbeKey(input.host, input.port);
 
-		probing.value = true;
+		probingKeys.value = { ...probingKeys.value, [inFlightKey]: (probingKeys.value[inFlightKey] ?? 0) + 1 };
 
 		try {
 			const { data, error, response } = await backend.client.POST(`${BASE}/probe`, {
@@ -123,7 +174,7 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 			if (data) {
 				const result = transformProtectProbe(data.data);
 
-				probes.value = { ...probes.value, [protectProbeKey(result.host, result.port ?? PROTECT_DEFAULT_PORT)]: result };
+				probes.value = { ...probes.value, [protectProbeKey(result.host, result.port)]: result };
 
 				return result;
 			}
@@ -140,11 +191,14 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 			throw error;
 		} finally {
 			deadline.clear();
-			probing.value = false;
+
+			const { [inFlightKey]: count = 1, ...rest } = probingKeys.value;
+
+			probingKeys.value = count > 1 ? { ...rest, [inFlightKey]: count - 1 } : rest;
 		}
 	};
 
-	return { discovery, probes, scanning, probing, fetch, scan, probe };
+	return { discovery, probes, scanning, isProbing, fetch, scan, probe };
 });
 
 export const registerProtectDiscoveryStore = (pinia: Pinia): ReturnType<typeof useProtectDiscovery> => useProtectDiscovery(pinia);

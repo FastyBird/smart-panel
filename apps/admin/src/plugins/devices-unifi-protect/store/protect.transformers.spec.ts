@@ -66,7 +66,7 @@ describe('Protect transformers', () => {
 		expect(result.nvrName).toBeUndefined();
 	});
 
-	it('maps a probe and a discovery with nulls', () => {
+	it('maps a probe and a discovery from snake_case wire bodies with nulls', () => {
 		const probe = {
 			host: '192.168.1.10',
 			port: 443,
@@ -74,24 +74,36 @@ describe('Protect transformers', () => {
 			failure: 'timeout',
 			protect: 'unknown',
 			model: null,
-			certificate: null,
+			device_state: null,
+			direct_connect_domain: 'abc.ui.direct',
+			preferred_host: '192.168.1.10',
+			certificate: { checked: true, domain: 'abc.ui.direct', valid: null, error_code: null, valid_to: null, domain_resolves_to_host: false },
 		};
 
-		expect(transformProtectProbe(probe as never)).toEqual(expect.objectContaining({ failure: 'timeout', certificate: null }));
+		expect(transformProtectProbe(probe as never)).toEqual(
+			expect.objectContaining({
+				failure: 'timeout',
+				directConnectDomain: 'abc.ui.direct',
+				preferredHost: '192.168.1.10',
+				certificate: expect.objectContaining({ domainResolvesToHost: false, errorCode: null }),
+			})
+		);
 
 		const discovery = transformProtectDiscovery({
 			status: 'failed',
-			failureReason: 'no_usable_interface',
+			failure_reason: 'no_usable_interface',
 			warnings: ['no_replies'],
-			startedAt: null,
-			finishedAt: null,
-			interfaces: [{ name: 'en0', address: '192.168.1.5', broadcastAddress: '192.168.1.255', status: 'error', errorCode: 'permission_denied' }],
-			consoles: [{ mac: 'aa', host: '192.168.1.10', addresses: [], hostname: null, probe }],
-			otherUnifiDevices: 1,
+			started_at: null,
+			finished_at: '2026-11-20T10:00:00Z',
+			interfaces: [{ name: 'en0', address: '192.168.1.5', broadcast_address: '192.168.1.255', status: 'error', error_code: 'permission_denied' }],
+			consoles: [{ mac: 'aa', host: '192.168.1.10', addresses: [], hostname: null, direct_connect_domain: null, probe }],
+			other_unifi_devices: 1,
 		} as never);
 
 		expect(discovery.failureReason).toBe('no_usable_interface');
-		expect(discovery.interfaces[0].broadcastAddress).toBe('192.168.1.255');
+		expect(discovery.finishedAt).toBe('2026-11-20T10:00:00Z');
+		expect(discovery.otherUnifiDevices).toBe(1);
+		expect(discovery.interfaces[0]).toEqual(expect.objectContaining({ broadcastAddress: '192.168.1.255', errorCode: 'permission_denied' }));
 		expect(discovery.consoles[0].probe.status).toBe('unreachable');
 	});
 

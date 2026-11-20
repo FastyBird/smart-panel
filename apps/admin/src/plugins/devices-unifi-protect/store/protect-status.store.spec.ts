@@ -3,8 +3,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-	DevicesHomeyPluginTestCandidateConnectionMode,
-	DevicesHomeyPluginTestSavedConnectionMode,
+	DevicesUnifiProtectPluginTestCandidateConnectionMode,
+	DevicesUnifiProtectPluginTestSavedConnectionMode,
 	DevicesUnifiProtectPluginTlsMode,
 } from '../../../openapi.constants';
 import { PROTECT_STATUS_DEADLINE_MS, PROTECT_TEST_CONNECTION_DEADLINE_MS, STATUS_POLL_MS } from '../devices-unifi-protect.constants';
@@ -124,6 +124,39 @@ describe('Protect status store', () => {
 			expect(store.stale).toBe(true);
 		});
 
+		it('reads again for a fresh caller instead of reusing a read that started earlier', async () => {
+			let resolveFirst: ((value: ReturnType<typeof statusBody>) => void) | undefined;
+			get.mockReturnValueOnce(new Promise<ReturnType<typeof statusBody>>((resolve) => (resolveFirst = resolve)));
+			get.mockResolvedValueOnce(statusBody({ connection_state: 'degraded' }));
+			const store = useProtectStatus();
+
+			const first = store.fetch();
+			const freshA = store.fetch({ fresh: true });
+			const freshB = store.fetch({ fresh: true });
+			const plain = store.fetch();
+
+			expect(get).toHaveBeenCalledTimes(1);
+
+			resolveFirst?.(statusBody({ connection_state: 'connected' }));
+			await first;
+			expect((await plain).connectionState).toBe('connected');
+			const [a, b] = await Promise.all([freshA, freshB]);
+
+			expect(get).toHaveBeenCalledTimes(2);
+			expect(a).toBe(b);
+			expect(a.connectionState).toBe('degraded');
+			expect(store.status?.connectionState).toBe('degraded');
+		});
+
+		it('starts a fresh read at once when none is in flight', async () => {
+			get.mockResolvedValue(statusBody());
+			const store = useProtectStatus();
+
+			await store.fetch({ fresh: true });
+
+			expect(get).toHaveBeenCalledTimes(1);
+		});
+
 		it('aborts a stalled read at the deadline so the next poll starts a new one', async () => {
 			get.mockImplementationOnce(hangUntilAborted);
 			const store = useProtectStatus();
@@ -226,7 +259,7 @@ describe('Protect status store', () => {
 		it('sends the saved and the candidate request shapes', async () => {
 			post.mockResolvedValue(testBody({ mode: 'saved' }));
 			const store = useProtectStatus();
-			const saved = { data: { mode: DevicesHomeyPluginTestSavedConnectionMode.saved } };
+			const saved = { data: { mode: DevicesUnifiProtectPluginTestSavedConnectionMode.saved } };
 
 			await store.testConnection(saved, target);
 			expect(post).toHaveBeenLastCalledWith('/plugins/devices-unifi-protect/test-connection', {
@@ -236,7 +269,7 @@ describe('Protect status store', () => {
 
 			const candidate = {
 				data: {
-					mode: DevicesHomeyPluginTestCandidateConnectionMode.candidate,
+					mode: DevicesUnifiProtectPluginTestCandidateConnectionMode.candidate,
 					host: '192.168.1.10',
 					port: 443,
 					api_key: 'typed-secret',
@@ -255,7 +288,7 @@ describe('Protect status store', () => {
 			vi.setSystemTime(new Date('2026-11-20T10:00:00Z'));
 			const store = useProtectStatus();
 
-			const result = await store.testConnection({ data: { mode: DevicesHomeyPluginTestSavedConnectionMode.saved } }, target);
+			const result = await store.testConnection({ data: { mode: DevicesUnifiProtectPluginTestSavedConnectionMode.saved } }, target);
 
 			expect(store.lastTest).toEqual({
 				result: expect.objectContaining({ success: false, errorCategory: 'tls_untrusted' }),
@@ -273,7 +306,7 @@ describe('Protect status store', () => {
 			const store = useProtectStatus();
 			store.lastTest = { result: { mode: 'saved', success: true, minimumVersion: '6.0.0' }, target, at: 1 };
 
-			const pending = store.testConnection({ data: { mode: DevicesHomeyPluginTestSavedConnectionMode.saved } }, target);
+			const pending = store.testConnection({ data: { mode: DevicesUnifiProtectPluginTestSavedConnectionMode.saved } }, target);
 			expect(store.testing).toBe(true);
 			expect(store.lastTest).toBeNull();
 			await vi.advanceTimersByTimeAsync(PROTECT_TEST_CONNECTION_DEADLINE_MS);
@@ -283,11 +316,42 @@ describe('Protect status store', () => {
 			expect(store.testing).toBe(false);
 		});
 
+		it('marks a superseded run instead of returning its stale result or failure', async () => {
+			let resolveFirst: ((value: ReturnType<typeof testBody>) => void) | undefined;
+			post.mockReturnValueOnce(new Promise<ReturnType<typeof testBody>>((resolve) => (resolveFirst = resolve)));
+			post.mockResolvedValueOnce(testBody({ success: false, error_category: 'authentication' }));
+			const store = useProtectStatus();
+			const request = { data: { mode: DevicesUnifiProtectPluginTestSavedConnectionMode.saved } };
+
+			const first = store.testConnection(request, target);
+			const second = await store.testConnection(request, { ...target, host: 'other.local' });
+			resolveFirst?.(testBody({ success: true }));
+
+			await expect(first).resolves.toEqual({ superseded: true });
+			expect(second).toEqual(expect.objectContaining({ target: expect.objectContaining({ host: 'other.local' }) }));
+			expect(store.lastTest?.result.success).toBe(false);
+			expect(store.testing).toBe(false);
+		});
+
+		it('marks a superseded run that failed', async () => {
+			let rejectFirst: ((reason: unknown) => void) | undefined;
+			post.mockReturnValueOnce(new Promise((_resolve, reject) => (rejectFirst = reject)));
+			post.mockResolvedValueOnce(testBody());
+			const store = useProtectStatus();
+			const request = { data: { mode: DevicesUnifiProtectPluginTestSavedConnectionMode.saved } };
+
+			const first = store.testConnection(request, target);
+			await store.testConnection(request, target);
+			rejectFirst?.(new Error('network down'));
+
+			await expect(first).resolves.toEqual({ superseded: true });
+		});
+
 		it('throws a sanitized API exception on a transport failure and restores idle state', async () => {
 			post.mockResolvedValue({ error: new Error('private transport detail'), response: { status: 503 } });
 			const store = useProtectStatus();
 
-			await expect(store.testConnection({ data: { mode: DevicesHomeyPluginTestSavedConnectionMode.saved } }, target)).rejects.toEqual(
+			await expect(store.testConnection({ data: { mode: DevicesUnifiProtectPluginTestSavedConnectionMode.saved } }, target)).rejects.toEqual(
 				expect.objectContaining<Partial<ProtectApiException>>({ code: 503 })
 			);
 			expect(store.testing).toBe(false);
@@ -299,7 +363,7 @@ describe('Protect status store', () => {
 			post.mockResolvedValueOnce(testBody({ success: false, error_category: 'authentication', error: 'The API key was rejected.' }));
 			const store = useProtectStatus();
 			const candidate = {
-				data: { mode: DevicesHomeyPluginTestCandidateConnectionMode.candidate, host: '192.168.1.10', api_key: secret },
+				data: { mode: DevicesUnifiProtectPluginTestCandidateConnectionMode.candidate, host: '192.168.1.10', api_key: secret },
 			};
 
 			await store.testConnection(candidate, target);

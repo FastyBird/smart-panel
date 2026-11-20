@@ -241,6 +241,9 @@ export {
 	DevicesUnifiProtectPluginDataStatusRealtime_state as DevicesUnifiProtectPluginRealtimeState,
 	DevicesUnifiProtectPluginDataStatusConnection_state as DevicesUnifiProtectPluginConnectionState,
 	DevicesUnifiProtectPluginDataStatusLast_error_category as DevicesUnifiProtectPluginErrorCategory,
+	// The generator deduplicated these two enums into the Homey ones, so they are aliased here for the Protect code.
+	DevicesHomeyPluginTestCandidateConnectionMode as DevicesUnifiProtectPluginTestCandidateConnectionMode,
+	DevicesHomeyPluginTestSavedConnectionMode as DevicesUnifiProtectPluginTestSavedConnectionMode,
 } from './openapi';
 
 // Data Sources Device Channel Plugin Schemas
