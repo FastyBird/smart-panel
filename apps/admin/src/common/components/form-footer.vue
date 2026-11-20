@@ -1,6 +1,6 @@
 <template>
 	<div
-		:style="keyboardOffset > 0 ? { bottom: `${keyboardOffset}px` } : undefined"
+		:style="keyboardOffset > 0 ? { transform: `translateY(-${keyboardOffset}px)` } : undefined"
 		class="sticky bottom-0 z-10 flex items-center justify-end gap-2 h-14 px-4 shrink-0 border-t border-t-solid border-light shadow-top bg-[var(--el-bg-color)]"
 		data-test-id="form-footer"
 	>
@@ -63,6 +63,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-// Rides above the on-screen keyboard (spec section 6)
+// Rides above the on-screen keyboard (spec section 6). A transform, not a sticky `bottom` offset, so it also works
+// where the footer's containing block is only as tall as the footer (an `ElDrawer` `#footer` slot)
 const { offset: keyboardOffset } = useKeyboardOffset();
 </script>

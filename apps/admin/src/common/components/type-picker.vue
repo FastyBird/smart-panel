@@ -88,10 +88,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-// With a single option there is nothing to choose: it is selected and the dialog never opens
-const singleOption = computed<TypePickerOption | null>((): TypePickerOption | null =>
-	props.options.length === 1 && props.options[0]?.disabled !== true ? props.options[0] : null
-);
+// With a single enabled option there is nothing to choose: it is selected and the dialog never opens
+const singleOption = computed<TypePickerOption | null>((): TypePickerOption | null => {
+	const enabled = props.options.filter((option) => option.disabled !== true);
+
+	return enabled.length === 1 ? enabled[0] : null;
+});
 
 const dialogVisible = computed<boolean>((): boolean => props.visible && singleOption.value === null);
 

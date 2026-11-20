@@ -73,7 +73,7 @@ describe('FormFooter.vue', () => {
 		keyboardOffset.value = 280;
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.attributes('style')).toContain('bottom: 280px');
+		expect(wrapper.attributes('style')).toContain('transform: translateY(-280px)');
 
 		keyboardOffset.value = 0;
 	});

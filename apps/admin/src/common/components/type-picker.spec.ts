@@ -79,6 +79,13 @@ describe('TypePicker.vue', () => {
 		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
 	});
 
+	it('skips the dialog when only one option is enabled', () => {
+		const wrapper = render({ options: [OPTIONS[0], OPTIONS[2]], visible: true });
+
+		expect(wrapper.emitted('update:modelValue')).toEqual([['shelly']]);
+		expect(wrapper.emitted('update:visible')).toEqual([[false]]);
+	});
+
 	it('does not auto-select a single disabled option', () => {
 		const wrapper = render({ options: [OPTIONS[2]], visible: true });
 
