@@ -189,6 +189,13 @@ describe('qualified samples and producer state', () => {
 		// Same-time display ordering is unchanged: the report keeps the display.
 		expect(property.value.value).toBe(20);
 
+		// An invalid acknowledgement (received before it was sampled) withdraws nothing.
+		await report(20);
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		await report(21, { ...evidence(base), receivedAt: new Date(base - 1), commandEcho: true });
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		expect(invalidated).toHaveBeenCalledTimes(1);
+
 		// An acknowledgement of the qualified value at the same time withdraws nothing.
 		await report(20, evidence(base + 0));
 		jest.setSystemTime(base + 1_000);

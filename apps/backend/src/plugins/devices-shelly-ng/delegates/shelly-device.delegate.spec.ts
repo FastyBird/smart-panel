@@ -9,6 +9,8 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { EventEmitter } from 'events';
 import type { Component } from 'shellies-ds9';
 
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
+
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
 
 jest.mock('shellies-ds9', () => {
@@ -482,6 +484,26 @@ describe('ShellyDeviceDelegate', () => {
 
 		expect(values).toHaveBeenCalledTimes(1);
 		expect(values).toHaveBeenCalledWith('switch:0', 'output', true, 'notify');
+	});
+
+	test('numbers a poll sample when the poll starts, before its RPC is answered', async () => {
+		const { Switch, Device } = require('shellies-ds9');
+		const sw = new Switch('switch:0');
+		sw.output = false;
+		const dev = new Device('dev-poll-order', 'FAKE_MODEL', new Map([['switch:0', sw]]), true);
+		let boundary = 0;
+		dev.shelly.getStatus.mockImplementation(() => {
+			// A proof boundary taken while the request is in flight.
+			boundary = nextSampleIngress();
+			return Promise.resolve({ 'switch:0': { output: true } });
+		});
+		const delegate = new ShellyDeviceDelegate(dev);
+		const samples = jest.fn();
+		delegate.on('sample', samples);
+
+		await expect(delegate.pollStatus()).resolves.toBe(true);
+		const sample = samples.mock.calls[0][0] as { evidence: { ingressSequence: number } };
+		expect(sample.evidence.ingressSequence).toBeLessThan(boundary);
 	});
 
 	test('marks synchronous status application as a poll', async () => {

@@ -195,24 +195,48 @@ describe('DevicePoller', () => {
 		expect(ingress).toBe(boundary);
 	});
 
-	it('reports only changes', async () => {
+	it('reports every successful read, unchanged values included, each with its own arrival number', async () => {
 		connection.read.mockResolvedValue([10, 20]);
 
 		create(snapshot([read('p1', { address: 0 }), read('p2', { address: 1 })])).start();
 		await jest.advanceTimersByTimeAsync(0);
 
 		expect(callbacks.report).toHaveBeenCalledTimes(2);
+		const firstPoll = callbacks.report.mock.calls[0][3] ?? NaN;
 
 		await jest.advanceTimersByTimeAsync(1000);
 
+		// An unchanged poll is fresh evidence of the value, so it is reported again.
 		expect(connection.read).toHaveBeenCalledTimes(2);
-		expect(callbacks.report).toHaveBeenCalledTimes(2);
+		expect(callbacks.report).toHaveBeenCalledTimes(4);
+		expect(callbacks.report).toHaveBeenLastCalledWith('p2', 20, expect.any(Date), expect.any(Number));
+		expect(callbacks.report.mock.calls[3][3]).toBeGreaterThan(firstPoll);
 
 		connection.read.mockResolvedValue([10, 21]);
 		await jest.advanceTimersByTimeAsync(1000);
 
-		expect(callbacks.report).toHaveBeenCalledTimes(3);
+		expect(callbacks.report).toHaveBeenCalledTimes(6);
 		expect(callbacks.report).toHaveBeenLastCalledWith('p2', 21, expect.any(Date), expect.any(Number));
+	});
+
+	it('reports an unchanged invalid value only once', async () => {
+		connection.read.mockResolvedValue([2]);
+
+		create(
+			snapshot([
+				read('relay', {
+					valueMap: [
+						{ raw: 1, value: true },
+						{ raw: 0, value: false },
+					],
+				}),
+			]),
+		).start();
+		await jest.advanceTimersByTimeAsync(0);
+		await jest.advanceTimersByTimeAsync(1000);
+
+		expect(connection.read).toHaveBeenCalledTimes(2);
+		expect(callbacks.report).toHaveBeenCalledTimes(1);
 	});
 
 	it('reports null for an unmapped relay value', async () => {
@@ -543,9 +567,10 @@ describe('DevicePoller', () => {
 		expect(connection.read).toHaveBeenCalledTimes(2);
 		expect(callbacks.report).toHaveBeenCalledTimes(2);
 
+		// Every later successful read is reported as well.
 		await jest.advanceTimersByTimeAsync(1000);
 
-		expect(callbacks.report).toHaveBeenCalledTimes(2);
+		expect(callbacks.report).toHaveBeenCalledTimes(3);
 	});
 
 	it('keeps polling after a connection state update fails', async () => {

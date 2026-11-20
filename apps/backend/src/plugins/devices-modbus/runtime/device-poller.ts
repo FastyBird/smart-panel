@@ -525,7 +525,11 @@ export class DevicePoller {
 		force: boolean,
 		ingressSequence?: number,
 	): Promise<void> {
-		if (!force && this.lastReported.has(propertyId) && this.lastReported.get(propertyId) === value) {
+		// A successful read is reported even when unchanged: it is fresh evidence of the value (a read proof or
+		// a freshness check can rely on it), and the value service writes no duplicate value or history point.
+		// An unchanged invalid value is reported once.
+		const unchanged = this.lastReported.has(propertyId) && this.lastReported.get(propertyId) === value;
+		if (!force && unchanged && (value === null || ingressSequence === undefined)) {
 			return;
 		}
 

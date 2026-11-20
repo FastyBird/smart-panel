@@ -291,6 +291,18 @@ export class PropertyValueService {
 				// displayed like a replay, but never qualifies, never moves the live watermark and withdraws a
 				// qualified value it contradicts until an ordinary report restores it.
 				const live = evidence.provenance === 'live' && evidence.commandEcho !== true;
+				const validClock =
+					Number.isFinite(sampledAt) &&
+					Number.isFinite(receivedAt) &&
+					sampledAt <= receivedAt &&
+					receivedAt <= Date.now();
+				// A delayed native slat sample cannot acquire angular meaning after a metadata change.
+				const validSemantic =
+					evidence.semanticOrigin !== 'native_cover_tilt_percentage' ||
+					(property.category === PropertyCategory.TILT &&
+						property.identifier === 'slat_pos' &&
+						property.dataType === DataTypeType.UCHAR &&
+						resolvePropertyUnit(property) === '%');
 				// A live report at the same time wins over a replay: a replay must be strictly newer.
 				if (
 					watermark &&
@@ -301,6 +313,8 @@ export class PropertyValueService {
 					const qualified = this.samples.get(key);
 					if (
 						evidence.commandEcho === true &&
+						validClock &&
+						validSemantic &&
 						sampledAt === watermark.sampledAt &&
 						qualified !== undefined &&
 						qualified.value !== value &&
@@ -315,18 +329,6 @@ export class PropertyValueService {
 					}
 					return { changed: false, state: null };
 				}
-				const validClock =
-					Number.isFinite(sampledAt) &&
-					Number.isFinite(receivedAt) &&
-					sampledAt <= receivedAt &&
-					receivedAt <= Date.now();
-				// A delayed native slat sample cannot acquire angular meaning after a metadata change.
-				const validSemantic =
-					evidence.semanticOrigin !== 'native_cover_tilt_percentage' ||
-					(property.category === PropertyCategory.TILT &&
-						property.identifier === 'slat_pos' &&
-						property.dataType === DataTypeType.UCHAR &&
-						resolvePropertyUnit(property) === '%');
 				if (!validClock || !validSemantic || !this.isSampleValueValid(property, value)) {
 					if (live) {
 						// An invalid clock revokes eligibility, but supplies no trusted ordering evidence.
