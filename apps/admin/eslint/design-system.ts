@@ -35,7 +35,7 @@ interface IDocumentFragment {
 const THEME_COLOURS = '(?:primary|success|warning|danger|info|brand)';
 
 const GRAY_UTILITY =
-	/(?:^|[:(!])(?:text|bg|border(?:-[trblxyse])?|fill|stroke|ring|divide|outline|placeholder|from|via|to|decoration|caret|accent)-gray-\d+/;
+	/(?:^|[:(!])(?:text|bg|border(?:-[trblxyse])?|fill|stroke|ring|divide|outline|placeholder|from|via|to|decoration|caret|accent|shadow)-gray-\d+/;
 const THEME_OPACITY = new RegExp(`(?:^|[:(!])(?:bg|text|border|fill)-${THEME_COLOURS}\\/\\d+`);
 const LEGACY_BREAKPOINT = /(?:^|[:(!])(?:md|lg|xl):/;
 const HEX_COLOUR = /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/g;
@@ -110,6 +110,12 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 				}
 
 				const key = property.key as TemplateNode;
+				const value = property.value as TemplateNode | undefined;
+
+				// `{ 'text-primary': false }`: Vue leaves out a key whose value is statically falsy
+				if (value?.type === 'Literal' && !value.value) {
+					continue;
+				}
 
 				if (property.computed === true) {
 					// A computed key becomes a property name by string coercion, so it is read as a string
@@ -223,6 +229,14 @@ const concatenationParts = (node: unknown): ConcatPart[] => {
 
 	if (current?.type === 'Literal' && typeof current.value === 'string') {
 		return [{ text: current.value, node: current }];
+	}
+
+	// `${['text-primary font-600']}`: an array of strings becomes its items joined with commas
+	if (
+		current?.type === 'ArrayExpression' &&
+		(current.elements as (TemplateNode | null)[]).every((element) => element?.type === 'Literal' && typeof element.value === 'string')
+	) {
+		return [{ text: (current.elements as TemplateNode[]).map((element) => element.value as string).join(','), node: current }];
 	}
 
 	if (current?.type === 'TemplateLiteral') {
@@ -514,7 +528,28 @@ const cssCode = (text: string, block: IStyleBlock): string => {
 			blank(index, stop);
 			index = stop;
 		} else if (block.lineComments && rest(2) === '//') {
-			const close = chars.indexOf('\n', index);
+			let close = chars.indexOf('\n', index);
+
+			if (block.indented) {
+				// Sass: a comment on its own line also covers the more deeply indented lines below it
+				const lineStart = chars.lastIndexOf('\n', index - 1) + 1;
+				const prefix = chars.slice(lineStart, index).join('');
+
+				if (/^\s*$/.test(prefix)) {
+					while (close !== -1) {
+						const next = chars.indexOf('\n', close + 1);
+						const line = chars.slice(close + 1, next === -1 ? chars.length : next).join('');
+						const indent = /^\s*/.exec(line)?.[0].length ?? 0;
+
+						if (line.trim() !== '' && indent <= prefix.length) {
+							break;
+						}
+
+						close = next;
+					}
+				}
+			}
+
 			const stop = close === -1 ? chars.length : close;
 
 			blank(index, stop);
@@ -530,9 +565,14 @@ const cssCode = (text: string, block: IStyleBlock): string => {
 			if (chars[open] === '"' || chars[open] === "'") {
 				index = open;
 			} else {
-				const close = chars.indexOf(')', open);
-				const stop = close === -1 ? chars.length : close;
+				// `url(sprite\)#abc)`: an escaped `)` is part of the URL
+				let stop = open;
 
+				while (stop < chars.length && chars[stop] !== ')') {
+					stop += chars[stop] === '\\' ? 2 : 1;
+				}
+
+				stop = Math.min(stop, chars.length);
 				blank(open, stop);
 				index = stop + 1;
 			}
@@ -574,10 +614,31 @@ const insideSelectorFunction = (prelude: string): boolean => {
 	return false;
 };
 
+/** Indented syntax: the start of the last line that begins outside parentheses (`color: mix(` continues on the next line) */
+const indentedStatementStart = (before: string): number => {
+	let depth = 0;
+	let start = 0;
+
+	for (let index = 0; index < before.length; index++) {
+		const char = before[index];
+
+		if (char === '(') {
+			depth += 1;
+		} else if (char === ')') {
+			depth = Math.max(0, depth - 1);
+		} else if (char === '\n' && depth === 0) {
+			start = index + 1;
+		}
+	}
+
+	return start;
+};
+
 /**
  * Whether the hash at `offset` of the code is part of a selector rather than a value.
  *
- * - The statement it belongs to starts after the last `{`, `}` or `;` (or, in indented syntax, at its line).
+ * - The statement it belongs to starts after the last `{`, `}` or `;` (or, in indented syntax, at its line, or at the
+ *   line that opened a still unclosed parenthesis).
  * - An at-rule prelude is a value (`@supports (color: #fff)`), except inside `selector(…)` and for `SELECTOR_AT_RULES`.
  * - Indented syntax: a line is a declaration when it starts with `property:`; any other line is a selector.
  * - Otherwise the hash is in a selector when `{` follows before the statement ends with `;` or `}`.
@@ -585,7 +646,7 @@ const insideSelectorFunction = (prelude: string): boolean => {
 const isCssSelectorHash = (code: string, offset: number, indented: boolean): boolean => {
 	const before = code.slice(0, offset);
 	const statementStart = indented
-		? before.lastIndexOf('\n') + 1
+		? indentedStatementStart(before)
 		: Math.max(before.lastIndexOf('{'), before.lastIndexOf('}'), before.lastIndexOf(';')) + 1;
 	const prelude = before.slice(statementStart).trimStart();
 	const atRule = /^@([\w-]+)/.exec(prelude);

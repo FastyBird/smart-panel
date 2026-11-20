@@ -30,6 +30,7 @@ describe('design system lint rules', () => {
 			{ ...sfc("<div :class=\"active ? 'bg-gray-200' : ''\"></div>"), errors: [{ messageId: 'gray' }] },
 			{ ...sfc('<el-card body-class="dark:hover:bg-gray-800"></el-card>'), errors: [{ messageId: 'gray' }] },
 			{ ...sfc('<div class="border-t-gray-600 border-x-gray-600"></div>'), errors: [{ messageId: 'gray' }, { messageId: 'gray' }] },
+			{ ...sfc('<div class="shadow-md shadow-gray-500"></div>'), errors: [{ messageId: 'gray', data: { token: 'shadow-gray-500' } }] },
 			// Utility groups are expanded first: the second item is checked
 			{ ...sfc(`<div class="${group('text-', 'sm gray-600')}"></div>`), errors: [{ messageId: 'gray', data: { token: 'text-gray-600' } }] },
 		],
@@ -96,6 +97,8 @@ describe('design system lint rules', () => {
 			sfc('<p :class="[...\'text-primary\']"></p>'),
 			// A computed key is a property name: the array becomes `text-primary,font-600`
 			sfc("<p :class=\"{ [['text-primary', 'font-600']]: active }\"></p>"),
+			// Statically falsy values leave the key out
+			sfc("<p :class=\"{ ...{ 'text-primary': false }, 'text-primary': null }\"></p>"),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
@@ -107,6 +110,9 @@ describe('design system lint rules', () => {
 			{ ...sfc("<p :class=\"'text-' + 'primary'\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"'text-sm ' + (on ? 'text-primary' : '') + ' ' + extra\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="`${size} text-primary`"></p>'), errors: [{ messageId: 'body' }] },
+			// An interpolated array of strings becomes its items joined with commas
+			{ ...sfc('<p :class="`${[\'text-primary font-600\']}`"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc('<p :class="{ \'text-primary\': true }"></p>'), errors: [{ messageId: 'body' }] },
 			// A sole interpolation: the empty quasis around it do not touch its classes
 			{ ...sfc("<p :class=\"`${active ? 'text-primary' : 'text-default'}`\"></p>"), errors: [{ messageId: 'body' }] },
 		],
@@ -132,6 +138,8 @@ describe('design system lint rules', () => {
 			// Fragment references are not colours
 			sfc('<svg><rect filter="url(#fade)" fill="url(\'#abc\')" /></svg>'),
 			sfc('<div></div>', '<style>\n.x {\n\tfilter: url(#fade);\n\tmask: url("#bad");\n}\n</style>'),
+			// Sass: a comment covers the more deeply indented lines below it
+			sfc('<div></div>', '<style lang="sass">\n.x\n  // Old palette\n    color: #abc\n  display: block\n</style>'),
 			// SCSS line comments, and colours inside strings, are not declarations
 			sfc('<div></div>', '<style lang="scss">\n// previous colour #fff\n.x { color: var(--el-color-primary); content: "#fff"; }\n</style>'),
 			// A semicolon in a selector's attribute string does not end it
@@ -160,6 +168,21 @@ describe('design system lint rules', () => {
 			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder-color: #fff;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
 			// Indented syntax: declarations are still checked
 			{ ...sfc('<div></div>', '<style lang="sass">\n#abc\n  color: #fff\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			// …and the comment ends at the next line that is not indented deeper
+			{ ...sfc('<div></div>', '<style lang="sass">\n.x\n  // Old palette\n  color: #abc\n</style>'), errors: [{ messageId: 'hex', line: 4 }] },
+			// A declaration continues across lines while a parenthesis is open
+			{
+				...sfc('<div></div>', '<style lang="sass">\n.x\n  color: mix(\n    #fff, #000)\n</style>'),
+				errors: [
+					{ messageId: 'hex', line: 4 },
+					{ messageId: 'hex', line: 4 },
+				],
+			},
+			// An escaped `)` does not end an unquoted url()
+			{
+				...sfc('<div></div>', '<style>\n.x {\n\tmask: url(sprite\\)#abc);\n\tcolor: #fff;\n}\n</style>'),
+				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
+			},
 			// Sass variables are values
 			{ ...sfc('<div></div>', '<style lang="sass">\n$tone: #fff\n.x\n  color: $tone\n</style>'), errors: [{ messageId: 'hex', line: 2 }] },
 			// A colour condition next to selector() is still a value
