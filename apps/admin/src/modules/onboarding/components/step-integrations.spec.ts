@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Icon } from '@iconify/vue';
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { DEVICES_HOMEY_PLUGIN_NAME } from '../../../plugins/devices-homey/devices-homey.constants';
@@ -111,6 +111,10 @@ const buildExtension = (overrides: Partial<IExtension> = {}): IExtension => ({
 	canToggleEnabled: true,
 	...overrides,
 });
+
+// A configured plugin starts discovery, whose first devices fetch waits on a real 2 s timer. Unmounting cancels it, so
+// it cannot land in a later test that counts devices fetches.
+enableAutoUnmount(afterEach);
 
 describe('StepIntegrations.vue', () => {
 	beforeEach(() => {
