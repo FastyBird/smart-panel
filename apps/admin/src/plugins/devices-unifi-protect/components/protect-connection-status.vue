@@ -38,12 +38,14 @@ import { protectStatusStoreKey } from '../store/keys';
 
 import type { IProtectConnectionStatusProps } from './protect-connection-status.types';
 
+const DEFAULT_POLL_INTERVAL_MS = 30_000;
+
 defineOptions({
 	name: 'ProtectConnectionStatus',
 });
 
 const props = withDefaults(defineProps<IProtectConnectionStatusProps>(), {
-	pollIntervalMs: 30_000,
+	pollIntervalMs: DEFAULT_POLL_INTERVAL_MS,
 });
 
 interface IStatusRow {
@@ -52,7 +54,7 @@ interface IStatusRow {
 	value: string;
 }
 
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
 
 const statusStore = injectStoresManager().getStore(protectStatusStoreKey);
 
@@ -62,6 +64,9 @@ const releasePolling = statusStore.startPolling();
 onBeforeUnmount((): void => releasePolling());
 
 const notAvailable = computed<string>((): string => t('devicesUnifiProtectPlugin.status.notAvailable'));
+
+/** A translated label for a backend value, or the raw value when this admin does not know it (a newer backend). */
+const labelOf = (key: string, value: string): string => (te(key) ? t(key) : value);
 
 const orNotAvailable = (value: string | null | undefined): string => (typeof value === 'string' && value !== '' ? value : notAvailable.value);
 
@@ -81,10 +86,18 @@ const formatTime = (value: string | null | undefined): string => {
 };
 
 /** "Streaming", or "Polling every N s" from the Protect poll interval. */
-const realtimeText = (state: string): string =>
-	state === 'polling'
-		? t('devicesUnifiProtectPlugin.status.realtime.polling', { seconds: Math.round(props.pollIntervalMs / 1000) })
-		: t(`devicesUnifiProtectPlugin.status.realtime.${state}`);
+const realtimeText = (state: string): string => {
+	if (state === 'polling') {
+		const interval =
+			typeof props.pollIntervalMs === 'number' && Number.isFinite(props.pollIntervalMs) && props.pollIntervalMs > 0
+				? props.pollIntervalMs
+				: DEFAULT_POLL_INTERVAL_MS;
+
+		return t('devicesUnifiProtectPlugin.status.realtime.polling', { seconds: Math.round(interval / 1000) });
+	}
+
+	return labelOf(`devicesUnifiProtectPlugin.status.realtime.${state}`, state);
+};
 
 const rows = computed<IStatusRow[]>((): IStatusRow[] => {
 	const status = statusStore.status;
@@ -101,19 +114,27 @@ const rows = computed<IStatusRow[]>((): IStatusRow[] => {
 
 	// The sentence comes from the category; the backend's own message follows it.
 	const lastError = [
-		status.lastErrorCategory ? t(`devicesUnifiProtectPlugin.errorCategories.${status.lastErrorCategory}`, { minimum: status.minimumVersion }) : null,
+		status.lastErrorCategory
+			? te(`devicesUnifiProtectPlugin.errorCategories.${status.lastErrorCategory}`)
+				? t(`devicesUnifiProtectPlugin.errorCategories.${status.lastErrorCategory}`, { minimum: status.minimumVersion })
+				: status.lastErrorCategory
+			: null,
 		status.lastError,
 	]
 		.filter((part): part is string => typeof part === 'string' && part !== '')
 		.join(' ');
 
 	return [
-		row('connection-state', 'connectionState', t(`devicesUnifiProtectPlugin.status.connectionStates.${status.connectionState}`)),
-		row('service-state', 'serviceState', t(`devicesUnifiProtectPlugin.status.serviceStates.${status.serviceState}`)),
+		row(
+			'connection-state',
+			'connectionState',
+			labelOf(`devicesUnifiProtectPlugin.status.connectionStates.${status.connectionState}`, status.connectionState)
+		),
+		row('service-state', 'serviceState', labelOf(`devicesUnifiProtectPlugin.status.serviceStates.${status.serviceState}`, status.serviceState)),
 		row('enabled', 'enabled', yesNo(status.enabled)),
 		row('configured', 'configured', yesNo(status.configured)),
 		row('healthy', 'healthy', yesNo(status.healthy)),
-		row('tls-mode', 'tlsMode', t(`devicesUnifiProtectPlugin.config.tls.mode.${status.tlsMode}`)),
+		row('tls-mode', 'tlsMode', labelOf(`devicesUnifiProtectPlugin.config.tls.mode.${status.tlsMode}`, status.tlsMode)),
 		row('application-version', 'applicationVersion', orNotAvailable(status.applicationVersion)),
 		row('minimum-version', 'minimumVersion', status.minimumVersion),
 		row('nvr-id', 'nvrId', orNotAvailable(status.nvrId)),

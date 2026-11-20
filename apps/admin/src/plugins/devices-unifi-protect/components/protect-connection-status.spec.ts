@@ -24,6 +24,7 @@ vi.mock('vue-i18n', async () => {
 		...actual,
 		useI18n: () => ({
 			locale: 'en-US',
+			te: (key: string) => !key.includes('.unknown_'),
 			t: (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key),
 		}),
 	};
@@ -184,6 +185,36 @@ describe('ProtectConnectionStatus', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="protect-status-stale"]').exists()).toBe(false);
+	});
+
+	it('falls back to 30 s for a missing or invalid poll interval', async () => {
+		statusStore.status = statusOf({ realtimeState: DevicesUnifiProtectPluginRealtimeState.polling });
+
+		for (const value of [null, Number.NaN, 0]) {
+			const wrapper = mount(ProtectConnectionStatus, { props: { pollIntervalMs: value as unknown as number } });
+
+			await flushPromises();
+
+			expect(field(wrapper, 'realtime-state')).toBe('devicesUnifiProtectPlugin.status.realtime.polling {"seconds":30}');
+		}
+	});
+
+	it('shows the raw value for a state this admin has no translation for', async () => {
+		statusStore.status = statusOf({
+			connectionState: 'unknown_state' as IProtectStatus['connectionState'],
+			serviceState: 'unknown_service',
+			realtimeState: 'unknown_realtime' as IProtectStatus['realtimeState'],
+			lastErrorCategory: 'unknown_category' as IProtectStatus['lastErrorCategory'],
+		});
+
+		const wrapper = mountPanel();
+
+		await flushPromises();
+
+		expect(field(wrapper, 'connection-state')).toBe('unknown_state');
+		expect(field(wrapper, 'service-state')).toBe('unknown_service');
+		expect(field(wrapper, 'realtime-state')).toBe('unknown_realtime');
+		expect(field(wrapper, 'last-error')).toBe('unknown_category Connection refused');
 	});
 
 	it('shows the warning when the first read failed', async () => {

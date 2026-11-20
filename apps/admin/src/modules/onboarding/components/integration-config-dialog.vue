@@ -6,6 +6,8 @@
 		:close-on-click-modal="false"
 		@update:model-value="(val: boolean) => emit('update:visible', val)"
 	>
+		<!-- The form is mounted only while the dialog is open: ElDialog keeps its content after closing, and a form that holds
+			 resources (the Protect status polling) must release them on close. -->
 		<el-scrollbar max-height="60vh">
 			<div
 				v-loading="isLoading"
@@ -13,7 +15,7 @@
 			>
 				<component
 					:is="configFormComponent"
-					v-if="configPlugin && configFormComponent"
+					v-if="visible && configPlugin && configFormComponent"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
 					v-model:remote-form-reset="remoteFormReset"
