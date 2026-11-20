@@ -15,6 +15,7 @@ describe('Zigbee2mqttDevicePlatform read requests', () => {
 	let acknowledge: () => void;
 	let adapter: {
 		isConnected: jest.Mock<boolean, []>;
+		hasPendingCommands: jest.Mock<boolean, [string]>;
 		whenCommandsAcknowledged: jest.Mock<Promise<void>, [string]>;
 		requestState: jest.Mock<Promise<boolean>, [string, string[]?]>;
 	};
@@ -35,6 +36,7 @@ describe('Zigbee2mqttDevicePlatform read requests', () => {
 		dispatching = jest.fn<void, []>();
 		adapter = {
 			isConnected: jest.fn(() => true),
+			hasPendingCommands: jest.fn<boolean, [string]>().mockReturnValueOnce(true).mockReturnValue(false),
 			whenCommandsAcknowledged: jest.fn<Promise<void>, [string]>(
 				() =>
 					new Promise<void>((resolve) => {
@@ -64,6 +66,29 @@ describe('Zigbee2mqttDevicePlatform read requests', () => {
 		await expect(result).resolves.toBe(true);
 		expect(adapter.requestState).toHaveBeenCalledWith('plug', ['state']);
 		expect(dispatching.mock.invocationCallOrder[0]).toBeLessThan(adapter.requestState.mock.invocationCallOrder[0]);
+	});
+
+	it('waits again for a command queued between the end of the wait and the read', async () => {
+		adapter.hasPendingCommands.mockReset().mockReturnValueOnce(true).mockReturnValueOnce(true).mockReturnValue(false);
+		const result = platform.requestPropertyRead({ device, channel, property: property(), dispatching });
+		await flush();
+		acknowledge();
+		await flush();
+		expect(adapter.whenCommandsAcknowledged).toHaveBeenCalledTimes(2);
+		expect(adapter.requestState).not.toHaveBeenCalled();
+		expect(dispatching).not.toHaveBeenCalled();
+		acknowledge();
+		await expect(result).resolves.toBe(true);
+		expect(adapter.requestState).toHaveBeenCalledTimes(1);
+	});
+
+	it('reads at once when no command is pending', async () => {
+		adapter.hasPendingCommands.mockReset().mockReturnValue(false);
+		await expect(platform.requestPropertyRead({ device, channel, property: property(), dispatching })).resolves.toBe(
+			true,
+		);
+		expect(adapter.whenCommandsAcknowledged).not.toHaveBeenCalled();
+		expect(dispatching).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not request when the connection was lost while waiting', async () => {

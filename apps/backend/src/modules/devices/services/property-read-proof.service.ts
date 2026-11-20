@@ -80,6 +80,7 @@ export class PropertyReadProofService {
 			);
 
 			if (options.signal?.aborted) {
+				read = 'not_sent';
 				onAbort();
 				return;
 			}

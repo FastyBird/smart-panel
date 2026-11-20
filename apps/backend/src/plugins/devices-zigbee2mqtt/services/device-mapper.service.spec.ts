@@ -620,9 +620,13 @@ describe('Z2mDeviceMapperService', () => {
 			await service.updateDeviceState(
 				'ambient',
 				{ temperature: 25 },
-				{ observedAt, measurementFieldsAreLive: true, commandEcho: true },
+				{ observedAt, measurementFieldsAreLive: true, commandEcho: true, ingressSequence: 41 },
 			);
-			expect(channelsPropertiesService.reportSample.mock.lastCall?.[2]).toMatchObject({ commandEcho: true });
+			// The arrival number taken at receipt is kept, however long the device lookup took.
+			expect(channelsPropertiesService.reportSample.mock.lastCall?.[2]).toMatchObject({
+				commandEcho: true,
+				ingressSequence: 41,
+			});
 			await service.updateDeviceState('ambient', { temperature: 26 }, { observedAt, measurementFieldsAreLive: true });
 			expect(channelsPropertiesService.reportSample.mock.lastCall?.[2]).not.toHaveProperty('commandEcho');
 		});

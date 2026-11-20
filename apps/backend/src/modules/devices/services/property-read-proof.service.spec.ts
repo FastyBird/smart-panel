@@ -169,6 +169,8 @@ describe('PropertyReadProofService', () => {
 		aborted.abort();
 		await expect(
 			proof.observeNextReport(target('with-read'), { timeoutMs: 5_000, signal: aborted.signal }),
-		).resolves.toMatchObject({ status: 'cancelled' });
+		).resolves.toEqual({ status: 'cancelled', read: 'not_sent' });
+		// Only the first observation asked for a read; the already-cancelled one never did.
+		expect(read).toHaveBeenCalledTimes(1);
 	});
 });

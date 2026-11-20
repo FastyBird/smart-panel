@@ -1,4 +1,5 @@
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { ZigbeeSourceIdentity, zigbeeSourceIdentity } from '../contracts/sample-source.contract';
 import {
 	COMMAND_ECHO_WINDOW_MS,
@@ -433,6 +434,11 @@ export abstract class Z2mBaseClientAdapter {
 		return sent;
 	}
 
+	/** Whether a command sent to the device can still be acknowledged. */
+	hasPendingCommands(friendlyName: string): boolean {
+		return (this.commandEchoWindows.get(friendlyName)?.length ?? 0) > 0;
+	}
+
 	/**
 	 * Wait until no command sent to the device can still be acknowledged, so that every later state
 	 * message of the device is a report. Resolves at once when nothing is pending.
@@ -808,6 +814,8 @@ export abstract class Z2mBaseClientAdapter {
 		const observedAt = new Date();
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
+			// Arrival order is fixed at receipt, before device lookups and mapping.
+			const ingressSequence = nextSampleIngress();
 			const built = this.buildStateMetadata(friendlyName, state, observedAt, isRetained, options);
 			// A replay of our own cache or a retained message is not an acknowledgement of a new command.
 			// A startup replay or a redelivered duplicate may still be an acknowledgement, but it cannot
@@ -816,7 +824,11 @@ export abstract class Z2mBaseClientAdapter {
 				options?.isCached !== true &&
 				!isRetained &&
 				this.takeCommandEcho(friendlyName, state, !built.isReplay && options?.isDup !== true);
-			const metadata: Z2mDeviceStateMetadata = commandEcho ? { ...built, commandEcho: true } : built;
+			const metadata: Z2mDeviceStateMetadata = {
+				...built,
+				ingressSequence,
+				...(commandEcho ? { commandEcho: true } : {}),
+			};
 
 			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
 

@@ -61,6 +61,8 @@ export interface Z2mDeviceStateMetadata {
 	 * It still updates values, but never proves the device's state.
 	 */
 	commandEcho?: boolean;
+	/** Process-local arrival order, taken when the packet was received; see `PropertySampleEvidence`. */
+	ingressSequence?: number;
 	/** Stable connection/configuration authority, independent of individual packet arrival. */
 	sourceIsCurrent?: () => boolean;
 	sourceIdentity?: ZigbeeSourceIdentity | null;

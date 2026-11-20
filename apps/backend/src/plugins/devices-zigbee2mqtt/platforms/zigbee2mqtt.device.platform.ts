@@ -79,8 +79,14 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		if (!field || field === 'color') return false;
 		const adapter = this.zigbee2mqttService.getActiveAdapter();
 		const friendlyName = device.identifier;
-		await adapter.whenCommandsAcknowledged(friendlyName);
-		if (this.zigbee2mqttService.getActiveAdapter() !== adapter || !adapter.isConnected()) return false;
+		const current = (): boolean => this.zigbee2mqttService.getActiveAdapter() === adapter && adapter.isConnected();
+		// A command may be queued between the end of a wait and this method resuming: check again without
+		// yielding, then mark and send the read in the same step, before any other command can run.
+		while (adapter.hasPendingCommands(friendlyName)) {
+			await adapter.whenCommandsAcknowledged(friendlyName);
+			if (!current()) return false;
+		}
+		if (!current()) return false;
 		dispatching();
 		return adapter.requestState(friendlyName, [field]);
 	}

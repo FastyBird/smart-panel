@@ -1509,6 +1509,7 @@ export class Z2mDeviceMapperService {
 			// An untimed replay's arrival is not its measurement time: display it, never record it.
 			...(metadata?.isReplay === true && !timed ? { ageUnknown: true } : {}),
 			...(metadata?.commandEcho === true ? { commandEcho: true } : {}),
+			...(metadata?.ingressSequence !== undefined ? { ingressSequence: metadata.ingressSequence } : {}),
 			...(metadata?.isCurrent ? { isCurrent: metadata.isCurrent } : {}),
 			...(metadata?.sourceIsCurrent ? { sourceIsCurrent: metadata.sourceIsCurrent } : {}),
 		};

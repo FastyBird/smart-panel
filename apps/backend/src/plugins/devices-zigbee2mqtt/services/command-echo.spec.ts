@@ -1,3 +1,4 @@
+import { currentSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { COMMAND_ECHO_WINDOW_MS, STARTUP_REPLAY_WINDOW_MS } from '../devices-zigbee2mqtt.constants';
 import { Z2mDeviceStateMetadata, Z2mSetPayload } from '../interfaces/zigbee2mqtt.interface';
 
@@ -102,6 +103,16 @@ describe('Zigbee2MQTT command acknowledgements', () => {
 		expect(done).toHaveBeenCalled();
 		adapter.feed('plug', { state: 'ON', power: 1200 });
 		expect(lastMetadata().commandEcho).toBeUndefined();
+	});
+
+	it('numbers each message on receipt, so mapping delays cannot move it past a later boundary', () => {
+		adapter.feed('plug', { state: 'ON', power: 1 });
+		const first = lastMetadata().ingressSequence;
+		const boundary = currentSampleIngress();
+		adapter.feed('plug', { state: 'ON', power: 2 });
+		expect(first).toBeLessThanOrEqual(boundary);
+		expect(lastMetadata().ingressSequence).toBeGreaterThan(boundary);
+		expect(adapter.hasPendingCommands('plug')).toBe(false);
 	});
 
 	it('closes the window when the command was not sent', async () => {
