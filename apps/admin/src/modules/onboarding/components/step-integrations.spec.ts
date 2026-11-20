@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Icon } from '@iconify/vue';
 import { flushPromises, mount } from '@vue/test-utils';
 
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { DEVICES_HOMEY_PLUGIN_NAME } from '../../../plugins/devices-homey/devices-homey.constants';
+import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME } from '../../../plugins/devices-unifi-protect/devices-unifi-protect.constants';
 import { configPluginsStoreKey } from '../../config/store/keys';
 import { devicesStoreKey } from '../../devices/store/keys';
 import { ExtensionKind } from '../../extensions/extensions.constants';
@@ -210,6 +212,40 @@ describe('StepIntegrations.vue', () => {
 		await flushPromises();
 
 		expect(wrapper.text()).not.toContain('onboardingModule.integrations.configRequired');
+	});
+
+	describe('UniFi Protect', () => {
+		const mountProtect = async (config: Record<string, unknown> | null) => {
+			mockExtensionsStore.data = {
+				[DEVICES_UNIFI_PROTECT_PLUGIN_NAME]: buildExtension({ type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, name: 'UniFi Protect' }),
+			};
+			mockConfigPluginsStore.get.mockResolvedValue(config);
+
+			const wrapper = mount(StepIntegrations, { global: { stubs: { IntegrationConfigDialog: true } } });
+
+			await flushPromises();
+
+			return wrapper;
+		};
+
+		it('lists the unifi protect plugin with its icon', async () => {
+			const wrapper = await mountProtect({ type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, enabled: true, host: '192.168.1.1', apiKeyConfigured: true });
+
+			expect(wrapper.text()).toContain('UniFi Protect');
+			expect(wrapper.findAllComponents(Icon).some((icon) => icon.props('icon') === 'mdi:cctv')).toBe(true);
+		});
+
+		it('asks to set up a protect plugin without a host or key', async () => {
+			const wrapper = await mountProtect({ type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, enabled: true, host: '', apiKeyConfigured: false, verifyTls: true });
+
+			expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
+		});
+
+		it('treats a protect plugin with host and stored key as configured', async () => {
+			const wrapper = await mountProtect({ type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, enabled: true, host: '192.168.1.1', apiKeyConfigured: true });
+
+			expect(wrapper.text()).not.toContain('onboardingModule.integrations.configRequired');
+		});
 	});
 
 	// Toggling an integration off deletes the devices it owns, which is a cache-clear for anything
