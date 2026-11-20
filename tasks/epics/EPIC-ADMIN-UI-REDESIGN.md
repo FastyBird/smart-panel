@@ -70,8 +70,8 @@ dark, and updates all six locales.
 
 | ID | Issue | Phase | Task | Depends on | Status |
 |---|---|---|---|---|---|
-| AR-1 | #1658 | 1 | `feat(admin): adopt the redesign theme and UnoCSS tokens` | — | in review |
-| AR-2 | #1659 | 1 | `chore(admin): add the design system lint rules in warn mode` | AR-1 | open |
+| AR-1 | #1658 | 1 | `feat(admin): adopt the redesign theme and UnoCSS tokens` | — | merged in #1690 |
+| AR-2 | #1659 | 1 | `chore(admin): add the design system lint rules in warn mode` | AR-1 | in review |
 | AR-3 | #1660 | 2 | `feat(admin): add state, status and data display components` | AR-1 | open |
 | AR-4 | #1661 | 2 | `feat(admin): add form footer, secret input and type picker components` | AR-1 | open |
 | AR-5 | #1662 | 2 | `feat(admin): add list filter bar and wizard shell components` | AR-1, AR-4 | open |
