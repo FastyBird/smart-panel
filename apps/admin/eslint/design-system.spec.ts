@@ -228,6 +228,11 @@ describe('design system lint rules', () => {
 					{ messageId: 'hex', line: 4 },
 				],
 			},
+			// A shorthand with nested properties is still a declaration
+			{
+				...sfc('<div></div>', '<style lang="sass">\n.x\n  background: #fff\n    repeat: no-repeat\n</style>'),
+				errors: [{ messageId: 'hex', line: 3 }],
+			},
 			// A line with open parentheses continues, so it does not open a rule
 			{
 				...sfc('<div></div>', '<style lang="sass">\n.x\n  color: mix(#fff,\n    #000)\n</style>'),

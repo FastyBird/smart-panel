@@ -720,8 +720,8 @@ const indentedStatementStart = (before: string): number => {
  * - The statement it belongs to starts after the last `{`, `}` or `;` (or, in indented syntax, at its line, or at the
  *   line that opened a still unclosed parenthesis).
  * - An at-rule prelude is a value (`@supports (color: #fff)`), except inside `selector(…)` and for `SELECTOR_AT_RULES`.
- * - Indented syntax: a line followed by more deeply indented lines is a selector; otherwise it is a declaration
- *   when it starts with `property:`, and a selector when it does not.
+ * - Indented syntax: `property: value` and `name = value` are declarations; any other line followed by more
+ *   deeply indented lines is a selector (`a:hover #abc`); a remaining `property:value` line is a declaration.
  * - Otherwise the hash is in a selector when `{` follows before the statement ends with `;` or `}`.
  */
 const isCssSelectorHash = (code: string, offset: number, indented: boolean): boolean => {
@@ -742,24 +742,26 @@ const isCssSelectorHash = (code: string, offset: number, indented: boolean): boo
 	}
 
 	if (indented) {
+		// `name: value` (a space after the colon) and `name = value` are declarations, also when nested
+		// properties follow (`background: #fff` over `  repeat: no-repeat`); so are Sass variables `$tone: …`
+		if (/^(?:\$?[\w-]+\s*:(?:\s|$)|[\w$-]+\s*=)/.test(prelude)) {
+			return false;
+		}
+
 		// A line with more deeply indented lines below it opens a rule, so it is a selector (`a:hover #abc`)
-		// (unless the statement's parentheses are still open: `color: mix(#fff,` continues on the next line)
-		const lineEnd = code.indexOf('\n', offset);
-		const statement = code.slice(statementStart, lineEnd === -1 ? code.length : lineEnd);
 		const indent = /^[ \t]*/.exec(code.slice(statementStart))?.[0].length ?? 0;
 		const nextLine = code
 			.slice(offset)
 			.split('\n')
 			.slice(1)
 			.find((line) => line.trim() !== '');
-		const balanced = (statement.match(/\(/g) ?? []).length <= (statement.match(/\)/g) ?? []).length;
 
-		if (balanced && nextLine !== undefined && (/^[ \t]*/.exec(nextLine)?.[0].length ?? 0) > indent) {
+		if (nextLine !== undefined && (/^[ \t]*/.exec(nextLine)?.[0].length ?? 0) > indent) {
 			return true;
 		}
 
-		// Otherwise declarations: `color: …`, Sass variables `$tone: …`, Stylus assignments `tone = …`
-		return !/^(?:\$?[\w-]+\s*:|[\w$-]+\s*=)/.test(prelude);
+		// Otherwise `name:value` is a declaration and anything else a selector
+		return !/^\$?[\w-]+\s*:/.test(prelude);
 	}
 
 	const rest = code.slice(offset);
