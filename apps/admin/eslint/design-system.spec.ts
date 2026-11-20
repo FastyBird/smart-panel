@@ -228,6 +228,8 @@ describe('design system lint rules', () => {
 			// Indented syntax: a line without `property:` is a selector
 			sfc('<div></div>', '<style lang="sass">\n#abc\n  display: block\na, #fade:hover\n  color: var(--el-color-danger)\n</style>'),
 			sfc('<div></div>', '<style lang="stylus">\n#abc\n  display: block\n</style>'),
+			// A selector list continues on the next line
+			sfc('<div></div>', '<style lang="sass">\n#abc,\n.x\n  display: block\n</style>'),
 			// Slot shorthands are directive names
 			sfc('<el-table><template #add>x</template><template #fade="{ row }">{{ row }}</template></el-table>'),
 			// Selectors inside at-rules
@@ -309,6 +311,14 @@ describe('design system lint rules', () => {
 			{
 				...sfc('<div></div>', '<style lang="sass">\n.x\n  background: #fff\n    repeat: no-repeat\n</style>'),
 				errors: [{ messageId: 'hex', line: 3 }],
+			},
+			// Stylus declarations without a colon have no block below them
+			{
+				...sfc('<div></div>', '<style lang="stylus">\n.box\n  color #fff\n  border 1px solid #000\n</style>'),
+				errors: [
+					{ messageId: 'hex', line: 3 },
+					{ messageId: 'hex', line: 4 },
+				],
 			},
 			// SCSS interpolation braces do not open a block
 			{

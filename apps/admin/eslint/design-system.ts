@@ -773,7 +773,8 @@ const indentedStatementStart = (before: string): number => {
  *   line that opened a still unclosed parenthesis).
  * - An at-rule prelude is a value (`@supports (color: #fff)`), except inside `selector(…)` and for `SELECTOR_AT_RULES`.
  * - Indented syntax: `property: value` and `name = value` are declarations; any other line followed by more
- *   deeply indented lines is a selector (`a:hover #abc`); a remaining `property:value` line is a declaration.
+ *   deeply indented lines, or ending a selector list item with `,`, is a selector (`a:hover #abc`); every other
+ *   line is a declaration (`color:#fff`, Stylus `color #fff`).
  * - Otherwise `property: value` is a declaration, and the hash is in a selector when `{` follows before the
  *   statement ends with `;` or `}`.
  */
@@ -813,8 +814,11 @@ const isCssSelectorHash = (code: string, offset: number, indented: boolean): boo
 			return true;
 		}
 
-		// Otherwise `name:value` is a declaration and anything else a selector
-		return !/^\$?[\w-]+\s*:/.test(prelude);
+		// A selector always has a block below it, or continues a selector list (`a,` over `#abc`). Any other line
+		// is a declaration, with or without a colon (Stylus `color #fff`, `color:#fff`).
+		const lineEnd = code.indexOf('\n', offset);
+
+		return /,\s*$/.test(code.slice(offset, lineEnd === -1 ? code.length : lineEnd));
 	}
 
 	// `name: value` is a declaration, also when nested properties follow (`background: #fff { repeat: … }`)
