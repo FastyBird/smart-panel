@@ -814,37 +814,48 @@ const literalTextRanges = (node: TemplateNode): [number, number][] =>
 /** Router methods that take a location (`router.push({ hash: '#top' })`) */
 const ROUTER_METHODS = ['push', 'replace', 'resolve'];
 
-/** Keys that only a router location has besides `hash` */
-const ROUTER_LOCATION_KEYS = ['name', 'path', 'params', 'query'];
+/** `router`, `this.$router`, `useRouter()`: the receiver of a router method call */
+const isRouterReceiver = (node: TemplateNode | undefined): boolean => {
+	if (node?.type === 'Identifier') {
+		return node.name === 'router' || node.name === '$router';
+	}
 
-/**
- * Whether an object literal is a router location: the value of a `to` binding, the argument of a router method,
- * or an object with another location key (`{ name: 'docs', hash: '#top' }`)
- */
+	if (node?.type === 'MemberExpression') {
+		const property = node.property as TemplateNode;
+
+		return node.computed !== true && property.type === 'Identifier' && (property.name === 'router' || property.name === '$router');
+	}
+
+	if (node?.type === 'CallExpression') {
+		const callee = node.callee as TemplateNode;
+
+		return callee.type === 'Identifier' && callee.name === 'useRouter';
+	}
+
+	return false;
+};
+
+/** Whether an object literal is a router location: the value of a `to` binding or the argument of a router method */
 const isRouterLocation = (object: TemplateNode, parent: TemplateNode | null): boolean => {
 	if (parent?.type === 'VExpressionContainer') {
 		const attribute = parent.parent as TemplateNode | undefined;
 		const key = attribute?.key as { argument?: { name?: string } | null } | undefined;
 
-		if (attribute?.type === 'VAttribute' && key?.argument?.name === 'to') {
-			return true;
-		}
+		return attribute?.type === 'VAttribute' && key?.argument?.name === 'to';
 	}
 
 	if (parent?.type === 'CallExpression' && (parent.arguments as unknown[])[0] === object) {
 		const callee = parent.callee as TemplateNode;
 		const property = callee.type === 'MemberExpression' ? (callee.property as TemplateNode) : undefined;
 
-		if (property?.type === 'Identifier' && ROUTER_METHODS.includes(property.name as string)) {
-			return true;
-		}
+		return (
+			property?.type === 'Identifier' &&
+			ROUTER_METHODS.includes(property.name as string) &&
+			isRouterReceiver(callee.object as TemplateNode | undefined)
+		);
 	}
 
-	return (object.properties as TemplateNode[]).some((property) => {
-		const key = property.key as TemplateNode | undefined;
-
-		return property.type === 'Property' && property.computed !== true && ROUTER_LOCATION_KEYS.includes(String(key?.name ?? key?.value));
-	});
+	return false;
 };
 
 /**

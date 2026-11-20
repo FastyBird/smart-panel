@@ -171,7 +171,7 @@ describe('design system lint rules', () => {
 			// Router location hashes are fragments
 			sfc(
 				"<router-link :to=\"{ name: 'docs', hash: '#abc' }\"></router-link>",
-				'<script setup lang="ts">\nrouter.push({ hash: \'#fade\' });\n</script>'
+				"<script setup lang=\"ts\">\nrouter.push({ hash: '#fade' });\nthis.$router.replace({ hash: '#fed' });\nuseRouter().resolve({ hash: '#abc' });\n</script>"
 			),
 			// Sass: a line that opens a rule is a selector, even with a pseudo-class
 			sfc('<div></div>', '<style lang="sass">\na:hover #abc\n  display: block\n</style>'),
@@ -254,8 +254,15 @@ describe('design system lint rules', () => {
 			},
 			// `hash` outside a router location is ordinary data
 			{
-				...sfc('<div></div>', '<script setup lang="ts">\nconst palette = { hash: \'#fff\' };\n</script>'),
-				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
+				...sfc(
+					'<div></div>',
+					"<script setup lang=\"ts\">\nconst palette = { hash: '#fff' };\nconst named = { name: 'a', hash: '#abc' };\nlist.push({ hash: '#000' });\n</script>"
+				),
+				errors: [
+					{ messageId: 'hex', data: { value: '#fff' } },
+					{ messageId: 'hex', data: { value: '#abc' } },
+					{ messageId: 'hex', data: { value: '#000' } },
+				],
 			},
 			// A line with open parentheses continues, so it does not open a rule
 			{
