@@ -148,6 +148,15 @@ describe('design system lint rules', () => {
 				languageOptions: { parserOptions: { parser: tsParser } },
 				errors: [{ messageId: 'body' }],
 			},
+			// Spread operands inside TypeScript wrappers
+			{
+				...sfc(
+					'<p :class="[...([\'text-primary\'] as const)]"></p><p :class="{ ...({ \'text-primary\': true } as const) }"></p>',
+					'<script setup lang="ts">\nconst x = 1;\n</script>'
+				),
+				languageOptions: { parserOptions: { parser: tsParser } },
+				errors: [{ messageId: 'body' }, { messageId: 'body' }],
+			},
 			{
 				...sfc('<p :class="{ \'text-primary\': (true satisfies boolean) }"></p>', '<script setup lang="ts">\nconst x = 1;\n</script>'),
 				languageOptions: { parserOptions: { parser: tsParser } },
@@ -190,7 +199,10 @@ describe('design system lint rules', () => {
 			sfc("<a :href=\"active ? '#abc' : '#def'\"></a><router-link :to=\"'#add'\"></router-link>"),
 			sfc('<div></div>', "<script setup lang=\"ts\">\ndocument['querySelector']('#abc');\n</script>"),
 			{
-				...sfc('<div></div>', "<script setup lang=\"ts\">\nrouter.push('#abc' as const);\nrouter.push({ hash: '#def' } as const);\n</script>"),
+				...sfc(
+					'<router-link :to="{ hash: (\'#abc\' as const) }"></router-link>',
+					"<script setup lang=\"ts\">\nrouter.push('#abc' as const);\nrouter.push({ hash: '#def' } as const);\nrouter.push({ hash: active ? '#abc' : '#def' });\nclass Counter {\n\t#add = 1;\n\t#abc() {}\n}\n</script>"
+				),
 				languageOptions: { parserOptions: { parser: tsParser } },
 			},
 			sfc("<router-link :to=\"docs ? { hash: '#abc' } : '/help'\"></router-link>"),

@@ -85,8 +85,10 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 				if (element?.type === 'SpreadElement') {
 					// Array spread iterates its operand: an array literal yields its items, a string its characters,
 					// other values are unknown at lint time
-					if ((element.argument as TemplateNode | undefined)?.type === 'ArrayExpression') {
-						collectExpressionClasses(element.argument, found, owner);
+					const operand = unwrapTypeScript((element.argument as TemplateNode | undefined) ?? null);
+
+					if (operand?.type === 'ArrayExpression') {
+						collectExpressionClasses(operand, found, owner);
 					}
 
 					continue;
@@ -157,8 +159,10 @@ const resolveObjectKeys = (object: TemplateNode, keys: Map<string, TemplateNode 
 		if (property.type === 'SpreadElement') {
 			// Object spread copies own keys: an object literal's keys are classes, but an array or a string
 			// spreads index keys (`0`, `1`), and other values are unknown at lint time
-			if ((property.argument as TemplateNode | undefined)?.type === 'ObjectExpression') {
-				resolveObjectKeys(property.argument as TemplateNode, keys, found, owner);
+			const operand = unwrapTypeScript((property.argument as TemplateNode | undefined) ?? null);
+
+			if (operand?.type === 'ObjectExpression') {
+				resolveObjectKeys(operand, keys, found, owner);
 			}
 
 			continue;
@@ -965,13 +969,9 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 				const key = property.key as TemplateNode | undefined;
 				const value = property.value as TemplateNode | undefined;
 
-				if (
-					property.type === 'Property' &&
-					property.computed !== true &&
-					(key?.name ?? key?.value) === 'hash' &&
-					(value?.type === 'Literal' || value?.type === 'TemplateLiteral')
-				) {
-					ranges.push(...literalTextRanges(value));
+				if (property.type === 'Property' && property.computed !== true && (key?.name ?? key?.value) === 'hash') {
+					// `{ hash: active ? '#abc' : '#def' }`, `{ hash: '#abc' as const }`
+					resultLiterals(value).forEach((literal) => ranges.push(...literalTextRanges(literal)));
 				}
 			}
 		}
@@ -987,6 +987,11 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 			if (selector || routerLocation) {
 				resultLiterals((current.arguments as TemplateNode[] | undefined)?.[0]).forEach((literal) => ranges.push(...literalTextRanges(literal)));
 			}
+		}
+
+		// `class Counter { #add() {} }`: private names, not colours
+		if (current.type === 'PrivateIdentifier') {
+			ranges.push(current.range);
 		}
 
 		// `:href="active ? '#abc' : '#def'"`, `:to="'#abc'"`: the literal results of a link binding are fragments
