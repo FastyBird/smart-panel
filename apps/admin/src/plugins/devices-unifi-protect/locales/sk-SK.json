@@ -1,0 +1,56 @@
+{
+	"config": {
+		"title": "Konzola UniFi Protect",
+		"description": "Pripojte sa ku konzole UniFi Protect v lokálnej sieti. Kľúč API sa len zapisuje a po uložení sa už nezobrazí.",
+		"enabled": "Povolené",
+		"host": {
+			"label": "Hostiteľ konzoly",
+			"placeholder": "192.168.1.1 alebo protect.example.com",
+			"required": "Zadajte názov hostiteľa alebo IP adresu konzoly",
+			"invalid": "Zadajte názov hostiteľa alebo IP adresu bez schémy, portu, cesty a prihlasovacích údajov"
+		},
+		"port": {
+			"label": "Port HTTPS",
+			"invalid": "Zadajte port medzi 1 a 65535"
+		},
+		"apiKey": {
+			"label": "Kľúč API",
+			"placeholder": "Zadajte nový kľúč, ktorý nahradí nastavený kľúč",
+			"invalid": "Zadajte neprázdny kľúč API alebo nahradenie odstráňte"
+		},
+		"tls": {
+			"label": "Dôvera certifikátu",
+			"mode": {
+				"verify": "Overiť reťazec a názov certifikátu",
+				"pinned": "Pripnúť odtlačok certifikátu"
+			},
+			"serverName": {
+				"label": "Názov servera TLS",
+				"required": "Ak je hostiteľ IP adresa, názov servera je povinný",
+				"invalid": "Zadajte názov DNS, nie IP adresu"
+			},
+			"fingerprint": {
+				"label": "Odtlačok SHA-256",
+				"required": "Zadajte 64-znakový odtlačok SHA-256 certifikátu"
+			}
+		},
+		"streamHostOverride": {
+			"label": "Prepísanie hostiteľa streamu",
+			"invalid": "Zadajte názov hostiteľa alebo IP adresu bez schémy, portu, cesty a prihlasovacích údajov"
+		},
+		"defaultStreamQuality": {
+			"label": "Predvolená kvalita streamu",
+			"high": "Vysoká",
+			"medium": "Stredná",
+			"low": "Nízka"
+		},
+		"snapshotMinIntervalMs": {
+			"label": "Minimálny interval snímok (ms)",
+			"invalid": "Zadajte celé číslo medzi {min} a {max}"
+		},
+		"pollIntervalMs": {
+			"label": "Interval dopytovania inventára (ms)",
+			"invalid": "Zadajte celé číslo medzi {min} a {max}"
+		}
+	}
+}

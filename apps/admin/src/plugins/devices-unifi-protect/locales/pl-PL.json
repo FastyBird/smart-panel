@@ -1,0 +1,56 @@
+{
+	"config": {
+		"title": "Konsola UniFi Protect",
+		"description": "Połącz się z konsolą UniFi Protect w sieci lokalnej. Klucz API jest tylko do zapisu i po zapisaniu nie jest ponownie wyświetlany.",
+		"enabled": "Włączone",
+		"host": {
+			"label": "Host konsoli",
+			"placeholder": "192.168.1.1 lub protect.example.com",
+			"required": "Wpisz nazwę hosta lub adres IP konsoli",
+			"invalid": "Wpisz nazwę hosta lub adres IP bez schematu, portu, ścieżki i danych logowania"
+		},
+		"port": {
+			"label": "Port HTTPS",
+			"invalid": "Wpisz port od 1 do 65535"
+		},
+		"apiKey": {
+			"label": "Klucz API",
+			"placeholder": "Wpisz nowy klucz, aby zastąpić skonfigurowany",
+			"invalid": "Wpisz niepusty klucz API lub usuń zamianę"
+		},
+		"tls": {
+			"label": "Zaufanie do certyfikatu",
+			"mode": {
+				"verify": "Weryfikuj łańcuch i nazwę certyfikatu",
+				"pinned": "Przypnij odcisk certyfikatu"
+			},
+			"serverName": {
+				"label": "Nazwa serwera TLS",
+				"required": "Gdy host jest adresem IP, nazwa serwera jest wymagana",
+				"invalid": "Wpisz nazwę DNS, a nie adres IP"
+			},
+			"fingerprint": {
+				"label": "Odcisk SHA-256",
+				"required": "Wpisz 64-znakowy odcisk SHA-256 certyfikatu"
+			}
+		},
+		"streamHostOverride": {
+			"label": "Nadpisanie hosta strumienia",
+			"invalid": "Wpisz nazwę hosta lub adres IP bez schematu, portu, ścieżki i danych logowania"
+		},
+		"defaultStreamQuality": {
+			"label": "Domyślna jakość strumienia",
+			"high": "Wysoka",
+			"medium": "Średnia",
+			"low": "Niska"
+		},
+		"snapshotMinIntervalMs": {
+			"label": "Minimalny odstęp między zdjęciami (ms)",
+			"invalid": "Wpisz liczbę całkowitą od {min} do {max}"
+		},
+		"pollIntervalMs": {
+			"label": "Interwał odpytywania inwentarza (ms)",
+			"invalid": "Wpisz liczbę całkowitą od {min} do {max}"
+		}
+	}
+}

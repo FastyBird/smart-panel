@@ -1,0 +1,56 @@
+{
+	"config": {
+		"title": "UniFi Protect console",
+		"description": "Connect to a UniFi Protect console on the local network. The API key is write-only and is never shown again after saving.",
+		"enabled": "Enabled",
+		"host": {
+			"label": "Console host",
+			"placeholder": "192.168.1.1 or protect.example.com",
+			"required": "Enter the console host name or IP address",
+			"invalid": "Enter a host name or IP address without scheme, port, path or credentials"
+		},
+		"port": {
+			"label": "HTTPS port",
+			"invalid": "Enter a port between 1 and 65535"
+		},
+		"apiKey": {
+			"label": "API key",
+			"placeholder": "Enter a new key to replace the configured key",
+			"invalid": "Enter a non-blank API key or remove the replacement"
+		},
+		"tls": {
+			"label": "Certificate trust",
+			"mode": {
+				"verify": "Verify certificate chain and name",
+				"pinned": "Pin certificate fingerprint"
+			},
+			"serverName": {
+				"label": "TLS server name",
+				"required": "A server name is required when the host is an IP address",
+				"invalid": "Enter a DNS name, not an IP address"
+			},
+			"fingerprint": {
+				"label": "SHA-256 fingerprint",
+				"required": "Enter the 64-character SHA-256 fingerprint of the certificate"
+			}
+		},
+		"streamHostOverride": {
+			"label": "Stream host override",
+			"invalid": "Enter a host name or IP address without scheme, port, path or credentials"
+		},
+		"defaultStreamQuality": {
+			"label": "Default stream quality",
+			"high": "High",
+			"medium": "Medium",
+			"low": "Low"
+		},
+		"snapshotMinIntervalMs": {
+			"label": "Minimum snapshot interval (ms)",
+			"invalid": "Enter a whole number between {min} and {max}"
+		},
+		"pollIntervalMs": {
+			"label": "Inventory poll interval (ms)",
+			"invalid": "Enter a whole number between {min} and {max}"
+		}
+	}
+}

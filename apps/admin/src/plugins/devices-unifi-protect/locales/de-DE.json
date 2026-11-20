@@ -1,0 +1,56 @@
+{
+	"config": {
+		"title": "UniFi-Protect-Konsole",
+		"description": "Verbinden Sie sich mit einer UniFi-Protect-Konsole im lokalen Netzwerk. Der API-Schlüssel ist schreibgeschützt und wird nach dem Speichern nicht mehr angezeigt.",
+		"enabled": "Aktiviert",
+		"host": {
+			"label": "Konsolen-Host",
+			"placeholder": "192.168.1.1 oder protect.example.com",
+			"required": "Geben Sie den Hostnamen oder die IP-Adresse der Konsole ein",
+			"invalid": "Geben Sie einen Hostnamen oder eine IP-Adresse ohne Schema, Port, Pfad oder Zugangsdaten ein"
+		},
+		"port": {
+			"label": "HTTPS-Port",
+			"invalid": "Geben Sie einen Port zwischen 1 und 65535 ein"
+		},
+		"apiKey": {
+			"label": "API-Schlüssel",
+			"placeholder": "Neuen Schlüssel eingeben, um den hinterlegten zu ersetzen",
+			"invalid": "Geben Sie einen nicht leeren API-Schlüssel ein oder entfernen Sie den Ersatz"
+		},
+		"tls": {
+			"label": "Zertifikatsvertrauen",
+			"mode": {
+				"verify": "Zertifikatskette und Namen prüfen",
+				"pinned": "Zertifikat-Fingerabdruck anheften"
+			},
+			"serverName": {
+				"label": "TLS-Servername",
+				"required": "Bei einer IP-Adresse als Host ist ein Servername erforderlich",
+				"invalid": "Geben Sie einen DNS-Namen ein, keine IP-Adresse"
+			},
+			"fingerprint": {
+				"label": "SHA-256-Fingerabdruck",
+				"required": "Geben Sie den 64-stelligen SHA-256-Fingerabdruck des Zertifikats ein"
+			}
+		},
+		"streamHostOverride": {
+			"label": "Stream-Host überschreiben",
+			"invalid": "Geben Sie einen Hostnamen oder eine IP-Adresse ohne Schema, Port, Pfad oder Zugangsdaten ein"
+		},
+		"defaultStreamQuality": {
+			"label": "Standard-Streamqualität",
+			"high": "Hoch",
+			"medium": "Mittel",
+			"low": "Niedrig"
+		},
+		"snapshotMinIntervalMs": {
+			"label": "Minimales Snapshot-Intervall (ms)",
+			"invalid": "Geben Sie eine ganze Zahl zwischen {min} und {max} ein"
+		},
+		"pollIntervalMs": {
+			"label": "Abfrageintervall des Inventars (ms)",
+			"invalid": "Geben Sie eine ganze Zahl zwischen {min} und {max} ein"
+		}
+	}
+}

@@ -209,6 +209,34 @@ export {
 	PathsPluginsDevicesHomeyDevicesGetParametersQuerySupport as DevicesHomeyPluginInventorySupportFilter,
 } from './openapi';
 
+// Devices UniFi Protect Plugin Schemas
+export type DevicesUnifiProtectPluginUpdateConfigSchema = components['schemas']['DevicesUnifiProtectPluginUpdateConfig'];
+export type DevicesUnifiProtectPluginConfigSchema = components['schemas']['DevicesUnifiProtectPluginDataConfig'];
+export type DevicesUnifiProtectPluginStatusSchema = components['schemas']['DevicesUnifiProtectPluginDataStatus'];
+export type DevicesUnifiProtectPluginTestConnectionRequestSchema = components['schemas']['DevicesUnifiProtectPluginReqTestConnection'];
+export type DevicesUnifiProtectPluginTestConnectionSchema = components['schemas']['DevicesUnifiProtectPluginDataTestConnection'];
+export type DevicesUnifiProtectPluginCertificateSchema = components['schemas']['DevicesUnifiProtectPluginDataCertificate'];
+export type DevicesUnifiProtectPluginDiscoverySchema = components['schemas']['DevicesUnifiProtectPluginDataDiscovery'];
+export type DevicesUnifiProtectPluginDiscoveredConsoleSchema = components['schemas']['DevicesUnifiProtectPluginDataDiscoveredConsole'];
+export type DevicesUnifiProtectPluginProbeRequestSchema = components['schemas']['DevicesUnifiProtectPluginReqProbe'];
+export type DevicesUnifiProtectPluginProbeSchema = components['schemas']['DevicesUnifiProtectPluginDataProbe'];
+export type DevicesUnifiProtectPluginCreateDeviceSchema = components['schemas']['DevicesUnifiProtectPluginCreateDevice'];
+export type DevicesUnifiProtectPluginUpdateDeviceSchema = components['schemas']['DevicesUnifiProtectPluginUpdateDevice'];
+export type DevicesUnifiProtectPluginDeviceSchema = components['schemas']['DevicesUnifiProtectPluginDataDevice'];
+export type DevicesUnifiProtectPluginCreateChannelSchema = components['schemas']['DevicesUnifiProtectPluginCreateDeviceChannel'];
+export type DevicesUnifiProtectPluginChannelSchema = components['schemas']['DevicesUnifiProtectPluginDataChannel'];
+export type DevicesUnifiProtectPluginCreateChannelPropertySchema = components['schemas']['DevicesUnifiProtectPluginCreateDeviceChannelProperty'];
+export type DevicesUnifiProtectPluginChannelPropertySchema = components['schemas']['DevicesUnifiProtectPluginDataChannelProperty'];
+export {
+	DevicesUnifiProtectPluginAdoptStreamQuality as DevicesUnifiProtectPluginStreamQuality,
+	DevicesUnifiProtectPluginDataConfigTlsMode as DevicesUnifiProtectPluginTlsMode,
+	DevicesUnifiProtectPluginDataDiscoveryStatus as DevicesUnifiProtectPluginDiscoveryStatus,
+	DevicesUnifiProtectPluginDataProbeFailure as DevicesUnifiProtectPluginProbeFailure,
+	DevicesUnifiProtectPluginDataProbeStatus as DevicesUnifiProtectPluginProbeStatus,
+	DevicesUnifiProtectPluginDataStatusConnection_state as DevicesUnifiProtectPluginConnectionState,
+	DevicesUnifiProtectPluginDataStatusLast_error_category as DevicesUnifiProtectPluginErrorCategory,
+} from './openapi';
+
 // Data Sources Device Channel Plugin Schemas
 export type DataSourcesDeviceChannelPluginCreateDeviceChannelDataSourceSchema =
 	components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
@@ -575,6 +603,13 @@ export type DevicesHomeyPluginGetDeviceOperation = operations['get-devices-homey
 export type DevicesHomeyPluginPreviewMappingOperation = operations['preview-devices-homey-plugin-device-mapping'];
 export type DevicesHomeyPluginAdoptDeviceOperation = operations['create-devices-homey-plugin-adoption'];
 export type DevicesHomeyPluginAdoptBatchOperation = operations['create-devices-homey-plugin-batch-adoption'];
+
+// Devices UniFi Protect Plugin Operations
+export type DevicesUnifiProtectPluginGetStatusOperation = operations['get-devices-unifi-protect-plugin-status'];
+export type DevicesUnifiProtectPluginTestConnectionOperation = operations['test-devices-unifi-protect-plugin-connection'];
+export type DevicesUnifiProtectPluginGetDiscoveryOperation = operations['get-devices-unifi-protect-plugin-discovery'];
+export type DevicesUnifiProtectPluginScanDiscoveryOperation = operations['scan-devices-unifi-protect-plugin-discovery'];
+export type DevicesUnifiProtectPluginProbeDiscoveryOperation = operations['probe-devices-unifi-protect-plugin-discovery'];
 
 // Devices WLED Plugin Operations
 export type DevicesWledPluginGetDiscoveryOperation = operations['get-devices-wled-plugin-discovery'];

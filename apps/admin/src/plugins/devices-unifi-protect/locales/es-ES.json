@@ -1,0 +1,56 @@
+{
+	"config": {
+		"title": "Consola UniFi Protect",
+		"description": "Conéctese a una consola UniFi Protect de la red local. La clave de API es solo de escritura y no se vuelve a mostrar tras guardarla.",
+		"enabled": "Activado",
+		"host": {
+			"label": "Host de la consola",
+			"placeholder": "192.168.1.1 o protect.example.com",
+			"required": "Introduzca el nombre de host o la dirección IP de la consola",
+			"invalid": "Introduzca un nombre de host o una dirección IP sin esquema, puerto, ruta ni credenciales"
+		},
+		"port": {
+			"label": "Puerto HTTPS",
+			"invalid": "Introduzca un puerto entre 1 y 65535"
+		},
+		"apiKey": {
+			"label": "Clave de API",
+			"placeholder": "Introduzca una clave nueva para sustituir la configurada",
+			"invalid": "Introduzca una clave de API no vacía o elimine la sustitución"
+		},
+		"tls": {
+			"label": "Confianza del certificado",
+			"mode": {
+				"verify": "Verificar la cadena y el nombre del certificado",
+				"pinned": "Fijar la huella del certificado"
+			},
+			"serverName": {
+				"label": "Nombre de servidor TLS",
+				"required": "El nombre de servidor es obligatorio cuando el host es una dirección IP",
+				"invalid": "Introduzca un nombre DNS, no una dirección IP"
+			},
+			"fingerprint": {
+				"label": "Huella SHA-256",
+				"required": "Introduzca la huella SHA-256 del certificado, de 64 caracteres"
+			}
+		},
+		"streamHostOverride": {
+			"label": "Host de transmisión alternativo",
+			"invalid": "Introduzca un nombre de host o una dirección IP sin esquema, puerto, ruta ni credenciales"
+		},
+		"defaultStreamQuality": {
+			"label": "Calidad de transmisión predeterminada",
+			"high": "Alta",
+			"medium": "Media",
+			"low": "Baja"
+		},
+		"snapshotMinIntervalMs": {
+			"label": "Intervalo mínimo de instantáneas (ms)",
+			"invalid": "Introduzca un número entero entre {min} y {max}"
+		},
+		"pollIntervalMs": {
+			"label": "Intervalo de sondeo del inventario (ms)",
+			"invalid": "Introduzca un número entero entre {min} y {max}"
+		}
+	}
+}
