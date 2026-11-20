@@ -901,8 +901,8 @@ const isRouterLocation = (object: TemplateNode, parents: Map<unknown, TemplateNo
 };
 
 /**
- * Ranges of the selector arguments of SELECTOR_METHODS calls and of the `hash` of router locations (such as
- * `:to="{ hash: '#abc' }"`), in the script and in template expressions
+ * Ranges of the selector arguments of SELECTOR_METHODS calls, of string router locations (`router.push('#abc')`)
+ * and of the `hash` of object router locations (`:to="{ hash: '#abc' }"`), in the script and in template expressions
  */
 const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 	const ranges: [number, number][] = [];
@@ -945,11 +945,14 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 			const property = callee?.type === 'MemberExpression' ? (callee.property as TemplateNode) : undefined;
 			const argument = (current.arguments as TemplateNode[] | undefined)?.[0];
 
-			if (
+			// `document.querySelector('#abc')`, and string locations such as `router.push('#abc')`
+			const selector = property?.type === 'Identifier' && SELECTOR_METHODS.includes(property.name as string);
+			const routerLocation =
 				property?.type === 'Identifier' &&
-				SELECTOR_METHODS.includes(property.name as string) &&
-				(argument?.type === 'Literal' || argument?.type === 'TemplateLiteral')
-			) {
+				ROUTER_METHODS.includes(property.name as string) &&
+				isRouterReceiver((callee as TemplateNode).object as TemplateNode | undefined);
+
+			if ((selector || routerLocation) && (argument?.type === 'Literal' || argument?.type === 'TemplateLiteral')) {
 				ranges.push(...literalTextRanges(argument));
 			}
 		}

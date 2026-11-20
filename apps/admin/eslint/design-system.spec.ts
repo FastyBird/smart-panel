@@ -190,7 +190,7 @@ describe('design system lint rules', () => {
 			sfc("<router-link :to=\"docs ? { hash: '#abc' } : '/help'\"></router-link>"),
 			sfc(
 				"<router-link :to=\"{ name: 'docs', hash: '#abc' }\"></router-link>",
-				"<script setup lang=\"ts\">\nrouter.push({ hash: '#fade' });\nthis.$router.replace({ hash: '#fed' });\nuseRouter().resolve({ hash: '#abc' });\n</script>"
+				"<script setup lang=\"ts\">\nrouter.push({ hash: '#fade' });\nthis.$router.replace({ hash: '#fed' });\nuseRouter().resolve({ hash: '#abc' });\nrouter.push('#abc');\nrouter.replace(`#add`);\n</script>"
 			),
 			// Sass: a line that opens a rule is a selector, even with a pseudo-class
 			sfc('<div></div>', '<style lang="sass">\na:hover #abc\n  display: block\n</style>'),
@@ -299,6 +299,14 @@ describe('design system lint rules', () => {
 					{ messageId: 'hex', data: { value: '#fff' } },
 					{ messageId: 'hex', data: { value: '#abc' } },
 					{ messageId: 'hex', data: { value: '#000' } },
+				],
+			},
+			// Only router receivers: other `push` calls with a string are still checked
+			{
+				...sfc('<div></div>', "<script setup lang=\"ts\">\ncolours.push('#fff');\nrouter.push(`#a${'#abc'}`);\n</script>"),
+				errors: [
+					{ messageId: 'hex', data: { value: '#fff' } },
+					{ messageId: 'hex', data: { value: '#abc' } },
 				],
 			},
 			// SCSS nested properties: the shorthand value is still a declaration
