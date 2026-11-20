@@ -236,7 +236,13 @@ describe('StepIntegrations.vue', () => {
 		});
 
 		it('asks to set up a protect plugin without a host or key', async () => {
-			const wrapper = await mountProtect({ type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, enabled: true, host: '', apiKeyConfigured: false, verifyTls: true });
+			const wrapper = await mountProtect({
+				type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+				enabled: true,
+				host: '',
+				apiKeyConfigured: false,
+				verifyTls: true,
+			});
 
 			expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
 		});
