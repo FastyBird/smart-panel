@@ -11,5 +11,6 @@ export { useNumberFormat } from './useNumberFormat';
 export { useSockets } from './useSockets';
 export { useUuid } from './useUuid';
 export { useClipboard } from './useClipboard';
+export { useKeyboardOffset } from './useKeyboardOffset';
 
 export * from './types';

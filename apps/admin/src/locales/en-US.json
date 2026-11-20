@@ -40,6 +40,20 @@
 			"copied": "Copied to the clipboard",
 			"copyFailed": "Could not copy to the clipboard"
 		},
+		"formFooter": {
+			"save": "Save",
+			"discard": "Discard",
+			"close": "Close"
+		},
+		"secretInput": {
+			"saved": "Saved",
+			"replace": "Replace",
+			"cancel": "Cancel",
+			"placeholder": "Enter a new value"
+		},
+		"typePicker": {
+			"title": "Choose a type"
+		},
 		"buttons": {
 			"home": {
 				"title": "Home"

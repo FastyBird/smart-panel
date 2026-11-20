@@ -40,6 +40,20 @@
 			"copied": "Copiado al portapapeles",
 			"copyFailed": "No se pudo copiar al portapapeles"
 		},
+		"formFooter": {
+			"save": "Guardar",
+			"discard": "Descartar",
+			"close": "Cerrar"
+		},
+		"secretInput": {
+			"saved": "Guardado",
+			"replace": "Reemplazar",
+			"cancel": "Cancelar",
+			"placeholder": "Introduce un valor nuevo"
+		},
+		"typePicker": {
+			"title": "Elige un tipo"
+		},
 		"buttons": {
 			"home": {
 				"title": "Inicio"

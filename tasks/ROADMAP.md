@@ -510,7 +510,7 @@ Protect epic, built on this epic's components.
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :clipboard: Planned |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
 
-**Next up:** AR-3, the state, status and data display components; then AR-4 and AR-7.
+**Next up:** AR-4, the form footer, secret input and type picker; then AR-7 and AR-5.
 
 ---
 

@@ -91,6 +91,10 @@ export interface IUseUuid {
 	validate: (uuid: string) => boolean;
 }
 
+export interface IUseKeyboardOffset {
+	offset: Ref<number>;
+}
+
 export interface IUseClipboard {
 	copy: (text: string) => Promise<boolean>;
 }
