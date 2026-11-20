@@ -159,6 +159,7 @@
 		"configDialog": {
 			"title": "Konfigurovať {name}",
 			"noConfig": "Pre túto integráciu nie sú dostupné žiadne konfiguračné možnosti.",
+			"loadFailed": "Konfiguráciu sa nepodarilo načítať. Zatvorte toto okno a skúste to znova.",
 			"buttons": {
 				"cancel": "Zrušiť",
 				"validate": "Overiť",

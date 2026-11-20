@@ -492,6 +492,26 @@ describe('ProtectConfigForm', () => {
 		expect(wrapper.get('[data-test-id="protect-test-button"]').attributes('disabled')).toBeDefined();
 	});
 
+	it('takes a re-read configuration as the saved baseline for the test and the status panel', async () => {
+		const wrapper = mountForm();
+
+		await flushPromises();
+
+		// The host re-read the configuration: the backend now stores another host and poll interval.
+		await wrapper.setProps({ config: { ...savedConfig(), host: '192.168.1.20', pollIntervalMs: 60000 } as IProtectConfig });
+
+		expect(wrapper.findComponent({ name: 'ProtectConnectionStatus' }).props('pollIntervalMs')).toBe(60000);
+		// The form still shows .10, which is no longer what is saved, so the saved test would test another host.
+		expect(wrapper.get('[data-test-id="protect-test-hint"]').text()).toBe('devicesUnifiProtectPlugin.testConnection.hints.needs_key');
+
+		model.host = '192.168.1.20';
+		await nextTick();
+		await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
+		await flushPromises();
+
+		expect(statusStore.testConnection).toHaveBeenCalledWith({ data: { mode: 'saved' } }, expect.objectContaining({ host: '192.168.1.20' }));
+	});
+
 	it("shows the backend's reason for a refused test under the generic sentence, never the typed key", async () => {
 		const wrapper = mountForm();
 
@@ -551,7 +571,7 @@ describe('ProtectConfigForm', () => {
 		expect(wrapper.findAll('input').map((input) => (input.element as HTMLInputElement).value)).not.toContain('super-secret-key');
 		expect(wrapper.html()).not.toContain('super-secret-key');
 	});
-	it('mounts the status panel with the poll interval and releases polling when the form unmounts', async () => {
+	it('mounts the status panel with the saved poll interval and releases polling when the form unmounts', async () => {
 		const wrapper = mountForm();
 
 		await flushPromises();
@@ -559,8 +579,14 @@ describe('ProtectConfigForm', () => {
 		expect(statusStore.startPolling).toHaveBeenCalledTimes(1);
 		expect(wrapper.findComponent({ name: 'ProtectConnectionStatus' }).props('pollIntervalMs')).toBe(30000);
 
+		// The panel describes what the backend runs with, so an unsaved edit does not change it; the save does.
 		model.pollIntervalMs = 45000;
 		await nextTick();
+
+		expect(wrapper.findComponent({ name: 'ProtectConnectionStatus' }).props('pollIntervalMs')).toBe(30000);
+
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
 
 		expect(wrapper.findComponent({ name: 'ProtectConnectionStatus' }).props('pollIntervalMs')).toBe(45000);
 

@@ -159,6 +159,7 @@
 		"configDialog": {
 			"title": "{name} konfigurieren",
 			"noConfig": "Für diese Integration sind keine Konfigurationsoptionen verfügbar.",
+			"loadFailed": "Die Konfiguration konnte nicht geladen werden. Schließen Sie diesen Dialog und versuchen Sie es erneut.",
 			"buttons": {
 				"cancel": "Abbrechen",
 				"validate": "Validieren",

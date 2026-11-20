@@ -248,7 +248,7 @@
 			@trust="onTrust"
 		/>
 
-		<protect-connection-status :poll-interval-ms="model.pollIntervalMs" />
+		<protect-connection-status :poll-interval-ms="savedPollIntervalMs" />
 	</el-form>
 </template>
 
@@ -345,6 +345,15 @@ const connectionOf = (value: IProtectConnectionFields): IProtectConnectionFields
 
 // Taken before the edit model, which wraps the same object, can change it.
 const savedConnection = ref<IProtectConnectionFields>(connectionOf(props.config as unknown as IProtectConfigEditForm));
+
+/** The poll interval the backend runs with; the status panel describes that one, not an unsaved edit. */
+const savedPollIntervalMs = ref<number>((props.config as unknown as IProtectConfigEditForm).pollIntervalMs);
+
+/** Takes the configuration the backend confirmed as the baseline for the test and the status panel. */
+const markBaseline = (value: IProtectConfigEditForm): void => {
+	savedConnection.value = connectionOf(value);
+	savedPollIntervalMs.value = value.pollIntervalMs;
+};
 
 const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IProtectConfigEditForm>({
 	config: props.config,
@@ -563,6 +572,13 @@ onMounted((): void => {
 	}
 });
 
+// A host that re-reads the configuration hands over a new object; that read is the saved baseline from then on. Only the
+// object is watched, not its fields: before such a read the edit model may wrap this very object, and following its
+// fields would take unsaved edits for saved ones.
+watch(
+	() => props.config,
+	(config) => markBaseline(config as unknown as IProtectConfigEditForm)
+);
 watch(formResult, (value) => emit('update:remote-form-result', value));
 watch(formChanged, (value) => emit('update:remote-form-changed', value));
 watch(
@@ -572,7 +588,7 @@ watch(
 		emit('update:remote-form-submit', false);
 		void submit()
 			.then(async (): Promise<void> => {
-				savedConnection.value = connectionOf(model);
+				markBaseline(model);
 
 				await refreshStatus();
 			})

@@ -15,18 +15,21 @@
 			>
 				<component
 					:is="configFormComponent"
-					v-if="visible && configPlugin && configFormComponent"
+					v-if="visible && !isLoading && formConfig && configFormComponent"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
 					v-model:remote-form-reset="remoteFormReset"
 					v-model:remote-form-changed="remoteFormChanged"
-					:config="configPlugin"
+					:config="formConfig"
 					:remote-form-errors="formFieldErrors"
 				/>
 				<empty-state
-					v-else-if="!isLoading"
-					icon="mdi:puzzle-outline"
-					:description="t('onboardingModule.integrations.configDialog.noConfig')"
+					v-else-if="visible && !isLoading"
+					:icon="loadFailed ? 'mdi:alert-circle-outline' : 'mdi:puzzle-outline'"
+					:description="
+						t(loadFailed ? 'onboardingModule.integrations.configDialog.loadFailed' : 'onboardingModule.integrations.configDialog.noConfig')
+					"
+					data-test-id="integration-config-empty"
 				/>
 			</div>
 		</el-scrollbar>
@@ -66,12 +69,12 @@ import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElDialog, ElScrollbar, vLoading } from 'element-plus';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
 import EmptyState from '../../../common/components/empty-state.vue';
 import { usePlugins } from '../../../modules/config/composables/usePlugins';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../../../modules/config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../../modules/config/config.types';
-import type { IConfigPluginValidationResult } from '../../../modules/config/store/config-plugins.store.types';
+import type { IConfigPlugin, IConfigPluginValidationResult } from '../../../modules/config/store/config-plugins.store.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
 import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
 
@@ -128,28 +131,61 @@ const configFormComponent = computed(() => {
 	return element?.components?.pluginConfigEditForm ?? null;
 });
 
-const configPlugin = computed(() => configPluginsStore.findByType(props.pluginType));
+/**
+ * The configuration the open form edits: a copy of the store's entry taken when the dialog opens. The form edits its
+ * config in place, so handing it the store's own object would leave abandoned edits (and a typed secret) in the store
+ * after Cancel, and the next form would take them for the saved configuration.
+ */
+const formConfig = ref<IConfigPlugin | null>(null);
 
-const fetchConfig = async (): Promise<void> => {
-	if (configPlugin.value) return;
+/** The configuration could not be read, and the store's copy may be out of date, so no form is offered. */
+const loadFailed = ref(false);
 
+/** Types whose entry this dialog seeded because the backend had none to read; a failed read of those is expected. */
+const seededTypes = new Set<string>();
+
+/** Bumped on every open and close, so a read that lands after its dialog closed or reopened mounts nothing. */
+let loadGeneration = 0;
+
+/** Reads the configuration afresh on every open and mounts the form only on what that read returned. */
+const loadConfig = async (): Promise<void> => {
+	const generation = ++loadGeneration;
+	const type = props.pluginType;
+
+	formConfig.value = null;
+	loadFailed.value = false;
 	isLoading.value = true;
 
+	let failed = false;
+
 	try {
-		await configPluginsStore.get({ type: props.pluginType });
+		await configPluginsStore.get({ type, force: true });
+
+		seededTypes.delete(type);
 	} catch {
-		// Config may not exist yet — seed a default entry so the form can render
-		if (!configPlugin.value) {
+		if (!configPluginsStore.findByType(type)) {
+			// Config may not exist yet — seed a default entry so the form can render
 			try {
-				const extension = extensionsStore.findByType(props.pluginType);
-				configPluginsStore.set({ data: { type: props.pluginType, enabled: extension?.enabled ?? false } as { type: string } });
+				const extension = extensionsStore.findByType(type);
+				configPluginsStore.set({ data: { type, enabled: extension?.enabled ?? false } as { type: string } });
+				seededTypes.add(type);
 			} catch {
 				// Schema validation failure — nothing we can do
 			}
+		} else if (!seededTypes.has(type)) {
+			failed = true;
 		}
-	} finally {
-		isLoading.value = false;
 	}
+
+	if (generation !== loadGeneration) {
+		return;
+	}
+
+	const config = configPluginsStore.findByType(type);
+
+	loadFailed.value = failed;
+	formConfig.value = !failed && config ? deepClone(config) : null;
+	isLoading.value = false;
 };
 
 let saveFallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -178,14 +214,14 @@ const handleSave = (): void => {
 };
 
 const handleValidate = async (): Promise<void> => {
-	if (!configPlugin.value) return;
+	if (!formConfig.value) return;
 
 	isValidating.value = true;
 	validationResult.value = null;
 
 	try {
 		const result = await configPluginsStore.validateConfig({
-			data: { ...configPlugin.value },
+			data: { ...formConfig.value },
 		});
 
 		if (result.valid) {
@@ -252,10 +288,14 @@ watch(
 	() => props.visible,
 	(val: boolean) => {
 		if (val) {
-			fetchConfig();
+			void loadConfig();
 		} else {
 			// The form unmounts with the dialog, so what it reported (changed, result, submit/reset requests)
 			// and what the dialog derived from it must not outlive it: the next form starts clean.
+			loadGeneration++;
+			formConfig.value = null;
+			loadFailed.value = false;
+			isLoading.value = false;
 			clearSaveFallback();
 			isSaving.value = false;
 			validationResult.value = null;
@@ -269,7 +309,7 @@ watch(
 
 onBeforeMount(() => {
 	if (props.visible) {
-		fetchConfig();
+		void loadConfig();
 	}
 });
 </script>
