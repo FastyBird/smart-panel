@@ -115,6 +115,21 @@ describe('Zigbee2MQTT command acknowledgements', () => {
 		expect(adapter.hasPendingCommands('plug')).toBe(false);
 	});
 
+	it('replays fields cached from an acknowledgement as an acknowledgement, apart from reported fields', async () => {
+		await adapter.publishCommand('plug', { state: 'OFF' });
+		adapter.feed('plug', { state: 'OFF', last_seen: new Date(Date.now() - 1_000).toISOString() });
+		expect(lastMetadata().commandEcho).toBe(true);
+		jest.advanceTimersByTime(10);
+		adapter.feed('plug', { power: 0, last_seen: new Date().toISOString() });
+
+		const replays = adapter.getCachedStateReplays('plug');
+		const echoed = replays.find(({ state }) => 'state' in state);
+		const reported = replays.find(({ state }) => 'power' in state);
+		expect(echoed?.metadata).toMatchObject({ commandEcho: true, isCached: true });
+		expect(reported?.metadata.commandEcho).toBeUndefined();
+		expect(echoed).not.toBe(reported);
+	});
+
 	it('closes the window when the command was not sent', async () => {
 		adapter.sendResult = false;
 		await expect(adapter.publishCommand('plug', { state: 'OFF' })).resolves.toBe(false);

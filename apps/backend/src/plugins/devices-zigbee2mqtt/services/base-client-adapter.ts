@@ -90,10 +90,7 @@ export abstract class Z2mBaseClientAdapter {
 	 * the packet's accepted source time (null when absent or rejected) and the device that sent it.
 	 * Replays reuse these decisions instead of re-deriving them at replay time.
 	 */
-	private readonly cachedFieldEvidence = new Map<
-		string,
-		Map<string, { sourceTime: Date | null; ieeeAddress: string | null; receivedAt: Date }>
-	>();
+	private readonly cachedFieldEvidence = new Map<string, Map<string, CachedFieldEvidence>>();
 	private lastSeenWarningLogged = false;
 	/** Freshness-related bridge settings from the last `bridge/info` of the connected bridge. */
 	private bridgeSettings: Z2mBridgeSettings | null = null;
@@ -323,7 +320,10 @@ export abstract class Z2mBaseClientAdapter {
 		if (!cached) return [];
 		const evidence = this.cachedFieldEvidence.get(friendlyName);
 		const currentIeee = this.sourceIdentities.get(friendlyName)?.ieeeAddress ?? null;
-		const groups = new Map<string, { time: number | null; state: Record<string, unknown>; receivedAt: number }>();
+		const groups = new Map<
+			string,
+			{ time: number | null; state: Record<string, unknown>; receivedAt: number; commandEcho: boolean }
+		>();
 		for (const [field, value] of Object.entries(cached)) {
 			const fieldEvidence = evidence?.get(field);
 			const sender = fieldEvidence?.ieeeAddress ?? null;
@@ -333,24 +333,26 @@ export abstract class Z2mBaseClientAdapter {
 			// Grouped by original receipt too: source-binding cutoffs judge when we actually observed
 			// each field, so fields received at different times never share one receipt time.
 			const receivedAt = fieldEvidence?.receivedAt.getTime() ?? Date.now();
-			const key = `${time}|${receivedAt}`;
-			const group = groups.get(key) ?? { time, state: {}, receivedAt };
+			// A field cached from a possible command acknowledgement is replayed as one, never as a report.
+			const commandEcho = fieldEvidence?.commandEcho === true;
+			const key = `${time}|${receivedAt}|${commandEcho}`;
+			const group = groups.get(key) ?? { time, state: {}, receivedAt, commandEcho };
 			group.state[field] = value;
 			groups.set(key, group);
 		}
 		return [...groups.values()]
 			.sort((a, b) => (a.time ?? -Infinity) - (b.time ?? -Infinity) || a.receivedAt - b.receivedAt)
-			.map(({ time, ...group }) => ({
-				state: group.state,
-				metadata: this.buildStateMetadata(
+			.map(({ time, commandEcho, ...group }) => {
+				const metadata = this.buildStateMetadata(
 					friendlyName,
 					group.state,
 					new Date(group.receivedAt),
 					false,
 					{ isCached: true },
 					time === null ? null : new Date(time),
-				),
-			}));
+				);
+				return { state: group.state, metadata: commandEcho ? { ...metadata, commandEcho: true } : metadata };
+			});
 	}
 
 	private recordCachedFieldEvidence(
@@ -358,13 +360,12 @@ export abstract class Z2mBaseClientAdapter {
 		state: Record<string, unknown>,
 		metadata: Z2mDeviceStateMetadata,
 	): void {
-		const evidence =
-			this.cachedFieldEvidence.get(friendlyName) ??
-			new Map<string, { sourceTime: Date | null; ieeeAddress: string | null; receivedAt: Date }>();
-		const entry = {
+		const evidence = this.cachedFieldEvidence.get(friendlyName) ?? new Map<string, CachedFieldEvidence>();
+		const entry: CachedFieldEvidence = {
 			sourceTime: metadata.sampledAt ?? null,
 			ieeeAddress: metadata.sourceIdentity?.ieeeAddress ?? null,
 			receivedAt: metadata.observedAt ?? new Date(),
+			...(metadata.commandEcho === true ? { commandEcho: true } : {}),
 		};
 		for (const field of Object.keys(state)) evidence.set(field, entry);
 		this.cachedFieldEvidence.set(friendlyName, evidence);
@@ -972,6 +973,15 @@ export abstract class Z2mBaseClientAdapter {
 				?.close();
 		return true;
 	}
+}
+
+/** How a cached field was received; replays reuse it instead of re-deriving it. */
+interface CachedFieldEvidence {
+	sourceTime: Date | null;
+	ieeeAddress: string | null;
+	receivedAt: Date;
+	/** The field came from a possible command acknowledgement. */
+	commandEcho?: boolean;
 }
 
 interface CommandEchoWindow {
