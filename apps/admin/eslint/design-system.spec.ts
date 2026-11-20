@@ -198,6 +198,17 @@ describe('design system lint rules', () => {
 				...sfc('<div></div>', '<style lang="sass">\n/* Old palette\n  old values\n.x\n  color: #fff\n</style>'),
 				errors: [{ messageId: 'hex', line: 5 }],
 			},
+			// Interpolations inside an exempt literal are still checked
+			{
+				...sfc(
+					'<div></div>',
+					"<script setup lang=\"ts\">\nrouter.push({ hash: `#${(el.style.color = '#fff')}` });\ndocument.querySelector(`#a ${'#abc'}`);\n</script>"
+				),
+				errors: [
+					{ messageId: 'hex', data: { value: '#fff' } },
+					{ messageId: 'hex', data: { value: '#abc' } },
+				],
+			},
 			// Only the selector argument is exempt
 			{
 				...sfc('<div></div>', "<script setup lang=\"ts\">\ndocument.querySelector('#abc', '#fff');\n</script>"),

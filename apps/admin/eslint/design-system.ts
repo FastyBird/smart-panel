@@ -759,6 +759,10 @@ const FRAGMENT_REFERENCE = /(?:\b(?:href|to)\s*=\s*["'](?:\s*['"`])?|\burl\(\s*[
 /** DOM methods whose first argument is a CSS selector (`document.querySelector('#abc')`) */
 const SELECTOR_METHODS = ['querySelector', 'querySelectorAll', 'closest', 'matches'];
 
+/** The text of a string or template literal, without the interpolated expressions (`` `#${expression}` ``) */
+const literalTextRanges = (node: TemplateNode): [number, number][] =>
+	node.type === 'TemplateLiteral' ? (node.quasis as TemplateNode[]).map((quasi) => quasi.range) : [node.range];
+
 /**
  * Ranges of the selector arguments of SELECTOR_METHODS calls and of `hash` properties (router locations such as
  * `:to="{ hash: '#abc' }"`), in the script and in template expressions
@@ -786,7 +790,7 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 			const value = current.value as TemplateNode | undefined;
 
 			if ((key.name ?? key.value) === 'hash' && (value?.type === 'Literal' || value?.type === 'TemplateLiteral')) {
-				ranges.push(value.range);
+				ranges.push(...literalTextRanges(value));
 			}
 		}
 
@@ -800,7 +804,7 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 				SELECTOR_METHODS.includes(property.name as string) &&
 				(argument?.type === 'Literal' || argument?.type === 'TemplateLiteral')
 			) {
-				ranges.push(argument.range);
+				ranges.push(...literalTextRanges(argument));
 			}
 		}
 
