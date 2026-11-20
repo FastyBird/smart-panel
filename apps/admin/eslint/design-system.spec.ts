@@ -144,7 +144,7 @@ describe('design system lint rules', () => {
 			// Selectors inside at-rules
 			sfc(
 				'<div></div>',
-				'<style>\n@scope (#abc) {\n\t.x { display: block; }\n}\n@supports selector(#fade > a) {\n\t.x { display: block; }\n}\n</style>'
+				'<style>\n@scope (#abc) {\n\t.x { display: block; }\n}\n@supports selector(#fade > a) {\n\t.x { display: block; }\n}\n@supports selector(:is(.item) > #abc) {\n\t.x { display: block; }\n}\n</style>'
 			),
 			// Selector at-rules
 			sfc('<div></div>', '<style lang="scss">\n.x {\n\t@extend #abc;\n}\n@at-root #fade {\n\tdisplay: none;\n}\n</style>'),
@@ -165,6 +165,10 @@ describe('design system lint rules', () => {
 			// A colour condition next to selector() is still a value
 			{
 				...sfc('<div></div>', '<style>\n@supports selector(#abc) and (color: #fff) {\n\t.x { display: block; }\n}\n</style>'),
+				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
+			},
+			{
+				...sfc('<div></div>', '<style>\n@supports selector(:is(.a) > #abc) and (color: #fff) {\n\t.x { display: block; }\n}\n</style>'),
 				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
 			},
 			// At-rule conditions are values, not selectors

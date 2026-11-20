@@ -547,11 +547,38 @@ const cssCode = (text: string, block: IStyleBlock): string => {
 /** At-rules whose prelude is a selector: `@extend #abc;`, `@at-root #abc { … }`, `@scope (#abc) to (.y) { … }` */
 const SELECTOR_AT_RULES = ['extend', 'at-root', 'scope'];
 
+/** Whether the end of `prelude` sits inside an unclosed `selector(` call, counting nested parentheses (`selector(:is(.a) > #abc)`). */
+const insideSelectorFunction = (prelude: string): boolean => {
+	const lower = prelude.toLowerCase();
+
+	for (let open = lower.indexOf('selector('); open !== -1; open = lower.indexOf('selector(', open + 1)) {
+		let depth = 0;
+
+		for (const char of lower.slice(open + 'selector'.length)) {
+			if (char === '(') {
+				depth += 1;
+			} else if (char === ')') {
+				depth -= 1;
+
+				if (depth === 0) {
+					break;
+				}
+			}
+		}
+
+		if (depth > 0) {
+			return true;
+		}
+	}
+
+	return false;
+};
+
 /**
  * Whether the hash at `offset` of the code is part of a selector rather than a value.
  *
  * - The statement it belongs to starts after the last `{`, `}` or `;` (or, in indented syntax, at its line).
- * - An at-rule prelude is a value (`@supports (color: #fff)`), except for `@extend` and `@at-root`.
+ * - An at-rule prelude is a value (`@supports (color: #fff)`), except inside `selector(…)` and for `SELECTOR_AT_RULES`.
  * - Indented syntax: a line is a declaration when it starts with `property:`; any other line is a selector.
  * - Otherwise the hash is in a selector when `{` follows before the statement ends with `;` or `}`.
  */
@@ -565,9 +592,7 @@ const isCssSelectorHash = (code: string, offset: number, indented: boolean): boo
 
 	if (atRule) {
 		// `@supports selector(#abc)`: the argument of selector() is a selector, whatever the at-rule
-		const openSelector = prelude.toLowerCase().lastIndexOf('selector(');
-
-		if (openSelector !== -1 && !prelude.slice(openSelector).includes(')')) {
+		if (insideSelectorFunction(prelude)) {
 			return true;
 		}
 
