@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file */
 import { defineComponent, h, onBeforeUnmount, onMounted } from 'vue';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -44,11 +45,15 @@ vi.mock('../../../modules/config/composables/usePlugins', () => ({
 					type: 'config',
 					components: {
 						pluginConfigEditForm: defineComponent({
-							setup() {
+							emits: ['update:remoteFormChanged'],
+							setup(_props, { emit }) {
 								onMounted(() => lifecycle.mounted());
 								onBeforeUnmount(() => lifecycle.unmounted());
 
-								return () => h('div', { 'data-test-id': 'plugin-form' });
+								return () =>
+									h('div', { 'data-test-id': 'plugin-form' }, [
+										h('button', { 'data-test-id': 'edit', onClick: () => emit('update:remoteFormChanged', true) }),
+									]);
 							},
 						}),
 					},
@@ -87,5 +92,28 @@ describe('IntegrationConfigDialog', () => {
 
 		expect(wrapper.find('[data-test-id="plugin-form"]').exists()).toBe(true);
 		expect(lifecycle.mounted).toHaveBeenCalledTimes(2);
+	});
+
+	it('starts a reopened form with Save disabled, whatever the previous one had changed', async () => {
+		const wrapper = mount(IntegrationConfigDialog, {
+			props: { visible: true, pluginType: 'devices-unifi-protect-plugin', pluginName: 'UniFi Protect' },
+			global: { stubs: { ElDialog: dialogStub, ElScrollbar: false } },
+		});
+
+		await flushPromises();
+
+		const saveButton = () => wrapper.findAllComponents({ name: 'ElButton' }).find((button) => button.text().endsWith('buttons.save'))!;
+
+		expect(saveButton().attributes('disabled')).toBeDefined();
+
+		await wrapper.find('[data-test-id="edit"]').trigger('click');
+
+		expect(saveButton().attributes('disabled')).toBeUndefined();
+
+		await wrapper.setProps({ visible: false });
+		await wrapper.setProps({ visible: true });
+		await flushPromises();
+
+		expect(saveButton().attributes('disabled')).toBeDefined();
 	});
 });

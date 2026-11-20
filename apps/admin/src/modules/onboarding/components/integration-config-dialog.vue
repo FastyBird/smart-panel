@@ -253,6 +253,16 @@ watch(
 	(val: boolean) => {
 		if (val) {
 			fetchConfig();
+		} else {
+			// The form unmounts with the dialog, so what it reported (changed, result, submit/reset requests)
+			// and what the dialog derived from it must not outlive it: the next form starts clean.
+			clearSaveFallback();
+			isSaving.value = false;
+			validationResult.value = null;
+			remoteFormSubmit.value = false;
+			remoteFormReset.value = false;
+			remoteFormResult.value = FormResult.NONE;
+			remoteFormChanged.value = false;
 		}
 	}
 );
