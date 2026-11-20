@@ -1,5 +1,6 @@
 import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
 import { ConnectionState, DataTypeType } from '../../../modules/devices/devices.constants';
+import { currentSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { ModbusBindingRole, ModbusByteOrder, ModbusDataType, ModbusRegisterType } from '../devices-modbus.constants';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
 import { ModbusConnectionError, ModbusExceptionError, ModbusTimeoutError } from '../lib/errors';
@@ -95,7 +96,7 @@ class FakeConnection {
 }
 
 const makeCallbacks = () => ({
-	report: jest.fn<Promise<void>, [string, unknown, Date]>().mockResolvedValue(undefined),
+	report: jest.fn<Promise<void>, [string, unknown, Date, number?]>().mockResolvedValue(undefined),
 	setConnectionState: jest.fn<Promise<void>, [ConnectionState, string?]>().mockResolvedValue(undefined),
 	isCurrent: jest.fn(() => true),
 	setOverloaded: jest.fn<void, [boolean]>(),
@@ -177,7 +178,21 @@ describe('DevicePoller', () => {
 			[ConnectionState.INIT, undefined],
 			[ConnectionState.CONNECTED, undefined],
 		]);
-		expect(callbacks.report).toHaveBeenCalledWith('p1', 7, expect.any(Date));
+		expect(callbacks.report).toHaveBeenCalledWith('p1', 7, expect.any(Date), expect.any(Number));
+	});
+
+	it('numbers a value when its read starts, so a read begun before a proof boundary never answers it', async () => {
+		let boundary = 0;
+		connection.read.mockImplementation(() => {
+			boundary = currentSampleIngress();
+			return Promise.resolve([7]);
+		});
+
+		create(snapshot([read('p1')])).start();
+		await jest.advanceTimersByTimeAsync(0);
+
+		const ingress = callbacks.report.mock.calls[0][3];
+		expect(ingress).toBe(boundary);
 	});
 
 	it('reports only changes', async () => {
@@ -197,7 +212,7 @@ describe('DevicePoller', () => {
 		await jest.advanceTimersByTimeAsync(1000);
 
 		expect(callbacks.report).toHaveBeenCalledTimes(3);
-		expect(callbacks.report).toHaveBeenLastCalledWith('p2', 21, expect.any(Date));
+		expect(callbacks.report).toHaveBeenLastCalledWith('p2', 21, expect.any(Date), expect.any(Number));
 	});
 
 	it('reports null for an unmapped relay value', async () => {
@@ -215,7 +230,7 @@ describe('DevicePoller', () => {
 		).start();
 		await jest.advanceTimersByTimeAsync(0);
 
-		expect(callbacks.report).toHaveBeenCalledWith('relay', null, expect.any(Date));
+		expect(callbacks.report).toHaveBeenCalledWith('relay', null, expect.any(Date), expect.any(Number));
 	});
 
 	it('applies the device byte and word order unless the binding overrides it', async () => {
@@ -250,8 +265,8 @@ describe('DevicePoller', () => {
 
 		expect(connection.read).toHaveBeenCalledTimes(1);
 		expect(connection.read).toHaveBeenCalledWith(expect.objectContaining({ address: 10, count: 3 }));
-		expect(callbacks.report).toHaveBeenCalledWith('p1', null, expect.any(Date));
-		expect(callbacks.report).toHaveBeenCalledWith('p2', null, expect.any(Date));
+		expect(callbacks.report).toHaveBeenCalledWith('p1', null, expect.any(Date), expect.any(Number));
+		expect(callbacks.report).toHaveBeenCalledWith('p2', null, expect.any(Date), expect.any(Number));
 		// The device answered: an exception is not a failed poll
 		expect(callbacks.setConnectionState).toHaveBeenLastCalledWith(ConnectionState.CONNECTED, undefined);
 
@@ -435,7 +450,7 @@ describe('DevicePoller', () => {
 		await jest.advanceTimersByTimeAsync(5000);
 
 		expect(callbacks.report).toHaveBeenCalledTimes(1);
-		expect(callbacks.report).toHaveBeenCalledWith('p1', null, expect.any(Date));
+		expect(callbacks.report).toHaveBeenCalledWith('p1', null, expect.any(Date), undefined);
 		// Lost at the third of six failed polls, then re-asserted by each later one (the runtime deduplicates).
 		expect(callbacks.setConnectionState.mock.calls.filter(([state]) => state === ConnectionState.LOST)).toHaveLength(4);
 	});
@@ -602,7 +617,7 @@ describe('DevicePoller', () => {
 
 		expect(connection.read).toHaveBeenCalledTimes(1);
 		expect(connection.read).toHaveBeenCalledWith(expect.objectContaining({ address: 20, count: 1 }));
-		expect(callbacks.report).toHaveBeenCalledWith('p2', 4, expect.any(Date));
+		expect(callbacks.report).toHaveBeenCalledWith('p2', 4, expect.any(Date), expect.any(Number));
 	});
 
 	it('rejects a read-back when the endpoint does not answer', async () => {
@@ -716,7 +731,7 @@ describe('DevicePoller', () => {
 				expect.objectContaining({ registerType: ModbusRegisterType.HOLDING_REGISTER }),
 			);
 			expect(callbacks.report).toHaveBeenCalledTimes(1);
-			expect(callbacks.report).toHaveBeenCalledWith('p1', 4, expect.any(Date));
+			expect(callbacks.report).toHaveBeenCalledWith('p1', 4, expect.any(Date), expect.any(Number));
 			expect(callbacks.occurrence).not.toHaveBeenCalled();
 		});
 	});
@@ -732,8 +747,8 @@ describe('DevicePoller', () => {
 		).start();
 		await jest.advanceTimersByTimeAsync(0);
 
-		expect(callbacks.report).toHaveBeenCalledWith('humidity', 46, expect.any(Date));
-		expect(callbacks.report).toHaveBeenCalledWith('reading', 45.6, expect.any(Date));
+		expect(callbacks.report).toHaveBeenCalledWith('humidity', 46, expect.any(Date), expect.any(Number));
+		expect(callbacks.report).toHaveBeenCalledWith('reading', 45.6, expect.any(Date), expect.any(Number));
 	});
 
 	it.each([
@@ -749,7 +764,7 @@ describe('DevicePoller', () => {
 		create(snapshot([read('p1', { scale: 0.1 }, dataType)])).start();
 		await jest.advanceTimersByTimeAsync(0);
 
-		expect(callbacks.report).toHaveBeenCalledWith('p1', 3, expect.any(Date));
+		expect(callbacks.report).toHaveBeenCalledWith('p1', 3, expect.any(Date), expect.any(Number));
 	});
 
 	describe('warnings', () => {
@@ -863,7 +878,7 @@ describe('DevicePoller', () => {
 
 			expect(connection.read).toHaveBeenCalledTimes(2);
 			expect(callbacks.report).toHaveBeenCalledTimes(1);
-			expect(callbacks.report).toHaveBeenCalledWith('p1', null, expect.any(Date));
+			expect(callbacks.report).toHaveBeenCalledWith('p1', null, expect.any(Date), expect.any(Number));
 			expect(
 				warn.mock.calls.filter(([message]) => String(message).includes('does not decode to a finite number')),
 			).toHaveLength(1);

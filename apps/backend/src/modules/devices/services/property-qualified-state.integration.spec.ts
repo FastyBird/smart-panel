@@ -180,6 +180,24 @@ describe('qualified samples and producer state', () => {
 		expect(lastSample().commandEcho).toBeUndefined();
 	});
 
+	it('withdraws a live value contradicted by a later acknowledgement with the same sample time', async () => {
+		await report(20);
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		await report(21, { ...evidence(base), commandEcho: true });
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect(invalidated).toHaveBeenCalledTimes(1);
+		// Same-time display ordering is unchanged: the report keeps the display.
+		expect(property.value.value).toBe(20);
+
+		// An acknowledgement of the qualified value at the same time withdraws nothing.
+		await report(20, evidence(base + 0));
+		jest.setSystemTime(base + 1_000);
+		await report(20, evidence(base + 1_000));
+		await report(20, { ...evidence(base + 1_000), commandEcho: true });
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		expect(invalidated).toHaveBeenCalledTimes(1);
+	});
+
 	it('marks replays on accepted samples, and only a later device report proves the state', async () => {
 		const lastSample = (): Record<string, unknown> =>
 			(accepted.mock.lastCall as [{ sample: Record<string, unknown> }])[0].sample;

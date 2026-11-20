@@ -295,8 +295,26 @@ export class PropertyValueService {
 				if (
 					watermark &&
 					(sampledAt < watermark.sampledAt || (sampledAt === watermark.sampledAt && (watermark.invalid || !live)))
-				)
+				) {
+					// A command acknowledgement that arrives after the qualified report, with the same sample time
+					// (millisecond receipt clocks), still contradicts it: withdraw it, but display nothing.
+					const qualified = this.samples.get(key);
+					if (
+						evidence.commandEcho === true &&
+						sampledAt === watermark.sampledAt &&
+						qualified !== undefined &&
+						qualified.value !== value &&
+						(qualified.ingressSequence ?? -Infinity) < ingress &&
+						this.isSampleValueValid(property, value)
+					) {
+						this.samples.delete(key);
+						this.events?.emit(
+							EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
+							Object.freeze({ propertyId: key, evidence: this.cloneEvidence(evidence) }),
+						);
+					}
 					return { changed: false, state: null };
+				}
 				const validClock =
 					Number.isFinite(sampledAt) &&
 					Number.isFinite(receivedAt) &&

@@ -482,7 +482,8 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 
 	private pollerCallbacks(deviceId: string, endpointId: string, isCurrent: () => boolean): PollerCallbacks {
 		return {
-			report: (propertyId, value, sampledAt) => this.report(propertyId, value, sampledAt, isCurrent),
+			report: (propertyId, value, sampledAt, ingressSequence) =>
+				this.report(propertyId, value, sampledAt, isCurrent, ingressSequence),
 			setConnectionState: (state, reason) => this.setDeviceState(deviceId, state, reason),
 			isCurrent,
 			setOverloaded: () => this.refreshOverload(endpointId),
@@ -638,11 +639,19 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		value: ModbusPropertyValue | null,
 		sampledAt: Date,
 		isCurrent: () => boolean,
+		ingressSequence?: number,
 	): Promise<void> {
 		await this.channelsPropertiesService.reportSample(
 			propertyId,
 			toInstance(UpdateModbusChannelPropertyDto, { type: DEVICES_MODBUS_TYPE, value }),
-			{ sampledAt, receivedAt: new Date(), observedAt: sampledAt, provenance: 'live', isCurrent },
+			{
+				sampledAt,
+				receivedAt: new Date(),
+				observedAt: sampledAt,
+				provenance: 'live',
+				isCurrent,
+				...(ingressSequence !== undefined ? { ingressSequence } : {}),
+			},
 			{ skipUnchangedMetadata: true },
 		);
 	}

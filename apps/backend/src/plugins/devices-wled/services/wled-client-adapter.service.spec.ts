@@ -7,6 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import WebSocket from 'ws';
 
+import { currentSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { WledAdapterCallbacks, WledDeviceContext, WledDeviceStateChangedEvent } from '../interfaces/wled.interface';
 
 import { WledClientAdapterService } from './wled-client-adapter.service';
@@ -557,6 +558,17 @@ describe('WledClientAdapterService', () => {
 			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 			await service.connect('192.168.1.100', 'wled-test');
 			jest.clearAllMocks();
+		});
+		it('numbers each observation when it is captured, before the mapper runs', async () => {
+			const before = currentSampleIngress();
+			mockFetchSuccess(mockWledState);
+			await service.refreshState('192.168.1.100');
+			mockFetchSuccess(mockWledState);
+			await service.refreshState('192.168.1.100');
+			const calls = callbacks.onDeviceStateChanged.mock.calls as [WledDeviceStateChangedEvent][];
+			const [first, second] = calls.map(([event]) => event.observation?.evidence.ingressSequence ?? NaN);
+			expect(first).toBeGreaterThan(before);
+			expect(second).toBeGreaterThan(first);
 		});
 		it('keeps stable source authority through unchanged heartbeats and revokes it on disconnect', async () => {
 			mockFetchSuccess(mockWledState);

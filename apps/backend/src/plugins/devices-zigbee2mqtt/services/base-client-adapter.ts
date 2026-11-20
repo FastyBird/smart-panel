@@ -847,14 +847,18 @@ export abstract class Z2mBaseClientAdapter {
 				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
-			// A replay is never a current native observation: keep the last qualified one.
+			// A replay is never a current native observation: keep the last qualified one. A possible command
+			// acknowledgement is not one either, and it may show values the device has not taken: drop the
+			// last observation until the device reports again.
 			if (
 				!metadata.isReplay &&
 				metadata.sourceIdentity &&
 				Array.isArray(device?.definition?.exposes) &&
 				device.definition.exposes.some((expose) => expose.type === 'climate')
-			)
-				this.nativeSamples.set(friendlyName, { state: Object.freeze({ ...state }), metadata });
+			) {
+				if (metadata.commandEcho === true) this.nativeSamples.delete(friendlyName);
+				else this.nativeSamples.set(friendlyName, { state: Object.freeze({ ...state }), metadata });
+			}
 			void this.callbacks.onDeviceStateChanged?.(friendlyName, state, metadata);
 		} catch (error) {
 			this.logger.warn(`Failed to parse state for device ${friendlyName}`, {

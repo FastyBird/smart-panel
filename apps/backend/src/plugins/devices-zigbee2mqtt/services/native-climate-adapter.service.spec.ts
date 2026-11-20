@@ -229,6 +229,17 @@ describe('Zigbee native climate production profile', () => {
 		expect(unit.observe().available).toBe(false);
 	});
 
+	it('never takes a possible command acknowledgement as a native observation, and drops the last one', async () => {
+		adapter.feed('trv', { local_temperature: 20, system_mode: 'off' });
+		expect(unit.observe()).toMatchObject({ available: true, mode: 'off' });
+		await adapter.publishCommand('trv', { system_mode: 'heat' });
+		adapter.feed('trv', { local_temperature: 20, system_mode: 'heat' });
+		expect(unit.observe().available).toBe(false);
+		// The device's own report after the acknowledgement qualifies again.
+		adapter.feed('trv', { local_temperature: 20, system_mode: 'heat' });
+		expect(unit.observe()).toMatchObject({ available: true, mode: 'heat' });
+	});
+
 	it('preserves an older explicit measurement timestamp instead of renewing it at packet receipt', () => {
 		adapter.feed('trv', { local_temperature: 20, last_seen: '2026-10-31T11:59:15Z' });
 		const observed = unit.observe();
