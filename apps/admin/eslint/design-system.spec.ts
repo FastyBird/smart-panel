@@ -187,6 +187,12 @@ describe('design system lint rules', () => {
 				'<script setup lang="ts">\ndocument.querySelector(\'#abc\');\ndocument.querySelectorAll(`#fade`);\n</script>'
 			),
 			// Router location hashes are fragments, also in the result branches of a binding
+			sfc("<a :href=\"active ? '#abc' : '#def'\"></a><router-link :to=\"'#add'\"></router-link>"),
+			sfc('<div></div>', "<script setup lang=\"ts\">\ndocument['querySelector']('#abc');\n</script>"),
+			{
+				...sfc('<div></div>', "<script setup lang=\"ts\">\nrouter.push('#abc' as const);\nrouter.push({ hash: '#def' } as const);\n</script>"),
+				languageOptions: { parserOptions: { parser: tsParser } },
+			},
 			sfc("<router-link :to=\"docs ? { hash: '#abc' } : '/help'\"></router-link>"),
 			sfc(
 				"<router-link :to=\"{ name: 'docs', hash: '#abc' }\"></router-link>",
@@ -234,6 +240,14 @@ describe('design system lint rules', () => {
 			{
 				...sfc('<div></div>', '<style lang="sass">\n/* Old palette\n  old values\n.x\n  color: #fff\n</style>'),
 				errors: [{ messageId: 'hex', line: 5 }],
+			},
+			// Only the results of a link binding are fragments, not its condition or other attributes
+			{
+				...sfc("<a :href=\"'#fff' === tone ? '/a' : '/b'\" :title=\"on ? '#abc' : ''\"></a>"),
+				errors: [
+					{ messageId: 'hex', data: { value: '#fff' } },
+					{ messageId: 'hex', data: { value: '#abc' } },
+				],
 			},
 			// A custom directive argument named `to` is not a router destination; a condition is not a result
 			{

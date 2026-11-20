@@ -829,8 +829,11 @@ const within = (index: number, ranges: [number, number][]): boolean => ranges.so
 /** `issue #123`, `PR #1234`, `Fixes #123`: a number after a reference word in text or script, never in CSS */
 const ISSUE_REFERENCE = /\b(?:issues?|prs?|pull requests?|tickets?|fixes|fixed|closes|closed|refs?|see)\s*$/i;
 
-/** Fragment references in the template and script: href="#top", :href="'#top'", :to="`#top`", url(#gradient) */
-const FRAGMENT_REFERENCE = /(?:\b(?:href|to)\s*=\s*["'](?:\s*['"`])?|\burl\(\s*['"]?)$/i;
+/**
+ * Fragment references in static text: href="#top", to="#top", url(#gradient). Bound `:href` / `:to` values are
+ * resolved from the AST (`referenceRanges`), so a literal in their condition is still checked.
+ */
+const FRAGMENT_REFERENCE = /(?:(?<![:.\w-])(?:href|to)\s*=\s*["']|\burl\(\s*['"]?)$/i;
 
 /** DOM methods whose first argument is a CSS selector (`document.querySelector('#abc')`) */
 const SELECTOR_METHODS = ['querySelector', 'querySelectorAll', 'closest', 'matches'];
@@ -863,6 +866,42 @@ const isRouterReceiver = (node: TemplateNode | undefined): boolean => {
 	return false;
 };
 
+/** `router.push`, `document['querySelector']`: the static name of a called method, or null */
+const methodName = (callee: TemplateNode | undefined): string | null => {
+	if (callee?.type !== 'MemberExpression') {
+		return null;
+	}
+
+	const property = callee.property as TemplateNode;
+
+	if (callee.computed !== true) {
+		return property.type === 'Identifier' ? (property.name as string) : null;
+	}
+
+	return property.type === 'Literal' && typeof property.value === 'string' ? property.value : null;
+};
+
+/**
+ * The string and template literals a bound expression can evaluate to: itself, the result branches of
+ * conditional and logical expressions, and the inside of TypeScript wrappers (`:href="on ? '#a' : '#b'"`)
+ */
+const resultLiterals = (node: TemplateNode | null | undefined): TemplateNode[] => {
+	const current = unwrapTypeScript(node ?? null);
+
+	switch (current?.type) {
+		case 'Literal':
+			return typeof current.value === 'string' ? [current] : [];
+		case 'TemplateLiteral':
+			return [current];
+		case 'ConditionalExpression':
+			return [...resultLiterals(current.consequent as TemplateNode), ...resultLiterals(current.alternate as TemplateNode)];
+		case 'LogicalExpression':
+			return [...(current.operator === '&&' ? [] : resultLiterals(current.left as TemplateNode)), ...resultLiterals(current.right as TemplateNode)];
+		default:
+			return [];
+	}
+};
+
 /** Whether an object literal is a router location: the value of a `to` binding or the argument of a router method */
 const isRouterLocation = (object: TemplateNode, parents: Map<unknown, TemplateNode>): boolean => {
 	// A result branch of a conditional or logical expression is the value of that expression
@@ -871,6 +910,8 @@ const isRouterLocation = (object: TemplateNode, parents: Map<unknown, TemplateNo
 	let parent = parents.get(node) ?? null;
 
 	while (
+		((parent?.type === 'TSAsExpression' || parent?.type === 'TSSatisfiesExpression' || parent?.type === 'TSNonNullExpression') &&
+			parent.expression === node) ||
 		(parent?.type === 'ConditionalExpression' && (parent.consequent === node || parent.alternate === node)) ||
 		(parent?.type === 'LogicalExpression' && (parent.right === node || (parent.operator !== '&&' && parent.left === node)))
 	) {
@@ -888,13 +929,8 @@ const isRouterLocation = (object: TemplateNode, parents: Map<unknown, TemplateNo
 
 	if (parent?.type === 'CallExpression' && (parent.arguments as unknown[])[0] === node) {
 		const callee = parent.callee as TemplateNode;
-		const property = callee.type === 'MemberExpression' ? (callee.property as TemplateNode) : undefined;
 
-		return (
-			property?.type === 'Identifier' &&
-			ROUTER_METHODS.includes(property.name as string) &&
-			isRouterReceiver(callee.object as TemplateNode | undefined)
-		);
+		return ROUTER_METHODS.includes(methodName(callee) ?? '') && isRouterReceiver(callee.object as TemplateNode | undefined);
 	}
 
 	return false;
@@ -942,18 +978,24 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 
 		if (current.type === 'CallExpression') {
 			const callee = current.callee as TemplateNode | undefined;
-			const property = callee?.type === 'MemberExpression' ? (callee.property as TemplateNode) : undefined;
-			const argument = (current.arguments as TemplateNode[] | undefined)?.[0];
+			const name = methodName(callee) ?? '';
 
-			// `document.querySelector('#abc')`, and string locations such as `router.push('#abc')`
-			const selector = property?.type === 'Identifier' && SELECTOR_METHODS.includes(property.name as string);
-			const routerLocation =
-				property?.type === 'Identifier' &&
-				ROUTER_METHODS.includes(property.name as string) &&
-				isRouterReceiver((callee as TemplateNode).object as TemplateNode | undefined);
+			// `document.querySelector('#abc')`, and string locations such as `router.push('#abc' as const)`
+			const selector = SELECTOR_METHODS.includes(name);
+			const routerLocation = ROUTER_METHODS.includes(name) && isRouterReceiver(callee?.object as TemplateNode | undefined);
 
-			if ((selector || routerLocation) && (argument?.type === 'Literal' || argument?.type === 'TemplateLiteral')) {
-				ranges.push(...literalTextRanges(argument));
+			if (selector || routerLocation) {
+				resultLiterals((current.arguments as TemplateNode[] | undefined)?.[0]).forEach((literal) => ranges.push(...literalTextRanges(literal)));
+			}
+		}
+
+		// `:href="active ? '#abc' : '#def'"`, `:to="'#abc'"`: the literal results of a link binding are fragments
+		if (current.type === 'VAttribute' && current.directive === true) {
+			const key = current.key as { name?: { name?: string }; argument?: { name?: string } | null };
+			const value = current.value as { expression?: TemplateNode | null } | null;
+
+			if (key.name?.name === 'bind' && (key.argument?.name === 'href' || key.argument?.name === 'to')) {
+				resultLiterals(value?.expression).forEach((literal) => ranges.push(...literalTextRanges(literal)));
 			}
 		}
 
