@@ -60,6 +60,29 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		return DEVICES_ZIGBEE2MQTT_TYPE;
 	}
 
+	/**
+	 * Ask Zigbee2MQTT to read the property from the device (`<device>/get`). The request is sent only after
+	 * every pending command to the device was acknowledged or timed out, so the answer is not an echo.
+	 * Properties without a plain Zigbee2MQTT field (virtual commands, composite colour) are not read.
+	 */
+	async requestPropertyRead({ device, channel, property }: Omit<IDevicePropertyData, 'value'>): Promise<boolean> {
+		if (
+			!(device instanceof Zigbee2mqttDeviceEntity) ||
+			!(channel instanceof Zigbee2mqttChannelEntity) ||
+			!(property instanceof Zigbee2mqttChannelPropertyEntity) ||
+			!device.enabled ||
+			property.identifier.startsWith('fb_virtual_')
+		)
+			return false;
+		const field = this.deviceMapper.getPropertySampleMapping(property, channel).field;
+		if (!field || field === 'color') return false;
+		const adapter = this.zigbee2mqttService.getActiveAdapter();
+		const friendlyName = device.identifier;
+		await adapter.whenCommandsAcknowledged(friendlyName);
+		if (this.zigbee2mqttService.getActiveAdapter() !== adapter || !adapter.isConnected()) return false;
+		return adapter.requestState(friendlyName, [field]);
+	}
+
 	async process({ device, channel, property, value }: IZigbee2mqttDevicePropertyData): Promise<boolean> {
 		return this.processBatch([{ device, channel, property, value }]);
 	}

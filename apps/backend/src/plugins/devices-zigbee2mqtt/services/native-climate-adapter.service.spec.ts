@@ -28,7 +28,7 @@ class PacketAdapter extends Z2mBaseClientAdapter {
 	reopenStartupReplayWindow(): void {
 		this.openStartupReplayWindow();
 	}
-	publishCommand(...args: Parameters<Z2mBaseClientAdapter['publishCommand']>): Promise<boolean> {
+	protected sendCommand(...args: Parameters<Z2mBaseClientAdapter['publishCommand']>): Promise<boolean> {
 		return this.send(...args);
 	}
 	requestState(): Promise<boolean> {

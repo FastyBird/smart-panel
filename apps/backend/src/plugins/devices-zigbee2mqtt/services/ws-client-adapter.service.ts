@@ -196,10 +196,10 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	 * The z2m frontend extension automatically prepends the baseTopic when
 	 * forwarding the message to MQTT internally.
 	 */
-	async publishCommand(
+	protected async sendCommand(
 		friendlyName: string,
 		payload: Z2mSetPayload,
-		isCurrent: () => boolean = () => true,
+		isCurrent: () => boolean,
 	): Promise<boolean> {
 		if (!isCurrent()) return false;
 		if (!this.ws || !this.connected) {

@@ -88,7 +88,7 @@ class FixtureAdapter extends Z2mBaseClientAdapter {
 		this.resetState();
 		return Promise.resolve();
 	}
-	publishCommand(): Promise<boolean> {
+	protected sendCommand(): Promise<boolean> {
 		return Promise.resolve(true);
 	}
 	requestState(): Promise<boolean> {

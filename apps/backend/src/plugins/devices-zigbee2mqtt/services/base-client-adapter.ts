@@ -1,6 +1,7 @@
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ZigbeeSourceIdentity, zigbeeSourceIdentity } from '../contracts/sample-source.contract';
 import {
+	COMMAND_ECHO_WINDOW_MS,
 	DEFAULT_MQTT_BASE_TOPIC,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	STARTUP_REPLAY_WINDOW_MAX_MS,
@@ -34,6 +35,15 @@ export abstract class Z2mBaseClientAdapter {
 	protected readonly logger: ExtensionLoggerService;
 
 	private sourceGeneration = 0;
+	/**
+	 * Commands whose acknowledgement may still arrive, per device. Zigbee2MQTT publishes the commanded
+	 * state once the device accepted the command, in the same form as a report, so while a window is open
+	 * every state message of the device is treated as a possible acknowledgement (`commandEcho`). A window
+	 * closes after {@link COMMAND_ECHO_WINDOW_MS}, or earlier when a message carries every commanded value
+	 * and the command changed all of them: only then can that message be told apart from a merged report
+	 * that already carried the same values.
+	 */
+	private readonly commandEchoWindows = new Map<string, CommandEchoWindow[]>();
 	private readonly nativeEpochs = new Map<string, object>();
 	/** Native capability/availability changes expire only this unit, without invalidating unrelated measurements. */
 	getNativeClimateGuard(friendlyName: string): () => boolean {
@@ -407,7 +417,39 @@ export abstract class Z2mBaseClientAdapter {
 	/**
 	 * Publish a command to a device
 	 */
-	abstract publishCommand(friendlyName: string, payload: Z2mSetPayload, isCurrent?: () => boolean): Promise<boolean>;
+	async publishCommand(
+		friendlyName: string,
+		payload: Z2mSetPayload,
+		isCurrent: () => boolean = () => true,
+	): Promise<boolean> {
+		// Opened before sending: the acknowledgement may arrive before the publish callback.
+		const window = this.openCommandEchoWindow(friendlyName, payload);
+		let sent = false;
+		try {
+			sent = await this.sendCommand(friendlyName, payload, isCurrent);
+		} finally {
+			if (!sent) window.close();
+		}
+		return sent;
+	}
+
+	/**
+	 * Wait until no command sent to the device can still be acknowledged, so that every later state
+	 * message of the device is a report. Resolves at once when nothing is pending.
+	 */
+	async whenCommandsAcknowledged(friendlyName: string): Promise<void> {
+		await Promise.all((this.commandEchoWindows.get(friendlyName) ?? []).map((window) => window.closed));
+	}
+
+	/**
+	 * Send a `/set` command to the device. Zigbee2MQTT publishes the commanded state once the device
+	 * accepts it; that publication is marked as a command echo (see {@link publishCommand}).
+	 */
+	protected abstract sendCommand(
+		friendlyName: string,
+		payload: Z2mSetPayload,
+		isCurrent: () => boolean,
+	): Promise<boolean>;
 
 	/**
 	 * Request current state from a device
@@ -760,7 +802,10 @@ export abstract class Z2mBaseClientAdapter {
 		const observedAt = new Date();
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
-			const metadata = this.buildStateMetadata(friendlyName, state, observedAt, isRetained, options);
+			const built = this.buildStateMetadata(friendlyName, state, observedAt, isRetained, options);
+			// A replay of our own cache or a retained message is not an acknowledgement of a new command.
+			const commandEcho = options?.isCached !== true && !isRetained && this.takeCommandEcho(friendlyName, state);
+			const metadata: Z2mDeviceStateMetadata = commandEcho ? { ...built, commandEcho: true } : built;
 
 			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
 
@@ -851,5 +896,69 @@ export abstract class Z2mBaseClientAdapter {
 		this.nativeSamples.clear();
 		this.nativeEpochs.clear();
 		this.sourceIdentities.clear();
+		// Acknowledgements of commands sent on a closed connection are replays of the next connection.
+		for (const windows of [...this.commandEchoWindows.values()]) for (const window of windows) window.close();
 	}
+
+	private openCommandEchoWindow(friendlyName: string, payload: Z2mSetPayload): CommandEchoWindow {
+		let release!: () => void;
+		const closed = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const commanded = Object.freeze({ ...(payload as Record<string, unknown>) });
+		const before = this.stateCache.get(friendlyName) ?? {};
+		const window: CommandEchoWindow = {
+			commanded,
+			changesState: Object.entries(commanded).every(([key, value]) => !echoesCommandedValue(before[key], value)),
+			closed,
+			close: () => {
+				clearTimeout(timer);
+				const windows = this.commandEchoWindows.get(friendlyName);
+				const remaining = windows?.filter((other) => other !== window) ?? [];
+				if (remaining.length > 0) this.commandEchoWindows.set(friendlyName, remaining);
+				else if (windows) this.commandEchoWindows.delete(friendlyName);
+				release();
+			},
+		};
+		const timer = setTimeout(() => window.close(), COMMAND_ECHO_WINDOW_MS);
+		timer.unref?.();
+		this.commandEchoWindows.set(friendlyName, [...(this.commandEchoWindows.get(friendlyName) ?? []), window]);
+		return window;
+	}
+
+	/**
+	 * Whether a state message may acknowledge a pending command. Every message received while a window is
+	 * open counts. For a command that changed the state, the first message carrying all commanded values
+	 * is the acknowledgement and closes the window.
+	 */
+	private takeCommandEcho(friendlyName: string, state: Record<string, unknown>): boolean {
+		const windows = this.commandEchoWindows.get(friendlyName);
+		if (!windows || windows.length === 0) return false;
+		for (const window of windows) {
+			if (
+				window.changesState &&
+				Object.entries(window.commanded).every(([key, value]) => echoesCommandedValue(state[key], value))
+			)
+				window.close();
+		}
+		return true;
+	}
+}
+
+interface CommandEchoWindow {
+	readonly commanded: Readonly<Record<string, unknown>>;
+	/** Every commanded value differed from the device's last known state when the command was sent. */
+	readonly changesState: boolean;
+	readonly closed: Promise<void>;
+	close(): void;
+}
+
+function echoesCommandedValue(reported: unknown, commanded: unknown): boolean {
+	if (typeof commanded === 'string' && typeof reported === 'string')
+		return reported.toLowerCase() === commanded.toLowerCase();
+	if (commanded !== null && typeof commanded === 'object' && reported !== null && typeof reported === 'object')
+		return Object.entries(commanded as Record<string, unknown>).every(([key, value]) =>
+			echoesCommandedValue((reported as Record<string, unknown>)[key], value),
+		);
+	return reported === commanded;
 }

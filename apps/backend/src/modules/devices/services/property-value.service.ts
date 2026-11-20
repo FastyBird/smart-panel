@@ -387,6 +387,8 @@ export class PropertyValueService {
 							? { nativeCoverTagPresent: evidence.nativeCoverTagPresent }
 							: {}),
 						...(evidence.commandObservation ? { commandObservation: evidence.commandObservation } : {}),
+						...(replay ? { replay: true as const } : {}),
+						...(evidence.commandEcho === true ? { commandEcho: true as const } : {}),
 						...(live ? { acceptanceGeneration: ++this.sampleGeneration } : {}),
 						quality: 'good',
 						reasons: Object.freeze([]),
@@ -790,6 +792,7 @@ export class PropertyValueService {
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
 			...(evidence.replay === true ? { replay: true } : {}),
 			...(evidence.ageUnknown === true ? { ageUnknown: true } : {}),
+			...(evidence.commandEcho === true ? { commandEcho: true } : {}),
 		});
 	}
 

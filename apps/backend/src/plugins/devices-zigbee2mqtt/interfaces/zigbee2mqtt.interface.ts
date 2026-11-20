@@ -56,6 +56,11 @@ export interface Z2mDeviceStateMetadata {
 	 * replay, or inside the startup replay window. Replays never trigger input occurrences.
 	 */
 	isReplay?: boolean;
+	/**
+	 * The packet may acknowledge a command Smart Panel sent (it arrived while the command was pending).
+	 * It still updates values, but never proves the device's state.
+	 */
+	commandEcho?: boolean;
 	/** Stable connection/configuration authority, independent of individual packet arrival. */
 	sourceIsCurrent?: () => boolean;
 	sourceIdentity?: ZigbeeSourceIdentity | null;

@@ -12,9 +12,11 @@ import { PropertyValueState, clonePropertyValueState } from '../models/property-
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
+import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyProducerRegistryService } from './property-producer.registry.service';
+import { PropertyReadProofService } from './property-read-proof.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
@@ -147,6 +149,30 @@ describe('qualified samples and producer state', () => {
 		producers.onModuleDestroy();
 		reports.onModuleDestroy();
 		jest.useRealTimers();
+	});
+
+	it('marks command acknowledgements and replays on accepted samples, and neither proves the state', async () => {
+		const lastSample = (): Record<string, unknown> =>
+			(accepted.mock.lastCall as [{ sample: Record<string, unknown> }])[0].sample;
+		const proof = new PropertyReadProofService(new PlatformRegistryService(), events).observeNextReport(
+			{ device: { type: 'none' } as never, channel: {} as never, property },
+			{ timeoutMs: 5_000 },
+		);
+		jest.setSystemTime(base + 1_000);
+		await report(21, { ...evidence(base + 1_000), commandEcho: true });
+		expect(lastSample()).toMatchObject({ value: 21, provenance: 'live', commandEcho: true });
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(21);
+		jest.setSystemTime(base + 2_000);
+		await report(22, { ...evidence(base + 2_000), replay: true });
+		expect(lastSample()).toMatchObject({ value: 22, replay: true });
+		expect(lastSample().commandEcho).toBeUndefined();
+
+		jest.setSystemTime(base + 3_000);
+		await report(23, evidence(base + 3_000));
+		const sample = lastSample();
+		expect(sample.replay).toBeUndefined();
+		expect(sample.commandEcho).toBeUndefined();
+		await expect(proof).resolves.toMatchObject({ status: 'reported', sample: { value: 23 }, requested: false });
 	});
 
 	it.each([21, null])('drops an obsolete provider generation before valid or fault admission: %s', async (value) => {

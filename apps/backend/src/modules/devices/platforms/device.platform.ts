@@ -74,5 +74,14 @@ export interface IDevicePlatform {
 
 	usesAuthoritativePropertyReadback?(property: ChannelPropertyEntity): boolean;
 
+	/**
+	 * Optional: ask the device for a fresh report of one property's current state. Resolve `true` once the
+	 * request is on its way, `false` when it could not be sent. The answer arrives as an ordinary sample
+	 * report. Any command sent earlier must be settled first, or its acknowledgement must be reported with
+	 * `commandEcho`, so that no later sample is an echo of it. Platforms without this still work: callers
+	 * then wait for the device's next report.
+	 */
+	requestPropertyRead?(target: Omit<IDevicePropertyData, 'value'>): Promise<boolean>;
+
 	getType(): string;
 }
