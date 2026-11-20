@@ -8,13 +8,13 @@
 			:key="`${index}-${item.label}`"
 			class="flex flex-col gap-0.5 min-w-0"
 		>
-			<dt class="text-caption">{{ item.label }}</dt>
+			<dt class="text-help">{{ item.label }}</dt>
 			<dd
 				:class="['m-0 break-words', item.mono ? 'text-mono text-default' : 'text-body']"
 				data-test-id="kv-grid-value"
 			>
 				<template v-if="isEmpty(item.value)">
-					<span class="text-muted">{{ t('application.value.notAvailable') }}</span>
+					<span class="text-secondary">{{ t('application.value.notAvailable') }}</span>
 				</template>
 				<a
 					v-else-if="item.href"
@@ -45,6 +45,8 @@ const props = withDefaults(defineProps<KvGridProps>(), {
 });
 
 const { t } = useI18n();
+
+// Labels and N/A use the secondary text colour, which keeps 4.5:1 on cards and on the page background
 
 // One column on phones; the requested count from tablet landscape up (spec section 6)
 const COLUMNS: Record<NonNullable<KvGridProps['cols']>, string> = {
