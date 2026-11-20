@@ -1,164 +1,170 @@
-import { type ComponentPublicInstance, type Ref, ref } from 'vue';
-import { type Router, createRouter, createWebHistory } from 'vue-router';
+import { computed, ref } from 'vue';
+import { createRouter, createWebHistory } from 'vue-router';
 
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { VueWrapper, mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
 import { RouteNames } from '../../app.constants';
-import { useBreakpoints } from '../composables/composables';
+import type { SizeClass } from '../composables/types';
 
 import LayoutDefault from './layout-default.vue';
 
-type LayoutDefaultInstance = ComponentPublicInstance<{ menuState: boolean; mainMenuCollapsed: boolean; onToggleMenu: () => void }>;
+const sizeClass = ref<SizeClass>('dt');
 
-vi.mock('../assets/images/fb_row.svg?component', () => ({
-	default: {
-		template: '<svg data-test-id="logo"></svg>',
-	},
+vi.mock('../composables/useSizeClass', () => ({
+	useSizeClass: () => ({
+		sizeClass,
+		isPhone: computed(() => sizeClass.value === 'phone'),
+		isTabletPortrait: computed(() => sizeClass.value === 'tp'),
+		isTabletLandscape: computed(() => sizeClass.value === 'tl'),
+		isDesktop: computed(() => sizeClass.value === 'dt' || sizeClass.value === 'wd'),
+		isTouch: computed(() => false),
+	}),
+}));
+
+vi.mock('../../assets/images/fb_row.svg?component', () => ({
+	default: { template: '<svg data-test-id="logo"></svg>' },
 }));
 
 vi.mock('../components/components', () => ({
-	// Renders the `button-right` slot for real so the mobile menu toggle button (and its
-	// accessible name) can be asserted on - every other slot stays uninvoked, matching the
-	// other AppBar stand-ins below that never render anything AppBar would put around it.
+	// Renders the `button-right` slot for real so the phone menu button can be asserted on
 	AppBar: { template: '<div data-test-id="app-bar"><slot name="button-right" /></div>' },
-	AppNavigation: { template: '<div data-test-id="app-navigation"></div>' },
-	AppSidebar: { template: '<div data-test-id="app-sidebar"></div>' },
-	AppTopBar: { template: '<div data-test-id="app-top-bar"></div>' },
+	AppSidebar: {
+		props: ['menuCollapsed', 'accountActions'],
+		emits: ['navigate'],
+		template:
+			'<div data-test-id="app-sidebar" :data-collapsed="String(!!menuCollapsed)" :data-account="String(!!accountActions)" @click="$emit(\'navigate\')"></div>',
+	},
+	AppTopBar: {
+		props: ['menuCollapsed', 'menuButton'],
+		emits: ['update:menuCollapsed', 'open-menu'],
+		template:
+			'<button data-test-id="app-top-bar" :data-menu-button="menuButton" @click="menuButton === \'collapse\' ? $emit(\'update:menuCollapsed\', !menuCollapsed) : $emit(\'open-menu\')"></button>',
+	},
 }));
-vi.mock('../composables/useBreakpoints', () => ({
-	useBreakpoints: vi.fn(),
-}));
-// Mocks the direct file, not the module's `components/components` barrel: `layout-default.vue`
-// imports `NotificationBell` straight from its own file (see the comment there), so mocking the
-// barrel never intercepts it - matching the pattern in `app-top-bar.spec.ts`.
+
+// `layout-default.vue` imports the bell from its own file, not the module barrel
 vi.mock('../../modules/notifications/components/notification-bell.vue', () => ({
 	default: { name: 'NotificationBell', template: '<div data-test-id="notification-bell"></div>' },
 }));
-// Keeps the rest of the real module (`src/locales/index.ts` calls the real `createI18n` as a
-// side effect of an unrelated barrel import below) and only swaps `useI18n` itself.
+
 vi.mock('vue-i18n', async () => {
 	const actual = await vi.importActual('vue-i18n');
 
-	return {
-		...actual,
-		useI18n: () => ({
-			t: (key: string) => key,
-		}),
-	};
+	return { ...actual, useI18n: () => ({ t: (key: string) => key }) };
 });
 
-describe('LayoutDefault', () => {
-	let wrapper: VueWrapper<LayoutDefaultInstance>;
-	let mockBreakpoints: Record<string, Ref<boolean>>;
-	let mockRouter: Router;
+const render = () => {
+	const router = createRouter({ history: createWebHistory(), routes: [{ path: '/', name: RouteNames.ROOT, component: {} }] });
 
-	beforeEach(() => {
-		vi.clearAllMocks();
-
-		mockRouter = createRouter({
-			history: createWebHistory(),
-			routes: [{ path: '/', name: RouteNames.ROOT, component: {} }],
-		});
-
-		mockBreakpoints = {
-			isMDDevice: ref(false),
-			isXLDevice: ref(true),
-		};
-		(useBreakpoints as Mock).mockReturnValue(mockBreakpoints);
-
-		wrapper = mount(LayoutDefault, {
-			global: {
-				plugins: [mockRouter],
+	return mount(LayoutDefault, {
+		global: {
+			plugins: [router],
+			stubs: {
+				// The drawer body renders only while it is open
+				ElDrawer: { props: ['modelValue'], template: '<div v-if="modelValue"><slot /></div>' },
 			},
-		}) as VueWrapper<LayoutDefaultInstance>;
+		},
+	});
+};
 
-		vi.spyOn(console, 'warn').mockImplementation((msg) => {
-			if (msg.includes('Component is missing template or render function')) return;
+const find = (wrapper: ReturnType<typeof render>, id: string) => wrapper.find(`[data-test-id="${id}"]`);
 
-			if (typeof msg !== 'undefined') {
-				console.warn(msg);
-			}
-		});
+describe('LayoutDefault', () => {
+	beforeEach(() => {
+		sizeClass.value = 'dt';
 	});
 
-	it('renders correctly', () => {
-		expect(wrapper.exists()).toBe(true);
+	it('shows the full sidebar on desktop and collapses it to the rail', async () => {
+		const wrapper = render();
+
+		expect(find(wrapper, 'layout-aside').exists()).toBe(true);
+		expect(find(wrapper, 'app-sidebar').attributes('data-collapsed')).toBe('false');
+		expect(find(wrapper, 'app-top-bar').attributes('data-menu-button')).toBe('collapse');
+
+		await find(wrapper, 'app-top-bar').trigger('click');
+
+		expect(find(wrapper, 'app-sidebar').attributes('data-collapsed')).toBe('true');
+		expect(
+			find(wrapper, 'layout-aside')
+				.classes()
+				.some((name) => name.endsWith('__aside--collapsed'))
+		).toBe(true);
+		expect(find(wrapper, 'layout-menu-drawer').exists()).toBe(false);
 	});
 
-	it('displays AppBar component', () => {
-		expect(wrapper.find('[data-test-id="app-bar"]').exists()).toBe(true);
+	it('keeps the full sidebar on wide screens', () => {
+		sizeClass.value = 'wd';
+
+		const wrapper = render();
+
+		expect(find(wrapper, 'app-sidebar').attributes('data-collapsed')).toBe('false');
 	});
 
-	it('renders AppSidebar when in non-mobile mode', async () => {
-		mockBreakpoints.isMDDevice!.value = true;
+	it('shows the icon rail on tablet landscape; Expand menu opens the drawer', async () => {
+		sizeClass.value = 'tl';
 
-		await wrapper.vm.$nextTick();
+		const wrapper = render();
 
-		expect(wrapper.find('[data-test-id="app-sidebar"]').exists()).toBe(true);
+		expect(find(wrapper, 'layout-aside').exists()).toBe(true);
+		expect(find(wrapper, 'app-sidebar').attributes('data-collapsed')).toBe('true');
+		expect(find(wrapper, 'app-top-bar').attributes('data-menu-button')).toBe('expand');
+
+		await find(wrapper, 'app-top-bar').trigger('click');
+
+		expect(find(wrapper, 'layout-menu-drawer').exists()).toBe(true);
+		expect(find(wrapper, 'layout-menu-drawer').find('[data-test-id="app-sidebar"]').attributes('data-collapsed')).toBe('false');
 	});
 
-	it('does not render AppSidebar in mobile mode', async () => {
-		mockBreakpoints.isMDDevice!.value = false;
+	it('has no sidebar on tablet portrait; Open menu opens the drawer', async () => {
+		sizeClass.value = 'tp';
 
-		await wrapper.vm.$nextTick();
+		const wrapper = render();
 
-		expect(wrapper.find('[data-test-id="app-sidebar"]').exists()).toBe(false);
+		expect(find(wrapper, 'layout-aside').exists()).toBe(false);
+		expect(find(wrapper, 'app-top-bar').attributes('data-menu-button')).toBe('open');
+
+		await find(wrapper, 'app-top-bar').trigger('click');
+
+		expect(find(wrapper, 'layout-menu-drawer').exists()).toBe(true);
 	});
 
-	it('toggles mobile menu when onToggleMenu is called', async () => {
-		const menuStateBefore = wrapper.vm.menuState;
+	it('uses the app bar and the menu drawer with account actions on phones', async () => {
+		sizeClass.value = 'phone';
 
-		wrapper.vm.onToggleMenu();
+		const wrapper = render();
 
-		await wrapper.vm.$nextTick();
+		expect(find(wrapper, 'app-bar').exists()).toBe(true);
+		expect(find(wrapper, 'app-top-bar').exists()).toBe(false);
+		expect(find(wrapper, 'layout-open-menu').attributes('aria-label')).toBe('application.buttons.openMenu.title');
 
-		expect(wrapper.vm.menuState).toBe(!menuStateBefore);
+		await find(wrapper, 'layout-open-menu').trigger('click');
+
+		expect(find(wrapper, 'layout-menu-drawer').find('[data-test-id="app-sidebar"]').attributes('data-account')).toBe('true');
 	});
 
-	it('renders AppNavigation inside mobile drawer', async () => {
-		mockBreakpoints.isMDDevice!.value = false;
+	it('closes the drawer after navigating', async () => {
+		sizeClass.value = 'tp';
 
-		await wrapper.vm.$nextTick();
+		const wrapper = render();
 
-		wrapper.vm.onToggleMenu();
+		await find(wrapper, 'app-top-bar').trigger('click');
+		await find(wrapper, 'layout-menu-drawer').find('[data-test-id="app-sidebar"]').trigger('click');
 
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.find('[data-test-id="app-navigation"]').exists()).toBe(true);
+		expect(find(wrapper, 'layout-menu-drawer').exists()).toBe(false);
 	});
 
-	it('renders AppTopBar component in desktop mode', async () => {
-		mockBreakpoints.isMDDevice!.value = true;
+	it('closes the drawer when the window grows to desktop', async () => {
+		sizeClass.value = 'tl';
 
-		await wrapper.vm.$nextTick();
+		const wrapper = render();
 
-		expect(wrapper.find('[data-test-id="app-top-bar"]').exists()).toBe(true);
-	});
+		await find(wrapper, 'app-top-bar').trigger('click');
 
-	it('does not render AppTopBar component in mobile mode', async () => {
-		mockBreakpoints.isMDDevice!.value = false;
+		sizeClass.value = 'dt';
+		await flushPromises();
 
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.find('[data-test-id="app-top-bar"]').exists()).toBe(false);
-	});
-
-	it('updates mainMenuCollapsed state when isXLDevice changes', async () => {
-		expect(wrapper.vm.mainMenuCollapsed).toBe(false);
-
-		mockBreakpoints.isXLDevice!.value = false;
-
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.vm.mainMenuCollapsed).toBe(true);
-	});
-
-	it('gives the mobile menu toggle button an accessible name', () => {
-		const menuButton = wrapper.find('[data-test-id="app-bar"] button');
-
-		expect(menuButton.exists()).toBe(true);
-		expect(menuButton.attributes('aria-label')).toBe('application.buttons.toggleMenu.title');
+		expect(find(wrapper, 'layout-menu-drawer').exists()).toBe(false);
 	});
 });

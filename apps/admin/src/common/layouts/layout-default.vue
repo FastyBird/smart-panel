@@ -1,82 +1,95 @@
 <template>
-	<el-container
-		v-if="!isMDDevice"
-		direction="vertical"
-		:class="[ns.b()]"
-		class="h-full min-h-full max-h-full w-full min-w-full max-w-full"
-	>
-		<app-bar @toggle-menu="onToggleMenu">
-			<template #logo>
-				<router-link :to="{ name: RouteNames.ROOT }">
-					<logo class="fill-white h-[30px]" />
-				</router-link>
-			</template>
-
-			<template #button-right>
-				<div class="flex flex-row items-center gap-2">
-					<notification-bell />
-
-					<el-button
-						size="large"
-						type="primary"
-						circle
-						:aria-label="t('application.buttons.toggleMenu.title')"
-						@click.prevent="onToggleMenu"
-					>
-						<template #icon>
-							<icon icon="mdi:menu" />
-						</template>
-					</el-button>
-				</div>
-			</template>
-		</app-bar>
-
-		<el-main class="flex-1">
-			<router-view />
-		</el-main>
-
-		<el-drawer
-			v-model="menuState"
-			:size="'80%'"
-			:class="[ns.e('mobile-menu')]"
-		>
-			<app-navigation
-				:collapsed="mobileMenuCollapsed"
-				@click="onToggleMenu"
-			/>
-		</el-drawer>
-	</el-container>
-
-	<el-container
-		v-else
-		direction="horizontal"
-		:class="[ns.b()]"
-		class="h-full min-h-full max-h-full w-full min-w-full max-w-full"
-	>
-		<el-aside
-			:class="[ns.e('aside'), { [ns.em('aside', 'collapsed')]: mainMenuCollapsed }]"
-			class="bg-menu-background"
-		>
-			<app-sidebar :menu-collapsed="mainMenuCollapsed" />
-		</el-aside>
-
+	<div class="h-full min-h-full max-h-full w-full min-w-full max-w-full">
 		<el-container
+			v-if="isPhone"
 			direction="vertical"
-			class="flex-1 overflow-hidden"
+			:class="[ns.b()]"
+			class="h-full min-h-full max-h-full w-full min-w-full max-w-full"
 		>
-			<app-top-bar v-model:menu-collapsed="mainMenuCollapsed" />
+			<app-bar @toggle-menu="onOpenMenu">
+				<template #logo>
+					<router-link :to="{ name: RouteNames.ROOT }">
+						<logo class="fill-white h-[30px]" />
+					</router-link>
+				</template>
+
+				<template #button-right>
+					<div class="flex flex-row items-center gap-2">
+						<notification-bell />
+
+						<el-button
+							size="large"
+							type="primary"
+							circle
+							:aria-label="t('application.buttons.openMenu.title')"
+							data-test-id="layout-open-menu"
+							@click.prevent="onOpenMenu"
+						>
+							<template #icon>
+								<icon icon="mdi:menu" />
+							</template>
+						</el-button>
+					</div>
+				</template>
+			</app-bar>
 
 			<el-main class="flex-1">
-				<div class="flex flex-col overflow-hidden h-full">
-					<router-view />
-				</div>
+				<router-view />
 			</el-main>
 		</el-container>
-	</el-container>
+
+		<el-container
+			v-else
+			direction="horizontal"
+			:class="[ns.b()]"
+			class="h-full min-h-full max-h-full w-full min-w-full max-w-full"
+		>
+			<el-aside
+				v-if="!isTabletPortrait"
+				:class="[ns.e('aside'), { [ns.em('aside', 'collapsed')]: railOnly }]"
+				data-test-id="layout-aside"
+			>
+				<app-sidebar :menu-collapsed="railOnly" />
+			</el-aside>
+
+			<el-container
+				direction="vertical"
+				class="flex-1 overflow-hidden"
+			>
+				<app-top-bar
+					v-model:menu-collapsed="mainMenuCollapsed"
+					:menu-button="menuButton"
+					@open-menu="onOpenMenu"
+				/>
+
+				<el-main class="flex-1">
+					<div class="flex flex-col overflow-hidden h-full">
+						<router-view />
+					</div>
+				</el-main>
+			</el-container>
+		</el-container>
+
+		<!-- One modal menu drawer for phone, tablet portrait ("Open menu") and tablet landscape ("Expand menu") -->
+		<el-drawer
+			v-model="menuState"
+			:with-header="false"
+			:class="[ns.e('menu-drawer')]"
+			direction="ltr"
+			size="280px"
+			append-to-body
+			data-test-id="layout-menu-drawer"
+		>
+			<app-sidebar
+				:account-actions="isPhone"
+				@navigate="onCloseMenu"
+			/>
+		</el-drawer>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAside, ElButton, ElContainer, ElDrawer, ElMain, useNamespace } from 'element-plus';
@@ -88,8 +101,9 @@ import Logo from '../../assets/images/fb_row.svg?component';
 // See the identical import in `app-top-bar.vue` for why this bypasses the module's
 // `components/components` barrel.
 import NotificationBell from '../../modules/notifications/components/notification-bell.vue';
-import { AppBar, AppNavigation, AppSidebar, AppTopBar } from '../components/components';
-import { useBreakpoints } from '../composables/useBreakpoints';
+import type { AppTopBarMenuButton } from '../components/app-top-bar.types';
+import { AppBar, AppSidebar, AppTopBar } from '../components/components';
+import { useSizeClass } from '../composables/useSizeClass';
 
 defineOptions({
 	name: 'LayoutDefault',
@@ -97,20 +111,40 @@ defineOptions({
 
 const ns = useNamespace('app-layout-default');
 const { t } = useI18n();
-const { isMDDevice, isXLDevice } = useBreakpoints();
+const { sizeClass, isPhone, isTabletPortrait, isTabletLandscape, isDesktop } = useSizeClass();
 
+// The modal menu drawer
 const menuState = ref<boolean>(false);
-const mobileMenuCollapsed = ref<boolean>(isXLDevice.value);
-const mainMenuCollapsed = ref<boolean>(!isXLDevice.value);
 
-const onToggleMenu = (): void => {
-	menuState.value = !menuState.value;
+// Desktop and wide: the user can collapse the 220 px sidebar to the 64 px rail
+const mainMenuCollapsed = ref<boolean>(false);
+
+// Tablet landscape always shows the rail; its button opens the full menu in the drawer
+const railOnly = computed<boolean>((): boolean => isTabletLandscape.value || (isDesktop.value && mainMenuCollapsed.value));
+
+const menuButton = computed<AppTopBarMenuButton>((): AppTopBarMenuButton => {
+	if (isTabletPortrait.value) {
+		return 'open';
+	}
+
+	return isTabletLandscape.value ? 'expand' : 'collapse';
+});
+
+const onOpenMenu = (): void => {
+	menuState.value = true;
 };
 
+const onCloseMenu = (): void => {
+	menuState.value = false;
+};
+
+// Desktop has no menu drawer; a drawer left open while the window grows closes with it
 watch(
-	(): boolean => isXLDevice.value,
-	(val: boolean): void => {
-		mainMenuCollapsed.value = !val;
+	(): string => sizeClass.value,
+	(): void => {
+		if (isDesktop.value) {
+			menuState.value = false;
+		}
 	}
 );
 </script>

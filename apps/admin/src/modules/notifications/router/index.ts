@@ -16,7 +16,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: () => i18n.global.t('notificationsModule.menu.title'),
 			icon: 'mdi:bell-outline',
-			menu: 500,
+			menu: 2700,
+			menuGroup: 'system',
 		},
 	},
 ];

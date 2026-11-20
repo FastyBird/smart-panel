@@ -8,6 +8,7 @@ export { useListQuery } from './useListQuery';
 export { useLogger } from './useLogger';
 export { useMenu } from './useMenu';
 export { useNumberFormat } from './useNumberFormat';
+export { useSizeClass } from './useSizeClass';
 export { useSockets } from './useSockets';
 export { useUuid } from './useUuid';
 export { useClipboard } from './useClipboard';

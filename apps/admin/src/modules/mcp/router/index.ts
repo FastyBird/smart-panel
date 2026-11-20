@@ -15,8 +15,9 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: () => i18n.global.t('mcpModule.menu.clients'),
-			icon: 'mdi:robot-outline',
-			menu: 6500,
+			icon: 'mdi:power-plug-outline',
+			menu: 3800,
+			menuGroup: 'integrations',
 			module: MCP_MODULE_NAME,
 		},
 	},
@@ -31,7 +32,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: () => i18n.global.t('mcpModule.menu.oauth'),
 			icon: 'mdi:shield-key-outline',
-			menu: 6510,
+			menu: 3700,
+			menuGroup: 'integrations',
 			module: MCP_MODULE_NAME,
 			// The provider's endpoints are not mounted while this is off, so the
 			// page would have nothing to show.

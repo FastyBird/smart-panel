@@ -13,6 +13,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			title: () => i18n.global.t('spacesModule.menu.title'),
 			icon: 'mdi:home-group',
 			menu: 9000,
+			menuGroup: 'home',
 		},
 		children: [
 			{

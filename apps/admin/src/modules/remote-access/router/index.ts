@@ -16,7 +16,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: () => i18n.global.t('remoteAccessModule.menu.title'),
 			icon: 'mdi:cloud-lock-outline',
-			menu: 3500,
+			menu: 3600,
+			menuGroup: 'integrations',
 		},
 	},
 ];

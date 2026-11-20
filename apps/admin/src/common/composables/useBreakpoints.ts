@@ -2,9 +2,13 @@ import { computed } from 'vue';
 
 import { breakpointsBootstrapV5, useBreakpoints as vueUseBreakpoints } from '@vueuse/core';
 
+import { SIZE_CLASS_BREAKPOINTS } from '../common.constants';
+
 import type { IUseBreakpoints } from './types';
 
-const breakpoints = vueUseBreakpoints(breakpointsBootstrapV5);
+// `md` starts at the tablet size class (720 px) instead of Bootstrap's 768 px, so code that still asks
+// `isMDDevice` switches between the phone and the tablet layout together with the shell (spec section 6)
+const breakpoints = vueUseBreakpoints({ ...breakpointsBootstrapV5, md: SIZE_CLASS_BREAKPOINTS.tp });
 
 export const useBreakpoints = (): IUseBreakpoints => {
 	const isXSDevice = computed<boolean>((): boolean => breakpoints.xs.value);

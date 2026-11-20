@@ -30,7 +30,7 @@
 			>
 				<template #reference>
 					<el-button
-						class="opacity-0 group-hover:opacity-100"
+						class="hover-reveal"
 						size="small"
 						text
 						@click.stop

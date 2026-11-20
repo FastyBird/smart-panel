@@ -16,7 +16,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: () => i18n.global.t('configModule.menu.title'),
 			icon: 'mdi:cog',
-			menu: 2000,
+			menu: 2900,
+			menuGroup: 'system',
 		},
 		redirect: () => ({ name: RouteNames.CONFIG_MODULES }),
 		children: [

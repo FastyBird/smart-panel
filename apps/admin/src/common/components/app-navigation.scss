@@ -1,25 +1,113 @@
 @use 'element-plus/theme-chalk/src/mixins/mixins' as *;
 
+// The approved sidebar (docs/admin-ui-design-spec.md, section 2: --fb-sidebar-*; section 9: groups)
 @include b(app-navigation) {
-	border: 0 none;
+	color: var(--fb-sidebar-text);
 
-	@include when(collapsed) {
-		:deep(.el-menu-item-group__title) {
-			visibility: hidden;
+	@include e(section) {
+		padding: 16px 20px 6px;
+		font-size: 11px;
+		font-weight: 600;
+		line-height: 16px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--fb-sidebar-section);
+	}
+
+	@include e(divider) {
+		align-self: center;
+		width: 28px;
+		height: 1px;
+		margin: 8px 0;
+		background: var(--fb-sidebar-active-bg);
+	}
+
+	@include e(item) {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 38px;
+		margin: 1px 8px;
+		padding: 0 12px;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: 13.5px;
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+
+		&:hover {
+			background: var(--fb-sidebar-active-bg);
+			color: var(--fb-sidebar-active-text);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--el-color-primary);
+			outline-offset: -2px;
+		}
+
+		@include when(nested) {
+			padding-left: 44px;
+			min-height: 34px;
+		}
+
+		@include when(active) {
+			background: var(--fb-sidebar-active-bg);
+			color: var(--fb-sidebar-active-text);
+			font-weight: 600;
+
+			// The brand-red marker on the left edge (section 1: brand red as an accent)
+			&::before {
+				content: '';
+				position: absolute;
+				left: -8px;
+				top: 50%;
+				width: 3px;
+				height: 20px;
+				border-radius: 0 3px 3px 0;
+				background: var(--fb-brand);
+				transform: translateY(-50%);
+			}
 		}
 	}
 
-	@include when(desktop) {
-		@include set-css-var-value(('menu', 'bg', 'color'), 'transparent');
-		@include set-css-var-value(('menu', 'text', 'color'), '#808080');
-		@include set-css-var-value(('menu', 'hover', 'text', 'color'), '#a6a6a6');
-		@include set-css-var-value(('menu', 'hover', 'bg', 'color'), '#191919');
-		@include set-css-var-value(('menu', 'active', 'color'), '#fff');
-		@include set-css-var-value(('menu', 'item', 'height'), '40px');
-		@include set-css-var-value(('menu', 'item', 'font-size'), '0.8rem');
+	@include e(icon) {
+		flex-shrink: 0;
+		width: 20px;
+		height: 20px;
+	}
 
-		:deep(.el-menu-item.is-active) {
-			background-color: #191919;
+	@include e(label) {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	@include when(collapsed) {
+		align-items: center;
+
+		@include e(item) {
+			justify-content: center;
+			width: 48px;
+			min-height: 44px;
+			margin: 1px 0;
+			padding: 0;
+
+			@include when(nested) {
+				padding: 0;
+				min-height: 40px;
+			}
+		}
+
+		@include e(icon) {
+			width: 22px;
+			height: 22px;
 		}
 	}
 }

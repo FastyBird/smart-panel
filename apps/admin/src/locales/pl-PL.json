@@ -60,6 +60,27 @@
 			},
 			"toggleMenu": {
 				"title": "Przełącz menu"
+			},
+			"openMenu": {
+				"title": "Otwórz menu"
+			},
+			"expandMenu": {
+				"title": "Rozwiń menu"
+			},
+			"expandSidebar": {
+				"title": "Rozwiń pasek boczny"
+			},
+			"collapseSidebar": {
+				"title": "Zwiń pasek boczny"
+			}
+		},
+		"navigation": {
+			"label": "Główne",
+			"groups": {
+				"home": "Dom",
+				"wallDisplays": "Wyświetlacze ścienne",
+				"integrations": "Integracje",
+				"system": "System"
 			}
 		},
 		"bulkActions": {

@@ -1,49 +1,42 @@
-import { nextTick, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { createRouter, createWebHistory } from 'vue-router';
 
-import { ElMenuItem, ElSubMenu } from 'element-plus';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
-import { RouteNames } from '../../app.constants';
 import { injectAccountManager } from '../services/account-manager';
 
 import enUS from './../../locales/en-US.json';
+import type { AppNavigationProps } from './app-navigation.types';
 import AppNavigation from './app-navigation.vue';
 
-const isMDDevice = ref(true);
+vi.mock('../composables/useMenu', async () => {
+	const actual = await vi.importActual('../composables/useMenu');
 
-vi.mock('../composables/useBreakpoints', () => ({
-	useBreakpoints: vi.fn(() => ({
-		isMDDevice: isMDDevice,
-	})),
-}));
-vi.mock('../composables/useMenu', () => ({
-	useMenu: vi.fn(() => ({
-		mainMenuItems: [
-			{
-				name: RouteNames.ROOT,
-				meta: { title: 'Dashboard', icon: 'mdi:home' },
-				children: [],
+	return {
+		...actual,
+		useMenu: vi.fn(() => ({
+			mainMenuItems: {
+				overview: { name: 'overview', meta: { title: 'Overview', icon: 'mdi:monitor-dashboard' }, children: {} },
+				devices: { name: 'devices', meta: { title: 'Devices', icon: 'mdi:devices', menuGroup: 'home' }, children: {} },
+				flagged: {
+					name: 'flagged',
+					meta: { title: 'Flagged', icon: 'mdi:flag', menuGroup: 'integrations', module: 'mcp-module', moduleFlag: 'oauthEnabled' },
+					children: {},
+				},
+				settings: {
+					name: 'settings',
+					meta: { title: () => 'Configuration', icon: 'mdi:cog', menuGroup: 'system' },
+					children: {
+						modules: { name: 'modules', meta: { title: 'Modules', icon: 'mdi:package-variant' }, children: {} },
+						plugins: { name: 'plugins', meta: { title: 'Plugins', icon: 'mdi:toy-brick' }, children: {} },
+					},
+				},
 			},
-			{
-				name: 'flagged',
-				meta: { title: 'Flagged', icon: 'mdi:flag', module: 'mcp-module', moduleFlag: 'oauthEnabled' },
-				children: [],
-			},
-			{
-				name: 'settings',
-				meta: { title: 'Settings', icon: 'mdi:cog' },
-				children: [
-					{ name: 'profile', meta: { title: 'Profile', icon: 'mdi:user' } },
-					{ name: 'security', meta: { title: 'Security', icon: 'mdi:lock' } },
-				],
-			},
-		],
-	})),
-}));
+		})),
+	};
+});
 
 vi.mock('../../modules/config/composables/useConfigModules', () => ({
 	useConfigModules: vi.fn(() => ({
@@ -58,93 +51,108 @@ vi.mock('../../modules/config/composables/useConfigModules', () => ({
 vi.mock('../services/account-manager', () => ({
 	injectAccountManager: vi.fn().mockReturnValue({
 		signOut: vi.fn(),
-		routes: {
-			signIn: 'sign-in',
-			signUp: 'sign-up',
-		},
+		routes: { signIn: 'sign-in', signUp: 'sign-up' },
 	}),
 }));
 
+const render = async (props: AppNavigationProps = {}, path = '/devices') => {
+	const router = createRouter({
+		history: createWebHistory(),
+		routes: [
+			{ path: '/', name: 'overview', component: {} },
+			{ path: '/devices', name: 'devices', component: {} },
+			{ path: '/sign-in', name: 'sign-in', component: {} },
+			{
+				path: '/settings',
+				name: 'settings',
+				component: { template: '<router-view />' },
+				children: [
+					{ path: 'modules', name: 'modules', component: {} },
+					{ path: 'plugins', name: 'plugins', component: {} },
+				],
+			},
+		],
+	});
+
+	router.push(path);
+	await router.isReady();
+
+	const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: enUS } });
+
+	const wrapper = mount(AppNavigation, { props, global: { plugins: [router, i18n] } });
+
+	await flushPromises();
+
+	return { wrapper, router };
+};
+
+const item = (wrapper: Awaited<ReturnType<typeof render>>['wrapper'], name: string) => wrapper.find(`[data-test-id="navigation-item-${name}"]`);
+
 describe('AppNavigation', () => {
-	let wrapper: ReturnType<typeof mount>;
+	it('renders the sidebar sections in order, with ungrouped items first', async () => {
+		const { wrapper } = await render();
 
-	beforeEach(() => {
-		const router = createRouter({
-			history: createWebHistory(),
-			routes: [
-				{ path: '/', name: RouteNames.ROOT, component: {} },
-				{ path: '/sign-in', name: 'sign-in', component: {} },
-				{
-					path: '/settings',
-					name: 'settings',
-					component: {},
-					children: [
-						{ path: 'profile', name: 'profile', component: {} },
-						{ path: 'security', name: 'security', component: {} },
-					],
-				},
-			],
-		});
+		expect(wrapper.findAll('[data-test-id="navigation-section"]').map((node) => node.text())).toEqual(['Home', 'System']);
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: enUS,
-			},
-		});
+		const order = wrapper.findAll('a').map((node) => node.text());
 
-		isMDDevice.value = true;
-
-		wrapper = mount(AppNavigation, {
-			global: {
-				plugins: [router, i18n],
-			},
-			props: {
-				collapsed: false,
-			},
-		});
+		expect(order).toEqual(['Overview', 'Devices', 'Configuration', 'Modules', 'Plugins']);
 	});
 
-	it('renders correctly', () => {
-		expect(wrapper.exists()).toBe(true);
-	});
+	it('hides a menu item whose module flag is off, and its empty section', async () => {
+		const { wrapper } = await render();
 
-	it('hides a menu item whose module flag is off', () => {
-		// The module is enabled, but the feature the route depends on is not, so
-		// the page could only ever be empty.
 		expect(wrapper.text()).not.toContain('Flagged');
-		expect(wrapper.text()).toContain('Dashboard');
+		expect(wrapper.text()).not.toContain('Integrations');
 	});
 
-	it('displays menu items', () => {
-		const menuItems = wrapper.findAllComponents(ElMenuItem);
-		expect(menuItems.length).toBeGreaterThan(0);
+	it('lists menu children indented below their parent', async () => {
+		const { wrapper } = await render();
+
+		expect(item(wrapper, 'modules').classes()).toContain('is-nested');
+		expect(item(wrapper, 'settings').classes()).not.toContain('is-nested');
 	});
 
-	it('displays submenus when present', () => {
-		const subMenus = wrapper.findAllComponents(ElSubMenu);
-		expect(subMenus.length).toBeGreaterThan(0);
+	it('marks the current page', async () => {
+		const { wrapper } = await render({}, '/devices');
+
+		expect(item(wrapper, 'devices').attributes('aria-current')).toBe('page');
+		expect(item(wrapper, 'devices').classes()).toContain('is-active');
+		expect(item(wrapper, 'overview').attributes('aria-current')).toBeUndefined();
 	});
 
-	it('emits event when menu item is clicked', async () => {
-		const menuItems = wrapper.findAllComponents(ElMenuItem);
+	it('marks the matching child rather than its parent', async () => {
+		const { wrapper } = await render({}, '/settings/plugins');
 
-		await menuItems[0]?.trigger('click');
+		expect(item(wrapper, 'plugins').attributes('aria-current')).toBe('page');
+		expect(item(wrapper, 'settings').attributes('aria-current')).toBeUndefined();
+	});
+
+	it('shows icons only, named for assistive technology, in the rail', async () => {
+		const { wrapper } = await render({ collapsed: true });
+
+		expect(wrapper.find('[data-test-id="navigation-section"]').exists()).toBe(false);
+		expect(wrapper.findAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
+		expect(item(wrapper, 'devices').text()).toBe('');
+		expect(item(wrapper, 'devices').attributes('aria-label')).toBe('Devices');
+	});
+
+	it('emits click when an item is chosen', async () => {
+		const { wrapper } = await render();
+
+		await item(wrapper, 'devices').trigger('click');
 
 		expect(wrapper.emitted('click')).toBeTruthy();
 	});
 
-	it('logs out when sign-out button is clicked', async () => {
-		expect(wrapper.find('[data-test-id="3-1"]').exists()).toBe(false);
+	it('shows the account actions only when asked, and signs out', async () => {
+		const { wrapper } = await render();
 
-		isMDDevice.value = false;
-		await wrapper.vm.$nextTick(); // Ensure reactivity update
+		expect(wrapper.find('[data-test-id="navigation-sign-out"]').exists()).toBe(false);
 
-		const signOutButton = wrapper.find('[data-test-id="navigation-sign-out"]');
-		expect(signOutButton.exists()).toBe(true);
+		const phone = (await render({ accountActions: true })).wrapper;
 
-		await signOutButton.trigger('click');
-		await nextTick();
+		await phone.find('[data-test-id="navigation-sign-out"]').trigger('click');
 
 		expect(injectAccountManager()?.signOut).toHaveBeenCalled();
 	});

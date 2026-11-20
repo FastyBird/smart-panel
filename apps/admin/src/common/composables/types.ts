@@ -24,6 +24,18 @@ export interface IUseBreakpoints {
 	isXXLDevice: ComputedRef<boolean>;
 }
 
+export type SizeClass = 'phone' | 'tp' | 'tl' | 'dt' | 'wd';
+
+export interface IUseSizeClass {
+	sizeClass: ComputedRef<SizeClass>;
+	isPhone: ComputedRef<boolean>;
+	isTabletPortrait: ComputedRef<boolean>;
+	isTabletLandscape: ComputedRef<boolean>;
+	/** Desktop or wide: the full sidebar */
+	isDesktop: ComputedRef<boolean>;
+	isTouch: ComputedRef<boolean>;
+}
+
 export interface IUseDarkMode {
 	isDark: ComputedRef<boolean>;
 	toggleDark: (mode?: boolean) => boolean;
