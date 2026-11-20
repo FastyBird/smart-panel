@@ -27,7 +27,9 @@
 			"serverName": {
 				"label": "Názov servera TLS",
 				"required": "Ak je hostiteľ IP adresa, názov servera je povinný",
-				"invalid": "Zadajte názov DNS, nie IP adresu"
+				"invalid": "Zadajte názov DNS, nie IP adresu",
+				"useSuggested": "Použiť {name}",
+				"useDirectConnect": "Použiť doménu konzoly {name}"
 			},
 			"fingerprint": {
 				"label": "Odtlačok SHA-256",
@@ -51,6 +53,119 @@
 		"pollIntervalMs": {
 			"label": "Interval dopytovania inventára (ms)",
 			"invalid": "Zadajte celé číslo medzi {min} a {max}"
+		},
+		"apiKeyHelp": "Kľúč vytvoríte v UniFi Protect › Settings › Control Plane › Integrations › API Keys."
+	},
+	"sections": {
+		"console": "Konzola",
+		"apiKey": "Kľúč API",
+		"certificate": "Certifikát",
+		"advanced": "Pokročilé",
+		"test": "Test pripojenia"
+	},
+	"discovery": {
+		"title": "Konzoly v tejto sieti",
+		"scan": "Vyhľadať",
+		"scanning": "Prehľadávam sieť. Môže to trvať až minútu.",
+		"loadFailed": "Nájdené konzoly sa nepodarilo načítať.",
+		"scanFailed": "Vyhľadávanie sa nepodarilo spustiť.",
+		"failed": "Posledné vyhľadávanie zlyhalo. Vyhľadajte znova alebo zadajte hostiteľa nižšie.",
+		"empty": "Nenašla sa žiadna konzola. Vyhľadajte znova alebo zadajte hostiteľa nižšie.",
+		"firmware": "firmvér {version}",
+		"check": "Overiť",
+		"use": "Použiť",
+		"checkHost": "Overiť hostiteľa",
+		"useHost": "Použiť {host}",
+		"unreachable": "Konzola neodpovedala.",
+		"notConsole": "Tento hostiteľ nie je konzola UniFi.",
+		"probeTimeout": "Konzola na overenie neodpovedala včas.",
+		"probeFailed": "Overenie sa nepodarilo spustiť.",
+		"protect": {
+			"present": "UniFi Protect beží",
+			"absent": "UniFi Protect nie je nainštalovaný",
+			"unknown": "UniFi Protect sa nepodarilo zistiť"
+		},
+		"domain": {
+			"valid": "Certifikát je platný pre {domain}",
+			"invalid": "Certifikát nie je platný pre {domain}",
+			"unknown": "Certifikát pre {domain} sa nepodarilo overiť",
+			"elsewhere": "{domain} sa neprekladá na túto konzolu",
+			"none": "Konzola neuvádza žiadnu doménu pre priame pripojenie"
+		}
+	},
+	"testConnection": {
+		"button": "Otestovať pripojenie",
+		"retry": "Skúsiť znova",
+		"notAvailable": "Nie je k dispozícii",
+		"hints": {
+			"needs_key": "Na test zmeneného hostiteľa zadajte znova kľúč API",
+			"needs_host": "Na test pripojenia zadajte platného hostiteľa konzoly"
+		},
+		"success": "Pripojené k UniFi Protect",
+		"failed": "Test pripojenia zlyhal",
+		"requestFailed": "Test pripojenia sa nepodarilo spustiť.",
+		"timeout": {
+			"title": "Bez odpovede v časovom limite",
+			"description": "Konzola možno test ešte dokončuje. Skúste to o chvíľu znova."
+		},
+		"fields": {
+			"console": "Konzola",
+			"version": "Verzia UniFi Protect",
+			"nvr": "NVR",
+			"minimumVersion": "Minimálna podporovaná verzia",
+			"versionSupported": "Verzia podporovaná"
+		},
+		"version": {
+			"supported": "Áno",
+			"unsupported": "Nie",
+			"unknown": "Neoverené"
+		}
+	},
+	"errorCategories": {
+		"validation": "Nastavenie pripojenia je neúplné alebo neplatné. Hostiteľ zadaný IP adresou potrebuje v režime overenia názov servera TLS.",
+		"unreachable": "Konzolu sa nepodarilo zastihnúť. Skontrolujte hostiteľa a port.",
+		"timeout": "Konzola neodpovedala včas.",
+		"tls_untrusted": "Certifikát konzoly nie je pre tohto hostiteľa dôveryhodný. Nastavte názov servera alebo tomuto certifikátu dôverujte.",
+		"tls_fingerprint_mismatch": "Certifikát konzoly nezodpovedá pripnutému odtlačku.",
+		"authentication": "Kľúč API bol odmietnutý. Vytvorte nový kľúč a zadajte ho znova.",
+		"authorization": "Kľúč API nemá oprávnenie používať integračné API.",
+		"not_found": "Integračné API UniFi Protect sa na tejto konzole nenašlo.",
+		"bad_request": "Konzola požiadavku odmietla.",
+		"unsupported": "Konzola túto operáciu nepodporuje.",
+		"rate_limited": "Konzola obmedzuje počet požiadaviek. Skúste to o chvíľu znova.",
+		"unavailable": "UniFi Protect je na konzole momentálne nedostupný.",
+		"protocol": "Konzola odpovedala neočakávaným spôsobom.",
+		"version_unsupported": "Konzola používa verziu UniFi Protect staršiu ako {minimum}. Aktualizujte UniFi Protect.",
+		"cancelled": "Test pripojenia bol zrušený."
+	},
+	"certificate": {
+		"title": "Certifikát",
+		"subject": "Subjekt",
+		"issuer": "Vydavateľ",
+		"altNames": "Alternatívne názvy",
+		"validity": "Platnosť",
+		"validityRange": "{from} – {to}",
+		"selfSigned": "Podpísaný sám sebou",
+		"trusted": "Dôveryhodný reťazec",
+		"fingerprint": "Odtlačok SHA-256",
+		"yes": "Áno",
+		"no": "Nie",
+		"notAvailable": "Nie je k dispozícii",
+		"trust": "Dôverovať tomuto certifikátu",
+		"trustHint": "Pripne odtlačok tohto certifikátu a znova otestuje pripojenie.",
+		"changed": {
+			"title": "Certifikát konzoly sa zmenil",
+			"description": "Už nezodpovedá pripnutému odtlačku. To je očakávané po obnovení alebo výmene certifikátu konzoly, inak je to podozrivé.",
+			"replace": "Nahradiť pripnutý certifikát",
+			"confirmText": "Pripnutie nahraďte, len ak viete, prečo sa certifikát zmenil.",
+			"confirm": "Nahradiť pripnutie",
+			"cancel": "Zrušiť"
+		}
+	},
+	"messages": {
+		"config": {
+			"updated": "Nastavenia UniFi Protect boli uložené.",
+			"updateFailed": "Nastavenia UniFi Protect sa nepodarilo uložiť."
 		}
 	}
 }

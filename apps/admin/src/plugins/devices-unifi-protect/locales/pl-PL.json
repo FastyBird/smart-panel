@@ -27,7 +27,9 @@
 			"serverName": {
 				"label": "Nazwa serwera TLS",
 				"required": "Gdy host jest adresem IP, nazwa serwera jest wymagana",
-				"invalid": "Wpisz nazwę DNS, a nie adres IP"
+				"invalid": "Wpisz nazwę DNS, a nie adres IP",
+				"useSuggested": "Użyj {name}",
+				"useDirectConnect": "Użyj domeny konsoli {name}"
 			},
 			"fingerprint": {
 				"label": "Odcisk SHA-256",
@@ -51,6 +53,119 @@
 		"pollIntervalMs": {
 			"label": "Interwał odpytywania inwentarza (ms)",
 			"invalid": "Wpisz liczbę całkowitą od {min} do {max}"
+		},
+		"apiKeyHelp": "Utwórz klucz w UniFi Protect › Settings › Control Plane › Integrations › API Keys."
+	},
+	"sections": {
+		"console": "Konsola",
+		"apiKey": "Klucz API",
+		"certificate": "Certyfikat",
+		"advanced": "Zaawansowane",
+		"test": "Test połączenia"
+	},
+	"discovery": {
+		"title": "Konsole w tej sieci",
+		"scan": "Wyszukaj",
+		"scanning": "Przeszukiwanie sieci. Może to potrwać do minuty.",
+		"loadFailed": "Nie udało się wczytać znalezionych konsol.",
+		"scanFailed": "Nie udało się uruchomić wyszukiwania.",
+		"failed": "Ostatnie wyszukiwanie nie powiodło się. Wyszukaj ponownie lub wpisz hosta poniżej.",
+		"empty": "Nie znaleziono żadnej konsoli. Wyszukaj ponownie lub wpisz hosta poniżej.",
+		"firmware": "firmware {version}",
+		"check": "Sprawdź",
+		"use": "Użyj",
+		"checkHost": "Sprawdź hosta",
+		"useHost": "Użyj {host}",
+		"unreachable": "Konsola nie odpowiedziała.",
+		"notConsole": "Ten host nie jest konsolą UniFi.",
+		"probeTimeout": "Konsola nie odpowiedziała na sprawdzenie na czas.",
+		"probeFailed": "Nie udało się uruchomić sprawdzenia.",
+		"protect": {
+			"present": "UniFi Protect działa",
+			"absent": "UniFi Protect nie jest zainstalowany",
+			"unknown": "Nie udało się wykryć UniFi Protect"
+		},
+		"domain": {
+			"valid": "Certyfikat jest ważny dla {domain}",
+			"invalid": "Certyfikat nie jest ważny dla {domain}",
+			"unknown": "Nie udało się sprawdzić certyfikatu dla {domain}",
+			"elsewhere": "{domain} nie wskazuje na tę konsolę",
+			"none": "Konsola nie podaje domeny połączenia bezpośredniego"
+		}
+	},
+	"testConnection": {
+		"button": "Testuj połączenie",
+		"retry": "Spróbuj ponownie",
+		"notAvailable": "Niedostępne",
+		"hints": {
+			"needs_key": "Wpisz ponownie klucz API, aby przetestować zmienionego hosta",
+			"needs_host": "Wpisz prawidłowego hosta konsoli, aby przetestować połączenie"
+		},
+		"success": "Połączono z UniFi Protect",
+		"failed": "Test połączenia nie powiódł się",
+		"requestFailed": "Nie udało się uruchomić testu połączenia.",
+		"timeout": {
+			"title": "Brak odpowiedzi na czas",
+			"description": "Konsola może jeszcze kończyć test. Spróbuj ponownie za chwilę."
+		},
+		"fields": {
+			"console": "Konsola",
+			"version": "Wersja UniFi Protect",
+			"nvr": "NVR",
+			"minimumVersion": "Minimalna obsługiwana wersja",
+			"versionSupported": "Wersja obsługiwana"
+		},
+		"version": {
+			"supported": "Tak",
+			"unsupported": "Nie",
+			"unknown": "Nie sprawdzono"
+		}
+	},
+	"errorCategories": {
+		"validation": "Ustawienia połączenia są niepełne lub nieprawidłowe. Host podany jako adres IP wymaga w trybie weryfikacji nazwy serwera TLS.",
+		"unreachable": "Nie udało się połączyć z konsolą. Sprawdź hosta i port.",
+		"timeout": "Konsola nie odpowiedziała na czas.",
+		"tls_untrusted": "Certyfikat konsoli nie jest zaufany dla tego hosta. Ustaw nazwę serwera lub zaufaj temu certyfikatowi.",
+		"tls_fingerprint_mismatch": "Certyfikat konsoli nie pasuje do przypiętego odcisku.",
+		"authentication": "Klucz API został odrzucony. Utwórz nowy klucz i wpisz go ponownie.",
+		"authorization": "Klucz API nie ma uprawnień do API integracji.",
+		"not_found": "Na tej konsoli nie znaleziono API integracji UniFi Protect.",
+		"bad_request": "Konsola odrzuciła żądanie.",
+		"unsupported": "Konsola nie obsługuje tej operacji.",
+		"rate_limited": "Konsola ogranicza liczbę żądań. Spróbuj ponownie za chwilę.",
+		"unavailable": "UniFi Protect jest obecnie niedostępny na konsoli.",
+		"protocol": "Konsola odpowiedziała w nieoczekiwany sposób.",
+		"version_unsupported": "Konsola używa wersji UniFi Protect starszej niż {minimum}. Zaktualizuj UniFi Protect.",
+		"cancelled": "Test połączenia został anulowany."
+	},
+	"certificate": {
+		"title": "Certyfikat",
+		"subject": "Podmiot",
+		"issuer": "Wystawca",
+		"altNames": "Nazwy alternatywne",
+		"validity": "Ważność",
+		"validityRange": "{from} – {to}",
+		"selfSigned": "Podpisany samodzielnie",
+		"trusted": "Zaufany łańcuch",
+		"fingerprint": "Odcisk SHA-256",
+		"yes": "Tak",
+		"no": "Nie",
+		"notAvailable": "Niedostępne",
+		"trust": "Zaufaj temu certyfikatowi",
+		"trustHint": "Przypina odcisk tego certyfikatu i ponownie testuje połączenie.",
+		"changed": {
+			"title": "Certyfikat konsoli się zmienił",
+			"description": "Nie pasuje już do przypiętego odcisku. Jest to oczekiwane po odnowieniu lub wymianie certyfikatu konsoli, w innym przypadku jest podejrzane.",
+			"replace": "Zastąp przypięty certyfikat",
+			"confirmText": "Zastąp przypięcie tylko wtedy, gdy wiesz, dlaczego certyfikat się zmienił.",
+			"confirm": "Zastąp przypięcie",
+			"cancel": "Anuluj"
+		}
+	},
+	"messages": {
+		"config": {
+			"updated": "Ustawienia UniFi Protect zostały zapisane.",
+			"updateFailed": "Nie udało się zapisać ustawień UniFi Protect."
 		}
 	}
 }
