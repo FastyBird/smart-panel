@@ -109,6 +109,8 @@ describe('design system lint rules', () => {
 			sfc('<p :class="{ [\'text-primary\']: false }"></p>'),
 			sfc("<p :class=\"{ 'text-primary': true, ['text-primary']: false }\"></p>"),
 			sfc("<p :class=\"{ 'text-primary': true, ['text-' + 'primary']: false }\"></p>"),
+			// A runtime computed key with a statically falsy value is never emitted
+			sfc('<p :class="{ [tone]: false, [`${tone}`]: null }"></p>'),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
@@ -157,6 +159,8 @@ describe('design system lint rules', () => {
 				"<router-link :to=\"{ name: 'docs', hash: '#abc' }\"></router-link>",
 				'<script setup lang="ts">\nrouter.push({ hash: \'#fade\' });\n</script>'
 			),
+			// Sass: a line that opens a rule is a selector, even with a pseudo-class
+			sfc('<div></div>', '<style lang="sass">\na:hover #abc\n  display: block\n</style>'),
 			// Sass: a block comment may end where its indentation does
 			sfc('<div></div>', '<style lang="sass">\n/* Old palette\n  #abc\n.x\n  display: block\n</style>'),
 			sfc('<div>See issue #123</div>'),
@@ -221,6 +225,14 @@ describe('design system lint rules', () => {
 				...sfc('<div></div>', '<style lang="sass">\n.x\n  color: mix(\n    #fff, #000)\n</style>'),
 				errors: [
 					{ messageId: 'hex', line: 4 },
+					{ messageId: 'hex', line: 4 },
+				],
+			},
+			// A line with open parentheses continues, so it does not open a rule
+			{
+				...sfc('<div></div>', '<style lang="sass">\n.x\n  color: mix(#fff,\n    #000)\n</style>'),
+				errors: [
+					{ messageId: 'hex', line: 3 },
 					{ messageId: 'hex', line: 4 },
 				],
 			},

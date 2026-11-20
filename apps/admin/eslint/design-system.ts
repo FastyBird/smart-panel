@@ -169,8 +169,11 @@ const resolveObjectKeys = (object: TemplateNode, keys: Map<string, TemplateNode 
 		const name = property.computed === true ? staticComputedName(key) : key.type === 'Identifier' ? key.name : key.value;
 
 		if (property.computed === true && name === null) {
-			// A runtime computed key becomes a property name by string coercion, so it is read as a string
-			collectStringClasses(key, found, owner);
+			// A runtime computed key becomes a property name by string coercion, so it is read as a string,
+			// unless its value statically disables it (`{ [tone]: false }`)
+			if (!(value?.type === 'Literal' && !value.value)) {
+				collectStringClasses(key, found, owner);
+			}
 
 			continue;
 		}
@@ -717,7 +720,8 @@ const indentedStatementStart = (before: string): number => {
  * - The statement it belongs to starts after the last `{`, `}` or `;` (or, in indented syntax, at its line, or at the
  *   line that opened a still unclosed parenthesis).
  * - An at-rule prelude is a value (`@supports (color: #fff)`), except inside `selector(…)` and for `SELECTOR_AT_RULES`.
- * - Indented syntax: a line is a declaration when it starts with `property:`; any other line is a selector.
+ * - Indented syntax: a line followed by more deeply indented lines is a selector; otherwise it is a declaration
+ *   when it starts with `property:`, and a selector when it does not.
  * - Otherwise the hash is in a selector when `{` follows before the statement ends with `;` or `}`.
  */
 const isCssSelectorHash = (code: string, offset: number, indented: boolean): boolean => {
@@ -738,7 +742,23 @@ const isCssSelectorHash = (code: string, offset: number, indented: boolean): boo
 	}
 
 	if (indented) {
-		// Declarations: `color: …`, Sass variables `$tone: …`, Stylus assignments `tone = …`
+		// A line with more deeply indented lines below it opens a rule, so it is a selector (`a:hover #abc`)
+		// (unless the statement's parentheses are still open: `color: mix(#fff,` continues on the next line)
+		const lineEnd = code.indexOf('\n', offset);
+		const statement = code.slice(statementStart, lineEnd === -1 ? code.length : lineEnd);
+		const indent = /^[ \t]*/.exec(code.slice(statementStart))?.[0].length ?? 0;
+		const nextLine = code
+			.slice(offset)
+			.split('\n')
+			.slice(1)
+			.find((line) => line.trim() !== '');
+		const balanced = (statement.match(/\(/g) ?? []).length <= (statement.match(/\)/g) ?? []).length;
+
+		if (balanced && nextLine !== undefined && (/^[ \t]*/.exec(nextLine)?.[0].length ?? 0) > indent) {
+			return true;
+		}
+
+		// Otherwise declarations: `color: …`, Sass variables `$tone: …`, Stylus assignments `tone = …`
 		return !/^(?:\$?[\w-]+\s*:|[\w$-]+\s*=)/.test(prelude);
 	}
 
