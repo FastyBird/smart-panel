@@ -61,7 +61,56 @@
 		"apiKey": "Kľúč API",
 		"certificate": "Certifikát",
 		"advanced": "Pokročilé",
-		"test": "Test pripojenia"
+		"test": "Test pripojenia",
+		"status": "Stav pripojenia"
+	},
+	"status": {
+		"stale": "Stav sa nepodarilo obnoviť. Nižšie sú naposledy známe hodnoty.",
+		"loadFailed": "Stav pripojenia sa nepodarilo načítať.",
+		"notAvailable": "Nie je k dispozícii",
+		"yes": "Áno",
+		"no": "Nie",
+		"fields": {
+			"connectionState": "Pripojenie",
+			"serviceState": "Služba",
+			"enabled": "Zapnuté",
+			"configured": "Nastavené",
+			"healthy": "V poriadku",
+			"tlsMode": "Dôvera v certifikát",
+			"applicationVersion": "Verzia UniFi Protect",
+			"minimumVersion": "Minimálna podporovaná verzia",
+			"nvrId": "ID NVR",
+			"nvrName": "Názov NVR",
+			"lastConnectedAt": "Naposledy pripojené",
+			"lastError": "Posledná chyba",
+			"reconnectAttempt": "Pokus o opätovné pripojenie",
+			"nextRetryAt": "Ďalší pokus",
+			"realtimeState": "Aktualizácie v reálnom čase",
+			"ignoredEventCount": "Ignorované udalosti"
+		},
+		"connectionStates": {
+			"disconnected": "Odpojené",
+			"connecting": "Pripájanie",
+			"connected": "Pripojené",
+			"degraded": "Obmedzene funkčné",
+			"auth_failed": "Kľúč API odmietnutý",
+			"version_unsupported": "Nepodporovaná verzia",
+			"error": "Chyba"
+		},
+		"serviceStates": {
+			"stopped": "Zastavené",
+			"starting": "Spúšťa sa",
+			"started": "Beží",
+			"stopping": "Zastavuje sa",
+			"error": "Chyba"
+		},
+		"realtime": {
+			"stopped": "Zastavené",
+			"connecting": "Pripájanie",
+			"priming": "Načítavanie aktuálneho stavu",
+			"streaming": "Streamovanie",
+			"polling": "Dopytovanie každých {seconds} s"
+		}
 	},
 	"discovery": {
 		"title": "Konzoly v tejto sieti",

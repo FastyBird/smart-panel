@@ -61,7 +61,56 @@
 		"apiKey": "Clave API",
 		"certificate": "Certificado",
 		"advanced": "Avanzado",
-		"test": "Prueba de conexión"
+		"test": "Prueba de conexión",
+		"status": "Estado de la conexión"
+	},
+	"status": {
+		"stale": "No se pudo actualizar el estado. Los valores siguientes son los últimos conocidos.",
+		"loadFailed": "No se pudo cargar el estado de la conexión.",
+		"notAvailable": "No disponible",
+		"yes": "Sí",
+		"no": "No",
+		"fields": {
+			"connectionState": "Conexión",
+			"serviceState": "Servicio",
+			"enabled": "Activado",
+			"configured": "Configurado",
+			"healthy": "Correcto",
+			"tlsMode": "Confianza del certificado",
+			"applicationVersion": "Versión de UniFi Protect",
+			"minimumVersion": "Versión mínima admitida",
+			"nvrId": "ID del NVR",
+			"nvrName": "Nombre del NVR",
+			"lastConnectedAt": "Última conexión",
+			"lastError": "Último error",
+			"reconnectAttempt": "Intento de reconexión",
+			"nextRetryAt": "Próximo intento",
+			"realtimeState": "Actualizaciones en tiempo real",
+			"ignoredEventCount": "Eventos ignorados"
+		},
+		"connectionStates": {
+			"disconnected": "Desconectado",
+			"connecting": "Conectando",
+			"connected": "Conectado",
+			"degraded": "Degradado",
+			"auth_failed": "Clave de API rechazada",
+			"version_unsupported": "Versión no admitida",
+			"error": "Error"
+		},
+		"serviceStates": {
+			"stopped": "Detenido",
+			"starting": "Iniciando",
+			"started": "En ejecución",
+			"stopping": "Deteniéndose",
+			"error": "Error"
+		},
+		"realtime": {
+			"stopped": "Detenido",
+			"connecting": "Conectando",
+			"priming": "Cargando el estado actual",
+			"streaming": "Transmisión continua",
+			"polling": "Consulta cada {seconds} s"
+		}
 	},
 	"discovery": {
 		"title": "Consolas en esta red",

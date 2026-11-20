@@ -247,6 +247,8 @@
 			@test="runTest"
 			@trust="onTrust"
 		/>
+
+		<protect-connection-status :poll-interval-ms="model.pollIntervalMs" />
 	</el-form>
 </template>
 
@@ -301,6 +303,7 @@ import {
 	protectTestTarget,
 	protectTrustable,
 } from './protect-config-form.utils';
+import ProtectConnectionStatus from './protect-connection-status.vue';
 import ProtectDiscoveredConsoles from './protect-discovered-consoles.vue';
 import ProtectTestConnection from './protect-test-connection.vue';
 
@@ -398,6 +401,15 @@ const refusalDetail = (error: unknown, apiKey: string | null): string | null => 
 	return apiKey !== null && error.message.includes(apiKey) ? null : error.message;
 };
 
+/** The status panel is current after a save or a test; a failed read only marks it stale, so it never throws out of the form. */
+const refreshStatus = async (): Promise<void> => {
+	try {
+		await statusStore.fetch({ fresh: true });
+	} catch {
+		// The store's `stale` flag already shows it.
+	}
+};
+
 const runTest = async (): Promise<void> => {
 	const plan = buildTestRequest(model, savedConnection.value);
 
@@ -419,6 +431,8 @@ const runTest = async (): Promise<void> => {
 		failedTarget.value = plan.target;
 		failedDetail.value = refusalDetail(error, 'data' in plan.request && 'api_key' in plan.request.data ? plan.request.data.api_key : null);
 	}
+
+	await refreshStatus();
 };
 
 /**
@@ -557,8 +571,10 @@ watch(
 		if (!value) return;
 		emit('update:remote-form-submit', false);
 		void submit()
-			.then((): void => {
+			.then(async (): Promise<void> => {
 				savedConnection.value = connectionOf(model);
+
+				await refreshStatus();
 			})
 			.catch(() => undefined);
 	}

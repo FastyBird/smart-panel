@@ -61,7 +61,56 @@
 		"apiKey": "API-Schlüssel",
 		"certificate": "Zertifikat",
 		"advanced": "Erweitert",
-		"test": "Verbindungstest"
+		"test": "Verbindungstest",
+		"status": "Verbindungsstatus"
+	},
+	"status": {
+		"stale": "Der Status konnte nicht aktualisiert werden. Die folgenden Werte sind die zuletzt bekannten.",
+		"loadFailed": "Der Verbindungsstatus konnte nicht geladen werden.",
+		"notAvailable": "Nicht verfügbar",
+		"yes": "Ja",
+		"no": "Nein",
+		"fields": {
+			"connectionState": "Verbindung",
+			"serviceState": "Dienst",
+			"enabled": "Aktiviert",
+			"configured": "Konfiguriert",
+			"healthy": "In Ordnung",
+			"tlsMode": "Zertifikatsvertrauen",
+			"applicationVersion": "UniFi-Protect-Version",
+			"minimumVersion": "Mindestens unterstützte Version",
+			"nvrId": "NVR-ID",
+			"nvrName": "NVR-Name",
+			"lastConnectedAt": "Zuletzt verbunden",
+			"lastError": "Letzter Fehler",
+			"reconnectAttempt": "Wiederverbindungsversuch",
+			"nextRetryAt": "Nächster Versuch",
+			"realtimeState": "Echtzeit-Updates",
+			"ignoredEventCount": "Ignorierte Ereignisse"
+		},
+		"connectionStates": {
+			"disconnected": "Getrennt",
+			"connecting": "Verbindung wird hergestellt",
+			"connected": "Verbunden",
+			"degraded": "Eingeschränkt",
+			"auth_failed": "API-Schlüssel abgelehnt",
+			"version_unsupported": "Version nicht unterstützt",
+			"error": "Fehler"
+		},
+		"serviceStates": {
+			"stopped": "Gestoppt",
+			"starting": "Startet",
+			"started": "Läuft",
+			"stopping": "Wird beendet",
+			"error": "Fehler"
+		},
+		"realtime": {
+			"stopped": "Gestoppt",
+			"connecting": "Verbindung wird hergestellt",
+			"priming": "Aktueller Stand wird geladen",
+			"streaming": "Streaming",
+			"polling": "Abfrage alle {seconds} s"
+		}
 	},
 	"discovery": {
 		"title": "Konsolen in diesem Netzwerk",

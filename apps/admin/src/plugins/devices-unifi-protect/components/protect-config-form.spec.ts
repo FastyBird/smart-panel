@@ -35,6 +35,7 @@ vi.mock('vue-i18n', async () => {
 	return {
 		...actual,
 		useI18n: () => ({
+			locale: 'en-US',
 			t: (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key),
 		}),
 	};
@@ -65,6 +66,10 @@ vi.mock('../../../modules/config', async () => {
 interface IStatusStoreMock {
 	lastTest: IProtectTestResult | null;
 	testing: boolean;
+	status: null;
+	stale: boolean;
+	fetch: ReturnType<typeof vi.fn>;
+	startPolling: ReturnType<typeof vi.fn>;
 	testConnection: ReturnType<typeof vi.fn>;
 	clearLastTest: ReturnType<typeof vi.fn>;
 }
@@ -175,6 +180,7 @@ const savedConfig = (
 
 let model: IProtectConfigEditForm;
 let statusStore: IStatusStoreMock;
+let release: ReturnType<typeof vi.fn>;
 let discoveryStore: IDiscoveryStoreMock;
 
 const mountForm = (config: IProtectConfig = savedConfig()) => {
@@ -204,9 +210,14 @@ const mountForm = (config: IProtectConfig = savedConfig()) => {
 
 describe('ProtectConfigForm', () => {
 	beforeEach(() => {
+		release = vi.fn();
 		statusStore = reactive<IStatusStoreMock>({
 			lastTest: null,
 			testing: false,
+			status: null,
+			stale: false,
+			fetch: vi.fn(async () => null),
+			startPolling: vi.fn(() => release),
 			testConnection: vi.fn(async () => {
 				statusStore.lastTest = null;
 
@@ -539,5 +550,64 @@ describe('ProtectConfigForm', () => {
 		expect((wrapper.get('input[type="password"]').element as HTMLInputElement).value).toBe('');
 		expect(wrapper.findAll('input').map((input) => (input.element as HTMLInputElement).value)).not.toContain('super-secret-key');
 		expect(wrapper.html()).not.toContain('super-secret-key');
+	});
+	it('mounts the status panel with the poll interval and releases polling when the form unmounts', async () => {
+		const wrapper = mountForm();
+
+		await flushPromises();
+
+		expect(statusStore.startPolling).toHaveBeenCalledTimes(1);
+		expect(wrapper.findComponent({ name: 'ProtectConnectionStatus' }).props('pollIntervalMs')).toBe(30000);
+
+		model.pollIntervalMs = 45000;
+		await nextTick();
+
+		expect(wrapper.findComponent({ name: 'ProtectConnectionStatus' }).props('pollIntervalMs')).toBe(45000);
+
+		wrapper.unmount();
+
+		expect(release).toHaveBeenCalledTimes(1);
+	});
+
+	it('refreshes the status once after a successful save', async () => {
+		const wrapper = mountForm();
+
+		await flushPromises();
+
+		expect(statusStore.fetch).not.toHaveBeenCalled();
+
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		expect(statusStore.fetch).toHaveBeenCalledTimes(1);
+		expect(statusStore.fetch).toHaveBeenCalledWith({ fresh: true });
+	});
+
+	it('does not refresh the status after a failed save', async () => {
+		const wrapper = mountForm();
+
+		await flushPromises();
+
+		mocks.editForm.mock.results.at(-1)?.value.submit.mockRejectedValueOnce(new Error('save failed'));
+
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		expect(statusStore.fetch).not.toHaveBeenCalled();
+	});
+
+	it('refreshes the status after each test, including a timed out one, and survives a failing refresh', async () => {
+		statusStore.fetch.mockRejectedValue(new Error('status unavailable'));
+
+		const wrapper = mountForm();
+
+		await flushPromises();
+		await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
+		await flushPromises();
+
+		expect(statusStore.testConnection).toHaveBeenCalledTimes(1);
+		expect(statusStore.fetch).toHaveBeenCalledTimes(1);
+		expect(statusStore.fetch).toHaveBeenCalledWith({ fresh: true });
+		expect(wrapper.find('[data-test-id="protect-test-button"]').exists()).toBe(true);
 	});
 });

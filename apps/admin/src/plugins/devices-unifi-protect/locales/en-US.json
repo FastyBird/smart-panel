@@ -61,7 +61,56 @@
 		"apiKey": "API key",
 		"certificate": "Certificate",
 		"advanced": "Advanced",
-		"test": "Test connection"
+		"test": "Test connection",
+		"status": "Connection status"
+	},
+	"status": {
+		"stale": "The status could not be refreshed. The values below are the last known ones.",
+		"loadFailed": "The connection status could not be loaded.",
+		"notAvailable": "Not available",
+		"yes": "Yes",
+		"no": "No",
+		"fields": {
+			"connectionState": "Connection",
+			"serviceState": "Service",
+			"enabled": "Enabled",
+			"configured": "Configured",
+			"healthy": "Healthy",
+			"tlsMode": "Certificate trust",
+			"applicationVersion": "UniFi Protect version",
+			"minimumVersion": "Minimum supported version",
+			"nvrId": "NVR ID",
+			"nvrName": "NVR name",
+			"lastConnectedAt": "Last connected",
+			"lastError": "Last error",
+			"reconnectAttempt": "Reconnect attempt",
+			"nextRetryAt": "Next retry",
+			"realtimeState": "Real-time updates",
+			"ignoredEventCount": "Ignored events"
+		},
+		"connectionStates": {
+			"disconnected": "Disconnected",
+			"connecting": "Connecting",
+			"connected": "Connected",
+			"degraded": "Degraded",
+			"auth_failed": "API key rejected",
+			"version_unsupported": "Version not supported",
+			"error": "Error"
+		},
+		"serviceStates": {
+			"stopped": "Stopped",
+			"starting": "Starting",
+			"started": "Running",
+			"stopping": "Stopping",
+			"error": "Error"
+		},
+		"realtime": {
+			"stopped": "Stopped",
+			"connecting": "Connecting",
+			"priming": "Loading the current state",
+			"streaming": "Streaming",
+			"polling": "Polling every {seconds} s"
+		}
 	},
 	"discovery": {
 		"title": "Consoles on this network",
