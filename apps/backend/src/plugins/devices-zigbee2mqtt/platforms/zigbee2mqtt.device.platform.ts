@@ -7,6 +7,7 @@ import {
 	IDevicePlatform,
 	IDevicePropertyData,
 	PreparedCompositeDeviceBatch,
+	PropertyReadRequest,
 } from '../../../modules/devices/platforms/device.platform';
 import { NativeClimateUnit } from '../../../modules/devices/platforms/native-climate.contract';
 import { sourceFingerprint } from '../contracts/sample-source.contract';
@@ -65,7 +66,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 	 * every pending command to the device was acknowledged or timed out, so the answer is not an echo.
 	 * Properties without a plain Zigbee2MQTT field (virtual commands, composite colour) are not read.
 	 */
-	async requestPropertyRead({ device, channel, property }: Omit<IDevicePropertyData, 'value'>): Promise<boolean> {
+	async requestPropertyRead({ device, channel, property, dispatching }: PropertyReadRequest): Promise<boolean> {
 		if (
 			!(device instanceof Zigbee2mqttDeviceEntity) ||
 			!(channel instanceof Zigbee2mqttChannelEntity) ||
@@ -80,6 +81,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		const friendlyName = device.identifier;
 		await adapter.whenCommandsAcknowledged(friendlyName);
 		if (this.zigbee2mqttService.getActiveAdapter() !== adapter || !adapter.isConnected()) return false;
+		dispatching();
 		return adapter.requestState(friendlyName, [field]);
 	}
 

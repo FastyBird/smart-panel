@@ -438,7 +438,13 @@ export abstract class Z2mBaseClientAdapter {
 	 * message of the device is a report. Resolves at once when nothing is pending.
 	 */
 	async whenCommandsAcknowledged(friendlyName: string): Promise<void> {
-		await Promise.all((this.commandEchoWindows.get(friendlyName) ?? []).map((window) => window.closed));
+		// Commands sent while waiting open new windows: wait until none is left.
+		for (
+			let windows = this.commandEchoWindows.get(friendlyName);
+			windows && windows.length > 0;
+			windows = this.commandEchoWindows.get(friendlyName)
+		)
+			await Promise.all(windows.map((window) => window.closed));
 	}
 
 	/**
@@ -804,7 +810,12 @@ export abstract class Z2mBaseClientAdapter {
 			const state = JSON.parse(message) as Record<string, unknown>;
 			const built = this.buildStateMetadata(friendlyName, state, observedAt, isRetained, options);
 			// A replay of our own cache or a retained message is not an acknowledgement of a new command.
-			const commandEcho = options?.isCached !== true && !isRetained && this.takeCommandEcho(friendlyName, state);
+			// A startup replay or a redelivered duplicate may still be an acknowledgement, but it cannot
+			// acknowledge a command by itself: it never closes a window.
+			const commandEcho =
+				options?.isCached !== true &&
+				!isRetained &&
+				this.takeCommandEcho(friendlyName, state, !built.isReplay && options?.isDup !== true);
 			const metadata: Z2mDeviceStateMetadata = commandEcho ? { ...built, commandEcho: true } : built;
 
 			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
@@ -928,19 +939,21 @@ export abstract class Z2mBaseClientAdapter {
 
 	/**
 	 * Whether a state message may acknowledge a pending command. Every message received while a window is
-	 * open counts. For a command that changed the state, the first message carrying all commanded values
-	 * is the acknowledgement and closes the window.
+	 * open counts. For a command that changed the state, a message carrying all commanded values is its
+	 * acknowledgement and closes its window, oldest first and one window per message, so each of two equal
+	 * commands waits for its own acknowledgement.
 	 */
-	private takeCommandEcho(friendlyName: string, state: Record<string, unknown>): boolean {
+	private takeCommandEcho(friendlyName: string, state: Record<string, unknown>, mayAcknowledge: boolean): boolean {
 		const windows = this.commandEchoWindows.get(friendlyName);
 		if (!windows || windows.length === 0) return false;
-		for (const window of windows) {
-			if (
-				window.changesState &&
-				Object.entries(window.commanded).every(([key, value]) => echoesCommandedValue(state[key], value))
-			)
-				window.close();
-		}
+		if (mayAcknowledge)
+			windows
+				.find(
+					(window) =>
+						window.changesState &&
+						Object.entries(window.commanded).every(([key, value]) => echoesCommandedValue(state[key], value)),
+				)
+				?.close();
 		return true;
 	}
 }

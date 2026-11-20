@@ -151,17 +151,46 @@ describe('qualified samples and producer state', () => {
 		jest.useRealTimers();
 	});
 
-	it('marks command acknowledgements and replays on accepted samples, and neither proves the state', async () => {
+	it('displays a command acknowledgement without qualifying it, and withdraws a live value it contradicts', async () => {
+		const lastSample = (): Record<string, unknown> =>
+			(accepted.mock.lastCall as [{ sample: Record<string, unknown> }])[0].sample;
+		await report(20);
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+
+		// Acknowledging the value already qualified withdraws nothing and qualifies nothing new.
+		jest.setSystemTime(base + 500);
+		await report(20, { ...evidence(base + 500), commandEcho: true });
+		expect(invalidated).not.toHaveBeenCalled();
+		expect(values.readQualifiedSample(property, 10_000)?.sampledAt).toEqual(new Date(base));
+
+		jest.setSystemTime(base + 1_000);
+		await report(21, { ...evidence(base + 1_000), commandEcho: true });
+		// Shown, and announced as an acknowledgement that is not live device state.
+		expect(lastSample()).toMatchObject({ value: 21, provenance: 'cached', commandEcho: true });
+		expect(lastSample().acceptanceGeneration).toBeUndefined();
+		expect(property.value.value).toBe(21);
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect(invalidated).toHaveBeenCalledTimes(1);
+
+		// The device's own report restores it.
+		jest.setSystemTime(base + 2_000);
+		await report(21, evidence(base + 2_000));
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(21);
+		expect(lastSample()).toMatchObject({ provenance: 'live' });
+		expect(lastSample().commandEcho).toBeUndefined();
+	});
+
+	it('marks replays on accepted samples, and only a later device report proves the state', async () => {
 		const lastSample = (): Record<string, unknown> =>
 			(accepted.mock.lastCall as [{ sample: Record<string, unknown> }])[0].sample;
 		const proof = new PropertyReadProofService(new PlatformRegistryService(), events).observeNextReport(
 			{ device: { type: 'none' } as never, channel: {} as never, property },
 			{ timeoutMs: 5_000 },
 		);
+		await Promise.resolve();
+		await Promise.resolve();
 		jest.setSystemTime(base + 1_000);
 		await report(21, { ...evidence(base + 1_000), commandEcho: true });
-		expect(lastSample()).toMatchObject({ value: 21, provenance: 'live', commandEcho: true });
-		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(21);
 		jest.setSystemTime(base + 2_000);
 		await report(22, { ...evidence(base + 2_000), replay: true });
 		expect(lastSample()).toMatchObject({ value: 22, replay: true });
@@ -171,8 +200,8 @@ describe('qualified samples and producer state', () => {
 		await report(23, evidence(base + 3_000));
 		const sample = lastSample();
 		expect(sample.replay).toBeUndefined();
-		expect(sample.commandEcho).toBeUndefined();
-		await expect(proof).resolves.toMatchObject({ status: 'reported', sample: { value: 23 }, requested: false });
+		expect(sample.ingressSequence).toEqual(expect.any(Number));
+		await expect(proof).resolves.toMatchObject({ status: 'reported', sample: { value: 23 }, read: 'not_sent' });
 	});
 
 	it.each([21, null])('drops an obsolete provider generation before valid or fault admission: %s', async (value) => {

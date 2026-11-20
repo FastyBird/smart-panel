@@ -21,6 +21,7 @@ describe('Zigbee2mqttDevicePlatform read requests', () => {
 	let service: { getActiveAdapter: jest.Mock };
 	let mapper: { getPropertySampleMapping: jest.Mock };
 	let platform: Zigbee2mqttDevicePlatform;
+	let dispatching: jest.Mock<void, []>;
 
 	const device = Object.assign(new Zigbee2mqttDeviceEntity(), { id: 'd', identifier: 'plug', enabled: true });
 	const channel = Object.assign(new Zigbee2mqttChannelEntity(), { id: 'c', category: ChannelCategory.SWITCHER });
@@ -31,6 +32,7 @@ describe('Zigbee2mqttDevicePlatform read requests', () => {
 	};
 
 	beforeEach(() => {
+		dispatching = jest.fn<void, []>();
 		adapter = {
 			isConnected: jest.fn(() => true),
 			whenCommandsAcknowledged: jest.fn<Promise<void>, [string]>(
@@ -52,23 +54,26 @@ describe('Zigbee2mqttDevicePlatform read requests', () => {
 	});
 
 	it('requests the mapped field only after pending commands to the device were acknowledged', async () => {
-		const result = platform.requestPropertyRead({ device, channel, property: property() });
+		const result = platform.requestPropertyRead({ device, channel, property: property(), dispatching });
 		await flush();
 		expect(adapter.whenCommandsAcknowledged).toHaveBeenCalledWith('plug');
 		expect(adapter.requestState).not.toHaveBeenCalled();
+		expect(dispatching).not.toHaveBeenCalled();
 
 		acknowledge();
 		await expect(result).resolves.toBe(true);
 		expect(adapter.requestState).toHaveBeenCalledWith('plug', ['state']);
+		expect(dispatching.mock.invocationCallOrder[0]).toBeLessThan(adapter.requestState.mock.invocationCallOrder[0]);
 	});
 
 	it('does not request when the connection was lost while waiting', async () => {
-		const result = platform.requestPropertyRead({ device, channel, property: property() });
+		const result = platform.requestPropertyRead({ device, channel, property: property(), dispatching });
 		await flush();
 		adapter.isConnected.mockReturnValue(false);
 		acknowledge();
 		await expect(result).resolves.toBe(false);
 		expect(adapter.requestState).not.toHaveBeenCalled();
+		expect(dispatching).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -76,14 +81,14 @@ describe('Zigbee2mqttDevicePlatform read requests', () => {
 		['a composite colour property', property('hue'), 'color'],
 	])('does not request %s', async (_label, target, field) => {
 		mapper.getPropertySampleMapping.mockReturnValue({ field, transformer: null });
-		await expect(platform.requestPropertyRead({ device, channel, property: target })).resolves.toBe(false);
+		await expect(platform.requestPropertyRead({ device, channel, property: target, dispatching })).resolves.toBe(false);
 		expect(adapter.whenCommandsAcknowledged).not.toHaveBeenCalled();
 	});
 
 	it('does not request for a disabled device', async () => {
 		const disabled = Object.assign(new Zigbee2mqttDeviceEntity(), { ...device, enabled: false });
-		await expect(platform.requestPropertyRead({ device: disabled, channel, property: property() })).resolves.toBe(
-			false,
-		);
+		await expect(
+			platform.requestPropertyRead({ device: disabled, channel, property: property(), dispatching }),
+		).resolves.toBe(false);
 	});
 });

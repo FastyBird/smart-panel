@@ -30,6 +30,9 @@ class FixtureAdapter extends Z2mBaseClientAdapter {
 	feed(topic: string, payload: unknown, retained = false): void {
 		this.handleMessage(`zigbee2mqtt/${topic}`, JSON.stringify(payload), false, retained);
 	}
+	feedDuplicate(friendlyName: string, payload: unknown): void {
+		this.handleDeviceStateMessage(friendlyName, JSON.stringify(payload), false, { isDup: true });
+	}
 }
 
 const flush = async (): Promise<void> => {
@@ -122,6 +125,46 @@ describe('Zigbee2MQTT command acknowledgements', () => {
 		adapter.feed('plug', { state: 'OFF', power_on_behavior: 'off' });
 		await flush();
 		expect(plug).toHaveBeenCalled();
+	});
+
+	it('keeps a separate window for each of two equal commands', async () => {
+		await adapter.publishCommand('plug', { state: 'OFF' });
+		await adapter.publishCommand('plug', { state: 'OFF' });
+		const done = acknowledged();
+		adapter.feed('plug', { state: 'OFF', power: 0 });
+		await flush();
+		expect(done).not.toHaveBeenCalled();
+		// The second acknowledgement is still marked.
+		adapter.feed('plug', { state: 'OFF', power: 0 });
+		expect(lastMetadata().commandEcho).toBe(true);
+		await flush();
+		expect(done).toHaveBeenCalled();
+		adapter.feed('plug', { state: 'OFF', power: 0 });
+		expect(lastMetadata().commandEcho).toBeUndefined();
+	});
+
+	it('also waits for a command sent while waiting', async () => {
+		await adapter.publishCommand('plug', { state: 'OFF' });
+		const done = acknowledged();
+		await adapter.publishCommand('plug', { power_on_behavior: 'off' });
+		adapter.feed('plug', { state: 'OFF' });
+		await flush();
+		expect(done).not.toHaveBeenCalled();
+		adapter.feed('plug', { state: 'OFF', power_on_behavior: 'off' });
+		await flush();
+		expect(done).toHaveBeenCalled();
+	});
+
+	it('marks a redelivered duplicate without letting it acknowledge the command', async () => {
+		await adapter.publishCommand('plug', { state: 'OFF' });
+		const done = acknowledged();
+		adapter.feedDuplicate('plug', { state: 'OFF' });
+		expect(lastMetadata().commandEcho).toBe(true);
+		await flush();
+		expect(done).not.toHaveBeenCalled();
+		adapter.feed('plug', { state: 'OFF' });
+		await flush();
+		expect(done).toHaveBeenCalled();
 	});
 
 	it('compares nested commanded values', async () => {

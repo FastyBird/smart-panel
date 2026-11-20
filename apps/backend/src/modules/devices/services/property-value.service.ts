@@ -32,6 +32,7 @@ import {
 	PropertyProducerLease,
 	PropertyProducerRegistryService,
 } from './property-producer.registry.service';
+import { nextSampleIngress } from './property-sample-ingress';
 import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
 import {
 	PropertyReadSourceCapture,
@@ -274,6 +275,8 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		evidence: PropertySampleEvidence,
 	): Promise<PropertyValueWriteResult> {
+		// Arrival order is fixed before any asynchronous step (lock, storage lookup).
+		const ingress = evidence.ingressSequence ?? nextSampleIngress();
 		const key = this.resolveBestEffort(property, 'sample');
 		if (key === null || key !== property.id || this.producers?.owns(key)) return { changed: false, state: null };
 		return this.withValueLock(
@@ -284,7 +287,10 @@ export class PropertyValueService {
 				const sampledAt = evidence.sampledAt.getTime();
 				const receivedAt = evidence.receivedAt.getTime();
 				const watermark = this.liveWatermarks.get(key);
-				const live = evidence.provenance === 'live';
+				// A command acknowledgement shows what Smart Panel asked for, not the device's state: it is
+				// displayed like a replay, but never qualifies, never moves the live watermark and withdraws a
+				// qualified value it contradicts until an ordinary report restores it.
+				const live = evidence.provenance === 'live' && evidence.commandEcho !== true;
 				// A live report at the same time wins over a replay: a replay must be strictly newer.
 				if (
 					watermark &&
@@ -317,8 +323,8 @@ export class PropertyValueService {
 					}
 					return { changed: false, state: null };
 				}
-				// A valid replay newer than the live report (after a reconnect, for example) never renews live
-				// authority. When it contradicts the qualified live value, that value can no longer be trusted
+				// A valid replay or command acknowledgement newer than the live report (after a reconnect, for
+				// example) never renews live authority. When it contradicts the qualified live value, that value can no longer be trusted
 				// for control, so it is withdrawn until the device reports again. This is decided against the
 				// qualified sample before any display ordering: an optimistic command write may already show
 				// the replayed value, or be newer than the replay, without making the live value right.
@@ -381,12 +387,14 @@ export class PropertyValueService {
 						value: result.state.value,
 						sampledAt: new Date(sampledAt),
 						receivedAt: new Date(receivedAt),
-						provenance: evidence.provenance,
+						// An acknowledgement is never presented as live to sample consumers.
+						provenance: evidence.provenance === 'live' && !live ? 'cached' : evidence.provenance,
 						...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
 						...(evidence.nativeCoverTagPresent !== undefined
 							? { nativeCoverTagPresent: evidence.nativeCoverTagPresent }
 							: {}),
 						...(evidence.commandObservation ? { commandObservation: evidence.commandObservation } : {}),
+						ingressSequence: ingress,
 						...(replay ? { replay: true as const } : {}),
 						...(evidence.commandEcho === true ? { commandEcho: true as const } : {}),
 						...(live ? { acceptanceGeneration: ++this.sampleGeneration } : {}),
@@ -793,6 +801,7 @@ export class PropertyValueService {
 			...(evidence.replay === true ? { replay: true } : {}),
 			...(evidence.ageUnknown === true ? { ageUnknown: true } : {}),
 			...(evidence.commandEcho === true ? { commandEcho: true } : {}),
+			...(evidence.ingressSequence !== undefined ? { ingressSequence: evidence.ingressSequence } : {}),
 		});
 	}
 

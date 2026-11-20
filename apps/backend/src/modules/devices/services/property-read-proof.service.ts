@@ -6,6 +6,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/
 import { AcceptedPropertySample } from '../models/property-sample.model';
 
 import { PlatformRegistryService } from './platform.registry.service';
+import { currentSampleIngress } from './property-sample-ingress';
 
 export interface PropertyReadProofTarget {
 	readonly device: DeviceEntity;
@@ -13,10 +14,15 @@ export interface PropertyReadProofTarget {
 	readonly property: ChannelPropertyEntity;
 }
 
+/**
+ * Whether a fresh read was sent: `pending` until the platform's request settles (a report may answer a read
+ * the platform marked as dispatching before its request settled).
+ */
+export type PropertyReadDispatch = 'sent' | 'not_sent' | 'pending';
+
 export type PropertyReadProofOutcome =
-	| Readonly<{ status: 'reported'; sample: AcceptedPropertySample; requested: boolean }>
-	| Readonly<{ status: 'timed_out'; requested: boolean }>
-	| Readonly<{ status: 'cancelled'; requested: boolean }>;
+	| Readonly<{ status: 'reported'; sample: AcceptedPropertySample; read: PropertyReadDispatch }>
+	| Readonly<{ status: 'timed_out' | 'cancelled'; read: PropertyReadDispatch }>;
 
 export interface PropertyReadProofOptions {
 	/** How long to wait for the report. */
@@ -26,12 +32,13 @@ export interface PropertyReadProofOptions {
 }
 
 /**
- * Proves a property's current device state by the first device report received after the call.
+ * Proves a property's current device state by the first device report that arrives after a boundary.
  *
- * The platform is asked for a fresh read when it supports one. Without that support the proof waits for
- * the device's next report or poll, so every plugin can be used. A command acknowledgement (`commandEcho`),
- * a replay of earlier state, a non-live sample and anything received before the call never count: they
- * show what Smart Panel asked for or what the device said earlier, not what the device reports now.
+ * The platform is asked for a fresh read when it supports one; the boundary is the moment it sends the read
+ * (after settling earlier commands). Without read support, or when the read is not sent, the boundary is the
+ * moment that is known, and the proof waits for the device's next report or poll, so every plugin can be
+ * used. Reports that arrived before the boundary, command acknowledgements (`commandEcho`), replays of
+ * earlier state and non-live samples never count.
  */
 @Injectable()
 export class PropertyReadProofService {
@@ -45,8 +52,9 @@ export class PropertyReadProofService {
 		options: PropertyReadProofOptions,
 	): Promise<PropertyReadProofOutcome> {
 		const propertyId = target.property.id;
-		const notBefore = Date.now();
-		let requested = false;
+		let read: PropertyReadDispatch = 'pending';
+		/** Arrival number after which a report counts; none counts until it is known. */
+		let boundary: number | null = null;
 
 		return new Promise<PropertyReadProofOutcome>((resolve) => {
 			let settled = false;
@@ -60,14 +68,14 @@ export class PropertyReadProofService {
 			};
 			const onSample = (payload?: { propertyId?: string; sample?: AcceptedPropertySample }): void => {
 				const sample = payload?.sample;
-				if (payload?.propertyId !== propertyId || !sample) return;
+				if (boundary === null || payload?.propertyId !== propertyId || !sample) return;
 				if (sample.provenance !== 'live' || sample.replay === true || sample.commandEcho === true) return;
-				if (sample.receivedAt.getTime() < notBefore) return;
-				finish(Object.freeze({ status: 'reported', sample, requested }));
+				if (sample.ingressSequence === undefined || sample.ingressSequence <= boundary) return;
+				finish(Object.freeze({ status: 'reported', sample, read }));
 			};
-			const onAbort = (): void => finish(Object.freeze({ status: 'cancelled', requested }));
+			const onAbort = (): void => finish(Object.freeze({ status: 'cancelled', read }));
 			const timer = setTimeout(
-				() => finish(Object.freeze({ status: 'timed_out', requested })),
+				() => finish(Object.freeze({ status: 'timed_out', read })),
 				Math.max(0, options.timeoutMs),
 			);
 
@@ -78,9 +86,18 @@ export class PropertyReadProofService {
 			options.signal?.addEventListener('abort', onAbort, { once: true });
 			this.events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, onSample);
 
-			void this.platformRegistry.requestPropertyRead(target.device, target.channel, target.property).then((sent) => {
-				requested = sent;
-			});
+			void this.platformRegistry
+				.requestPropertyRead({
+					...target,
+					dispatching: () => {
+						boundary ??= currentSampleIngress();
+					},
+				})
+				.then((sent) => {
+					// A platform that never marked its dispatch: only later reports can answer it.
+					boundary ??= currentSampleIngress();
+					read = sent ? 'sent' : 'not_sent';
+				});
 		});
 	}
 }

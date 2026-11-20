@@ -46,6 +46,7 @@ import { DeviceCreationContext } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
+import { nextSampleIngress } from './property-sample-ingress';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService, type PropertyValueWriteResult } from './property-value.service';
@@ -982,6 +983,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			...(evidence.replay === true ? { replay: true } : {}),
 			...(evidence.ageUnknown === true ? { ageUnknown: true } : {}),
 			...(evidence.commandEcho === true ? { commandEcho: true } : {}),
+			// Arrival order is fixed here, before metadata lookups and the value lock.
+			ingressSequence: evidence.ingressSequence ?? nextSampleIngress(),
 		});
 		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
 	}

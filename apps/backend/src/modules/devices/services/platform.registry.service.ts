@@ -3,8 +3,8 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { INTENT_CLEANUP_INTERVAL } from '../../intents/intents.constants';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
-import { IDevicePlatform } from '../platforms/device.platform';
+import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { IDevicePlatform, PropertyReadRequest } from '../platforms/device.platform';
 
 export interface DevicePlatformCommandBudget {
 	readonly device: Pick<DeviceEntity, 'id' | 'type'>;
@@ -99,15 +99,12 @@ export class PlatformRegistryService implements OnModuleDestroy {
 	}
 
 	/** Ask the device's platform for a fresh report of the property; `false` when unsupported or not sent. */
-	async requestPropertyRead(
-		device: DeviceEntity,
-		channel: ChannelEntity,
-		property: ChannelPropertyEntity,
-	): Promise<boolean> {
+	async requestPropertyRead(request: PropertyReadRequest): Promise<boolean> {
+		const { device, property } = request;
 		const platform = this.get(device);
 		if (typeof platform?.requestPropertyRead !== 'function') return false;
 		try {
-			return (await platform.requestPropertyRead({ device, channel, property })) === true;
+			return (await platform.requestPropertyRead(request)) === true;
 		} catch (error: unknown) {
 			this.logger.warn(
 				`Property read request failed type=${device.type} property=${property.id}: ${
