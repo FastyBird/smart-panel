@@ -410,6 +410,53 @@ describe('Protect discovery store', () => {
 		expect(store.scanning).toBe(false);
 	});
 
+	it.each([
+		['a late "scanning" answer', { status: 'scanning', consoles: [] }],
+		['an older finished answer', { status: 'completed', other_unifi_devices: 1 }],
+	])('drops %s of a follow read once a concurrent fetch applied a newer completion', async (_name, late) => {
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 3 }));
+		const store = useProtectDiscovery();
+
+		await store.fetch();
+
+		post.mockImplementation(hangUntilAborted);
+		get.mockResolvedValueOnce(discoveryBody({ status: 'scanning', consoles: [] }));
+
+		let answerFollowRead: (() => void) | undefined;
+
+		get.mockReturnValueOnce(new Promise((resolve) => (answerFollowRead = () => resolve(discoveryBody(late)))));
+
+		const pending = store.scan();
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_SCAN_DEADLINE_MS + PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+
+		expect(get).toHaveBeenCalledTimes(3);
+
+		// Meanwhile another read finds the scan done.
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 9 }));
+		await store.fetch();
+
+		expect(store.discovery?.otherUnifiDevices).toBe(9);
+
+		// Later reads would fail: the follow must not need them to keep the completion.
+		get.mockResolvedValue({ error: { message: 'busy' }, response: { status: 503 } });
+
+		answerFollowRead?.();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(store.discovery?.status).toBe('completed');
+		expect(store.discovery?.otherUnifiDevices).toBe(9);
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+		const result = await pending;
+
+		expect(get).toHaveBeenCalledTimes(4);
+		expect(result.status).toBe('completed');
+		expect(result.otherUnifiDevices).toBe(9);
+		expect(store.discovery?.otherUnifiDevices).toBe(9);
+		expect(store.scanning).toBe(false);
+	});
+
 	it('goes back to the newest finished result, not the one from before the scan, when a follow gives up', async () => {
 		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 3 }));
 		const store = useProtectDiscovery();
@@ -436,13 +483,108 @@ describe('Protect discovery store', () => {
 		expect(store.scanning).toBe(false);
 	});
 
-	it('does not re-read the cache after a scan failure that is not a timeout', async () => {
-		post.mockResolvedValue({ error: { message: 'nope' }, response: { status: 500 } });
+	it('does not re-read the cache after the backend refuses the scan', async () => {
+		post.mockResolvedValue({ error: { message: 'nope' }, response: { status: 403 } });
 		const store = useProtectDiscovery();
 
 		await expect(store.scan()).rejects.toBeInstanceOf(ProtectApiException);
 
 		expect(get).not.toHaveBeenCalled();
+		expect(store.scanning).toBe(false);
+	});
+
+	it('puts back the finished result when the backend refuses a scan a read meanwhile showed as running', async () => {
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 3 }));
+		const store = useProtectDiscovery();
+
+		await store.fetch();
+		const before = store.discovery;
+
+		let refuse: (() => void) | undefined;
+
+		post.mockReturnValueOnce(new Promise((resolve) => (refuse = () => resolve({ error: { message: 'Forbidden' }, response: { status: 403 } }))));
+
+		const pending = store.scan();
+		const outcome = expect(pending).rejects.toBeInstanceOf(ProtectApiException);
+
+		// A read while the request runs finds the backend scanning and joins the scan.
+		get.mockResolvedValueOnce(discoveryBody({ status: 'scanning', consoles: [], started_at: '2026-11-20T11:00:00Z' }));
+		const joined = store.fetch();
+		const joinedOutcome = expect(joined).rejects.toBeInstanceOf(ProtectApiException);
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(store.discovery?.status).toBe('scanning');
+		expect(store.scanning).toBe(true);
+
+		refuse?.();
+		await outcome;
+		await joinedOutcome;
+
+		expect(store.discovery).toEqual(before);
+		expect(store.scanning).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_FOLLOW_MS);
+
+		expect(get).toHaveBeenCalledTimes(2);
+	});
+
+	it('follows the backend scan after a server error on the scan request', async () => {
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 3 }));
+		const store = useProtectDiscovery();
+
+		await store.fetch();
+
+		post.mockResolvedValueOnce({ error: { message: 'Bad Gateway' }, response: { status: 502 } });
+		get.mockResolvedValueOnce(discoveryBody({ status: 'scanning', consoles: [], started_at: '2026-11-20T11:00:00Z' }));
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 4, started_at: '2026-11-20T11:00:00Z' }));
+
+		const pending = store.scan();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(get).toHaveBeenCalledTimes(2);
+		expect(store.scanning).toBe(true);
+		expect(store.discovery?.status).toBe('scanning');
+		expect(store.discovery?.otherUnifiDevices).toBe(3);
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+		const result = await pending;
+
+		expect(result.status).toBe('completed');
+		expect(store.discovery?.otherUnifiDevices).toBe(4);
+		expect(store.scanning).toBe(false);
+	});
+
+	it('reports a server error on the scan request when the backend shows no newer scan', async () => {
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 3 }));
+		const store = useProtectDiscovery();
+
+		await store.fetch();
+		const before = store.discovery;
+
+		post.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 3 }));
+
+		await expect(store.scan()).rejects.toBeInstanceOf(TypeError);
+
+		expect(get).toHaveBeenCalledTimes(2);
+		expect(store.discovery).toEqual(before);
+		expect(store.scanning).toBe(false);
+	});
+
+	it('follows a scan whose request answered before the scan finished', async () => {
+		post.mockResolvedValueOnce(discoveryBody({ status: 'scanning', consoles: [], started_at: '2026-11-20T11:00:00Z' }));
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', started_at: '2026-11-20T11:00:00Z' }));
+		const store = useProtectDiscovery();
+
+		const pending = store.scan();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(store.scanning).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+
+		expect((await pending).status).toBe('completed');
+		expect(store.discovery?.status).toBe('completed');
 		expect(store.scanning).toBe(false);
 	});
 

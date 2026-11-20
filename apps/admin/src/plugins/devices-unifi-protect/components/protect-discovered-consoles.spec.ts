@@ -178,8 +178,10 @@ describe('ProtectDiscoveredConsoles', () => {
 				new Promise<IProtectDiscovery>((resolve) => {
 					// What the store holds while it follows a scan started elsewhere.
 					store.discovery = { ...discoveryOf(), status: DevicesUnifiProtectPluginDiscoveryStatus.scanning };
+					store.scanning = true;
 					finish = () => {
 						store.discovery = discoveryOf();
+						store.scanning = false;
 						resolve(store.discovery);
 					};
 				})
@@ -197,6 +199,21 @@ describe('ProtectDiscoveredConsoles', () => {
 
 		expect(wrapper.find('[data-test-id="protect-discovery-progress"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="protect-discovery-load-failed"]').exists()).toBe(false);
+	});
+
+	it('does not stay busy for a scanning status that nothing follows', async () => {
+		store.fetch.mockImplementation(async () => {
+			store.discovery = { ...discoveryOf(), status: DevicesUnifiProtectPluginDiscoveryStatus.scanning };
+
+			return store.discovery;
+		});
+
+		const wrapper = mountConsoles();
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="protect-discovery-progress"]').exists()).toBe(false);
+		expect(wrapper.get('[data-test-id="protect-discovery-scan"]').classes()).not.toContain('is-loading');
 	});
 
 	it('says the scan is still running when the store stops following it', async () => {

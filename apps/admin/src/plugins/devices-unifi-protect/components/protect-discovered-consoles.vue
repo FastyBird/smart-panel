@@ -196,10 +196,11 @@ const discoveryStore = injectStoresManager().getStore(protectDiscoveryStoreKey);
 /** Why the list could not be shown; also the locale key of the message. */
 const loadFailed = ref<'loadFailed' | 'scanFailed' | 'stillScanning' | null>(null);
 
-/** A scan this client runs or follows, or one the backend reports in progress (also on mount, for a scan started elsewhere). */
-const scanInProgress = computed<boolean>(
-	(): boolean => discoveryStore.scanning || discoveryStore.discovery?.status === DevicesUnifiProtectPluginDiscoveryStatus.scanning
-);
+/**
+ * A scan this client runs or follows, including one started elsewhere that a fetch found (on mount too). Only the store's
+ * own flag counts: a "scanning" status left in the discovery with nothing following it must not keep the button busy.
+ */
+const scanInProgress = computed<boolean>((): boolean => discoveryStore.scanning);
 
 /** Probes started from this component that failed, by `protectProbeKey`. */
 const probeErrors = reactive<Record<string, 'probeTimeout' | 'probeFailed'>>({});
