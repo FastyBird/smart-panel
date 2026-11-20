@@ -31,6 +31,10 @@ describe('design system lint rules', () => {
 			{ ...sfc('<el-card body-class="dark:hover:bg-gray-800"></el-card>'), errors: [{ messageId: 'gray' }] },
 			{ ...sfc('<div class="border-t-gray-600 border-x-gray-600"></div>'), errors: [{ messageId: 'gray' }, { messageId: 'gray' }] },
 			{ ...sfc('<div class="shadow-md shadow-gray-500"></div>'), errors: [{ messageId: 'gray', data: { token: 'shadow-gray-500' } }] },
+			{
+				...sfc('<div class="ring-2 ring-offset-2 ring-offset-gray-500"></div>'),
+				errors: [{ messageId: 'gray', data: { token: 'ring-offset-gray-500' } }],
+			},
 			// Utility groups are expanded first: the second item is checked
 			{ ...sfc(`<div class="${group('text-', 'sm gray-600')}"></div>`), errors: [{ messageId: 'gray', data: { token: 'text-gray-600' } }] },
 		],
@@ -101,6 +105,9 @@ describe('design system lint rules', () => {
 			sfc("<p :class=\"{ ...{ 'text-primary': false }, 'text-primary': null }\"></p>"),
 			// A later property overrides an earlier one
 			sfc("<p :class=\"{ ...{ 'text-primary': true }, 'text-primary': false }\"></p>"),
+			// Computed keys known at lint time take part in the same overrides
+			sfc('<p :class="{ [\'text-primary\']: false }"></p>'),
+			sfc("<p :class=\"{ 'text-primary': true, ['text-primary']: false }\"></p>"),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
@@ -117,6 +124,7 @@ describe('design system lint rules', () => {
 			{ ...sfc('<p :class="{ \'text-primary\': true }"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"{ 'text-primary': false, ...{ 'text-primary': on } }\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="{ [[\'text-primary font-600\']]: true }"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc('<p :class="{ [\'text-primary\']: false, [`text-primary`]: on }"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"`${on ? ['text-primary font-600'] : ''}`\"></p>"), errors: [{ messageId: 'body' }] },
 			// A sole interpolation: the empty quasis around it do not touch its classes
 			{ ...sfc("<p :class=\"`${active ? 'text-primary' : 'text-default'}`\"></p>"), errors: [{ messageId: 'body' }] },

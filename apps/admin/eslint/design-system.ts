@@ -35,7 +35,7 @@ interface IDocumentFragment {
 const THEME_COLOURS = '(?:primary|success|warning|danger|info|brand)';
 
 const GRAY_UTILITY =
-	/(?:^|[:(!])(?:text|bg|border(?:-[trblxyse])?|fill|stroke|ring|divide|outline|placeholder|from|via|to|decoration|caret|accent|shadow)-gray-\d+/;
+	/(?:^|[:(!])(?:text|bg|border(?:-[trblxyse])?|fill|stroke|ring(?:-offset)?|divide|outline|placeholder|from|via|to|decoration|caret|accent|shadow)-gray-\d+/;
 const THEME_OPACITY = new RegExp(`(?:^|[:(!])(?:bg|text|border|fill)-${THEME_COLOURS}\\/\\d+`);
 const LEGACY_BREAKPOINT = /(?:^|[:(!])(?:md|lg|xl):/;
 const HEX_COLOUR = /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/g;
@@ -166,14 +166,14 @@ const resolveObjectKeys = (object: TemplateNode, keys: Map<string, TemplateNode 
 		const key = property.key as TemplateNode;
 		const value = property.value as TemplateNode | undefined;
 
-		if (property.computed === true) {
-			// A computed key becomes a property name by string coercion, so it is read as a string
+		const name = property.computed === true ? staticComputedName(key) : key.type === 'Identifier' ? key.name : key.value;
+
+		if (property.computed === true && name === null) {
+			// A runtime computed key becomes a property name by string coercion, so it is read as a string
 			collectStringClasses(key, found, owner);
 
 			continue;
 		}
-
-		const name = key.type === 'Identifier' ? key.name : key.value;
 
 		if (typeof name !== 'string' && typeof name !== 'number') {
 			continue;
@@ -182,6 +182,19 @@ const resolveObjectKeys = (object: TemplateNode, keys: Map<string, TemplateNode 
 		keys.delete(String(name));
 		keys.set(String(name), value?.type === 'Literal' && !value.value ? null : key);
 	}
+};
+
+/** The name of a computed key known at lint time (`['text-primary']`, `` [`a b`] ``, `[['a', 'b']]`), or null */
+const staticComputedName = (key: TemplateNode): string | null => {
+	if (key.type === 'Literal' && (typeof key.value === 'string' || typeof key.value === 'number')) {
+		return String(key.value);
+	}
+
+	if (key.type === 'TemplateLiteral' && (key.expressions as unknown[]).length === 0) {
+		return ((key.quasis as TemplateNode[])[0]?.value as { cooked?: string | null } | undefined)?.cooked ?? null;
+	}
+
+	return key.type === 'ArrayExpression' ? staticArrayText(key) : null;
 };
 
 /** `['a b', 'c']` as JavaScript turns it into a string (`a b,c`), or null when an item is not a string literal */
