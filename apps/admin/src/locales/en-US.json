@@ -28,6 +28,18 @@
 		"value": {
 			"notAvailable": "N/A"
 		},
+		"stateView": {
+			"empty": "Nothing here yet",
+			"loading": "Loading…",
+			"error": "Something went wrong",
+			"notFound": "Not found"
+		},
+		"copyField": {
+			"copy": "Copy",
+			"copyNamed": "Copy {name}",
+			"copied": "Copied to the clipboard",
+			"copyFailed": "Could not copy to the clipboard"
+		},
 		"buttons": {
 			"home": {
 				"title": "Home"

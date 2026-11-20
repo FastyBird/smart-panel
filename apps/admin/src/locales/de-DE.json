@@ -28,6 +28,18 @@
 		"value": {
 			"notAvailable": "N/V"
 		},
+		"stateView": {
+			"empty": "Noch nichts vorhanden",
+			"loading": "Wird geladen…",
+			"error": "Etwas ist schiefgelaufen",
+			"notFound": "Nicht gefunden"
+		},
+		"copyField": {
+			"copy": "Kopieren",
+			"copyNamed": "{name} kopieren",
+			"copied": "In die Zwischenablage kopiert",
+			"copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen"
+		},
 		"buttons": {
 			"home": {
 				"title": "Startseite"

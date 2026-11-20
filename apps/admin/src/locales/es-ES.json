@@ -28,6 +28,18 @@
 		"value": {
 			"notAvailable": "N/D"
 		},
+		"stateView": {
+			"empty": "Todavía no hay nada aquí",
+			"loading": "Cargando…",
+			"error": "Algo salió mal",
+			"notFound": "No encontrado"
+		},
+		"copyField": {
+			"copy": "Copiar",
+			"copyNamed": "Copiar {name}",
+			"copied": "Copiado al portapapeles",
+			"copyFailed": "No se pudo copiar al portapapeles"
+		},
 		"buttons": {
 			"home": {
 				"title": "Inicio"
