@@ -28,6 +28,18 @@
 		"value": {
 			"notAvailable": "N/A"
 		},
+		"stateView": {
+			"empty": "Zatím tu nic není",
+			"loading": "Načítání…",
+			"error": "Něco se pokazilo",
+			"notFound": "Nenalezeno"
+		},
+		"copyField": {
+			"copy": "Kopírovat",
+			"copyNamed": "Kopírovat {name}",
+			"copied": "Zkopírováno do schránky",
+			"copyFailed": "Do schránky se nepodařilo zkopírovat"
+		},
 		"buttons": {
 			"home": {
 				"title": "Domů"

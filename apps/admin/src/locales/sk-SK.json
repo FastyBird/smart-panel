@@ -28,6 +28,18 @@
 		"value": {
 			"notAvailable": "N/A"
 		},
+		"stateView": {
+			"empty": "Zatiaľ tu nič nie je",
+			"loading": "Načítava sa…",
+			"error": "Niečo sa pokazilo",
+			"notFound": "Nenájdené"
+		},
+		"copyField": {
+			"copy": "Kopírovať",
+			"copyNamed": "Kopírovať {name}",
+			"copied": "Skopírované do schránky",
+			"copyFailed": "Do schránky sa nepodarilo skopírovať"
+		},
 		"buttons": {
 			"home": {
 				"title": "Domov"

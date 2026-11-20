@@ -48,7 +48,7 @@ I want every admin screen, including the newer ones and every plugin form, to fo
 
 ## 4. Acceptance criteria
 
-- [ ] Phase 1, theme and lint: theme files merged into `apps/admin`, button override and `px-4!` removed, cards flat,
+- [x] Phase 1, theme and lint: theme files merged into `apps/admin`, button override and `px-4!` removed, cards flat,
       `bg-primary/5` and `border-primary/20` replaced, lint rules on in warn mode, `docs/admin-ui-theme/` removed, and
       every reference to it updated to the `apps/admin` files: the spec header and section 10, section 2 of this
       epic, and the documentation tree in `docs/readme.md`.
@@ -71,8 +71,8 @@ dark, and updates all six locales.
 | ID | Issue | Phase | Task | Depends on | Status |
 |---|---|---|---|---|---|
 | AR-1 | #1658 | 1 | `feat(admin): adopt the redesign theme and UnoCSS tokens` | — | merged in #1690 |
-| AR-2 | #1659 | 1 | `chore(admin): add the design system lint rules in warn mode` | AR-1 | in review |
-| AR-3 | #1660 | 2 | `feat(admin): add state, status and data display components` | AR-1 | open |
+| AR-2 | #1659 | 1 | `chore(admin): add the design system lint rules in warn mode` | AR-1 | merged in #1692 |
+| AR-3 | #1660 | 2 | `feat(admin): add state, status and data display components` | AR-1 | in review |
 | AR-4 | #1661 | 2 | `feat(admin): add form footer, secret input and type picker components` | AR-1 | open |
 | AR-5 | #1662 | 2 | `feat(admin): add list filter bar and wizard shell components` | AR-1, AR-4 | open |
 | AR-6 | #1663 | 2 | `feat(admin): add plugin form section and test connection components` | AR-3, AR-4 | open |
