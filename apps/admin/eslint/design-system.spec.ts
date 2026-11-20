@@ -117,6 +117,13 @@ describe('design system lint rules', () => {
 			sfc('<p :class="{ [\'text-primary\']: false }"></p>'),
 			sfc("<p :class=\"{ 'text-primary': true, ['text-primary']: false }\"></p>"),
 			sfc("<p :class=\"{ 'text-primary': true, ['text-' + 'primary']: false }\"></p>"),
+			{
+				...sfc(
+					"<p :class=\"{ 'text-primary': true, [('text-primary' as const)]: false }\"></p>",
+					'<script setup lang="ts">\nconst x = 1;\n</script>'
+				),
+				languageOptions: { parserOptions: { parser: tsParser } },
+			},
 			// A runtime computed key with a statically falsy value is never emitted
 			sfc('<p :class="{ [tone]: false, [`${tone}`]: null }"></p>'),
 		],
@@ -135,7 +142,12 @@ describe('design system lint rules', () => {
 			{ ...sfc('<p :class="{ \'text-primary\': true }"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"{ 'text-primary': false, ...{ 'text-primary': on } }\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="{ [[\'text-primary font-600\']]: true }"></p>'), errors: [{ messageId: 'body' }] },
-			// TypeScript wrappers are unwrapped
+			// TypeScript wrappers are unwrapped, also inside concatenations and computed keys
+			{
+				...sfc("<p :class=\"'text-' + ('primary' as const)\"></p>", '<script setup lang="ts">\nconst x = 1;\n</script>'),
+				languageOptions: { parserOptions: { parser: tsParser } },
+				errors: [{ messageId: 'body' }],
+			},
 			{
 				...sfc('<p :class="(\'text-primary\' satisfies string)"></p>', '<script setup lang="ts">\nconst x = 1;\n</script>'),
 				languageOptions: { parserOptions: { parser: tsParser } },
@@ -163,6 +175,7 @@ describe('design system lint rules', () => {
 			sfc('<a :href="\'#abc\'">Up</a>'),
 			sfc('<router-link :to="`#fade`">Up</router-link>'),
 			sfc('<div></div>', '<script setup lang="ts">\n// Fixes #1234\nconst id = 1;\n</script>'),
+			sfc('<div>See issue #123456, PR #12345678</div>'),
 			// Selector arguments of DOM queries are IDs, not colours
 			sfc(
 				'<div @click="$el.closest(\'#abc\')"></div>',
@@ -263,6 +276,11 @@ describe('design system lint rules', () => {
 					{ messageId: 'hex', data: { value: '#abc' } },
 					{ messageId: 'hex', data: { value: '#000' } },
 				],
+			},
+			// SCSS nested properties: the shorthand value is still a declaration
+			{
+				...sfc('<div></div>', '<style lang="scss">\n.x {\n\tbackground: #fff {\n\t\trepeat: no-repeat;\n\t}\n}\n</style>'),
+				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
 			},
 			// A line with open parentheses continues, so it does not open a rule
 			{

@@ -188,8 +188,21 @@ const resolveObjectKeys = (object: TemplateNode, keys: Map<string, TemplateNode 
 	}
 };
 
+/** `('primary' as const)`, `(x satisfies T)`, `x!`: the expression inside TypeScript wrappers */
+const unwrapTypeScript = (node: TemplateNode | null): TemplateNode | null => {
+	let current = node;
+
+	while (current?.type === 'TSAsExpression' || current?.type === 'TSSatisfiesExpression' || current?.type === 'TSNonNullExpression') {
+		current = current.expression as TemplateNode;
+	}
+
+	return current;
+};
+
 /** The name of a computed key known at lint time (`['text-primary']`, `['text-' + 'primary']`, `[['a', 'b']]`), or null */
-const staticComputedName = (key: TemplateNode): string | null => {
+const staticComputedName = (wrapped: TemplateNode): string | null => {
+	const key = unwrapTypeScript(wrapped) as TemplateNode;
+
 	if (key.type === 'Literal' && (typeof key.value === 'string' || typeof key.value === 'number')) {
 		return String(key.value);
 	}
@@ -288,7 +301,7 @@ type ConcatPart = { text: string; node: TemplateNode | null } | { dynamic: unkno
 
 /** A `+` chain or template literal as static text and dynamic parts, in order */
 const concatenationParts = (node: unknown): ConcatPart[] => {
-	const current = node as TemplateNode | null;
+	const current = unwrapTypeScript(node as TemplateNode | null);
 
 	if (current?.type === 'BinaryExpression' && current.operator === '+') {
 		return [...concatenationParts(current.left), ...concatenationParts(current.right)];
@@ -748,7 +761,8 @@ const indentedStatementStart = (before: string): number => {
  * - An at-rule prelude is a value (`@supports (color: #fff)`), except inside `selector(…)` and for `SELECTOR_AT_RULES`.
  * - Indented syntax: `property: value` and `name = value` are declarations; any other line followed by more
  *   deeply indented lines is a selector (`a:hover #abc`); a remaining `property:value` line is a declaration.
- * - Otherwise the hash is in a selector when `{` follows before the statement ends with `;` or `}`.
+ * - Otherwise `property: value` is a declaration, and the hash is in a selector when `{` follows before the
+ *   statement ends with `;` or `}`.
  */
 const isCssSelectorHash = (code: string, offset: number, indented: boolean): boolean => {
 	const before = code.slice(0, offset);
@@ -788,6 +802,11 @@ const isCssSelectorHash = (code: string, offset: number, indented: boolean): boo
 
 		// Otherwise `name:value` is a declaration and anything else a selector
 		return !/^\$?[\w-]+\s*:/.test(prelude);
+	}
+
+	// `name: value` is a declaration, also when nested properties follow (`background: #fff { repeat: … }`)
+	if (/^\$?[\w-]+\s*:\s/.test(prelude)) {
+		return false;
 	}
 
 	const rest = code.slice(offset);
@@ -985,7 +1004,7 @@ const noHexColours: Rule.RuleModule = {
 				}
 
 				// Issue references, never in style attributes
-				if (/^#\d{3,4}$/.test(value) && !/style=["'][^"']*$/.test(before) && ISSUE_REFERENCE.test(before)) {
+				if (/^#\d+$/.test(value) && !/style=["'][^"']*$/.test(before) && ISSUE_REFERENCE.test(before)) {
 					continue;
 				}
 
