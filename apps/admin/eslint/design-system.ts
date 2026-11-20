@@ -97,37 +97,21 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 
 			return;
 
-		case 'ObjectExpression':
-			for (const property of current.properties as TemplateNode[]) {
-				if (property.type === 'SpreadElement') {
-					// Object spread copies own keys: an object literal's keys are classes, but an array or a string
-					// spreads index keys (`0`, `1`), and other values are unknown at lint time
-					if ((property.argument as TemplateNode | undefined)?.type === 'ObjectExpression') {
-						collectExpressionClasses(property.argument, found, owner);
-					}
+		case 'ObjectExpression': {
+			// Later keys override earlier ones (`{ ...{ 'text-primary': true }, 'text-primary': false }`), so
+			// statically named keys are resolved first and only those left enabled are read
+			const keys = new Map<string, TemplateNode | null>();
 
-					continue;
+			resolveObjectKeys(current, keys, found, owner);
+
+			keys.forEach((key, name) => {
+				if (key) {
+					splitClasses(name).forEach((token) => found.push({ token, node: key }));
 				}
-
-				const key = property.key as TemplateNode;
-				const value = property.value as TemplateNode | undefined;
-
-				// `{ 'text-primary': false }`: Vue leaves out a key whose value is statically falsy
-				if (value?.type === 'Literal' && !value.value) {
-					continue;
-				}
-
-				if (property.computed === true) {
-					// A computed key becomes a property name by string coercion, so it is read as a string
-					collectStringClasses(key, found, owner);
-				} else if (key.type === 'Identifier' && typeof key.name === 'string') {
-					found.push({ token: key.name, node: key });
-				} else {
-					collectExpressionClasses(key, found, owner);
-				}
-			}
+			});
 
 			return;
+		}
 
 		case 'ConditionalExpression':
 			collectExpressionClasses(current.consequent, found, owner);
@@ -163,6 +147,53 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 };
 
 /**
+ * The keys of an object literal Vue turns into classes, in property order. A statically named key maps to its
+ * node, or to null when its value is statically falsy (`false`, `null`, `0`, `''`), so a later property
+ * overrides an earlier one. Computed keys are runtime names and their classes are collected directly.
+ */
+const resolveObjectKeys = (object: TemplateNode, keys: Map<string, TemplateNode | null>, found: IClassToken[], owner: TemplateNode): void => {
+	for (const property of object.properties as TemplateNode[]) {
+		if (property.type === 'SpreadElement') {
+			// Object spread copies own keys: an object literal's keys are classes, but an array or a string
+			// spreads index keys (`0`, `1`), and other values are unknown at lint time
+			if ((property.argument as TemplateNode | undefined)?.type === 'ObjectExpression') {
+				resolveObjectKeys(property.argument as TemplateNode, keys, found, owner);
+			}
+
+			continue;
+		}
+
+		const key = property.key as TemplateNode;
+		const value = property.value as TemplateNode | undefined;
+
+		if (property.computed === true) {
+			// A computed key becomes a property name by string coercion, so it is read as a string
+			collectStringClasses(key, found, owner);
+
+			continue;
+		}
+
+		const name = key.type === 'Identifier' ? key.name : key.value;
+
+		if (typeof name !== 'string' && typeof name !== 'number') {
+			continue;
+		}
+
+		keys.delete(String(name));
+		keys.set(String(name), value?.type === 'Literal' && !value.value ? null : key);
+	}
+};
+
+/** `['a b', 'c']` as JavaScript turns it into a string (`a b,c`), or null when an item is not a string literal */
+const staticArrayText = (node: TemplateNode): string | null => {
+	const elements = node.elements as (TemplateNode | null)[];
+
+	return elements.every((element) => element?.type === 'Literal' && typeof element.value === 'string')
+		? (elements as TemplateNode[]).map((element) => element.value as string).join(',')
+		: null;
+};
+
+/**
  * Classes of an operand of a concatenation or interpolation, where JavaScript turns the value into a string.
  * Only values whose text is known are read: strings, nested concatenations and the branches of conditionals
  * or logical expressions. Objects and arrays become `[object Object]` or comma-joined text, not Vue classes,
@@ -183,6 +214,17 @@ const collectStringClasses = (node: unknown, found: IClassToken[], owner: Templa
 			collectConcatenation(current, found, owner);
 
 			return;
+
+		case 'ArrayExpression': {
+			// `{ [['text-primary font-600']]: on }`: an array of strings becomes its items joined with commas
+			const arrayText = staticArrayText(current);
+
+			if (arrayText !== null) {
+				splitClasses(arrayText).forEach((token) => found.push({ token, node: current }));
+			}
+
+			return;
+		}
 
 		case 'BinaryExpression':
 			if (current.operator === '+') {
@@ -232,11 +274,10 @@ const concatenationParts = (node: unknown): ConcatPart[] => {
 	}
 
 	// `${['text-primary font-600']}`: an array of strings becomes its items joined with commas
-	if (
-		current?.type === 'ArrayExpression' &&
-		(current.elements as (TemplateNode | null)[]).every((element) => element?.type === 'Literal' && typeof element.value === 'string')
-	) {
-		return [{ text: (current.elements as TemplateNode[]).map((element) => element.value as string).join(','), node: current }];
+	const arrayText = current?.type === 'ArrayExpression' ? staticArrayText(current) : null;
+
+	if (current && arrayText !== null) {
+		return [{ text: arrayText, node: current }];
 	}
 
 	if (current?.type === 'TemplateLiteral') {
@@ -493,6 +534,35 @@ const styleBlocks = (context: Rule.RuleContext): IStyleBlock[] =>
 		});
 
 /**
+ * Sass: a comment that starts its line runs over the following lines indented deeper than it, and ends before
+ * the first non-empty line indented as much or less. Null when the comment does not start its line.
+ */
+const indentedCommentEnd = (chars: string[], index: number): number | null => {
+	const lineStart = chars.lastIndexOf('\n', index - 1) + 1;
+	const prefix = chars.slice(lineStart, index).join('');
+
+	if (!/^\s*$/.test(prefix)) {
+		return null;
+	}
+
+	let close = chars.indexOf('\n', index);
+
+	while (close !== -1) {
+		const next = chars.indexOf('\n', close + 1);
+		const line = chars.slice(close + 1, next === -1 ? chars.length : next).join('');
+		const indent = /^\s*/.exec(line)?.[0].length ?? 0;
+
+		if (line.trim() !== '' && indent <= prefix.length) {
+			break;
+		}
+
+		close = next;
+	}
+
+	return close === -1 ? chars.length : close;
+};
+
+/**
  * The code of a style block with comments, quoted strings and `url(…)` contents blanked out (same length, so
  * offsets stay valid). Colours are only looked for, and selectors only recognised, in what remains.
  */
@@ -523,34 +593,21 @@ const cssCode = (text: string, block: IStyleBlock): string => {
 			index = stop + 1;
 		} else if (rest(2) === '/*') {
 			const close = chars.join('').indexOf('*/', index + 2);
-			const stop = close === -1 ? chars.length : close + 2;
+			let stop = close === -1 ? chars.length : close + 2;
+
+			// Sass: a block comment may also end where the indentation does, without `*/`
+			const indentedEnd = block.indented ? indentedCommentEnd(chars, index) : null;
+
+			if (indentedEnd !== null && indentedEnd < stop) {
+				stop = indentedEnd;
+			}
 
 			blank(index, stop);
 			index = stop;
 		} else if (block.lineComments && rest(2) === '//') {
-			let close = chars.indexOf('\n', index);
-
-			if (block.indented) {
-				// Sass: a comment on its own line also covers the more deeply indented lines below it
-				const lineStart = chars.lastIndexOf('\n', index - 1) + 1;
-				const prefix = chars.slice(lineStart, index).join('');
-
-				if (/^\s*$/.test(prefix)) {
-					while (close !== -1) {
-						const next = chars.indexOf('\n', close + 1);
-						const line = chars.slice(close + 1, next === -1 ? chars.length : next).join('');
-						const indent = /^\s*/.exec(line)?.[0].length ?? 0;
-
-						if (line.trim() !== '' && indent <= prefix.length) {
-							break;
-						}
-
-						close = next;
-					}
-				}
-			}
-
-			const stop = close === -1 ? chars.length : close;
+			const close = chars.indexOf('\n', index);
+			// Sass: a comment on its own line also covers the more deeply indented lines below it
+			const stop = (block.indented ? indentedCommentEnd(chars, index) : null) ?? (close === -1 ? chars.length : close);
 
 			blank(index, stop);
 			index = stop;
@@ -679,6 +736,54 @@ const ISSUE_REFERENCE = /\b(?:issues?|prs?|pull requests?|tickets?|fixes|fixed|c
 /** Fragment references in the template and script: href="#top", :href="'#top'", :to="`#top`", url(#gradient) */
 const FRAGMENT_REFERENCE = /(?:\b(?:href|to)\s*=\s*["'](?:\s*['"`])?|\burl\(\s*['"]?)$/i;
 
+/** DOM methods whose first argument is a CSS selector (`document.querySelector('#abc')`) */
+const SELECTOR_METHODS = ['querySelector', 'querySelectorAll', 'closest', 'matches'];
+
+/** Ranges of the selector arguments of SELECTOR_METHODS calls, in the script and in template expressions */
+const selectorArgumentRanges = (context: Rule.RuleContext): [number, number][] => {
+	const ranges: [number, number][] = [];
+	const seen = new Set<unknown>();
+	const visit = (node: unknown): void => {
+		if (node === null || typeof node !== 'object' || seen.has(node)) {
+			return;
+		}
+
+		seen.add(node);
+
+		if (Array.isArray(node)) {
+			node.forEach(visit);
+
+			return;
+		}
+
+		const current = node as TemplateNode;
+
+		if (current.type === 'CallExpression') {
+			const callee = current.callee as TemplateNode | undefined;
+			const property = callee?.type === 'MemberExpression' ? (callee.property as TemplateNode) : undefined;
+			const argument = (current.arguments as TemplateNode[] | undefined)?.[0];
+
+			if (
+				property?.type === 'Identifier' &&
+				SELECTOR_METHODS.includes(property.name as string) &&
+				(argument?.type === 'Literal' || argument?.type === 'TemplateLiteral')
+			) {
+				ranges.push(argument.range);
+			}
+		}
+
+		for (const [key, value] of Object.entries(current)) {
+			if (key !== 'parent' && key !== 'loc' && key !== 'range' && key !== 'tokens' && key !== 'comments' && key !== 'errors') {
+				visit(value);
+			}
+		}
+	};
+
+	visit(context.sourceCode.ast);
+
+	return ranges;
+};
+
 /** Ranges of `#name` slot shorthands (`<template #add>`): directive keys, not colours */
 const slotShorthandRanges = (context: Rule.RuleContext): [number, number][] => {
 	const ranges: [number, number][] = [];
@@ -721,6 +826,7 @@ const noHexColours: Rule.RuleModule = {
 				...context.sourceCode.getAllComments().map((comment) => comment.range as [number, number]),
 				...(documentFragment(context)?.comments ?? []).map((comment) => comment.range),
 				...slotShorthandRanges(context),
+				...selectorArgumentRanges(context),
 			];
 
 			const report = (index: number, value: string): void =>

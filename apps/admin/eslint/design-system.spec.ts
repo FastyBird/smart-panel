@@ -99,6 +99,8 @@ describe('design system lint rules', () => {
 			sfc("<p :class=\"{ [['text-primary', 'font-600']]: active }\"></p>"),
 			// Statically falsy values leave the key out
 			sfc("<p :class=\"{ ...{ 'text-primary': false }, 'text-primary': null }\"></p>"),
+			// A later property overrides an earlier one
+			sfc("<p :class=\"{ ...{ 'text-primary': true }, 'text-primary': false }\"></p>"),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
@@ -113,6 +115,9 @@ describe('design system lint rules', () => {
 			// An interpolated array of strings becomes its items joined with commas
 			{ ...sfc('<p :class="`${[\'text-primary font-600\']}`"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="{ \'text-primary\': true }"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc("<p :class=\"{ 'text-primary': false, ...{ 'text-primary': on } }\"></p>"), errors: [{ messageId: 'body' }] },
+			{ ...sfc('<p :class="{ [[\'text-primary font-600\']]: true }"></p>'), errors: [{ messageId: 'body' }] },
+			{ ...sfc("<p :class=\"`${on ? ['text-primary font-600'] : ''}`\"></p>"), errors: [{ messageId: 'body' }] },
 			// A sole interpolation: the empty quasis around it do not touch its classes
 			{ ...sfc("<p :class=\"`${active ? 'text-primary' : 'text-default'}`\"></p>"), errors: [{ messageId: 'body' }] },
 		],
@@ -133,6 +138,13 @@ describe('design system lint rules', () => {
 			sfc('<a :href="\'#abc\'">Up</a>'),
 			sfc('<router-link :to="`#fade`">Up</router-link>'),
 			sfc('<div></div>', '<script setup lang="ts">\n// Fixes #1234\nconst id = 1;\n</script>'),
+			// Selector arguments of DOM queries are IDs, not colours
+			sfc(
+				'<div @click="$el.closest(\'#abc\')"></div>',
+				'<script setup lang="ts">\ndocument.querySelector(\'#abc\');\ndocument.querySelectorAll(`#fade`);\n</script>'
+			),
+			// Sass: a block comment may end where its indentation does
+			sfc('<div></div>', '<style lang="sass">\n/* Old palette\n  #abc\n.x\n  display: block\n</style>'),
 			sfc('<div>See issue #123</div>'),
 			sfc('<div style="color: var(--el-color-danger)"></div>'),
 			// Fragment references are not colours
@@ -168,6 +180,15 @@ describe('design system lint rules', () => {
 			{ ...sfc('<div></div>', '<style scoped>\n.box {\n\tborder-color: #fff;\n}\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
 			// Indented syntax: declarations are still checked
 			{ ...sfc('<div></div>', '<style lang="sass">\n#abc\n  color: #fff\n</style>'), errors: [{ messageId: 'hex', line: 3 }] },
+			{
+				...sfc('<div></div>', '<style lang="sass">\n/* Old palette\n  old values\n.x\n  color: #fff\n</style>'),
+				errors: [{ messageId: 'hex', line: 5 }],
+			},
+			// Only the selector argument is exempt
+			{
+				...sfc('<div></div>', "<script setup lang=\"ts\">\ndocument.querySelector('#abc', '#fff');\n</script>"),
+				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
+			},
 			// …and the comment ends at the next line that is not indented deeper
 			{ ...sfc('<div></div>', '<style lang="sass">\n.x\n  // Old palette\n  color: #abc\n</style>'), errors: [{ messageId: 'hex', line: 4 }] },
 			// A declaration continues across lines while a parenthesis is open
