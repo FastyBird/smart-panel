@@ -14,7 +14,7 @@
 				data-test-id="kv-grid-value"
 			>
 				<template v-if="isEmpty(item.value)">
-					<span class="text-placeholder">{{ t('application.value.notAvailable') }}</span>
+					<span class="text-muted">{{ t('application.value.notAvailable') }}</span>
 				</template>
 				<a
 					v-else-if="item.href"

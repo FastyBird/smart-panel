@@ -64,6 +64,23 @@ describe('CopyField.vue', () => {
 		expect(wrapper.emitted('copied')).toEqual([['secret-id']]);
 	});
 
+	it('reports the value that was copied even if it changes meanwhile', async () => {
+		let resolveCopy: (copied: boolean) => void = () => {};
+
+		copyMock.mockReturnValue(new Promise<boolean>((resolve) => (resolveCopy = resolve)));
+
+		const wrapper = render({ value: 'first' });
+
+		await wrapper.find('[data-test-id="copy-field-button"]').trigger('click');
+		await wrapper.setProps({ value: 'second' });
+
+		resolveCopy(true);
+		await flushPromises();
+
+		expect(copyMock).toHaveBeenCalledWith('first');
+		expect(wrapper.emitted('copied')).toEqual([['first']]);
+	});
+
 	it('shows an error toast when copying fails', async () => {
 		copyMock.mockResolvedValue(false);
 

@@ -36,6 +36,7 @@ describe('KvGrid.vue', () => {
 		});
 
 		expect(wrapper.findAll('dd').map((node) => node.text())).toEqual(['N/A', 'N/A', '0']);
+		expect(wrapper.find('dd span').classes()).toContain('text-muted');
 	});
 
 	it('uses the mono style for mono items', () => {

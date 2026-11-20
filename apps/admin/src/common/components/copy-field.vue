@@ -77,10 +77,13 @@ const buttonLabel = computed<string>((): string =>
 );
 
 const onCopy = async (): Promise<void> => {
-	if (await copy(props.value)) {
+	// The value may change while the copy is pending; report the one that reached the clipboard
+	const value = props.value;
+
+	if (await copy(value)) {
 		flashMessage.success(t('application.copyField.copied'));
 
-		emit('copied', props.value);
+		emit('copied', value);
 	} else {
 		flashMessage.error(t('application.copyField.copyFailed'));
 	}
