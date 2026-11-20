@@ -99,7 +99,8 @@
 		"notAvailable": "Není k dispozici",
 		"hints": {
 			"needs_key": "Pro test změněného hostitele zadejte znovu klíč API",
-			"needs_host": "Pro test připojení zadejte platného hostitele konzole"
+			"needs_host": "Pro test připojení zadejte platného hostitele konzole",
+			"needs_port": "Pro test připojení zadejte port mezi 1 a 65535"
 		},
 		"success": "Připojeno k UniFi Protect",
 		"failed": "Test připojení selhal",

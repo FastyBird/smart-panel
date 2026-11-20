@@ -241,6 +241,7 @@
 			:testing="statusStore.testing"
 			:timed-out="timedOut"
 			:request-failed="requestFailed"
+			:request-failed-detail="requestFailed ? failedDetail : null"
 			:hint="testHint"
 			:trustable="trustable"
 			@test="runTest"
@@ -277,6 +278,7 @@ import {
 	MIN_PROTECT_POLL_INTERVAL_MS,
 	MIN_PROTECT_SNAPSHOT_MIN_INTERVAL_MS,
 } from '../devices-unifi-protect.constants';
+import { ProtectApiException } from '../devices-unifi-protect.exceptions';
 import {
 	isBlankProtectApiKeyReplacement,
 	isIpAddress,
@@ -369,10 +371,12 @@ const currentTest = computed<IProtectTestConnection | null>((): IProtectTestConn
 	return last !== null && isSameProtectTarget(last.target, formTarget.value) ? last.result : null;
 });
 
-const trustable = computed<ProtectTrustable>((): ProtectTrustable => protectTrustable(currentTest.value, model.tls.mode));
+const trustable = computed<ProtectTrustable>((): ProtectTrustable => protectTrustable(currentTest.value, model.tls));
 
 const timedOutTarget = ref<IProtectTestTarget | null>(null);
 const failedTarget = ref<IProtectTestTarget | null>(null);
+/** The backend's reason for a refused test request, shown under the generic sentence. */
+const failedDetail = ref<string | null>(null);
 
 const timedOut = computed<boolean>((): boolean => isSameProtectTarget(timedOutTarget.value, formTarget.value));
 const requestFailed = computed<boolean>((): boolean => isSameProtectTarget(failedTarget.value, formTarget.value));
@@ -385,6 +389,15 @@ const directConnectDomain = computed<string | null>((): string | null => {
 	return domain !== null && isValidProtectServerName(domain) && domain !== suggestedServerName.value ? domain : null;
 });
 
+/** The backend's message for a refused request; dropped if it would echo the typed key back into the page. */
+const refusalDetail = (error: unknown, apiKey: string | null): string | null => {
+	if (!(error instanceof ProtectApiException) || error.message.trim() === '') {
+		return null;
+	}
+
+	return apiKey !== null && error.message.includes(apiKey) ? null : error.message;
+};
+
 const runTest = async (): Promise<void> => {
 	const plan = buildTestRequest(model, savedConnection.value);
 
@@ -394,6 +407,7 @@ const runTest = async (): Promise<void> => {
 
 	timedOutTarget.value = null;
 	failedTarget.value = null;
+	failedDetail.value = null;
 
 	try {
 		const outcome = await statusStore.testConnection(plan.request, plan.target);
@@ -401,8 +415,9 @@ const runTest = async (): Promise<void> => {
 		if ('timedOut' in outcome) {
 			timedOutTarget.value = plan.target;
 		}
-	} catch {
+	} catch (error) {
 		failedTarget.value = plan.target;
+		failedDetail.value = refusalDetail(error, 'data' in plan.request && 'api_key' in plan.request.data ? plan.request.data.api_key : null);
 	}
 };
 

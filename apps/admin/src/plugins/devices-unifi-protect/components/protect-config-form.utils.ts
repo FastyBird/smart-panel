@@ -11,7 +11,7 @@ import { protectProbeKey } from '../store/protect-discovery.store';
 import type { IProtectDiscovery, IProtectProbe, IProtectTestConnection, IProtectTestTarget } from '../store/protect.types';
 
 /** Why a connection test cannot run yet. */
-export type ProtectTestHint = 'needs_key' | 'needs_host';
+export type ProtectTestHint = 'needs_key' | 'needs_host' | 'needs_port';
 
 /** Whether the certificate of the current result may be trusted, and how: one click, or a confirmed pin replacement. */
 export type ProtectTrustable = 'none' | 'untrusted' | 'changed';
@@ -25,16 +25,21 @@ export type ProtectTestPlan =
 /** The backend trims and lower-cases a host before it connects, so two spellings of one console compare equal. */
 export const normalizeProtectHost = (host: string | null | undefined): string => (host ?? '').trim().toLowerCase();
 
-const normalizeServerName = (value: string | null | undefined): string | null => {
+const trimToNull = (value: string | null | undefined): string | null => {
 	const trimmed = (value ?? '').trim();
 
 	return trimmed === '' ? null : trimmed;
 };
 
 /** The pin compared and sent as the save would store it; an invalid value is kept so it still counts as a change. */
-const normalizePin = (value: string | null | undefined): string | null => normalizeProtectFingerprint(value) ?? normalizeServerName(value);
+const normalizePin = (value: string | null | undefined): string | null => normalizeProtectFingerprint(value) ?? trimToNull(value);
 
-/** The host, port and TLS mode in the form, or null while no host is entered. */
+/** Server names compare like DNS names: trimmed and case-insensitive. */
+const normalizeServerName = (value: string | null | undefined): string | null => trimToNull(value)?.toLowerCase() ?? null;
+
+const isValidPort = (port: unknown): port is number => typeof port === 'number' && Number.isInteger(port) && port >= 1 && port <= 65535;
+
+/** The host, port, TLS mode and server name in the form, or null while no host is entered. */
 export const protectTestTarget = (model: Pick<IProtectConnectionFields, 'host' | 'port' | 'tls'>): IProtectTestTarget | null => {
 	const host = (model.host ?? '').trim();
 
@@ -42,18 +47,27 @@ export const protectTestTarget = (model: Pick<IProtectConnectionFields, 'host' |
 		return null;
 	}
 
-	return { host, port: model.port, tlsMode: DevicesUnifiProtectPluginTlsMode[model.tls.mode] };
+	return { host, port: model.port, tlsMode: DevicesUnifiProtectPluginTlsMode[model.tls.mode], serverName: trimToNull(model.tls.serverName) };
 };
 
+/**
+ * Whether a result belongs to the form's connection. In verify mode the server name is the SNI the chain was checked
+ * against, so a result for another server name says nothing about this one.
+ */
 export const isSameProtectTarget = (a: IProtectTestTarget | null, b: IProtectTestTarget | null): boolean =>
-	a !== null && b !== null && normalizeProtectHost(a.host) === normalizeProtectHost(b.host) && a.port === b.port && a.tlsMode === b.tlsMode;
+	a !== null &&
+	b !== null &&
+	normalizeProtectHost(a.host) === normalizeProtectHost(b.host) &&
+	a.port === b.port &&
+	a.tlsMode === b.tlsMode &&
+	(a.tlsMode !== DevicesUnifiProtectPluginTlsMode.verify || normalizeServerName(a.serverName) === normalizeServerName(b.serverName));
 
 const connectionChanged = (model: IProtectConnectionFields, initial: IProtectConnectionFields): boolean => {
 	if (normalizeProtectHost(model.host) !== normalizeProtectHost(initial.host) || model.port !== initial.port || model.tls.mode !== initial.tls.mode) {
 		return true;
 	}
 
-	if (normalizeServerName(model.tls.serverName)?.toLowerCase() !== normalizeServerName(initial.tls.serverName)?.toLowerCase()) {
+	if (normalizeServerName(model.tls.serverName) !== normalizeServerName(initial.tls.serverName)) {
 		return true;
 	}
 
@@ -73,6 +87,10 @@ export const buildTestRequest = (model: IProtectConnectionFields, initial: IProt
 		return { disabled: true, hint: 'needs_host' };
 	}
 
+	if (!isValidPort(model.port)) {
+		return { disabled: true, hint: 'needs_port' };
+	}
+
 	if (typeof model.apiKey === 'string' && model.apiKey.trim() !== '') {
 		const fingerprint = model.tls.mode === 'pinned' ? normalizePin(model.tls.fingerprintSha256) : null;
 
@@ -83,7 +101,7 @@ export const buildTestRequest = (model: IProtectConnectionFields, initial: IProt
 					host: target.host,
 					port: model.port,
 					api_key: model.apiKey.trim(),
-					tls: { mode: target.tlsMode, server_name: normalizeServerName(model.tls.serverName), fingerprint_sha256: fingerprint },
+					tls: { mode: target.tlsMode, server_name: trimToNull(model.tls.serverName), fingerprint_sha256: fingerprint },
 				},
 			},
 			target,
@@ -99,20 +117,24 @@ export const buildTestRequest = (model: IProtectConnectionFields, initial: IProt
 
 /**
  * Trust is offered only for the two certificate failures (Q2): an untrusted chain in verify mode, and a pin the
- * presented certificate no longer matches in pinned mode. `certificate.trusted` is chain trust, not a pin match, so it
- * decides nothing here. The caller passes only the current result of the current host and port.
+ * presented certificate does not match in pinned mode. Replacing an existing pin needs confirmation (`changed`); with no
+ * pin in the form there is nothing to replace, so it is a plain trust. `certificate.trusted` is chain trust, not a pin
+ * match, so it decides nothing here. The caller passes only the current result of the current connection.
  */
-export const protectTrustable = (result: IProtectTestConnection | null, tlsMode: IProtectConfigEditForm['tls']['mode']): ProtectTrustable => {
+export const protectTrustable = (
+	result: IProtectTestConnection | null,
+	tls: Pick<IProtectConfigEditForm['tls'], 'mode' | 'fingerprintSha256'>
+): ProtectTrustable => {
 	if (result === null || result.success || !result.certificate) {
 		return 'none';
 	}
 
-	if (tlsMode === 'verify' && result.errorCategory === DevicesUnifiProtectPluginErrorCategory.tls_untrusted) {
+	if (tls.mode === 'verify' && result.errorCategory === DevicesUnifiProtectPluginErrorCategory.tls_untrusted) {
 		return 'untrusted';
 	}
 
-	if (tlsMode === 'pinned' && result.errorCategory === DevicesUnifiProtectPluginErrorCategory.tls_fingerprint_mismatch) {
-		return 'changed';
+	if (tls.mode === 'pinned' && result.errorCategory === DevicesUnifiProtectPluginErrorCategory.tls_fingerprint_mismatch) {
+		return trimToNull(tls.fingerprintSha256) === null ? 'untrusted' : 'changed';
 	}
 
 	return 'none';

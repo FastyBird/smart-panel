@@ -11,6 +11,7 @@ import {
 	DevicesUnifiProtectPluginProbeStatus,
 	DevicesUnifiProtectPluginTlsMode,
 } from '../../../openapi.constants';
+import { ProtectApiException } from '../devices-unifi-protect.exceptions';
 import type { IProtectConfigEditForm } from '../schemas/config.types';
 import type { IProtectConfig } from '../store/config.store.types';
 import { protectDiscoveryStoreKey, protectStatusStoreKey } from '../store/keys';
@@ -183,7 +184,18 @@ const mountForm = (config: IProtectConfig = savedConfig()) => {
 		formEl: ref(undefined),
 		model,
 		formChanged: ref(false),
-		submit: vi.fn().mockResolvedValue('saved'),
+		// What useConfigPluginEditForm does after a save: the backend's answer never carries the key, only whether one is
+		// stored, and reconcile() drops what the answer does not carry.
+		submit: vi.fn(async () => {
+			const current = model as unknown as Record<string, unknown>;
+
+			if (typeof model.apiKey === 'string') current.apiKeyConfigured = true;
+			if (model.apiKey === null) current.apiKeyConfigured = false;
+
+			delete current.apiKey;
+
+			return 'saved';
+		}),
 		formResult: ref('none'),
 	});
 
@@ -291,7 +303,7 @@ describe('ProtectConfigForm', () => {
 					tls: { mode: 'pinned', server_name: null, fingerprint_sha256: NEW_FINGERPRINT },
 				},
 			},
-			{ host: '192.168.1.10', port: 443, tlsMode: 'pinned' }
+			{ host: '192.168.1.10', port: 443, tlsMode: 'pinned', serverName: null }
 		);
 	});
 
@@ -404,7 +416,10 @@ describe('ProtectConfigForm', () => {
 		await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
 		await flushPromises();
 
-		expect(statusStore.testConnection).toHaveBeenCalledWith({ data: { mode: 'saved' } }, { host: '192.168.1.10', port: 443, tlsMode: 'verify' });
+		expect(statusStore.testConnection).toHaveBeenCalledWith(
+			{ data: { mode: 'saved' } },
+			{ host: '192.168.1.10', port: 443, tlsMode: 'verify', serverName: null }
+		);
 		expect(wrapper.find('[data-test-id="protect-test-timeout"]').exists()).toBe(true);
 
 		model.host = '192.168.1.20';
@@ -414,12 +429,95 @@ describe('ProtectConfigForm', () => {
 		expect(wrapper.get('[data-test-id="protect-test-hint"]').text()).toBe('devicesUnifiProtectPlugin.testConnection.hints.needs_key');
 	});
 
+	it('hides a verify result and its trust once the server name changes', async () => {
+		const wrapper = mountForm();
+
+		await flushPromises();
+
+		statusStore.lastTest = lastTestFor(testResult());
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(true);
+
+		// The verdict was for the SNI it ran with; another server name may well be trusted.
+		await wrapper.get('input[name="serverName"]').setValue('abc123.id.ui.direct');
+
+		expect(wrapper.find('[data-test-id="protect-test-failure"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(false);
+
+		await wrapper.get('input[name="serverName"]').setValue('');
+
+		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(true);
+	});
+
+	it('refreshes the saved snapshot after a save, so a saved key enables the saved test and a removed key disables it', async () => {
+		const wrapper = mountForm(savedConfig());
+
+		await flushPromises();
+
+		await wrapper.get('input[name="apiKey"]').setValue('fresh-key');
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		expect(model.apiKey).toBeUndefined();
+		expect(wrapper.find('[data-test-id="protect-test-hint"]').exists()).toBe(false);
+
+		await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
+		await flushPromises();
+
+		expect(statusStore.testConnection).toHaveBeenLastCalledWith({ data: { mode: 'saved' } }, expect.objectContaining({ host: '192.168.1.10' }));
+
+		await wrapper.get('button[name="apiKey-remove"]').trigger('click');
+
+		expect(wrapper.get('[data-test-id="protect-test-hint"]').text()).toBe('devicesUnifiProtectPlugin.testConnection.hints.needs_key');
+
+		await wrapper.setProps({ remoteFormSubmit: false });
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		expect(model.apiKey).toBeUndefined();
+		expect(model.apiKeyConfigured).toBe(false);
+		expect(wrapper.get('[data-test-id="protect-test-hint"]').text()).toBe('devicesUnifiProtectPlugin.testConnection.hints.needs_key');
+		expect(wrapper.get('[data-test-id="protect-test-button"]').attributes('disabled')).toBeDefined();
+	});
+
+	it("shows the backend's reason for a refused test under the generic sentence, never the typed key", async () => {
+		const wrapper = mountForm();
+
+		await flushPromises();
+
+		model.apiKey = 'typed-key';
+		statusStore.testConnection.mockRejectedValueOnce(new ProtectApiException('Host must be a host name or IP address', 422));
+
+		await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
+		await flushPromises();
+
+		const failed = wrapper.get('[data-test-id="protect-test-request-failed"]');
+
+		expect(failed.text()).toContain('devicesUnifiProtectPlugin.testConnection.requestFailed');
+		expect(wrapper.get('[data-test-id="protect-test-request-failed-detail"]').text()).toBe('Host must be a host name or IP address');
+
+		statusStore.testConnection.mockRejectedValueOnce(new ProtectApiException('Invalid api_key "typed-key"', 422));
+
+		await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="protect-test-request-failed"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="protect-test-request-failed-detail"]').exists()).toBe(false);
+		expect(wrapper.html()).not.toContain('typed-key');
+	});
+
 	it('keeps the typed key out of the rendered page and the stores', async () => {
 		const wrapper = mountForm();
 
 		await flushPromises();
 
-		model.apiKey = 'super-secret-key';
+		const keyInput = wrapper.get('input[type="password"]');
+
+		await keyInput.setValue('super-secret-key');
+
+		expect(model.apiKey).toBe('super-secret-key');
+
 		statusStore.testConnection.mockImplementation(async (_request: unknown, target: IProtectTestResult['target']) => {
 			statusStore.lastTest = { result: testResult({ mode: 'candidate' }), target, at: Date.now() };
 
@@ -432,6 +530,14 @@ describe('ProtectConfigForm', () => {
 		expect(statusStore.testConnection.mock.calls[0][0]).toMatchObject({ data: { api_key: 'super-secret-key' } });
 		expect(JSON.stringify(statusStore.lastTest)).not.toContain('super-secret-key');
 		expect(JSON.stringify(discoveryStore)).not.toContain('super-secret-key');
+		expect(wrapper.html()).not.toContain('super-secret-key');
+
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		// After the save the field is blank again: neither the markup nor the live input value holds the key.
+		expect((wrapper.get('input[type="password"]').element as HTMLInputElement).value).toBe('');
+		expect(wrapper.findAll('input').map((input) => (input.element as HTMLInputElement).value)).not.toContain('super-secret-key');
 		expect(wrapper.html()).not.toContain('super-secret-key');
 	});
 });

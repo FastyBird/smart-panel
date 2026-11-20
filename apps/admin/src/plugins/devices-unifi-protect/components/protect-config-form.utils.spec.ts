@@ -53,7 +53,7 @@ describe('buildTestRequest', () => {
 
 		expect(buildTestRequest(edited(initial, {}), initial)).toEqual({
 			request: { data: { mode: 'saved' } },
-			target: { host: '192.168.1.10', port: 443, tlsMode: 'verify' },
+			target: { host: '192.168.1.10', port: 443, tlsMode: 'verify', serverName: 'abc123.id.ui.direct' },
 		});
 
 		// A typed key alone is a change: the saved key is never what the test runs with then.
@@ -67,7 +67,7 @@ describe('buildTestRequest', () => {
 					tls: { mode: 'verify', server_name: 'abc123.id.ui.direct', fingerprint_sha256: null },
 				},
 			},
-			target: { host: '192.168.1.10', port: 443, tlsMode: 'verify' },
+			target: { host: '192.168.1.10', port: 443, tlsMode: 'verify', serverName: 'abc123.id.ui.direct' },
 		});
 
 		const pinned = edited(initial, {
@@ -87,7 +87,7 @@ describe('buildTestRequest', () => {
 					tls: { mode: 'pinned', server_name: null, fingerprint_sha256: FINGERPRINT },
 				},
 			},
-			target: { host: '192.168.1.20', port: 7443, tlsMode: 'pinned' },
+			target: { host: '192.168.1.20', port: 7443, tlsMode: 'pinned', serverName: null },
 		});
 
 		// Only the backend's own normalisation (trim, case) is not a change of console.
@@ -121,35 +121,71 @@ describe('buildTestRequest', () => {
 			hint: 'needs_host',
 		});
 	});
+
+	it('disables the test with a port hint instead of building a request for an empty or out-of-range port', () => {
+		const initial = saved();
+
+		for (const port of [null, undefined, 0, 65536, 44.5] as unknown as number[]) {
+			expect(buildTestRequest(edited(initial, { port, apiKey: 'new-key' }), initial)).toEqual({ disabled: true, hint: 'needs_port' });
+			expect(buildTestRequest(edited(initial, { port }), initial)).toEqual({ disabled: true, hint: 'needs_port' });
+		}
+	});
 });
 
 describe('protect test targets', () => {
 	it('compares targets with the backend host normalisation', () => {
 		const target = protectTestTarget(saved({ host: ' UNIFI.local ' }));
+		const verify = DevicesUnifiProtectPluginTlsMode.verify;
+		const serverName = 'abc123.id.ui.direct';
 
-		expect(target).toEqual({ host: 'UNIFI.local', port: 443, tlsMode: 'verify' });
-		expect(isSameProtectTarget(target, { host: 'unifi.local', port: 443, tlsMode: DevicesUnifiProtectPluginTlsMode.verify })).toBe(true);
-		expect(isSameProtectTarget(target, { host: 'unifi.local', port: 8443, tlsMode: DevicesUnifiProtectPluginTlsMode.verify })).toBe(false);
-		expect(isSameProtectTarget(target, { host: 'unifi.local', port: 443, tlsMode: DevicesUnifiProtectPluginTlsMode.pinned })).toBe(false);
+		expect(target).toEqual({ host: 'UNIFI.local', port: 443, tlsMode: 'verify', serverName });
+		expect(isSameProtectTarget(target, { host: 'unifi.local', port: 443, tlsMode: verify, serverName })).toBe(true);
+		expect(isSameProtectTarget(target, { host: 'unifi.local', port: 8443, tlsMode: verify, serverName })).toBe(false);
+		expect(isSameProtectTarget(target, { host: 'unifi.local', port: 443, tlsMode: DevicesUnifiProtectPluginTlsMode.pinned, serverName })).toBe(false);
 		expect(isSameProtectTarget(target, null)).toBe(false);
 		expect(protectTestTarget(saved({ host: '  ' }))).toBeNull();
+	});
+
+	it('compares the server name in verify mode only, as a DNS name', () => {
+		const verify = DevicesUnifiProtectPluginTlsMode.verify;
+		const pinned = DevicesUnifiProtectPluginTlsMode.pinned;
+		const base = { host: '192.168.1.10', port: 443 };
+
+		expect(
+			isSameProtectTarget({ ...base, tlsMode: verify, serverName: 'a.id.ui.direct' }, { ...base, tlsMode: verify, serverName: ' A.id.ui.direct ' })
+		).toBe(true);
+		expect(
+			isSameProtectTarget({ ...base, tlsMode: verify, serverName: 'a.id.ui.direct' }, { ...base, tlsMode: verify, serverName: 'b.id.ui.direct' })
+		).toBe(false);
+		expect(isSameProtectTarget({ ...base, tlsMode: verify, serverName: null }, { ...base, tlsMode: verify, serverName: 'b.id.ui.direct' })).toBe(
+			false
+		);
+		expect(isSameProtectTarget({ ...base, tlsMode: verify, serverName: '' }, { ...base, tlsMode: verify, serverName: null })).toBe(true);
+		expect(
+			isSameProtectTarget({ ...base, tlsMode: pinned, serverName: 'a.id.ui.direct' }, { ...base, tlsMode: pinned, serverName: 'b.id.ui.direct' })
+		).toBe(true);
 	});
 });
 
 describe('protectTrustable', () => {
-	it('offers trust only for an untrusted chain in verify mode or a changed pin in pinned mode', () => {
-		expect(protectTrustable(result(), 'verify')).toBe('untrusted');
-		expect(protectTrustable(result(), 'pinned')).toBe('none');
-		expect(
-			protectTrustable(
-				result({ tlsMode: DevicesUnifiProtectPluginTlsMode.pinned, errorCategory: DevicesUnifiProtectPluginErrorCategory.tls_fingerprint_mismatch }),
-				'pinned'
-			)
-		).toBe('changed');
-		expect(protectTrustable(result({ errorCategory: DevicesUnifiProtectPluginErrorCategory.tls_fingerprint_mismatch }), 'verify')).toBe('none');
-		expect(protectTrustable(result({ success: true, errorCategory: null }), 'verify')).toBe('none');
-		expect(protectTrustable(result({ errorCategory: DevicesUnifiProtectPluginErrorCategory.authentication }), 'verify')).toBe('none');
-		expect(protectTrustable(result({ certificate: null }), 'verify')).toBe('none');
-		expect(protectTrustable(null, 'verify')).toBe('none');
+	it('offers trust only for an untrusted chain in verify mode or a pin mismatch in pinned mode', () => {
+		const verify = { mode: 'verify' as const, fingerprintSha256: null };
+		const pinned = { mode: 'pinned' as const, fingerprintSha256: '33'.repeat(32) };
+		const mismatch = result({
+			tlsMode: DevicesUnifiProtectPluginTlsMode.pinned,
+			errorCategory: DevicesUnifiProtectPluginErrorCategory.tls_fingerprint_mismatch,
+		});
+
+		expect(protectTrustable(result(), verify)).toBe('untrusted');
+		expect(protectTrustable(result(), pinned)).toBe('none');
+		// Replacing an existing pin needs confirmation; with no pin in the form there is nothing to replace.
+		expect(protectTrustable(mismatch, pinned)).toBe('changed');
+		expect(protectTrustable(mismatch, { mode: 'pinned', fingerprintSha256: null })).toBe('untrusted');
+		expect(protectTrustable(mismatch, { mode: 'pinned', fingerprintSha256: '  ' })).toBe('untrusted');
+		expect(protectTrustable(result({ errorCategory: DevicesUnifiProtectPluginErrorCategory.tls_fingerprint_mismatch }), verify)).toBe('none');
+		expect(protectTrustable(result({ success: true, errorCategory: null }), verify)).toBe('none');
+		expect(protectTrustable(result({ errorCategory: DevicesUnifiProtectPluginErrorCategory.authentication }), verify)).toBe('none');
+		expect(protectTrustable(result({ certificate: null }), verify)).toBe('none');
+		expect(protectTrustable(null, verify)).toBe('none');
 	});
 });

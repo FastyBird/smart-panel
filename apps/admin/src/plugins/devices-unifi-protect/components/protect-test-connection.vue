@@ -47,10 +47,19 @@
 			type="error"
 			show-icon
 			:closable="false"
-			:title="t('devicesUnifiProtectPlugin.testConnection.requestFailed')"
 			class="mt-3"
 			data-test-id="protect-test-request-failed"
-		/>
+		>
+			<template #title>{{ t('devicesUnifiProtectPlugin.testConnection.requestFailed') }}</template>
+
+			<p
+				v-if="requestFailedDetail"
+				class="text-xs"
+				data-test-id="protect-test-request-failed-detail"
+			>
+				{{ requestFailedDetail }}
+			</p>
+		</el-alert>
 
 		<template v-else-if="result !== null">
 			<el-alert
@@ -128,6 +137,7 @@ const props = withDefaults(defineProps<IProtectTestConnectionProps>(), {
 	testing: false,
 	timedOut: false,
 	requestFailed: false,
+	requestFailedDetail: null,
 	hint: null,
 	trustable: 'none',
 });

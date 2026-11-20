@@ -99,7 +99,8 @@
 		"notAvailable": "No disponible",
 		"hints": {
 			"needs_key": "Vuelva a introducir la clave API para probar un host cambiado",
-			"needs_host": "Introduzca un host de consola válido para probar la conexión"
+			"needs_host": "Introduzca un host de consola válido para probar la conexión",
+			"needs_port": "Introduzca un puerto entre 1 y 65535 para probar la conexión"
 		},
 		"success": "Conectado a UniFi Protect",
 		"failed": "La prueba de conexión falló",

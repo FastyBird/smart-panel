@@ -99,7 +99,8 @@
 		"notAvailable": "Not available",
 		"hints": {
 			"needs_key": "Re-enter the API key to test a changed host",
-			"needs_host": "Enter a valid console host to test the connection"
+			"needs_host": "Enter a valid console host to test the connection",
+			"needs_port": "Enter a port between 1 and 65535 to test the connection"
 		},
 		"success": "Connected to UniFi Protect",
 		"failed": "The connection test failed",

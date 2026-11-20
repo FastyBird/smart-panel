@@ -8,6 +8,8 @@ export interface IProtectTestConnectionProps {
 	testing?: boolean;
 	timedOut?: boolean;
 	requestFailed?: boolean;
+	/** The backend's reason for refusing the test request, shown under the generic sentence. Never the request itself. */
+	requestFailedDetail?: string | null;
 	/** Why the test cannot run, or null when it can. */
 	hint?: ProtectTestHint | null;
 	trustable?: ProtectTrustable;

@@ -23,6 +23,8 @@ export interface IProtectTestTarget {
 	host: string;
 	port: number;
 	tlsMode: DevicesUnifiProtectPluginTlsMode;
+	/** The TLS server name (SNI) the test ran with; in verify mode it decides whether the chain is trusted. */
+	serverName?: string | null;
 }
 
 export interface IProtectTestResult {

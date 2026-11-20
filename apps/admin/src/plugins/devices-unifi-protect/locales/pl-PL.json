@@ -99,7 +99,8 @@
 		"notAvailable": "Niedostępne",
 		"hints": {
 			"needs_key": "Wpisz ponownie klucz API, aby przetestować zmienionego hosta",
-			"needs_host": "Wpisz prawidłowego hosta konsoli, aby przetestować połączenie"
+			"needs_host": "Wpisz prawidłowego hosta konsoli, aby przetestować połączenie",
+			"needs_port": "Wpisz port od 1 do 65535, aby przetestować połączenie"
 		},
 		"success": "Połączono z UniFi Protect",
 		"failed": "Test połączenia nie powiódł się",
