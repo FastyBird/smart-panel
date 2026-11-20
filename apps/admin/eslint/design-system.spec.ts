@@ -2,6 +2,8 @@ import { RuleTester } from 'eslint';
 import pluginVue from 'eslint-plugin-vue';
 import { describe, it } from 'vitest';
 
+import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript';
+
 import { designSystemRules } from './design-system';
 
 RuleTester.describe = describe;
@@ -9,6 +11,12 @@ RuleTester.it = it;
 RuleTester.itOnly = it.only;
 
 const vueParser = pluginVue.configs['flat/base'].find((config) => config.languageOptions?.parser)?.languageOptions?.parser;
+
+// The TypeScript parser the admin config gives `<script lang="ts">`, for template expressions such as `satisfies`
+const tsParser = (
+	defineConfigWithVueTs(vueTsConfigs.recommended).find((config) => config.languageOptions?.parserOptions?.parser)?.languageOptions?.parserOptions
+		?.parser as { ts?: unknown } | undefined
+)?.ts;
 
 const tester = new RuleTester({
 	languageOptions: { parser: vueParser, ecmaVersion: 2022, sourceType: 'module' },
@@ -127,6 +135,12 @@ describe('design system lint rules', () => {
 			{ ...sfc('<p :class="{ \'text-primary\': true }"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"{ 'text-primary': false, ...{ 'text-primary': on } }\"></p>"), errors: [{ messageId: 'body' }] },
 			{ ...sfc('<p :class="{ [[\'text-primary font-600\']]: true }"></p>'), errors: [{ messageId: 'body' }] },
+			// TypeScript wrappers are unwrapped
+			{
+				...sfc('<p :class="(\'text-primary\' satisfies string)"></p>', '<script setup lang="ts">\nconst x = 1;\n</script>'),
+				languageOptions: { parserOptions: { parser: tsParser } },
+				errors: [{ messageId: 'body' }],
+			},
 			{ ...sfc('<p :class="{ [\'text-primary\']: false, [`text-primary`]: on }"></p>'), errors: [{ messageId: 'body' }] },
 			{ ...sfc("<p :class=\"`${on ? ['text-primary font-600'] : ''}`\"></p>"), errors: [{ messageId: 'body' }] },
 			// A sole interpolation: the empty quasis around it do not touch its classes
@@ -232,6 +246,16 @@ describe('design system lint rules', () => {
 			{
 				...sfc('<div></div>', '<style lang="sass">\n.x\n  background: #fff\n    repeat: no-repeat\n</style>'),
 				errors: [{ messageId: 'hex', line: 3 }],
+			},
+			// SCSS interpolation braces do not open a block
+			{
+				...sfc('<div></div>', '<style lang="scss">\n.x {\n\tcolor: #fff #{$suffix};\n}\n</style>'),
+				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
+			},
+			// `hash` outside a router location is ordinary data
+			{
+				...sfc('<div></div>', '<script setup lang="ts">\nconst palette = { hash: \'#fff\' };\n</script>'),
+				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
 			},
 			// A line with open parentheses continues, so it does not open a rule
 			{

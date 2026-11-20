@@ -136,6 +136,7 @@ const collectExpressionClasses = (node: unknown, found: IClassToken[], owner: Te
 			return;
 
 		case 'TSAsExpression':
+		case 'TSSatisfiesExpression':
 		case 'TSNonNullExpression':
 			collectExpressionClasses(current.argument ?? current.expression, found, owner);
 
@@ -272,6 +273,7 @@ const collectStringClasses = (node: unknown, found: IClassToken[], owner: Templa
 			return;
 
 		case 'TSAsExpression':
+		case 'TSSatisfiesExpression':
 		case 'TSNonNullExpression':
 			collectStringClasses(current.expression, found, owner);
 
@@ -634,6 +636,30 @@ const cssCode = (text: string, block: IStyleBlock): string => {
 
 			blank(index, stop);
 			index = stop;
+		} else if (rest(2) === '#{') {
+			// SCSS interpolation `#{$suffix}`: its braces are not blocks, so they become parentheses
+			let depth = 0;
+			let stop = index + 1;
+
+			for (; stop < chars.length; stop++) {
+				if (chars[stop] === '{') {
+					depth += 1;
+				} else if (chars[stop] === '}') {
+					depth -= 1;
+
+					if (depth === 0) {
+						break;
+					}
+				}
+			}
+
+			chars[index + 1] = '(';
+
+			if (stop < chars.length) {
+				chars[stop] = ')';
+			}
+
+			index += 2;
 		} else if (/^url\(/i.test(rest(4)) && !/[\w-]/.test(chars[index - 1] ?? '')) {
 			// url(#gradient), url(data:…): references, not colours. A quoted argument is a string and is blanked above.
 			let open = index + 4;
@@ -785,14 +811,50 @@ const SELECTOR_METHODS = ['querySelector', 'querySelectorAll', 'closest', 'match
 const literalTextRanges = (node: TemplateNode): [number, number][] =>
 	node.type === 'TemplateLiteral' ? (node.quasis as TemplateNode[]).map((quasi) => quasi.range) : [node.range];
 
+/** Router methods that take a location (`router.push({ hash: '#top' })`) */
+const ROUTER_METHODS = ['push', 'replace', 'resolve'];
+
+/** Keys that only a router location has besides `hash` */
+const ROUTER_LOCATION_KEYS = ['name', 'path', 'params', 'query'];
+
 /**
- * Ranges of the selector arguments of SELECTOR_METHODS calls and of `hash` properties (router locations such as
+ * Whether an object literal is a router location: the value of a `to` binding, the argument of a router method,
+ * or an object with another location key (`{ name: 'docs', hash: '#top' }`)
+ */
+const isRouterLocation = (object: TemplateNode, parent: TemplateNode | null): boolean => {
+	if (parent?.type === 'VExpressionContainer') {
+		const attribute = parent.parent as TemplateNode | undefined;
+		const key = attribute?.key as { argument?: { name?: string } | null } | undefined;
+
+		if (attribute?.type === 'VAttribute' && key?.argument?.name === 'to') {
+			return true;
+		}
+	}
+
+	if (parent?.type === 'CallExpression' && (parent.arguments as unknown[])[0] === object) {
+		const callee = parent.callee as TemplateNode;
+		const property = callee.type === 'MemberExpression' ? (callee.property as TemplateNode) : undefined;
+
+		if (property?.type === 'Identifier' && ROUTER_METHODS.includes(property.name as string)) {
+			return true;
+		}
+	}
+
+	return (object.properties as TemplateNode[]).some((property) => {
+		const key = property.key as TemplateNode | undefined;
+
+		return property.type === 'Property' && property.computed !== true && ROUTER_LOCATION_KEYS.includes(String(key?.name ?? key?.value));
+	});
+};
+
+/**
+ * Ranges of the selector arguments of SELECTOR_METHODS calls and of the `hash` of router locations (such as
  * `:to="{ hash: '#abc' }"`), in the script and in template expressions
  */
 const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 	const ranges: [number, number][] = [];
 	const seen = new Set<unknown>();
-	const visit = (node: unknown): void => {
+	const visit = (node: unknown, parent: TemplateNode | null): void => {
 		if (node === null || typeof node !== 'object' || seen.has(node)) {
 			return;
 		}
@@ -800,19 +862,26 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 		seen.add(node);
 
 		if (Array.isArray(node)) {
-			node.forEach(visit);
+			node.forEach((item) => visit(item, parent));
 
 			return;
 		}
 
 		const current = node as TemplateNode;
 
-		if (current.type === 'Property' && current.computed !== true) {
-			const key = current.key as TemplateNode;
-			const value = current.value as TemplateNode | undefined;
+		if (current.type === 'ObjectExpression' && isRouterLocation(current, parent)) {
+			for (const property of current.properties as TemplateNode[]) {
+				const key = property.key as TemplateNode | undefined;
+				const value = property.value as TemplateNode | undefined;
 
-			if ((key.name ?? key.value) === 'hash' && (value?.type === 'Literal' || value?.type === 'TemplateLiteral')) {
-				ranges.push(...literalTextRanges(value));
+				if (
+					property.type === 'Property' &&
+					property.computed !== true &&
+					(key?.name ?? key?.value) === 'hash' &&
+					(value?.type === 'Literal' || value?.type === 'TemplateLiteral')
+				) {
+					ranges.push(...literalTextRanges(value));
+				}
 			}
 		}
 
@@ -832,12 +901,12 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 
 		for (const [key, value] of Object.entries(current)) {
 			if (key !== 'parent' && key !== 'loc' && key !== 'range' && key !== 'tokens' && key !== 'comments' && key !== 'errors') {
-				visit(value);
+				visit(value, current);
 			}
 		}
 	};
 
-	visit(context.sourceCode.ast);
+	visit(context.sourceCode.ast, null);
 
 	return ranges;
 };
