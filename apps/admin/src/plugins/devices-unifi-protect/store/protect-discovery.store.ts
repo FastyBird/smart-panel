@@ -48,10 +48,14 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 	const isProbing = (host: string, port?: number): boolean => (probingKeys.value[protectProbeKey(host, port)] ?? 0) > 0;
 
 	/**
-	 * Bumped whenever a result is applied. A plain read that started before the bump is older than what the store holds
-	 * and is dropped. A scan, and the reads that follow a scan in progress, always apply: they are the newest knowledge.
+	 * Bumped whenever the store's discovery changes. A plain read that started before the bump is older than what the
+	 * store holds and is dropped. A scan, and the reads that follow a scan in progress, always apply: they are the newest
+	 * knowledge.
 	 */
 	let generation = 0;
+
+	/** The newest result that is not a scan in progress (null before any): what a follow that gives up goes back to. */
+	let settled: IProtectDiscovery | null = null;
 
 	/**
 	 * While a scan runs the backend answers with no consoles; that says nothing about the consoles found before, so a
@@ -60,14 +64,18 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 	const apply = (value: IProtectDiscovery): void => {
 		const previous = discovery.value;
 
-		discovery.value =
-			isScanInProgress(value) && previous !== null ? { ...value, consoles: previous.consoles, otherUnifiDevices: previous.otherUnifiDevices } : value;
+		if (isScanInProgress(value)) {
+			discovery.value = previous !== null ? { ...value, consoles: previous.consoles, otherUnifiDevices: previous.otherUnifiDevices } : value;
+		} else {
+			discovery.value = settled = value;
+		}
+
 		generation++;
 	};
 
-	const read = async (force: boolean): Promise<IProtectDiscovery> => {
+	const read = async (force: boolean, deadlineMs: number = PROTECT_STATUS_DEADLINE_MS): Promise<IProtectDiscovery> => {
 		const startedAt = generation;
-		const deadline = startProtectDeadline(PROTECT_STATUS_DEADLINE_MS);
+		const deadline = startProtectDeadline(deadlineMs);
 
 		try {
 			const { data, error, response } = await backend.client.GET(BASE, { signal: deadline.signal });
@@ -101,42 +109,75 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 
 	/**
 	 * Re-reads the cached discovery while the backend reports a scan in progress, until it reports how the scan ended.
-	 * It gives up after `PROTECT_DISCOVERY_FOLLOW_MS` (each read under the status deadline), so it always ends by itself.
-	 * When it gives up or a read fails, the store goes back to what it held before (`restore`), so no scan stays shown
-	 * as running. `readNow` reads at once (after a scan request gave up); otherwise the first read waits an interval,
-	 * because the caller has just read.
+	 *
+	 * It ends by itself `PROTECT_DISCOVERY_FOLLOW_MS` after it starts, counting the time reads take as well as the
+	 * pauses: every pause and every read deadline is cut to what is left. A failed or timed out read is retried while
+	 * time is left; the backend may well still be scanning.
+	 *
+	 * The store is this follow's until another read applies a newer result: such a result that is not a scan in progress
+	 * means the scan has ended, so the follow ends with it. Otherwise, out of time, it puts back the newest result that is
+	 * not a scan in progress (`settled`), so no scan stays shown as running and no consoles found meanwhile are lost, and
+	 * reports what the backend last said: its error, or that the scan is still running.
+	 *
+	 * `readNow` reads at once (after a scan request gave up); otherwise the first read waits an interval, because the
+	 * caller has just read.
 	 */
-	const follow = async (restore: IProtectDiscovery | null, readNow: boolean): Promise<IProtectDiscovery> => {
-		try {
-			let waited = 0;
+	const follow = async (readNow: boolean): Promise<IProtectDiscovery> => {
+		const endsAt = Date.now() + PROTECT_DISCOVERY_FOLLOW_MS;
+		const left = (): number => Math.max(0, endsAt - Date.now());
 
-			if (!readNow) {
-				await pause(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+		/** The generation of this follow's own latest change of the store. */
+		let owned = generation;
+		let failure: unknown = null;
 
-				waited = PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS;
+		const endedElsewhere = (): IProtectDiscovery | null => {
+			const current = discovery.value;
+
+			return generation !== owned && current !== null && !isScanInProgress(current) ? current : null;
+		};
+
+		for (let first = true; ; first = false) {
+			const wait = !first || !readNow ? Math.min(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS, left()) : 0;
+
+			if (wait > 0) {
+				await pause(wait);
 			}
 
-			for (;;) {
-				const value = await read(true);
+			const ended = endedElsewhere();
+
+			if (ended !== null) {
+				return ended;
+			}
+
+			const deadlineMs = Math.min(PROTECT_STATUS_DEADLINE_MS, left());
+
+			if (deadlineMs <= 0) {
+				break;
+			}
+
+			try {
+				const value = await read(true, deadlineMs);
+
+				owned = generation;
 
 				if (!isScanInProgress(value)) {
 					return value;
 				}
 
-				if (waited + PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS > PROTECT_DISCOVERY_FOLLOW_MS) {
-					throw new ProtectScanStillRunningException('The UniFi Protect discovery scan is still running.');
+				failure = null;
+			} catch (error) {
+				// A read cut short by the end of the follow says nothing about the scan; any other failure is the latest word.
+				if (!(error instanceof ProtectTimeoutException && deadlineMs < PROTECT_STATUS_DEADLINE_MS)) {
+					failure = error;
 				}
-
-				await pause(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
-
-				waited += PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS;
 			}
-		} catch (error) {
-			discovery.value = restore;
-			generation++;
-
-			throw error;
 		}
+
+		// Out of time, and the store is still this follow's (checked just before the loop ended).
+		discovery.value = settled;
+		generation++;
+
+		throw failure ?? new ProtectScanStillRunningException('The UniFi Protect discovery scan is still running.');
 	};
 
 	let pendingScan: Promise<IProtectDiscovery> | null = null;
@@ -167,7 +208,6 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 		}
 
 		const request = (async (): Promise<IProtectDiscovery> => {
-			const before = discovery.value;
 			const value = await read(false);
 
 			if (!isScanInProgress(value)) {
@@ -175,7 +215,7 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 			}
 
 			// A scan this client runs or already follows reports its own end.
-			return pendingScan ?? track(follow(before, false));
+			return pendingScan ?? track(follow(false));
 		})();
 
 		pendingFetch = request;
@@ -192,7 +232,6 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 	};
 
 	const runScan = async (): Promise<IProtectDiscovery> => {
-		const before = discovery.value;
 		const deadline = startProtectDeadline(PROTECT_DISCOVERY_SCAN_DEADLINE_MS);
 
 		try {
@@ -214,7 +253,7 @@ export const useProtectDiscovery = defineStore('devices_unifi_protect_plugin-dis
 			if (deadline.expired()) {
 				// The client gave up but the backend keeps scanning and caches the result, so follow it to that result
 				// instead of showing an error, or an empty list while it still runs.
-				return follow(before, true);
+				return follow(true);
 			}
 
 			throw error;
