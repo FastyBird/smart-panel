@@ -3,7 +3,14 @@ import type { App } from 'vue';
 import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
-import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
+import {
+	type IPlugin,
+	type PluginInjectionKey,
+	injectDataRefreshRegistry,
+	injectPluginsManager,
+	injectStoresManager,
+	refreshLoadedStores,
+} from '../../common';
 import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents, type IPluginsSchemas } from '../../modules/config';
 import {
 	DEVICES_MODULE_NAME,
@@ -25,6 +32,9 @@ import {
 import { ProtectChannelCreateReqSchema, ProtectChannelSchema, ProtectChannelUpdateReqSchema } from './store/channels.store.schemas';
 import { ProtectConfigSchema, ProtectConfigUpdateReqSchema } from './store/config.store.schemas';
 import { ProtectDeviceCreateReqSchema, ProtectDeviceSchema, ProtectDeviceUpdateReqSchema } from './store/devices.store.schemas';
+import { protectDiscoveryStoreKey, protectStatusStoreKey } from './store/keys';
+import { registerProtectDiscoveryStore } from './store/protect-discovery.store';
+import { registerProtectStatusStore } from './store/protect-status.store';
 
 export const devicesUnifiProtectPluginKey: PluginInjectionKey<
 	IPlugin<
@@ -36,11 +46,20 @@ export const devicesUnifiProtectPluginKey: PluginInjectionKey<
 export default {
 	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
+		const storesManager = injectStoresManager(app);
+		const dataRefreshRegistry = injectDataRefreshRegistry(app);
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			options.i18n.global.setLocaleMessage(locale, defaultsDeep(currentMessages, { devicesUnifiProtectPlugin: translations }));
 		}
+
+		const statusStore = registerProtectStatusStore(options.store);
+		const discoveryStore = registerProtectDiscoveryStore(options.store);
+		app.provide(protectStatusStoreKey, statusStore);
+		app.provide(protectDiscoveryStoreKey, discoveryStore);
+		storesManager.addStore(protectStatusStoreKey, statusStore);
+		storesManager.addStore(protectDiscoveryStoreKey, discoveryStore);
 
 		pluginsManager.addPlugin(devicesUnifiProtectPluginKey, {
 			type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
@@ -83,5 +102,8 @@ export default {
 			modules: [DEVICES_MODULE_NAME, CONFIG_MODULE_NAME],
 			isCore: true,
 		});
+
+		// The status is polled only while a panel is mounted, so after a gap re-read it only if it was ever loaded.
+		dataRefreshRegistry.register(devicesUnifiProtectPluginKey, (): Promise<void> => refreshLoadedStores([statusStore]));
 	},
 };

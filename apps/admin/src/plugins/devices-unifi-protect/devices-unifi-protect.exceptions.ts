@@ -10,3 +10,6 @@ export class ProtectApiException extends ProtectException {
 }
 
 export class ProtectValidationException extends ProtectException {}
+
+/** A client-side request deadline expired. The backend operation itself may still have run or finished. */
+export class ProtectTimeoutException extends ProtectException {}
