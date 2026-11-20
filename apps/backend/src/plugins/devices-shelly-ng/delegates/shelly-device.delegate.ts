@@ -22,6 +22,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { ShellyRawSample, shellySampleEvidence } from '../contracts/native-temperature.contract';
 import {
 	ShellyProtectiveCommand,
@@ -588,6 +589,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		}
 
 		const observedAt = new Date();
+		// Numbered when the poll starts: a poll begun before a proof boundary never answers it.
+		const ingressSequence = nextSampleIngress();
 		const generation = this.connectionGeneration;
 		const revisionsAtStart = new Map(this.notificationRevisions);
 		const result = await this.rpcWithTimeout(() => this.shelly.shelly.getStatus(), timeoutMs);
@@ -610,11 +613,10 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 				continue;
 			}
 
-			this.emitRawSample(
-				componentKey,
-				componentValues,
-				shellySampleEvidence((result.value as unknown as Record<string, unknown>).ts, observedAt),
-			);
+			this.emitRawSample(componentKey, componentValues, {
+				...shellySampleEvidence((result.value as unknown as Record<string, unknown>).ts, observedAt),
+				ingressSequence,
+			});
 			const component = this.shelly.getComponent(componentKey);
 
 			if (!component) {
@@ -638,7 +640,11 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 				!Object.hasOwn(result.value, key) &&
 				(this.notificationRevisions.get(key) ?? 0) === (revisionsAtStart.get(key) ?? 0)
 			) {
-				this.emitRawSample(key, { errors: ['source_missing'] }, shellySampleEvidence(undefined, observedAt));
+				this.emitRawSample(
+					key,
+					{ errors: ['source_missing'] },
+					{ ...shellySampleEvidence(undefined, observedAt), ingressSequence },
+				);
 			}
 		}
 		return true;
@@ -895,6 +901,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 				values: Object.freeze({ ...values }),
 				evidence: {
 					...evidence,
+					// Arrival order is fixed at receipt, before the manager's lookups and source checks.
+					ingressSequence: evidence.ingressSequence ?? nextSampleIngress(),
 					isCurrent: () => generation === this.connectionGeneration && (evidence.isCurrent?.() ?? true),
 				},
 			} satisfies ShellyRawSample);

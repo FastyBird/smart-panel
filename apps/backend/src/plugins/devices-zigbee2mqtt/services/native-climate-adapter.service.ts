@@ -158,6 +158,7 @@ export class ZigbeeNativeClimateAdapterService {
 					metadata.isCached ||
 					metadata.isReplay !== false ||
 					metadata.isDup ||
+					metadata.commandEcho === true ||
 					metadata.measurementFieldsAreLive !== true ||
 					metadata.isCurrent?.() !== true ||
 					metadata.sourceIsCurrent?.() !== true ||

@@ -1,6 +1,8 @@
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { ZigbeeSourceIdentity, zigbeeSourceIdentity } from '../contracts/sample-source.contract';
 import {
+	COMMAND_ECHO_WINDOW_MS,
 	DEFAULT_MQTT_BASE_TOPIC,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	STARTUP_REPLAY_WINDOW_MAX_MS,
@@ -34,6 +36,15 @@ export abstract class Z2mBaseClientAdapter {
 	protected readonly logger: ExtensionLoggerService;
 
 	private sourceGeneration = 0;
+	/**
+	 * Commands whose acknowledgement may still arrive, per device. Zigbee2MQTT publishes the commanded
+	 * state once the device accepted the command, in the same form as a report, so while a window is open
+	 * every state message of the device is treated as a possible acknowledgement (`commandEcho`). A window
+	 * closes after {@link COMMAND_ECHO_WINDOW_MS}, or earlier when a message carries every commanded value
+	 * and the command changed all of them: only then can that message be told apart from a merged report
+	 * that already carried the same values.
+	 */
+	private readonly commandEchoWindows = new Map<string, CommandEchoWindow[]>();
 	private readonly nativeEpochs = new Map<string, object>();
 	/** Native capability/availability changes expire only this unit, without invalidating unrelated measurements. */
 	getNativeClimateGuard(friendlyName: string): () => boolean {
@@ -79,10 +90,7 @@ export abstract class Z2mBaseClientAdapter {
 	 * the packet's accepted source time (null when absent or rejected) and the device that sent it.
 	 * Replays reuse these decisions instead of re-deriving them at replay time.
 	 */
-	private readonly cachedFieldEvidence = new Map<
-		string,
-		Map<string, { sourceTime: Date | null; ieeeAddress: string | null; receivedAt: Date }>
-	>();
+	private readonly cachedFieldEvidence = new Map<string, Map<string, CachedFieldEvidence>>();
 	private lastSeenWarningLogged = false;
 	/** Freshness-related bridge settings from the last `bridge/info` of the connected bridge. */
 	private bridgeSettings: Z2mBridgeSettings | null = null;
@@ -312,7 +320,10 @@ export abstract class Z2mBaseClientAdapter {
 		if (!cached) return [];
 		const evidence = this.cachedFieldEvidence.get(friendlyName);
 		const currentIeee = this.sourceIdentities.get(friendlyName)?.ieeeAddress ?? null;
-		const groups = new Map<string, { time: number | null; state: Record<string, unknown>; receivedAt: number }>();
+		const groups = new Map<
+			string,
+			{ time: number | null; state: Record<string, unknown>; receivedAt: number; commandEcho: boolean }
+		>();
 		for (const [field, value] of Object.entries(cached)) {
 			const fieldEvidence = evidence?.get(field);
 			const sender = fieldEvidence?.ieeeAddress ?? null;
@@ -322,24 +333,26 @@ export abstract class Z2mBaseClientAdapter {
 			// Grouped by original receipt too: source-binding cutoffs judge when we actually observed
 			// each field, so fields received at different times never share one receipt time.
 			const receivedAt = fieldEvidence?.receivedAt.getTime() ?? Date.now();
-			const key = `${time}|${receivedAt}`;
-			const group = groups.get(key) ?? { time, state: {}, receivedAt };
+			// A field cached from a possible command acknowledgement is replayed as one, never as a report.
+			const commandEcho = fieldEvidence?.commandEcho === true;
+			const key = `${time}|${receivedAt}|${commandEcho}`;
+			const group = groups.get(key) ?? { time, state: {}, receivedAt, commandEcho };
 			group.state[field] = value;
 			groups.set(key, group);
 		}
 		return [...groups.values()]
 			.sort((a, b) => (a.time ?? -Infinity) - (b.time ?? -Infinity) || a.receivedAt - b.receivedAt)
-			.map(({ time, ...group }) => ({
-				state: group.state,
-				metadata: this.buildStateMetadata(
+			.map(({ time, commandEcho, ...group }) => {
+				const metadata = this.buildStateMetadata(
 					friendlyName,
 					group.state,
 					new Date(group.receivedAt),
 					false,
 					{ isCached: true },
 					time === null ? null : new Date(time),
-				),
-			}));
+				);
+				return { state: group.state, metadata: commandEcho ? { ...metadata, commandEcho: true } : metadata };
+			});
 	}
 
 	private recordCachedFieldEvidence(
@@ -347,13 +360,12 @@ export abstract class Z2mBaseClientAdapter {
 		state: Record<string, unknown>,
 		metadata: Z2mDeviceStateMetadata,
 	): void {
-		const evidence =
-			this.cachedFieldEvidence.get(friendlyName) ??
-			new Map<string, { sourceTime: Date | null; ieeeAddress: string | null; receivedAt: Date }>();
-		const entry = {
+		const evidence = this.cachedFieldEvidence.get(friendlyName) ?? new Map<string, CachedFieldEvidence>();
+		const entry: CachedFieldEvidence = {
 			sourceTime: metadata.sampledAt ?? null,
 			ieeeAddress: metadata.sourceIdentity?.ieeeAddress ?? null,
 			receivedAt: metadata.observedAt ?? new Date(),
+			...(metadata.commandEcho === true ? { commandEcho: true } : {}),
 		};
 		for (const field of Object.keys(state)) evidence.set(field, entry);
 		this.cachedFieldEvidence.set(friendlyName, evidence);
@@ -407,7 +419,50 @@ export abstract class Z2mBaseClientAdapter {
 	/**
 	 * Publish a command to a device
 	 */
-	abstract publishCommand(friendlyName: string, payload: Z2mSetPayload, isCurrent?: () => boolean): Promise<boolean>;
+	async publishCommand(
+		friendlyName: string,
+		payload: Z2mSetPayload,
+		isCurrent: () => boolean = () => true,
+	): Promise<boolean> {
+		// Opened before sending: the acknowledgement may arrive before the publish callback.
+		const window = this.openCommandEchoWindow(friendlyName, payload);
+		let sent = false;
+		try {
+			sent = await this.sendCommand(friendlyName, payload, isCurrent);
+		} finally {
+			if (!sent) window.close();
+		}
+		return sent;
+	}
+
+	/** Whether a command sent to the device can still be acknowledged. */
+	hasPendingCommands(friendlyName: string): boolean {
+		return (this.commandEchoWindows.get(friendlyName)?.length ?? 0) > 0;
+	}
+
+	/**
+	 * Wait until no command sent to the device can still be acknowledged, so that every later state
+	 * message of the device is a report. Resolves at once when nothing is pending.
+	 */
+	async whenCommandsAcknowledged(friendlyName: string): Promise<void> {
+		// Commands sent while waiting open new windows: wait until none is left.
+		for (
+			let windows = this.commandEchoWindows.get(friendlyName);
+			windows && windows.length > 0;
+			windows = this.commandEchoWindows.get(friendlyName)
+		)
+			await Promise.all(windows.map((window) => window.closed));
+	}
+
+	/**
+	 * Send a `/set` command to the device. Zigbee2MQTT publishes the commanded state once the device
+	 * accepts it; that publication is marked as a command echo (see {@link publishCommand}).
+	 */
+	protected abstract sendCommand(
+		friendlyName: string,
+		payload: Z2mSetPayload,
+		isCurrent: () => boolean,
+	): Promise<boolean>;
 
 	/**
 	 * Request current state from a device
@@ -760,7 +815,21 @@ export abstract class Z2mBaseClientAdapter {
 		const observedAt = new Date();
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
-			const metadata = this.buildStateMetadata(friendlyName, state, observedAt, isRetained, options);
+			// Arrival order is fixed at receipt, before device lookups and mapping.
+			const ingressSequence = nextSampleIngress();
+			const built = this.buildStateMetadata(friendlyName, state, observedAt, isRetained, options);
+			// A replay of our own cache or a retained message is not an acknowledgement of a new command.
+			// A startup replay or a redelivered duplicate may still be an acknowledgement, but it cannot
+			// acknowledge a command by itself: it never closes a window.
+			const commandEcho =
+				options?.isCached !== true &&
+				!isRetained &&
+				this.takeCommandEcho(friendlyName, state, !built.isReplay && options?.isDup !== true);
+			const metadata: Z2mDeviceStateMetadata = {
+				...built,
+				ingressSequence,
+				...(commandEcho ? { commandEcho: true } : {}),
+			};
 
 			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
 
@@ -779,14 +848,18 @@ export abstract class Z2mBaseClientAdapter {
 				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
-			// A replay is never a current native observation: keep the last qualified one.
+			// A replay is never a current native observation: keep the last qualified one. A possible command
+			// acknowledgement is not one either, and it may show values the device has not taken: drop the
+			// last observation until the device reports again.
 			if (
 				!metadata.isReplay &&
 				metadata.sourceIdentity &&
 				Array.isArray(device?.definition?.exposes) &&
 				device.definition.exposes.some((expose) => expose.type === 'climate')
-			)
-				this.nativeSamples.set(friendlyName, { state: Object.freeze({ ...state }), metadata });
+			) {
+				if (metadata.commandEcho === true) this.nativeSamples.delete(friendlyName);
+				else this.nativeSamples.set(friendlyName, { state: Object.freeze({ ...state }), metadata });
+			}
 			void this.callbacks.onDeviceStateChanged?.(friendlyName, state, metadata);
 		} catch (error) {
 			this.logger.warn(`Failed to parse state for device ${friendlyName}`, {
@@ -851,5 +924,80 @@ export abstract class Z2mBaseClientAdapter {
 		this.nativeSamples.clear();
 		this.nativeEpochs.clear();
 		this.sourceIdentities.clear();
+		// Acknowledgements of commands sent on a closed connection are replays of the next connection.
+		for (const windows of [...this.commandEchoWindows.values()]) for (const window of windows) window.close();
 	}
+
+	private openCommandEchoWindow(friendlyName: string, payload: Z2mSetPayload): CommandEchoWindow {
+		let release!: () => void;
+		const closed = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const commanded = Object.freeze({ ...(payload as Record<string, unknown>) });
+		const before = this.stateCache.get(friendlyName) ?? {};
+		const window: CommandEchoWindow = {
+			commanded,
+			changesState: Object.entries(commanded).every(([key, value]) => !echoesCommandedValue(before[key], value)),
+			closed,
+			close: () => {
+				clearTimeout(timer);
+				const windows = this.commandEchoWindows.get(friendlyName);
+				const remaining = windows?.filter((other) => other !== window) ?? [];
+				if (remaining.length > 0) this.commandEchoWindows.set(friendlyName, remaining);
+				else if (windows) this.commandEchoWindows.delete(friendlyName);
+				release();
+			},
+		};
+		const timer = setTimeout(() => window.close(), COMMAND_ECHO_WINDOW_MS);
+		timer.unref?.();
+		this.commandEchoWindows.set(friendlyName, [...(this.commandEchoWindows.get(friendlyName) ?? []), window]);
+		return window;
+	}
+
+	/**
+	 * Whether a state message may acknowledge a pending command. Every message received while a window is
+	 * open counts. For a command that changed the state, a message carrying all commanded values is its
+	 * acknowledgement and closes its window, oldest first and one window per message, so each of two equal
+	 * commands waits for its own acknowledgement.
+	 */
+	private takeCommandEcho(friendlyName: string, state: Record<string, unknown>, mayAcknowledge: boolean): boolean {
+		const windows = this.commandEchoWindows.get(friendlyName);
+		if (!windows || windows.length === 0) return false;
+		if (mayAcknowledge)
+			windows
+				.find(
+					(window) =>
+						window.changesState &&
+						Object.entries(window.commanded).every(([key, value]) => echoesCommandedValue(state[key], value)),
+				)
+				?.close();
+		return true;
+	}
+}
+
+/** How a cached field was received; replays reuse it instead of re-deriving it. */
+interface CachedFieldEvidence {
+	sourceTime: Date | null;
+	ieeeAddress: string | null;
+	receivedAt: Date;
+	/** The field came from a possible command acknowledgement. */
+	commandEcho?: boolean;
+}
+
+interface CommandEchoWindow {
+	readonly commanded: Readonly<Record<string, unknown>>;
+	/** Every commanded value differed from the device's last known state when the command was sent. */
+	readonly changesState: boolean;
+	readonly closed: Promise<void>;
+	close(): void;
+}
+
+function echoesCommandedValue(reported: unknown, commanded: unknown): boolean {
+	if (typeof commanded === 'string' && typeof reported === 'string')
+		return reported.toLowerCase() === commanded.toLowerCase();
+	if (commanded !== null && typeof commanded === 'object' && reported !== null && typeof reported === 'object')
+		return Object.entries(commanded as Record<string, unknown>).every(([key, value]) =>
+			echoesCommandedValue((reported as Record<string, unknown>)[key], value),
+		);
+	return reported === commanded;
 }

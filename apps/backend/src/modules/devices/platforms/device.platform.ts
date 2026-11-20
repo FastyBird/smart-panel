@@ -51,6 +51,15 @@ export interface PreparedCompositeDeviceBatch {
 	readonly dispose?: () => void;
 }
 
+/** A request for a fresh report of one property; see {@link IDevicePlatform.requestPropertyRead}. */
+export interface PropertyReadRequest {
+	readonly device: DeviceEntity;
+	readonly channel: ChannelEntity;
+	readonly property: ChannelPropertyEntity;
+	/** Marks the moment the read is sent: reports received from now on answer it. */
+	readonly dispatching: () => void;
+}
+
 export interface IDevicePlatform {
 	/** Capture an actual native regulator; absent support never grants a protective capability. */
 	captureNativeClimateUnit?(device: DeviceEntity): Promise<NativeClimateUnit | null>;
@@ -73,6 +82,16 @@ export interface IDevicePlatform {
 	getCommandTimeoutMs?(commandCount: number): number;
 
 	usesAuthoritativePropertyReadback?(property: ChannelPropertyEntity): boolean;
+
+	/**
+	 * Optional: ask the device for a fresh report of one property's current state. The answer arrives as an
+	 * ordinary sample report. Call `request.dispatching()` right before sending the read, and only once no
+	 * acknowledgement of an earlier command can arrive unmarked (settle those commands first, or report their
+	 * acknowledgements with `commandEcho`): only reports received after `dispatching()` answer the read.
+	 * Resolve `true` when the read was sent, `false` when it was not. Platforms without this still work:
+	 * callers then wait for the device's next report.
+	 */
+	requestPropertyRead?(request: PropertyReadRequest): Promise<boolean>;
 
 	getType(): string;
 }

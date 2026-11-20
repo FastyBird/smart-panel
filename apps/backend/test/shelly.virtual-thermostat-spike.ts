@@ -85,7 +85,7 @@ class FixtureMqtt extends Z2mBaseClientAdapter {
 		this.setCallbacks({});
 		return Promise.resolve();
 	}
-	publishCommand(): Promise<boolean> {
+	protected sendCommand(): Promise<boolean> {
 		return Promise.resolve(false);
 	}
 	requestState(): Promise<boolean> {

@@ -25,6 +25,14 @@ export interface PropertySampleEvidence {
 	 * time or a history point, and never moves the value's age forward.
 	 */
 	readonly ageUnknown?: boolean;
+	/**
+	 * The sample only acknowledges a command Smart Panel sent (an integration publishing the commanded
+	 * state once the device accepted it), not a report of the device's state. It may update the display,
+	 * but never proves the physical state, for example that an output is off.
+	 */
+	readonly commandEcho?: boolean;
+	/** Process-local arrival order, assigned by the devices module on receipt; never supplied by a DTO. */
+	readonly ingressSequence?: number;
 	/** Pure process-local generation/identity guard; never serialized or supplied by a public DTO. */
 	readonly isCurrent?: () => boolean;
 	/** Stable connection/configuration identity after acceptance; ordinary newer packets do not revoke it. */
@@ -56,6 +64,12 @@ export interface AcceptedPropertySample {
 	readonly nativeCoverTagPresent?: boolean;
 	/** Internal qualified readers only; omitted from sample events/history. */
 	readonly commandObservation?: object;
+	/** Set when the sample replays earlier state; see {@link PropertySampleEvidence.replay}. */
+	readonly replay?: true;
+	/** Set when the sample only acknowledges a command; see {@link PropertySampleEvidence.commandEcho}. */
+	readonly commandEcho?: true;
+	/** Process-local arrival order of the report; see {@link PropertySampleEvidence.ingressSequence}. */
+	readonly ingressSequence?: number;
 	readonly quality: Exclude<PropertyProducerQuality, 'unavailable'>;
 	readonly reasons: readonly string[];
 	readonly revision?: number;

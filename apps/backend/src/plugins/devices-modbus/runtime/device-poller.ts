@@ -1,5 +1,6 @@
 import { createExtensionLogger } from '../../../common/logger';
 import { ConnectionState, DataTypeType } from '../../../modules/devices/devices.constants';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import {
 	DEVICES_MODBUS_PLUGIN_NAME,
 	MODBUS_DEFAULTS,
@@ -35,7 +36,13 @@ export interface ModbusDeviceSnapshot {
 }
 
 export interface PollerCallbacks {
-	report(propertyId: string, value: ModbusPropertyValue | null, sampledAt: Date): Promise<void>;
+	/** `ingressSequence`: the sample's arrival number, taken when the read was started. */
+	report(
+		propertyId: string,
+		value: ModbusPropertyValue | null,
+		sampledAt: Date,
+		ingressSequence?: number,
+	): Promise<void>;
 	setConnectionState(state: ConnectionState, reason?: string): Promise<void>;
 	/** `false` once the owner replaced or dropped this poller; late results are then discarded. */
 	isCurrent(): boolean;
@@ -289,6 +296,8 @@ export class DevicePoller {
 			}
 
 			const sampledAt = new Date();
+			// Numbered when the read starts: a read begun before a proof boundary never answers it.
+			const ingressSequence = nextSampleIngress();
 			let values: boolean[] | number[];
 
 			try {
@@ -304,7 +313,7 @@ export class DevicePoller {
 				}
 
 				if (error instanceof ModbusExceptionError && error.isRequestError) {
-					await this.invalidateBlock(block, error, sampledAt, schedule, force);
+					await this.invalidateBlock(block, error, sampledAt, schedule, force, ingressSequence);
 
 					continue;
 				}
@@ -319,7 +328,13 @@ export class DevicePoller {
 			for (const point of block.points) {
 				this.requestErrors.delete(point.key);
 
-				await this.publish(point.key, this.decode(point, sliceForPoint(block, values, point)), sampledAt, force);
+				await this.publish(
+					point.key,
+					this.decode(point, sliceForPoint(block, values, point)),
+					sampledAt,
+					force,
+					ingressSequence,
+				);
 			}
 		}
 
@@ -380,6 +395,7 @@ export class DevicePoller {
 		sampledAt: Date,
 		schedule: Schedule | null,
 		force: boolean,
+		ingressSequence?: number,
 	): Promise<void> {
 		// A permanently bad address answers the same exception on every poll: logged once until it reads again.
 		const changed = block.points.filter((point) => this.requestErrors.get(point.key) !== error.code);
@@ -397,7 +413,7 @@ export class DevicePoller {
 		}
 
 		for (const point of block.points) {
-			await this.publish(point.key, null, sampledAt, force);
+			await this.publish(point.key, null, sampledAt, force, ingressSequence);
 		}
 
 		const index = schedule ? schedule.blocks.indexOf(block) : -1;
@@ -446,6 +462,7 @@ export class DevicePoller {
 		value: ModbusPropertyValue | null,
 		sampledAt: Date,
 		force: boolean,
+		ingressSequence?: number,
 	): Promise<void> {
 		if (!this.isCurrent()) {
 			return;
@@ -464,6 +481,7 @@ export class DevicePoller {
 			coerce(value, this.dataTypes.get(propertyId) ?? DataTypeType.UNKNOWN),
 			sampledAt,
 			force,
+			ingressSequence,
 		);
 	}
 
@@ -505,13 +523,18 @@ export class DevicePoller {
 		value: ModbusPropertyValue | null,
 		sampledAt: Date,
 		force: boolean,
+		ingressSequence?: number,
 	): Promise<void> {
-		if (!force && this.lastReported.has(propertyId) && this.lastReported.get(propertyId) === value) {
+		// A successful read is reported even when unchanged: it is fresh evidence of the value (a read proof or
+		// a freshness check can rely on it), and the value service writes no duplicate value or history point.
+		// An unchanged invalid value is reported once.
+		const unchanged = this.lastReported.has(propertyId) && this.lastReported.get(propertyId) === value;
+		if (!force && unchanged && (value === null || ingressSequence === undefined)) {
 			return;
 		}
 
 		try {
-			await this.callbacks.report(propertyId, value, sampledAt);
+			await this.callbacks.report(propertyId, value, sampledAt, ingressSequence);
 
 			this.lastReported.set(propertyId, value);
 			this.failingReports.delete(propertyId);

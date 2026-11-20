@@ -38,6 +38,12 @@ export const MAX_PENDING_ACTION_AGE_MS = 30_000;
 // `online` before it starts its extensions and only then its cached states, with no fixed bound,
 // so the window stays open while messages keep arriving: it closes after this quiet gap...
 export const STARTUP_REPLAY_WINDOW_MS = 5_000;
+/**
+ * Longest time Zigbee2MQTT may take to publish the state of a device after a `/set` it sent successfully
+ * (device response timeout plus retries). Until the matching publication arrives or this time passes,
+ * every state message of that device may be the command's acknowledgement, not a report.
+ */
+export const COMMAND_ECHO_WINDOW_MS = 15_000;
 // ...or at the latest this long after it opened, so a busy network cannot hold it open forever.
 export const STARTUP_REPLAY_WINDOW_MAX_MS = 60_000;
 

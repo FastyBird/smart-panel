@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import {
 	DEFAULT_COMMAND_DEBOUNCE_MS,
 	DEFAULT_CONNECTION_TIMEOUT_MS,
@@ -1066,6 +1067,8 @@ export class WledClientAdapterService {
 	/** Packet order fences queued work; the stable contract survives ordinary equal-value heartbeats. */
 	private captureObservation(device: RegisteredWledDevice) {
 		const observedAt = new Date();
+		// Arrival order is fixed at receipt, before the mapper's device lookups.
+		const ingressSequence = nextSampleIngress();
 		const sequence = (this.sampleSequences.get(device) ?? 0) + 1;
 		this.sampleSequences.set(device, sequence);
 		const epoch = this.sourceEpochs.get(device) ?? 0;
@@ -1093,6 +1096,7 @@ export class WledClientAdapterService {
 						sampledAt: observedAt,
 						receivedAt,
 						observedAt,
+						ingressSequence,
 						provenance: 'live',
 						isCurrent: () => isCurrent() && sourceIsCurrent(),
 						sourceIsCurrent,

@@ -615,6 +615,22 @@ describe('Z2mDeviceMapperService', () => {
 			);
 		});
 
+		it('passes a command acknowledgement mark on to the sample, and only when set', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25 },
+				{ observedAt, measurementFieldsAreLive: true, commandEcho: true, ingressSequence: 41 },
+			);
+			// The arrival number taken at receipt is kept, however long the device lookup took.
+			expect(channelsPropertiesService.reportSample.mock.lastCall?.[2]).toMatchObject({
+				commandEcho: true,
+				ingressSequence: 41,
+			});
+			await service.updateDeviceState('ambient', { temperature: 26 }, { observedAt, measurementFieldsAreLive: true });
+			expect(channelsPropertiesService.reportSample.mock.lastCall?.[2]).not.toHaveProperty('commandEcho');
+		});
+
 		it('flags only an untimed replay as of unknown age, never a timed replay or a live report', async () => {
 			const observedAt = new Date('2026-10-13T09:00:00Z');
 			const sampledAt = new Date('2026-10-13T08:00:00Z');

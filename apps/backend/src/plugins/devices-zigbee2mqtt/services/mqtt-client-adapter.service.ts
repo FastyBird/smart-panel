@@ -152,10 +152,10 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 	/**
 	 * Publish a command to a device
 	 */
-	async publishCommand(
+	protected async sendCommand(
 		friendlyName: string,
 		payload: Z2mSetPayload,
-		isCurrent: () => boolean = () => true,
+		isCurrent: () => boolean,
 	): Promise<boolean> {
 		if (!isCurrent()) return false;
 		if (!this.client || !this.connected) {

@@ -28,7 +28,7 @@ class PacketAdapter extends Z2mBaseClientAdapter {
 	reopenStartupReplayWindow(): void {
 		this.openStartupReplayWindow();
 	}
-	publishCommand(...args: Parameters<Z2mBaseClientAdapter['publishCommand']>): Promise<boolean> {
+	protected sendCommand(...args: Parameters<Z2mBaseClientAdapter['publishCommand']>): Promise<boolean> {
 		return this.send(...args);
 	}
 	requestState(): Promise<boolean> {
@@ -227,6 +227,17 @@ describe('Zigbee native climate production profile', () => {
 		adapter.feed('trv', { local_temperature: 20 });
 		jest.advanceTimersByTime(120_001);
 		expect(unit.observe().available).toBe(false);
+	});
+
+	it('never takes a possible command acknowledgement as a native observation, and drops the last one', async () => {
+		adapter.feed('trv', { local_temperature: 20, system_mode: 'off' });
+		expect(unit.observe()).toMatchObject({ available: true, mode: 'off' });
+		await adapter.publishCommand('trv', { system_mode: 'heat' });
+		adapter.feed('trv', { local_temperature: 20, system_mode: 'heat' });
+		expect(unit.observe().available).toBe(false);
+		// The device's own report after the acknowledgement qualifies again.
+		adapter.feed('trv', { local_temperature: 20, system_mode: 'heat' });
+		expect(unit.observe()).toMatchObject({ available: true, mode: 'heat' });
 	});
 
 	it('preserves an older explicit measurement timestamp instead of renewing it at packet receipt', () => {

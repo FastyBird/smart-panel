@@ -7,6 +7,7 @@ import {
 	IDevicePlatform,
 	IDevicePropertyData,
 	PreparedCompositeDeviceBatch,
+	PropertyReadRequest,
 } from '../../../modules/devices/platforms/device.platform';
 import { NativeClimateUnit } from '../../../modules/devices/platforms/native-climate.contract';
 import { sourceFingerprint } from '../contracts/sample-source.contract';
@@ -58,6 +59,36 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 
 	getType(): string {
 		return DEVICES_ZIGBEE2MQTT_TYPE;
+	}
+
+	/**
+	 * Ask Zigbee2MQTT to read the property from the device (`<device>/get`). The request is sent only after
+	 * every pending command to the device was acknowledged or timed out, so the answer is not an echo.
+	 * Properties without a plain Zigbee2MQTT field (virtual commands, composite colour) are not read.
+	 */
+	async requestPropertyRead({ device, channel, property, dispatching }: PropertyReadRequest): Promise<boolean> {
+		if (
+			!(device instanceof Zigbee2mqttDeviceEntity) ||
+			!(channel instanceof Zigbee2mqttChannelEntity) ||
+			!(property instanceof Zigbee2mqttChannelPropertyEntity) ||
+			!device.enabled ||
+			property.identifier.startsWith('fb_virtual_')
+		)
+			return false;
+		const field = this.deviceMapper.getPropertySampleMapping(property, channel).field;
+		if (!field || field === 'color') return false;
+		const adapter = this.zigbee2mqttService.getActiveAdapter();
+		const friendlyName = device.identifier;
+		const current = (): boolean => this.zigbee2mqttService.getActiveAdapter() === adapter && adapter.isConnected();
+		// A command may be queued between the end of a wait and this method resuming: check again without
+		// yielding, then mark and send the read in the same step, before any other command can run.
+		while (adapter.hasPendingCommands(friendlyName)) {
+			await adapter.whenCommandsAcknowledged(friendlyName);
+			if (!current()) return false;
+		}
+		if (!current()) return false;
+		dispatching();
+		return adapter.requestState(friendlyName, [field]);
 	}
 
 	async process({ device, channel, property, value }: IZigbee2mqttDevicePropertyData): Promise<boolean> {
