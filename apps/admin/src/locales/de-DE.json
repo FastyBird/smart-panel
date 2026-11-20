@@ -40,6 +40,20 @@
 			"copied": "In die Zwischenablage kopiert",
 			"copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen"
 		},
+		"formFooter": {
+			"save": "Speichern",
+			"discard": "Verwerfen",
+			"close": "Schließen"
+		},
+		"secretInput": {
+			"saved": "Gespeichert",
+			"replace": "Ersetzen",
+			"cancel": "Abbrechen",
+			"placeholder": "Neuen Wert eingeben"
+		},
+		"typePicker": {
+			"title": "Typ auswählen"
+		},
 		"buttons": {
 			"home": {
 				"title": "Startseite"

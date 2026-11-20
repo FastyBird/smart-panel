@@ -40,6 +40,20 @@
 			"copied": "Skopírované do schránky",
 			"copyFailed": "Do schránky sa nepodarilo skopírovať"
 		},
+		"formFooter": {
+			"save": "Uložiť",
+			"discard": "Zahodiť",
+			"close": "Zavrieť"
+		},
+		"secretInput": {
+			"saved": "Uložené",
+			"replace": "Nahradiť",
+			"cancel": "Zrušiť",
+			"placeholder": "Zadajte novú hodnotu"
+		},
+		"typePicker": {
+			"title": "Vyberte typ"
+		},
 		"buttons": {
 			"home": {
 				"title": "Domov"

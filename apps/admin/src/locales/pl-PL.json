@@ -40,6 +40,20 @@
 			"copied": "Skopiowano do schowka",
 			"copyFailed": "Nie udało się skopiować do schowka"
 		},
+		"formFooter": {
+			"save": "Zapisz",
+			"discard": "Odrzuć",
+			"close": "Zamknij"
+		},
+		"secretInput": {
+			"saved": "Zapisano",
+			"replace": "Zastąp",
+			"cancel": "Anuluj",
+			"placeholder": "Wpisz nową wartość"
+		},
+		"typePicker": {
+			"title": "Wybierz typ"
+		},
 		"buttons": {
 			"home": {
 				"title": "Strona główna"
