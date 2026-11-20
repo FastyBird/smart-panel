@@ -118,6 +118,7 @@
 		"scanning": "Prehľadávam sieť. Môže to trvať až minútu.",
 		"loadFailed": "Nájdené konzoly sa nepodarilo načítať.",
 		"scanFailed": "Vyhľadávanie sa nepodarilo spustiť.",
+		"stillScanning": "Vyhľadávanie stále prebieha. O chvíľu spustite vyhľadávanie znova, aby ste videli, čo našlo.",
 		"failed": "Posledné vyhľadávanie zlyhalo. Vyhľadajte znova alebo zadajte hostiteľa nižšie.",
 		"empty": "Nenašla sa žiadna konzola. Vyhľadajte znova alebo zadajte hostiteľa nižšie.",
 		"firmware": "firmvér {version}",

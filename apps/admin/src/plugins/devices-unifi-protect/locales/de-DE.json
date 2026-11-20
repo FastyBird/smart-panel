@@ -118,6 +118,7 @@
 		"scanning": "Das Netzwerk wird durchsucht. Das kann bis zu einer Minute dauern.",
 		"loadFailed": "Die gefundenen Konsolen konnten nicht geladen werden.",
 		"scanFailed": "Die Suche konnte nicht gestartet werden.",
+		"stillScanning": "Die Suche läuft noch. Suchen Sie gleich erneut, um ihr Ergebnis zu sehen.",
 		"failed": "Die letzte Suche ist fehlgeschlagen. Suchen Sie erneut oder geben Sie den Host unten ein.",
 		"empty": "Keine Konsole gefunden. Suchen Sie erneut oder geben Sie den Host unten ein.",
 		"firmware": "Firmware {version}",

@@ -9,7 +9,7 @@ import {
 	DevicesUnifiProtectPluginProbeProtect,
 	DevicesUnifiProtectPluginProbeStatus,
 } from '../../../openapi.constants';
-import { ProtectTimeoutException } from '../devices-unifi-protect.exceptions';
+import { ProtectScanStillRunningException, ProtectTimeoutException } from '../devices-unifi-protect.exceptions';
 import { protectProbeKey } from '../store/protect-discovery.store';
 import type { IProtectDiscovery, IProtectProbe } from '../store/protect.types';
 
@@ -168,6 +168,47 @@ describe('ProtectDiscoveredConsoles', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="protect-discovery-progress"]').exists()).toBe(false);
+	});
+
+	it('shows the progress on mount while the backend is scanning, until the scan ends', async () => {
+		let finish: () => void = () => undefined;
+
+		store.fetch.mockImplementation(
+			() =>
+				new Promise<IProtectDiscovery>((resolve) => {
+					// What the store holds while it follows a scan started elsewhere.
+					store.discovery = { ...discoveryOf(), status: DevicesUnifiProtectPluginDiscoveryStatus.scanning };
+					finish = () => {
+						store.discovery = discoveryOf();
+						resolve(store.discovery);
+					};
+				})
+		);
+
+		const wrapper = mountConsoles();
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="protect-discovery-progress"]').exists()).toBe(true);
+		expect(wrapper.findAll('[data-test-id="protect-console"]')).toHaveLength(1);
+
+		finish();
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="protect-discovery-progress"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="protect-discovery-load-failed"]').exists()).toBe(false);
+	});
+
+	it('says the scan is still running when the store stops following it', async () => {
+		store.scan.mockRejectedValueOnce(new ProtectScanStillRunningException('still running'));
+
+		const wrapper = mountConsoles();
+
+		await flushPromises();
+		await wrapper.get('[data-test-id="protect-discovery-scan"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.get('[data-test-id="protect-discovery-load-failed"]').text()).toContain('devicesUnifiProtectPlugin.discovery.stillScanning');
 	});
 
 	it('checks a console for Protect and its direct connect domain', async () => {

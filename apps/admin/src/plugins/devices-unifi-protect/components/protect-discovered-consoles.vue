@@ -4,7 +4,7 @@
 			<span class="font-medium">{{ t('devicesUnifiProtectPlugin.discovery.title') }}</span>
 
 			<el-button
-				:loading="discoveryStore.scanning"
+				:loading="scanInProgress"
 				data-test-id="protect-discovery-scan"
 				@click="onScan"
 			>
@@ -13,7 +13,7 @@
 		</div>
 
 		<div
-			v-if="discoveryStore.scanning"
+			v-if="scanInProgress"
 			class="mt-2"
 			data-test-id="protect-discovery-progress"
 		>
@@ -30,7 +30,7 @@
 			type="warning"
 			show-icon
 			:closable="false"
-			:title="t(loadFailed === 'scan' ? 'devicesUnifiProtectPlugin.discovery.scanFailed' : 'devicesUnifiProtectPlugin.discovery.loadFailed')"
+			:title="t(`devicesUnifiProtectPlugin.discovery.${loadFailed}`)"
 			class="mt-2"
 			data-test-id="protect-discovery-load-failed"
 		/>
@@ -166,7 +166,7 @@ import { ElAlert, ElButton, ElProgress } from 'element-plus';
 
 import { injectStoresManager } from '../../../common';
 import { DevicesUnifiProtectPluginDiscoveryStatus, DevicesUnifiProtectPluginProbeStatus } from '../../../openapi.constants';
-import { ProtectTimeoutException } from '../devices-unifi-protect.exceptions';
+import { ProtectScanStillRunningException, ProtectTimeoutException } from '../devices-unifi-protect.exceptions';
 import { isValidProtectHost } from '../schemas/config.schemas';
 import { protectDiscoveryStoreKey } from '../store/keys';
 import { protectProbeKey } from '../store/protect-discovery.store';
@@ -191,7 +191,13 @@ const { t } = useI18n();
 
 const discoveryStore = injectStoresManager().getStore(protectDiscoveryStoreKey);
 
-const loadFailed = ref<'load' | 'scan' | null>(null);
+/** Why the list could not be shown; also the locale key of the message. */
+const loadFailed = ref<'loadFailed' | 'scanFailed' | 'stillScanning' | null>(null);
+
+/** A scan this client runs or follows, or one the backend reports in progress (also on mount, for a scan started elsewhere). */
+const scanInProgress = computed<boolean>(
+	(): boolean => discoveryStore.scanning || discoveryStore.discovery?.status === DevicesUnifiProtectPluginDiscoveryStatus.scanning
+);
 
 /** Probes started from this component that failed, by `protectProbeKey`. */
 const probeErrors = reactive<Record<string, 'probeTimeout' | 'probeFailed'>>({});
@@ -278,16 +284,16 @@ const onScan = async (): Promise<void> => {
 
 	try {
 		await discoveryStore.scan();
-	} catch {
-		loadFailed.value = 'scan';
+	} catch (error) {
+		loadFailed.value = error instanceof ProtectScanStillRunningException ? 'stillScanning' : 'scanFailed';
 	}
 };
 
 onMounted(async (): Promise<void> => {
 	try {
 		await discoveryStore.fetch();
-	} catch {
-		loadFailed.value = 'load';
+	} catch (error) {
+		loadFailed.value = error instanceof ProtectScanStillRunningException ? 'stillScanning' : 'loadFailed';
 	}
 });
 </script>

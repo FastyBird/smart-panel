@@ -118,6 +118,7 @@
 		"scanning": "Przeszukiwanie sieci. Może to potrwać do minuty.",
 		"loadFailed": "Nie udało się wczytać znalezionych konsol.",
 		"scanFailed": "Nie udało się uruchomić wyszukiwania.",
+		"stillScanning": "Wyszukiwanie nadal trwa. Za chwilę wyszukaj ponownie, aby zobaczyć, co znalazło.",
 		"failed": "Ostatnie wyszukiwanie nie powiodło się. Wyszukaj ponownie lub wpisz hosta poniżej.",
 		"empty": "Nie znaleziono żadnej konsoli. Wyszukaj ponownie lub wpisz hosta poniżej.",
 		"firmware": "firmware {version}",

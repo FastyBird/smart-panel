@@ -2,8 +2,13 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PROTECT_DISCOVERY_SCAN_DEADLINE_MS, PROTECT_PROBE_DEADLINE_MS } from '../devices-unifi-protect.constants';
-import { ProtectApiException, ProtectTimeoutException } from '../devices-unifi-protect.exceptions';
+import {
+	PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS,
+	PROTECT_DISCOVERY_FOLLOW_MS,
+	PROTECT_DISCOVERY_SCAN_DEADLINE_MS,
+	PROTECT_PROBE_DEADLINE_MS,
+} from '../devices-unifi-protect.constants';
+import { ProtectApiException, ProtectScanStillRunningException, ProtectTimeoutException } from '../devices-unifi-protect.exceptions';
 
 import { protectProbeKey, useProtectDiscovery } from './protect-discovery.store';
 
@@ -162,6 +167,93 @@ describe('Protect discovery store', () => {
 		expect(result?.status).toBe('completed');
 		expect(store.discovery?.status).toBe('completed');
 		expect(store.scanning).toBe(false);
+	});
+
+	it('follows a scan that outlives the client deadline, keeping the earlier consoles, until the backend reports its end', async () => {
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 3 }));
+		const store = useProtectDiscovery();
+
+		await store.fetch();
+
+		post.mockImplementation(hangUntilAborted);
+		get.mockResolvedValueOnce(discoveryBody({ status: 'scanning', consoles: [], other_unifi_devices: 0 }));
+		get.mockResolvedValueOnce(discoveryBody({ status: 'scanning', consoles: [], other_unifi_devices: 0 }));
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', consoles: [], other_unifi_devices: 1 }));
+
+		const pending = store.scan();
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_SCAN_DEADLINE_MS);
+
+		// The backend still scans: the progress stays, and its empty interim answer does not replace the list.
+		expect(get).toHaveBeenCalledTimes(2);
+		expect(store.scanning).toBe(true);
+		expect(store.discovery?.status).toBe('scanning');
+		expect(store.discovery?.consoles).toHaveLength(1);
+		expect(store.discovery?.otherUnifiDevices).toBe(3);
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+
+		expect(get).toHaveBeenCalledTimes(3);
+		expect(store.scanning).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+		const result = await pending;
+
+		expect(get).toHaveBeenCalledTimes(4);
+		expect(result.status).toBe('completed');
+		expect(store.discovery?.status).toBe('completed');
+		expect(store.discovery?.consoles).toHaveLength(0);
+		expect(store.discovery?.otherUnifiDevices).toBe(1);
+		expect(store.scanning).toBe(false);
+	});
+
+	it('follows a scan in progress that a fetch finds, such as one started elsewhere', async () => {
+		get.mockResolvedValueOnce(discoveryBody({ status: 'scanning', consoles: [] }));
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed' }));
+		const store = useProtectDiscovery();
+
+		const pending = store.fetch();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(store.scanning).toBe(true);
+		expect(store.discovery?.status).toBe('scanning');
+
+		// A scan asked for meanwhile joins the one in progress rather than starting another.
+		const joined = store.scan();
+
+		expect(post).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+
+		expect((await pending).status).toBe('completed');
+		expect((await joined).status).toBe('completed');
+		expect(store.discovery?.consoles).toHaveLength(1);
+		expect(store.scanning).toBe(false);
+	});
+
+	it('stops following a scan that never ends and goes back to what it held before', async () => {
+		get.mockResolvedValueOnce(discoveryBody({ status: 'completed', other_unifi_devices: 3 }));
+		const store = useProtectDiscovery();
+
+		await store.fetch();
+		const before = store.discovery;
+
+		get.mockResolvedValue(discoveryBody({ status: 'scanning', consoles: [] }));
+		post.mockImplementation(hangUntilAborted);
+
+		const pending = store.scan();
+		const outcome = expect(pending).rejects.toBeInstanceOf(ProtectScanStillRunningException);
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_SCAN_DEADLINE_MS + PROTECT_DISCOVERY_FOLLOW_MS);
+		await outcome;
+
+		// One read when the deadline expired, then one per interval up to the cap.
+		expect(get).toHaveBeenCalledTimes(1 + 1 + PROTECT_DISCOVERY_FOLLOW_MS / PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
+		expect(store.discovery).toEqual(before);
+		expect(store.scanning).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(PROTECT_DISCOVERY_FOLLOW_MS);
+
+		expect(get).toHaveBeenCalledTimes(1 + 1 + PROTECT_DISCOVERY_FOLLOW_MS / PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS);
 	});
 
 	it('does not re-read the cache after a scan failure that is not a timeout', async () => {

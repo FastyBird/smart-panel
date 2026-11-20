@@ -27,4 +27,10 @@ export const PROTECT_TEST_CONNECTION_DEADLINE_MS = 20_000;
 // The backend's worst case for a discovery scan is about 53 s.
 export const PROTECT_DISCOVERY_SCAN_DEADLINE_MS = 60_000;
 
+// While the backend reports a scan in progress the client re-reads the cached discovery this often, for at most this
+// long: longer than the backend's worst case, so a scan seen starting is followed to its end.
+export const PROTECT_DISCOVERY_FOLLOW_INTERVAL_MS = 3_000;
+
+export const PROTECT_DISCOVERY_FOLLOW_MS = 60_000;
+
 export const STATUS_POLL_MS = 5_000;

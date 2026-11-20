@@ -118,6 +118,7 @@
 		"scanning": "Scanning the network. This can take up to a minute.",
 		"loadFailed": "The discovered consoles could not be loaded.",
 		"scanFailed": "The scan could not be run.",
+		"stillScanning": "The scan is still running. Scan again in a moment to see what it found.",
 		"failed": "The last scan failed. Scan again or enter the host below.",
 		"empty": "No consoles found. Scan again or enter the host below.",
 		"firmware": "firmware {version}",

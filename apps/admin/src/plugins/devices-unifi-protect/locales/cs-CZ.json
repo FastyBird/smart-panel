@@ -118,6 +118,7 @@
 		"scanning": "Prohledávám síť. Může to trvat až minutu.",
 		"loadFailed": "Nalezené konzole se nepodařilo načíst.",
 		"scanFailed": "Vyhledávání se nepodařilo spustit.",
+		"stillScanning": "Vyhledávání stále probíhá. Za chvíli spusťte vyhledávání znovu, abyste viděli, co našlo.",
 		"failed": "Poslední vyhledávání selhalo. Vyhledejte znovu nebo zadejte hostitele níže.",
 		"empty": "Nebyla nalezena žádná konzole. Vyhledejte znovu nebo zadejte hostitele níže.",
 		"firmware": "firmware {version}",
