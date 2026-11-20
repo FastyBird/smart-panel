@@ -165,7 +165,7 @@ const resolveObjectKeys = (object: TemplateNode, keys: Map<string, TemplateNode 
 		}
 
 		const key = property.key as TemplateNode;
-		const value = property.value as TemplateNode | undefined;
+		const value = unwrapTypeScript((property.value as TemplateNode | undefined) ?? null);
 
 		const name = property.computed === true ? staticComputedName(key) : key.type === 'Identifier' ? key.name : key.value;
 
@@ -655,7 +655,16 @@ const cssCode = (text: string, block: IStyleBlock): string => {
 			let stop = index + 1;
 
 			for (; stop < chars.length; stop++) {
-				if (chars[stop] === '{') {
+				if (chars[stop] === '"' || chars[stop] === "'") {
+					// `#{'[data-state="}"]'}`: braces inside quoted strings do not count
+					const quote = chars[stop];
+
+					for (stop++; stop < chars.length && chars[stop] !== quote; stop++) {
+						if (chars[stop] === '\\') {
+							stop++;
+						}
+					}
+				} else if (chars[stop] === '{') {
 					depth += 1;
 				} else if (chars[stop] === '}') {
 					depth -= 1;
@@ -855,15 +864,29 @@ const isRouterReceiver = (node: TemplateNode | undefined): boolean => {
 };
 
 /** Whether an object literal is a router location: the value of a `to` binding or the argument of a router method */
-const isRouterLocation = (object: TemplateNode, parent: TemplateNode | null): boolean => {
-	if (parent?.type === 'VExpressionContainer') {
-		const attribute = parent.parent as TemplateNode | undefined;
-		const key = attribute?.key as { argument?: { name?: string } | null } | undefined;
+const isRouterLocation = (object: TemplateNode, parents: Map<unknown, TemplateNode>): boolean => {
+	// A result branch of a conditional or logical expression is the value of that expression
+	// (`:to="docs ? { hash: '#abc' } : '/help'"`); a condition is not
+	let node = object;
+	let parent = parents.get(node) ?? null;
 
-		return attribute?.type === 'VAttribute' && key?.argument?.name === 'to';
+	while (
+		(parent?.type === 'ConditionalExpression' && (parent.consequent === node || parent.alternate === node)) ||
+		(parent?.type === 'LogicalExpression' && (parent.right === node || (parent.operator !== '&&' && parent.left === node)))
+	) {
+		node = parent;
+		parent = parents.get(node) ?? null;
 	}
 
-	if (parent?.type === 'CallExpression' && (parent.arguments as unknown[])[0] === object) {
+	if (parent?.type === 'VExpressionContainer') {
+		const attribute = parent.parent as TemplateNode | undefined;
+		const key = attribute?.key as { name?: { name?: string }; argument?: { name?: string } | null } | undefined;
+
+		// Only `v-bind:to` / `:to`, not a custom directive argument such as `v-paint:to`
+		return attribute?.type === 'VAttribute' && key?.name?.name === 'bind' && key.argument?.name === 'to';
+	}
+
+	if (parent?.type === 'CallExpression' && (parent.arguments as unknown[])[0] === node) {
 		const callee = parent.callee as TemplateNode;
 		const property = callee.type === 'MemberExpression' ? (callee.property as TemplateNode) : undefined;
 
@@ -883,13 +906,11 @@ const isRouterLocation = (object: TemplateNode, parent: TemplateNode | null): bo
  */
 const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 	const ranges: [number, number][] = [];
-	const seen = new Set<unknown>();
+	const parents = new Map<unknown, TemplateNode>();
 	const visit = (node: unknown, parent: TemplateNode | null): void => {
-		if (node === null || typeof node !== 'object' || seen.has(node)) {
+		if (node === null || typeof node !== 'object' || parents.has(node)) {
 			return;
 		}
-
-		seen.add(node);
 
 		if (Array.isArray(node)) {
 			node.forEach((item) => visit(item, parent));
@@ -899,7 +920,11 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 
 		const current = node as TemplateNode;
 
-		if (current.type === 'ObjectExpression' && isRouterLocation(current, parent)) {
+		if (parent) {
+			parents.set(current, parent);
+		}
+
+		if (current.type === 'ObjectExpression' && isRouterLocation(current, parents)) {
 			for (const property of current.properties as TemplateNode[]) {
 				const key = property.key as TemplateNode | undefined;
 				const value = property.value as TemplateNode | undefined;
@@ -937,6 +962,37 @@ const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 	};
 
 	visit(context.sourceCode.ast, null);
+
+	return ranges;
+};
+
+/** Ranges of the values of `style` and `:style` attributes, where every hash is a colour */
+const styleAttributeRanges = (context: Rule.RuleContext): [number, number][] => {
+	const ranges: [number, number][] = [];
+	const visit = (node: TemplateNode | null | undefined): void => {
+		if (!node || node.type !== 'VElement') {
+			return;
+		}
+
+		const startTag = node.startTag as { attributes?: TemplateNode[] } | undefined;
+
+		for (const attribute of startTag?.attributes ?? []) {
+			const key = attribute.key as { name?: string | { name?: string }; argument?: { name?: string } | null };
+			const value = attribute.value as TemplateNode | null;
+			const isStyle =
+				attribute.directive === true
+					? typeof key.name === 'object' && key.name.name === 'bind' && key.argument?.name === 'style'
+					: key.name === 'style';
+
+			if (isStyle && value) {
+				ranges.push(value.range);
+			}
+		}
+
+		(node.children as TemplateNode[] | undefined)?.forEach(visit);
+	};
+
+	visit((context.sourceCode.ast as unknown as { templateBody?: TemplateNode | null }).templateBody);
 
 	return ranges;
 };
@@ -985,6 +1041,7 @@ const noHexColours: Rule.RuleModule = {
 				...slotShorthandRanges(context),
 				...referenceRanges(context),
 			];
+			const styleAttributes = styleAttributeRanges(context);
 
 			const report = (index: number, value: string): void =>
 				context.report({
@@ -1004,7 +1061,7 @@ const noHexColours: Rule.RuleModule = {
 				}
 
 				// Issue references, never in style attributes
-				if (/^#\d+$/.test(value) && !/style=["'][^"']*$/.test(before) && ISSUE_REFERENCE.test(before)) {
+				if (/^#\d+$/.test(value) && !within(index, styleAttributes) && ISSUE_REFERENCE.test(before)) {
 					continue;
 				}
 

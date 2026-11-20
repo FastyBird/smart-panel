@@ -119,7 +119,7 @@ describe('design system lint rules', () => {
 			sfc("<p :class=\"{ 'text-primary': true, ['text-' + 'primary']: false }\"></p>"),
 			{
 				...sfc(
-					"<p :class=\"{ 'text-primary': true, [('text-primary' as const)]: false }\"></p>",
+					"<p :class=\"{ 'text-primary': true, [('text-primary' as const)]: false, [('text-primary' satisfies string)]: (false satisfies boolean) }\"></p>",
 					'<script setup lang="ts">\nconst x = 1;\n</script>'
 				),
 				languageOptions: { parserOptions: { parser: tsParser } },
@@ -145,6 +145,11 @@ describe('design system lint rules', () => {
 			// TypeScript wrappers are unwrapped, also inside concatenations and computed keys
 			{
 				...sfc("<p :class=\"'text-' + ('primary' as const)\"></p>", '<script setup lang="ts">\nconst x = 1;\n</script>'),
+				languageOptions: { parserOptions: { parser: tsParser } },
+				errors: [{ messageId: 'body' }],
+			},
+			{
+				...sfc('<p :class="{ \'text-primary\': (true satisfies boolean) }"></p>', '<script setup lang="ts">\nconst x = 1;\n</script>'),
 				languageOptions: { parserOptions: { parser: tsParser } },
 				errors: [{ messageId: 'body' }],
 			},
@@ -181,7 +186,8 @@ describe('design system lint rules', () => {
 				'<div @click="$el.closest(\'#abc\')"></div>',
 				'<script setup lang="ts">\ndocument.querySelector(\'#abc\');\ndocument.querySelectorAll(`#fade`);\n</script>'
 			),
-			// Router location hashes are fragments
+			// Router location hashes are fragments, also in the result branches of a binding
+			sfc("<router-link :to=\"docs ? { hash: '#abc' } : '/help'\"></router-link>"),
 			sfc(
 				"<router-link :to=\"{ name: 'docs', hash: '#abc' }\"></router-link>",
 				"<script setup lang=\"ts\">\nrouter.push({ hash: '#fade' });\nthis.$router.replace({ hash: '#fed' });\nuseRouter().resolve({ hash: '#abc' });\n</script>"
@@ -228,6 +234,24 @@ describe('design system lint rules', () => {
 			{
 				...sfc('<div></div>', '<style lang="sass">\n/* Old palette\n  old values\n.x\n  color: #fff\n</style>'),
 				errors: [{ messageId: 'hex', line: 5 }],
+			},
+			// A custom directive argument named `to` is not a router destination; a condition is not a result
+			{
+				...sfc("<div v-paint:to=\"{ hash: '#fff' }\"></div><router-link :to=\"{ hash: '#abc' }.hash ? '/a' : '/b'\"></router-link>"),
+				errors: [
+					{ messageId: 'hex', data: { value: '#fff' } },
+					{ messageId: 'hex', data: { value: '#abc' } },
+				],
+			},
+			// Issue references are never skipped inside style attributes, however long the value
+			{
+				...sfc('<div style="--state-colors: normal var(--el-color-primary), closed #123456"></div>'),
+				errors: [{ messageId: 'hex', data: { value: '#123456' } }],
+			},
+			// Braces in quoted strings do not end an SCSS interpolation
+			{
+				...sfc('<div></div>', '<style lang="scss">\n#abc #{\'[data-state="}"]\'} {\n\tcolor: #fff;\n}\n</style>'),
+				errors: [{ messageId: 'hex', data: { value: '#fff' } }],
 			},
 			// Interpolations inside an exempt literal are still checked
 			{
