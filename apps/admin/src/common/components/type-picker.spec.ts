@@ -58,11 +58,19 @@ describe('TypePicker.vue', () => {
 		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
 	});
 
+	it('offers the options as buttons inside a labelled group', () => {
+		const wrapper = render({ options: OPTIONS, visible: true });
+
+		expect(wrapper.find('[role="group"]').attributes('aria-label')).toBe('Choose a type');
+		expect(options(wrapper).every((option) => option.element.tagName === 'BUTTON' && option.attributes('type') === 'button')).toBe(true);
+		expect(wrapper.find('[role="radio"]').exists()).toBe(false);
+	});
+
 	it('marks the selected option', () => {
 		const wrapper = render({ options: OPTIONS, modelValue: 'shelly', visible: true });
 
-		expect(options(wrapper)[0].attributes('aria-checked')).toBe('true');
-		expect(options(wrapper)[1].attributes('aria-checked')).toBe('false');
+		expect(options(wrapper)[0].attributes('aria-pressed')).toBe('true');
+		expect(options(wrapper)[1].attributes('aria-pressed')).toBe('false');
 	});
 
 	it('skips the dialog when there is one option', async () => {

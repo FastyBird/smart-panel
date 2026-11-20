@@ -108,6 +108,17 @@ watch(
 	}
 );
 
+watch(
+	(): string | null | undefined => props.modelValue,
+	(value: string | null | undefined): void => {
+		// The parent clears the new value after saving it: the stored secret is shown again, even when its hint
+		// did not change (same suffix, or a constant indicator)
+		if (replacing.value && isStored.value && (value === undefined || value === null)) {
+			replacing.value = false;
+		}
+	}
+);
+
 const onReplace = async (): Promise<void> => {
 	replacing.value = true;
 

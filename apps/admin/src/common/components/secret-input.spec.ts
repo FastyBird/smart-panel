@@ -71,6 +71,21 @@ describe('SecretInput.vue', () => {
 		wrapper.unmount();
 	});
 
+	it('shows the hint again when the parent clears the new value, even with an unchanged hint', async () => {
+		const wrapper = render({ savedHint: 'ends in …k3Fq' });
+
+		await wrapper.find('[data-test-id="secret-input-replace"]').trigger('click');
+		await wrapper.setProps({ modelValue: 'typed' });
+
+		expect(wrapper.find('[data-test-id="secret-input-saved"]').exists()).toBe(false);
+
+		await wrapper.setProps({ modelValue: undefined });
+
+		expect(wrapper.find('[data-test-id="secret-input-saved"]').exists()).toBe(true);
+
+		wrapper.unmount();
+	});
+
 	it('shows the hint again after a new secret is saved', async () => {
 		const wrapper = render({ savedHint: 'ends in …k3Fq' });
 

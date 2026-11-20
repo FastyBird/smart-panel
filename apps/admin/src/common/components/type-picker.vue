@@ -7,8 +7,10 @@
 		data-test-id="type-picker"
 		@update:model-value="onVisibleChange"
 	>
+		<!-- Choosing a type is an action that closes the dialog, so the options are buttons (one Tab stop each, Enter
+		     or Space to choose) and the current choice is marked as pressed -->
 		<div
-			role="radiogroup"
+			role="group"
 			:aria-label="props.title ?? t('application.typePicker.title')"
 			class="grid gap-3 grid-cols-1 tp:grid-cols-2"
 		>
@@ -16,14 +18,13 @@
 				v-for="option in props.options"
 				:key="option.id"
 				:disabled="option.disabled"
-				:aria-checked="option.id === props.modelValue ? 'true' : 'false'"
+				:aria-pressed="option.id === props.modelValue ? 'true' : 'false'"
 				:class="[
 					'flex items-start gap-3 p-3 text-left rounded-[8px] border border-solid bg-[var(--el-bg-color)] font-inherit',
 					option.id === props.modelValue ? 'border-primary-soft bg-primary-soft' : 'border-light',
 					option.disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-default',
 				]"
 				:data-option-id="option.id"
-				role="radio"
 				type="button"
 				data-test-id="type-picker-option"
 				@click="onSelect(option)"
