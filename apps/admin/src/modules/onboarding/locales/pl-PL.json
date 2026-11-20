@@ -159,6 +159,7 @@
 		"configDialog": {
 			"title": "Skonfiguruj {name}",
 			"noConfig": "Brak opcji konfiguracji dla tej integracji.",
+			"loadFailed": "Nie udało się wczytać konfiguracji. Zamknij to okno i spróbuj ponownie.",
 			"buttons": {
 				"cancel": "Anuluj",
 				"validate": "Sprawdź",

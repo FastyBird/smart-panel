@@ -1,0 +1,223 @@
+{
+	"config": {
+		"title": "UniFi-Protect-Konsole",
+		"description": "Verbinden Sie sich mit einer UniFi-Protect-Konsole im lokalen Netzwerk. Der API-Schlüssel ist schreibgeschützt und wird nach dem Speichern nicht mehr angezeigt.",
+		"enabled": "Aktiviert",
+		"host": {
+			"label": "Konsolen-Host",
+			"placeholder": "192.168.1.1 oder protect.example.com",
+			"invalid": "Geben Sie einen Hostnamen oder eine IP-Adresse ohne Schema, Port, Pfad oder Zugangsdaten ein"
+		},
+		"port": {
+			"label": "HTTPS-Port",
+			"invalid": "Geben Sie einen Port zwischen 1 und 65535 ein"
+		},
+		"apiKey": {
+			"label": "API-Schlüssel",
+			"placeholder": "Neuen Schlüssel eingeben, um den hinterlegten zu ersetzen",
+			"invalid": "Geben Sie einen nicht leeren API-Schlüssel ein oder entfernen Sie den Ersatz"
+		},
+		"tls": {
+			"label": "Zertifikatsvertrauen",
+			"mode": {
+				"verify": "Zertifikatskette und Namen prüfen",
+				"pinned": "Zertifikat-Fingerabdruck anheften"
+			},
+			"serverName": {
+				"label": "TLS-Servername",
+				"required": "Bei einer IP-Adresse als Host ist ein Servername erforderlich",
+				"invalid": "Geben Sie einen DNS-Namen ein, keine IP-Adresse",
+				"useSuggested": "{name} verwenden",
+				"useDirectConnect": "Domain der Konsole {name} verwenden"
+			},
+			"fingerprint": {
+				"label": "SHA-256-Fingerabdruck",
+				"required": "Geben Sie den 64-stelligen SHA-256-Fingerabdruck des Zertifikats ein"
+			}
+		},
+		"streamHostOverride": {
+			"label": "Stream-Host überschreiben",
+			"invalid": "Geben Sie einen Hostnamen oder eine IP-Adresse ohne Schema, Port, Pfad oder Zugangsdaten ein"
+		},
+		"defaultStreamQuality": {
+			"label": "Standard-Streamqualität",
+			"high": "Hoch",
+			"medium": "Mittel",
+			"low": "Niedrig"
+		},
+		"snapshotMinIntervalMs": {
+			"label": "Minimales Snapshot-Intervall (ms)",
+			"invalid": "Geben Sie eine ganze Zahl zwischen {min} und {max} ein"
+		},
+		"pollIntervalMs": {
+			"label": "Abfrageintervall des Inventars (ms)",
+			"invalid": "Geben Sie eine ganze Zahl zwischen {min} und {max} ein"
+		},
+		"apiKeyHelp": "Erstellen Sie einen Schlüssel in UniFi Protect › Settings › Control Plane › Integrations › API Keys."
+	},
+	"sections": {
+		"console": "Konsole",
+		"apiKey": "API-Schlüssel",
+		"certificate": "Zertifikat",
+		"advanced": "Erweitert",
+		"test": "Verbindungstest",
+		"status": "Verbindungsstatus"
+	},
+	"status": {
+		"stale": "Der Status konnte nicht aktualisiert werden. Die folgenden Werte sind die zuletzt bekannten.",
+		"loadFailed": "Der Verbindungsstatus konnte nicht geladen werden.",
+		"notAvailable": "Nicht verfügbar",
+		"yes": "Ja",
+		"no": "Nein",
+		"fields": {
+			"connectionState": "Verbindung",
+			"serviceState": "Dienst",
+			"enabled": "Aktiviert",
+			"configured": "Konfiguriert",
+			"healthy": "In Ordnung",
+			"tlsMode": "Zertifikatsvertrauen",
+			"applicationVersion": "UniFi-Protect-Version",
+			"minimumVersion": "Mindestens unterstützte Version",
+			"nvrId": "NVR-ID",
+			"nvrName": "NVR-Name",
+			"lastConnectedAt": "Zuletzt verbunden",
+			"lastError": "Letzter Fehler",
+			"reconnectAttempt": "Wiederverbindungsversuch",
+			"nextRetryAt": "Nächster Versuch",
+			"realtimeState": "Echtzeit-Updates",
+			"ignoredEventCount": "Ignorierte Ereignisse"
+		},
+		"connectionStates": {
+			"disconnected": "Getrennt",
+			"connecting": "Verbindung wird hergestellt",
+			"connected": "Verbunden",
+			"degraded": "Eingeschränkt",
+			"auth_failed": "API-Schlüssel abgelehnt",
+			"version_unsupported": "Version nicht unterstützt",
+			"error": "Fehler"
+		},
+		"serviceStates": {
+			"stopped": "Gestoppt",
+			"starting": "Startet",
+			"started": "Läuft",
+			"stopping": "Wird beendet",
+			"error": "Fehler"
+		},
+		"realtime": {
+			"stopped": "Gestoppt",
+			"connecting": "Verbindung wird hergestellt",
+			"priming": "Aktueller Stand wird geladen",
+			"streaming": "Streaming",
+			"polling": "Abfrage alle {seconds} s"
+		}
+	},
+	"discovery": {
+		"title": "Konsolen in diesem Netzwerk",
+		"scan": "Suchen",
+		"scanning": "Das Netzwerk wird durchsucht. Das kann bis zu einer Minute dauern.",
+		"loadFailed": "Die gefundenen Konsolen konnten nicht geladen werden.",
+		"scanFailed": "Die Suche konnte nicht gestartet werden.",
+		"stillScanning": "Die Suche läuft noch. Suchen Sie gleich erneut, um ihr Ergebnis zu sehen.",
+		"failed": "Die letzte Suche ist fehlgeschlagen. Suchen Sie erneut oder geben Sie den Host unten ein.",
+		"empty": "Keine Konsole gefunden. Suchen Sie erneut oder geben Sie den Host unten ein.",
+		"firmware": "Firmware {version}",
+		"check": "Prüfen",
+		"checkConsole": "{console} prüfen",
+		"use": "Verwenden",
+		"useConsole": "{console} verwenden",
+		"checkHost": "Host prüfen",
+		"useHost": "{host} verwenden",
+		"unreachable": "Die Konsole hat nicht geantwortet.",
+		"notConsole": "Dieser Host ist keine UniFi-Konsole.",
+		"probeTimeout": "Die Konsole hat nicht rechtzeitig auf die Prüfung geantwortet.",
+		"probeFailed": "Die Prüfung konnte nicht gestartet werden.",
+		"protect": {
+			"present": "UniFi Protect läuft",
+			"absent": "UniFi Protect ist nicht installiert",
+			"unknown": "UniFi Protect konnte nicht erkannt werden"
+		},
+		"domain": {
+			"valid": "Das Zertifikat ist für {domain} gültig",
+			"invalid": "Das Zertifikat ist für {domain} nicht gültig",
+			"unknown": "Das Zertifikat für {domain} konnte nicht geprüft werden",
+			"elsewhere": "{domain} wird nicht zu dieser Konsole aufgelöst",
+			"none": "Die Konsole meldet keine Direktverbindungs-Domain"
+		}
+	},
+	"testConnection": {
+		"button": "Verbindung testen",
+		"retry": "Erneut versuchen",
+		"notAvailable": "Nicht verfügbar",
+		"hints": {
+			"needs_key": "Geben Sie den API-Schlüssel erneut ein, um einen geänderten Host zu testen",
+			"needs_host": "Geben Sie einen gültigen Konsolen-Host ein, um die Verbindung zu testen",
+			"needs_port": "Geben Sie einen Port zwischen 1 und 65535 ein, um die Verbindung zu testen"
+		},
+		"success": "Mit UniFi Protect verbunden",
+		"failed": "Der Verbindungstest ist fehlgeschlagen",
+		"requestFailed": "Der Verbindungstest konnte nicht gestartet werden.",
+		"timeout": {
+			"title": "Keine rechtzeitige Antwort",
+			"description": "Die Konsole schließt den Test möglicherweise noch ab. Versuchen Sie es gleich noch einmal."
+		},
+		"fields": {
+			"console": "Konsole",
+			"version": "UniFi-Protect-Version",
+			"nvr": "NVR",
+			"minimumVersion": "Mindestens unterstützte Version",
+			"versionSupported": "Version unterstützt"
+		},
+		"version": {
+			"supported": "Ja",
+			"unsupported": "Nein",
+			"unknown": "Nicht geprüft"
+		}
+	},
+	"errorCategories": {
+		"validation": "Die Verbindungseinstellungen sind unvollständig oder ungültig. Ein als IP-Adresse angegebener Host benötigt im Prüfmodus einen TLS-Servernamen.",
+		"unreachable": "Die Konsole ist nicht erreichbar. Prüfen Sie Host und Port.",
+		"timeout": "Die Konsole hat nicht rechtzeitig geantwortet.",
+		"tls_untrusted": "Das Zertifikat der Konsole ist für diesen Host nicht vertrauenswürdig. Legen Sie den Servernamen fest oder vertrauen Sie diesem Zertifikat.",
+		"tls_fingerprint_mismatch": "Das Zertifikat der Konsole stimmt nicht mit dem angehefteten Fingerabdruck überein.",
+		"authentication": "Der API-Schlüssel wurde abgelehnt. Erstellen Sie einen neuen Schlüssel und geben Sie ihn erneut ein.",
+		"authorization": "Der API-Schlüssel darf die Integrations-API nicht verwenden.",
+		"not_found": "Die Integrations-API von UniFi Protect wurde auf dieser Konsole nicht gefunden.",
+		"bad_request": "Die Konsole hat die Anfrage abgelehnt.",
+		"unsupported": "Die Konsole unterstützt diesen Vorgang nicht.",
+		"rate_limited": "Die Konsole begrenzt die Anfragen. Versuchen Sie es in Kürze erneut.",
+		"unavailable": "UniFi Protect ist auf der Konsole derzeit nicht verfügbar.",
+		"protocol": "Die Konsole hat unerwartet geantwortet.",
+		"version_unsupported": "Auf der Konsole läuft eine UniFi-Protect-Version älter als {minimum}. Aktualisieren Sie UniFi Protect.",
+		"cancelled": "Der Verbindungstest wurde abgebrochen."
+	},
+	"certificate": {
+		"title": "Zertifikat",
+		"subject": "Antragsteller",
+		"issuer": "Aussteller",
+		"altNames": "Alternative Namen",
+		"validity": "Gültigkeit",
+		"validityRange": "{from} – {to}",
+		"selfSigned": "Selbstsigniert",
+		"trusted": "Vertrauenswürdige Kette",
+		"fingerprint": "SHA-256-Fingerabdruck",
+		"yes": "Ja",
+		"no": "Nein",
+		"notAvailable": "Nicht verfügbar",
+		"trust": "Diesem Zertifikat vertrauen",
+		"trustHint": "Heftet den Fingerabdruck dieses Zertifikats an und testet die Verbindung erneut.",
+		"changed": {
+			"title": "Das Zertifikat der Konsole hat sich geändert",
+			"description": "Es stimmt nicht mehr mit dem angehefteten Fingerabdruck überein. Nach einer Erneuerung oder einem Austausch des Zertifikats ist das zu erwarten, sonst ist es verdächtig.",
+			"replace": "Angeheftetes Zertifikat ersetzen",
+			"confirmText": "Ersetzen Sie die Anheftung nur, wenn Sie wissen, warum sich das Zertifikat geändert hat.",
+			"confirm": "Anheftung ersetzen",
+			"cancel": "Abbrechen"
+		}
+	},
+	"messages": {
+		"config": {
+			"updated": "Die UniFi-Protect-Einstellungen wurden gespeichert.",
+			"updateFailed": "Die UniFi-Protect-Einstellungen konnten nicht gespeichert werden."
+		}
+	}
+}

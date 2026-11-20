@@ -225,6 +225,7 @@ import { ExtensionKind } from '../../../modules/extensions/extensions.constants'
 import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { DEVICES_HOMEY_PLUGIN_NAME } from '../../../plugins/devices-homey/devices-homey.constants';
+import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME } from '../../../plugins/devices-unifi-protect/devices-unifi-protect.constants';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../../../plugins/devices-virtual/devices-virtual.constants';
 
 import IntegrationConfigDialog from './integration-config-dialog.vue';
@@ -263,11 +264,13 @@ const pluginsRequiringConfig: Record<string, boolean> = {
 	'devices-home-assistant-plugin': true,
 	'devices-zigbee2mqtt-plugin': true,
 	[DEVICES_HOMEY_PLUGIN_NAME]: true,
+	[DEVICES_UNIFI_PROTECT_PLUGIN_NAME]: true,
 };
 
 const pluginIcons: Record<string, string> = {
 	'devices-home-assistant-plugin': 'mdi:home-assistant',
 	[DEVICES_HOMEY_PLUGIN_NAME]: 'mdi:home-automation',
+	[DEVICES_UNIFI_PROTECT_PLUGIN_NAME]: 'mdi:cctv',
 	'devices-shelly-v1-plugin': 'mdi:chip',
 	'devices-shelly-ng-plugin': 'mdi:chip',
 	'devices-zigbee2mqtt-plugin': 'mdi:zigbee',
@@ -559,6 +562,16 @@ const checkPluginConfig = async (type: string): Promise<void> => {
 			if (type === DEVICES_HOMEY_PLUGIN_NAME) {
 				const values = config as unknown as Record<string, unknown>;
 				const complete = typeof values['url'] === 'string' && values['url'].trim().length > 0 && values['apiKeyConfigured'] === true;
+
+				if (complete) configuredPlugins.add(type);
+				else configuredPlugins.delete(type);
+
+				return;
+			}
+
+			if (type === DEVICES_UNIFI_PROTECT_PLUGIN_NAME) {
+				const values = config as unknown as Record<string, unknown>;
+				const complete = typeof values['host'] === 'string' && values['host'].trim().length > 0 && values['apiKeyConfigured'] === true;
 
 				if (complete) configuredPlugins.add(type);
 				else configuredPlugins.delete(type);

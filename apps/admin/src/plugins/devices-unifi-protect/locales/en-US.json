@@ -1,0 +1,223 @@
+{
+	"config": {
+		"title": "UniFi Protect console",
+		"description": "Connect to a UniFi Protect console on the local network. The API key is write-only and is never shown again after saving.",
+		"enabled": "Enabled",
+		"host": {
+			"label": "Console host",
+			"placeholder": "192.168.1.1 or protect.example.com",
+			"invalid": "Enter a host name or IP address without scheme, port, path or credentials"
+		},
+		"port": {
+			"label": "HTTPS port",
+			"invalid": "Enter a port between 1 and 65535"
+		},
+		"apiKey": {
+			"label": "API key",
+			"placeholder": "Enter a new key to replace the configured key",
+			"invalid": "Enter a non-blank API key or remove the replacement"
+		},
+		"tls": {
+			"label": "Certificate trust",
+			"mode": {
+				"verify": "Verify certificate chain and name",
+				"pinned": "Pin certificate fingerprint"
+			},
+			"serverName": {
+				"label": "TLS server name",
+				"required": "A server name is required when the host is an IP address",
+				"invalid": "Enter a DNS name, not an IP address",
+				"useSuggested": "Use {name}",
+				"useDirectConnect": "Use the console's domain {name}"
+			},
+			"fingerprint": {
+				"label": "SHA-256 fingerprint",
+				"required": "Enter the 64-character SHA-256 fingerprint of the certificate"
+			}
+		},
+		"streamHostOverride": {
+			"label": "Stream host override",
+			"invalid": "Enter a host name or IP address without scheme, port, path or credentials"
+		},
+		"defaultStreamQuality": {
+			"label": "Default stream quality",
+			"high": "High",
+			"medium": "Medium",
+			"low": "Low"
+		},
+		"snapshotMinIntervalMs": {
+			"label": "Minimum snapshot interval (ms)",
+			"invalid": "Enter a whole number between {min} and {max}"
+		},
+		"pollIntervalMs": {
+			"label": "Inventory poll interval (ms)",
+			"invalid": "Enter a whole number between {min} and {max}"
+		},
+		"apiKeyHelp": "Create a key in UniFi Protect › Settings › Control Plane › Integrations › API Keys."
+	},
+	"sections": {
+		"console": "Console",
+		"apiKey": "API key",
+		"certificate": "Certificate",
+		"advanced": "Advanced",
+		"test": "Test connection",
+		"status": "Connection status"
+	},
+	"status": {
+		"stale": "The status could not be refreshed. The values below are the last known ones.",
+		"loadFailed": "The connection status could not be loaded.",
+		"notAvailable": "Not available",
+		"yes": "Yes",
+		"no": "No",
+		"fields": {
+			"connectionState": "Connection",
+			"serviceState": "Service",
+			"enabled": "Enabled",
+			"configured": "Configured",
+			"healthy": "Healthy",
+			"tlsMode": "Certificate trust",
+			"applicationVersion": "UniFi Protect version",
+			"minimumVersion": "Minimum supported version",
+			"nvrId": "NVR ID",
+			"nvrName": "NVR name",
+			"lastConnectedAt": "Last connected",
+			"lastError": "Last error",
+			"reconnectAttempt": "Reconnect attempt",
+			"nextRetryAt": "Next retry",
+			"realtimeState": "Real-time updates",
+			"ignoredEventCount": "Ignored events"
+		},
+		"connectionStates": {
+			"disconnected": "Disconnected",
+			"connecting": "Connecting",
+			"connected": "Connected",
+			"degraded": "Degraded",
+			"auth_failed": "API key rejected",
+			"version_unsupported": "Version not supported",
+			"error": "Error"
+		},
+		"serviceStates": {
+			"stopped": "Stopped",
+			"starting": "Starting",
+			"started": "Running",
+			"stopping": "Stopping",
+			"error": "Error"
+		},
+		"realtime": {
+			"stopped": "Stopped",
+			"connecting": "Connecting",
+			"priming": "Loading the current state",
+			"streaming": "Streaming",
+			"polling": "Polling every {seconds} s"
+		}
+	},
+	"discovery": {
+		"title": "Consoles on this network",
+		"scan": "Scan",
+		"scanning": "Scanning the network. This can take up to a minute.",
+		"loadFailed": "The discovered consoles could not be loaded.",
+		"scanFailed": "The scan could not be run.",
+		"stillScanning": "The scan is still running. Scan again in a moment to see what it found.",
+		"failed": "The last scan failed. Scan again or enter the host below.",
+		"empty": "No consoles found. Scan again or enter the host below.",
+		"firmware": "firmware {version}",
+		"check": "Check",
+		"checkConsole": "Check {console}",
+		"use": "Use",
+		"useConsole": "Use {console}",
+		"checkHost": "Check host",
+		"useHost": "Use {host}",
+		"unreachable": "The console did not answer.",
+		"notConsole": "This host is not a UniFi console.",
+		"probeTimeout": "The console did not answer the check in time.",
+		"probeFailed": "The check could not be run.",
+		"protect": {
+			"present": "UniFi Protect is running",
+			"absent": "UniFi Protect is not installed",
+			"unknown": "UniFi Protect could not be detected"
+		},
+		"domain": {
+			"valid": "The certificate is valid for {domain}",
+			"invalid": "The certificate is not valid for {domain}",
+			"unknown": "The certificate for {domain} could not be checked",
+			"elsewhere": "{domain} does not resolve to this console",
+			"none": "The console reports no direct connect domain"
+		}
+	},
+	"testConnection": {
+		"button": "Test connection",
+		"retry": "Try again",
+		"notAvailable": "Not available",
+		"hints": {
+			"needs_key": "Re-enter the API key to test a changed host",
+			"needs_host": "Enter a valid console host to test the connection",
+			"needs_port": "Enter a port between 1 and 65535 to test the connection"
+		},
+		"success": "Connected to UniFi Protect",
+		"failed": "The connection test failed",
+		"requestFailed": "The connection test could not be run.",
+		"timeout": {
+			"title": "No answer in time",
+			"description": "The console may still be finishing the test. Try again in a moment."
+		},
+		"fields": {
+			"console": "Console",
+			"version": "UniFi Protect version",
+			"nvr": "NVR",
+			"minimumVersion": "Minimum supported version",
+			"versionSupported": "Version supported"
+		},
+		"version": {
+			"supported": "Yes",
+			"unsupported": "No",
+			"unknown": "Not checked"
+		}
+	},
+	"errorCategories": {
+		"validation": "The connection settings are incomplete or invalid. A host given as an IP address needs a TLS server name in verify mode.",
+		"unreachable": "The console could not be reached. Check the host and port.",
+		"timeout": "The console did not answer in time.",
+		"tls_untrusted": "The console certificate is not trusted for this host. Set the server name or trust this certificate.",
+		"tls_fingerprint_mismatch": "The console certificate does not match the pinned fingerprint.",
+		"authentication": "The API key was rejected. Create a new key and enter it again.",
+		"authorization": "The API key is not allowed to use the integration API.",
+		"not_found": "The UniFi Protect integration API was not found on this console.",
+		"bad_request": "The console rejected the request.",
+		"unsupported": "The console does not support this operation.",
+		"rate_limited": "The console is limiting requests. Try again shortly.",
+		"unavailable": "UniFi Protect is unavailable on the console right now.",
+		"protocol": "The console answered in an unexpected way.",
+		"version_unsupported": "The console runs a UniFi Protect version older than {minimum}. Update UniFi Protect.",
+		"cancelled": "The connection test was cancelled."
+	},
+	"certificate": {
+		"title": "Certificate",
+		"subject": "Subject",
+		"issuer": "Issuer",
+		"altNames": "Alternative names",
+		"validity": "Validity",
+		"validityRange": "{from} – {to}",
+		"selfSigned": "Self-signed",
+		"trusted": "Trusted chain",
+		"fingerprint": "SHA-256 fingerprint",
+		"yes": "Yes",
+		"no": "No",
+		"notAvailable": "Not available",
+		"trust": "Trust this certificate",
+		"trustHint": "Pins this certificate's fingerprint and tests the connection again.",
+		"changed": {
+			"title": "The console's certificate changed",
+			"description": "It no longer matches the pinned fingerprint. This is expected after the console renewed or replaced its certificate, and suspicious otherwise.",
+			"replace": "Replace the pinned certificate",
+			"confirmText": "Replace the pin only if you know why the certificate changed.",
+			"confirm": "Replace pin",
+			"cancel": "Cancel"
+		}
+	},
+	"messages": {
+		"config": {
+			"updated": "UniFi Protect settings were saved.",
+			"updateFailed": "UniFi Protect settings could not be saved."
+		}
+	}
+}

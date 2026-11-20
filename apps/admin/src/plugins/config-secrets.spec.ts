@@ -21,6 +21,8 @@ import { HomeAssistantConfigEditFormSchema } from './devices-home-assistant/sche
 import { HomeAssistantConfigSchema } from './devices-home-assistant/store/config.store.schemas';
 import { HomeyConfigEditFormSchema } from './devices-homey/schemas/config.schemas';
 import { HomeyConfigSchema } from './devices-homey/store/config.store.schemas';
+import { ProtectConfigEditFormSchema } from './devices-unifi-protect/schemas/config.schemas';
+import { ProtectConfigSchema } from './devices-unifi-protect/store/config.store.schemas';
 import { Zigbee2mqttConfigEditFormSchema } from './devices-zigbee2mqtt/schemas/config.schemas';
 import { Zigbee2mqttConfigSchema } from './devices-zigbee2mqtt/store/config.store.schemas';
 import { InfluxV1ConfigEditFormSchema } from './influx-v1/schemas/config.schemas';
@@ -72,6 +74,7 @@ const REDACTED_SECRETS: { plugin: string; field: string; editForm: unknown; stor
 	{ plugin: 'buddy-voiceai', field: 'apiKey', editForm: VoiceaiConfigEditFormSchema, store: VoiceaiConfigSchema },
 	{ plugin: 'devices-home-assistant', field: 'apiKey', editForm: HomeAssistantConfigEditFormSchema, store: HomeAssistantConfigSchema },
 	{ plugin: 'devices-homey', field: 'apiKey', editForm: HomeyConfigEditFormSchema, store: HomeyConfigSchema },
+	{ plugin: 'devices-unifi-protect', field: 'apiKey', editForm: ProtectConfigEditFormSchema, store: ProtectConfigSchema },
 	{ plugin: 'devices-zigbee2mqtt', field: 'mqtt.password', editForm: Zigbee2mqttConfigEditFormSchema, store: Zigbee2mqttConfigSchema },
 	{ plugin: 'devices-zigbee2mqtt', field: 'tls.key', editForm: Zigbee2mqttConfigEditFormSchema, store: Zigbee2mqttConfigSchema },
 	{ plugin: 'influx-v1', field: 'password', editForm: InfluxV1ConfigEditFormSchema, store: InfluxV1ConfigSchema },

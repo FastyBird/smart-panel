@@ -1,0 +1,223 @@
+{
+	"config": {
+		"title": "Konzole UniFi Protect",
+		"description": "Připojte se ke konzoli UniFi Protect v místní síti. Klíč API se pouze zapisuje a po uložení se již nezobrazí.",
+		"enabled": "Povoleno",
+		"host": {
+			"label": "Hostitel konzole",
+			"placeholder": "192.168.1.1 nebo protect.example.com",
+			"invalid": "Zadejte název hostitele nebo IP adresu bez schématu, portu, cesty a přihlašovacích údajů"
+		},
+		"port": {
+			"label": "Port HTTPS",
+			"invalid": "Zadejte port mezi 1 a 65535"
+		},
+		"apiKey": {
+			"label": "Klíč API",
+			"placeholder": "Zadejte nový klíč, který nahradí nastavený klíč",
+			"invalid": "Zadejte neprázdný klíč API nebo nahrazení odstraňte"
+		},
+		"tls": {
+			"label": "Důvěra certifikátu",
+			"mode": {
+				"verify": "Ověřit řetězec a název certifikátu",
+				"pinned": "Připnout otisk certifikátu"
+			},
+			"serverName": {
+				"label": "Název serveru TLS",
+				"required": "Pokud je hostitel IP adresa, je název serveru povinný",
+				"invalid": "Zadejte název DNS, nikoli IP adresu",
+				"useSuggested": "Použít {name}",
+				"useDirectConnect": "Použít doménu konzole {name}"
+			},
+			"fingerprint": {
+				"label": "Otisk SHA-256",
+				"required": "Zadejte 64znakový otisk SHA-256 certifikátu"
+			}
+		},
+		"streamHostOverride": {
+			"label": "Přepsání hostitele streamu",
+			"invalid": "Zadejte název hostitele nebo IP adresu bez schématu, portu, cesty a přihlašovacích údajů"
+		},
+		"defaultStreamQuality": {
+			"label": "Výchozí kvalita streamu",
+			"high": "Vysoká",
+			"medium": "Střední",
+			"low": "Nízká"
+		},
+		"snapshotMinIntervalMs": {
+			"label": "Minimální interval snímků (ms)",
+			"invalid": "Zadejte celé číslo mezi {min} a {max}"
+		},
+		"pollIntervalMs": {
+			"label": "Interval dotazování inventáře (ms)",
+			"invalid": "Zadejte celé číslo mezi {min} a {max}"
+		},
+		"apiKeyHelp": "Klíč vytvoříte v UniFi Protect › Settings › Control Plane › Integrations › API Keys."
+	},
+	"sections": {
+		"console": "Konzole",
+		"apiKey": "Klíč API",
+		"certificate": "Certifikát",
+		"advanced": "Pokročilé",
+		"test": "Test připojení",
+		"status": "Stav připojení"
+	},
+	"status": {
+		"stale": "Stav se nepodařilo obnovit. Níže jsou naposledy známé hodnoty.",
+		"loadFailed": "Stav připojení se nepodařilo načíst.",
+		"notAvailable": "Není k dispozici",
+		"yes": "Ano",
+		"no": "Ne",
+		"fields": {
+			"connectionState": "Připojení",
+			"serviceState": "Služba",
+			"enabled": "Zapnuto",
+			"configured": "Nastaveno",
+			"healthy": "V pořádku",
+			"tlsMode": "Důvěra v certifikát",
+			"applicationVersion": "Verze UniFi Protect",
+			"minimumVersion": "Minimální podporovaná verze",
+			"nvrId": "ID NVR",
+			"nvrName": "Název NVR",
+			"lastConnectedAt": "Naposledy připojeno",
+			"lastError": "Poslední chyba",
+			"reconnectAttempt": "Pokus o opětovné připojení",
+			"nextRetryAt": "Další pokus",
+			"realtimeState": "Aktualizace v reálném čase",
+			"ignoredEventCount": "Ignorované události"
+		},
+		"connectionStates": {
+			"disconnected": "Odpojeno",
+			"connecting": "Připojování",
+			"connected": "Připojeno",
+			"degraded": "Omezeně funkční",
+			"auth_failed": "Klíč API odmítnut",
+			"version_unsupported": "Nepodporovaná verze",
+			"error": "Chyba"
+		},
+		"serviceStates": {
+			"stopped": "Zastaveno",
+			"starting": "Spouští se",
+			"started": "Běží",
+			"stopping": "Zastavuje se",
+			"error": "Chyba"
+		},
+		"realtime": {
+			"stopped": "Zastaveno",
+			"connecting": "Připojování",
+			"priming": "Načítání aktuálního stavu",
+			"streaming": "Streamování",
+			"polling": "Dotazování každých {seconds} s"
+		}
+	},
+	"discovery": {
+		"title": "Konzole v této síti",
+		"scan": "Vyhledat",
+		"scanning": "Prohledávám síť. Může to trvat až minutu.",
+		"loadFailed": "Nalezené konzole se nepodařilo načíst.",
+		"scanFailed": "Vyhledávání se nepodařilo spustit.",
+		"stillScanning": "Vyhledávání stále probíhá. Za chvíli spusťte vyhledávání znovu, abyste viděli, co našlo.",
+		"failed": "Poslední vyhledávání selhalo. Vyhledejte znovu nebo zadejte hostitele níže.",
+		"empty": "Nebyla nalezena žádná konzole. Vyhledejte znovu nebo zadejte hostitele níže.",
+		"firmware": "firmware {version}",
+		"check": "Ověřit",
+		"checkConsole": "Ověřit {console}",
+		"use": "Použít",
+		"useConsole": "Použít {console}",
+		"checkHost": "Ověřit hostitele",
+		"useHost": "Použít {host}",
+		"unreachable": "Konzole neodpověděla.",
+		"notConsole": "Tento hostitel není konzole UniFi.",
+		"probeTimeout": "Konzole na ověření neodpověděla včas.",
+		"probeFailed": "Ověření se nepodařilo spustit.",
+		"protect": {
+			"present": "UniFi Protect běží",
+			"absent": "UniFi Protect není nainstalován",
+			"unknown": "UniFi Protect se nepodařilo zjistit"
+		},
+		"domain": {
+			"valid": "Certifikát je platný pro {domain}",
+			"invalid": "Certifikát není platný pro {domain}",
+			"unknown": "Certifikát pro {domain} se nepodařilo ověřit",
+			"elsewhere": "{domain} se nepřekládá na tuto konzoli",
+			"none": "Konzole neuvádí žádnou doménu pro přímé připojení"
+		}
+	},
+	"testConnection": {
+		"button": "Otestovat připojení",
+		"retry": "Zkusit znovu",
+		"notAvailable": "Není k dispozici",
+		"hints": {
+			"needs_key": "Pro test změněného hostitele zadejte znovu klíč API",
+			"needs_host": "Pro test připojení zadejte platného hostitele konzole",
+			"needs_port": "Pro test připojení zadejte port mezi 1 a 65535"
+		},
+		"success": "Připojeno k UniFi Protect",
+		"failed": "Test připojení selhal",
+		"requestFailed": "Test připojení se nepodařilo spustit.",
+		"timeout": {
+			"title": "Bez odpovědi v časovém limitu",
+			"description": "Konzole možná test ještě dokončuje. Zkuste to za chvíli znovu."
+		},
+		"fields": {
+			"console": "Konzole",
+			"version": "Verze UniFi Protect",
+			"nvr": "NVR",
+			"minimumVersion": "Minimální podporovaná verze",
+			"versionSupported": "Verze podporována"
+		},
+		"version": {
+			"supported": "Ano",
+			"unsupported": "Ne",
+			"unknown": "Neověřeno"
+		}
+	},
+	"errorCategories": {
+		"validation": "Nastavení připojení je neúplné nebo neplatné. Hostitel zadaný IP adresou potřebuje v režimu ověření název serveru TLS.",
+		"unreachable": "Konzoli se nepodařilo zastihnout. Zkontrolujte hostitele a port.",
+		"timeout": "Konzole neodpověděla včas.",
+		"tls_untrusted": "Certifikát konzole není pro tohoto hostitele důvěryhodný. Nastavte název serveru nebo tomuto certifikátu důvěřujte.",
+		"tls_fingerprint_mismatch": "Certifikát konzole neodpovídá připnutému otisku.",
+		"authentication": "Klíč API byl odmítnut. Vytvořte nový klíč a zadejte ho znovu.",
+		"authorization": "Klíč API nemá oprávnění používat integrační API.",
+		"not_found": "Integrační API UniFi Protect nebylo na této konzoli nalezeno.",
+		"bad_request": "Konzole požadavek odmítla.",
+		"unsupported": "Konzole tuto operaci nepodporuje.",
+		"rate_limited": "Konzole omezuje počet požadavků. Zkuste to za chvíli znovu.",
+		"unavailable": "UniFi Protect je na konzoli momentálně nedostupný.",
+		"protocol": "Konzole odpověděla neočekávaným způsobem.",
+		"version_unsupported": "Konzole používá verzi UniFi Protect starší než {minimum}. Aktualizujte UniFi Protect.",
+		"cancelled": "Test připojení byl zrušen."
+	},
+	"certificate": {
+		"title": "Certifikát",
+		"subject": "Subjekt",
+		"issuer": "Vydavatel",
+		"altNames": "Alternativní názvy",
+		"validity": "Platnost",
+		"validityRange": "{from} – {to}",
+		"selfSigned": "Podepsaný sám sebou",
+		"trusted": "Důvěryhodný řetězec",
+		"fingerprint": "Otisk SHA-256",
+		"yes": "Ano",
+		"no": "Ne",
+		"notAvailable": "Není k dispozici",
+		"trust": "Důvěřovat tomuto certifikátu",
+		"trustHint": "Připne otisk tohoto certifikátu a znovu otestuje připojení.",
+		"changed": {
+			"title": "Certifikát konzole se změnil",
+			"description": "Již neodpovídá připnutému otisku. To je očekávané po obnovení nebo výměně certifikátu konzole, jinak je to podezřelé.",
+			"replace": "Nahradit připnutý certifikát",
+			"confirmText": "Připnutí nahraďte, jen pokud víte, proč se certifikát změnil.",
+			"confirm": "Nahradit připnutí",
+			"cancel": "Zrušit"
+		}
+	},
+	"messages": {
+		"config": {
+			"updated": "Nastavení UniFi Protect bylo uloženo.",
+			"updateFailed": "Nastavení UniFi Protect se nepodařilo uložit."
+		}
+	}
+}

@@ -159,6 +159,7 @@
 		"configDialog": {
 			"title": "Configurar {name}",
 			"noConfig": "No hay opciones de configuración disponibles para esta integración.",
+			"loadFailed": "No se pudo cargar la configuración. Cierre este diálogo e inténtelo de nuevo.",
 			"buttons": {
 				"cancel": "Cancelar",
 				"validate": "Validar",
