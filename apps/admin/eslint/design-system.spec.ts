@@ -108,6 +108,7 @@ describe('design system lint rules', () => {
 			// Computed keys known at lint time take part in the same overrides
 			sfc('<p :class="{ [\'text-primary\']: false }"></p>'),
 			sfc("<p :class=\"{ 'text-primary': true, ['text-primary']: false }\"></p>"),
+			sfc("<p :class=\"{ 'text-primary': true, ['text-' + 'primary']: false }\"></p>"),
 		],
 		invalid: [
 			{ ...sfc('<p class="text-sm text-primary"></p>'), errors: [{ messageId: 'body' }] },
@@ -150,6 +151,11 @@ describe('design system lint rules', () => {
 			sfc(
 				'<div @click="$el.closest(\'#abc\')"></div>',
 				'<script setup lang="ts">\ndocument.querySelector(\'#abc\');\ndocument.querySelectorAll(`#fade`);\n</script>'
+			),
+			// Router location hashes are fragments
+			sfc(
+				"<router-link :to=\"{ name: 'docs', hash: '#abc' }\"></router-link>",
+				'<script setup lang="ts">\nrouter.push({ hash: \'#fade\' });\n</script>'
 			),
 			// Sass: a block comment may end where its indentation does
 			sfc('<div></div>', '<style lang="sass">\n/* Old palette\n  #abc\n.x\n  display: block\n</style>'),

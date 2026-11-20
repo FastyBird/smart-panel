@@ -184,17 +184,24 @@ const resolveObjectKeys = (object: TemplateNode, keys: Map<string, TemplateNode 
 	}
 };
 
-/** The name of a computed key known at lint time (`['text-primary']`, `` [`a b`] ``, `[['a', 'b']]`), or null */
+/** The name of a computed key known at lint time (`['text-primary']`, `['text-' + 'primary']`, `[['a', 'b']]`), or null */
 const staticComputedName = (key: TemplateNode): string | null => {
 	if (key.type === 'Literal' && (typeof key.value === 'string' || typeof key.value === 'number')) {
 		return String(key.value);
 	}
 
-	if (key.type === 'TemplateLiteral' && (key.expressions as unknown[]).length === 0) {
-		return ((key.quasis as TemplateNode[])[0]?.value as { cooked?: string | null } | undefined)?.cooked ?? null;
+	if (key.type === 'ArrayExpression') {
+		return staticArrayText(key);
 	}
 
-	return key.type === 'ArrayExpression' ? staticArrayText(key) : null;
+	if (key.type === 'TemplateLiteral' || (key.type === 'BinaryExpression' && key.operator === '+')) {
+		// `['text-' + 'primary']`, `` [`text-${'primary'}`] ``: known when every part is static text
+		const parts = concatenationParts(key);
+
+		return parts.every((part) => 'text' in part) ? parts.map((part) => ('text' in part ? part.text : '')).join('') : null;
+	}
+
+	return null;
 };
 
 /** `['a b', 'c']` as JavaScript turns it into a string (`a b,c`), or null when an item is not a string literal */
@@ -752,8 +759,11 @@ const FRAGMENT_REFERENCE = /(?:\b(?:href|to)\s*=\s*["'](?:\s*['"`])?|\burl\(\s*[
 /** DOM methods whose first argument is a CSS selector (`document.querySelector('#abc')`) */
 const SELECTOR_METHODS = ['querySelector', 'querySelectorAll', 'closest', 'matches'];
 
-/** Ranges of the selector arguments of SELECTOR_METHODS calls, in the script and in template expressions */
-const selectorArgumentRanges = (context: Rule.RuleContext): [number, number][] => {
+/**
+ * Ranges of the selector arguments of SELECTOR_METHODS calls and of `hash` properties (router locations such as
+ * `:to="{ hash: '#abc' }"`), in the script and in template expressions
+ */
+const referenceRanges = (context: Rule.RuleContext): [number, number][] => {
 	const ranges: [number, number][] = [];
 	const seen = new Set<unknown>();
 	const visit = (node: unknown): void => {
@@ -770,6 +780,15 @@ const selectorArgumentRanges = (context: Rule.RuleContext): [number, number][] =
 		}
 
 		const current = node as TemplateNode;
+
+		if (current.type === 'Property' && current.computed !== true) {
+			const key = current.key as TemplateNode;
+			const value = current.value as TemplateNode | undefined;
+
+			if ((key.name ?? key.value) === 'hash' && (value?.type === 'Literal' || value?.type === 'TemplateLiteral')) {
+				ranges.push(value.range);
+			}
+		}
 
 		if (current.type === 'CallExpression') {
 			const callee = current.callee as TemplateNode | undefined;
@@ -839,7 +858,7 @@ const noHexColours: Rule.RuleModule = {
 				...context.sourceCode.getAllComments().map((comment) => comment.range as [number, number]),
 				...(documentFragment(context)?.comments ?? []).map((comment) => comment.range),
 				...slotShorthandRanges(context),
-				...selectorArgumentRanges(context),
+				...referenceRanges(context),
 			];
 
 			const report = (index: number, value: string): void =>
