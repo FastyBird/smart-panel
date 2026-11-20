@@ -12,6 +12,7 @@ vi.mock('vue-i18n', async () => {
 	return {
 		...actual,
 		useI18n: () => ({
+			locale: 'de-DE',
 			t: (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key),
 		}),
 	};
@@ -44,6 +45,14 @@ describe('ProtectCertificate', () => {
 		expect(wrapper.get('[data-test-id="protect-certificate-trusted"]').text()).toBe('devicesUnifiProtectPlugin.certificate.no');
 		expect(wrapper.find('[data-test-id="protect-certificate-trust"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="protect-certificate-replace"]').exists()).toBe(false);
+	});
+
+	it('shows the validity dates in the app locale', () => {
+		const wrapper = mount(ProtectCertificate, { props: { certificate, trustable: 'none' } });
+		const format = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' });
+
+		expect(wrapper.text()).toContain(format.format(new Date(certificate.validFrom)));
+		expect(wrapper.text()).toContain(format.format(new Date(certificate.validTo)));
 	});
 
 	it('trusts an untrusted certificate in one step', async () => {

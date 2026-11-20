@@ -68,6 +68,21 @@ export const isBlankProtectApiKeyReplacement = (value: string | null | undefined
 const blankToNull = (value: string | null | undefined): string | null | undefined =>
 	typeof value === 'string' && value.trim() === '' ? null : value;
 
+/**
+ * The server name a config is saved and tested with, trimmed (null when blank). The form shows the field only in verify
+ * mode, while the backend validates and uses (as SNI) a server name in either mode, so in pinned mode a name that is not
+ * a valid DNS name, which the user can no longer see or fix, is dropped instead of having the backend refuse the save.
+ */
+export const protectServerNameFor = (tls: { mode: string; serverName?: string | null }): string | null => {
+	const serverName = (tls.serverName ?? '').trim();
+
+	if (serverName === '') {
+		return null;
+	}
+
+	return tls.mode === 'pinned' && !isValidProtectServerName(serverName) ? null : serverName;
+};
+
 export const ProtectConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	host: z.string().nullable().optional(),
 	// Backend: IsInt, Min(1), Max(65535).
@@ -105,7 +120,8 @@ export const ProtectConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 			});
 		}
 
-		if (typeof serverName === 'string' && !isValidProtectServerName(serverName.trim())) {
+		// Only verify mode shows the field; in pinned mode an invalid name is dropped (protectServerNameFor), not refused.
+		if (value.tls.mode === 'verify' && typeof serverName === 'string' && !isValidProtectServerName(serverName.trim())) {
 			context.addIssue({ code: 'custom', path: ['tls', 'serverName'], message: 'TLS server name must be a DNS name, not an IP address' });
 		}
 
@@ -138,7 +154,7 @@ export const ProtectConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 				typeof value.streamHostOverride === 'string' ? (blankToNull(value.streamHostOverride.trim()) ?? null) : value.streamHostOverride,
 			tls: {
 				mode: value.tls.mode,
-				serverName: typeof value.tls.serverName === 'string' ? (blankToNull(value.tls.serverName.trim()) ?? null) : value.tls.serverName,
+				serverName: typeof value.tls.serverName === 'string' ? protectServerNameFor(value.tls) : value.tls.serverName,
 				// A pin left over from an earlier pinned mode must not outlive the switch back to verify.
 				fingerprintSha256: value.tls.mode === 'verify' ? null : normalizeProtectFingerprint(value.tls.fingerprintSha256),
 			},

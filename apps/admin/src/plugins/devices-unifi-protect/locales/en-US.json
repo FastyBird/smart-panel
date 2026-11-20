@@ -6,7 +6,6 @@
 		"host": {
 			"label": "Console host",
 			"placeholder": "192.168.1.1 or protect.example.com",
-			"required": "Enter the console host name or IP address",
 			"invalid": "Enter a host name or IP address without scheme, port, path or credentials"
 		},
 		"port": {
@@ -123,7 +122,9 @@
 		"empty": "No consoles found. Scan again or enter the host below.",
 		"firmware": "firmware {version}",
 		"check": "Check",
+		"checkConsole": "Check {console}",
 		"use": "Use",
+		"useConsole": "Use {console}",
 		"checkHost": "Check host",
 		"useHost": "Use {host}",
 		"unreachable": "The console did not answer.",

@@ -13,7 +13,9 @@ vi.mock('vue-i18n', async () => {
 	return {
 		...actual,
 		useI18n: () => ({
+			locale: 'en-US',
 			t: (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key),
+			te: (key: string) => !key.endsWith('.some_future_category'),
 		}),
 	};
 });
@@ -83,6 +85,22 @@ describe('ProtectTestConnection', () => {
 		expect(wrapper.find('[data-test-id="protect-test-success"]').exists()).toBe(false);
 	});
 
+	it('falls back to the generic failure sentence for a category it has no sentence for', () => {
+		const wrapper = mountTest({
+			result: passed({
+				success: false,
+				errorCategory: 'some_future_category' as DevicesUnifiProtectPluginErrorCategory,
+				error: 'Something new went wrong.',
+			}),
+		});
+
+		const failure = wrapper.get('[data-test-id="protect-test-failure"]');
+
+		expect(failure.text()).toContain('devicesUnifiProtectPlugin.testConnection.failed');
+		expect(failure.text()).not.toContain('errorCategories.some_future_category');
+		expect(wrapper.get('[data-test-id="protect-test-failure-detail"]').text()).toBe('Something new went wrong.');
+	});
+
 	it('shows a timeout without a failure category', async () => {
 		const wrapper = mountTest({ timedOut: true });
 
@@ -103,7 +121,15 @@ describe('ProtectTestConnection', () => {
 		expect(wrapper.get('[data-test-id="protect-test-button"]').attributes('disabled')).toBeDefined();
 		expect(wrapper.get('[data-test-id="protect-test-hint"]').text()).toBe('devicesUnifiProtectPlugin.testConnection.hints.needs_key');
 
+		// The disabled button names the hint as its description.
+		const hintId = wrapper.get('[data-test-id="protect-test-hint"]').attributes('id');
+
+		expect(hintId).toBeTruthy();
+		expect(wrapper.get('[data-test-id="protect-test-button"]').attributes('aria-describedby')).toBe(hintId);
+
 		await wrapper.setProps({ hint: null });
+
+		expect(wrapper.get('[data-test-id="protect-test-button"]').attributes('aria-describedby')).toBeUndefined();
 		await wrapper.get('[data-test-id="protect-test-button"]').trigger('click');
 
 		expect(wrapper.find('[data-test-id="protect-test-hint"]').exists()).toBe(false);

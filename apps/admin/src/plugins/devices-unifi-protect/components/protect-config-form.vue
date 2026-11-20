@@ -465,8 +465,9 @@ const onTrust = async (fingerprint: string): Promise<void> => {
 	await runTest();
 };
 
-const onUseHost = (host: string): void => {
+const onUseHost = (host: string, port: number): void => {
 	model.host = host;
+	model.port = port;
 };
 
 const rangeMessage = (key: string, min: number, max: number): string => t(`devicesUnifiProtectPlugin.config.${key}.invalid`, { min, max });

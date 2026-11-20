@@ -68,6 +68,23 @@ describe('ProtectConfigEditFormSchema', () => {
 		expect(issuePaths(createConfig({ tls: { mode: 'verify', serverName: 'bad name', fingerprintSha256: null } }))).toContain('tls.serverName');
 	});
 
+	it('does not check the hidden server name in pinned mode, and keeps it out of the request when invalid', () => {
+		const leftOver = { mode: 'pinned', serverName: '10.0.0.1', fingerprintSha256: FINGERPRINT };
+		const result = ProtectConfigEditFormSchema.safeParse(createConfig({ host: '10.0.0.1', tls: leftOver }));
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			// The backend refuses an IP server name in either mode, so the one the user can no longer see is dropped.
+			expect(result.data.tls.serverName).toBeNull();
+		}
+
+		const valid = ProtectConfigEditFormSchema.safeParse(
+			createConfig({ tls: { mode: 'pinned', serverName: ' console.ui.direct ', fingerprintSha256: FINGERPRINT } })
+		);
+
+		expect(valid.success && valid.data.tls.serverName).toBe('console.ui.direct');
+	});
+
 	it('requires a valid fingerprint in pinned mode', () => {
 		expect(issuePaths(createConfig({ tls: { mode: 'pinned', serverName: null, fingerprintSha256: null } }))).toContain('tls.fingerprintSha256');
 		expect(issuePaths(createConfig({ tls: { mode: 'pinned', serverName: null, fingerprintSha256: 'abc' } }))).toContain('tls.fingerprintSha256');

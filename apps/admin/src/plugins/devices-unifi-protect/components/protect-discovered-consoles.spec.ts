@@ -211,6 +211,29 @@ describe('ProtectDiscoveredConsoles', () => {
 		expect(wrapper.get('[data-test-id="protect-discovery-load-failed"]').text()).toContain('devicesUnifiProtectPlugin.discovery.stillScanning');
 	});
 
+	it("names the console in each row's check and use buttons", async () => {
+		const wrapper = mountConsoles();
+
+		await flushPromises();
+
+		expect(wrapper.get('[data-test-id="protect-console-check"]').attributes('aria-label')).toBe(
+			'devicesUnifiProtectPlugin.discovery.checkConsole {"console":"Dream Machine (192.168.1.30)"}'
+		);
+		expect(wrapper.get('[data-test-id="protect-console-use"]').attributes('aria-label')).toBe(
+			'devicesUnifiProtectPlugin.discovery.useConsole {"console":"Dream Machine (192.168.1.30)"}'
+		);
+
+		store.discovery = {
+			...discoveryOf(probeOf({ name: null })),
+			consoles: [{ ...discoveryOf().consoles[0], hostname: null, probe: probeOf({ name: null }) }],
+		};
+		await flushPromises();
+
+		expect(wrapper.get('[data-test-id="protect-console-use"]').attributes('aria-label')).toBe(
+			'devicesUnifiProtectPlugin.discovery.useConsole {"console":"192.168.1.30"}'
+		);
+	});
+
 	it('checks a console for Protect and its direct connect domain', async () => {
 		const wrapper = mountConsoles();
 
@@ -236,13 +259,14 @@ describe('ProtectDiscoveredConsoles', () => {
 		await flushPromises();
 		await wrapper.get('[data-test-id="protect-console-use"]').trigger('click');
 
-		expect(wrapper.emitted('use')).toEqual([['192.168.1.30']]);
+		// The port the console was probed on comes along, so a port typed for another console does not stay.
+		expect(wrapper.emitted('use')).toEqual([['192.168.1.30', 443]]);
 
 		await wrapper.get('[data-test-id="protect-console-check"]').trigger('click');
 		await flushPromises();
 		await wrapper.get('[data-test-id="protect-console-use"]').trigger('click');
 
-		expect(wrapper.emitted('use')?.[1]).toEqual(['abc123.id.ui.direct']);
+		expect(wrapper.emitted('use')?.[1]).toEqual(['abc123.id.ui.direct', 443]);
 	});
 
 	it('checks the typed host and offers its preferred host', async () => {
@@ -260,7 +284,7 @@ describe('ProtectDiscoveredConsoles', () => {
 
 		await result.get('[data-test-id="protect-host-probe-use"]').trigger('click');
 
-		expect(wrapper.emitted('use')).toEqual([['abc123.id.ui.direct']]);
+		expect(wrapper.emitted('use')).toEqual([['abc123.id.ui.direct', 7443]]);
 	});
 
 	it('disables the host check without a valid host and reports a probe that timed out', async () => {

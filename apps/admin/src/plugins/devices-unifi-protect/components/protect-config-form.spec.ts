@@ -37,6 +37,7 @@ vi.mock('vue-i18n', async () => {
 		useI18n: () => ({
 			locale: 'en-US',
 			t: (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key),
+			te: () => true,
 		}),
 	};
 });
@@ -244,13 +245,17 @@ describe('ProtectConfigForm', () => {
 		mocks.discoveryStore = discoveryStore;
 	});
 
-	it("uses a discovered console's preferred host", async () => {
+	it("uses a discovered console's preferred host and the port it was probed on", async () => {
 		const wrapper = mountForm();
 
 		await flushPromises();
+
+		model.port = 7443;
+
 		await wrapper.get('[data-test-id="protect-console-use"]').trigger('click');
 
 		expect(model.host).toBe('def456.id.ui.direct');
+		expect(model.port).toBe(443);
 		expect((wrapper.get('input[name="host"]').element as HTMLInputElement).value).toBe('def456.id.ui.direct');
 	});
 

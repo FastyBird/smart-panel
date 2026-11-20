@@ -5,7 +5,7 @@ import {
 	DevicesUnifiProtectPluginTestSavedConnectionMode,
 	DevicesUnifiProtectPluginTlsMode,
 } from '../../../openapi.constants';
-import { isValidProtectHost, normalizeProtectFingerprint } from '../schemas/config.schemas';
+import { isValidProtectHost, normalizeProtectFingerprint, protectServerNameFor } from '../schemas/config.schemas';
 import type { IProtectConfigEditForm } from '../schemas/config.types';
 import { protectProbeKey } from '../store/protect-discovery.store';
 import type { IProtectDiscovery, IProtectProbe, IProtectTestConnection, IProtectTestTarget } from '../store/protect.types';
@@ -37,6 +37,9 @@ const normalizePin = (value: string | null | undefined): string | null => normal
 /** Server names compare like DNS names: trimmed and case-insensitive. */
 const normalizeServerName = (value: string | null | undefined): string | null => trimToNull(value)?.toLowerCase() ?? null;
 
+/** The server name as a save would store it (see protectServerNameFor), compared like a DNS name. */
+const effectiveServerName = (tls: IProtectConnectionFields['tls']): string | null => normalizeServerName(protectServerNameFor(tls));
+
 const isValidPort = (port: unknown): port is number => typeof port === 'number' && Number.isInteger(port) && port >= 1 && port <= 65535;
 
 /** The host, port, TLS mode and server name in the form, or null while no host is entered. */
@@ -47,7 +50,7 @@ export const protectTestTarget = (model: Pick<IProtectConnectionFields, 'host' |
 		return null;
 	}
 
-	return { host, port: model.port, tlsMode: DevicesUnifiProtectPluginTlsMode[model.tls.mode], serverName: trimToNull(model.tls.serverName) };
+	return { host, port: model.port, tlsMode: DevicesUnifiProtectPluginTlsMode[model.tls.mode], serverName: protectServerNameFor(model.tls) };
 };
 
 /**
@@ -67,7 +70,7 @@ const connectionChanged = (model: IProtectConnectionFields, initial: IProtectCon
 		return true;
 	}
 
-	if (normalizeServerName(model.tls.serverName) !== normalizeServerName(initial.tls.serverName)) {
+	if (effectiveServerName(model.tls) !== effectiveServerName(initial.tls)) {
 		return true;
 	}
 
@@ -101,7 +104,7 @@ export const buildTestRequest = (model: IProtectConnectionFields, initial: IProt
 					host: target.host,
 					port: model.port,
 					api_key: model.apiKey.trim(),
-					tls: { mode: target.tlsMode, server_name: trimToNull(model.tls.serverName), fingerprint_sha256: fingerprint },
+					tls: { mode: target.tlsMode, server_name: target.serverName ?? null, fingerprint_sha256: fingerprint },
 				},
 			},
 			target,
@@ -156,9 +159,9 @@ export const findProtectProbe = (
 	return probes[key] ?? discovery?.consoles.find((console) => protectProbeKey(console.probe.host, console.probe.port) === key)?.probe ?? null;
 };
 
-/** A date for display, or the raw value when it does not parse. */
-export const formatProtectDate = (value: string): string => {
+/** A date for display in the given (app) locale, or the raw value when it does not parse. */
+export const formatProtectDate = (value: string, locale: string): string => {
 	const date = new Date(value);
 
-	return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+	return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
 };

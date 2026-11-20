@@ -72,6 +72,7 @@
 						<el-button
 							size="small"
 							:loading="discoveryStore.isProbing(entry.host)"
+							:aria-label="t('devicesUnifiProtectPlugin.discovery.checkConsole', { console: consoleLabel(entry) })"
 							data-test-id="protect-console-check"
 							@click="check(entry.host)"
 						>
@@ -81,8 +82,9 @@
 							size="small"
 							type="primary"
 							plain
+							:aria-label="t('devicesUnifiProtectPlugin.discovery.useConsole', { console: consoleLabel(entry) })"
 							data-test-id="protect-console-use"
-							@click="emit('use', preferredHostOf(entry))"
+							@click="emit('use', preferredHostOf(entry), portOf(entry))"
 						>
 							{{ t('devicesUnifiProtectPlugin.discovery.use') }}
 						</el-button>
@@ -150,7 +152,7 @@
 				type="primary"
 				link
 				data-test-id="protect-host-probe-use"
-				@click="emit('use', typedPreferredHost)"
+				@click="emit('use', typedPreferredHost, port)"
 			>
 				{{ t('devicesUnifiProtectPlugin.discovery.useHost', { host: typedPreferredHost }) }}
 			</el-button>
@@ -184,7 +186,7 @@ const props = withDefaults(defineProps<IProtectDiscoveredConsolesProps>(), {
 });
 
 const emit = defineEmits<{
-	(e: 'use', host: string): void;
+	(e: 'use', host: string, port: number): void;
 }>();
 
 const { t } = useI18n();
@@ -232,6 +234,16 @@ const typedPreferredHost = computed<string | null>((): string | null => {
 /** The host to save: the newest probe's preference (the direct connect domain when its certificate is valid). */
 const preferredHostOf = (entry: IProtectDiscoveredConsole): string =>
 	discoveryStore.probes[protectProbeKey(entry.host)]?.preferredHost ?? entry.probe.preferredHost ?? entry.host;
+
+/** The port the console answered on: a newer check's, else the one the scan probed it on (the default, 443). */
+const portOf = (entry: IProtectDiscoveredConsole): number => discoveryStore.probes[protectProbeKey(entry.host)]?.port ?? entry.probe.port;
+
+/** Names a console in a button's accessible label: its name and host, or the host alone. */
+const consoleLabel = (entry: IProtectDiscoveredConsole): string => {
+	const name = entry.hostname ?? entry.probe.name ?? null;
+
+	return name !== null && name !== '' ? `${name} (${entry.host})` : entry.host;
+};
 
 const consoleDetails = (entry: IProtectDiscoveredConsole): string =>
 	[entry.model, entry.host, entry.firmware ? t('devicesUnifiProtectPlugin.discovery.firmware', { version: entry.firmware }) : null]

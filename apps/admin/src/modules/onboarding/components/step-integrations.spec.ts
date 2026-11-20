@@ -247,6 +247,15 @@ describe('StepIntegrations.vue', () => {
 			expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
 		});
 
+		it.each([
+			['a host but no stored key', { host: '192.168.1.1', apiKeyConfigured: false }],
+			['a stored key but a whitespace-only host', { host: '   ', apiKeyConfigured: true }],
+		])('asks to set up a protect plugin with %s', async (_label, values) => {
+			const wrapper = await mountProtect({ type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, enabled: true, ...values });
+
+			expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
+		});
+
 		it('treats a protect plugin with host and stored key as configured', async () => {
 			const wrapper = await mountProtect({ type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME, enabled: true, host: '192.168.1.1', apiKeyConfigured: true });
 

@@ -6,7 +6,6 @@
 		"host": {
 			"label": "Konsolen-Host",
 			"placeholder": "192.168.1.1 oder protect.example.com",
-			"required": "Geben Sie den Hostnamen oder die IP-Adresse der Konsole ein",
 			"invalid": "Geben Sie einen Hostnamen oder eine IP-Adresse ohne Schema, Port, Pfad oder Zugangsdaten ein"
 		},
 		"port": {
@@ -123,7 +122,9 @@
 		"empty": "Keine Konsole gefunden. Suchen Sie erneut oder geben Sie den Host unten ein.",
 		"firmware": "Firmware {version}",
 		"check": "Prüfen",
+		"checkConsole": "{console} prüfen",
 		"use": "Verwenden",
+		"useConsole": "{console} verwenden",
 		"checkHost": "Host prüfen",
 		"useHost": "{host} verwenden",
 		"unreachable": "Die Konsole hat nicht geantwortet.",

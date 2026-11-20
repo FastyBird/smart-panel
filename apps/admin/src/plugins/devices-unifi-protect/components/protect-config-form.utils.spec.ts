@@ -6,6 +6,7 @@ import type { IProtectTestConnection } from '../store/protect.types';
 import {
 	type IProtectConnectionFields,
 	buildTestRequest,
+	formatProtectDate,
 	isSameProtectTarget,
 	protectTestTarget,
 	protectTrustable,
@@ -99,6 +100,17 @@ describe('buildTestRequest', () => {
 		});
 	});
 
+	it('leaves an invalid server name hidden by pinned mode out of a candidate test, as the save does', () => {
+		const initial = saved({ tls: { mode: 'pinned', serverName: null, fingerprintSha256: FINGERPRINT } });
+		const leftOver = edited(initial, { tls: { mode: 'pinned', serverName: '10.0.0.1', fingerprintSha256: FINGERPRINT } });
+
+		// Not a change: the save would store no server name either, so the saved test still answers for it.
+		expect(buildTestRequest(leftOver, initial)).toMatchObject({ request: { data: { mode: 'saved' } }, target: { serverName: null } });
+		expect(buildTestRequest(edited(leftOver, { apiKey: 'new-key' }), initial)).toMatchObject({
+			request: { data: { mode: 'candidate', tls: { mode: 'pinned', server_name: null } } },
+		});
+	});
+
 	it('disables the test with a hint when a changed host has no typed key or the key is marked for removal', () => {
 		const initial = saved();
 
@@ -187,5 +199,15 @@ describe('protectTrustable', () => {
 		expect(protectTrustable(result({ errorCategory: DevicesUnifiProtectPluginErrorCategory.authentication }), verify)).toBe('none');
 		expect(protectTrustable(result({ certificate: null }), verify)).toBe('none');
 		expect(protectTrustable(null, verify)).toBe('none');
+	});
+});
+
+describe('formatProtectDate', () => {
+	it('formats in the given app locale and keeps a value that does not parse', () => {
+		const value = '2036-01-01T00:00:00.000Z';
+
+		expect(formatProtectDate(value, 'cs-CZ')).toBe(new Intl.DateTimeFormat('cs-CZ', { dateStyle: 'medium' }).format(new Date(value)));
+		expect(formatProtectDate(value, 'en-US')).toBe(new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(value)));
+		expect(formatProtectDate('not a date', 'en-US')).toBe('not a date');
 	});
 });

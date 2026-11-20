@@ -21,8 +21,8 @@
 			<el-descriptions-item :label="t('devicesUnifiProtectPlugin.certificate.validity')">
 				{{
 					t('devicesUnifiProtectPlugin.certificate.validityRange', {
-						from: formatProtectDate(certificate.validFrom),
-						to: formatProtectDate(certificate.validTo),
+						from: formatProtectDate(certificate.validFrom, appLocale),
+						to: formatProtectDate(certificate.validTo, appLocale),
 					})
 				}}
 			</el-descriptions-item>
@@ -103,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElDescriptions, ElDescriptionsItem } from 'element-plus';
@@ -121,7 +121,10 @@ const emit = defineEmits<{
 	(e: 'trust', fingerprint: string): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+
+/** Dates use the app locale, like the status panel. */
+const appLocale = computed<string>((): string => String(unref(locale)));
 
 const confirming = ref<boolean>(false);
 

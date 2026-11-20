@@ -4,6 +4,7 @@
 			<el-button
 				:loading="testing"
 				:disabled="testing || hint !== null"
+				:aria-describedby="hint !== null ? hintId : undefined"
 				data-test-id="protect-test-button"
 				@click="emit('test')"
 			>
@@ -13,6 +14,7 @@
 
 		<p
 			v-if="hint !== null"
+			:id="hintId"
 			class="mt-1 text-xs text-[var(--el-text-color-secondary)]"
 			data-test-id="protect-test-hint"
 		>
@@ -121,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton } from 'element-plus';
@@ -147,7 +149,10 @@ const emit = defineEmits<{
 	(e: 'trust', fingerprint: string): void;
 }>();
 
-const { t } = useI18n();
+const { t, te } = useI18n();
+
+/** Links the hint to the disabled Test button, so assistive technology says why it is disabled. */
+const hintId = `protect-test-hint-${useId()}`;
 
 const notAvailable = computed<string>((): string => t('devicesUnifiProtectPlugin.testConnection.notAvailable'));
 
@@ -163,7 +168,8 @@ const consoleIdentity = computed<string>((): string => {
 const failureSentence = computed<string>((): string => {
 	const category = props.result?.errorCategory;
 
-	return category
+	// A category this admin has no sentence for (a newer backend) falls back to the generic one, as no category does.
+	return category && te(`devicesUnifiProtectPlugin.errorCategories.${category}`)
 		? t(`devicesUnifiProtectPlugin.errorCategories.${category}`, { minimum: props.result?.minimumVersion })
 		: t('devicesUnifiProtectPlugin.testConnection.failed');
 });

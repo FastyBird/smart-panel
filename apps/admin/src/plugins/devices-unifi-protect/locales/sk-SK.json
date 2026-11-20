@@ -6,7 +6,6 @@
 		"host": {
 			"label": "Hostiteľ konzoly",
 			"placeholder": "192.168.1.1 alebo protect.example.com",
-			"required": "Zadajte názov hostiteľa alebo IP adresu konzoly",
 			"invalid": "Zadajte názov hostiteľa alebo IP adresu bez schémy, portu, cesty a prihlasovacích údajov"
 		},
 		"port": {
@@ -123,7 +122,9 @@
 		"empty": "Nenašla sa žiadna konzola. Vyhľadajte znova alebo zadajte hostiteľa nižšie.",
 		"firmware": "firmvér {version}",
 		"check": "Overiť",
+		"checkConsole": "Overiť {console}",
 		"use": "Použiť",
+		"useConsole": "Použiť {console}",
 		"checkHost": "Overiť hostiteľa",
 		"useHost": "Použiť {host}",
 		"unreachable": "Konzola neodpovedala.",

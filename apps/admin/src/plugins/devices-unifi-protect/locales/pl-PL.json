@@ -6,7 +6,6 @@
 		"host": {
 			"label": "Host konsoli",
 			"placeholder": "192.168.1.1 lub protect.example.com",
-			"required": "Wpisz nazwę hosta lub adres IP konsoli",
 			"invalid": "Wpisz nazwę hosta lub adres IP bez schematu, portu, ścieżki i danych logowania"
 		},
 		"port": {
@@ -123,7 +122,9 @@
 		"empty": "Nie znaleziono żadnej konsoli. Wyszukaj ponownie lub wpisz hosta poniżej.",
 		"firmware": "firmware {version}",
 		"check": "Sprawdź",
+		"checkConsole": "Sprawdź {console}",
 		"use": "Użyj",
+		"useConsole": "Użyj {console}",
 		"checkHost": "Sprawdź hosta",
 		"useHost": "Użyj {host}",
 		"unreachable": "Konsola nie odpowiedziała.",
