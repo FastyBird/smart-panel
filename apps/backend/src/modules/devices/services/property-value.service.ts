@@ -164,7 +164,6 @@ export class PropertyValueService {
 	private readonly valueTails = new Map<ChannelPropertyEntity['id'], Promise<void>>();
 
 	private sampleGeneration = 0;
-	private readonly liveEpochs = new Set<string>();
 	private readonly samples = new Map<string, QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>>();
 	private readonly liveWatermarks = new Map<string, { sampledAt: number; invalid: boolean }>();
 	/** Sample times of the latest live device reports per property, oldest first (process-local). */
@@ -286,9 +285,11 @@ export class PropertyValueService {
 				const receivedAt = evidence.receivedAt.getTime();
 				const watermark = this.liveWatermarks.get(key);
 				const live = evidence.provenance === 'live';
-				// A non-live startup replay can populate ordinary display state, never the live epoch.
-				if (!live && this.liveEpochs.has(key)) return { changed: false, state: null };
-				if (watermark && (sampledAt < watermark.sampledAt || (sampledAt === watermark.sampledAt && watermark.invalid)))
+				// A live report at the same time wins over a replay: a replay must be strictly newer.
+				if (
+					watermark &&
+					(sampledAt < watermark.sampledAt || (sampledAt === watermark.sampledAt && (watermark.invalid || !live)))
+				)
 					return { changed: false, state: null };
 				const validClock =
 					Number.isFinite(sampledAt) &&
@@ -304,7 +305,6 @@ export class PropertyValueService {
 						resolvePropertyUnit(property) === '%');
 				if (!validClock || !validSemantic || !this.isSampleValueValid(property, value)) {
 					if (live) {
-						this.liveEpochs.add(key);
 						// An invalid clock revokes eligibility, but supplies no trusted ordering evidence.
 						// Preserve the previous watermark (including any genuine value-fault tombstone)
 						// so corrected clocks can recover without waiting for a rejected future timestamp.
@@ -316,6 +316,18 @@ export class PropertyValueService {
 						);
 					}
 					return { changed: false, state: null };
+				}
+				// A valid replay newer than the live report (after a reconnect, for example) never renews live
+				// authority. When it contradicts the qualified live value, that value can no longer be trusted
+				// for control, so it is withdrawn until the device reports again. This is decided against the
+				// qualified sample before any display ordering: an optimistic command write may already show
+				// the replayed value, or be newer than the replay, without making the live value right.
+				if (!live && this.samples.has(key) && this.samples.get(key)?.value !== value) {
+					this.samples.delete(key);
+					this.events?.emit(
+						EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
+						Object.freeze({ propertyId: key, evidence: this.cloneEvidence(evidence) }),
+					);
 				}
 				// Cold cache (first sample for this property since start): reconcile with the stored state
 				// before replacing it. A replay proves the value, not its age, so an unchanged replayed
@@ -380,7 +392,6 @@ export class PropertyValueService {
 						reasons: Object.freeze([]),
 					});
 					if (live) {
-						this.liveEpochs.add(key);
 						this.liveWatermarks.set(key, { sampledAt, invalid: false });
 						// A replay re-sends an earlier report; it says nothing about how often the device reports.
 						if (evidence.replay !== true) this.recordReport(key, sampledAt);
@@ -1823,7 +1834,6 @@ export class PropertyValueService {
 		}
 
 		// Always clear local cache
-		this.liveEpochs.delete(property.id);
 		this.samples.delete(property.id);
 		this.liveWatermarks.delete(property.id);
 		this.reportTimes.delete(property.id);
