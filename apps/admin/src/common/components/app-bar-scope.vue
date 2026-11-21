@@ -4,9 +4,11 @@
 		data-test-id="app-bar-scope"
 	>
 		<app-bar
+			class="app-bar-scope__bar"
 			:title="heading?.title"
 			:subtitle="heading?.subtitle"
 			:left="heading?.left ?? null"
+			:left-disabled="heading?.leftDisabled"
 			:actions="heading?.actions"
 			:primary="heading?.primary"
 			@left="heading?.onLeft?.()"
@@ -61,3 +63,10 @@ const { t } = useI18n();
 // A drawer is its own app bar host: the view headers inside it always draw into this bar, at every size
 const { heading } = provideAppBarHost(() => true);
 </script>
+
+<style scoped>
+/* Flush with the drawer edges: the drawer body pads its content, not its bar */
+.app-bar-scope__bar {
+	margin: calc(-1 * var(--el-drawer-padding-primary, 0px)) calc(-1 * var(--el-drawer-padding-primary, 0px)) 0;
+}
+</style>

@@ -22,6 +22,8 @@ export type AppBarProps = {
 	subtitle?: string;
 	/** No left button when omitted */
 	left?: AppBarLeft | null;
+	/** The left button waits, for example while a save is on its way */
+	leftDisabled?: boolean;
 	actions?: AppBarAction[];
 	/** Shown instead of the actions */
 	primary?: AppBarPrimary;

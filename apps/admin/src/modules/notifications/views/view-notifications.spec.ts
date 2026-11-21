@@ -53,11 +53,8 @@ vi.mock('../../../common', async () => {
 	});
 
 	return {
-		AppBar: StubComponent,
-		AppBarButton: StubComponent,
-		AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right', BACK: 'back', NONE: 'none' },
-		AppBarHeading: StubComponent,
 		AppBreadcrumbs: StubComponent,
+		AppBarScope: StubComponent,
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
 			isMDDevice: vueRef(true),

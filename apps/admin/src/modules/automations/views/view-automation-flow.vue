@@ -9,6 +9,7 @@
 			:title="automation?.name ?? t('automations.headings.flow')"
 			:subtitle="t('automations.subHeadings.flow')"
 			:icon="AUTOMATION_FLOW_ICON"
+			:back-disabled="saving"
 			@back="onClose"
 		>
 			<template #actions>

@@ -40,18 +40,15 @@ vi.mock('../../../../common', async () => {
 	const { defineComponent } = await import('vue');
 
 	return {
-		AppBarButton: defineComponent({ name: 'AppBarButton', template: '<div><slot /></div>' }),
-		AppBarButtonAlign: { LEFT: 'left' },
-		AppBarHeading: defineComponent({ name: 'AppBarHeading', template: '<div><slot /></div>' }),
 		AppBreadcrumbs: defineComponent({ name: 'AppBreadcrumbs', template: '<div />' }),
-		// Mirrors the real view-header.vue, which renders `heading` as visible text whenever
+		// Mirrors the real view-header.vue, which renders `title` as visible text whenever
 		// `isMDDevice` is true (the condition this whole suite runs under) — without declaring
 		// it as a prop here, `adapter.title` would only ever reach the DOM as a dropped
 		// fallthrough attribute, and "renders the adapter title" could never observe it.
 		ViewHeader: defineComponent({
 			name: 'ViewHeader',
-			props: { heading: { type: String, default: '' }, subHeading: { type: String, default: '' } },
-			template: '<div>{{ heading }} {{ subHeading }}<slot name="extra" /></div>',
+			props: { title: { type: String, default: '' }, subtitle: { type: String, default: '' } },
+			template: '<div>{{ title }} {{ subtitle }}<slot name="actions" /></div>',
 		}),
 		// Wrapped in vi.fn() so a single test can override it with mockReturnValueOnce to cover
 		// the mobile footer branch, which this default never exercises.

@@ -182,22 +182,6 @@ vi.mock('../../../common', async () => {
 	const { defineComponent } = await import('vue');
 
 	return {
-		AppBarHeading: defineComponent({
-			name: 'AppBarHeading',
-			template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
-		}),
-		AppBarButton: defineComponent({
-			name: 'AppBarButton',
-			props: {
-				align: { type: String, required: false, default: undefined },
-			},
-			emits: ['click'],
-			template: '<button type="button" @click="$emit(\'click\')"><slot name="icon" /></button>',
-		}),
-		AppBarButtonAlign: {
-			LEFT: 'left',
-			RIGHT: 'right',
-		},
 		AppBreadcrumbs: defineComponent({
 			name: 'AppBreadcrumbs',
 			props: {
@@ -212,7 +196,7 @@ vi.mock('../../../common', async () => {
 				subHeading: { type: String, required: false, default: '' },
 				icon: { type: String, required: false, default: '' },
 			},
-			template: '<div><slot /><slot name="extra" /></div>',
+			template: '<div><slot /><slot name="actions" /></div>',
 		}),
 		useBreakpoints: () => ({
 			isMDDevice: ref(mocks.isMDDevice),

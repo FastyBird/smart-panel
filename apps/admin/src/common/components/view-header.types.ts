@@ -10,6 +10,8 @@ export type ViewHeaderProps = {
 	back?: RouteLocationRaw;
 	/** Handles back or close instead of navigating to `back`, for screens that confirm unsaved changes first */
 	onBack?: () => void;
+	/** Back or close waits, for example while a save is on its way */
+	backDisabled?: boolean;
 	/** The phone app bar's left button. Defaults to back when there is somewhere to go back to, otherwise the menu */
 	left?: AppBarLeft;
 	/** Phone app bar: up to two icon buttons */

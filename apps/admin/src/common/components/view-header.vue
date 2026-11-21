@@ -21,6 +21,7 @@
 		<button
 			v-else-if="props.onBack"
 			:aria-label="phoneLeft === 'close' ? t('application.appBar.close') : t('application.appBar.back')"
+			:disabled="props.backDisabled"
 			class="flex items-center justify-center shrink-0 w-8 h-8 p-0 border-0 rounded-[var(--el-border-radius-base)] bg-transparent text-regular cursor-pointer hover:bg-fill-light"
 			type="button"
 			data-test-id="view-header-back"
@@ -94,6 +95,7 @@ const props = withDefaults(defineProps<ViewHeaderProps>(), {
 	icon: undefined,
 	back: undefined,
 	onBack: undefined,
+	backDisabled: false,
 	left: undefined,
 	actions: () => [],
 	primary: undefined,
@@ -130,6 +132,7 @@ const heading = (): IAppBarHeading => ({
 	subtitle: props.subtitle,
 	left: isPhone.value ? phoneLeft.value : null,
 	onLeft,
+	leftDisabled: props.backDisabled,
 	actions: isPhone.value ? props.actions : [],
 	primary: isPhone.value ? props.primary : undefined,
 });

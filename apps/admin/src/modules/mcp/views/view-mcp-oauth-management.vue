@@ -431,6 +431,12 @@
 		@closed="resetClientForm"
 	>
 		<app-bar-scope @close="onCloseClientForm()">
+			<view-header
+				:title="editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient')"
+				:subtitle="t('mcpModule.oauthManagement.clientFormSubtitle')"
+				icon="mdi:shield-key-outline"
+			/>
+
 			<el-scrollbar class="grow-1 p-2 md:px-4">
 				<el-form
 					ref="clientFormEl"
@@ -534,6 +540,12 @@
 		@closed="resetGrantForm"
 	>
 		<app-bar-scope @close="onCloseGrantForm()">
+			<view-header
+				:title="t('mcpModule.oauthManagement.editGrant')"
+				:subtitle="t('mcpModule.oauthManagement.grantFormSubtitle')"
+				icon="mdi:shield-key-outline"
+			/>
+
 			<el-scrollbar class="grow-1 p-2 md:px-4">
 				<el-form
 					ref="grantFormEl"

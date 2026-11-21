@@ -4,11 +4,19 @@
 		:subtitle="automation?.name ?? t('automations.subHeadings.list')"
 		icon="mdi:pencil"
 		left="close"
-		:primary="automationReady && automation ? { label: t('automations.buttons.save.title'), handler: () => (remoteFormSubmit = true) } : undefined"
+		:primary="
+			automationReady && automation
+				? {
+						label: t('automations.buttons.save.title'),
+						handler: () => (remoteFormSubmit = true),
+						loading: remoteFormResult === FormResult.WORKING,
+						disabled: remoteFormResult === FormResult.WORKING,
+					}
+				: undefined
+		"
+		:back-disabled="saving"
 		@back="formChanged ? onDiscard() : onClose()"
 	/>
-
-	<!-- Only together with the form: a click before the form is there would set a flag nothing takes -->
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<!-- Only the first read replaces the form. A later one (the store reads the automation again after

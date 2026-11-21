@@ -29,43 +29,31 @@ vi.mock('../composables/composables', () => ({
 	useNotificationAction: () => ({ execute: mockExecute, isExecuting: ref(false) }),
 }));
 
-// The drawer chrome (`app-bar`, its heading and close button) comes from `common`; the stubs keep
-// the slot content and a clickable close button so the header can still be asserted against.
+// The drawer chrome comes from `common`: the scope stub keeps the body and a clickable Close, and the header stub
+// prints the title and subtitle it would hand to the drawer's app bar
 vi.mock('../../../common', async () => {
 	const { defineComponent: defineVueComponent, h, ref: vueRef } = await import('vue');
 
-	const AppBar = defineVueComponent({
-		name: 'AppBar',
-		setup(_, { slots }) {
-			return () => h('div', { class: 'app-bar-stub' }, [slots.heading?.(), slots['button-right']?.(), slots.default?.()]);
-		},
-	});
-
-	const AppBarHeading = defineVueComponent({
-		name: 'AppBarHeading',
-		setup(_, { slots }) {
-			return () =>
-				h('div', { class: 'app-bar-heading-stub' }, [
-					slots.icon?.(),
-					h('span', { class: 'app-bar-heading-stub__title' }, slots.title?.()),
-					h('small', { class: 'app-bar-heading-stub__subtitle' }, slots.subtitle?.()),
-				]);
-		},
-	});
-
-	const AppBarButton = defineVueComponent({
-		name: 'AppBarButton',
-		emits: ['click'],
+	const AppBarScope = defineVueComponent({
+		name: 'AppBarScope',
+		emits: ['close'],
 		setup(_, { slots, emit }) {
-			return () => h('button', { class: 'app-bar-button-stub', onClick: () => emit('click') }, [slots.icon?.(), slots.default?.()]);
+			return () => h('div', [h('button', { class: 'app-bar-close-stub', onClick: () => emit('close') }), slots.default?.()]);
+		},
+	});
+
+	const ViewHeader = defineVueComponent({
+		name: 'ViewHeader',
+		props: ['title', 'subtitle', 'icon'],
+		setup(props) {
+			return () =>
+				h('div', [h('span', { class: 'view-header-stub__title' }, props.title), h('small', { class: 'view-header-stub__subtitle' }, props.subtitle)]);
 		},
 	});
 
 	return {
-		AppBar,
-		AppBarHeading,
-		AppBarButton,
-		AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right', BACK: 'back', NONE: 'none' },
+		AppBarScope,
+		ViewHeader,
 		useBreakpoints: () => ({ isMDDevice: vueRef(true), isLGDevice: vueRef(true) }),
 	};
 });
@@ -144,14 +132,14 @@ describe('NotificationDetailDrawer', () => {
 		it('shows the title and the source in the app bar heading', async () => {
 			wrapper = await mountDrawer(baseNotification);
 
-			expect(wrapper.find('.app-bar-heading-stub__title').text()).toBe('Update 2.4.0 is available');
-			expect(wrapper.find('.app-bar-heading-stub__subtitle').text()).toContain('system-module');
+			expect(wrapper.find('.view-header-stub__title').text()).toBe('Update 2.4.0 is available');
+			expect(wrapper.find('.view-header-stub__subtitle').text()).toContain('system-module');
 		});
 
 		it('closes through the app bar close button', async () => {
 			wrapper = await mountDrawer(baseNotification);
 
-			await wrapper.find('.app-bar-button-stub').trigger('click');
+			await wrapper.find('.app-bar-close-stub').trigger('click');
 
 			expect(wrapper.emitted('update:modelValue')).toEqual([[false]]);
 		});

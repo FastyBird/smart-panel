@@ -9,6 +9,7 @@ export interface IAppBarHeading {
 	/** Phone only; `null` inside a drawer, whose bar has its own Close */
 	left: AppBarLeft | null;
 	onLeft?: () => void;
+	leftDisabled?: boolean;
 	actions: AppBarAction[];
 	primary?: AppBarPrimary;
 }

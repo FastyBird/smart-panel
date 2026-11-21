@@ -79,7 +79,7 @@ describe('ViewModbusEndpoints', () => {
 		endpointsStore.fetch.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
 
 		const wrapper = shallowMount(ViewModbusEndpoints, {
-			global: { directives: { loading: {} }, stubs: { ViewHeader: { template: '<div><slot name="extra" /></div>' } } },
+			global: { directives: { loading: {} }, stubs: { ViewHeader: { template: '<div><slot name="actions" /></div>' } } },
 		});
 		await flushPromises();
 
@@ -143,7 +143,7 @@ describe('ViewModbusEndpoints', () => {
 		devicesStore.fetch.mockReturnValue(new Promise<void>((resolve) => (finishDevices = resolve)));
 
 		const wrapper = shallowMount(ViewModbusEndpoints, {
-			global: { directives: { loading: {} }, stubs: { ViewHeader: { template: '<div><slot name="extra" /></div>' } } },
+			global: { directives: { loading: {} }, stubs: { ViewHeader: { template: '<div><slot name="actions" /></div>' } } },
 		});
 		await flushPromises();
 

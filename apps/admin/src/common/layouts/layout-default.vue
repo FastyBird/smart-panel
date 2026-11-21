@@ -11,6 +11,7 @@
 				:title="phoneHeading?.title"
 				:subtitle="phoneHeading?.subtitle"
 				:left="phoneHeading?.left ?? 'menu'"
+				:left-disabled="phoneHeading?.leftDisabled"
 				:actions="phoneHeading?.actions"
 				:primary="phoneHeading?.primary"
 				@left="onPhoneLeft"
@@ -32,7 +33,9 @@
 					v-if="(phoneHeading?.left ?? 'menu') === 'menu'"
 					#end
 				>
-					<notification-bell />
+					<div :class="[ns.e('phone-bell')]">
+						<notification-bell />
+					</div>
 				</template>
 			</app-bar>
 

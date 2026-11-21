@@ -40,8 +40,8 @@ vi.mock('../../../common', () => ({
 	EntityNotFound: defineComponent({ template: '<div data-test-id="unavailable" />' }),
 	AppBreadcrumbs: defineComponent({ template: '<div />' }),
 	ViewHeader: defineComponent({
-		props: { heading: { type: String, default: '' } },
-		template: '<header><h1>{{ heading }}</h1><slot name="extra" /></header>',
+		props: { title: { type: String, default: '' } },
+		template: '<header><h1>{{ title }}</h1><slot name="actions" /></header>',
 	}),
 	useBreakpoints: () => ({ isMDDevice: ref(true) }),
 }));

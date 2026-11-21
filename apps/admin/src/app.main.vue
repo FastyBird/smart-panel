@@ -19,6 +19,7 @@ import { ElConfigProvider, vLoading } from 'element-plus';
 
 import { description } from './../package.json';
 import { useEventBus } from './common';
+import { useDarkMode } from './common/composables/useDarkMode';
 import { useSizeClass } from './common/composables/useSizeClass';
 
 defineOptions({
@@ -28,6 +29,10 @@ defineOptions({
 const eventBus = useEventBus();
 
 const { isTouch } = useSizeClass();
+
+// Applies the saved theme on every screen size: only the top bar (tablet and up) offered the switch, so a phone used
+// to stay light until the window grew
+useDarkMode();
 
 const loadingOverlay = ref<boolean>(false);
 

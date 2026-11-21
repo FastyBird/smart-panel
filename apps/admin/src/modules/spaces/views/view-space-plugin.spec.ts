@@ -78,11 +78,6 @@ vi.mock('../../../common', async () => {
 	});
 
 	return {
-		AppBarButton: StubComponent,
-		AppBarButtonAlign: {
-			LEFT: 'left',
-		},
-		AppBarHeading: StubComponent,
 		AppBreadcrumbs: defineComponent({
 			name: 'AppBreadcrumbs',
 			props: {
@@ -91,6 +86,7 @@ vi.mock('../../../common', async () => {
 			template: '<div />',
 		}),
 		EntityNotFound,
+		AppBarScope: StubComponent,
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
 			isMDDevice: vueRef(false),

@@ -4,7 +4,7 @@
 	<view-header
 		:title="t('authModule.headings.yourProfile')"
 		:subtitle="sessionStore.profile?.email || sessionStore.profile?.username"
-		:primary="{ label: t('devicesModule.buttons.save.title'), handler: onSave }"
+		:primary="{ label: t('authModule.buttons.save.title'), handler: onSave }"
 	>
 		<template #icon>
 			<user-avatar

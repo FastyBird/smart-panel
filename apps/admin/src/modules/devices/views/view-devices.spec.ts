@@ -75,20 +75,14 @@ vi.mock('../../../common', async () => {
 
 	const StubComponent = defineVueComponent({
 		setup(_, { slots }) {
-			return () => h('div', [slots.default?.(), slots.extra?.(), slots.icon?.(), slots.title?.(), slots.subtitle?.()]);
+			return () => h('div', [slots.default?.(), slots.actions?.(), slots.icon?.(), slots.title?.(), slots.subtitle?.()]);
 		},
 	});
 
 	return {
-		AppBar: StubComponent,
-		AppBarButton: StubComponent,
-		AppBarButtonAlign: {
-			LEFT: 'left',
-			RIGHT: 'right',
-		},
-		AppBarHeading: StubComponent,
 		AppBreadcrumbs: StubComponent,
 		ViewError: StubComponent,
+		AppBarScope: StubComponent,
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
 			isMDDevice: vueRef(mocks.isMDDevice),

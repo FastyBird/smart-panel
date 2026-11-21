@@ -46,20 +46,14 @@ vi.mock('../../../common', async () => {
 
 	const StubComponent = defineVueComponent({
 		setup(_, { slots }) {
-			return () => h('div', [slots.default?.(), slots.extra?.(), slots.icon?.(), slots.title?.(), slots.subtitle?.()]);
+			return () => h('div', [slots.default?.(), slots.actions?.(), slots.icon?.(), slots.title?.(), slots.subtitle?.()]);
 		},
 	});
 
 	return {
-		AppBar: StubComponent,
-		AppBarButton: StubComponent,
-		AppBarButtonAlign: {
-			LEFT: 'left',
-			RIGHT: 'right',
-		},
-		AppBarHeading: StubComponent,
 		AppBreadcrumbs: StubComponent,
 		ViewError: StubComponent,
+		AppBarScope: StubComponent,
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
 			isMDDevice: vueRef(true),
@@ -176,7 +170,10 @@ describe('ViewSpaces', () => {
 
 		const wrapper = mountView();
 
-		await wrapper.findAll('button').find((button) => button.text().includes('spacesModule.buttons.wizard.title'))?.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text().includes('spacesModule.buttons.wizard.title'))
+			?.trigger('click');
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({
 			name: 'spaces-wizard',

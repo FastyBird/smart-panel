@@ -42,7 +42,7 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('../../../common', () => ({
-	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
+	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon'], template: '<header><slot name="actions" /></header>' },
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
 	useBreakpoints: () => ({ isLGDevice: ref(true), isMDDevice: ref(true) }),
 	useListQuery: () => ({
@@ -52,13 +52,7 @@ vi.mock('../../../common', () => ({
 		viewMode: ref('table'),
 		reset: vi.fn(),
 	}),
-	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
-	AppBarHeading: {
-		name: 'AppBarHeading',
-		template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
-	},
-	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
-	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
+	AppBarScope: { name: 'AppBarScope', template: '<div><slot /></div>' },
 }));
 
 vi.mock('../../config/composables/useConfigModule', () => ({
@@ -99,11 +93,7 @@ const mountView = () =>
 					template: '<button :disabled="disabled"><slot name="icon" /><slot /></button>',
 				},
 				ElText: { name: 'ElText', template: '<span><slot /></span>' },
-				AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
-				AppBarHeading: {
-					name: 'AppBarHeading',
-					template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
-				},
+				AppBarScope: { name: 'AppBarScope', template: '<div><slot /></div>' },
 				ElForm: {
 					name: 'ElForm',
 					template: '<form><slot /></form>',
@@ -115,7 +105,7 @@ const mountView = () =>
 				ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>' },
 				// shallowMount would otherwise auto-stub this away and drop the
 				// header actions rendered into its `extra` slot.
-				ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
+				ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon'], template: '<header><slot name="actions" /></header>' },
 			},
 		},
 	});
@@ -220,15 +210,11 @@ describe('ViewMcpClients', () => {
 	it('gives the drawer heading a title and a subtitle row', () => {
 		const wrapper = mountView();
 
-		const heading = wrapper.findComponent({ name: 'AppBarHeading' });
+		// The page header comes first, the drawer's header (drawn into the drawer's app bar) second
+		const heading = wrapper.findAllComponents({ name: 'ViewHeader' })[1];
 
-		expect(heading.exists()).toBe(true);
-
-		// Both rows must come from the component's own slots. Elements rendered
-		// in this view's scope carry the wrong `data-v-` attribute and so never
-		// match `app-bar-heading`'s scoped rules.
-		expect(heading.find('[data-test-id="drawer-heading-title"]').exists()).toBe(true);
-		expect(heading.find('[data-test-id="drawer-heading-subtitle"]').exists()).toBe(true);
+		expect(heading.props('title')).toBe('mcpModule.clientForm.createTitle');
+		expect(heading.props('subtitle')).toBe('mcpModule.clientForm.formSubtitle');
 	});
 
 	it('keeps save disabled until the form changes', async () => {

@@ -86,6 +86,12 @@
 		@closed="resetClientForm"
 	>
 		<app-bar-scope @close="onCloseClientForm()">
+			<view-header
+				:title="editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle')"
+				:subtitle="t('mcpModule.clientForm.formSubtitle')"
+				icon="mdi:robot-outline"
+			/>
+
 			<el-scrollbar class="grow-1 p-2 md:px-4">
 				<el-form
 					ref="clientFormEl"

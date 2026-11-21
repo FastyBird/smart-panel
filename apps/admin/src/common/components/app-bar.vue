@@ -6,7 +6,8 @@
 		<button
 			v-if="props.left"
 			:aria-label="leftLabel"
-			class="flex items-center justify-center shrink-0 w-11 h-11 p-0 border-0 rounded-[var(--el-border-radius-base)] bg-transparent text-inherit cursor-pointer hover:bg-[var(--fb-sidebar-active-bg)]"
+			:disabled="props.leftDisabled"
+			class="flex items-center justify-center shrink-0 w-11 h-11 p-0 border-0 rounded-[var(--el-border-radius-base)] bg-transparent text-inherit cursor-pointer hover:bg-[var(--fb-sidebar-active-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
 			type="button"
 			data-test-id="app-bar-left"
 			@click="emit('left')"
@@ -24,7 +25,7 @@
 			data-test-id="app-bar-title"
 		>
 			<slot name="title">
-				<h1 class="m-0 text-[17px] font-600 truncate">{{ props.title }}</h1>
+				<h1 class="m-0 text-[17px] font-600 truncate text-[var(--fb-sidebar-active-text)]">{{ props.title }}</h1>
 				<span
 					v-if="props.subtitle"
 					class="text-[12px] text-[var(--fb-sidebar-text)] truncate"
@@ -88,6 +89,7 @@ const props = withDefaults(defineProps<AppBarProps>(), {
 	title: '',
 	subtitle: undefined,
 	left: null,
+	leftDisabled: false,
 	actions: () => [],
 	primary: undefined,
 });

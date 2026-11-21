@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { type Component, computed, defineComponent, h, onMounted, ref } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +7,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import { RouteNames } from '../../app.constants';
 import type { SizeClass } from '../composables/types';
+import { useAppBarHost } from '../composables/useAppBarHost';
 
 import LayoutDefault from './layout-default.vue';
 
@@ -28,8 +29,13 @@ vi.mock('../../assets/images/fb_row.svg?component', () => ({
 }));
 
 vi.mock('../components/components', () => ({
-	// Renders the `button-right` slot for real so the phone menu button can be asserted on
-	AppBar: { template: '<div data-test-id="app-bar"><slot name="button-right" /></div>' },
+	// Renders its slots and the left button for real so the phone bar can be asserted on
+	AppBar: {
+		props: ['title', 'subtitle', 'left', 'actions', 'primary'],
+		emits: ['left'],
+		template:
+			'<div data-test-id="app-bar" :data-title="title" :data-left="left"><button data-test-id="app-bar-left" @click="$emit(\'left\')" /><slot name="title" /><slot name="end" /></div>',
+	},
 	AppSidebar: {
 		props: ['menuCollapsed', 'accountActions'],
 		emits: ['navigate'],
@@ -55,8 +61,8 @@ vi.mock('vue-i18n', async () => {
 	return { ...actual, useI18n: () => ({ t: (key: string) => key }) };
 });
 
-const render = () => {
-	const router = createRouter({ history: createWebHistory(), routes: [{ path: '/', name: RouteNames.ROOT, component: {} }] });
+const render = (screen: Component = { template: '<div />' }) => {
+	const router = createRouter({ history: createWebHistory(), routes: [{ path: '/', name: RouteNames.ROOT, component: screen }] });
 
 	return mount(LayoutDefault, {
 		global: {
@@ -139,11 +145,46 @@ describe('LayoutDefault', () => {
 
 		expect(find(wrapper, 'app-bar').exists()).toBe(true);
 		expect(find(wrapper, 'app-top-bar').exists()).toBe(false);
-		expect(find(wrapper, 'layout-open-menu').attributes('aria-label')).toBe('application.buttons.openMenu.title');
+		// Before a screen registers its header the bar shows the logo, the menu button and the bell
+		expect(find(wrapper, 'app-bar').attributes('data-left')).toBe('menu');
+		expect(find(wrapper, 'logo').exists()).toBe(true);
+		expect(find(wrapper, 'notification-bell').exists()).toBe(true);
 
-		await find(wrapper, 'layout-open-menu').trigger('click');
+		await find(wrapper, 'app-bar-left').trigger('click');
 
 		expect(find(wrapper, 'layout-menu-drawer').find('[data-test-id="app-sidebar"]').attributes('data-account')).toBe('true');
+	});
+
+	it('shows the header the screen registers in the phone app bar', async () => {
+		sizeClass.value = 'phone';
+
+		const onLeft = vi.fn();
+
+		const Screen = defineComponent({
+			setup() {
+				const host = useAppBarHost();
+
+				onMounted(() => {
+					host?.register(() => ({ title: 'Kitchen lamp', left: 'back', onLeft, actions: [] }));
+				});
+
+				return () => h('div');
+			},
+		});
+
+		const wrapper = render(Screen);
+
+		await flushPromises();
+
+		expect(find(wrapper, 'app-bar').attributes('data-title')).toBe('Kitchen lamp');
+		expect(find(wrapper, 'app-bar').attributes('data-left')).toBe('back');
+		expect(find(wrapper, 'logo').exists()).toBe(false);
+		expect(find(wrapper, 'notification-bell').exists()).toBe(false);
+
+		await find(wrapper, 'app-bar-left').trigger('click');
+
+		expect(onLeft).toHaveBeenCalledTimes(1);
+		expect(find(wrapper, 'layout-menu-drawer').exists()).toBe(false);
 	});
 
 	it('closes the drawer after navigating', async () => {

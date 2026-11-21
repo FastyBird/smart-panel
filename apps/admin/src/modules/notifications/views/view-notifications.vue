@@ -33,6 +33,12 @@
 		:size="isLGDevice ? '300px' : '100%'"
 	>
 		<app-bar-scope @close="adjustVisible = false">
+			<view-header
+				:title="t('notificationsModule.headings.notifications.adjustFilters')"
+				:subtitle="t('notificationsModule.subHeadings.notifications.adjustFilters')"
+				icon="mdi:filter"
+			/>
+
 			<list-notifications-adjust
 				v-if="adjustVisible"
 				v-model:filters="filters"

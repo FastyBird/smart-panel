@@ -39,14 +39,12 @@ vi.mock('../../../common', async () => {
 		setup:
 			(_, { slots }) =>
 			() =>
-				h('div', [slots.default?.(), slots.extra?.()]),
+				h('div', [slots.default?.(), slots.actions?.()]),
 	});
 
 	return {
-		AppBarButton: Stub,
-		AppBarButtonAlign: { LEFT: 'left' },
-		AppBarHeading: Stub,
 		AppBreadcrumbs: Stub,
+		AppBarScope: Stub,
 		ViewHeader: Stub,
 		useBreakpoints: () => ({ isMDDevice: ref(true), isLGDevice: ref(false) }),
 		useLogger: () => ({ error: vi.fn() }),

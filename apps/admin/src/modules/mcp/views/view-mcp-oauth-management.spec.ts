@@ -44,16 +44,10 @@ const grant: IMcpOAuthGrant = {
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../common', () => ({
-	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
+	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon'], template: '<header><slot name="actions" /></header>' },
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
 	useBreakpoints: () => ({ isLGDevice: ref(true), isMDDevice: ref(true) }),
-	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
-	AppBarHeading: {
-		name: 'AppBarHeading',
-		template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
-	},
-	AppBarButton: { name: 'AppBarButton', template: '<button><slot name="icon" /></button>' },
-	AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
+	AppBarScope: { name: 'AppBarScope', template: '<div><slot /></div>' },
 	useListQuery: () => ({
 		filters: ref({ search: undefined, status: 'all' }),
 		sort: ref([{ by: 'name', dir: 'asc' }]),
@@ -103,12 +97,8 @@ const formStubs = {
 	ElTable: { name: 'ElTable', props: ['defaultSort'], template: '<table><slot /><slot name="empty" /></table>' },
 	ElTableColumn: { name: 'ElTableColumn', template: '<td></td>' },
 	McpOAuthTabFilter: { name: 'McpOAuthTabFilter', props: ['statusOptions', 'filters', 'filtersActive'], template: '<div />' },
-	AppBar: { name: 'AppBar', template: '<div><slot name="heading" /><slot name="button-right" /></div>' },
-	AppBarHeading: {
-		name: 'AppBarHeading',
-		template: '<div><slot name="icon" /><slot name="title" /><slot name="subtitle" /></div>',
-	},
-	ViewHeader: { name: 'ViewHeader', template: '<header><slot name="extra" /></header>' },
+	AppBarScope: { name: 'AppBarScope', template: '<div><slot /></div>' },
+	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon'], template: '<header><slot name="actions" /></header>' },
 };
 
 const mountForms = () => shallowMount(ViewMcpOAuthManagement, { global: { stubs: formStubs } });
@@ -225,14 +215,13 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 	it('gives both drawer headings a title and a subtitle row', () => {
 		const wrapper = mountForms();
 
-		const headings = wrapper.findAllComponents({ name: 'AppBarHeading' });
+		// After the page header: the client drawer's header, then the grant drawer's
+		const headings = wrapper.findAllComponents({ name: 'ViewHeader' }).slice(1);
 
-		expect(headings.length).toBe(2);
-
-		for (const heading of headings) {
-			expect(heading.find('[data-test-id="drawer-heading-title"]').exists()).toBe(true);
-			expect(heading.find('[data-test-id="drawer-heading-subtitle"]').exists()).toBe(true);
-		}
+		expect(headings.map((heading) => [heading.props('title'), heading.props('subtitle')])).toEqual([
+			['mcpModule.oauthManagement.createClient', 'mcpModule.oauthManagement.clientFormSubtitle'],
+			['mcpModule.oauthManagement.editGrant', 'mcpModule.oauthManagement.grantFormSubtitle'],
+		]);
 	});
 
 	it.each([

@@ -4,7 +4,13 @@
 		:subtitle="t('automations.subHeadings.add')"
 		icon="mdi:plus"
 		left="close"
-		:primary="{ label: t('automations.buttons.save.title'), handler: () => (remoteFormSubmit = true) }"
+		:primary="{
+			label: t('automations.buttons.save.title'),
+			handler: () => (remoteFormSubmit = true),
+			loading: remoteFormResult === FormResult.WORKING,
+			disabled: remoteFormResult === FormResult.WORKING,
+		}"
+		:back-disabled="saving"
 		@back="formChanged ? onDiscard() : onClose()"
 	/>
 
