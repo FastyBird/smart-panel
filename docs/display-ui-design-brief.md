@@ -14,8 +14,9 @@
 >   point into it. Read the matching spec section before you design a screen.
 > - This brief says what to design, adds what changed since July (room modes, schedules, occupancy, automations,
 >   thermostats, device groups, hardware inputs), analyses screen sizes, lists the deliverables, and records the
->   product decisions for the redesign (§13.1): per-room accent colours, thermostat control on the panel, alarm
->   arming on the panel, and cameras with a video doorbell.
+>   product decisions for the redesign (§13.1): a fixed set of supported panel sizes, red app colour with per-room
+>   accent colours, thermostat control on the panel, alarm arming on the panel, screen protection, and cameras with a
+>   two-way video doorbell.
 > - [`admin-ui-design-spec.md`](admin-ui-design-spec.md) is the approved admin redesign (November 2026). The display
 >   should look like the same product. See §4.3.
 >
@@ -125,7 +126,30 @@ Where the DPR comes from:
   the millimetres with `FB_DISPLAY_DIMENSIONS` in `/etc/smart-panel/display`.
 - **Android:** the OS density bucket (usually 1.33–2.0 for tablets, 2.5+ for high-density ones).
 
-### 3.2 Supported panels
+### 3.2 Supported size families (decided)
+
+We support a **fixed set of general panel sizes**, not every display on the market. The set follows what common
+wall-panel makers ship, with the Portworld PoE Android panel range as the reference for Android hardware, plus the
+Raspberry Pi panels we already ship for. A panel outside the set uses the nearest family and gets no dedicated
+design.
+
+| Family | Diagonal | Resolution | Reference hardware | Artboard (§3.4) |
+|---|---|---|---|---|
+| **4" square** | 4" | 480 × 480 | Portworld YC-SM06E and similar 86-box wall panels | Square 240 × 240 |
+| **4" tall** | 4" | 480 × 800 (portrait) | Portworld YC-SM41P | XS portrait 240 × 400 |
+| **7" basic** | 7" | 800 × 480 | Raspberry Pi Touch Display (v1) | XS 400 × 240 |
+| **7" WSVGA** | 7" | 1024 × 600 | Generic 7" HDMI/DSI panels | S 512 × 300 |
+| **5–7" HD** | 5"–7" | 1280 × 720 | Seeed reTerminal, Raspberry Pi Touch Display 2 | M 640 × 360 |
+| **8–10" WXGA** | 8"–10.1" | 1280 × 800 | Portworld 8" (SM08P) and 10.1" (YC-102P), reTerminal DM | M+ 640 × 400 |
+| **11–14" Full HD** | 11.6"–14" | 1920 × 1080 | Portworld 11.6" and 14" panels | L 960 × 540 |
+
+Resolutions for the 4" YC-SM41P (480 × 800) and the YC-SM06E (480 × 480) are from published specs. Portworld does
+not publish resolutions for its 8", 10.1", 11.6" and 14" models; the values above are the usual ones for those
+diagonals and must be confirmed against the datasheets before engineering locks the mapping. Portworld panels run
+Android 11 on Rockchip RK3566/RK3568, a GPU budget similar to a Raspberry Pi 4. Microphones and speakers vary by
+model, so audio features must follow what each panel reports (§6.K).
+
+#### Reference: how real panels scale today
 
 Numbers are for the panel in landscape. Portrait swaps width and height. DPR values are typical; the exact value
 depends on the millimetres the panel reports.
@@ -175,14 +199,14 @@ table above. Engineering will map real panels onto them.
 
 | Artboard | Landscape | Portrait | Stands for |
 |---|---|---|---|
-| **XS** | 400 × 240 | 240 × 400 | 7" 800 × 480 panels, and as the floor for the 4" square panel (240 × 240) |
-| **S** | 512 × 300 | 300 × 512 | 7" 1024 × 600 panels |
-| **M** | 640 × 360 | 360 × 640 | 5"–7" 720p panels (reTerminal, Pi Touch Display 2) |
-| **M+** | 640 × 400 | 400 × 640 | 8"–10" 1280 × 800 panels and tablets |
-| **L** | 960 × 600 | 600 × 960 | 10"–15" 1080p/1200p tablets and monitors |
+| **XS** | 400 × 240 | 240 × 400 | 7" basic; 4" tall (portrait only) |
+| **S** | 512 × 300 | 300 × 512 | 7" WSVGA |
+| **M** | 640 × 360 | 360 × 640 | 5–7" HD |
+| **M+** | 640 × 400 | 400 × 640 | 8–10" WXGA |
+| **L** | 960 × 540 | 540 × 960 | 11–14" Full HD (a 16:10 1920 × 1200 tablet gets 60 px more height) |
 
-Plus **one square artboard (240 × 240)** for the room overview, one domain view and the overlays, to prove the
-smallest case.
+Plus **one square artboard (240 × 240)** for the 4" square family. It is a supported size, so it needs the system
+views, the domain views, the security keypad, the doorbell interrupt and the overlays, not only a proof of concept.
 
 **Size classes.** Please define the final rules, but start from this proposal. It is based on the canvas's **short
 side**, so portrait and landscape of the same panel stay in the same class, and it does not depend on DPR:
@@ -191,7 +215,7 @@ side**, so portrait and landscape of the same panel stay in the same class, and 
 |---|---|---|
 | **Compact** | < 300 | XS, square |
 | **Regular** | 300–479 | S, M, M+ |
-| **Expanded** | ≥ 480 | L (and 1280 × 800) |
+| **Expanded** | ≥ 480 | L |
 
 Orientation is a separate axis. That gives six layouts per screen (3 classes × 2 orientations) plus the square
 case.
@@ -263,9 +287,10 @@ wrong". The admin already moved media to magenta.
 The admin redesign (approved 2026-11-19) made these decisions. The display should follow them unless you argue
 otherwise:
 
-- **Brand red is an accent only.** In the admin, primary is blue `#2563c9`, and red on screen always means danger.
-  The display today uses red as primary (active nav tab, FAB, triggering scene pill, filled buttons), which collides
-  with danger, alerts and media.
+- **Brand red and blue.** In the admin, primary is blue `#2563c9` and brand red `#d9230f` is kept for identity.
+  On the display (decided, §4.4) red stays the **app colour** and the admin blue becomes the **default accent**.
+  Today the display uses red for everything (active nav tab, FAB, triggering scene pill, filled buttons), which
+  collides with danger, alerts and media.
 - **One palette, semantic tokens.** Status colours (ok, warn, danger, info, primary) each have a text, soft and border
   shade, tuned for AA contrast in both themes.
 - **Domain colours** as in §4.2.
@@ -280,7 +305,7 @@ so a bedroom panel can be warm and a kitchen panel cool. Design the colour syste
 
 - **Deliver a set of accent palettes** (we suggest 8, for example blue, teal, green, amber, terracotta, rose, violet,
   graphite). Each needs light and dark values, the same steps as every other family, and must pass AA contrast for
-  text and filled controls in both themes. Mark one as the default; it follows the brand decision in §13.
+  text and filled controls in both themes. **The default accent is the admin blue** (`#2563c9`, dark `#3570d8`).
 - **What the accent colours:** primary buttons, the active nav tab and dock item, selection and focus, switches and
   slider thumbs outside a domain view, the assistant button, the screen saver clock, and optionally a tint on the
   page background and the sky panel's night gradient.
@@ -294,6 +319,16 @@ so a bedroom panel can be warm and a kitchen panel cool. Design the colour syste
 - Show the full room overview and one domain view in **at least three accents**, light and dark, to prove the system.
 
 The backend has no room colour or display accent today: this needs a new field on spaces and displays.
+
+**App colour (decided): FastyBird red `#D9230F` is the app colour; the accent does the interactive work.** Define
+exactly where the app colour appears, for example: the logo and wordmark, the startup, discovery and room-selection
+screens, About, and other identity moments. Interactive elements use the accent. Because red also means danger, the
+designer must keep them apart:
+
+- the app colour never appears on a control or a status, only on identity surfaces;
+- danger always comes with an icon and a label, never as a red fill alone;
+- consider a danger red that is visibly different from the brand red (as the admin did: `#c62828` vs `#d9230f`);
+- red is not in the accent set.
 
 ### 4.5 The de-facto component set
 
@@ -531,7 +566,7 @@ Design:
 | Part | Content |
 |---|---|
 | **Arm control** | Four choices: Disarmed, Home, Away, Night (only those the alarm supports). Part of the Security hero, also on the Entry overview, and reachable from the room overview's security status. |
-| **PIN keypad** | Numeric keypad, masked digits, delete, cancel, wrong code (shake + message), lockout after repeated failures. Asked for when disarming; for arming it is a setting (some homes arm without a code). Must work on the XS artboard in portrait and landscape. |
+| **PIN keypad** | Numeric keypad, masked digits, delete, cancel, wrong code (shake + message), lockout after repeated failures. Must work on the XS and square artboards in portrait and landscape. **Code policy is set per installation** (decided): either **one code for the whole house**, or **a code per user**. With per-user codes the code identifies the person, so there is no user picker; the result shows the name ("Disarmed by Anna") and the event log records it. Whether arming also needs a code is an installation setting. |
 | **Exit delay** | After arming: a countdown ("Leave now, armed in 0:45") with Cancel. |
 | **Entry delay** | When a door opens while armed (`pending`): a **full-screen interrupt on every panel** with the countdown and the keypad. Highest priority after connection loss. |
 | **Open entry points** | Arming with a door or window open: list what is open, then "Arm anyway" (bypass) or Cancel. |
@@ -646,6 +681,23 @@ Only when the Buddy module is enabled.
 | **Screen saver** | Flip clock + date | After the lock delay, when the screen saver is on. A tap wakes it. Consider burn-in on always-on panels (subtle drift). |
 | **Lock screen** | Plain black today | When the screen saver is off. There is no PIN keypad. |
 
+#### Screen protection (decided, new functionality)
+
+Optional, **per panel and per screen**. Use cases: a guest-room panel that only shows lights and climate, a child's
+room where settings and some controls are locked, an entry panel facing outside.
+
+| What can be protected | How it behaves |
+|---|---|
+| **Whole panel** | Waking the panel asks for a code before anything is shown (lock screen with keypad). |
+| **Individual deck screens** (any system view, domain view, Security, Energy, dashboard page) | The nav tab shows a lock badge. Opening the screen shows the keypad first. Protected screens can also be **hidden** instead of locked (guest mode). |
+| **Settings and Maintenance** | Keypad before Settings opens; the most common protection (stops guests and children from changing the panel or resetting it). |
+| **Device details and controls** (child protection) | Controls stay visible but read-only, with a lock hint on tap; or the screen is hidden. |
+
+Design: the lock badge on tabs and tiles, the keypad sheet (same component as the alarm keypad), the unlocked
+session (a small indicator while unlocked, and **auto-relock** after a timeout or when the panel sleeps), the hidden
+state (the screen is simply absent from the deck and the More sheet), and read-only controls. Codes follow the same
+installation policy as the alarm (house code or per-user code). Configuration lives in the admin per display.
+
 ### K. Cameras and video doorbell (decided, new functionality)
 
 The panel has no camera UI today. The backend cameras module already lets a display list cameras, fetch **snapshots**
@@ -653,12 +705,16 @@ The panel has no camera UI today. The backend cameras module already lets a disp
 backend. A **doorbell** device has a button-press channel, optional camera channels and an optional lock, and the
 spec lists microphone and speaker channels for talking to the visitor.
 
+**Two-way talk (decided)** is available on panels that report **both** a microphone and a speaker (the same hardware
+flags that gate Settings › Audio). On other panels the Talk control is absent, not disabled.
+
 | Surface | Content and functions | States |
 |---|---|---|
 | **Camera tile** (dashboard, room, security, entry) | Snapshot refreshed every few seconds, camera name, "live" badge when streaming, motion or person indicator when the camera reports one. Tap → camera view. | Loading · snapshot · snapshot stale (age shown) · offline · no permission · camera hidden or removed |
 | **Camera grid** (Security tab or section, dashboard card) | 1, 2, 4 or more cameras as snapshot tiles; never several live streams at once | 1 camera · 2 · 4 · many (scroll) · all offline |
 | **Camera view** (full screen) | Live video, name, stream quality switch when there are several profiles, snapshot fallback, close. Actions when the device has them: unlock the linked door, switch a light, talk (new). | Connecting · live · reconnecting · live unavailable (snapshot fallback) · offline · relay not running |
-| **Doorbell ring** (interrupt) | **Full-screen interrupt on every panel** (or the panels chosen in the admin): "Someone is at the front door", live view or latest snapshot, ring time; actions **Unlock** (when a lock is linked, with confirmation), **Talk** (new), **Dismiss**; auto-dismiss after a timeout; chime volume follows audio settings | Ringing · answered elsewhere · unlocked · unlock failed · no camera (text and icon only) · panel in screen saver (wakes up) |
+| **Doorbell ring** (interrupt) | **Full-screen interrupt on every panel** (or the panels chosen in the admin): "Someone is at the front door", live view or latest snapshot, ring time; actions **Answer / Talk** (panels with microphone and speaker), **Unlock** (when a lock is linked, with confirmation), **Dismiss**; auto-dismiss after a timeout; chime volume follows audio settings | Ringing · answered here · answered on another panel · unlocked · unlock failed · no camera (text and icon only) · no audio on this panel (no Talk) · panel in screen saver or locked (wakes up; Unlock still needs a code when the panel is protected) |
+| **Talking** (in the ring or camera view) | Live view stays; a call bar with talk state, **mute microphone**, **speaker volume**, **hang up**, call timer, and a level meter for the visitor's voice. Pick one model and justify it: tap to talk (toggle) or hold to talk. | Connecting audio · talking · muted · visitor speaking · microphone busy (voice assistant) · audio failed · call ended |
 | **Missed rings** | A list of recent rings with snapshot and time, in the doorbell detail and in Security › Events | Empty · several |
 | **Doorbell device detail** | Live view, last rings, linked lock, battery | Online · offline · battery low |
 | **Camera device detail** | Camera view plus device info and stream profiles | As camera view |
@@ -839,6 +895,8 @@ compact, regular and expanded.
 - [ ] State templates: loading (skeleton), error, empty, not configured, offline, disconnected
 - [ ] Dashboard tiles at their size steps; data-source widgets
 - [ ] Security: arm control, PIN keypad (with wrong code and lockout), countdown (exit and entry delay)
+- [ ] Screen protection: lock badge, keypad sheet, unlocked indicator, read-only control state
+- [ ] Call bar for two-way talk
 - [ ] Camera tile, camera grid, live video frame with its connection states
 - [ ] Thermostat control: dial with one or two setpoints, comfort preset selector, override duration picker
 - [ ] Accent swatch picker
@@ -861,17 +919,21 @@ compact, regular and expanded.
 9. **Dashboard** tiles page, cards page and all tiles.
 10. **Settings** (all pages and variants, including the accent picker), **weather detail**.
 11. **Startup**: discovery (all states), room selection, loading, fatal error.
-12. **Buddy** chat, voice overlay; screen saver, lock screen; **signage** board.
+12. **Screen protection**: protected tab, keypad, unlocked session, hidden screens, read-only controls; protected
+    Settings.
+13. **Buddy** chat, voice overlay; screen saver, lock screen; **signage** board.
 
 ### 12.4 Variant matrix
 
 For each screen in 12.3, deliver at least:
 
-| | XS | S | M | M+ | L |
-|---|---|---|---|---|---|
-| Landscape | ✔ | — | ✔ | ✔ | ✔ |
-| Portrait | ✔ | ✔ | ✔ | — | ✔ |
+| | Square | XS | S | M | M+ | L |
+|---|---|---|---|---|---|---|
+| Landscape | — | ✔ | — | ✔ | ✔ | ✔ |
+| Portrait | — | ✔ | ✔ | ✔ | — | ✔ |
+| Square | ✔ | | | | | |
 
+The square board is needed for system views, domain views, Security, the keypad, the doorbell and overlays.
 Dark mode for every board in XS, M+ and L. Then one board per state from the screen's state list, at M (the most
 common panel). Screens marked *Rich* and the room overview get the full matrix; settings and startup can stop at XS
 and M+.
@@ -879,7 +941,7 @@ and M+.
 ### 12.5 Marking new functionality
 
 Anything the app cannot do today (arm/disarm, PIN keypad, exit delay, unlocking from the panel, cameras and the
-doorbell, room accent colours, comfort presets in the Climate view, scene tile triggering, album art, signage content,
+doorbell, two-way talk, screen protection, per-user codes, room accent colours, comfort presets in the Climate view, scene tile triggering, album art, signage content,
 12-hour clock, a visible settings button) must carry a visible **"new"** marker on the board, so it is
 planned as engineering work and not treated as a re-skin.
 
@@ -902,22 +964,25 @@ planned as engineering work and not treated as a re-skin.
 | **Thermostats** | All everyday control is on the panel: temperature, mode, comfort preset, temporary override, clearing the OFF latch. The admin is only for configuration. Diagnostics stay on the panel as a read-only, plain-language "details" layer (§6.F). |
 | **Security** | The panel is an alarm keypad: arm (Home, Away, Night), disarm with a code, exit and entry delays, triggered and silenced states (§6.D). |
 | **Cameras and doorbell** | In scope: camera tiles and grid, full-screen camera view, doorbell ring interrupt with Unlock, missed rings (§6.K). |
+| **App colour and default accent** | FastyBird red is the app colour, used only for identity. The admin blue is the default accent for interactive elements. Red is not in the accent set (§4.4). |
+| **Alarm and lock codes** | Set per installation: one code for the whole house, or a code per user (§6.D). |
+| **Screen protection** | Optional, per panel and per screen: lock or hide screens, protect Settings, read-only controls for child protection (§6.J). |
+| **Two-way talk** | On panels with both a microphone and a speaker (§6.K). |
+| **Supported sizes** | A fixed set of general size families, with the Portworld range as the Android reference, not every display on the market (§3.2). |
 
 ### 13.2 Still open
 
 Please give a recommendation for each.
 
-1. **Default accent and brand.** Which accent is the default, and does red stay in the accent set given that red
-   means danger? Follow the admin's blue primary for the default?
-2. **Physical sizing.** Accept the per-panel density approach of §3.4 and give the mm floors.
-3. **Room modes vs domain modes.** How room activity modes (Work, Relax, Sleep, Entertainment, Away) relate visually
+1. **Physical sizing.** Accept the per-panel density approach of §3.4 and give the mm floors.
+2. **Room modes vs domain modes.** How room activity modes (Work, Relax, Sleep, Entertainment, Away) relate visually
    to the Lights, Shading and Climate modes and to scenes. One concept on the overview or several?
-4. **Alarm codes.** One household code or one per user? Is a code needed to arm, or only to disarm? A duress code?
-5. **Panel lock.** Should the lock screen itself ask for a PIN (for example on an entry panel facing outside)?
-6. **Doorbell talk.** Two-way audio needs the panel's microphone and speaker. Design it now or later?
-7. **Settings entry point**: keep the swipe-down only, or add a visible affordance?
-8. **Signage**: design the full board now?
-9. **Burn-in**: should always-on screens (signage, screen saver) shift content over time?
+3. **Talk model.** Tap to talk or hold to talk (§6.K).
+4. **Duress code.** Should the alarm support a code that disarms visibly but raises a silent alert?
+5. **Settings entry point**: keep the swipe-down only, or add a visible affordance? (It interacts with screen
+   protection: a protected Settings asks for the code either way.)
+6. **Signage**: design the full board now?
+7. **Burn-in**: should always-on screens (signage, screen saver) shift content over time?
 
 ## 14. Source pointers
 
@@ -930,6 +995,7 @@ Please give a recommendation for each.
 | Climate, media domains | [`docs/climate-architecture.md`](climate-architecture.md), [`docs/media-architecture.md`](media-architecture.md) |
 | Tokens and theme | `apps/panel/lib/core/utils/theme.dart` |
 | Scaling and size classes | `apps/panel/lib/core/services/screen.dart`, `core/services/visual_density.dart`, `spec/displays/screen_breakpoints.json`, `spec/displays/grid.json` |
+| Portworld panel range (Android size reference) | `https://portworld-solu.com` (product pages for the YC-SM41P, SM08P and YC-102P) |
 | Panel install and display size override | `build/raspbian/modules/configure/files/display`, website "Raspberry Pi image" install page |
 | Shared components | `apps/panel/lib/core/widgets/` |
 | Deck and navigation | `apps/panel/lib/modules/deck/` |
