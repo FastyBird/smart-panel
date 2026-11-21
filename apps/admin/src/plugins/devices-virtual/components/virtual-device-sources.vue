@@ -4,19 +4,30 @@
 		:key="props.device.id"
 		:device="props.device"
 	/>
-	<virtual-measurement-editor
+	<!-- A device detail tab renders cards only (spec section 7) -->
+	<el-card
 		v-else-if="measurementMode && measurementOutput"
-		:key="measurementOutput"
-		:mode="measurementMode"
-		:output-id="measurementOutput"
-		:temperature="propertiesStore.findById(measurementOutput)?.category === 'temperature'"
-	/>
-	<el-alert
+		class="mt-2"
+		shadow="never"
+	>
+		<virtual-measurement-editor
+			:key="measurementOutput"
+			:mode="measurementMode"
+			:output-id="measurementOutput"
+			:temperature="propertiesStore.findById(measurementOutput)?.category === 'temperature'"
+		/>
+	</el-card>
+	<el-card
 		v-else-if="measurementMode"
-		:title="t('devicesVirtualPlugin.measurement.measurementUnavailable')"
-		type="warning"
-		:closable="false"
-	/>
+		class="mt-2"
+		shadow="never"
+	>
+		<el-alert
+			:title="t('devicesVirtualPlugin.measurement.measurementUnavailable')"
+			type="warning"
+			:closable="false"
+		/>
+	</el-card>
 	<el-card
 		v-else
 		class="mt-2"

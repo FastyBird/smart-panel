@@ -1,13 +1,21 @@
 <template>
-	<shelly-cover-recovery
+	<!-- A device detail tab renders cards only (spec section 7) -->
+	<el-card
 		v-for="target in targets"
 		:key="target.propertyId"
-		v-bind="target"
-		:connected="connected"
-	/>
+		shadow="never"
+		class="mt-2"
+	>
+		<shelly-cover-recovery
+			v-bind="target"
+			:connected="connected"
+		/>
+	</el-card>
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
+
+import { ElCard } from 'element-plus';
 
 import { injectSockets, injectStoresManager } from '../../../common';
 import type { IDevice } from '../../../modules/devices';

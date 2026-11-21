@@ -2,6 +2,7 @@
 	<div data-test-id="list-filter-bar">
 		<div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-b-solid border-light">
 			<el-input
+				ref="searchInput"
 				:model-value="props.search ?? ''"
 				:placeholder="props.searchPlaceholder ?? t('application.listFilterBar.search')"
 				:aria-label="props.searchPlaceholder ?? t('application.listFilterBar.search')"
@@ -248,6 +249,15 @@ const { t } = useI18n();
 const { isDesktop, isPhone } = useSizeClass();
 
 const drawerOpen = ref<boolean>(false);
+
+const searchInput = ref<InstanceType<typeof ElInput> | null>(null);
+
+// For a phone app bar Search action that hands focus to the field
+const focusSearch = (): void => {
+	searchInput.value?.focus();
+};
+
+defineExpose({ focusSearch });
 
 // Drawer content stays in the document after closing, so two bars sharing a quick-filter id need their own prefix
 const instanceId = useId();

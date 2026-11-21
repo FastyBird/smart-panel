@@ -1,54 +1,42 @@
 <template>
+	<!-- Template 3: the summary card above the tabs -->
 	<el-card
-		class="mt-2"
 		shadow="never"
-		body-class="p-0!"
+		body-class="flex flex-wrap items-start gap-4 p-4!"
+		data-test-id="device-summary"
 	>
-		<dl class="grid grid-cols-[auto_1fr_auto_1fr] m-0">
-			<!-- Row 1: Category | Status -->
-			<dt
-				class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				:class="{ 'b-b b-b-solid': hasDeviceInfoProperties }"
-				style="background: var(--el-fill-color-light)"
-			>
-				{{ t('devicesModule.texts.devices.category') }}
-			</dt>
-			<dd
-				class="b-r b-r-solid m-0 p-2 flex items-center min-w-[8rem]"
-				:class="{ 'b-b b-b-solid': hasDeviceInfoProperties }"
-			>
-				<el-text>
-					{{ t(`devicesModule.categories.devices.${device.category}`) }}
-				</el-text>
-			</dd>
-			<dt
-				class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				:class="{ 'b-b b-b-solid': hasDeviceInfoProperties }"
-				style="background: var(--el-fill-color-light)"
-			>
-				{{ t('devicesModule.texts.devices.status') }}
-			</dt>
-			<dd
-				class="m-0 p-2 flex items-center min-w-[8rem]"
-				:class="{ 'b-b b-b-solid': hasDeviceInfoProperties }"
-			>
-				<el-text>
-					<el-tag
-						:type="stateColor"
-						size="small"
-					>
-						{{ t(`devicesModule.states.${String(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown).toLowerCase()}`) }}
-					</el-tag>
-				</el-text>
-			</dd>
-
-			<!-- Device information properties -->
-			<device-detail-description
-				v-if="hasDeviceInfoProperties && deviceInfoChannel"
-				:device="device"
-				:channel="deviceInfoChannel"
+		<div
+			class="flex items-center justify-center shrink-0 w-14 h-14 rounded-lg bg-fill-light text-regular"
+			aria-hidden="true"
+		>
+			<icon
+				:icon="deviceIcon"
+				width="32"
+				height="32"
 			/>
-		</dl>
+		</div>
+
+		<div class="flex flex-col gap-1 min-w-[200px]">
+			<div class="flex flex-wrap items-center gap-2">
+				<span class="text-section">{{ props.device.name }}</span>
+				<status-tag
+					:status="deviceStatusTag(props.device.status?.status)"
+					:label="t(`devicesModule.states.${String(props.device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown).toLowerCase()}`)"
+				/>
+			</div>
+			<span
+				v-if="props.device.description"
+				class="text-help"
+			>
+				{{ props.device.description }}
+			</span>
+		</div>
+
+		<kv-grid
+			:items="items"
+			:cols="4"
+			class="flex-1 min-w-[280px]"
+		/>
 	</el-card>
 </template>
 
@@ -56,14 +44,20 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElTag, ElText } from 'element-plus';
+import { ElCard } from 'element-plus';
 
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
-import { useChannels, useChannelsProperties } from '../../composables/composables';
-import { type StateColor } from '../../devices.constants';
+import { Icon } from '@iconify/vue';
+
+import { KvGrid, type KvGridItem, StatusTag } from '../../../../common';
+import {
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleDeviceConnectionStatus,
+} from '../../../../openapi.constants';
+import { useChannels, useChannelsProperties, useDeviceIcon, useDevicesPlugin } from '../../composables/composables';
+import { deviceStatusTag } from '../../devices.status';
 import type { IChannel } from '../../store/channels.store.types';
 
-import DeviceDetailDescription from './device-detail-description.vue';
 import type { IDeviceDetailProps } from './device-detail.types';
 
 defineOptions({
@@ -74,47 +68,49 @@ const props = defineProps<IDeviceDetailProps>();
 
 const { t } = useI18n();
 
+const { icon: deviceIcon } = useDeviceIcon({ id: props.device.id });
+
+const { plugin } = useDevicesPlugin({ type: props.device.type });
+
 const { channels } = useChannels({ deviceId: props.device.id });
 
 const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefined => {
 	return channels.value.find((channel) => channel.category === DevicesModuleChannelCategory.device_information);
 });
 
-// Check if device_information channel has visible properties (matching the child filter)
+const { properties: deviceInfoProperties } = useChannelsProperties({
+	channelId: computed(() => deviceInfoChannel.value?.id),
+});
+
+// The status is in the tag next to the name, and the link quality belongs to the channel
 const hiddenCategories: DevicesModuleChannelPropertyCategory[] = [
 	DevicesModuleChannelPropertyCategory.status,
 	DevicesModuleChannelPropertyCategory.link_quality,
 ];
-const { properties: deviceInfoProperties } = useChannelsProperties({
-	channelId: computed(() => deviceInfoChannel.value?.id),
-});
-const hasDeviceInfoProperties = computed<boolean>(
-	() => !!deviceInfoChannel.value && deviceInfoProperties.value.some((p) => !hiddenCategories.includes(p.category)),
-);
 
-const stateColor = computed<StateColor>((): StateColor => {
-	if ([DevicesModuleDeviceConnectionStatus.unknown].includes(props.device.status.status)) {
-		return undefined;
+const propertyValue = (value: unknown): string | number | null => {
+	if (value !== null && typeof value === 'object' && 'value' in value) {
+		return propertyValue((value as { value: unknown }).value);
 	}
 
-	if (
-		[DevicesModuleDeviceConnectionStatus.connected, DevicesModuleDeviceConnectionStatus.ready, DevicesModuleDeviceConnectionStatus.running].includes(
-			props.device.status.status
-		)
-	) {
-		return 'success';
-	} else if ([DevicesModuleDeviceConnectionStatus.init].includes(props.device.status.status)) {
-		return 'info';
-	} else if (
-		[
-			DevicesModuleDeviceConnectionStatus.disconnected,
-			DevicesModuleDeviceConnectionStatus.stopped,
-			DevicesModuleDeviceConnectionStatus.sleeping,
-		].includes(props.device.status.status)
-	) {
-		return 'warning';
+	if (typeof value === 'string' || typeof value === 'number') {
+		return value;
 	}
 
-	return 'danger';
-});
+	return value === null || value === undefined ? null : String(value);
+};
+
+const items = computed<KvGridItem[]>((): KvGridItem[] => [
+	{ label: t('devicesModule.texts.devices.category'), value: t(`devicesModule.categories.devices.${props.device.category}`) },
+	{ label: t('devicesModule.table.devices.columns.type.title'), value: plugin.value?.name ?? props.device.type },
+	// Only the device information channel: without one, the property list is not limited to a channel at all
+	...(deviceInfoChannel.value ? deviceInfoProperties.value : [])
+		.filter((property) => !hiddenCategories.includes(property.category))
+		.map(
+			(property): KvGridItem => ({
+				label: t(`devicesModule.categories.channelsProperties.${property.category}`),
+				value: propertyValue(property.value),
+			})
+		),
+]);
 </script>

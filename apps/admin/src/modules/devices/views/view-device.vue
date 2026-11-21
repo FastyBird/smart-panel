@@ -147,29 +147,17 @@
 
 					<el-card
 						v-else
-						body-class="flex flex-row justify-center"
+						shadow="never"
 					>
-						<el-result class="h-full max-w-[700px]">
-							<template #icon>
-								<icon-with-child :size="80">
-									<template #primary>
-										<icon icon="mdi:chip" />
-									</template>
-									<template #secondary>
-										<icon icon="mdi:timer-sand-empty" />
-									</template>
-								</icon-with-child>
-							</template>
-
-							<template #title>
-								<el-text class="block">
-									{{ t('devicesModule.texts.devices.noChannels') }}
-								</el-text>
-
+						<state-view
+							kind="empty"
+							icon="mdi:chip"
+							:title="t('devicesModule.texts.devices.noChannels')"
+						>
+							<template #action>
 								<el-button
 									type="primary"
 									plain
-									class="mt-4"
 									@click="onChannelAdd"
 								>
 									<template #icon>
@@ -179,7 +167,7 @@
 									{{ t('devicesModule.buttons.addChannel.title') }}
 								</el-button>
 							</template>
-						</el-result>
+						</state-view>
 					</el-card>
 				</el-scrollbar>
 			</el-tab-pane>
@@ -203,56 +191,60 @@
 				</template>
 
 				<el-scrollbar class="h-full">
-					<el-table
-						:data="validationIssues"
-						size="small"
-						class="w-full"
+					<el-card
+						shadow="never"
+						body-class="p-0!"
 					>
-						<el-table-column
-							:label="t('devicesModule.validation.table.severity')"
-							prop="severity"
-							:width="100"
+						<el-table
+							:data="validationIssues"
+							class="w-full"
 						>
-							<template #default="scope">
-								<el-tag
-									:type="scope.row.severity === 'error' ? 'danger' : 'warning'"
-									size="small"
-								>
-									{{ scope.row.severity === 'error' ? t('devicesModule.validation.severity.error') : t('devicesModule.validation.severity.warning') }}
-								</el-tag>
-							</template>
-						</el-table-column>
-						<el-table-column
-							:label="t('devicesModule.validation.table.type')"
-							prop="type"
-							:width="150"
-						>
-							<template #default="scope">
-								{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
-							</template>
-						</el-table-column>
-						<el-table-column
-							:label="t('devicesModule.validation.table.message')"
-							prop="message"
-						/>
-						<el-table-column
-							:label="t('devicesModule.validation.table.channel')"
-							prop="channelCategory"
-							:width="150"
-						>
-							<template #default="scope">
-								<template v-if="scope.row.channelCategory">
-									{{ t(`devicesModule.categories.channels.${scope.row.channelCategory}`, scope.row.channelCategory) }}
+							<el-table-column
+								:label="t('devicesModule.validation.table.severity')"
+								prop="severity"
+								:width="100"
+							>
+								<template #default="scope">
+									<status-tag
+										:status="scope.row.severity === 'error' ? 'danger' : 'warn'"
+										:label="
+											scope.row.severity === 'error' ? t('devicesModule.validation.severity.error') : t('devicesModule.validation.severity.warning')
+										"
+									/>
 								</template>
-								<span
-									v-else
-									class="text-gray-400"
-								>
-									-
-								</span>
-							</template>
-						</el-table-column>
-					</el-table>
+							</el-table-column>
+							<el-table-column
+								:label="t('devicesModule.validation.table.type')"
+								prop="type"
+								:width="150"
+							>
+								<template #default="scope">
+									{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
+								</template>
+							</el-table-column>
+							<el-table-column
+								:label="t('devicesModule.validation.table.message')"
+								prop="message"
+							/>
+							<el-table-column
+								:label="t('devicesModule.validation.table.channel')"
+								prop="channelCategory"
+								:width="150"
+							>
+								<template #default="scope">
+									<template v-if="scope.row.channelCategory">
+										{{ t(`devicesModule.categories.channels.${scope.row.channelCategory}`, scope.row.channelCategory) }}
+									</template>
+									<span
+										v-else
+										class="text-muted"
+									>
+										-
+									</span>
+								</template>
+							</el-table-column>
+						</el-table>
+					</el-card>
 				</el-scrollbar>
 			</el-tab-pane>
 
@@ -295,9 +287,13 @@
 				class="h-full overflow-hidden"
 			>
 				<template #label>
-					<div class="flex items-center gap-2 px-4">
+					<!-- Plugin tabs: icon and a label of at most 16 characters (spec section 7) -->
+					<div
+						:title="t(tab.label)"
+						class="flex items-center gap-2 px-4"
+					>
 						<icon :icon="tab.icon" />
-						{{ t(tab.label) }}
+						<span class="max-w-[16ch] truncate">{{ t(tab.label) }}</span>
 					</div>
 				</template>
 				<el-scrollbar class="h-full">
@@ -373,7 +369,6 @@ import {
 	ElDropdownItem,
 	ElDropdownMenu,
 	ElMessageBox,
-	ElResult,
 	ElScrollbar,
 	ElSpace,
 	ElTabPane,
@@ -381,7 +376,6 @@ import {
 	ElTableColumn,
 	ElTabs,
 	ElTag,
-	ElText,
 	useNamespace,
 } from 'element-plus';
 
@@ -391,7 +385,8 @@ import {
 	AppBarScope,
 	AppBreadcrumbs,
 	EntityNotFound,
-	IconWithChild,
+	StateView,
+	StatusTag,
 	ViewError,
 	ViewHeader,
 	useBreakpoints,

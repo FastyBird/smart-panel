@@ -9,7 +9,10 @@
 		:title="t('devicesModule.headings.devices.list')"
 		:subtitle="t('devicesModule.subHeadings.devices.list')"
 		icon="mdi:devices"
-		:actions="[{ icon: 'mdi:plus', label: t('devicesModule.buttons.manual.title'), handler: onDeviceCreate }]"
+		:actions="[
+			{ icon: 'mdi:magnify', label: t('devicesModule.fields.devices.search.placeholder'), handler: onSearch },
+			{ icon: 'mdi:plus', label: t('devicesModule.buttons.manual.title'), handler: onDeviceCreate },
+		]"
 	>
 		<template #actions>
 			<div class="flex items-center">
@@ -62,6 +65,7 @@
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
 		<list-devices
+			ref="list"
 			v-model:filters="filters"
 			v-model:sort-by="sortBy"
 			v-model:sort-dir="sortDir"
@@ -76,7 +80,6 @@
 			@detail="onDeviceDetail"
 			@edit="onDeviceEdit"
 			@remove="onDeviceRemove"
-			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
 			@bulk-action="onBulkAction"
 		/>
@@ -94,20 +97,13 @@
 		v-if="isLGDevice && !isWizardRoute"
 		v-model="showDrawer"
 		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
+		size="40%"
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
 		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
-				<list-devices-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
-				/>
-
-				<view-error v-else>
+				<view-error>
 					<template #icon>
 						<icon icon="mdi:devices" />
 					</template>
@@ -143,7 +139,7 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
-import { ListDevices, ListDevicesAdjust } from '../components/components';
+import { ListDevices } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
@@ -192,7 +188,7 @@ const enabledWizardOptions = computed(() => wizardOptions.value.filter((item) =>
 const mounted = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
+const list = ref<InstanceType<typeof ListDevices> | null>(null);
 
 const remoteFormChanged = ref<boolean>(false);
 
@@ -216,47 +212,40 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
+	if (remoteFormChanged.value) {
+		ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+			confirmButtonText: t('devicesModule.buttons.yes.title'),
+			cancelButtonText: t('devicesModule.buttons.no.title'),
+			type: 'warning',
+		})
+			.then((): void => {
+				if (isLGDevice.value) {
+					router.replace({
+						name: RouteNames.DEVICES,
+					});
+				} else {
+					router.push({
+						name: RouteNames.DEVICES,
+					});
+				}
+
+				done?.();
+			})
+			.catch((): void => {
+				// Just ignore it
+			});
+	} else {
+		if (isLGDevice.value) {
+			router.replace({
+				name: RouteNames.DEVICES,
+			});
+		} else {
+			router.push({
+				name: RouteNames.DEVICES,
+			});
+		}
 
 		done?.();
-	} else {
-		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
-				confirmButtonText: t('devicesModule.buttons.yes.title'),
-				cancelButtonText: t('devicesModule.buttons.no.title'),
-				type: 'warning',
-			})
-				.then((): void => {
-					if (isLGDevice.value) {
-						router.replace({
-							name: RouteNames.DEVICES,
-						});
-					} else {
-						router.push({
-							name: RouteNames.DEVICES,
-						});
-					}
-
-					done?.();
-				})
-				.catch((): void => {
-					// Just ignore it
-				});
-		} else {
-			if (isLGDevice.value) {
-				router.replace({
-					name: RouteNames.DEVICES,
-				});
-			} else {
-				router.push({
-					name: RouteNames.DEVICES,
-				});
-			}
-
-			done?.();
-		}
 	}
 };
 
@@ -321,9 +310,9 @@ const onDeviceCreate = (): void => {
 	}
 };
 
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
+// The phone app bar's Search action
+const onSearch = (): void => {
+	list.value?.focusSearch();
 };
 
 const onWizard = (): void => {

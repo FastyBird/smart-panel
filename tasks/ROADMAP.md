@@ -506,11 +506,11 @@ Protect epic, built on this epic's components.
 | #   | Phase                                                                                                    | Scope       | Status              |
 | --- | -------------------------------------------------------------------------------------------------------- | ----------- | ------------------- |
 | 1   | Theme and lint (AR-1, AR-2)                                                                              | admin, docs | :white_check_mark: Done |
-| 2   | Shell and shared components (AR-3 … AR-8)                                                                | admin       | :construction: In Progress |
-| 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :clipboard: Planned |
+| 2   | Shell and shared components (AR-3 … AR-8)                                                                | admin       | :white_check_mark: Done |
+| 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :construction: In Progress |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
 
-**Next up:** AR-6, the plugin form section and test connection, which completes phase 2; then phase 3 starts with AR-9 (devices list and detail).
+**Next up:** AR-9, the devices list and detail on the page templates; then AR-10 (device add and edit on the edit drawer) and AR-12 (device wizards on the wizard shell).
 
 ---
 
@@ -594,7 +594,7 @@ Protect epic, built on this epic's components.
 | UniFi Protect (milestones)       | 0      | 0           | 7       | 7       |
 | Matter Epic (milestones)         | 0      | 0           | 5       | 5       |
 | Automations Epic (phases)        | 0      | 0           | 5       | 5       |
-| Admin UI Redesign Epic (phases)  | 1      | 1           | 2       | 4       |
-| **Total**                        | **97** | **8**       | **46**  | **151** |
+| Admin UI Redesign Epic (phases)  | 2      | 1           | 1       | 4       |
+| **Total**                        | **98** | **8**       | **45**  | **151** |
 
 The Remote access, UniFi Protect, Matter, Automations and Admin UI redesign epics are counted per milestone or phase row; superseded tasks are not counted.
