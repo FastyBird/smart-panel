@@ -387,7 +387,7 @@ import {
 	StatusTag,
 	ViewError,
 	ViewHeader,
-	useEditDrawer,
+	provideEditDrawer,
 	useFlashMessage,
 	useUuid,
 } from '../../../common';
@@ -404,6 +404,7 @@ import {
 	useDeviceSpecification,
 	useDeviceValidation,
 	useDevicesPlugins,
+	useDiscardGuard,
 } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesApiException } from '../devices.exceptions';
@@ -431,7 +432,8 @@ const ns = useNamespace('view-device');
 const { validate: validateUuid } = useUuid();
 
 // Template 4: forms open next to this page from tablet portrait up, as their own page on phone
-const { inDrawer } = useEditDrawer();
+const { inDrawer } = provideEditDrawer((): boolean => !isDeviceRoute.value);
+const { confirmDiscard } = useDiscardGuard();
 
 const deviceId = computed(() => props.id);
 
@@ -545,6 +547,15 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => {
+	if (!showDrawer.value || !remoteFormChanged.value) {
+		return true;
+	}
+
+	return confirmDiscard();
+};
+
 const onCloseDrawer = (done?: () => void): void => {
 	if (remoteFormChanged.value) {
 		ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
@@ -595,7 +606,11 @@ const onCloseDrawer = (done?: () => void): void => {
 	}
 };
 
-const onDeviceEdit = (): void => {
+const onDeviceEdit = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_EDIT,
@@ -613,7 +628,11 @@ const onDeviceEdit = (): void => {
 	}
 };
 
-const onDeviceControl = (): void => {
+const onDeviceControl = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_CONTROL,
@@ -631,7 +650,11 @@ const onDeviceControl = (): void => {
 	}
 };
 
-const onChannelAdd = (): void => {
+const onChannelAdd = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_ADD_CHANNEL,
@@ -649,7 +672,11 @@ const onChannelAdd = (): void => {
 	}
 };
 
-const onChannelEdit = (id: IChannel['id']): void => {
+const onChannelEdit = async (id: IChannel['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_EDIT_CHANNEL,
@@ -673,7 +700,11 @@ const onChannelRemove = (id: IChannel['id']): void => {
 	channelsActions.remove(id);
 };
 
-const onPropertyAdd = (channelId: IChannel['id']): void => {
+const onPropertyAdd = async (channelId: IChannel['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_CHANNEL_ADD_PROPERTY,
@@ -693,7 +724,11 @@ const onPropertyAdd = (channelId: IChannel['id']): void => {
 	}
 };
 
-const onPropertyEdit = (channelId: IChannel['id'], id: IChannelProperty['id']): void => {
+const onPropertyEdit = async (channelId: IChannel['id'], id: IChannelProperty['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,

@@ -2,7 +2,7 @@
 import { computed, defineComponent, h, ref } from 'vue';
 import { type Router, RouterView, createMemoryHistory, createRouter } from 'vue-router';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 	useRealRouter: false,
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
+	confirmDiscard: vi.fn(() => Promise.resolve(true)),
 	routerResolve: vi.fn((route) => route),
 	fetchDevices: vi.fn(),
 	fetchValidation: vi.fn(),
@@ -89,7 +90,7 @@ vi.mock('../../../common', async () => {
 			isLGDevice: vueRef(mocks.isLGDevice),
 		}),
 		// The forms open in a drawer where a large screen used to have one; a page of their own otherwise
-		useEditDrawer: () => ({
+		provideEditDrawer: () => ({
 			inDrawer: vueRef(mocks.isLGDevice),
 			mode: vueRef(mocks.isLGDevice ? 'drawer' : 'page'),
 			drawerSize: vueRef('640px'),
@@ -117,6 +118,7 @@ vi.mock('../components/components', async () => {
 });
 
 vi.mock('../composables/composables', () => ({
+	useDiscardGuard: () => ({ confirmDiscard: mocks.confirmDiscard }),
 	useDevicesActions: () => ({
 		remove: vi.fn(),
 		bulkRemove: vi.fn(),
@@ -372,5 +374,57 @@ describe('ViewDevices', () => {
 		await button!.trigger('click');
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices-wizard-select' });
 		expect(wrapper.find('[data-test-id="virtual-device-wizard"]').exists()).toBe(false);
+	});
+
+	describe('next to an open form', () => {
+		const openForm = async (changed: boolean) => {
+			mocks.isLGDevice = true;
+			mocks.route = { path: '/devices/add', name: 'devices-add', meta: {}, matched: [{ name: 'devices-add' }] } as never;
+
+			const wrapper = mountView();
+
+			await flushPromises();
+
+			const vm = wrapper.vm as unknown as { remoteFormChanged: boolean; onDeviceEdit: (id: string) => Promise<void> };
+
+			vm.remoteFormChanged = changed;
+
+			return vm;
+		};
+
+		afterEach(() => {
+			mocks.isLGDevice = false;
+			mocks.route = { path: '/devices', name: 'devices', meta: {}, matched: [] } as never;
+		});
+
+		it('asks before Edit replaces a changed form, and stays when the answer is no', async () => {
+			mocks.confirmDiscard.mockResolvedValueOnce(false);
+
+			const vm = await openForm(true);
+
+			await vm.onDeviceEdit('device-id');
+
+			expect(mocks.confirmDiscard).toHaveBeenCalledTimes(1);
+			expect(mocks.routerReplace).not.toHaveBeenCalled();
+		});
+
+		it('replaces a changed form once the answer is yes', async () => {
+			mocks.confirmDiscard.mockResolvedValueOnce(true);
+
+			const vm = await openForm(true);
+
+			await vm.onDeviceEdit('device-id');
+
+			expect(mocks.routerReplace).toHaveBeenCalledWith(expect.objectContaining({ params: { id: 'device-id' } }));
+		});
+
+		it('replaces an untouched form without asking', async () => {
+			const vm = await openForm(false);
+
+			await vm.onDeviceEdit('device-id');
+
+			expect(mocks.confirmDiscard).not.toHaveBeenCalled();
+			expect(mocks.routerReplace).toHaveBeenCalled();
+		});
 	});
 });

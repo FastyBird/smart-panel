@@ -127,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
@@ -136,9 +136,24 @@ import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBreadcrumbs, EditDrawerLayout, EntityNotFound, ViewError, ViewHeader, useEditDrawer, useFlashMessage, useUuid } from '../../../common';
+import {
+	AppBreadcrumbs,
+	EditDrawerLayout,
+	EntityNotFound,
+	ViewError,
+	ViewHeader,
+	provideEditDrawer,
+	useFlashMessage,
+	useUuid,
+} from '../../../common';
 import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
-import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables/composables';
+import {
+	useChannel,
+	useChannelSpecification,
+	useChannelsPropertiesActions,
+	useChannelsPropertiesDataSource,
+	useDiscardGuard,
+} from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesApiException } from '../devices.exceptions';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
@@ -161,7 +176,8 @@ const flashMessage = useFlashMessage();
 const { validate: validateUuid } = useUuid();
 
 // Template 4: forms open next to this page from tablet portrait up, as their own page on phone
-const { inDrawer } = useEditDrawer();
+const { inDrawer } = provideEditDrawer((): boolean => !isChannelRoute.value || showDrawer.value);
+const { confirmDiscard } = useDiscardGuard();
 
 const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
 
@@ -214,6 +230,15 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 		];
 	}
 );
+
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => {
+	if (!showDrawer.value || !remoteFormChanged.value || adjustList.value) {
+		return true;
+	}
+
+	return confirmDiscard();
+};
 
 const onCloseDrawer = (done?: () => void): void => {
 	if (adjustList.value) {
@@ -272,7 +297,11 @@ const onCloseDrawer = (done?: () => void): void => {
 	}
 };
 
-const onChannelEdit = (): void => {
+const onChannelEdit = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNEL_EDIT,
@@ -290,7 +319,11 @@ const onChannelEdit = (): void => {
 	}
 };
 
-const onPropertyAdd = (): void => {
+const onPropertyAdd = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNEL_ADD_PROPERTY,
@@ -308,7 +341,11 @@ const onPropertyAdd = (): void => {
 	}
 };
 
-const onPropertyEdit = (id: IChannelProperty['id']): void => {
+const onPropertyEdit = async (id: IChannelProperty['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNEL_EDIT_PROPERTY,
@@ -348,7 +385,17 @@ const onClose = (): void => {
 	}
 };
 
-const onAdjustList = (): void => {
+const onAdjustList = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
+	// Leave an open editor's route first, so closing the adjustment does not leave the URL on a form nobody sees
+	if (showDrawer.value && !adjustList.value) {
+		await router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
+		await nextTick();
+	}
+
 	showDrawer.value = true;
 	adjustList.value = true;
 };
@@ -398,6 +445,9 @@ onMounted((): void => {
 watch(
 	(): string => route.path,
 	(): void => {
+		// An Add or Edit picked while the adjustment is open shows its form
+		adjustList.value = false;
+
 		showDrawer.value =
 			route.matched.find(
 				(matched) =>

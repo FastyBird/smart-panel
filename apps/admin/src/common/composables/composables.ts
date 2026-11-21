@@ -2,7 +2,7 @@ export { provideAppBarHost, useAppBarHost } from './useAppBarHost';
 export { useBackend } from './useBackend';
 export { useBreakpoints } from './useBreakpoints';
 export { useDarkMode } from './useDarkMode';
-export { EDIT_DRAWER_WIDTH, type EditDrawerMode, type IUseEditDrawer, useEditDrawer } from './useEditDrawer';
+export { EDIT_DRAWER_WIDTH, type EditDrawerMode, type IUseEditDrawer, provideEditDrawer, useEditDrawer } from './useEditDrawer';
 export { useEventBus } from './useEventBus';
 export { useFlashMessage } from './useFlashMessage';
 export { useLanguage } from './useLanguage';

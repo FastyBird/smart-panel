@@ -133,9 +133,9 @@ import { ElButton, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, useBreakpoints, useEditDrawer, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer, useBreakpoints, useFlashMessage } from '../../../common';
 import { ListDevices } from '../components/components';
-import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
+import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation, useDiscardGuard } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import type { IDevice } from '../store/devices.store.types';
@@ -159,7 +159,8 @@ useMeta({
 const { isMDDevice } = useBreakpoints();
 
 // Template 4: the add and edit forms open next to the list from tablet portrait up, as their own page on phone
-const { inDrawer } = useEditDrawer();
+const { inDrawer } = provideEditDrawer((): boolean => !isDevicesListRoute.value);
+const { confirmDiscard } = useDiscardGuard();
 
 const flashMessage = useFlashMessage();
 
@@ -209,6 +210,15 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => {
+	if (!showDrawer.value || !remoteFormChanged.value) {
+		return true;
+	}
+
+	return confirmDiscard();
+};
+
 const onCloseDrawer = (done?: () => void): void => {
 	if (remoteFormChanged.value) {
 		ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
@@ -247,7 +257,11 @@ const onCloseDrawer = (done?: () => void): void => {
 	}
 };
 
-const onDeviceDetail = (id: IDevice['id']): void => {
+const onDeviceDetail = async (id: IDevice['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	router.push({
 		name: RouteNames.DEVICE,
 		params: {
@@ -256,7 +270,11 @@ const onDeviceDetail = (id: IDevice['id']): void => {
 	});
 };
 
-const onDeviceEdit = (id: IDevice['id']): void => {
+const onDeviceEdit = async (id: IDevice['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICES_EDIT,
@@ -296,7 +314,11 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onDeviceCreate = (): void => {
+const onDeviceCreate = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICES_ADD,
@@ -313,7 +335,11 @@ const onSearch = (): void => {
 	list.value?.focusSearch();
 };
 
-const onWizard = (): void => {
+const onWizard = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	void router.push({ name: RouteNames.DEVICES_WIZARD_SELECT });
 };
 

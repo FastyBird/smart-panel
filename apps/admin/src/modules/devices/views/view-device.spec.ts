@@ -53,7 +53,7 @@ vi.mock('../../../common', async () => {
 		ViewError: stub,
 		EditDrawerLayout: stub,
 		ViewHeader: stub,
-		useEditDrawer: () => ({ inDrawer: vueRef(false), mode: vueRef('page'), drawerSize: vueRef('640px') }),
+		provideEditDrawer: () => ({ inDrawer: vueRef(false), mode: vueRef('page'), drawerSize: vueRef('640px') }),
 		useFlashMessage: () => ({ error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
 		useUuid: () => ({ validate: () => true }),
 	};
@@ -84,6 +84,7 @@ vi.mock('../../../plugins/devices-virtual/components/components', async () => {
 vi.mock('../../config', () => ({ useConfigPlugins: () => ({ enabled: () => false }) }));
 vi.mock('../devices.mapping', () => ({ deviceChannelsSpecificationOrder: {} }));
 vi.mock('../composables/composables', async () => ({
+	useDiscardGuard: () => ({ confirmDiscard: () => Promise.resolve(true) }),
 	useDevicesPlugins: (await import('../composables/useDevicesPlugins')).useDevicesPlugins,
 	useDeviceCategorySections: () => ref(mocks.sections),
 	useDevice: () => ({ device: mocks.device, isLoading: ref(false), fetchDevice: mocks.fetch }),

@@ -97,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
@@ -106,9 +106,9 @@ import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, useEditDrawer } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer } from '../../../common';
 import { ListChannels, ListChannelsAdjust } from '../components/components';
-import { useChannelsActions, useChannelsDataSource } from '../composables/composables';
+import { useChannelsActions, useChannelsDataSource, useDiscardGuard } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import type { IChannel } from '../store/channels.store.types';
@@ -130,7 +130,8 @@ useMeta({
 });
 
 // Template 4: forms open next to this page from tablet portrait up, as their own page on phone
-const { inDrawer } = useEditDrawer();
+const { inDrawer } = provideEditDrawer((): boolean => !isChannelsListRoute.value || showDrawer.value);
+const { confirmDiscard } = useDiscardGuard();
 
 const {
 	fetchChannels,
@@ -169,6 +170,15 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 		];
 	}
 );
+
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => {
+	if (!showDrawer.value || !remoteFormChanged.value || adjustList.value) {
+		return true;
+	}
+
+	return confirmDiscard();
+};
 
 const onCloseDrawer = (done?: () => void): void => {
 	if (adjustList.value) {
@@ -215,7 +225,11 @@ const onCloseDrawer = (done?: () => void): void => {
 	}
 };
 
-const onChannelDetail = (id: IChannel['id']): void => {
+const onChannelDetail = async (id: IChannel['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	router.push({
 		name: RouteNames.CHANNEL,
 		params: {
@@ -224,7 +238,11 @@ const onChannelDetail = (id: IChannel['id']): void => {
 	});
 };
 
-const onChannelEdit = (id: IChannel['id']): void => {
+const onChannelEdit = async (id: IChannel['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNELS_EDIT,
@@ -250,7 +268,11 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onChannelCreate = (): void => {
+const onChannelCreate = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNELS_ADD,
@@ -262,7 +284,17 @@ const onChannelCreate = (): void => {
 	}
 };
 
-const onAdjustList = (): void => {
+const onAdjustList = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
+	// Leave an open editor's route first, so closing the adjustment does not leave the URL on a form nobody sees
+	if (showDrawer.value && !adjustList.value) {
+		await router.replace({ name: RouteNames.CHANNELS });
+		await nextTick();
+	}
+
 	showDrawer.value = true;
 	adjustList.value = true;
 };
@@ -285,6 +317,9 @@ onMounted((): void => {
 watch(
 	(): string => route.path,
 	(): void => {
+		// An Add or Edit picked while the adjustment is open shows its form
+		adjustList.value = false;
+
 		showDrawer.value =
 			route.matched.find((matched) => matched.name === RouteNames.CHANNELS_ADD || matched.name === RouteNames.CHANNELS_EDIT) !== undefined;
 	}
