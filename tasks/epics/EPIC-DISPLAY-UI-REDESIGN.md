@@ -5,7 +5,7 @@ Type: epic
 Scope: panel
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 Created: 2026-11-21
 GitHub: #1710 (milestone: Display UI redesign)
 
@@ -76,7 +76,7 @@ behaviour in `display-app-design-spec.md`, and updates all six locales.
 
 | ID | Issue | Phase | Task | Depends on | Status |
 |---|---|---|---|---|---|
-| DR-1 | #1711 | 1 | `feat(panel): adopt the redesign colour tokens and fonts` | — | open |
+| DR-1 | #1711 | 1 | `feat(panel): adopt the redesign colour tokens and fonts` | — | in review |
 | DR-2 | #1712 | 1 | `feat(panel): derive density from pixel density and size classes from the effective canvas` | — | open |
 | DR-3 | #1713 | 1 | `feat(panel): add the accent palettes and the accent picker` | DR-1 | open |
 | DR-4 | #1714 | 1 | `chore(panel): add the design system checks and a component gallery` | DR-1 | open |

@@ -458,7 +458,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 	}
 
 	ThemeColors _getThemeColor() =>
-		_device.isProjectorOn ? ThemeColors.primary : ThemeColors.neutral;
+		_device.isProjectorOn ? ThemeColors.media : ThemeColors.neutral;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -536,13 +536,13 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 						),
 						HeaderMainIcon(
 							icon: iconData,
-							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+							color: isOn ? ThemeColors.media : ThemeColors.neutral,
 						),
 					],
 				)
 				: HeaderMainIcon(
 					icon: iconData,
-					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+					color: isOn ? ThemeColors.media : ThemeColors.neutral,
 				),
 			trailing: buildCombinedTrailing(
 				config: widget.config,
@@ -559,7 +559,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 						HeaderIconButton(
 							icon: MdiIcons.power,
 							onTap: _togglePower,
-							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+							color: isOn ? ThemeColors.media : ThemeColors.neutral,
 						),
 					],
 				),

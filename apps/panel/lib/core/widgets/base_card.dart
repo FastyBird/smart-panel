@@ -17,11 +17,11 @@ class BaseCard extends StatelessWidget {
   final double? height;
 
   /// Optional card background color. When null, uses the default
-  /// (AppFillColorLight.light / AppFillColorDark.lighter).
+  /// (`surface.card`: AppBgColorLight.base / AppBgColorDark.base).
   final Color? color;
 
   /// Optional card border color. When null, uses the default
-  /// (AppBorderColorLight.darker / AppBorderColorDark.light).
+  /// (`border.light`: AppBorderColorLight.light / AppBorderColorDark.light).
   final Color? borderColor;
 
   final double? borderWidth;
@@ -70,10 +70,10 @@ class BaseCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final resolvedColor =
-        color ?? (isDark ? AppFillColorDark.light : AppFillColorLight.blank);
+        color ?? (isDark ? AppBgColorDark.base : AppBgColorLight.base);
     final resolvedBorderColor = borderColor ??
         (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
-    final finalBorderWidth = borderWidth ?? (isDark ? null : AppSpacings.scale(1));
+    final finalBorderWidth = borderWidth ?? AppSpacings.scale(1);
 
     final resolvedPadding = padding ?? AppSpacings.paddingMd;
 
@@ -85,7 +85,7 @@ class BaseCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: resolvedColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: finalBorderWidth != null && finalBorderWidth > 0 ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
+          border: finalBorderWidth > 0 ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
         ),
         child: child,
       );
@@ -99,7 +99,7 @@ class BaseCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: resolvedColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: finalBorderWidth != null && finalBorderWidth > 0 ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
+        border: finalBorderWidth > 0 ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
       ),
       child: Column(
         mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,

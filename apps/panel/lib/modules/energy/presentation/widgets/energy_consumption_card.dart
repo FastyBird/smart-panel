@@ -137,7 +137,7 @@ class EnergyConsumptionCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: fontSize,
                               fontWeight: FontWeight.w200,
-                              fontFamily: 'DIN1451',
+                              fontFamily: AppNumeralFont.family,
                               color: textColor,
                               height: 0.7,
                             ),

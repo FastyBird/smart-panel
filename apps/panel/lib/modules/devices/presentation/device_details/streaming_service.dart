@@ -136,7 +136,7 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 		return localizations.on_state_on;
 	}
 
-	ThemeColors _getThemeColor() => ThemeColors.primary;
+	ThemeColors _getThemeColor() => ThemeColors.media;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -207,13 +207,13 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 						),
 						HeaderMainIcon(
 							icon: iconData,
-							color: ThemeColors.primary,
+							color: ThemeColors.media,
 						),
 					],
 				)
 				: HeaderMainIcon(
 					icon: iconData,
-					color: ThemeColors.primary,
+					color: ThemeColors.media,
 				),
 			trailing: widget.config?.trailing,
 		);

@@ -27,7 +27,7 @@ class TimeTileWidget extends TileWidget<TimeTileView> {
                       Text(
                         DatetimeUtils.getFormattedTime(now),
                         style: TextStyle(
-                          fontFamily: 'DIN1451',
+                          fontFamily: AppNumeralFont.family,
                           fontSize: AppSpacings.scale(90),
                           color:
                               Theme.of(context).brightness == Brightness.light
@@ -40,7 +40,7 @@ class TimeTileWidget extends TileWidget<TimeTileView> {
                       Text(
                         DatetimeUtils.getFormattedDate(now),
                         style: TextStyle(
-                          fontFamily: 'DIN1451',
+                          fontFamily: AppNumeralFont.family,
                           fontSize: AppSpacings.scale(25),
                           color:
                               Theme.of(context).brightness == Brightness.light

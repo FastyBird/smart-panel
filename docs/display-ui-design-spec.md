@@ -44,8 +44,8 @@
   not used on screens.
 - **Short labels, details behind a tap.** Every status is a short label from §8; anything longer goes behind
   "Details".
-- **Flat and cheap.** Light mode uses a 1 px border on cards and one soft shadow on sheets; dark mode uses surface
-  steps only. No blur anywhere. At most one translucent layer on screen (the weather card on the sky).
+- **Flat and cheap.** Cards have a 1 px `border.light` outline in both themes; light mode adds one soft shadow on
+  sheets and overlays, dark mode uses surface steps instead. No blur anywhere. At most one translucent layer on screen (the weather card on the sky).
 - **No keyboard for everyday control.** Numbers are set with sliders, dials, steppers or presets.
 - **Security actions are deliberate.** Disarm and unlock always need a code or a confirmation.
 
@@ -66,9 +66,12 @@ These replace the 12-family, 7-step palette in `theme.dart`. Light and dark valu
 | `border.light` | `#e8eaee` | `#2a2c30` | Card outline |
 | `text.primary` | `#1b1f26` | `#e9eaec` | Values, titles, numerals |
 | `text.secondary` | `#5b6270` | `#a2a7af` | Live-state line, units |
-| `text.muted` | `#6e7581` | `#8a9099` | Captions, timestamps; the smallest grey that passes AA |
+| `text.muted` | `#6e7581` | `#8a9099` | Captions, timestamps, on cards and raised surfaces only (4.2:1 on the light page); the smallest grey that passes AA there |
 | `text.disabled` | `#8b919b` | `#6b7079` | Disabled, read-only and offline labels, always with an icon |
 | `brand.app` | `#d9230f` | `#d9230f` | Logo, wordmark and the loading spinner only |
+
+Text placed directly on `surface.page` uses `text.secondary` or darker. Ok text on its light soft tint is 4.499:1,
+AA only after rounding; prefer `text.primary` on an ok soft tile.
 
 Dark mode is built for a dark room, not inverted: surfaces step up in lightness with elevation (page, card, raised),
 cards get a hairline border instead of a shadow, and every status and domain colour switches to its lighter text
@@ -186,7 +189,7 @@ the clock and hero numerals need. It is the face the canvas uses. DIN 1451 is re
 |---|---|---|
 | Spacing | 2, 4, 6, 8, 12, 16, 24, 32 | Adds 6, 12 and 24 to today's scale. Page padding and gaps: **6** Compact, **8** Regular, **12** Expanded. |
 | Radius | 4, 6, 8, 12, pill | 4 badges · 6 buttons inside a card and icon tiles · 8 cards, tiles, chips, controls · 12 dock, sheets, drawers, overlays · pill scene and status pills. Cards move from 6 to 8. |
-| Elevation | border, one shadow | Light: 1 px `border.light` on cards, one soft shadow on sheets and overlays. Dark: surface steps only. |
+| Elevation | border, one shadow | Cards: 1 px `border.light` in both themes, no shadow. Sheets and overlays: one soft shadow in light, surface steps in dark. |
 | Motion | 100, 200, 300 ms | Unchanged. Fades for routes; adjacent deck pages slide. |
 
 ## 4. Size system

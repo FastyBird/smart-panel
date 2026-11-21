@@ -135,10 +135,10 @@ class AlertBanner extends StatelessWidget {
       ThemeColors.primary => isLight
           ? AppFilledButtonsLightThemes.primary
           : AppFilledButtonsDarkThemes.primary,
-      ThemeColors.success => isLight
+      ThemeColors.success || ThemeColors.energy => isLight
           ? AppFilledButtonsLightThemes.success
           : AppFilledButtonsDarkThemes.success,
-      ThemeColors.warning => isLight
+      ThemeColors.warning || ThemeColors.lights => isLight
           ? AppFilledButtonsLightThemes.warning
           : AppFilledButtonsDarkThemes.warning,
       ThemeColors.danger => isLight
@@ -147,7 +147,7 @@ class AlertBanner extends StatelessWidget {
       ThemeColors.error => isLight
           ? AppFilledButtonsLightThemes.error
           : AppFilledButtonsDarkThemes.error,
-      ThemeColors.info => isLight
+      ThemeColors.info || ThemeColors.climate => isLight
           ? AppFilledButtonsLightThemes.info
           : AppFilledButtonsDarkThemes.info,
       ThemeColors.neutral => isLight
@@ -156,16 +156,16 @@ class AlertBanner extends StatelessWidget {
       ThemeColors.flutter => isLight
           ? AppFilledButtonsLightThemes.flutter
           : AppFilledButtonsDarkThemes.flutter,
-      ThemeColors.teal => isLight
+      ThemeColors.teal || ThemeColors.shading => isLight
           ? AppFilledButtonsLightThemes.teal
           : AppFilledButtonsDarkThemes.teal,
-      ThemeColors.cyan => isLight
+      ThemeColors.cyan || ThemeColors.sensors => isLight
           ? AppFilledButtonsLightThemes.cyan
           : AppFilledButtonsDarkThemes.cyan,
-      ThemeColors.pink => isLight
+      ThemeColors.pink || ThemeColors.media => isLight
           ? AppFilledButtonsLightThemes.pink
           : AppFilledButtonsDarkThemes.pink,
-      ThemeColors.indigo => isLight
+      ThemeColors.indigo || ThemeColors.cameras => isLight
           ? AppFilledButtonsLightThemes.indigo
           : AppFilledButtonsDarkThemes.indigo,
     };

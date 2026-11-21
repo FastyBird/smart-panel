@@ -45,7 +45,7 @@ class WeatherForecastDayDataSourceWidget
         Text(
           value,
           style: TextStyle(
-            fontFamily: 'DIN1451',
+            fontFamily: AppNumeralFont.family,
             fontSize: AppFontSize.small,
           ),
         ),
@@ -59,7 +59,7 @@ class WeatherForecastDayDataSourceWidget
           Text(
             unit,
             style: TextStyle(
-              fontFamily: 'DIN1451',
+              fontFamily: AppNumeralFont.family,
               fontSize: AppFontSize.small,
             ),
           ),
@@ -208,7 +208,7 @@ class WeatherForecastDayDataSourceWidget
         Text(
           localizations.value_loading,
           style: TextStyle(
-            fontFamily: 'DIN1451',
+            fontFamily: AppNumeralFont.family,
             fontSize: AppFontSize.small,
           ),
         ),

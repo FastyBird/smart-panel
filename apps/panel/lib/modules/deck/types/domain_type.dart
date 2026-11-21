@@ -87,17 +87,17 @@ extension DomainTypeUI on DomainType {
   ThemeColors get themeColor {
     switch (this) {
       case DomainType.lights:
-        return ThemeColors.warning;
+        return ThemeColors.lights;
       case DomainType.climate:
-        return ThemeColors.info;
+        return ThemeColors.climate;
       case DomainType.shading:
-        return ThemeColors.teal;
+        return ThemeColors.shading;
       case DomainType.media:
-        return ThemeColors.danger;
+        return ThemeColors.media;
       case DomainType.sensors:
-        return ThemeColors.cyan;
+        return ThemeColors.sensors;
       case DomainType.energy:
-        return ThemeColors.success;
+        return ThemeColors.energy;
     }
   }
 
