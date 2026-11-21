@@ -163,6 +163,26 @@ describe('WizardShell.vue', () => {
 		expect(steps(wrapper).map((item) => item.attributes('tabindex'))).toEqual(['-1', '-1', '0', '-1']);
 	});
 
+	it('keeps a Tab stop when the focused step is removed', async () => {
+		wrapper = render({ current: 'select' });
+
+		(steps(wrapper)[1].element as HTMLElement).focus();
+		await steps(wrapper)[1].trigger('keydown', { key: 'End' });
+
+		expect(steps(wrapper).map((item) => item.attributes('tabindex'))).toEqual(['-1', '-1', '-1', '0']);
+
+		await wrapper.setProps({ steps: STEPS.slice(0, 3) });
+
+		expect(steps(wrapper).map((item) => item.attributes('tabindex'))).toEqual(['-1', '0', '-1']);
+	});
+
+	it('lets the footer wrap instead of clipping at phone width', () => {
+		wrapper = render();
+
+		expect(find(wrapper, 'footer').classes()).toEqual(expect.arrayContaining(['flex-wrap', 'min-h-16']));
+		expect(find(wrapper, 'footer').classes()).not.toContain('h-16');
+	});
+
 	it('orders the footer Cancel, selection count, Skip, Back, Next', () => {
 		wrapper = render({ selectedCount: 4, skippable: true });
 

@@ -83,7 +83,7 @@
 			</template>
 
 			<el-button
-				v-if="hasDrawer"
+				v-if="hasDrawer()"
 				data-test-id="list-filter-bar-filters"
 				@click="drawerOpen = true"
 			>
@@ -140,7 +140,7 @@
 		</transition>
 
 		<el-drawer
-			v-if="hasDrawer"
+			v-if="hasDrawer()"
 			v-model="drawerOpen"
 			:title="t('application.listFilterBar.filters')"
 			:size="isPhone ? '100%' : '320px'"
@@ -170,6 +170,11 @@
 							data-test-id="list-filter-bar-drawer-quick-filter"
 							@update:model-value="(value: string | null | undefined) => emit('quick-filter', filter.id, value ? value : null)"
 						>
+							<!-- The clear icon only takes a click, so All is an option a keyboard can choose -->
+							<el-option
+								:label="t('application.listFilterBar.all')"
+								value=""
+							/>
 							<el-option
 								v-for="option in filter.options"
 								:key="option.value"
@@ -206,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useSlots, watch } from 'vue';
+import { computed, onBeforeUpdate, ref, useSlots } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElDivider, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElInput, ElOption, ElSelect } from 'element-plus';
@@ -247,8 +252,10 @@ const drawerOpen = ref<boolean>(false);
 // The design allows three quick filters in the bar; more would push the search off a 1280 px row
 const quickFilters = computed<ListFilterBarQuickFilter[]>(() => props.quickFilters.slice(0, 3));
 
-// Below desktop the quick filters move into the drawer, so the drawer is needed even without a `filters` slot
-const hasDrawer = computed<boolean>(() => !!slots.filters || (!isDesktop.value && quickFilters.value.length > 0));
+// Below desktop the quick filters move into the drawer, so the drawer is needed even without a `filters` slot. A plain
+// function, not a computed: `slots` is not reactive, so a parent adding `<template v-if="…" #filters>` after mount
+// would leave a cached value stale
+const hasDrawer = (): boolean => !!slots.filters || (!isDesktop.value && quickFilters.value.length > 0);
 
 const activeCount = computed<number>(() => Math.max(0, props.activeCount));
 
@@ -265,9 +272,10 @@ const onSearch = (value: string | number): void => {
 	emit('update:search', String(value ?? ''));
 };
 
-// A drawer left open while the window grows to desktop would hold quick filters that are now in the bar
-watch(hasDrawer, (value) => {
-	if (!value) {
+// A drawer that goes away while open (the window grows to desktop, or the parent drops its `filters` slot) must not
+// come back open later. Slots are already updated when this runs, and every size-class change re-renders
+onBeforeUpdate(() => {
+	if (drawerOpen.value && !hasDrawer()) {
 		drawerOpen.value = false;
 	}
 });

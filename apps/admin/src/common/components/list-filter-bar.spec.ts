@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, defineComponent, nextTick, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -75,7 +75,7 @@ const render = (props: ListFilterBarProps = {}, slots: Record<string, string> = 
 				ElSelect: {
 					props: ['modelValue'],
 					emits: ['update:modelValue'],
-					template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option value="" /><slot /></select>',
+					template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
 				},
 				ElOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
 			},
@@ -168,6 +168,43 @@ describe('ListFilterBar.vue', () => {
 		expect(find(wrapper, 'drawer').exists()).toBe(false);
 	});
 
+	it('follows a filters slot the parent adds or drops after mount', async () => {
+		const show = ref(false);
+
+		const Parent = defineComponent({
+			components: { ListFilterBar },
+			setup: () => ({ show }),
+			template: '<list-filter-bar><template v-if="show" #filters><div data-test-id="extra-filters" /></template></list-filter-bar>',
+		});
+
+		const wrapper = mount(Parent, {
+			global: {
+				plugins: [i18n],
+				stubs: { ElDrawer: { props: ['modelValue'], template: '<div v-if="modelValue" data-test-id="drawer-body"><slot /></div>' } },
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="list-filter-bar-filters"]').exists()).toBe(false);
+
+		show.value = true;
+		await nextTick();
+
+		await wrapper.find('[data-test-id="list-filter-bar-filters"]').trigger('click');
+
+		expect(wrapper.find('[data-test-id="extra-filters"]').exists()).toBe(true);
+
+		show.value = false;
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="list-filter-bar-filters"]').exists()).toBe(false);
+
+		show.value = true;
+		await nextTick();
+
+		// It comes back closed
+		expect(wrapper.find('[data-test-id="drawer-body"]').exists()).toBe(false);
+	});
+
 	it('has no Filters button on desktop without a filters slot', () => {
 		const wrapper = render({ quickFilters: QUICK_FILTERS });
 
@@ -188,6 +225,7 @@ describe('ListFilterBar.vue', () => {
 		const selects = wrapper.findAll('[data-test-id="list-filter-bar-drawer-quick-filter"]');
 
 		expect(selects).toHaveLength(2);
+		expect(selects[0].findAll('option').map((option) => option.text())).toEqual(['All', 'Shelly', 'Zigbee2MQTT']);
 		expect((selects[1].element as HTMLSelectElement).value).toBe('offline');
 
 		await selects[0].setValue('shelly');

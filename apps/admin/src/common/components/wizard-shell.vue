@@ -108,7 +108,7 @@
 
 		<div
 			:style="keyboardOffset > 0 ? { transform: `translateY(-${keyboardOffset}px)` } : undefined"
-			class="sticky bottom-0 z-10 mt-auto flex items-center gap-2 h-16 px-3 tp:px-6 shrink-0 border-t border-t-solid border-light shadow-top bg-surface"
+			class="sticky bottom-0 z-10 mt-auto flex flex-wrap items-center gap-2 min-h-16 py-3 px-3 tp:px-6 shrink-0 border-t border-t-solid border-light shadow-top bg-surface"
 			data-test-id="wizard-shell-footer"
 		>
 			<el-button
@@ -245,6 +245,17 @@ onBeforeUpdate(() => {
 watch(currentIndex, (index) => {
 	focusIndex.value = index;
 });
+
+// Steps can change under the stepper (a wizard drops a step it no longer needs). A Tab stop on a step that is gone
+// would leave the stepper unreachable, so it returns to the current step
+watch(
+	() => props.steps.length,
+	(length) => {
+		if (focusIndex.value >= length) {
+			focusIndex.value = currentIndex.value;
+		}
+	}
+);
 
 const moveFocus = (index: number): void => {
 	const count = props.steps.length;
