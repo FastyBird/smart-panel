@@ -69,6 +69,11 @@
 			"back": "Back",
 			"close": "Close"
 		},
+		"testConnection": {
+			"button": "Test connection",
+			"running": "Testing…",
+			"failed": "The connection test failed."
+		},
 		"wizardShell": {
 			"steps": "Wizard steps",
 			"progress": "Step {current} of {total} · {label}",

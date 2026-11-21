@@ -69,6 +69,11 @@
 			"back": "Zurück",
 			"close": "Schließen"
 		},
+		"testConnection": {
+			"button": "Verbindung testen",
+			"running": "Wird getestet…",
+			"failed": "Der Verbindungstest ist fehlgeschlagen."
+		},
 		"wizardShell": {
 			"steps": "Assistentenschritte",
 			"progress": "Schritt {current} von {total} · {label}",

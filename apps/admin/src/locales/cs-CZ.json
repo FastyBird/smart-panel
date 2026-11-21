@@ -69,6 +69,11 @@
 			"back": "Zpět",
 			"close": "Zavřít"
 		},
+		"testConnection": {
+			"button": "Otestovat připojení",
+			"running": "Testuji…",
+			"failed": "Test připojení selhal."
+		},
 		"wizardShell": {
 			"steps": "Kroky průvodce",
 			"progress": "Krok {current} z {total} · {label}",

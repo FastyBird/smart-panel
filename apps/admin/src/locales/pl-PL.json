@@ -69,6 +69,11 @@
 			"back": "Wstecz",
 			"close": "Zamknij"
 		},
+		"testConnection": {
+			"button": "Testuj połączenie",
+			"running": "Testowanie…",
+			"failed": "Test połączenia nie powiódł się."
+		},
 		"wizardShell": {
 			"steps": "Kroki kreatora",
 			"progress": "Krok {current} z {total} · {label}",
