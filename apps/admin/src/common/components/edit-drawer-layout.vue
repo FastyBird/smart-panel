@@ -1,7 +1,7 @@
 <template>
 	<!-- Template 4: the add and edit form over its list. A 640 px drawer from tablet landscape (full width on tablet
 	     portrait); docked beside the list on wide, without a scrim. On phone the form is its own route, so this
-	     renders only the list -->
+	     renders only the list, except for a panel without a route (list adjustment), which takes a full-width drawer -->
 	<div
 		class="flex gap-4 flex-1 min-h-0"
 		data-test-id="edit-drawer-layout"
@@ -22,7 +22,7 @@
 		</aside>
 
 		<el-drawer
-			v-if="editDrawer.mode.value === 'drawer'"
+			v-if="editDrawer.mode.value === 'drawer' || (editDrawer.mode.value === 'page' && props.routeless)"
 			:model-value="props.open"
 			:show-close="false"
 			:size="editDrawer.drawerSize.value"
@@ -54,6 +54,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<EditDrawerLayoutProps>(), {
 	beforeClose: undefined,
+	routeless: false,
 });
 
 const emit = defineEmits<{

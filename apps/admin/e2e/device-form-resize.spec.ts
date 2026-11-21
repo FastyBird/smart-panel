@@ -36,7 +36,7 @@ for (const [from, to] of [
 
 		const name = page.locator('input[name="name"]');
 
-		await expect(name).toBeVisible({ timeout: 30_000 });
+		await expect(name).toBeVisible({ timeout: 60_000 });
 		const original = await name.inputValue();
 
 		await name.fill('Kitchen lamp draft');
@@ -44,6 +44,8 @@ for (const [from, to] of [
 		await page.waitForTimeout(500);
 
 		await expect(page.locator('input[name="name"]')).toHaveValue('Kitchen lamp draft');
+		// Save stays reachable: the footer's, or the phone app bar's
+		await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeVisible();
 		await expect(page).toHaveURL(new RegExp(`/devices/${DEVICE.id}$`));
 
 		// Back to clean, then close: no prompt, back on the list

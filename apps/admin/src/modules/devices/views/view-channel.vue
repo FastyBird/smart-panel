@@ -59,6 +59,7 @@
 	>
 		<edit-drawer-layout
 			:open="showDrawer"
+			:routeless="adjustList"
 			:before-close="onCloseDrawer"
 			@close="onCloseDrawer()"
 		>
@@ -98,7 +99,7 @@
 
 						<suspense>
 							<router-view
-								:key="props.id"
+								:key="route.path"
 								v-slot="{ Component }"
 							>
 								<component
@@ -116,7 +117,7 @@
 
 	<router-view
 		v-else
-		:key="props.id"
+		:key="route.path"
 		v-slot="{ Component }"
 	>
 		<component
@@ -374,7 +375,11 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onClose = (): void => {
+const onClose = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNELS,

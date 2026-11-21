@@ -43,8 +43,9 @@
 			/>
 		</el-scrollbar>
 
+		<!-- Wherever the phone app bar is not there to carry Save: in a drawer, and on a page kept open past 720 px -->
 		<form-footer
-			v-if="inDrawer"
+			v-if="inDrawer || !isPhone"
 			:dirty="remoteFormChanged"
 			:saving="remoteFormResult === FormResult.WORKING"
 			@discard="onDiscard"
@@ -102,6 +103,7 @@ import {
 	ViewHeader,
 	useEditDrawer,
 	useFlashMessage,
+	useSizeClass,
 	useUuid,
 } from '../../../common';
 import { ChannelPropertyAddForm } from '../components/components';
@@ -135,6 +137,7 @@ const { generate: uuidGenerate, validate: validateUuid } = useUuid();
 
 // Template 4: the form sits in a drawer from tablet portrait up and is its own page on phone
 const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const newPropertyId = uuidGenerate();
 

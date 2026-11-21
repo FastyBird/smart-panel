@@ -89,6 +89,15 @@ describe('EditDrawerLayout.vue', () => {
 		expect(wrapper.find('[data-test-id="form"]').exists()).toBe(false);
 	});
 
+	it('opens a panel without a route of its own in a full-width drawer on phone', () => {
+		sizeClass.value = 'phone';
+
+		const wrapper = render({ open: true, routeless: true });
+
+		expect(wrapper.find('[data-test-id="edit-drawer"]').attributes('data-size')).toBe('100%');
+		expect(wrapper.find('[data-test-id="edit-drawer"] [data-test-id="form"]').exists()).toBe(true);
+	});
+
 	it('shows no form while closed', () => {
 		sizeClass.value = 'wd';
 

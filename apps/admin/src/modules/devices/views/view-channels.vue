@@ -32,6 +32,7 @@
 	>
 		<edit-drawer-layout
 			:open="showDrawer"
+			:routeless="adjustList"
 			:before-close="onCloseDrawer"
 			@close="onCloseDrawer()"
 		>

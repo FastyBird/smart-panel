@@ -326,7 +326,7 @@
 
 						<suspense>
 							<router-view
-								:key="`${props.id}-${device?.id}`"
+								:key="`${route.path}-${device?.id}`"
 								v-slot="{ Component }"
 							>
 								<component
@@ -344,7 +344,7 @@
 
 	<router-view
 		v-else
-		:key="`${props.id}-${device?.id}`"
+		:key="`${route.path}-${device?.id}`"
 		v-slot="{ Component }"
 	>
 		<component
@@ -755,7 +755,11 @@ const onPropertyRemove = (_channelId: IChannel['id'], id: IChannelProperty['id']
 	channelsPropertiesActions.remove(id);
 };
 
-const onClose = (): void => {
+const onClose = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICES,
