@@ -9,7 +9,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import enUS from '../../locales/en-US.json';
 import type { SizeClass } from '../composables/types';
-import { type IAppBarHeading, type IAppBarHost, provideAppBarHost } from '../composables/useAppBarHost';
+import { type AppBarHostKind, type IAppBarHeading, type IAppBarHost, provideAppBarHost } from '../composables/useAppBarHost';
 
 import type { ViewHeaderProps } from './view-header.types';
 import ViewHeader from './view-header.vue';
@@ -38,12 +38,17 @@ const router = createRouter({
 });
 
 // Mounts the header under an app bar host that is active on phone only, as the layout's is
-const render = (props: ViewHeaderProps, slots: Record<string, string> = {}, active: () => boolean = () => sizeClass.value === 'phone') => {
+const render = (
+	props: ViewHeaderProps,
+	slots: Record<string, string> = {},
+	active: () => boolean = () => sizeClass.value === 'phone',
+	kind: AppBarHostKind = 'layout'
+) => {
 	let host: IAppBarHost | null = null;
 
 	const Host = defineComponent({
 		setup() {
-			host = provideAppBarHost(active);
+			host = provideAppBarHost(active, kind);
 
 			return () => h(ViewHeader, props, Object.fromEntries(Object.entries(slots).map(([name, html]) => [name, () => h('div', { innerHTML: html })])));
 		},
@@ -150,17 +155,45 @@ describe('ViewHeader.vue', () => {
 		expect(push).toHaveBeenCalledWith({ name: 'devices' });
 	});
 
-	it('hands a drawer bar only its title, as the drawer has its own close and footer', async () => {
+	it.each<SizeClass>(['phone', 'dt'])('hands a drawer bar only its title at %s width, as the drawer has its own close and footer', async (size) => {
+		sizeClass.value = size;
+
 		const { wrapper, heading } = render(
 			{ title: 'Filters', subtitle: 'Narrow the list', primary: { label: 'Save', handler: vi.fn() }, onBack: vi.fn() },
-			{},
-			() => true
+			{ actions: '<button data-test-id="apply">Apply</button>' },
+			() => true,
+			'drawer'
 		);
 
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="view-header"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="view-header-actions"]').exists()).toBe(false);
 		expect(heading()).toMatchObject({ title: 'Filters', subtitle: 'Narrow the list', left: null, actions: [], primary: undefined });
+	});
+
+	it('keeps the actions slot as a row under the phone bar when it hands the bar no actions', async () => {
+		sizeClass.value = 'phone';
+
+		const { wrapper } = render({ title: 'Displays' }, { actions: '<button data-test-id="permit-join">Permit join</button>' });
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="view-header"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="view-header-actions"] [data-test-id="permit-join"]').exists()).toBe(true);
+	});
+
+	it('leaves the actions slot to larger screens when the phone bar has actions of its own', async () => {
+		sizeClass.value = 'phone';
+
+		const { wrapper } = render(
+			{ title: 'Devices', actions: [{ icon: 'mdi:plus', label: 'Add device', handler: vi.fn() }] },
+			{ actions: '<button data-test-id="add">Add device</button>' }
+		);
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="view-header-actions"]').exists()).toBe(false);
 	});
 
 	it('follows changes to its title in the app bar', async () => {

@@ -61,7 +61,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 // A drawer is its own app bar host: the view headers inside it always draw into this bar, at every size
-const { heading } = provideAppBarHost(() => true);
+const { heading } = provideAppBarHost(() => true, 'drawer');
 </script>
 
 <style scoped>

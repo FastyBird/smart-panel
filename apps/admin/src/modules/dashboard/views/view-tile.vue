@@ -7,6 +7,7 @@
 		:subtitle="t('dashboardModule.subHeadings.tiles.detail')"
 		icon="mdi:widget-tree"
 		:actions="[{ icon: 'mdi:plus', label: t('dashboardModule.buttons.add.title'), handler: onDataSourceAdd }]"
+		@back="() => router.back()"
 	>
 		<template #actions>
 			<div class="flex items-center">

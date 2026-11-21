@@ -5,6 +5,7 @@
 		:title="t('devicesModbusPlugin.endpoints.title')"
 		:subtitle="t('devicesModbusPlugin.endpoints.subtitle')"
 		icon="mdi:lan-connect"
+		@back="() => router.back()"
 	>
 		<template #actions>
 			<el-button

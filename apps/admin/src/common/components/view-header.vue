@@ -71,6 +71,14 @@
 			<slot name="actions" />
 		</div>
 	</div>
+
+	<div
+		v-else-if="showsActionsRow && 'actions' in $slots"
+		class="flex flex-wrap items-center gap-2 px-2 pt-2"
+		data-test-id="view-header-actions"
+	>
+		<slot name="actions" />
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -125,16 +133,22 @@ const onLeft = (): void => {
 	}
 };
 
-// Left button, actions and the primary button belong to the phone bar. A drawer's bar shows only the title (and its
-// own Close), as the screen's footer carries Save there
+// Left button, actions and the primary button belong to the phone bar of the page. A drawer's bar shows only the
+// title (and its own Close) at every size, as the drawer's footer carries Save
+const inPhoneBar = computed<boolean>(() => host?.kind === 'layout' && isPhone.value);
+
+// The phone bar takes icon actions or one primary button, not arbitrary controls. A screen that hands it neither keeps
+// its `actions` slot as a row under the bar, so no control is lost on phone
+const showsActionsRow = computed<boolean>(() => inAppBar.value && host?.kind === 'layout' && props.actions.length === 0 && !props.primary);
+
 const heading = (): IAppBarHeading => ({
 	title: props.title,
 	subtitle: props.subtitle,
-	left: isPhone.value ? phoneLeft.value : null,
+	left: inPhoneBar.value ? phoneLeft.value : null,
 	onLeft,
 	leftDisabled: props.backDisabled,
-	actions: isPhone.value ? props.actions : [],
-	primary: isPhone.value ? props.primary : undefined,
+	actions: inPhoneBar.value ? props.actions : [],
+	primary: inPhoneBar.value ? props.primary : undefined,
 });
 
 let unregister: (() => void) | null = null;

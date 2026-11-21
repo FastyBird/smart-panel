@@ -14,7 +14,11 @@ export interface IAppBarHeading {
 	primary?: AppBarPrimary;
 }
 
+/** `layout`: the phone app bar of the page. `drawer`: the bar of a drawer, which has its own Close and footer */
+export type AppBarHostKind = 'layout' | 'drawer';
+
 export interface IAppBarHost {
+	kind: AppBarHostKind;
 	/** While true, view headers below this host draw into its app bar instead of rendering the page header */
 	active: ComputedRef<boolean>;
 	/** The most recently mounted heading: a child route's header covers its parent's, as the teleports used to */
@@ -24,12 +28,13 @@ export interface IAppBarHost {
 
 export const APP_BAR_HOST: InjectionKey<IAppBarHost> = Symbol('fb-app-bar-host');
 
-export const createAppBarHost = (active: () => boolean): IAppBarHost => {
+export const createAppBarHost = (active: () => boolean, kind: AppBarHostKind = 'layout'): IAppBarHost => {
 	const stack = shallowRef<{ id: number; heading: () => IAppBarHeading }[]>([]);
 
 	let nextId = 0;
 
 	return {
+		kind,
 		active: computed<boolean>(active),
 		heading: computed<IAppBarHeading | null>(() => {
 			const top = stack.value.at(-1);
@@ -49,8 +54,8 @@ export const createAppBarHost = (active: () => boolean): IAppBarHost => {
 };
 
 /** The layout provides one host for the phone app bar; every drawer that shows a routed view provides its own */
-export const provideAppBarHost = (active: () => boolean): IAppBarHost => {
-	const host = createAppBarHost(active);
+export const provideAppBarHost = (active: () => boolean, kind: AppBarHostKind = 'layout'): IAppBarHost => {
+	const host = createAppBarHost(active, kind);
 
 	provide(APP_BAR_HOST, host);
 

@@ -3,6 +3,7 @@
 		:title="t('displaysModule.detail.tokens.title')"
 		:subtitle="t('displaysModule.detail.tokens.subtitle')"
 		icon="mdi:key"
+		@back="() => router.back()"
 	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />

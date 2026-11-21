@@ -2,7 +2,9 @@
 	<div class="flex flex-col grow-1 h-full overflow-hidden">
 		<app-breadcrumbs :items="breadcrumbs" />
 
+		<!-- Below the drawer breakpoint an edit page replaces the list and brings its own header -->
 		<view-header
+			v-if="!isEditRoute || isLGDevice"
 			:title="t('configModule.headings.config')"
 			:subtitle="t('configModule.subHeadings.config')"
 			icon="mdi:cog"
@@ -78,7 +80,10 @@ const router = useRouter();
 const route = useRoute();
 const { t } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+const { isMDDevice, isLGDevice } = useBreakpoints();
+
+// An edit page renders in place of the list below the drawer breakpoint (in the drawer above it)
+const isEditRoute = computed<boolean>((): boolean => route.name === RouteNames.CONFIG_MODULE_EDIT || route.name === RouteNames.CONFIG_PLUGIN_EDIT);
 const activeTab = ref<PageTabName>('modules');
 
 const mounted = ref<boolean>(false);
