@@ -4,16 +4,23 @@
 		class="flex flex-row items-center justify-between px-2 h-[56px]"
 	>
 		<div class="flex flex-row items-center gap-5">
-			<el-button
-				type="primary"
-				circle
-				link
-				@click="onToggleMenu"
+			<el-tooltip
+				:content="menuButtonLabel"
+				placement="bottom"
 			>
-				<template #icon>
-					<icon icon="mdi:hamburger-menu" />
-				</template>
-			</el-button>
+				<el-button
+					:aria-label="menuButtonLabel"
+					:aria-expanded="props.menuButton === 'collapse' ? String(!props.menuCollapsed) : undefined"
+					text
+					circle
+					data-test-id="top-bar-menu-button"
+					@click="onToggleMenu"
+				>
+					<template #icon>
+						<icon icon="mdi:menu" />
+					</template>
+				</el-button>
+			</el-tooltip>
 
 			<div :id="BREADCRUMBS_TARGET" />
 		</div>
@@ -97,11 +104,11 @@
 </template>
 
 <script setup lang="ts">
-import { h, nextTick, ref, watch } from 'vue';
+import { computed, h, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitch, useNamespace } from 'element-plus';
+import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitch, ElTooltip, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -113,9 +120,8 @@ import NotificationBell from '../../modules/notifications/components/notificatio
 import { useDarkMode } from '../composables/useDarkMode';
 import { injectAccountManager } from '../services/account-manager';
 
-import LanguageSwitcher from './language-switcher.vue';
-
 import { type AppTopBarProps, BREADCRUMBS_TARGET } from './app-top-bar.types';
+import LanguageSwitcher from './language-switcher.vue';
 import UserAvatar from './user-avatar.vue';
 
 defineOptions({
@@ -124,10 +130,12 @@ defineOptions({
 
 const props = withDefaults(defineProps<AppTopBarProps>(), {
 	menuCollapsed: false,
+	menuButton: 'collapse',
 });
 
 const emit = defineEmits<{
 	(e: 'update:menuCollapsed', menuCollapsed: boolean): void;
+	(e: 'open-menu'): void;
 }>();
 
 const router = useRouter();
@@ -185,8 +193,25 @@ const onSwitchTheme = (event: MouseEvent): void => {
 	});
 };
 
+// Desktop collapses the sidebar to the rail; tablets open the menu drawer (docs/admin-ui-design-spec.md, section 6)
+const menuButtonLabel = computed<string>((): string => {
+	if (props.menuButton === 'open') {
+		return t('application.buttons.openMenu.title');
+	}
+
+	if (props.menuButton === 'expand') {
+		return t('application.buttons.expandMenu.title');
+	}
+
+	return props.menuCollapsed ? t('application.buttons.expandSidebar.title') : t('application.buttons.collapseSidebar.title');
+});
+
 const onToggleMenu = (): void => {
-	emit('update:menuCollapsed', !props.menuCollapsed);
+	if (props.menuButton === 'collapse') {
+		emit('update:menuCollapsed', !props.menuCollapsed);
+	} else {
+		emit('open-menu');
+	}
 };
 
 const onSignOut = (): void => {

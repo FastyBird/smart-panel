@@ -2,7 +2,7 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import i18n from '../../../locales';
 import { UsersModuleUserRole } from '../../../openapi.constants';
-import { AUTOMATION_DEFAULT_ICON, RouteNames } from '../automations.constants';
+import { RouteNames } from '../automations.constants';
 
 const ROLES = [UsersModuleUserRole.admin, UsersModuleUserRole.owner];
 
@@ -15,9 +15,10 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		meta: {
 			guards: { authenticated: true, roles: ROLES },
 			title: () => i18n.global.t('automations.menu.title'),
-			icon: AUTOMATION_DEFAULT_ICON,
-			// The menu is sorted by descending weight; scenes sit at 5000
+			icon: 'mdi:sitemap-outline',
+			// Sorted by descending weight inside the Home group; scenes sit at 5000
 			menu: 4900,
+			menuGroup: 'home',
 		},
 		children: [
 			{

@@ -60,6 +60,27 @@
 			},
 			"toggleMenu": {
 				"title": "Menü umschalten"
+			},
+			"openMenu": {
+				"title": "Menü öffnen"
+			},
+			"expandMenu": {
+				"title": "Menü erweitern"
+			},
+			"expandSidebar": {
+				"title": "Seitenleiste erweitern"
+			},
+			"collapseSidebar": {
+				"title": "Seitenleiste einklappen"
+			}
+		},
+		"navigation": {
+			"label": "Hauptmenü",
+			"groups": {
+				"home": "Zuhause",
+				"wallDisplays": "Wanddisplays",
+				"integrations": "Integrationen",
+				"system": "System"
 			}
 		},
 		"bulkActions": {

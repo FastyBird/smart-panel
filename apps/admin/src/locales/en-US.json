@@ -60,6 +60,27 @@
 			},
 			"toggleMenu": {
 				"title": "Toggle menu"
+			},
+			"openMenu": {
+				"title": "Open menu"
+			},
+			"expandMenu": {
+				"title": "Expand menu"
+			},
+			"expandSidebar": {
+				"title": "Expand sidebar"
+			},
+			"collapseSidebar": {
+				"title": "Collapse sidebar"
+			}
+		},
+		"navigation": {
+			"label": "Main",
+			"groups": {
+				"home": "Home",
+				"wallDisplays": "Wall displays",
+				"integrations": "Integrations",
+				"system": "System"
 			}
 		},
 		"bulkActions": {

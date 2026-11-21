@@ -15,8 +15,9 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: () => i18n.global.t('weatherModule.menu.title'),
-			icon: 'mdi:map-marker-multiple',
+			icon: 'mdi:weather-partly-cloudy',
 			menu: 4000,
+			menuGroup: 'wall-displays',
 		},
 		children: [
 			{

@@ -5,47 +5,28 @@
 	@include e(aside) {
 		@include set-css-var-value(('aside', 'width'), '220px');
 
-		transition: all getCssVar('transition-duration');
+		overflow: hidden;
+		transition: width getCssVar('transition-duration');
 
 		@include m(collapsed) {
 			@include set-css-var-value(('aside', 'width'), '64px');
 		}
 	}
 
-	@include e(mobile-menu) {
-		.el-drawer {
-			&__header {
-				@include set-css-var-value(('drawer', 'padding', 'primary'), '0px');
-
-				position: absolute;
-				width: 100%;
-				margin: 0;
-				padding: 1rem 1rem 0 0;
-				z-index: 1;
-				box-sizing: border-box;
-			}
-		}
-	}
-
 	.el-main {
 		@include set-css-var-value(('main', 'padding'), '0');
 
-		@include res('sm') {
-			background-color: #f5f5f5;
-		}
+		background-color: var(--el-bg-color-page);
 	}
 
-	.el-drawer {
-		&__body {
+	// The menu drawer is teleported to the body, so its styles hang off its own class
+	@include e(menu-drawer) {
+		background: var(--fb-sidebar-bg);
+
+		.el-drawer__body {
 			@include set-css-var-value(('drawer', 'padding', 'primary'), '0px');
-		}
-	}
-}
 
-.dark {
-	@include b(app-layout-default) {
-		.el-main {
-			background-color: transparent;
+			padding: 0;
 		}
 	}
 }

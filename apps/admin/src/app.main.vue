@@ -5,23 +5,29 @@
 		</template>
 	</metainfo>
 
-	<router-view v-loading="loadingOverlay" />
+	<!-- Touch screens get the large control size everywhere (docs/admin-ui-design-spec.md, section 6) -->
+	<el-config-provider :size="isTouch ? 'large' : 'default'">
+		<router-view v-loading="loadingOverlay" />
+	</el-config-provider>
 </template>
 
 <script setup lang="ts">
 import { onBeforeMount, onBeforeUnmount, ref } from 'vue';
 import { useMeta } from 'vue-meta';
 
-import { vLoading } from 'element-plus';
+import { ElConfigProvider, vLoading } from 'element-plus';
 
 import { description } from './../package.json';
 import { useEventBus } from './common';
+import { useSizeClass } from './common/composables/useSizeClass';
 
 defineOptions({
 	name: 'AppMain',
 });
 
 const eventBus = useEventBus();
+
+const { isTouch } = useSizeClass();
 
 const loadingOverlay = ref<boolean>(false);
 

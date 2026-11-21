@@ -15,6 +15,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			title: () => i18n.global.t('camerasModule.menu.title'),
 			icon: 'mdi:cctv',
 			menu: 8500,
+			menuGroup: 'home',
 		},
 	},
 ];

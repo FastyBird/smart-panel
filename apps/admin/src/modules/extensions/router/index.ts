@@ -17,7 +17,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: () => i18n.global.t('extensionsModule.menu.title'),
 			icon: 'mdi:puzzle',
-			menu: 3000,
+			menu: 3900,
+			menuGroup: 'integrations',
 		},
 	},
 	{

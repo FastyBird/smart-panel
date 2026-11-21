@@ -60,6 +60,27 @@
 			},
 			"toggleMenu": {
 				"title": "Prepnúť menu"
+			},
+			"openMenu": {
+				"title": "Otvoriť menu"
+			},
+			"expandMenu": {
+				"title": "Rozbaliť menu"
+			},
+			"expandSidebar": {
+				"title": "Rozbaliť bočný panel"
+			},
+			"collapseSidebar": {
+				"title": "Zbaliť bočný panel"
+			}
+		},
+		"navigation": {
+			"label": "Hlavné",
+			"groups": {
+				"home": "Domov",
+				"wallDisplays": "Nástenné displeje",
+				"integrations": "Integrácie",
+				"system": "Systém"
 			}
 		},
 		"bulkActions": {

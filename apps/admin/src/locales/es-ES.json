@@ -60,6 +60,27 @@
 			},
 			"toggleMenu": {
 				"title": "Alternar menú"
+			},
+			"openMenu": {
+				"title": "Abrir menú"
+			},
+			"expandMenu": {
+				"title": "Ampliar menú"
+			},
+			"expandSidebar": {
+				"title": "Ampliar barra lateral"
+			},
+			"collapseSidebar": {
+				"title": "Contraer barra lateral"
+			}
+		},
+		"navigation": {
+			"label": "Principal",
+			"groups": {
+				"home": "Inicio",
+				"wallDisplays": "Pantallas de pared",
+				"integrations": "Integraciones",
+				"system": "Sistema"
 			}
 		},
 		"bulkActions": {

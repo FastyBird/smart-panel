@@ -340,3 +340,21 @@ $fb-interaction-types: primary, success, warning, danger, info;
 		--el-link-hover-text-color: var(--el-color-#{$type}-dark-2);
 	}
 }
+
+// Row actions that appear on hover with a mouse (`group` on the row, `hover-reveal` on the action). Keyboard focus
+// shows them too, and on touch screens they are always visible, since nothing may depend on hover (spec section 6).
+.hover-reveal {
+	opacity: 0;
+}
+
+.group:hover .hover-reveal,
+.group:focus-within .hover-reveal,
+.hover-reveal:focus-visible {
+	opacity: 1;
+}
+
+@media (pointer: coarse) {
+	.hover-reveal {
+		opacity: 1;
+	}
+}

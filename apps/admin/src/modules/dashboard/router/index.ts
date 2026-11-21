@@ -17,7 +17,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: () => i18n.global.t('dashboardModule.menu.title'),
 			icon: 'mdi:view-dashboard',
-			menu: 8000,
+			menu: 5900,
+			menuGroup: 'wall-displays',
 		},
 		children: [
 			{

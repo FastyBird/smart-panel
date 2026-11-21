@@ -1,22 +1,19 @@
-@use 'sass:map';
-
 @use 'element-plus/theme-chalk/src/mixins/mixins' as *;
 
 @include b(app-sidebar) {
-	border-right: 1px solid var(--el-border-color);
+	background: var(--fb-sidebar-bg);
 
+	// The brand-red logo block (docs/admin-ui-design-spec.md, section 1)
 	@include e(logo) {
-		height: 55px;
-		border-bottom: 1px solid var(--el-border-color);
+		height: 56px;
+		padding: 0 16px;
+		background: var(--fb-brand);
 	}
-}
 
-.dark {
-	@include b(app-sidebar) {
+	@include when(collapsed) {
 		@include e(logo) {
-			svg {
-				filter: drop-shadow(2px 2px 6px #a91b0c);
-			}
+			justify-content: center;
+			padding: 0;
 		}
 	}
 }

@@ -30,8 +30,8 @@
 			>
 				<template #reference>
 					<el-button
-						class="opacity-0 group-hover:opacity-100"
-						size="small"
+						class="hover-reveal"
+						:size="isTouch ? 'large' : 'small'"
 						text
 						@click.stop
 					>
@@ -53,6 +53,7 @@ import { ElButton, ElIcon, ElPopconfirm, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { useSizeClass } from '../../../common/composables/useSizeClass';
 import type { IConversation } from '../buddy.types';
 
 interface ISpace {
@@ -84,6 +85,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+// The delete action is always shown on touch screens, at the touch size (docs/admin-ui-design-spec.md, section 6)
+const { isTouch } = useSizeClass();
 
 const now = ref(Date.now());
 const timer = setInterval(() => {

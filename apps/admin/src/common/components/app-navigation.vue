@@ -1,130 +1,129 @@
 <template>
 	<el-scrollbar view-class="h-full">
-		<el-menu
-			:collapse="props.collapsed"
-			:default-active="activeIndex"
-			:class="[ns.b(), ns.is('collapsed', props.collapsed), ns.is('desktop', isMDDevice), ns.is('phone', !isMDDevice), { 'h-full': isMDDevice }]"
-			class="md:pt-5 xs:pt-4"
-			router
+		<nav
+			:aria-label="t('application.navigation.label')"
+			:class="[ns.b(), ns.is('collapsed', props.collapsed)]"
+			class="flex flex-col py-2"
 		>
-			<template v-for="(item, index) in visibleMenuItems">
-				<el-sub-menu
-					v-if="Object.entries(item.children).length"
-					:key="`${index}-children`"
-					:index="item.name as string"
-					:class="[ns.e('group'), ns.is('desktop', isMDDevice), ns.is('phone', !isMDDevice)]"
-				>
-					<template #title>
-						<el-icon
-							v-if="item.meta?.icon && typeof item.meta?.icon === 'string'"
-							:size="18"
-						>
-							<icon :icon="item.meta.icon" />
-						</el-icon>
-						<span>{{ typeof item.meta?.title === 'function' ? item.meta?.title() : item.meta?.title }}</span>
-					</template>
-
-					<el-menu-item
-						v-for="(subItem, subIndex) in item.children"
-						:key="subIndex"
-						:index="subItem.name as string"
-						:route="{ name: subItem.name }"
-						@click="emit('click')"
+			<template
+				v-for="section in sections"
+				:key="section.group ?? 'top'"
+			>
+				<template v-if="section.group">
+					<span
+						v-if="props.collapsed"
+						:class="ns.e('divider')"
+						aria-hidden="true"
+					/>
+					<span
+						v-else
+						:class="ns.e('section')"
+						data-test-id="navigation-section"
 					>
-						<el-icon
-							v-if="subItem.meta?.icon && typeof subItem.meta?.icon === 'string'"
-							:size="18"
-						>
-							<icon :icon="subItem.meta.icon" />
-						</el-icon>
-						<template #title>
-							{{ typeof subItem.meta?.title === 'function' ? subItem.meta?.title() : subItem.meta?.title }}
-						</template>
-					</el-menu-item>
-				</el-sub-menu>
+						{{ groupLabel(section.group) }}
+					</span>
+				</template>
 
-				<el-menu-item
-					v-else
-					:key="`${index}-item`"
-					:index="`${index}`"
-					:route="{ name: item.name }"
-					@click="emit('click')"
+				<template
+					v-for="entry in entriesOf(section.items)"
+					:key="entry.name"
 				>
-					<el-icon
-						v-if="item.meta?.icon && typeof item.meta?.icon === 'string'"
-						:size="18"
+					<el-tooltip
+						:content="entry.title"
+						:disabled="!props.collapsed"
+						placement="right"
 					>
-						<icon :icon="item.meta.icon" />
-					</el-icon>
-					<span>{{ typeof item.meta?.title === 'function' ? item.meta?.title() : item.meta?.title }}</span>
-				</el-menu-item>
+						<router-link
+							:to="{ name: entry.name }"
+							:aria-label="props.collapsed ? entry.title : undefined"
+							:aria-current="entry.name === activeName ? 'page' : undefined"
+							:class="[ns.e('item'), ns.is('active', entry.name === activeName), ns.is('nested', entry.nested)]"
+							:data-test-id="`navigation-item-${entry.name}`"
+							@click="emit('click')"
+						>
+							<icon
+								v-if="entry.icon"
+								:icon="entry.icon"
+								:class="ns.e('icon')"
+								aria-hidden="true"
+							/>
+							<span
+								v-if="!props.collapsed"
+								:class="ns.e('label')"
+							>
+								{{ entry.title }}
+							</span>
+						</router-link>
+					</el-tooltip>
+				</template>
 			</template>
-		</el-menu>
 
-		<el-menu
-			v-if="!isMDDevice"
-			:collapse="props.collapsed"
-			:default-active="activeIndex"
-			:class="[ns.b(), ns.is('collapsed', props.collapsed), ns.is('desktop', isMDDevice), ns.is('phone', !isMDDevice)]"
-			class="md:pt-5 xs:pt-4"
-		>
-			<el-menu-item-group :class="[ns.e('group'), ns.is('phone', !isMDDevice)]">
-				<el-menu-item
+			<template v-if="props.accountActions">
+				<span
+					:class="ns.e('divider')"
+					aria-hidden="true"
+				/>
+
+				<button
 					v-if="accountManager?.routes.edit"
-					index="3-1"
+					:class="ns.e('item')"
+					type="button"
 					data-test-id="navigation-user-edit"
 					@click="onEditProfile"
 				>
-					<el-icon>
-						<icon icon="mdi:user-edit" />
-					</el-icon>
-					<template #title>
-						{{ t('application.userMenu.profileGeneralSettings') }}
-					</template>
-				</el-menu-item>
+					<icon
+						icon="mdi:user-edit"
+						:class="ns.e('icon')"
+						aria-hidden="true"
+					/>
+					<span :class="ns.e('label')">{{ t('application.userMenu.profileGeneralSettings') }}</span>
+				</button>
 
-				<el-menu-item
+				<button
 					v-if="accountManager?.routes.security"
-					index="3-2"
+					:class="ns.e('item')"
+					type="button"
 					data-test-id="navigation-user-security"
 					@click="onEditSecurity"
 				>
-					<el-icon>
-						<icon icon="mdi:user-lock" />
-					</el-icon>
-					<template #title>
-						{{ t('application.userMenu.profileSecuritySettings') }}
-					</template>
-				</el-menu-item>
+					<icon
+						icon="mdi:user-lock"
+						:class="ns.e('icon')"
+						aria-hidden="true"
+					/>
+					<span :class="ns.e('label')">{{ t('application.userMenu.profileSecuritySettings') }}</span>
+				</button>
 
-				<el-menu-item
+				<button
 					v-if="accountManager?.routes.lock"
-					index="3-3"
+					:class="ns.e('item')"
+					type="button"
 					data-test-id="navigation-lock-screen"
 					@click="onLock"
 				>
-					<el-icon>
-						<icon icon="mdi:lock" />
-					</el-icon>
-					<template #title>
-						{{ t('application.userMenu.lockScreen') }}
-					</template>
-				</el-menu-item>
+					<icon
+						icon="mdi:lock"
+						:class="ns.e('icon')"
+						aria-hidden="true"
+					/>
+					<span :class="ns.e('label')">{{ t('application.userMenu.lockScreen') }}</span>
+				</button>
 
-				<el-menu-item
-					index="3-4"
+				<button
+					:class="ns.e('item')"
+					type="button"
 					data-test-id="navigation-sign-out"
 					@click="onSignOut"
 				>
-					<el-icon>
-						<icon icon="mdi:logout" />
-					</el-icon>
-					<template #title>
-						{{ t('application.userMenu.signOut') }}
-					</template>
-				</el-menu-item>
-			</el-menu-item-group>
-		</el-menu>
+					<icon
+						icon="mdi:logout"
+						:class="ns.e('icon')"
+						aria-hidden="true"
+					/>
+					<span :class="ns.e('label')">{{ t('application.userMenu.signOut') }}</span>
+				</button>
+			</template>
+		</nav>
 	</el-scrollbar>
 </template>
 
@@ -133,13 +132,12 @@ import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import { ElIcon, ElMenu, ElMenuItem, ElMenuItemGroup, ElScrollbar, ElSubMenu, useNamespace } from 'element-plus';
+import { ElScrollbar, ElTooltip, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { useConfigModules } from '../../modules/config/composables/useConfigModules';
-import { useBreakpoints } from '../composables/useBreakpoints';
-import { useMenu } from '../composables/useMenu';
+import { type IMenuSection, type MenuGroup, type RouteRecord, groupMenuItems, useMenu } from '../composables/useMenu';
 import { injectAccountManager } from '../services/account-manager';
 
 import type { AppNavigationProps } from './app-navigation.types';
@@ -150,11 +148,19 @@ defineOptions({
 
 const props = withDefaults(defineProps<AppNavigationProps>(), {
 	collapsed: false,
+	accountActions: false,
 });
 
 const emit = defineEmits<{
 	(e: 'click'): void;
 }>();
+
+interface INavigationEntry {
+	name: string;
+	title: string;
+	icon: string | undefined;
+	nested: boolean;
+}
 
 const router = useRouter();
 const route = useRoute();
@@ -162,7 +168,6 @@ const route = useRoute();
 const { t } = useI18n();
 const ns = useNamespace('app-navigation');
 
-const { isMDDevice } = useBreakpoints();
 const { mainMenuItems } = useMenu();
 const { configModules, enabled: isModuleEnabled, loaded: modulesLoaded, fetchConfigModules } = useConfigModules();
 
@@ -176,7 +181,7 @@ onBeforeMount(() => {
 	});
 });
 
-const visibleMenuItems = computed(() => {
+const visibleMenuItems = computed<{ [key: string]: RouteRecord }>(() => {
 	return Object.fromEntries(
 		Object.entries(mainMenuItems).filter(([, menuRoute]) => {
 			const moduleType = menuRoute.meta?.module as string | undefined;
@@ -202,19 +207,47 @@ const visibleMenuItems = computed(() => {
 	);
 });
 
-const activeIndex = computed<string | undefined>((): string | undefined => {
-	for (const name of Object.keys(visibleMenuItems.value)) {
-		const menuItem = visibleMenuItems.value[name];
-		if (menuItem && route.matched.find((matched) => matched.name === name) !== undefined) {
-			if (menuItem.children) {
-				for (const subName of Object.keys(menuItem.children)) {
-					if (route.matched.find((matched) => matched.name === subName) !== undefined) {
-						return subName;
-					}
-				}
+const sections = computed<IMenuSection[]>((): IMenuSection[] => groupMenuItems(visibleMenuItems.value));
+
+const GROUP_LABELS: Record<MenuGroup, string> = {
+	home: 'application.navigation.groups.home',
+	'wall-displays': 'application.navigation.groups.wallDisplays',
+	integrations: 'application.navigation.groups.integrations',
+	system: 'application.navigation.groups.system',
+};
+
+const groupLabel = (group: MenuGroup): string => t(GROUP_LABELS[group]);
+
+const titleOf = (item: RouteRecord): string => {
+	const title = item.meta?.title;
+
+	return typeof title === 'function' ? String(title()) : String(title ?? '');
+};
+
+const iconOf = (item: RouteRecord): string | undefined => (typeof item.meta?.icon === 'string' ? item.meta.icon : undefined);
+
+// A menu item with menu children (Configuration → Modules, Plugins) lists them indented below it
+const entriesOf = (items: RouteRecord[]): INavigationEntry[] =>
+	items.flatMap((item): INavigationEntry[] => [
+		{ name: String(item.name), title: titleOf(item), icon: iconOf(item), nested: false },
+		...Object.values(item.children ?? {}).map(
+			(child): INavigationEntry => ({ name: String(child.name), title: titleOf(child), icon: iconOf(child), nested: true })
+		),
+	]);
+
+// The deepest menu entry on the current route: a child when it matches, otherwise its parent
+const activeName = computed<string | undefined>((): string | undefined => {
+	const matched = new Set(route.matched.map((record) => record.name));
+
+	for (const section of sections.value) {
+		for (const item of section.items) {
+			if (!matched.has(item.name)) {
+				continue;
 			}
 
-			return name;
+			const child = Object.values(item.children ?? {}).find((candidate) => matched.has(candidate.name));
+
+			return String(child?.name ?? item.name);
 		}
 	}
 

@@ -2,11 +2,10 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import i18n from '../../../locales';
 import { UsersModuleUserRole } from '../../../openapi.constants';
-import { RouteNames } from '../system.constants';
-
 // Maintenance views are eagerly imported (not lazy) because they must
 // be available even when the backend is down (reboot, power-off, reset).
 import LayoutMaintenance from '../layouts/layout-maintenance.vue';
+import { RouteNames } from '../system.constants';
 import ViewFactoryReset from '../views/view-factory-reset.vue';
 import ViewPowerOff from '../views/view-power-off.vue';
 import ViewRebooting from '../views/view-rebooting.vue';
@@ -73,8 +72,9 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: () => i18n.global.t('systemModule.menu.title'),
-			icon: 'mdi:hammer',
-			menu: 4000,
+			icon: 'mdi:wrench-outline',
+			menu: 2600,
+			menuGroup: 'system',
 		},
 		redirect: () => ({ name: RouteNames.SYSTEM_INFO }),
 		children: [

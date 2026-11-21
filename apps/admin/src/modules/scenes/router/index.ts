@@ -15,6 +15,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			title: () => i18n.global.t('scenes.menu.title'),
 			icon: 'mdi:play-box-multiple',
 			menu: 5000,
+			menuGroup: 'home',
 		},
 		children: [
 			{

@@ -18,6 +18,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			title: () => i18n.global.t('devicesModule.menu.title'),
 			icon: 'mdi:devices',
 			menu: 7000,
+			menuGroup: 'home',
 		},
 		children: [
 			{

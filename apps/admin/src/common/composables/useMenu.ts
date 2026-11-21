@@ -5,8 +5,44 @@ import { injectAccountManager } from '../services/account-manager';
 import type { RouterGuards } from '../services/router-guards';
 import { injectRouterGuard } from '../services/router-guards';
 
-declare type RouteRecord = Omit<RouteRecordRaw, 'children'> & {
+export declare type RouteRecord = Omit<RouteRecordRaw, 'children'> & {
 	children: { [key: string]: RouteRecord };
+};
+
+/** Sidebar sections in their order (docs/admin-ui-design-spec.md, section 9); a route joins one with `meta.menuGroup` */
+export const MENU_GROUPS = ['home', 'wall-displays', 'integrations', 'system'] as const;
+
+export type MenuGroup = (typeof MENU_GROUPS)[number];
+
+export interface IMenuSection {
+	/** null for the items above the first section (Overview, Buddy) */
+	group: MenuGroup | null;
+	items: RouteRecord[];
+}
+
+const isMenuGroup = (value: unknown): value is MenuGroup => typeof value === 'string' && (MENU_GROUPS as readonly string[]).includes(value);
+
+/**
+ * Splits sorted menu items into sidebar sections: items without a known group first, then the groups in their
+ * fixed order. Items keep their order inside a section and empty sections are left out.
+ */
+export const groupMenuItems = (items: { [key: string]: RouteRecord }): IMenuSection[] => {
+	const ungrouped: RouteRecord[] = [];
+	const grouped = new Map<MenuGroup, RouteRecord[]>(MENU_GROUPS.map((group) => [group, []]));
+
+	for (const item of Object.values(items)) {
+		const group = item.meta?.menuGroup;
+
+		if (isMenuGroup(group)) {
+			grouped.get(group)?.push(item);
+		} else {
+			ungrouped.push(item);
+		}
+	}
+
+	return [{ group: null, items: ungrouped }, ...MENU_GROUPS.map((group): IMenuSection => ({ group, items: grouped.get(group) ?? [] }))].filter(
+		(section) => section.items.length > 0
+	);
 };
 
 type MenuMeta = boolean | number | undefined;

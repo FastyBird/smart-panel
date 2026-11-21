@@ -28,3 +28,11 @@ describe('useBreakpoints', () => {
 		expect(breakpoints.isXXLDevice.value).toBe(false);
 	});
 });
+
+describe('useBreakpoints md boundary', () => {
+	it('starts md at the tablet size class (720 px)', async () => {
+		const { useBreakpoints: vueUseBreakpoints } = await import('@vueuse/core');
+
+		expect(vueUseBreakpoints).toHaveBeenCalledWith(expect.objectContaining({ md: 720 }));
+	});
+});

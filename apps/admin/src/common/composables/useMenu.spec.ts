@@ -2,7 +2,7 @@ import { useRouter } from 'vue-router';
 
 import { type Mock, describe, expect, it, vi } from 'vitest';
 
-import { useMenu } from './useMenu';
+import { MENU_GROUPS, type RouteRecord, groupMenuItems, useMenu } from './useMenu';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -137,5 +137,42 @@ describe('useMenu', () => {
 		expect(mainMenuItems).toBeDefined();
 		expect(mainMenuItems).toHaveProperty('Parent');
 		expect(mainMenuItems.Parent?.children).not.toHaveProperty('Child');
+	});
+});
+
+describe('groupMenuItems', () => {
+	const item = (name: string, menuGroup?: string): RouteRecord =>
+		({ name, path: `/${name}`, meta: { menuGroup }, children: {} }) as unknown as RouteRecord;
+
+	it('puts ungrouped items first, then the groups in the sidebar order', () => {
+		const sections = groupMenuItems({
+			users: item('users', 'system'),
+			overview: item('overview'),
+			pages: item('pages', 'wall-displays'),
+			devices: item('devices', 'home'),
+			extensions: item('extensions', 'integrations'),
+			buddy: item('buddy'),
+			spaces: item('spaces', 'home'),
+		});
+
+		expect(sections.map((section) => section.group)).toEqual([null, 'home', 'wall-displays', 'integrations', 'system']);
+		expect(sections.map((section) => section.items.map((entry) => entry.name))).toEqual([
+			['overview', 'buddy'],
+			['devices', 'spaces'],
+			['pages'],
+			['extensions'],
+			['users'],
+		]);
+	});
+
+	it('leaves out empty groups and treats an unknown group as ungrouped', () => {
+		const sections = groupMenuItems({ devices: item('devices', 'home'), extra: item('extra', 'cameras-and-more') });
+
+		expect(sections.map((section) => section.group)).toEqual([null, 'home']);
+		expect(sections[0].items.map((entry) => entry.name)).toEqual(['extra']);
+	});
+
+	it('defines the four sidebar groups of the spec', () => {
+		expect(MENU_GROUPS).toEqual(['home', 'wall-displays', 'integrations', 'system']);
 	});
 });
