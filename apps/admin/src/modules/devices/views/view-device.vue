@@ -128,7 +128,7 @@
 					</template>
 
 					<el-space
-						v-if="sortedChannels"
+						v-if="sortedChannels.length > 0"
 						direction="vertical"
 						size="large"
 						class="w-full mb-2"

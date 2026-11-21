@@ -41,7 +41,15 @@ vi.mock('../../../common', async () => {
 		injectPluginsManager: () => mocks.pluginsManager,
 		AppBreadcrumbs: stub,
 		EntityNotFound: stub,
-		IconWithChild: stub,
+		StateView: defineComponent({
+			name: 'StateView',
+			props: { kind: { type: String, default: 'empty' } },
+			setup:
+				(_, { slots }) =>
+				() =>
+					h('div', slots.action?.()),
+		}),
+		StatusTag: stub,
 		ViewError: stub,
 		AppBarScope: stub,
 		ViewHeader: stub,
@@ -154,6 +162,16 @@ describe('ViewDevice plugin detail section mount gate', () => {
 		await flushPromises();
 		expect(wrapper.findComponent({ name: 'CustomDetailSection' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'VirtualDeviceSources' }).exists()).toBe(false);
+	});
+
+	// `sortedChannels` is always an array: an empty one must still show the empty state and its Add channel
+	it('shows the empty state with Add channel for a device without channels', async () => {
+		mocks.tab = 'overview';
+		const wrapper = mountView();
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'StateView' }).exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'StateView' }).props('kind')).toBe('empty');
+		expect(wrapper.findComponent({ name: 'ElSpace' }).exists()).toBe(false);
 	});
 
 	it('renders the shared detail card and tabs when the device plugin is absent', async () => {
