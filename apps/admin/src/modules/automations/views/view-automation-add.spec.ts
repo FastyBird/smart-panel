@@ -81,7 +81,7 @@ describe('ViewAutomationAdd', (): void => {
 		return primary
 			? {
 					props: () => ({ disabled: !!primary.disabled, loading: !!primary.loading }),
-					vm: { $emit: (_event: string) => primary.handler() },
+					click: () => primary.handler(),
 				}
 			: undefined;
 	};
@@ -91,7 +91,7 @@ describe('ViewAutomationAdd', (): void => {
 
 		return {
 			props: (name: string) => (name === 'disabled' ? !!header.props('backDisabled') : undefined),
-			vm: { $emit: (_event: string) => (header.props('onBack') as () => void)() },
+			click: () => (header.props('onBack') as () => void)(),
 		};
 	};
 
@@ -152,7 +152,7 @@ describe('ViewAutomationAdd', (): void => {
 
 			expect(wrapper.emitted('update:remote-form-changed')?.[0]).toEqual([true]);
 
-			appBarBack(wrapper).vm.$emit('click');
+			appBarBack(wrapper).click();
 
 			await flushPromises();
 
@@ -248,7 +248,7 @@ describe('ViewAutomationAdd', (): void => {
 
 		const wrapper = mount(ViewAutomationAdd);
 
-		appBarBack(wrapper).vm.$emit('click');
+		appBarBack(wrapper).click();
 
 		await flushPromises();
 
@@ -270,14 +270,14 @@ describe('ViewAutomationAdd', (): void => {
 
 		await flushPromises();
 
-		appBarBack(wrapper).vm.$emit('click');
+		appBarBack(wrapper).click();
 
 		await flushPromises();
 
 		expect(confirm).toHaveBeenCalledTimes(1);
 		expect(mocks.routerPush).not.toHaveBeenCalled();
 
-		appBarBack(wrapper).vm.$emit('click');
+		appBarBack(wrapper).click();
 
 		await flushPromises();
 
@@ -302,7 +302,7 @@ describe('ViewAutomationAdd', (): void => {
 		expect(wrapper.emitted('update:remote-form-saving')).toEqual([[true]]);
 		expect(appBarBack(wrapper).props('disabled')).toBe(true);
 
-		appBarBack(wrapper).vm.$emit('click');
+		appBarBack(wrapper).click();
 
 		await flushPromises();
 
@@ -332,7 +332,7 @@ describe('ViewAutomationAdd', (): void => {
 
 		expect(appBarSave(wrapper)!.props()).toMatchObject({ disabled: false, loading: false });
 
-		appBarSave(wrapper)!.vm.$emit('click');
+		appBarSave(wrapper)!.click();
 
 		await flushPromises();
 

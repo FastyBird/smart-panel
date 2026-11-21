@@ -131,7 +131,7 @@ describe('ViewAutomationEdit', (): void => {
 		return primary
 			? {
 					props: () => ({ disabled: !!primary.disabled, loading: !!primary.loading }),
-					vm: { $emit: (_event: string) => primary.handler() },
+					click: () => primary.handler(),
 				}
 			: undefined;
 	};
@@ -193,7 +193,7 @@ describe('ViewAutomationEdit', (): void => {
 		// Nothing was asked for before the form could hear it
 		expect(wrapper.findComponent(AutomationEditForm).props('remoteFormSubmit')).toBe(false);
 
-		appBarSave(wrapper)!.vm.$emit('click');
+		appBarSave(wrapper)!.click();
 
 		await flushPromises();
 
@@ -275,7 +275,7 @@ describe('ViewAutomationEdit', (): void => {
 
 		return {
 			props: (name: string) => (name === 'disabled' ? !!header.props('backDisabled') : undefined),
-			vm: { $emit: (_event: string) => (header.props('onBack') as () => void)() },
+			click: () => (header.props('onBack') as () => void)(),
 		};
 	};
 
@@ -358,7 +358,7 @@ describe('ViewAutomationEdit', (): void => {
 
 		expect(appBarBack(wrapper).props('disabled')).toBe(true);
 
-		appBarBack(wrapper).vm.$emit('click');
+		appBarBack(wrapper).click();
 
 		await flushPromises();
 

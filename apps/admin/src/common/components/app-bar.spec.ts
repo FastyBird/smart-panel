@@ -31,10 +31,10 @@ describe('AppBar.vue', () => {
 	});
 
 	it.each([
-		['menu', 'Open menu', 'mdi:menu'],
-		['back', 'Back', 'mdi:arrow-left'],
-		['close', 'Close', 'mdi:close'],
-	] as const)('labels the %s button', async (left, label, _icon) => {
+		['menu', 'Open menu'],
+		['back', 'Back'],
+		['close', 'Close'],
+	] as const)('labels the %s button', async (left, label) => {
 		const wrapper = render({ title: 'Devices', left });
 
 		expect(find(wrapper, 'left').attributes('aria-label')).toBe(label);
