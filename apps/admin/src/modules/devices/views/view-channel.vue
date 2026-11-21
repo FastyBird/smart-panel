@@ -175,10 +175,6 @@ const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
-// Template 4: forms open next to this page from tablet portrait up, as their own page on phone
-const { inDrawer } = provideEditDrawer((): boolean => !isChannelRoute.value || showDrawer.value);
-const { confirmDiscard } = useDiscardGuard();
-
 const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
 
 // Track if channel was previously loaded to detect deletion
@@ -215,6 +211,11 @@ const remoteFormChanged = ref<boolean>(false);
 const isChannelRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.CHANNEL;
 });
+
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone. After what its
+// getter reads: the provider reads it at once
+const { inDrawer } = provideEditDrawer((): boolean => !isChannelRoute.value || showDrawer.value);
+const { confirmDiscard } = useDiscardGuard();
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -392,7 +393,11 @@ const onAdjustList = async (): Promise<void> => {
 
 	// Leave an open editor's route first, so closing the adjustment does not leave the URL on a form nobody sees
 	if (showDrawer.value && !adjustList.value) {
-		await router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
+		// A guard that keeps the editor (or another navigation) leaves the adjustment closed
+		if ((await router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } })) !== undefined) {
+			return;
+		}
+
 		await nextTick();
 	}
 

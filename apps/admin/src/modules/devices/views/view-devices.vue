@@ -158,10 +158,6 @@ useMeta({
 
 const { isMDDevice } = useBreakpoints();
 
-// Template 4: the add and edit forms open next to the list from tablet portrait up, as their own page on phone
-const { inDrawer } = provideEditDrawer((): boolean => !isDevicesListRoute.value);
-const { confirmDiscard } = useDiscardGuard();
-
 const flashMessage = useFlashMessage();
 
 const {
@@ -194,6 +190,11 @@ const remoteFormChanged = ref<boolean>(false);
 const isDevicesListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DEVICES;
 });
+
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone. After what its
+// getter reads: the provider reads it at once
+const { inDrawer } = provideEditDrawer((): boolean => !isDevicesListRoute.value);
+const { confirmDiscard } = useDiscardGuard();
 
 const isWizardRoute = computed<boolean>((): boolean => {
 	return route.meta.devicesWizard === true || route.name === RouteNames.DEVICES_WIZARD || route.name === RouteNames.DEVICES_WIZARD_SELECT;

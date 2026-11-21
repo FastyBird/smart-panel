@@ -53,7 +53,8 @@ vi.mock('../../../common', async () => {
 		ViewError: stub,
 		EditDrawerLayout: stub,
 		ViewHeader: stub,
-		provideEditDrawer: () => ({ inDrawer: vueRef(false), mode: vueRef('page'), drawerSize: vueRef('640px') }),
+		// Reads its getter at once, as the real provider does, so a getter declared too late fails the mount
+		provideEditDrawer: (open: () => boolean) => ({ opened: open(), inDrawer: vueRef(false), mode: vueRef('page'), drawerSize: vueRef('640px') }),
 		useFlashMessage: () => ({ error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
 		useUuid: () => ({ validate: () => true }),
 	};

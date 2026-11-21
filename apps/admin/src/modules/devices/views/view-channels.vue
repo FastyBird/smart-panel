@@ -129,10 +129,6 @@ useMeta({
 	title: t('devicesModule.meta.channels.list.title'),
 });
 
-// Template 4: forms open next to this page from tablet portrait up, as their own page on phone
-const { inDrawer } = provideEditDrawer((): boolean => !isChannelsListRoute.value || showDrawer.value);
-const { confirmDiscard } = useDiscardGuard();
-
 const {
 	fetchChannels,
 	channels,
@@ -159,6 +155,11 @@ const remoteFormChanged = ref<boolean>(false);
 const isChannelsListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.CHANNELS;
 });
+
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone. After what its
+// getter reads: the provider reads it at once
+const { inDrawer } = provideEditDrawer((): boolean => !isChannelsListRoute.value || showDrawer.value);
+const { confirmDiscard } = useDiscardGuard();
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -291,7 +292,11 @@ const onAdjustList = async (): Promise<void> => {
 
 	// Leave an open editor's route first, so closing the adjustment does not leave the URL on a form nobody sees
 	if (showDrawer.value && !adjustList.value) {
-		await router.replace({ name: RouteNames.CHANNELS });
+		// A guard that keeps the editor (or another navigation) leaves the adjustment closed
+		if ((await router.replace({ name: RouteNames.CHANNELS })) !== undefined) {
+			return;
+		}
+
 		await nextTick();
 	}
 

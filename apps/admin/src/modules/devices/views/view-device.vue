@@ -431,10 +431,6 @@ const ns = useNamespace('view-device');
 
 const { validate: validateUuid } = useUuid();
 
-// Template 4: forms open next to this page from tablet portrait up, as their own page on phone
-const { inDrawer } = provideEditDrawer((): boolean => !isDeviceRoute.value);
-const { confirmDiscard } = useDiscardGuard();
-
 const deviceId = computed(() => props.id);
 
 const { device, isLoading, fetchDevice } = useDevice({ id: deviceId });
@@ -505,6 +501,11 @@ watch(activeTab, (tab) => {
 const isDeviceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DEVICE;
 });
+
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone. After what its
+// getter reads: the provider reads it at once
+const { inDrawer } = provideEditDrawer((): boolean => !isDeviceRoute.value);
+const { confirmDiscard } = useDiscardGuard();
 
 const channelsSortOrder = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
 	if (!device.value) {

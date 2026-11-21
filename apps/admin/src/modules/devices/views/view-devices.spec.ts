@@ -90,7 +90,9 @@ vi.mock('../../../common', async () => {
 			isLGDevice: vueRef(mocks.isLGDevice),
 		}),
 		// The forms open in a drawer where a large screen used to have one; a page of their own otherwise
-		provideEditDrawer: () => ({
+		// Reads its getter at once, as the real provider does, so a getter declared too late fails the mount
+		provideEditDrawer: (open: () => boolean) => ({
+			opened: open(),
 			inDrawer: vueRef(mocks.isLGDevice),
 			mode: vueRef(mocks.isLGDevice ? 'drawer' : 'page'),
 			drawerSize: vueRef('640px'),
