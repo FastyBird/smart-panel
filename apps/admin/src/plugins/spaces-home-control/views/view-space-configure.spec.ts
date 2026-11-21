@@ -68,6 +68,9 @@ vi.mock('../../../common', async () => {
 	const { defineComponent, ref } = await import('vue');
 
 	return {
+		AppBarScope: defineComponent({
+			template: '<div><slot /></div>',
+		}),
 		ViewError: defineComponent({
 			template: '<div><slot /><slot name="icon" /><slot name="message" /></div>',
 		}),

@@ -48,6 +48,7 @@ vi.mock('../../../common', async () => {
 	const { defineComponent, ref } = await import('vue');
 
 	return {
+		AppBarScope: defineComponent({ template: '<div><slot /></div>' }),
 		AppBreadcrumbs: defineComponent({ template: '<div />' }),
 		ViewHeader: defineComponent({ template: '<div />' }),
 		useBreakpoints: () => ({
