@@ -13,7 +13,9 @@
 >   screen, rule and edge case as of July 2026, in more depth than this brief. Section references such as "spec §8.1"
 >   point into it. Read the matching spec section before you design a screen.
 > - This brief says what to design, adds what changed since July (room modes, schedules, occupancy, automations,
->   thermostats, device groups, hardware inputs), analyses screen sizes, and lists the deliverables.
+>   thermostats, device groups, hardware inputs), analyses screen sizes, lists the deliverables, and records the
+>   product decisions for the redesign (§13.1): per-room accent colours, thermostat control on the panel, alarm
+>   arming on the panel, and cameras with a video doorbell.
 > - [`admin-ui-design-spec.md`](admin-ui-design-spec.md) is the approved admin redesign (November 2026). The display
 >   should look like the same product. See §4.3.
 >
@@ -74,7 +76,7 @@ the place for density and diagnostics; the display is the place for clarity.
 
 | Topic | Today |
 |---|---|
-| Framework | **Flutter** (Dart), one codebase. Material 3 is the base widget set, but most screens use the app's own components (§4.4). |
+| Framework | **Flutter** (Dart), one codebase. Material 3 is the base widget set, but most screens use the app's own components (§4.5). |
 | Targets | **Linux via `flutter-pi`** on Raspberry Pi with DSI or HDMI touch panels, and **Android** tablets and commercial wall panels. Other Flutter targets exist in the repo but are not products. |
 | GPU | Raspberry Pi 4 class. Must run at 30–60 fps. Flat fills, gradients and simple shadows only. There is one real blur in the app (the sky weather card). No stacked translucency, no large blurs, no per-frame shaders. |
 | Input | **Touch only.** No hover, no right-click, no keyboard shortcuts. The on-screen keyboard appears only for the manual gateway URL, the Buddy chat field, and (today, wrongly) two thermostat screens (§9). Haptics on Android only. |
@@ -83,7 +85,8 @@ the place for density and diagnostics; the display is the place for clarity.
 | Theme | Light and dark, switched in Settings. |
 | Fonts | Bundled, no network: **Roboto** (UI) and **DIN 1451** (numerals and data readouts). |
 | Icons | **Material Design Icons** (`material_design_icons_flutter`) everywhere, plus `weather_icons` for weather glyphs. Space and device icons come from backend-configured MDI names. |
-| Images | No network images and no photos. All imagery is icons, gradients and custom-painted shapes (sky, charts, cover visualisations). |
+| Images | No internet images and no photos. All imagery is icons, gradients and custom-painted shapes (sky, charts, cover visualisations). **Camera snapshots and live video from the local backend are the one exception** (§6.K). |
+| Video | None today. Camera live view (§6.K) needs hardware video decoding. Plan for **one live stream on screen at a time**; grids of cameras use snapshots that refresh every few seconds. |
 | Languages | English, Czech, German, Spanish, Polish, Slovak. Design for about **60 % text expansion** in single-line slots (nav labels, tiles, chips). |
 | Extensibility | Pages, tiles and data sources are plugins. A tile only knows its grid cell size. Designs for tiles must work at any cell size from about 1×1 to 4×6 units. |
 
@@ -250,7 +253,7 @@ Each domain has one colour, used consistently on nav tabs, room cards, headers a
 | Media | danger (red) | **`#c2185b` (magenta)** / dark `#f06292` |
 | Sensors | cyan | `#00838f` / dark `#4dd0e1` |
 | Energy | success (green) | `#2e7d32` / dark `#6cc070` |
-| Cameras *(no display screen yet)* | — | `#3949ab` / dark `#7986cb` |
+| Cameras *(new screens, §6.K)* | — | `#3949ab` / dark `#7986cb` |
 
 Today media uses the same red as primary, danger and active alerts, so "media is playing" looks like "something is
 wrong". The admin already moved media to magenta.
@@ -270,7 +273,29 @@ otherwise:
 The display has its own needs the admin does not: the sky panel, giant numerals, domain-tinted heroes, glanceability.
 It should feel like the same brand, not the same layout.
 
-### 4.4 The de-facto component set
+### 4.4 Accent themes per room (decided, new functionality)
+
+A panel lives in a room, and people want it to match the room. The user picks an **accent colour** for each panel,
+so a bedroom panel can be warm and a kitchen panel cool. Design the colour system so the accent is swappable:
+
+- **Deliver a set of accent palettes** (we suggest 8, for example blue, teal, green, amber, terracotta, rose, violet,
+  graphite). Each needs light and dark values, the same steps as every other family, and must pass AA contrast for
+  text and filled controls in both themes. Mark one as the default; it follows the brand decision in §13.
+- **What the accent colours:** primary buttons, the active nav tab and dock item, selection and focus, switches and
+  slider thumbs outside a domain view, the assistant button, the screen saver clock, and optionally a tint on the
+  page background and the sky panel's night gradient.
+- **What the accent never colours:** status colours (ok, warning, danger, info), the domain colours (§4.2) and alert
+  overlays. Those carry meaning and stay fixed on every panel.
+- **Guard against collisions.** A red or amber accent must not be confused with danger or warning. Either leave
+  those hues out of the set, or make sure status never relies on colour alone (icon + label + shape).
+- **Where it is set:** a colour on the space in the admin is the default for every panel in that space; each panel
+  can override it in Settings › Display. Design the picker for the panel (a row of swatches with a live preview)
+  and show the same swatches in the master overview's rooms list, so whole-home panels show each room in its colour.
+- Show the full room overview and one domain view in **at least three accents**, light and dark, to prove the system.
+
+The backend has no room colour or display accent today: this needs a new field on spaces and displays.
+
+### 4.5 The de-facto component set
 
 About 40 screens are built from these. Spec §16 describes each one. Re-skin and rationalise them; do not replace
 them with new primitives without a mapping (§12.6).
@@ -360,6 +385,11 @@ failures go straight to full screen), security alerts (up to 3 alerts + "+N more
 system actions (restart, power off, factory reset in progress, done, failed), inactivity (screen saver flip clock,
 or a black lock screen), and the media-only "live connection required" block. Details: spec §15.
 
+**New interrupts to design** (decided features, §6.D and §6.K): **alarm entry delay** and **alarm triggered**
+(full screen with keypad, above everything except connection loss), and **doorbell ring** (full screen with live view
+and Unlock / Dismiss). All three must wake the panel from the screen saver and black lock screen. Define the priority
+order of all interrupts, and what happens when two arrive at once (for example a ring during an entry delay).
+
 ## 6. Screen catalogue
 
 Every screen below needs: **portrait and landscape**, the **three size classes**, **light and dark**, and the states
@@ -436,8 +466,15 @@ For a door-side panel. Top bar badges: locks (all locked or n/m), alarm (Armed o
 Away, Night, Movie) when none are configured. **The defaults do nothing today**; design them as an "unconfigured"
 state, not as working controls. Below: a security summary.
 
-States: loading, error, with and without locks, with and without alarm, configured vs default house modes,
-triggering.
+**New for the entry panel** (decided): this is where people leave and come home, so it gets the security controls
+first:
+
+- **Arm / disarm** the alarm (the same control as the Security view, §6.D), prominent, one tap to start arming Away.
+- **Front door camera or video doorbell** as a live tile or snapshot (§6.K), tap → camera view.
+- **Locks** as controls, not only a badge: lock and unlock each door, with confirmation for unlock.
+
+States: loading, error, with and without locks, with and without alarm, with and without a door camera, configured
+vs default house modes, triggering, alarm arming / armed / entry delay / triggered (§6.D).
 
 #### B4. Signage overview (spec §8.4)
 
@@ -478,11 +515,35 @@ pills. A **tab selector**: Entry points (only when the space has doors or window
 of door and window tiles with status badges, tap → device detail. Alerts: list with per-alert Acknowledge and
 Acknowledge all. Events: recent events feed with refresh, its own loading and error.
 
-Landscape shows the tabs as tiles in a side column. **There is no arm or disarm control today.** If you design one,
-mark it as new (§13).
+Landscape shows the tabs as tiles in a side column.
 
-States: disarmed and calm · armed · triggered · alerts present (1, 3, many) · no entry points · empty alerts · empty
-events · events loading and failed.
+**Decided: the panel is an alarm keypad.** Arming and disarming must be possible on the panel. This is new
+functionality; there is no arm or disarm control today. What exists to build on:
+
+- Alarm devices have a writable **arming state**: `disarmed`, `armed_home`, `armed_away`, `armed_night`.
+- They report an **alarm state**: `idle`, `pending` (entry delay running), `triggered`, `silenced`, plus a `fault`
+  code, an `active` flag (alarm system operational), and a writable `siren`.
+- The security module already aggregates arming state, alarm state and alerts for the whole home and per space.
+- **There is no PIN or code** in the backend yet, and no exit-delay state. Both are new work; design them anyway.
+
+Design:
+
+| Part | Content |
+|---|---|
+| **Arm control** | Four choices: Disarmed, Home, Away, Night (only those the alarm supports). Part of the Security hero, also on the Entry overview, and reachable from the room overview's security status. |
+| **PIN keypad** | Numeric keypad, masked digits, delete, cancel, wrong code (shake + message), lockout after repeated failures. Asked for when disarming; for arming it is a setting (some homes arm without a code). Must work on the XS artboard in portrait and landscape. |
+| **Exit delay** | After arming: a countdown ("Leave now, armed in 0:45") with Cancel. |
+| **Entry delay** | When a door opens while armed (`pending`): a **full-screen interrupt on every panel** with the countdown and the keypad. Highest priority after connection loss. |
+| **Open entry points** | Arming with a door or window open: list what is open, then "Arm anyway" (bypass) or Cancel. |
+| **Triggered** | Full-screen alarm: what triggered it, where, when; keypad to disarm; **Silence siren**; link to the camera covering that entry point when there is one. |
+| **Silenced / fault / alarm offline** | Calm but visible states in the hero and the nav tab badge. |
+| **Several alarm systems** | Usually one per home. If a space has several, show a list with one control each. |
+
+States: disarmed · arming (exit delay) · armed home · armed away · armed night · entry delay · triggered · silenced
+· fault · alarm offline · command pending · command failed · wrong code · locked out · alerts present (1, 3, many) ·
+no entry points · empty alerts · empty events · events loading and failed.
+
+A **Cameras** tab (or section) joins Entry points, Alerts and Events when the space has cameras (§6.K).
 
 ### E. Dashboard pages, tiles and data sources (spec §11)
 
@@ -522,21 +583,30 @@ optional trailing actions. When the device is offline, controls dim behind an of
 | **Window covering** | window covering | Illustrated cover (blind, roller, curtain, sheers, outdoor blind) that follows the position, position slider, Open / Stop / Close, presets, tilt card, obstruction indicator; separate compact and large landscape layouts | Rich |
 | **Climate devices** | thermostat, heating unit, air conditioner | Circular dial with modes, status section, room sensors, settings; AC adds fan mode, fan speed and timer | Rich |
 | **Air devices** | fan, air humidifier, air dehumidifier, air purifier | Power, mode, speed, options, timer, sensors | Rich |
-| **Native thermostat** (new) | thermostat controlled by HA or Zigbee2MQTT | Requested vs observed mode and targets, − / +, **a typed target field (°C) + Apply**, "apply auto with both targets", external-changes notice, request outcome (accepted / unconfirmed, refused, unknown), stale state disables controls | **Needs design** (diagnostic layout, keyboard input) |
-| **Virtual thermostat** (new) | thermostat of type virtual | Requested mode and setpoints, readiness and reasons, **members** (per-member evidence, freshness, protection, release history), **comfort** (Comfort, Eco, Away, Manual baseline; temporary override with a typed duration; clear the user OFF latch; server status, actor, revision), **dew point** protection | **Needs design.** Today it is an engineering diagnostics page with a Material app bar, list tiles, expansion tiles and text fields. Decide what belongs on a wall panel and what belongs in the admin (§13). |
+| **Native thermostat** (new) | thermostat controlled by HA or Zigbee2MQTT | Requested vs observed mode and targets, − / +, **a typed target field (°C) + Apply**, "apply auto with both targets", external-changes notice, request outcome (accepted / unconfirmed, refused, unknown), stale state disables controls | **Needs design** on the same dial as the other climate devices (see thermostat rule below) |
+| **Virtual thermostat** (new) | thermostat of type virtual | Requested mode and setpoints, readiness and reasons, **members** (per-member evidence, freshness, protection, release history), **comfort** (Comfort, Eco, Away, Manual baseline; temporary override with a typed duration; clear the user OFF latch; configure comfort ranges and presets; server status, actor, revision), **dew point** protection | **Needs design.** Today it is an engineering diagnostics page with a Material app bar, list tiles, expansion tiles and text fields. Split it as in the thermostat rule below. |
 | **Actuator group** (new) | any virtual composite group except lights | Reported feedback per field (power, speed, position, tilt…), "n/m contributing members", members with missing-member markers, readiness, Open / Close / Stop or field values, "Apply together", command outcome | **Needs design** (Material app bar today) |
 | **Sensor** | sensor | Channel tiles → sensor channel page: chart, freshness, trend, events; virtual measurement diagnostics for virtual sensors | Rich (diagnostics panel needs design) |
 | **Hardware inputs** (new) | input controller (physical buttons, binary and analog inputs, for example on a reTerminal) | **Read-only.** Buttons with last event, binary inputs ON/OFF, analog values with unit, battery %. No actuator controls by design. Status strings are hard-coded English. | Partly designed (uses `UniversalTile`) |
 | **Media** | television, speaker, AV receiver, projector, set-top box, streaming service, game console, media | Info card, power, playback card and sheet, volume, source select, remote (D-pad + transport), brightness (TV, projector) | Rich |
-| **Placeholders** | alarm, camera, door, doorbell, lock, outlet, pump, robot vacuum, sprinkler, switcher, valve, water heater | A "detail is being prepared" message. **No controls.** | **Greenfield** — these 12 need real designs; lock, door, doorbell, alarm and camera first |
+| **Placeholders** | alarm, camera, door, doorbell, lock, outlet, pump, robot vacuum, sprinkler, switcher, valve, water heater | A "detail is being prepared" message. **No controls.** | **Greenfield** — these 12 need real designs. Alarm, camera and doorbell are specified in §6.D and §6.K; lock and door next. |
 | **Generic fallback** | generic, terminal, anything unknown | Standard header and a "no detail available for this device" message. No controls and no property list. (The July spec still describes an older top bar here.) | Needs design: at least a read-only property list |
 
 Each rich screen needs portrait and landscape, the three classes, and these states: loading, online, **offline**,
 control pending, control never confirmed (§7.2), single channel vs multiple channels.
 
-**Cameras (upcoming).** The backend now has a cameras module that displays are allowed to use (live streams,
-snapshots). The panel has no camera UI yet. If in scope, design a camera tile (snapshot, live badge, offline) and a
-camera detail (live view, stream unavailable, reconnecting). Mark it as new.
+**Thermostat rule (decided): control on the panel, configuration in the admin.** Anyone who wants a different
+temperature must be able to do it at the panel. The admin is only for setting the system up.
+
+| On the panel (control) | In the admin only (configuration) | On the panel, read-only, behind "details" |
+|---|---|---|
+| Target temperature (heat, cool, or both for auto) with the dial, − / + and presets, **never a typed field** · HVAC mode · comfort preset (Comfort, Eco, Away, Manual) · temporary override with a duration picker (30 min, 1 h, 2 h, until a time, until the next schedule change) and Cancel override · clear the user OFF latch · fan mode and speed where supported | Comfort ranges and preset temperatures · enabling climate automation · member devices and the regulation policy · dew point and cooled-surface setup · sensor participation | Current and target temperature, what the system is doing (heating, cooling, idle, paused by a guard) and why in one short line · external changes · last command outcome (§7.3) · for installers: member status and protection guards, in plain language |
+
+The same rule applies to the **Climate domain view**: when the room is regulated by a virtual thermostat, its comfort
+presets and the temporary override belong in the room's Climate view too (new), not only in the device detail.
+
+All thermostat kinds (plain, native, virtual) should share **one control layout**, so a user does not see a different
+screen depending on how the installer wired the heating.
 
 ### G. Weather detail
 
@@ -551,7 +621,7 @@ Opened by swiping down; closed by swiping up or ✕. Has its own navigation with
 | Page | Content | Variants |
 |---|---|---|
 | **General** (landing) | Grid of large tiles with coloured icon chips: Display, Language, Audio, Voice activation, Weather, About, Maintenance. 2 columns portrait, 3 landscape. | Audio and Voice tiles only when the hardware supports audio |
-| **Display** | Theme (light / dark), screen saver, screen power off, screen lock delay ("Never" = 0), brightness slider, unit overrides (temperature, wind, pressure, precipitation, distance; each with "System default") | — |
+| **Display** | Theme (light / dark), **accent colour** (new, §4.4: swatches with "Room default"), screen saver, screen power off, screen lock delay ("Never" = 0), brightness slider, unit overrides (temperature, wind, pressure, precipitation, distance; each with "System default") | Accent following the room vs overridden |
 | **Language** | Language, timezone, time format, number format; each opens a selection dialog | Timezone and time format have no effect today (§10) |
 | **Audio** | Speaker (toggle + volume), Microphone (toggle + volume) | **Three layouts**: both, speaker only, microphone only |
 | **Voice activation** | Detection toggle (names the wake word), sensitivity slider, live status (Stopped, Listening, Recording n/N s, Processing) | Microphone unavailable (toggle disabled) |
@@ -575,6 +645,27 @@ Only when the Buddy module is enabled.
 |---|---|---|
 | **Screen saver** | Flip clock + date | After the lock delay, when the screen saver is on. A tap wakes it. Consider burn-in on always-on panels (subtle drift). |
 | **Lock screen** | Plain black today | When the screen saver is off. There is no PIN keypad. |
+
+### K. Cameras and video doorbell (decided, new functionality)
+
+The panel has no camera UI today. The backend cameras module already lets a display list cameras, fetch **snapshots**
+(cached, per stream profile, optional high quality) and open a short-lived **live view session** relayed by the
+backend. A **doorbell** device has a button-press channel, optional camera channels and an optional lock, and the
+spec lists microphone and speaker channels for talking to the visitor.
+
+| Surface | Content and functions | States |
+|---|---|---|
+| **Camera tile** (dashboard, room, security, entry) | Snapshot refreshed every few seconds, camera name, "live" badge when streaming, motion or person indicator when the camera reports one. Tap → camera view. | Loading · snapshot · snapshot stale (age shown) · offline · no permission · camera hidden or removed |
+| **Camera grid** (Security tab or section, dashboard card) | 1, 2, 4 or more cameras as snapshot tiles; never several live streams at once | 1 camera · 2 · 4 · many (scroll) · all offline |
+| **Camera view** (full screen) | Live video, name, stream quality switch when there are several profiles, snapshot fallback, close. Actions when the device has them: unlock the linked door, switch a light, talk (new). | Connecting · live · reconnecting · live unavailable (snapshot fallback) · offline · relay not running |
+| **Doorbell ring** (interrupt) | **Full-screen interrupt on every panel** (or the panels chosen in the admin): "Someone is at the front door", live view or latest snapshot, ring time; actions **Unlock** (when a lock is linked, with confirmation), **Talk** (new), **Dismiss**; auto-dismiss after a timeout; chime volume follows audio settings | Ringing · answered elsewhere · unlocked · unlock failed · no camera (text and icon only) · panel in screen saver (wakes up) |
+| **Missed rings** | A list of recent rings with snapshot and time, in the doorbell detail and in Security › Events | Empty · several |
+| **Doorbell device detail** | Live view, last rings, linked lock, battery | Online · offline · battery low |
+| **Camera device detail** | Camera view plus device info and stream profiles | As camera view |
+
+Constraints: one live stream on screen at a time, hardware-decoded; snapshots everywhere else. Camera images must
+be fitted to tiles of any aspect ratio (crop rules). Privacy: design a "camera hidden on this panel" state, since
+not every panel in the house should show every camera.
 
 ## 7. Shared state model
 
@@ -646,7 +737,7 @@ A design that assumes a full room will break on real installations. Mock at leas
 |---|---|---|---|
 | 1 | M+ landscape | **Full living room**: 4 dimmers, thermostat, 2 roller shutters, TV + soundbar, temp/humidity sensor, energy plug, 4 scenes, room modes, schedule, 2 automations, 1 dashboard page | Room overview, Lights, Climate, Shading, Media, Sensors, Energy, Security, Dashboard |
 | 2 | XS portrait | **Minimal bedroom**: 2 LED strips, 1 temperature sensor, no scenes | Room overview, Lights, Sensors, Security (no "More") |
-| 3 | M landscape | **Hallway entry panel** with 2 locks and an alarm | Entry overview, Security |
+| 3 | M landscape | **Hallway entry panel** with 2 locks, an alarm and a video doorbell | Entry overview, Security. Also: arming with exit delay, entry delay, triggered, and a doorbell ring |
 | 4 | L landscape | **Whole-home master panel**, 8 rooms, energy | Master overview, Security, Energy |
 | 5 | S portrait | **Fresh install**: devices exist, nothing configured | Room overview (empty or not configured), Security |
 | 6 | M portrait | **Zone panel** with 2 dashboard pages | Security (landing), Dashboard 1, Dashboard 2 |
@@ -654,6 +745,9 @@ A design that assumes a full room will break on real installations. Mock at leas
 | 8 | Square 240 × 240 | Bedroom of #2 | Room overview, Lights |
 | 9 | Any | **Backend lost**, then recovered | Banner at 2 s, overlay at 10 s, full screen at 60 s, "Connected" toast |
 | 10 | L portrait | **Signage** board | Signage overview |
+| 11 | XS portrait | **Bedroom panel at night**, alarm armed Night, someone rings | Doorbell ring over the black lock screen; disarm keypad on the smallest artboard |
+| 12 | M+ landscape | Living room of #1 with a **virtual thermostat** | Climate view with comfort presets and a 2 h override running; thermostat detail with the "details" layer open |
+| 13 | M landscape | Three panels (kitchen, bedroom, office) in **three accent colours** | Room overview of each |
 
 ## 9. Where the UI drifts today
 
@@ -664,10 +758,11 @@ just a re-skin.
 |---|---|
 | **New features skip the design system** | Room Modes, Schedule, Occupancy and Automations sections use stock `FilterChip`, `ActionChip`, `Switch`, `AlertDialog` and Material text styles, with no domain colour, no tokens and no scaling. Grouped covers, light groups, actuator groups and both new thermostat screens use `AppBar`, `ListTile`, `SwitchListTile`, `ExpansionTile`, `TextButton` and plain `Text`. |
 | **Two header idioms** | Room and domain views use `PageHeader` + `HeroCard`. Master and Entry overviews and the generic device detail use the older `AppTopBar` + ad-hoc cards. Actuator group and virtual thermostat use a Material `AppBar`. |
-| **Diagnostics on the wall** | Virtual thermostat members (evidence, generation, latch, drain, quality…), comfort revisions and actors, dew point probe UUIDs, and group membership repair are shown on the panel in engineering language. |
+| **Configuration and diagnostics on the wall** | The panel shows virtual thermostat members (evidence, generation, latch, drain, quality…), comfort revisions and actors, dew point probe UUIDs and group membership repair in engineering language, and lets the user **edit comfort configuration**. Configuration belongs in the admin; control and a plain-language status stay on the panel (§6.F thermostat rule). |
 | **Keyboard input on a touch panel** | The native thermostat asks for a typed target temperature, the comfort override for a typed duration in minutes, and the light group and actuator group controls for typed values. Everywhere else numbers are set with sliders, dials or ± buttons. |
 | **Hard-coded English** | Light group controls ("Reported power", "Turn on", "Apply together"), hardware input status ("Detected", "Idle", "ON", "OFF"), suggestion toast "Dismiss", signage weekday and month names. |
 | **Placeholders** | 12 device categories show "detail is being prepared", including all security devices (lock, door, doorbell, alarm, camera). |
+| **No security control** | The panel cannot arm or disarm, unlock a door, or show a camera, although the backend supports writing the arming state and serving camera snapshots and live views. |
 | **Read-only by accident** | The dashboard scene tile cannot trigger its scene. Entry default house modes only move a highlight. |
 | **Colour collisions** | Primary, danger, active alert and media domain all use red. |
 | **Feedback gaps** | Never-confirmed (MIXED) looks like settling. Climate does not roll back a failed command. |
@@ -699,19 +794,25 @@ just a re-skin.
 4. **Light and dark** for every screen. Dark mode is not an inversion.
 5. **Every screen in all its states** (§7.1) and every control in its feedback states (§7.2).
 6. **Everything is optional** (§8). Show the sparse versions.
-7. **Bundled assets only.** No web fonts, no remote images. Icons from Material Design Icons or delivered as SVG.
+7. **Bundled assets only.** No web fonts, no internet images. Icons from Material Design Icons or delivered as SVG.
+   Camera snapshots and live video from the local backend are the only images loaded at run time.
 8. **Raspberry Pi GPU budget.** At most one real blur on screen. No stacked transparency or heavy shadows.
 9. **Do not fight the global gestures.** No full-page vertical carousels; horizontal swipe belongs to the deck.
 10. **No keyboard for everyday controls.** Numbers are set with sliders, dials, steppers or presets.
 11. **WCAG AA contrast** in both themes, also on the sky gradients.
-12. **Same brand as the admin** (§4.3).
+12. **Same brand as the admin** (§4.3), with a per-panel accent colour (§4.4).
+13. **Everyday control happens on the panel.** The admin configures the system; anything a household member wants to
+    change day to day (temperature, comfort preset, arming, unlocking, lights) must be possible at the panel.
+14. **Security actions are deliberate.** Disarm and unlock need a confirmation or a code; nothing security-related
+    sits where a swipe or an accidental tap can trigger it.
 
 ## 12. Deliverables
 
 ### 12.1 Foundations
 
 - [ ] Colour tokens, light and dark: surfaces, text roles, borders, fills; status colours (ok, warn, danger, info,
-      primary) with text, soft and border shades; the seven domain colours; the primary/brand decision.
+      primary) with text, soft and border shades; the seven domain colours; the primary/brand decision; the
+      **accent palette set** (§4.4) with the rules for what the accent may colour.
 - [ ] Type scale for UI text, plus the display numerals (hero, sky clock, time tile, signage clock, flip clock) and
       the rule for DIN 1451 vs Roboto.
 - [ ] Spacing, radius, elevation and motion tokens.
@@ -737,23 +838,30 @@ compact, regular and expanded.
 - [ ] Overlay templates: banner, modal card, full screen, in all five colour schemes, with 0, 1 and 2 actions
 - [ ] State templates: loading (skeleton), error, empty, not configured, offline, disconnected
 - [ ] Dashboard tiles at their size steps; data-source widgets
+- [ ] Security: arm control, PIN keypad (with wrong code and lockout), countdown (exit and entry delay)
+- [ ] Camera tile, camera grid, live video frame with its connection states
+- [ ] Thermostat control: dial with one or two setpoints, comfort preset selector, override duration picker
+- [ ] Accent swatch picker
 
 ### 12.3 Screens, in priority order
 
 1. **Room overview** with the new mode sections (full, sparse, empty, square), and the sky panel at four
    time-of-day/weather combinations.
 2. **Lights, Climate, Shading** domain views, including grouped covers and the auxiliary-only climate state.
-3. **Navigation and overlays**: bottom bar, side dock, More sheet, connection escalation, security alert overlay.
-4. **Media** (all six body states + live connection block), **Sensors**, **Energy**.
-5. **Security** view (three tabs).
-6. **Device details**: lighting, window covering, thermostat dial, one media device, sensor detail; then the new
-   ones (native thermostat, virtual thermostat simplified for the wall, actuator group, light group, hardware
-   inputs); then the placeholders (lock, door, doorbell, alarm, outlet/switcher first).
-7. **Master** and **Entry** overviews on the new design language.
-8. **Dashboard** tiles page, cards page and all tiles.
-9. **Settings** (all pages and variants), **weather detail**.
-10. **Startup**: discovery (all states), room selection, loading, fatal error.
-11. **Buddy** chat, voice overlay; screen saver, lock screen; **signage** board.
+3. **Navigation and overlays**: bottom bar, side dock, More sheet, connection escalation, security alert overlay,
+   alarm entry delay and triggered, doorbell ring.
+4. **Security** view with arm/disarm, keypad and all alarm states; **Entry** overview with arm control, locks and the
+   door camera; **cameras** (tile, grid, camera view) and the **doorbell** (ring, missed rings, detail).
+5. **Thermostat control**: one layout for plain, native and virtual thermostats (dial, presets, override), the
+   "details" layer, and comfort presets in the Climate view.
+6. **Media** (all six body states + live connection block), **Sensors**, **Energy**.
+7. **Device details**: lighting, window covering, one media device, sensor detail; then the new ones (actuator
+   group, light group, hardware inputs); then the remaining placeholders (lock, door, outlet/switcher first).
+8. **Master** overview on the new design language, with room accent colours.
+9. **Dashboard** tiles page, cards page and all tiles.
+10. **Settings** (all pages and variants, including the accent picker), **weather detail**.
+11. **Startup**: discovery (all states), room selection, loading, fatal error.
+12. **Buddy** chat, voice overlay; screen saver, lock screen; **signage** board.
 
 ### 12.4 Variant matrix
 
@@ -770,33 +878,45 @@ and M+.
 
 ### 12.5 Marking new functionality
 
-Anything the app cannot do today (arm/disarm, scene tile triggering, album art, camera view, signage content,
-12-hour clock, a visible settings button, PIN lock) must carry a visible **"new"** marker on the board, so it is
+Anything the app cannot do today (arm/disarm, PIN keypad, exit delay, unlocking from the panel, cameras and the
+doorbell, room accent colours, comfort presets in the Climate view, scene tile triggering, album art, signage content,
+12-hour clock, a visible settings button) must carry a visible **"new"** marker on the board, so it is
 planned as engineering work and not treated as a re-skin.
 
 ### 12.6 Handoff format
 
 - A design canvas (boards grouped by foundations, components, templates, screens) and an implementation handoff,
   as was done for the admin redesign.
-- A **component mapping table**: each designed component → the existing widget it replaces or re-skins (§4.4), or
+- A **component mapping table**: each designed component → the existing widget it replaces or re-skins (§4.5), or
   "new".
 - Token values as a table that can become `apps/panel/lib/core/utils/theme.dart`.
 - Short copy for every status label you introduce, in English.
 
-## 13. Open decisions
+## 13. Decisions
+
+### 13.1 Decided
+
+| Topic | Decision |
+|---|---|
+| **Colour per room** | Each panel gets a user-selectable accent colour, defaulting from its room (§4.4). Status and domain colours stay fixed. |
+| **Thermostats** | All everyday control is on the panel: temperature, mode, comfort preset, temporary override, clearing the OFF latch. The admin is only for configuration. Diagnostics stay on the panel as a read-only, plain-language "details" layer (§6.F). |
+| **Security** | The panel is an alarm keypad: arm (Home, Away, Night), disarm with a code, exit and entry delays, triggered and silenced states (§6.D). |
+| **Cameras and doorbell** | In scope: camera tiles and grid, full-screen camera view, doorbell ring interrupt with Unlock, missed rings (§6.K). |
+
+### 13.2 Still open
 
 Please give a recommendation for each.
 
-1. **Primary colour.** Keep red as primary, or follow the admin (blue primary, red only for danger and brand)?
+1. **Default accent and brand.** Which accent is the default, and does red stay in the accent set given that red
+   means danger? Follow the admin's blue primary for the default?
 2. **Physical sizing.** Accept the per-panel density approach of §3.4 and give the mm floors.
 3. **Room modes vs domain modes.** How room activity modes (Work, Relax, Sleep, Entertainment, Away) relate visually
    to the Lights, Shading and Climate modes and to scenes. One concept on the overview or several?
-4. **What diagnostics stay on the panel.** Thermostat members, comfort configuration, dew point, group membership
-   repair: show a short status on the panel with a "details" layer, or move them to the admin only?
-5. **Arm/disarm on the Security view** and a **PIN lock screen**: in scope?
-6. **Settings entry point**: keep the swipe-down only, or add a visible affordance?
-7. **Signage**: design the full board now?
-8. **Cameras**: design the tile and detail now?
+4. **Alarm codes.** One household code or one per user? Is a code needed to arm, or only to disarm? A duress code?
+5. **Panel lock.** Should the lock screen itself ask for a PIN (for example on an entry panel facing outside)?
+6. **Doorbell talk.** Two-way audio needs the panel's microphone and speaker. Design it now or later?
+7. **Settings entry point**: keep the swipe-down only, or add a visible affordance?
+8. **Signage**: design the full board now?
 9. **Burn-in**: should always-on screens (signage, screen saver) shift content over time?
 
 ## 14. Source pointers
@@ -817,6 +937,9 @@ Please give a recommendation for each.
 | Master, entry, signage | `apps/panel/lib/plugins/spaces-synthetic-*/`, `plugins/spaces-signage-info-panel/` |
 | Device details | `apps/panel/lib/modules/devices/presentation/device_details/` (registry in `modules/devices/mappers/device.dart`) |
 | Security, energy, weather, Buddy | `apps/panel/lib/modules/{security,energy,weather,buddy}/presentation/` |
+| Alarm, doorbell, camera and lock capabilities | `spec/devices/channels.yaml` (`alarm`, `doorbell`, `camera`, `lock`), `spec/devices/devices.yaml` |
+| Security aggregation (arming and alarm states) | `apps/backend/src/modules/security/security.constants.ts` |
+| Cameras module (snapshots, live sessions) | [`docs/cameras-architecture.md`](cameras-architecture.md) |
 | Dashboard pages and tiles | `apps/panel/lib/plugins/pages-*`, `plugins/tiles-*`, `plugins/data-sources-*` |
 | Startup, discovery, settings, overlays, suggestions | `apps/panel/lib/app/`, `apps/panel/lib/features/` |
 | Strings (all six languages) | `apps/panel/lib/l10n/app_*.arb` |
