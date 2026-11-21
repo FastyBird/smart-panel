@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import { Icon } from '@iconify/vue';
 
@@ -87,24 +87,20 @@ const id = useId();
 const headingId = `plugin-form-section-${id}-heading`;
 const bodyId = `plugin-form-section-${id}-body`;
 
-// Advanced options start collapsed (spec section 7); a parent may own the state through `v-model:expanded`
-const localExpanded = ref<boolean>(props.expanded ?? false);
+// Advanced options start collapsed (spec section 7). A parent that passes `expanded` owns the state: a click only asks
+// it to change through `update:expanded`. Without it the section keeps its own
+const localExpanded = ref<boolean>(false);
 
-watch(
-	(): boolean | undefined => props.expanded,
-	(value): void => {
-		if (value !== undefined) {
-			localExpanded.value = value;
-		}
-	}
-);
-
-const isExpanded = computed<boolean>((): boolean => localExpanded.value);
+const isExpanded = computed<boolean>((): boolean => props.expanded ?? localExpanded.value);
 
 const toggle = (): void => {
-	localExpanded.value = !localExpanded.value;
+	const next = !isExpanded.value;
 
-	emit('update:expanded', localExpanded.value);
+	if (props.expanded === undefined) {
+		localExpanded.value = next;
+	}
+
+	emit('update:expanded', next);
 };
 </script>
 

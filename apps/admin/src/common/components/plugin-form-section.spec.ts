@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file -- parent components that hold the sections */
 import { defineComponent, ref } from 'vue';
 
 import { describe, expect, it } from 'vitest';
@@ -63,6 +64,40 @@ describe('PluginFormSection.vue', () => {
 		expect(wrapper.find('[data-test-id="plugin-form-section-toggle"]').attributes('aria-expanded')).toBe('false');
 
 		wrapper.unmount();
+	});
+
+	it('leaves a supplied open state to the parent, only asking it to change', async () => {
+		const wrapper = render({ title: 'Advanced', advanced: true, expanded: false });
+
+		const toggle = wrapper.find('[data-test-id="plugin-form-section-toggle"]');
+
+		await toggle.trigger('click');
+
+		expect(wrapper.emitted('update:expanded')).toEqual([[true]]);
+		expect(toggle.attributes('aria-expanded')).toBe('false');
+		expect((body(wrapper).element as HTMLElement).style.display).toBe('none');
+
+		wrapper.unmount();
+	});
+
+	it('opens and closes through v-model:expanded', async () => {
+		const open = ref(false);
+		const wrapper = mount(
+			defineComponent({
+				components: { PluginFormSection },
+				setup: () => ({ open }),
+				template: '<plugin-form-section v-model:expanded="open" title="Advanced" advanced />',
+			})
+		);
+
+		await wrapper.find('[data-test-id="plugin-form-section-toggle"]').trigger('click');
+
+		expect(open.value).toBe(true);
+		expect(wrapper.find('[data-test-id="plugin-form-section-toggle"]').attributes('aria-expanded')).toBe('true');
+
+		await wrapper.find('[data-test-id="plugin-form-section-toggle"]').trigger('click');
+
+		expect(open.value).toBe(false);
 	});
 
 	it('gives every section its own heading id', () => {
