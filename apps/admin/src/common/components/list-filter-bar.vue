@@ -156,13 +156,13 @@
 						class="flex flex-col gap-1"
 					>
 						<label
-							:for="`list-filter-bar-${filter.id}`"
+							:for="fieldId(filter)"
 							class="text-label"
 						>
 							{{ filter.label }}
 						</label>
 						<el-select
-							:id="`list-filter-bar-${filter.id}`"
+							:id="fieldId(filter)"
 							:model-value="filter.value ?? ''"
 							:placeholder="t('application.listFilterBar.all')"
 							clearable
@@ -211,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUpdate, ref, useSlots } from 'vue';
+import { computed, onBeforeUpdate, ref, useId, useSlots } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElDivider, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElInput, ElOption, ElSelect } from 'element-plus';
@@ -248,6 +248,11 @@ const { t } = useI18n();
 const { isDesktop, isPhone } = useSizeClass();
 
 const drawerOpen = ref<boolean>(false);
+
+// Drawer content stays in the document after closing, so two bars sharing a quick-filter id need their own prefix
+const instanceId = useId();
+
+const fieldId = (filter: ListFilterBarQuickFilter): string => `list-filter-bar-${instanceId}-${filter.id}`;
 
 // The design allows three quick filters in the bar; more would push the search off a 1280 px row
 const quickFilters = computed<ListFilterBarQuickFilter[]>(() => props.quickFilters.slice(0, 3));

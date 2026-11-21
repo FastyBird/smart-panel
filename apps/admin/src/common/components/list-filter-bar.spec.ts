@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file -- parent components that host the bar in slot and multi-instance tests */
 import { computed, defineComponent, nextTick, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
@@ -46,39 +47,41 @@ const QUICK_FILTERS: ListFilterBarQuickFilter[] = [
 	},
 ];
 
+const STUBS = {
+	// The drawer body renders only while it is open
+	ElDrawer: {
+		props: ['modelValue', 'title', 'size'],
+		template: '<div v-if="modelValue" :data-size="size" :data-title="title"><slot /><slot name="footer" /></div>',
+	},
+	// The menu is teleported by Element Plus; render it inline so its items can be clicked
+	ElDropdown: {
+		emits: ['command'],
+		template: '<div><slot /><slot name="dropdown" /></div>',
+		provide() {
+			return { stubDropdown: this };
+		},
+	},
+	ElDropdownMenu: { template: '<ul><slot /></ul>' },
+	ElDropdownItem: {
+		props: ['command'],
+		inject: ['stubDropdown'],
+		template: '<li data-test-id="dropdown-item" @click="stubDropdown.$emit(\'command\', command)"><slot /></li>',
+	},
+	ElSelect: {
+		props: ['modelValue'],
+		emits: ['update:modelValue'],
+		template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+	},
+	ElOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
+};
+
 const render = (props: ListFilterBarProps = {}, slots: Record<string, string> = {}) =>
 	mount(ListFilterBar, {
 		props,
 		slots,
 		global: {
 			plugins: [i18n],
-			stubs: {
-				// The drawer body renders only while it is open
-				ElDrawer: {
-					props: ['modelValue', 'title', 'size'],
-					template: '<div v-if="modelValue" :data-size="size" :data-title="title"><slot /><slot name="footer" /></div>',
-				},
-				// The menu is teleported by Element Plus; render it inline so its items can be clicked
-				ElDropdown: {
-					emits: ['command'],
-					template: '<div><slot /><slot name="dropdown" /></div>',
-					provide() {
-						return { stubDropdown: this };
-					},
-				},
-				ElDropdownMenu: { template: '<ul><slot /></ul>' },
-				ElDropdownItem: {
-					props: ['command'],
-					inject: ['stubDropdown'],
-					template: '<li data-test-id="dropdown-item" @click="stubDropdown.$emit(\'command\', command)"><slot /></li>',
-				},
-				ElSelect: {
-					props: ['modelValue'],
-					emits: ['update:modelValue'],
-					template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
-				},
-				ElOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
-			},
+			stubs: STUBS,
 		},
 	});
 
@@ -235,6 +238,31 @@ describe('ListFilterBar.vue', () => {
 			['integration', 'shelly'],
 			['state', null],
 		]);
+	});
+
+	it('gives each bar its own drawer field ids', async () => {
+		sizeClass.value = 'tp';
+
+		// `useId()` is unique within one app, so both bars live in one parent
+		const wrapper = mount(
+			defineComponent({
+				components: { ListFilterBar },
+				setup: () => ({ quickFilters: QUICK_FILTERS }),
+				template: '<div><list-filter-bar :quick-filters="quickFilters" /><list-filter-bar :quick-filters="quickFilters" /></div>',
+			}),
+			{ global: { plugins: [i18n], stubs: STUBS } }
+		);
+
+		for (const button of wrapper.findAll('[data-test-id="list-filter-bar-filters"]')) {
+			await button.trigger('click');
+		}
+
+		const labels = wrapper.findAll('label');
+		const selects = wrapper.findAll('[data-test-id="list-filter-bar-drawer-quick-filter"]');
+
+		expect(selects).toHaveLength(4);
+		expect(labels.map((label) => label.attributes('for'))).toEqual(selects.map((select) => select.attributes('id')));
+		expect(new Set(selects.map((select) => select.attributes('id'))).size).toBe(4);
 	});
 
 	it('offers Reset only while filters are active', async () => {
