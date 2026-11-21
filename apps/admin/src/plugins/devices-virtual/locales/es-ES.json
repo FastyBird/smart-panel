@@ -881,7 +881,7 @@
 			"locked": "Bloqueado"
 		}
 	},
-	"detailTab": "Dispositivo virtual",
+	"detailTab": "Virtual",
 	"conversion": {
 		"inputRange": "Rango de entrada",
 		"outputRange": "Rango de salida",

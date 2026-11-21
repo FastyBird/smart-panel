@@ -1,7 +1,6 @@
 <template>
 	<el-table
-		v-loading="props.loading"
-		:element-loading-text="t('devicesModule.texts.devices.loadingDevices')"
+		ref="tableEl"
 		:data="props.items"
 		:default-sort="
 			typeof props.sortBy !== 'undefined' && props.sortDir !== null
@@ -18,93 +17,50 @@
 		@row-click="onRowClick"
 	>
 		<template #empty>
-			<div
+			<state-view
 				v-if="props.loading"
-				class="h-full w-full leading-normal"
+				kind="loading"
+				:title="t('devicesModule.texts.devices.loadingDevices')"
+				icon="mdi:devices"
+			/>
+
+			<state-view
+				v-else-if="props.filtersActive && !noResults"
+				kind="empty"
+				:title="t('devicesModule.texts.devices.noFilteredDevices')"
+				icon="mdi:filter-multiple"
 			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:devices" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:database-refresh" />
-							</template>
-						</icon-with-child>
-					</template>
-				</el-result>
-			</div>
+				<template #action>
+					<el-button
+						plain
+						@click="emit('reset-filters')"
+					>
+						<template #icon>
+							<icon icon="mdi:filter-off" />
+						</template>
 
-			<div
-				v-else-if="noResults && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:devices" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
+						{{ t('devicesModule.buttons.resetFilters.title') }}
+					</el-button>
+				</template>
+			</state-view>
 
-					<template #title>
-						{{ t('devicesModule.texts.devices.noDevices') }}
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="props.filtersActive && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:devices" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-multiple" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('devicesModule.texts.devices.noFilteredDevices') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="emit('reset-filters')"
-						>
-							<template #icon>
-								<icon icon="mdi:filter-off" />
-							</template>
-
-							{{ t('devicesModule.buttons.resetFilters.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
+			<state-view
+				v-else
+				kind="empty"
+				:title="t('devicesModule.texts.devices.noDevices')"
+				icon="mdi:devices"
+			/>
 		</template>
 
 		<el-table-column
-			v-if="isMDDevice"
 			type="selection"
-			fixed
-			:width="30"
+			fixed="left"
+			:width="40"
 		/>
 
 		<el-table-column
 			:width="60"
+			fixed="left"
 			align="center"
 		>
 			<template #default="scope">
@@ -118,6 +74,7 @@
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
 			:min-width="200"
+			fixed="left"
 			class-name="py-0!"
 		>
 			<template #default="scope">
@@ -139,7 +96,9 @@
 			</template>
 		</el-table-column>
 
+		<!-- Integration: dropped on tablet portrait, where the table keeps to what fits (spec section 6) -->
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('devicesModule.table.devices.columns.type.title')"
 			prop="type"
 			sortable="custom"
@@ -163,10 +122,9 @@
 			:width="130"
 		>
 			<template #default="scope">
-				<devices-table-column-state
-					:device="scope.row"
-					:filters="innerFilters"
-					@filter-by="(value: DevicesModuleDeviceConnectionStatus, add: boolean) => onFilterBy('state', value, add)"
+				<status-tag
+					:status="deviceStatusTag(scope.row.status?.status)"
+					:label="t(`devicesModule.states.${String(scope.row.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown).toLowerCase()}`)"
 				/>
 			</template>
 		</el-table-column>
@@ -306,23 +264,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
+import { ElButton, ElIcon, ElLink, ElTable, ElTableColumn, ElText, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { type IPluginElement, IconWithChild, useBreakpoints } from '../../../../common';
+import { type IPluginElement, StateView, StatusTag, useSizeClass } from '../../../../common';
 import { type DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
 import type { IDevicesFilter } from '../../composables/types';
+import { deviceStatusTag } from '../../devices.status';
 import type { IDevice } from '../../store/devices.store.types';
 
 import DevicesTableColumnHidden from './devices-table-column-hidden.vue';
 import DevicesTableColumnIcon from './devices-table-column-icon.vue';
 import DevicesTableColumnPlugin from './devices-table-column-plugin.vue';
-import DevicesTableColumnState from './devices-table-column-state.vue';
 import DevicesTableColumnValidation from './devices-table-column-validation.vue';
 import type { IDevicesTableProps } from './devices-table.types';
 
@@ -345,7 +303,16 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+const { isTabletPortrait } = useSizeClass();
+
+const tableEl = ref<InstanceType<typeof ElTable> | null>(null);
+
+// The filter bar's Clear selection
+const clearSelection = (): void => {
+	tableEl.value?.clearSelection();
+};
+
+defineExpose({ clearSelection });
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 

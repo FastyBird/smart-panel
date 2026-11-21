@@ -1,6 +1,9 @@
 <template>
-	<section
+	<!-- A device detail tab renders cards only (spec section 7); nothing at all for a user who may not recover -->
+	<el-card
 		v-if="authorized"
+		shadow="never"
+		class="mt-2"
 		data-test-id="cover-ordering-recovery"
 	>
 		<el-alert
@@ -58,13 +61,13 @@
 				{{ t('devicesShellyNgPlugin.coverRecovery.accept') }}
 			</el-button>
 		</template>
-	</section>
+	</el-card>
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElInput } from 'element-plus';
+import { ElAlert, ElButton, ElCard, ElCheckbox, ElInput } from 'element-plus';
 
 import { useBackend } from '../../../common';
 import { useSession } from '../../../modules/auth/composables/useSession';
