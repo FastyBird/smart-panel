@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:widget-tree"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('pagesCardsPlugin.headings.pages.editTile') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('pagesCardsPlugin.subHeadings.pages.editTile') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('pagesCardsPlugin.buttons.update.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('pagesCardsPlugin.headings.pages.editTile')"
+		:subtitle="t('pagesCardsPlugin.subHeadings.pages.editTile')"
+		icon="mdi:widget-tree"
+		left="close"
+		:primary="{ label: t('pagesCardsPlugin.buttons.update.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -135,21 +103,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	type IPlugin,
-	type IPluginElement,
-	useBreakpoints,
-	useFlashMessage,
-	useUuid,
-} from '../../../common';
+import { AppBreadcrumbs, type IPlugin, type IPluginElement, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
 import {
 	DashboardApiException,
 	DashboardException,

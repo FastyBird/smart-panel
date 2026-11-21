@@ -1,60 +1,15 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isLocationRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:map-marker"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('weatherModule.headings.locationDetail', { location: location?.name }) }}
-		</template>
-
-		<template #subtitle>
-			{{ t('weatherModule.subHeadings.locationDetail', { location: location?.name }) }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && isLocationRoute && location"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onEdit"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:pencil" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('weatherModule.headings.locationDetail', { location: location?.name })"
-		:sub-heading="t('weatherModule.subHeadings.locationDetail', { location: location?.name })"
+		v-if="isLocationRoute || isLGDevice"
+		:title="t('weatherModule.headings.locationDetail', { location: location?.name })"
+		:subtitle="t('weatherModule.subHeadings.locationDetail', { location: location?.name })"
 		icon="mdi:map-marker"
+		:actions="[...(isLocationRoute && location ? [{ icon: 'mdi:pencil', label: t('weatherModule.headings.editLocation'), handler: onEdit }] : [])]"
+		@back="onClose"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					v-if="location"
@@ -156,7 +111,11 @@
 				</div>
 			</template>
 
-			<location-hourly-forecast :hourly-forecast="weather.hourlyForecast" :sunrise="weather.current?.sunrise" :sunset="weather.current?.sunset" />
+			<location-hourly-forecast
+				:hourly-forecast="weather.hourlyForecast"
+				:sunrise="weather.current?.sunrise"
+				:sunset="weather.current?.sunset"
+			/>
 		</el-card>
 
 		<el-card class="mt-4 mb-2">
@@ -191,23 +150,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<view-error>
 					<template #icon>
@@ -230,7 +173,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -244,7 +187,7 @@ import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox, ElResult, ElScrollbar
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, EntityNotFound, IconWithChild, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, EntityNotFound, IconWithChild, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import LocationDetail from '../components/location-detail.vue';
 import LocationForecast from '../components/location-forecast.vue';
 import LocationHourlyForecast from '../components/location-hourly-forecast.vue';
@@ -268,7 +211,7 @@ useMeta({
 	title: t('weatherModule.meta.locations.detail.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const locationId = computed(() => props.id);
 

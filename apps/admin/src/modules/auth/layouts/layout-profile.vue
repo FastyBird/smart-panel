@@ -1,55 +1,10 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #prepend>
-			<user-avatar
-				:size="32"
-				:email="sessionStore.profile?.email"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('authModule.headings.yourProfile') }}
-		</template>
-
-		<template #subtitle>
-			{{ sessionStore.profile?.email || sessionStore.profile?.username }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSave"
-	>
-		<span class="uppercase">{{ t('devicesModule.buttons.save.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('authModule.headings.yourProfile')"
-		:sub-heading="sessionStore.profile?.email || sessionStore.profile?.username"
+		:title="t('authModule.headings.yourProfile')"
+		:subtitle="sessionStore.profile?.email || sessionStore.profile?.username"
+		:primary="{ label: t('devicesModule.buttons.save.title'), handler: onSave }"
 	>
 		<template #icon>
 			<user-avatar
@@ -58,7 +13,7 @@
 			/>
 		</template>
 
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					plain
@@ -141,16 +96,7 @@ import { ElButton, ElIcon, ElTabPane, ElTabs, type TabsPaneContext } from 'eleme
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	UserAvatar,
-	ViewHeader,
-	injectStoresManager,
-	useBreakpoints,
-} from '../../../common';
+import { AppBreadcrumbs, UserAvatar, ViewHeader, injectStoresManager, useBreakpoints } from '../../../common';
 import { FormResult, RouteNames } from '../auth.constants';
 import { sessionStoreKey } from '../store/keys';
 

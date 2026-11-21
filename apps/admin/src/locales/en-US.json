@@ -65,6 +65,10 @@
 			"done": "Done",
 			"clearSelection": "Clear selection"
 		},
+		"appBar": {
+			"back": "Back",
+			"close": "Close"
+		},
 		"wizardShell": {
 			"steps": "Wizard steps",
 			"progress": "Step {current} of {total} · {label}",

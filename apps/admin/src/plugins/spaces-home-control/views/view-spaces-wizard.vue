@@ -1,48 +1,13 @@
 <template>
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:wizard-hat"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('spacesModule.wizard.title') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('spacesModule.subHeadings.wizard') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="handleCancel"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-breadcrumbs :items="breadcrumbs" />
-
 	<view-header
-		:heading="t('spacesModule.wizard.title')"
-		:sub-heading="t('spacesModule.subHeadings.wizard')"
+		:title="t('spacesModule.wizard.title')"
+		:subtitle="t('spacesModule.subHeadings.wizard')"
 		icon="mdi:wizard-hat"
+		@back="handleCancel"
 	>
 		<template
 			v-if="isMDDevice"
-			#extra
+			#actions
 		>
 			<div class="flex items-center gap-2">
 				<el-button
@@ -83,9 +48,9 @@
 		</template>
 	</view-header>
 
-	<div
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
-	>
+	<app-breadcrumbs :items="breadcrumbs" />
+
+	<div class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
 		<el-card
 			shadow="never"
 			class="max-h-full flex flex-col overflow-hidden box-border"
@@ -104,7 +69,6 @@
 				</el-steps>
 			</template>
 
-			
 			<div
 				v-loading="isLoading"
 				class="p-4 max-h-full box-border flex flex-col"
@@ -131,12 +95,19 @@
 								:key="index"
 								class="flex items-center gap-3 flex-wrap p-2"
 							>
-								<el-checkbox :model-value="space.selected" @change="() => toggleProposedSpace(index)" />
+								<el-checkbox
+									:model-value="space.selected"
+									@change="() => toggleProposedSpace(index)"
+								/>
 								<div class="grow-1 flex items-center gap-1 min-w-[150px]">
 									<!-- Read mode (default) -->
 									<template v-if="!space.editing">
 										{{ space.name }}
-										<el-button link size="small" @click="handleStartEditingProposedName(index)">
+										<el-button
+											link
+											size="small"
+											@click="handleStartEditingProposedName(index)"
+										>
 											<el-icon :size="14">
 												<icon icon="mdi:pencil" />
 											</el-icon>
@@ -155,15 +126,26 @@
 										@blur="handleConfirmProposedNameEdit(index)"
 									/>
 								</div>
-								<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.wizard.devices') }}</el-tag>
+								<el-tag
+									size="small"
+									type="info"
+								>
+									{{ space.deviceCount }} {{ t('spacesModule.wizard.devices') }}
+								</el-tag>
 								<el-select
 									v-model="space.type"
 									size="small"
 									class="w-[120px]!"
 									@change="() => onSpaceTypeChange(space)"
 								>
-									<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
-									<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+									<el-option
+										:label="t('spacesModule.fields.spaces.type.options.room')"
+										:value="SpaceType.ROOM"
+									/>
+									<el-option
+										:label="t('spacesModule.fields.spaces.type.options.zone')"
+										:value="SpaceType.ZONE"
+									/>
 								</el-select>
 								<el-select
 									v-model="space.category"
@@ -259,12 +241,27 @@
 									</template>
 									<template v-else>
 										<span class="text-gray-600">
-											{{ t('spacesModule.wizard.steps.spaces.multipleMatchedWith', { count: aggregated.matchCount, name: aggregated.existingSpace.name }) }}
+											{{
+												t('spacesModule.wizard.steps.spaces.multipleMatchedWith', {
+													count: aggregated.matchCount,
+													name: aggregated.existingSpace.name,
+												})
+											}}
 										</span>
 									</template>
 								</span>
-								<el-tag size="small" type="info">{{ aggregated.totalDeviceCount }} {{ t('spacesModule.wizard.devices') }}</el-tag>
-								<el-tag size="small" type="success">{{ t('spacesModule.wizard.steps.spaces.existingTag') }}</el-tag>
+								<el-tag
+									size="small"
+									type="info"
+								>
+									{{ aggregated.totalDeviceCount }} {{ t('spacesModule.wizard.devices') }}
+								</el-tag>
+								<el-tag
+									size="small"
+									type="success"
+								>
+									{{ t('spacesModule.wizard.steps.spaces.existingTag') }}
+								</el-tag>
 							</div>
 						</template>
 
@@ -274,7 +271,11 @@
 							</h4>
 
 							<div class="flex flex-wrap gap-2">
-								<el-tag v-for="space in unmatchedExistingSpaces" :key="space.id" size="large">
+								<el-tag
+									v-for="space in unmatchedExistingSpaces"
+									:key="space.id"
+									size="large"
+								>
 									{{ space.name }}
 								</el-tag>
 							</div>
@@ -290,12 +291,19 @@
 								:key="index"
 								class="flex items-center gap-3 flex-wrap p-2"
 							>
-								<el-checkbox :model-value="space.selected" @change="() => toggleCustomSpace(index)" />
+								<el-checkbox
+									:model-value="space.selected"
+									@change="() => toggleCustomSpace(index)"
+								/>
 								<div class="grow-1 flex items-center gap-1 min-w-[150px]">
 									<!-- Read mode (default) -->
 									<template v-if="!space.editing">
 										{{ space.name }}
-										<el-button link size="small" @click="handleStartEditingCustomName(index)">
+										<el-button
+											link
+											size="small"
+											@click="handleStartEditingCustomName(index)"
+										>
 											<el-icon :size="14">
 												<icon icon="mdi:pencil" />
 											</el-icon>
@@ -320,8 +328,14 @@
 									class="w-[120px]!"
 									@change="() => onSpaceTypeChange(space)"
 								>
-									<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
-									<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+									<el-option
+										:label="t('spacesModule.fields.spaces.type.options.room')"
+										:value="SpaceType.ROOM"
+									/>
+									<el-option
+										:label="t('spacesModule.fields.spaces.type.options.zone')"
+										:value="SpaceType.ZONE"
+									/>
 								</el-select>
 								<el-select
 									v-model="space.category"
@@ -388,8 +402,15 @@
 							{{ t('spacesModule.wizard.steps.spaces.addManual') }}
 						</h4>
 						<div class="flex items-center gap-3 p-2">
-							<el-input v-model="newSpaceName" :placeholder="t('spacesModule.wizard.steps.spaces.placeholder')" />
-							<el-button type="primary" :disabled="!newSpaceName.trim()" @click="handleAddSpace">
+							<el-input
+								v-model="newSpaceName"
+								:placeholder="t('spacesModule.wizard.steps.spaces.placeholder')"
+							/>
+							<el-button
+								type="primary"
+								:disabled="!newSpaceName.trim()"
+								@click="handleAddSpace"
+							>
 								{{ t('spacesModule.buttons.add.title') }}
 							</el-button>
 						</div>
@@ -407,7 +428,11 @@
 						class="!mb-4 shrink-0"
 					/>
 
-					<el-table :data="sortedDisplays" class="w-full flex-grow" table-layout="fixed">
+					<el-table
+						:data="sortedDisplays"
+						class="w-full flex-grow"
+						table-layout="fixed"
+					>
 						<template #empty>
 							<div class="h-full w-full leading-normal">
 								<el-result class="h-full w-full">
@@ -429,7 +454,11 @@
 							</div>
 						</template>
 
-						<el-table-column prop="name" :label="t('spacesModule.wizard.displayName')" min-width="200">
+						<el-table-column
+							prop="name"
+							:label="t('spacesModule.wizard.displayName')"
+							min-width="200"
+						>
 							<template #default="{ row }">
 								<div>
 									<template v-if="row.name">
@@ -445,7 +474,10 @@
 							</template>
 						</el-table-column>
 
-						<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="250">
+						<el-table-column
+							:label="t('spacesModule.wizard.assignedSpace')"
+							width="250"
+						>
 							<template #default="{ row }">
 								<el-select
 									:model-value="displayAssignments[row.id]"
@@ -461,7 +493,10 @@
 										:value="space.id"
 									>
 										<div class="flex items-center gap-2">
-											<icon :icon="getSpaceIcon(space)" class="w-4 h-4" />
+											<icon
+												:icon="getSpaceIcon(space)"
+												class="w-4 h-4"
+											/>
 											<span>{{ space.name }}</span>
 										</div>
 									</el-option>
@@ -482,7 +517,11 @@
 						class="!mb-4 shrink-0"
 					/>
 
-					<el-table :data="sortedDevices" class="h-full w-full flex-grow" table-layout="fixed">
+					<el-table
+						:data="sortedDevices"
+						class="h-full w-full flex-grow"
+						table-layout="fixed"
+					>
 						<template #empty>
 							<div class="h-full w-full leading-normal">
 								<el-result class="h-full w-full">
@@ -504,18 +543,28 @@
 							</div>
 						</template>
 
-						<el-table-column prop="name" :label="t('spacesModule.wizard.deviceName')" min-width="200">
+						<el-table-column
+							prop="name"
+							:label="t('spacesModule.wizard.deviceName')"
+							min-width="200"
+						>
 							<template #default="{ row }">
 								<div>
 									<div>{{ row.name }}</div>
-									<div v-if="row.description" class="text-xs text-gray-500 mt-1">
+									<div
+										v-if="row.description"
+										class="text-xs text-gray-500 mt-1"
+									>
 										{{ row.description }}
 									</div>
 								</div>
 							</template>
 						</el-table-column>
 
-						<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="250">
+						<el-table-column
+							:label="t('spacesModule.wizard.assignedSpace')"
+							width="250"
+						>
 							<template #default="{ row }">
 								<el-select
 									:model-value="deviceAssignments[row.id]"
@@ -531,7 +580,10 @@
 										:value="space.id"
 									>
 										<div class="flex items-center gap-2">
-											<icon :icon="getSpaceIcon(space)" class="w-4 h-4" />
+											<icon
+												:icon="getSpaceIcon(space)"
+												class="w-4 h-4"
+											/>
 											<span>{{ space.name }}</span>
 										</div>
 									</el-option>
@@ -624,11 +676,21 @@
 							{{ t('spacesModule.wizard.summary.bySpace') }}
 						</h4>
 
-						<el-table :data="spaceSummaryData" class="h-full w-full flex-grow" table-layout="fixed">
-							<el-table-column prop="name" :label="t('spacesModule.wizard.spaceName')">
+						<el-table
+							:data="spaceSummaryData"
+							class="h-full w-full flex-grow"
+							table-layout="fixed"
+						>
+							<el-table-column
+								prop="name"
+								:label="t('spacesModule.wizard.spaceName')"
+							>
 								<template #default="{ row }">
 									<div class="flex items-center gap-2">
-										<icon :icon="getSpaceIcon(row)" class="w-4 h-4" />
+										<icon
+											:icon="getSpaceIcon(row)"
+											class="w-4 h-4"
+										/>
 										<span>{{ row.name }}</span>
 										<el-tag
 											size="small"
@@ -648,8 +710,18 @@
 									</div>
 								</template>
 							</el-table-column>
-							<el-table-column prop="devices" :label="t('spacesModule.wizard.devices')" width="120" align="center" />
-							<el-table-column prop="displays" :label="t('spacesModule.wizard.displays')" width="120" align="center" />
+							<el-table-column
+								prop="devices"
+								:label="t('spacesModule.wizard.devices')"
+								width="120"
+								align="center"
+							/>
+							<el-table-column
+								prop="displays"
+								:label="t('spacesModule.wizard.displays')"
+								width="120"
+								align="center"
+							/>
 						</el-table>
 					</template>
 				</template>
@@ -659,9 +731,21 @@
 					v-model="showUnassignedDevicesDialog"
 					:title="t('spacesModule.wizard.summary.unassignedDevicesTitle')"
 				>
-					<el-table :data="unassignedDevicesList" class="max-h-[70vh] w-full" table-layout="fixed" max-height="70vh" stripe>
-						<el-table-column prop="name" :label="t('spacesModule.wizard.deviceName')" />
-						<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="200">
+					<el-table
+						:data="unassignedDevicesList"
+						class="max-h-[70vh] w-full"
+						table-layout="fixed"
+						max-height="70vh"
+						stripe
+					>
+						<el-table-column
+							prop="name"
+							:label="t('spacesModule.wizard.deviceName')"
+						/>
+						<el-table-column
+							:label="t('spacesModule.wizard.assignedSpace')"
+							width="200"
+						>
 							<template #default="{ row }">
 								<el-select
 									:model-value="deviceAssignments[row.id]"
@@ -677,7 +761,10 @@
 										:value="space.id"
 									>
 										<div class="flex items-center gap-2">
-											<icon :icon="getSpaceIcon(space)" class="w-4 h-4" />
+											<icon
+												:icon="getSpaceIcon(space)"
+												class="w-4 h-4"
+											/>
 											<span>{{ space.name }}</span>
 										</div>
 									</el-option>
@@ -692,7 +779,13 @@
 					v-model="showUnassignedDisplaysDialog"
 					:title="t('spacesModule.wizard.summary.unassignedDisplaysTitle')"
 				>
-					<el-table :data="unassignedDisplaysList" class="max-h-[70vh] w-full" table-layout="fixed" max-height="70vh" stripe>
+					<el-table
+						:data="unassignedDisplaysList"
+						class="max-h-[70vh] w-full"
+						table-layout="fixed"
+						max-height="70vh"
+						stripe
+					>
 						<el-table-column :label="t('spacesModule.wizard.displayName')">
 							<template #default="{ row }">
 								<template v-if="row.name">
@@ -704,7 +797,10 @@
 								</template>
 							</template>
 						</el-table-column>
-						<el-table-column :label="t('spacesModule.wizard.assignedSpace')" width="200">
+						<el-table-column
+							:label="t('spacesModule.wizard.assignedSpace')"
+							width="200"
+						>
 							<template #default="{ row }">
 								<el-select
 									:model-value="displayAssignments[row.id]"
@@ -720,7 +816,10 @@
 										:value="space.id"
 									>
 										<div class="flex items-center gap-2">
-											<icon :icon="getSpaceIcon(space)" class="w-4 h-4" />
+											<icon
+												:icon="getSpaceIcon(space)"
+												class="w-4 h-4"
+											/>
 											<span>{{ space.name }}</span>
 										</div>
 									</el-option>
@@ -735,7 +834,10 @@
 				v-if="!isMDDevice"
 				class="mt-6 flex justify-between"
 			>
-				<el-button v-if="currentStep > 0" @click="prevStep">
+				<el-button
+					v-if="currentStep > 0"
+					@click="prevStep"
+				>
 					{{ t('spacesModule.buttons.previous.title') }}
 				</el-button>
 				<div v-else></div>
@@ -751,10 +853,19 @@
 					>
 						{{ showAdvancedZones ? t('spacesModule.wizard.basic') : t('spacesModule.wizard.advanced') }}
 					</el-button>
-					<el-button v-if="currentStep < 3" type="primary" @click="handleNext">
+					<el-button
+						v-if="currentStep < 3"
+						type="primary"
+						@click="handleNext"
+					>
 						{{ t('spacesModule.buttons.next.title') }}
 					</el-button>
-					<el-button v-else type="primary" :loading="isLoading" @click="handleFinish">
+					<el-button
+						v-else
+						type="primary"
+						:loading="isLoading"
+						@click="handleFinish"
+					>
 						{{ t('spacesModule.buttons.finish.title') }}
 					</el-button>
 				</div>
@@ -765,8 +876,10 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, shallowRef } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useMeta } from 'vue-meta';
+import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { Icon } from '@iconify/vue';
 import {
 	ElAlert,
 	ElButton,
@@ -778,8 +891,8 @@ import {
 	ElOption,
 	ElOptionGroup,
 	ElResult,
-	ElSelect,
 	ElScrollbar,
+	ElSelect,
 	ElStep,
 	ElSteps,
 	ElTable,
@@ -788,30 +901,19 @@ import {
 	ElTooltip,
 	vLoading,
 } from 'element-plus';
-import { useI18n } from 'vue-i18n';
-import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	IconWithChild,
-	ViewHeader,
-	useBreakpoints,
-	useFlashMessage,
-} from '../../../common';
+import { Icon } from '@iconify/vue';
+
+import { AppBreadcrumbs, IconWithChild, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useSpaceCategories } from '../../../modules/spaces/composables';
 import {
 	RouteNames,
-	SpaceType,
-	isValidCategoryForType,
 	type SpaceRoomCategory,
+	SpaceType,
 	type SpaceZoneCategory,
+	isValidCategoryForType,
 } from '../../../modules/spaces/spaces.constants';
-
-import { useSpacesWizard, type DeviceInfo, type DisplayInfo } from '../composables';
+import { type DeviceInfo, type DisplayInfo, useSpacesWizard } from '../composables';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -905,14 +1007,10 @@ const handleStartEditingCustomName = async (index: number): Promise<void> => {
 };
 
 // Sorted displays for Step 2 (alphabetically by name, fallback to macAddress)
-const sortedDisplays = computed(() =>
-	[...displays.value].sort((a, b) => (a.name || a.macAddress).localeCompare(b.name || b.macAddress))
-);
+const sortedDisplays = computed(() => [...displays.value].sort((a, b) => (a.name || a.macAddress).localeCompare(b.name || b.macAddress)));
 
 // Sorted devices for Step 3 (alphabetically by name)
-const sortedDevices = computed(() =>
-	[...devices.value].sort((a, b) => a.name.localeCompare(b.name))
-);
+const sortedDevices = computed(() => [...devices.value].sort((a, b) => a.name.localeCompare(b.name)));
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -939,11 +1037,7 @@ const allSpaces = availableSpaces;
 
 // Only room spaces for device/display assignment (zones cannot have devices directly assigned)
 // Sorted alphabetically by name for better UX
-const roomSpaces = computed(() =>
-	allSpaces.value
-		.filter((space) => space.type === SpaceType.ROOM)
-		.sort((a, b) => a.name.localeCompare(b.name))
-);
+const roomSpaces = computed(() => allSpaces.value.filter((space) => space.type === SpaceType.ROOM).sort((a, b) => a.name.localeCompare(b.name)));
 
 // Helper function to get space icon
 const getSpaceIcon = (space: { icon?: string | null; type: SpaceType }): string => {
@@ -1001,16 +1095,12 @@ const spaceSummaryData = computed(() =>
 
 // Unassigned devices for drill-down dialog (sorted alphabetically)
 const unassignedDevicesList = computed(() =>
-	devices.value
-		.filter((d) => !deviceAssignments.value[d.id])
-		.sort((a, b) => a.name.localeCompare(b.name))
+	devices.value.filter((d) => !deviceAssignments.value[d.id]).sort((a, b) => a.name.localeCompare(b.name))
 );
 
 // Unassigned displays for drill-down dialog (sorted alphabetically)
 const unassignedDisplaysList = computed(() =>
-	displays.value
-		.filter((d) => !displayAssignments.value[d.id])
-		.sort((a, b) => (a.name || a.macAddress).localeCompare(b.name || b.macAddress))
+	displays.value.filter((d) => !displayAssignments.value[d.id]).sort((a, b) => (a.name || a.macAddress).localeCompare(b.name || b.macAddress))
 );
 
 onMounted(async () => {
@@ -1037,9 +1127,7 @@ const handleAddSpace = (): void => {
 		if (result.success) {
 			newSpaceName.value = '';
 		} else {
-			flashMessage.warning(
-				t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf })
-			);
+			flashMessage.warning(t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf }));
 		}
 	}
 };
@@ -1049,9 +1137,7 @@ const handleConfirmProposedNameEdit = (index: number): void => {
 	if (result.convertedToMatch) {
 		flashMessage.info(t('spacesModule.wizard.steps.spaces.convertedToMatch'));
 	} else if (result.duplicateOf) {
-		flashMessage.warning(
-			t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf })
-		);
+		flashMessage.warning(t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf }));
 	}
 };
 
@@ -1060,9 +1146,7 @@ const handleConfirmCustomNameEdit = (index: number): void => {
 	if (result.convertedToMatch) {
 		flashMessage.info(t('spacesModule.wizard.steps.spaces.convertedToMatch'));
 	} else if (result.duplicateOf) {
-		flashMessage.warning(
-			t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf })
-		);
+		flashMessage.warning(t('spacesModule.wizard.steps.spaces.duplicateWarning', { name: result.duplicateOf }));
 	}
 };
 
@@ -1104,7 +1188,7 @@ const validateSpaces = (): boolean => {
 			return false;
 		}
 	}
-	
+
 	// Check all selected custom spaces
 	for (const space of customSpaces.value) {
 		if (space.selected && space.type === SpaceType.ZONE && !space.category) {
@@ -1112,7 +1196,7 @@ const validateSpaces = (): boolean => {
 			return false;
 		}
 	}
-	
+
 	return true;
 };
 

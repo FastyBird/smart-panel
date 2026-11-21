@@ -102,23 +102,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<view-error>
 					<template #icon>
@@ -142,7 +126,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 
 	<el-dialog
@@ -151,49 +135,34 @@
 		:show-close="false"
 		:close-on-click-modal="false"
 		:close-on-press-escape="false"
+		header-class="hidden"
 		fullscreen
 	>
-		<template #header>
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-		</template>
+		<app-bar-scope @close="onCloseDrawer()">
+			<template v-if="showDrawer">
+				<view-error>
+					<template #icon>
+						<icon icon="mdi:devices" />
+					</template>
+					<template #message>
+						{{ t('pagesCardsPlugin.messages.misc.requestError') }}
+					</template>
 
-		<template v-if="showDrawer">
-			<view-error>
-				<template #icon>
-					<icon icon="mdi:devices" />
-				</template>
-				<template #message>
-					{{ t('pagesCardsPlugin.messages.misc.requestError') }}
-				</template>
-
-				<suspense>
-					<router-view
-						:key="route.path"
-						v-slot="{ Component }"
-					>
-						<component
-							:is="Component"
-							v-model:remote-form-changed="remoteFormChanged"
-							:page="page"
-						/>
-					</router-view>
-				</suspense>
-			</view-error>
-		</template>
+					<suspense>
+						<router-view
+							:key="route.path"
+							v-slot="{ Component }"
+						>
+							<component
+								:is="Component"
+								v-model:remote-form-changed="remoteFormChanged"
+								:page="page"
+							/>
+						</router-view>
+					</suspense>
+				</view-error>
+			</template>
+		</app-bar-scope>
 	</el-dialog>
 </template>
 
@@ -202,12 +171,12 @@ import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDialog, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDialog, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
-import { FormResult, type FormResultType, type IDataSource, RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
+import { AppBarScope, ViewError, useBreakpoints } from '../../../common';
+import { RouteNames as DashboardRouteNames, FormResult, type FormResultType, type IDataSource, type ITile } from '../../../modules/dashboard';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
 import PageConfigure from '../components/page-configure.vue';
 import { useCards } from '../composables/useCards';

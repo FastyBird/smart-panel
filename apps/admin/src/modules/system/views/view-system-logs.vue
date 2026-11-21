@@ -1,29 +1,10 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:hammer"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('systemModule.headings.systemLogs.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('systemModule.subHeadings.systemLogs.list') }}
-		</template>
-	</app-bar-heading>
-
 	<view-header
-		:heading="t('systemModule.headings.systemLogs.list')"
-		:sub-heading="t('systemModule.subHeadings.systemLogs.list')"
+		v-if="isSystemLogsRoute || isLGDevice"
+		:title="t('systemModule.headings.systemLogs.list')"
+		:subtitle="t('systemModule.subHeadings.systemLogs.list')"
 		icon="mdi:console"
 	/>
 
@@ -63,23 +44,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-system-logs-adjust
 					v-if="adjustList"
@@ -106,7 +71,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -116,11 +81,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRoute, useRouter } from 'vue-router';
 
-import { ElDrawer, ElIcon } from 'element-plus';
+import { ElDrawer } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { ListSystemLogs, ListSystemLogsAdjust } from '../components/components';
 import { useSystemLogsDataSource } from '../composables/useSystemLogsDataSource';
 import type { ILogEntry } from '../store/logs-entries.store.types';
@@ -139,7 +104,7 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const { fetchSystemLogs, loadMoreSystemLogs, systemLogs, hasMore, filters, live, filtersActive, areLoading, resetFilter, refreshSystemLogs } =
 	useSystemLogsDataSource();

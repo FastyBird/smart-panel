@@ -1,69 +1,147 @@
 <template>
-	<el-page-header
-		v-if="isMDDevice"
-		class="lt-sm:p-1 sm:p-2 b-b b-b-solid"
-		@back="onBack"
+	<div
+		v-if="!inAppBar"
+		class="flex flex-wrap items-center gap-3 px-2 pt-3 pb-2 tp:px-4"
+		data-test-id="view-header"
 	>
-		<template #content>
-			<div class="flex items-center">
-				<div
-					v-if="'icon' in $slots"
-					class="mr-3 h[32px] w[32px] overflow-hidden"
-				>
-					<slot name="icon" />
-				</div>
-				<el-avatar
-					v-else-if="props.icon"
-					:size="32"
-					class="mr-3"
-				>
-					<icon
-						:icon="props.icon"
-						class="w[20px] h[20px]"
-					/>
-				</el-avatar>
-
-				<span class="text-large font-600 mr-3">{{ props.heading }}</span>
-				<span
-					v-if="props.subHeading"
-					class="text-sm mr-2"
-				>
-					{{ props.subHeading }}
-				</span>
-			</div>
-		</template>
-
-		<template
-			v-if="'extra' in $slots"
-			#extra
+		<router-link
+			v-if="props.back && !props.onBack"
+			:to="props.back"
+			:aria-label="t('application.appBar.back')"
+			class="flex items-center justify-center shrink-0 w-8 h-8 rounded-[var(--el-border-radius-base)] text-regular hover:bg-fill-light"
+			data-test-id="view-header-back"
 		>
-			<slot name="extra" />
-		</template>
-	</el-page-header>
+			<icon
+				icon="mdi:arrow-left"
+				width="20"
+				height="20"
+				aria-hidden="true"
+			/>
+		</router-link>
+		<button
+			v-else-if="props.onBack"
+			:aria-label="phoneLeft === 'close' ? t('application.appBar.close') : t('application.appBar.back')"
+			class="flex items-center justify-center shrink-0 w-8 h-8 p-0 border-0 rounded-[var(--el-border-radius-base)] bg-transparent text-regular cursor-pointer hover:bg-fill-light"
+			type="button"
+			data-test-id="view-header-back"
+			@click="props.onBack()"
+		>
+			<icon
+				:icon="phoneLeft === 'close' ? 'mdi:close' : 'mdi:arrow-left'"
+				width="20"
+				height="20"
+				aria-hidden="true"
+			/>
+		</button>
+
+		<div
+			v-if="props.icon || 'icon' in $slots"
+			class="flex items-center justify-center shrink-0 w-10 h-10 overflow-hidden rounded-full box-border bg-surface border border-solid border-light text-regular"
+			aria-hidden="true"
+			data-test-id="view-header-icon"
+		>
+			<slot name="icon">
+				<icon
+					:icon="props.icon!"
+					width="22"
+					height="22"
+				/>
+			</slot>
+		</div>
+
+		<div class="flex flex-col flex-1 min-w-[180px]">
+			<div class="flex flex-wrap items-center gap-2">
+				<h1 class="m-0 text-title">{{ props.title }}</h1>
+				<slot name="tags" />
+			</div>
+			<span
+				v-if="props.subtitle"
+				class="text-help"
+			>
+				{{ props.subtitle }}
+			</span>
+		</div>
+
+		<div
+			v-if="'actions' in $slots"
+			class="flex flex-wrap items-center gap-2"
+			data-test-id="view-header-actions"
+		>
+			<slot name="actions" />
+		</div>
+	</div>
 </template>
 
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-
-import { ElAvatar, ElPageHeader } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useBreakpoints } from '../composables/useBreakpoints';
+import { type IAppBarHeading, useAppBarHost } from '../composables/useAppBarHost';
+import { useSizeClass } from '../composables/useSizeClass';
 
-import type { IViewHeaderProps } from './view-header.types';
+import type { AppBarLeft } from './app-bar.types';
+import type { ViewHeaderProps } from './view-header.types';
 
 defineOptions({
 	name: 'ViewHeader',
 });
 
-const props = defineProps<IViewHeaderProps>();
+const props = withDefaults(defineProps<ViewHeaderProps>(), {
+	subtitle: undefined,
+	icon: undefined,
+	back: undefined,
+	onBack: undefined,
+	left: undefined,
+	actions: () => [],
+	primary: undefined,
+});
+
+const { t } = useI18n();
 
 const router = useRouter();
 
-const { isMDDevice } = useBreakpoints();
+const { isPhone } = useSizeClass();
 
-const onBack = (): void => {
-	router.back();
+// One source for both headers (spec section 4): under an active host (the layout on phone, or a drawer) this header
+// draws into the dark app bar; otherwise it is the page header
+const host = useAppBarHost();
+
+const inAppBar = computed<boolean>(() => host !== null && host.active.value);
+
+const phoneLeft = computed<AppBarLeft>(() => props.left ?? (props.back || props.onBack ? 'back' : 'menu'));
+
+const onLeft = (): void => {
+	if (props.onBack) {
+		props.onBack();
+	} else if (props.back) {
+		router.push(props.back);
+	} else {
+		router.back();
+	}
 };
+
+// Left button, actions and the primary button belong to the phone bar. A drawer's bar shows only the title (and its
+// own Close), as the screen's footer carries Save there
+const heading = (): IAppBarHeading => ({
+	title: props.title,
+	subtitle: props.subtitle,
+	left: isPhone.value ? phoneLeft.value : null,
+	onLeft,
+	actions: isPhone.value ? props.actions : [],
+	primary: isPhone.value ? props.primary : undefined,
+});
+
+let unregister: (() => void) | null = null;
+
+onMounted((): void => {
+	unregister = host?.register(heading) ?? null;
+});
+
+onBeforeUnmount((): void => {
+	unregister?.();
+	unregister = null;
+});
 </script>

@@ -277,23 +277,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<view-error>
 					<template #icon>
@@ -317,7 +301,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -326,11 +310,11 @@ import { computed, onBeforeMount, onMounted, onScopeDispose, ref, watch } from '
 import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox, ElScrollbar, ElTabPane, ElTabs, useNamespace } from 'element-plus';
+import { ElButton, ElCard, ElDialog, ElDrawer, ElMessageBox, ElScrollbar, ElTabPane, ElTabs, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
+import { AppBarScope, ViewError, useBreakpoints } from '../../../common';
 import { useDevices } from '../../../modules/devices/composables/useDevices';
 import { useDisplays } from '../../../modules/displays/composables/useDisplays';
 import { useScenes } from '../../../modules/scenes/composables/useScenes';

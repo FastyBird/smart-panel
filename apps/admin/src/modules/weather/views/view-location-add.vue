@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:map-marker-plus"
-				class="w[32px] h[32px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('weatherModule.headings.addLocation') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('weatherModule.subHeadings.addLocation') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && selectedProvider"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('weatherModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('weatherModule.headings.addLocation')"
+		:subtitle="t('weatherModule.subHeadings.addLocation')"
+		icon="mdi:map-marker-plus"
+		left="close"
+		:primary="selectedProvider ? { label: t('weatherModule.buttons.save.title'), handler: onSubmit } : undefined"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -138,11 +106,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useBreakpoints, useUuid } from '../../../common';
 import SelectLocationProvider from '../components/select-location-provider.vue';
 import { useWeatherLocationsPlugins } from '../composables/useWeatherLocationsPlugins';
 import { FormResult, type FormResultType, RouteNames } from '../weather.constants';

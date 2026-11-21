@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('dashboardModule.headings.dataSources.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('dashboardModule.subHeadings.dataSources.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('dashboardModule.headings.dataSources.adjustFilters')"
+		:subtitle="t('dashboardModule.subHeadings.dataSources.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -77,7 +69,7 @@ import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseI
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../../common';
+import { ViewHeader } from '../../../../common';
 import { type IDataSourcesFilter } from '../../composables/types';
 import { useDataSourcesPlugins } from '../../composables/useDataSourcesPlugins';
 

@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('extensionsModule.headings.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('extensionsModule.subHeadings.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('extensionsModule.headings.adjustFilters')"
+		:subtitle="t('extensionsModule.subHeadings.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -129,7 +121,7 @@ import { ElButton, ElCollapse, ElCollapseItem, ElRadioButton, ElRadioGroup, ElSc
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../common';
+import { ViewHeader } from '../../../common';
 import type { IExtensionsFilter } from '../composables/types';
 
 import { type IListExtensionsAdjustProps } from './list-extensions-adjust.types';

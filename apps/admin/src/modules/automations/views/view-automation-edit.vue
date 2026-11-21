@@ -1,48 +1,14 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:pencil"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('automations.headings.edit') }}
-		</template>
-
-		<template #subtitle>
-			{{ automation?.name ?? t('automations.subHeadings.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		:disabled="saving"
-		teleport
-		small
-		@click="formChanged ? onDiscard() : onClose()"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
+	<view-header
+		:title="t('automations.headings.edit')"
+		:subtitle="automation?.name ?? t('automations.subHeadings.list')"
+		icon="mdi:pencil"
+		left="close"
+		:primary="automationReady && automation ? { label: t('automations.buttons.save.title'), handler: () => (remoteFormSubmit = true) } : undefined"
+		@back="formChanged ? onDiscard() : onClose()"
+	/>
 
 	<!-- Only together with the form: a click before the form is there would set a flag nothing takes -->
-	<app-bar-button
-		v-if="!isMDDevice && automationReady && automation"
-		:align="AppBarButtonAlign.RIGHT"
-		:loading="remoteFormResult === FormResult.WORKING"
-		:disabled="remoteFormResult === FormResult.WORKING"
-		teleport
-		small
-		@click="remoteFormSubmit = true"
-	>
-		<span class="uppercase">{{ t('automations.buttons.save.title') }}</span>
-	</app-bar-button>
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<!-- Only the first read replaces the form. A later one (the store reads the automation again after
@@ -161,7 +127,7 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
+import { ViewHeader, useBreakpoints } from '../../../common';
 import { FormResult, type FormResultType, RouteNames } from '../automations.constants';
 import { AutomationsApiException } from '../automations.exceptions';
 import { AutomationEditForm } from '../components/components';

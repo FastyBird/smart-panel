@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:home-group"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('spacesModule.headings.add') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('spacesModule.subHeadings.add') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && hasAddForm"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('spacesModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('spacesModule.headings.add')"
+		:subtitle="t('spacesModule.subHeadings.add')"
+		icon="mdi:home-group"
+		left="close"
+		:primary="hasAddForm ? { label: t('spacesModule.buttons.save.title'), handler: onSubmit } : undefined"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -137,18 +105,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElMessageBox, ElScrollbar } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	type IPluginElement,
-	useBreakpoints,
-} from '../../../common';
+import { AppBreadcrumbs, type IPluginElement, ViewHeader, useBreakpoints } from '../../../common';
 import SelectSpacePlugin from '../components/select-space-plugin.vue';
 import { useSpacesPlugins } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
@@ -197,9 +156,7 @@ const hasAddForm = computed<boolean>(() => !!element.value?.components?.spaceAdd
 // binding type-checks. Runtime safety: the picker only surfaces types
 // whose plugin actually registered a `spaceAddForm`, so home-control's
 // form is only ever mounted with ROOM / ZONE here.
-const addFormType = computed<SpaceType.ROOM | SpaceType.ZONE | undefined>(
-	() => selectedType.value as SpaceType.ROOM | SpaceType.ZONE | undefined,
-);
+const addFormType = computed<SpaceType.ROOM | SpaceType.ZONE | undefined>(() => selectedType.value as SpaceType.ROOM | SpaceType.ZONE | undefined);
 
 // The dispatched add form exposes a `submit()` method — mirrors the edit-view
 // contract (see view-space-edit.vue). All plugin-contributed add forms must

@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('weatherModule.headings.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('weatherModule.subHeadings.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('weatherModule.headings.adjustFilters')"
+		:subtitle="t('weatherModule.subHeadings.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -106,7 +98,7 @@ import {
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../common';
+import { ViewHeader } from '../../../common';
 import { type IWeatherLocationsFilter, useWeatherLocationsPlugins } from '../composables/composables';
 
 import { type IListLocationsAdjustProps } from './list-locations-adjust.types';

@@ -1,47 +1,18 @@
 <template>
-	<app-bar-heading teleport>
+	<view-header
+		:title="user?.username ?? ''"
+		:subtitle="user?.email !== null ? user?.email : undefined"
+		left="close"
+		:primary="{ label: t('usersModule.buttons.save.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	>
 		<template #icon>
 			<user-avatar
 				:size="32"
 				:email="user?.email"
 			/>
 		</template>
-
-		<template #title>
-			{{ user?.username }}
-		</template>
-
-		<template
-			v-if="user?.email !== null"
-			#subtitle
-		>
-			{{ user?.email }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('usersModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	</view-header>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -119,11 +90,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, UserAvatar, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import { AppBreadcrumbs, UserAvatar, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
 import { UserEditForm } from '../components/components';
 import { useUser } from '../composables/composables';
 import type { IUser } from '../store/users.store.types';

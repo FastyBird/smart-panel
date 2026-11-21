@@ -1,7 +1,7 @@
 <template>
 	<view-header
-		:heading="t('mcpModule.oauthConsent.title')"
-		:sub-heading="t('mcpModule.oauthConsent.subtitle')"
+		:title="t('mcpModule.oauthConsent.title')"
+		:subtitle="t('mcpModule.oauthConsent.subtitle')"
 		icon="mdi:shield-account-outline"
 	/>
 

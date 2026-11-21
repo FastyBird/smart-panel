@@ -1,34 +1,10 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:note-text-outline"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('systemModule.headings.systemLogs.detail') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('systemModule.subHeadings.systemLogs.detail') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
+	<view-header
+		:title="t('systemModule.headings.systemLogs.detail')"
+		:subtitle="t('systemModule.subHeadings.systemLogs.detail')"
+		icon="mdi:note-text-outline"
+		@back="onClose"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -52,11 +28,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElIcon, ElScrollbar, vLoading } from 'element-plus';
+import { ElScrollbar, vLoading } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { SystemLogDetail } from '../components/components';
 import { useSystemLog } from '../composables/useSystemLog';
 import type { ILogEntry } from '../store/logs-entries.store.types';
@@ -74,7 +48,7 @@ const props = defineProps<IViewSystemLogDetailProps>();
 const router = useRouter();
 const { t } = useI18n();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const { systemLog, isLoading } = useSystemLog({ id: props.id });
 

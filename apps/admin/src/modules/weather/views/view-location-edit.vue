@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:map-marker"
-				class="w[32px] h[32px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('weatherModule.headings.editLocation') }}
-		</template>
-
-		<template #subtitle>
-			{{ location?.name ?? t('weatherModule.subHeadings.editLocation') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('weatherModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('weatherModule.headings.editLocation')"
+		:subtitle="location?.name ?? t('weatherModule.subHeadings.editLocation')"
+		icon="mdi:map-marker"
+		left="close"
+		:primary="{ label: t('weatherModule.buttons.save.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -129,16 +97,16 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElIcon, ElMessageBox, ElScrollbar, ElSkeleton } from 'element-plus';
+import { ElAlert, ElButton, ElMessageBox, ElScrollbar, ElSkeleton } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useLocation } from '../composables';
 import { useWeatherLocationsPlugins } from '../composables/useWeatherLocationsPlugins';
+import type { IWeatherLocation } from '../store/locations.store.types';
 import { FormResult, type FormResultType, RouteNames } from '../weather.constants';
 import { WeatherApiException, WeatherException } from '../weather.exceptions';
-import type { IWeatherLocation } from '../store/locations.store.types';
 
 import type { IViewLocationEditProps } from './view-location-edit.types';
 

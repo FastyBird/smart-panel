@@ -1,60 +1,43 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:pencil"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('scenes.headings.edit') }}
-		</template>
-
-		<template #subtitle>
-			{{ scene?.name ?? t('scenes.subHeadings.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="formChanged ? onDiscard() : onClose()"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && scene"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="remoteFormSubmit = true"
-	>
-		<span class="uppercase">{{ t('scenes.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('scenes.headings.edit')"
+		:subtitle="scene?.name ?? t('scenes.subHeadings.list')"
+		icon="mdi:pencil"
+		left="close"
+		:primary="scene ? { label: t('scenes.buttons.save.title'), handler: () => (remoteFormSubmit = true) } : undefined"
+		@back="formChanged ? onDiscard() : onClose()"
+	/>
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<!-- Loading State -->
-		<div v-if="isLoading || !sceneReady" class="flex items-center justify-center h-full">
-			<el-icon class="is-loading" :size="32">
+		<div
+			v-if="isLoading || !sceneReady"
+			class="flex items-center justify-center h-full"
+		>
+			<el-icon
+				class="is-loading"
+				:size="32"
+			>
 				<icon icon="mdi:loading" />
 			</el-icon>
 		</div>
 
 		<!-- Not Found State -->
-		<div v-else-if="!scene" class="flex flex-col items-center justify-center h-full gap-4 p-4">
-			<el-icon :size="48" class="text-gray-300">
+		<div
+			v-else-if="!scene"
+			class="flex flex-col items-center justify-center h-full gap-4 p-4"
+		>
+			<el-icon
+				:size="48"
+				class="text-gray-300"
+			>
 				<icon icon="mdi:playlist-remove" />
 			</el-icon>
 			<div class="text-gray-500">{{ t('scenes.messages.notFound') }}</div>
-			<el-button type="primary" @click="onClose">
+			<el-button
+				type="primary"
+				@click="onClose"
+			>
 				{{ t('scenes.buttons.backToList.title') }}
 			</el-button>
 		</div>
@@ -114,12 +97,13 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
+import { ViewHeader, useBreakpoints } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
-import { useScene } from '../composables/composables';
 import SceneEditForm from '../components/scenes/scene-edit-form.vue';
+import { useScene } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../scenes.constants';
 
 import type { IViewSceneEditProps } from './view-scene-edit.types';

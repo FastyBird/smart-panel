@@ -1,152 +1,120 @@
 <template>
-	<el-header :class="[ns.b()]">
-		<div :class="[ns.e('buttons-small'), ns.is('expanded', hasSmallButtons)]">
-			<div
-				id="app-bar-button-small-left"
-				ref="buttonSmallLeft"
-			>
-				<slot name="button-small-left" />
-			</div>
-			<div
-				id="app-bar-button-small-right"
-				ref="buttonSmallRight"
-			>
-				<slot name="button-small-right" />
-			</div>
-		</div>
-
-		<div :class="[ns.e('header')]">
-			<div
-				id="app-bar-heading"
-				:class="[ns.e('heading')]"
-			>
-				<slot name="heading">
-					<slot name="logo" />
-				</slot>
-			</div>
-
-			<div
-				id="app-bar-button-back"
-				:class="[ns.e('button-back')]"
-			>
-				<slot name="button-back" />
-			</div>
-
-			<div
-				id="app-bar-button-left"
-				:class="[ns.e('button-left')]"
-			>
-				<slot name="button-left" />
-			</div>
-
-			<div
-				id="app-bar-button-right"
-				:class="[ns.e('button-right')]"
-			>
-				<slot name="button-right">
-					<el-button
-						v-if="!props.menuButtonHidden"
-						:icon="menuIcon"
-						size="large"
-						type="primary"
-						circle
-						@click.prevent="emit('toggleMenu', $event)"
-					/>
-				</slot>
-			</div>
-		</div>
+	<header
+		class="flex items-center gap-1 h-14 shrink-0 pl-1 pr-2 bg-[var(--fb-sidebar-bg)] text-[var(--fb-sidebar-active-text)]"
+		data-test-id="app-bar"
+	>
+		<button
+			v-if="props.left"
+			:aria-label="leftLabel"
+			class="flex items-center justify-center shrink-0 w-11 h-11 p-0 border-0 rounded-[var(--el-border-radius-base)] bg-transparent text-inherit cursor-pointer hover:bg-[var(--fb-sidebar-active-bg)]"
+			type="button"
+			data-test-id="app-bar-left"
+			@click="emit('left')"
+		>
+			<icon
+				:icon="LEFT_ICONS[props.left]"
+				width="22"
+				height="22"
+				aria-hidden="true"
+			/>
+		</button>
 
 		<div
-			id="app-bar-content"
-			ref="content"
-			:class="[ns.e('content'), ns.is('expanded', hasContent)]"
+			:class="['flex flex-col flex-1 min-w-0 leading-[1.2]', props.left ? '' : 'pl-3']"
+			data-test-id="app-bar-title"
 		>
-			<slot name="content" />
+			<slot name="title">
+				<h1 class="m-0 text-[17px] font-600 truncate">{{ props.title }}</h1>
+				<span
+					v-if="props.subtitle"
+					class="text-[12px] text-[var(--fb-sidebar-text)] truncate"
+				>
+					{{ props.subtitle }}
+				</span>
+			</slot>
 		</div>
-	</el-header>
+
+		<el-button
+			v-if="props.primary"
+			:loading="props.primary.loading"
+			:disabled="props.primary.disabled"
+			type="primary"
+			data-test-id="app-bar-primary"
+			@click="props.primary.handler()"
+		>
+			{{ props.primary.label }}
+		</el-button>
+
+		<template v-else>
+			<button
+				v-for="action in visibleActions"
+				:key="action.label"
+				:aria-label="action.label"
+				:title="action.label"
+				:disabled="action.disabled"
+				class="flex items-center justify-center shrink-0 w-11 h-11 p-0 border-0 rounded-[var(--el-border-radius-base)] bg-transparent text-inherit cursor-pointer hover:bg-[var(--fb-sidebar-active-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
+				type="button"
+				data-test-id="app-bar-action"
+				@click="action.handler()"
+			>
+				<icon
+					:icon="action.icon"
+					width="22"
+					height="22"
+					aria-hidden="true"
+				/>
+			</button>
+		</template>
+
+		<slot name="end" />
+	</header>
 </template>
 
 <script setup lang="ts">
-import { type Component, computed, h, onMounted, onUnmounted, ref } from 'vue';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElHeader, useNamespace } from 'element-plus';
+import { ElButton } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import type { AppBarProps } from './app-bar.types';
+import type { AppBarAction, AppBarLeft, AppBarProps } from './app-bar.types';
 
 defineOptions({
 	name: 'AppBar',
 });
 
 const props = withDefaults(defineProps<AppBarProps>(), {
-	menuButtonHidden: false,
-	menuCollapsed: true,
+	title: '',
+	subtitle: undefined,
+	left: null,
+	actions: () => [],
+	primary: undefined,
 });
 
 const emit = defineEmits<{
-	(e: 'toggleMenu', event: UIEvent): void;
+	(e: 'left'): void;
 }>();
 
-const ns = useNamespace('app-bar');
+const { t } = useI18n();
 
-const menuIcon = computed<Component>((): Component => h(Icon, { icon: props.menuCollapsed ? 'mdi:menu' : 'mdi:close' }));
-
-const newMutationObserver = (callback: () => void): MutationObserver | null => {
-	// Skip this feature for browsers which
-	// do not support ResizeObserver
-	// https://caniuse.com/#search=mutationobserver
-	if (typeof MutationObserver === 'undefined') {
-		return null;
-	}
-
-	return new MutationObserver(callback);
+const LEFT_ICONS: Record<AppBarLeft, string> = {
+	menu: 'mdi:menu',
+	back: 'mdi:arrow-left',
+	close: 'mdi:close',
 };
 
-const buttonSmallLeft = ref<HTMLElement | null>(null);
-const buttonSmallRight = ref<HTMLElement | null>(null);
-const content = ref<HTMLElement | null>(null);
-
-const hasSmallButtons = ref<boolean>(false);
-const hasContent = ref<boolean>(false);
-
-let mutationObserver: MutationObserver | null = null;
-
-const mutationObserverCallback = (): void => {
-	hasSmallButtons.value =
-		(buttonSmallLeft.value !== null && buttonSmallLeft.value?.children.length > 0) ||
-		(buttonSmallRight.value !== null && buttonSmallRight.value?.children.length > 0);
-	hasContent.value = content.value !== null && (content.value?.childElementCount > 0 || content.value.textContent !== '');
-};
-
-onMounted((): void => {
-	hasSmallButtons.value =
-		(buttonSmallLeft.value !== null && buttonSmallLeft.value?.children.length > 0) ||
-		(buttonSmallRight.value !== null && buttonSmallRight.value?.children.length > 0);
-	hasContent.value = content.value !== null && (content.value?.childElementCount > 0 || content.value.textContent !== '');
-
-	mutationObserver = newMutationObserver(mutationObserverCallback);
-
-	if (mutationObserver !== null && buttonSmallLeft.value !== null) {
-		mutationObserver.observe(buttonSmallLeft.value as unknown as Node, { childList: true });
-	}
-
-	if (mutationObserver !== null && buttonSmallRight.value !== null) {
-		mutationObserver.observe(buttonSmallRight.value as unknown as Node, { childList: true });
-	}
-
-	if (mutationObserver !== null && content.value !== null) {
-		mutationObserver.observe(content.value as unknown as Node, { childList: true });
+const leftLabel = computed<string>(() => {
+	switch (props.left) {
+		case 'menu':
+			return t('application.buttons.openMenu.title');
+		case 'close':
+			return t('application.appBar.close');
+		default:
+			return t('application.appBar.back');
 	}
 });
 
-onUnmounted((): void => {
-	if (mutationObserver !== null) {
-		mutationObserver.disconnect();
-	}
-});
+// The phone bar has room for two icons next to a readable title (spec section 4)
+const visibleActions = computed<AppBarAction[]>(() => props.actions.slice(0, 2));
 </script>
-
-<style rel="stylesheet/scss" lang="scss" scoped>
-@use 'app-bar.scss';
-</style>

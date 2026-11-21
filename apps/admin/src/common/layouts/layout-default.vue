@@ -6,30 +6,33 @@
 			:class="[ns.b()]"
 			class="h-full min-h-full max-h-full w-full min-w-full max-w-full"
 		>
-			<app-bar @toggle-menu="onOpenMenu">
-				<template #logo>
-					<router-link :to="{ name: RouteNames.ROOT }">
+			<!-- The screen's view-header fills this bar (title, back or close, actions); before one mounts it shows the logo -->
+			<app-bar
+				:title="phoneHeading?.title"
+				:subtitle="phoneHeading?.subtitle"
+				:left="phoneHeading?.left ?? 'menu'"
+				:actions="phoneHeading?.actions"
+				:primary="phoneHeading?.primary"
+				@left="onPhoneLeft"
+			>
+				<template
+					v-if="phoneHeading === null"
+					#title
+				>
+					<router-link
+						:to="{ name: RouteNames.ROOT }"
+						:aria-label="t('application.buttons.home.title')"
+						class="flex items-center"
+					>
 						<logo class="fill-white h-[30px]" />
 					</router-link>
 				</template>
 
-				<template #button-right>
-					<div class="flex flex-row items-center gap-2">
-						<notification-bell />
-
-						<el-button
-							size="large"
-							type="primary"
-							circle
-							:aria-label="t('application.buttons.openMenu.title')"
-							data-test-id="layout-open-menu"
-							@click.prevent="onOpenMenu"
-						>
-							<template #icon>
-								<icon icon="mdi:menu" />
-							</template>
-						</el-button>
-					</div>
+				<template
+					v-if="(phoneHeading?.left ?? 'menu') === 'menu'"
+					#end
+				>
+					<notification-bell />
 				</template>
 			</app-bar>
 
@@ -93,9 +96,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAside, ElButton, ElContainer, ElDrawer, ElMain, useNamespace } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
+import { ElAside, ElContainer, ElDrawer, ElMain, useNamespace } from 'element-plus';
 
 import { RouteNames } from '../../app.constants';
 import Logo from '../../assets/images/fb_row.svg?component';
@@ -104,6 +105,7 @@ import Logo from '../../assets/images/fb_row.svg?component';
 import NotificationBell from '../../modules/notifications/components/notification-bell.vue';
 import type { AppTopBarMenuButton } from '../components/app-top-bar.types';
 import { AppBar, AppSidebar, AppTopBar } from '../components/components';
+import { provideAppBarHost } from '../composables/useAppBarHost';
 import { useSizeClass } from '../composables/useSizeClass';
 
 defineOptions({
@@ -116,6 +118,17 @@ const { sizeClass, isPhone, isTabletPortrait, isTabletLandscape, isDesktop } = u
 
 // The modal menu drawer
 const menuState = ref<boolean>(false);
+
+// Every view-header below draws into the phone app bar instead of rendering the page header
+const { heading: phoneHeading } = provideAppBarHost((): boolean => isPhone.value);
+
+const onPhoneLeft = (): void => {
+	if (phoneHeading.value === null || phoneHeading.value.left === 'menu') {
+		menuState.value = true;
+	} else {
+		phoneHeading.value.onLeft?.();
+	}
+};
 
 // Desktop and wide: the user can collapse the 220 px sidebar to the 64 px rail
 const mainMenuCollapsed = ref<boolean>(false);

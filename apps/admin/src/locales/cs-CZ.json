@@ -65,6 +65,10 @@
 			"done": "Hotovo",
 			"clearSelection": "Zrušit výběr"
 		},
+		"appBar": {
+			"back": "Zpět",
+			"close": "Zavřít"
+		},
 		"wizardShell": {
 			"steps": "Kroky průvodce",
 			"progress": "Krok {current} z {total} · {label}",

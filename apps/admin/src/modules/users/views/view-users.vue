@@ -1,58 +1,14 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isUsersListRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:users-group"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('usersModule.headings.users') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('usersModule.subHeadings.users') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice && isUsersListRoute"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && isUsersListRoute"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onUserCreate"
-	>
-		<span class="uppercase">{{ t('usersModule.buttons.add.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('usersModule.headings.users')"
-		:sub-heading="t('usersModule.subHeadings.users')"
+		v-if="isUsersListRoute || isLGDevice"
+		:title="t('usersModule.headings.users')"
+		:subtitle="t('usersModule.subHeadings.users')"
 		:icon="'mdi:users-group'"
+		:actions="[{ icon: 'mdi:plus', label: t('usersModule.buttons.add.title'), handler: onUserCreate }]"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					type="primary"
@@ -109,23 +65,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<view-error>
 					<template #icon>
@@ -148,7 +88,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -158,13 +98,13 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import ListUsers from '../components/list-users.vue';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { useSession } from '../../auth/composables/composables';
+import ListUsers from '../components/list-users.vue';
 import { useUsersActions, useUsersDataSource } from '../composables/composables';
 import type { IUser } from '../store/users.store.types';
 import { RouteNames } from '../users.constants';
@@ -188,7 +128,7 @@ useMeta({
 	title: t('usersModule.meta.users.list.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const { fetchUsers, users, usersPaginated, totalRows, filters, filtersActive, sortBy, sortDir, paginateSize, paginatePage, areLoading, resetFilter } =
 	useUsersDataSource();

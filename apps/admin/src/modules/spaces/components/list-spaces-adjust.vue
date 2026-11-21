@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('spacesModule.headings.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('spacesModule.subHeadings.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('spacesModule.headings.adjustFilters')"
+		:subtitle="t('spacesModule.subHeadings.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -67,9 +59,9 @@ import { ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElSc
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../common';
-import { useSpacesPlugins } from '../composables/useSpacesPlugins';
+import { ViewHeader } from '../../../common';
 import type { ISpacesFilter } from '../composables/types';
+import { useSpacesPlugins } from '../composables/useSpacesPlugins';
 
 interface IListSpacesAdjustProps {
 	filters: ISpacesFilter;

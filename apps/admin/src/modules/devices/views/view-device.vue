@@ -2,56 +2,17 @@
 	<template v-if="!notFound">
 		<app-breadcrumbs :items="breadcrumbs" />
 
-		<app-bar-heading
-			v-if="!isMDDevice && isDeviceRoute"
-			teleport
-		>
-			<template #icon>
-				<icon
-					icon="mdi:devices"
-					class="w[20px] h[20px]"
-				/>
-			</template>
-
-			<template #title>
-				{{ t('devicesModule.headings.devices.detail', { device: device?.name }) }}
-			</template>
-
-			<template #subtitle>
-				{{ t('devicesModule.subHeadings.devices.detail', { device: device?.name }) }}
-			</template>
-		</app-bar-heading>
-
-		<app-bar-button
-			v-if="!isMDDevice"
-			:align="AppBarButtonAlign.LEFT"
-			teleport
-			small
-			@click="onClose"
-		>
-			<template #icon>
-				<el-icon :size="24">
-					<icon icon="mdi:chevron-left" />
-				</el-icon>
-			</template>
-		</app-bar-button>
-
-		<app-bar-button
-			v-if="!isMDDevice && isDeviceRoute && canAddAnotherChannel"
-			:align="AppBarButtonAlign.RIGHT"
-			teleport
-			small
-			@click="onChannelAdd"
-		>
-			<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
-		</app-bar-button>
-
 		<view-header
-			:heading="t('devicesModule.headings.devices.detail', { device: device?.name })"
-			:sub-heading="t('devicesModule.subHeadings.devices.detail', { device: device?.name })"
+			v-if="isDeviceRoute || isLGDevice"
+			:title="t('devicesModule.headings.devices.detail', { device: device?.name })"
+			:subtitle="t('devicesModule.subHeadings.devices.detail', { device: device?.name })"
 			icon="mdi:devices"
+			:actions="[
+				...(isDeviceRoute && canAddAnotherChannel ? [{ icon: 'mdi:plus', label: t('devicesModule.buttons.add.title'), handler: onChannelAdd }] : []),
+			]"
+			@back="onClose"
 		>
-			<template #extra>
+			<template #actions>
 				<div class="flex items-center">
 					<el-button
 						type="primary"
@@ -370,23 +331,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<view-error>
 					<template #icon>
@@ -410,7 +355,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -427,7 +372,6 @@ import {
 	ElDropdown,
 	ElDropdownItem,
 	ElDropdownMenu,
-	ElIcon,
 	ElMessageBox,
 	ElResult,
 	ElScrollbar,
@@ -444,10 +388,7 @@ import {
 import { Icon } from '@iconify/vue';
 
 import {
-	AppBar,
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
+	AppBarScope,
 	AppBreadcrumbs,
 	EntityNotFound,
 	IconWithChild,
@@ -496,7 +437,7 @@ const ns = useNamespace('view-device');
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const deviceId = computed(() => props.id);
 

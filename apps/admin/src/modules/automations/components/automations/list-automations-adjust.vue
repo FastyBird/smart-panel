@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('automations.headings.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('automations.subHeadings.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('automations.headings.adjustFilters')"
+		:subtitle="t('automations.subHeadings.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -148,7 +140,7 @@ import {
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../../common';
+import { ViewHeader } from '../../../../common';
 import { AutomationStatus, WHOLE_HOME_SPACE_FILTER } from '../../automations.constants';
 import type { IAutomationsFilter } from '../../composables/types';
 import { useAutomationSpaces } from '../../composables/useAutomationSpaces';

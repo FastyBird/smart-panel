@@ -2,8 +2,8 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		:heading="t('statsModule.headings.stats')"
-		:sub-heading="t('statsModule.subHeadings.stats')"
+		:title="t('statsModule.headings.stats')"
+		:subtitle="t('statsModule.subHeadings.stats')"
 		icon="mdi:monitor-dashboard"
 	/>
 

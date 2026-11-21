@@ -1,58 +1,14 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isPagesListRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:view-dashboard"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('dashboardModule.headings.pages.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('dashboardModule.subHeadings.pages.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice && isPagesListRoute"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && isPagesListRoute"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onPageCreate"
-	>
-		<span class="uppercase">{{ t('dashboardModule.buttons.add.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('dashboardModule.headings.pages.list')"
-		:sub-heading="t('dashboardModule.subHeadings.pages.list')"
+		v-if="isPagesListRoute || isLGDevice"
+		:title="t('dashboardModule.headings.pages.list')"
+		:subtitle="t('dashboardModule.subHeadings.pages.list')"
 		icon="mdi:view-dashboard"
+		:actions="[{ icon: 'mdi:plus', label: t('dashboardModule.buttons.add.title'), handler: onPageCreate }]"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					type="primary"
@@ -110,23 +66,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-pages-adjust
 					v-if="adjustList"
@@ -156,7 +96,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -166,11 +106,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { useDisplays } from '../../displays';
 import { ListPages, ListPagesAdjust } from '../components/components';
 import { usePagesActions, usePagesDataSource } from '../composables/composables';
@@ -194,7 +134,7 @@ useMeta({
 	title: t('dashboardModule.meta.pages.list.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const { fetchPages, pages, pagesPaginated, totalRows, filters, filtersActive, sortBy, sortDir, paginateSize, paginatePage, areLoading, resetFilter } =
 	usePagesDataSource();

@@ -1,48 +1,14 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:monitor"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ display?.name || display?.macAddress || t('displaysModule.detail.title') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('displaysModule.detail.title') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push({ name: RouteNames.DISPLAYS })"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('displaysModule.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="display?.name || display?.macAddress || t('displaysModule.detail.title')"
-		:sub-heading="t('displaysModule.detail.title')"
+		v-if="isDisplayRoute || isLGDevice"
+		:title="display?.name || display?.macAddress || t('displaysModule.detail.title')"
+		:subtitle="t('displaysModule.detail.title')"
 		icon="mdi:monitor"
+		@back="router.push({ name: RouteNames.DISPLAYS })"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					plain
@@ -123,7 +89,17 @@
 							{{ formatIpAddress(display.currentIpAddress) }}
 						</el-descriptions-item>
 						<el-descriptions-item :label="t('displaysModule.detail.info.status')">
-							<el-tag :type="display.status === 'connected' ? 'success' : display.status === 'disconnected' ? 'warning' : display.status === 'lost' ? 'danger' : 'info'">
+							<el-tag
+								:type="
+									display.status === 'connected'
+										? 'success'
+										: display.status === 'disconnected'
+											? 'warning'
+											: display.status === 'lost'
+												? 'danger'
+												: 'info'
+								"
+							>
 								{{ t(`displaysModule.states.${display.status ?? 'unknown'}`) }}
 							</el-tag>
 						</el-descriptions-item>
@@ -158,17 +134,13 @@
 							</div>
 						</template>
 
-						<el-descriptions-item :label="t('displaysModule.detail.settings.gridSize')">
-							{{ display.cols }}x{{ display.rows }}
-						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.settings.gridSize')">{{ display.cols }}x{{ display.rows }}</el-descriptions-item>
 						<el-descriptions-item :label="t('displaysModule.detail.settings.darkMode')">
 							<el-tag :type="display.darkMode ? 'success' : 'info'">
 								{{ display.darkMode ? 'Enabled' : 'Disabled' }}
 							</el-tag>
 						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.settings.brightness')">
-							{{ display.brightness }}%
-						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.settings.brightness')">{{ display.brightness }}%</el-descriptions-item>
 						<el-descriptions-item :label="t('displaysModule.detail.settings.screenLockDuration')">
 							{{ formatScreenLockDuration(display.screenLockDuration) }}
 						</el-descriptions-item>
@@ -316,23 +288,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<suspense>
 					<router-view v-slot="{ Component }">
@@ -340,7 +296,7 @@
 					</router-view>
 				</suspense>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -354,7 +310,7 @@ import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, 
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { usePages } from '../../dashboard/composables/composables';
 import { useSpaces } from '../../spaces/composables';
 import { useDisplay } from '../composables/composables';
@@ -374,7 +330,7 @@ const router = useRouter();
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const displayId = computed(() => props.id);
 const { display, isLoading } = useDisplay(displayId);
@@ -527,6 +483,6 @@ watch(
 			// The template already handles this with v-else-if="!isLoading"
 		}
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 </script>

@@ -1,47 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:plus"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('automations.headings.add') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('automations.subHeadings.add') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		:disabled="saving"
-		teleport
-		small
-		@click="formChanged ? onDiscard() : onClose()"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		:loading="remoteFormResult === FormResult.WORKING"
-		:disabled="remoteFormResult === FormResult.WORKING"
-		teleport
-		small
-		@click="remoteFormSubmit = true"
-	>
-		<span class="uppercase">{{ t('automations.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('automations.headings.add')"
+		:subtitle="t('automations.subHeadings.add')"
+		icon="mdi:plus"
+		left="close"
+		:primary="{ label: t('automations.buttons.save.title'), handler: () => (remoteFormSubmit = true) }"
+		@back="formChanged ? onDiscard() : onClose()"
+	/>
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar class="grow-1 p-2 md:px-4">
@@ -87,12 +52,10 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
+import { ViewHeader, useBreakpoints } from '../../../common';
 import { AUTOMATION_TEMPLATE_DRAFT_QUERY, FormResult, type FormResultType, RouteNames } from '../automations.constants';
 import { type IAutomationDraft, discardAutomationDraft, peekAutomationDraft } from '../automations.drafts';
 import { AutomationAddForm } from '../components/components';

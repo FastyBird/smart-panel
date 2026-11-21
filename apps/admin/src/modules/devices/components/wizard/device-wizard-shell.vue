@@ -20,8 +20,8 @@
 	</define-action>
 	<app-breadcrumbs :items="breadcrumbs" />
 	<view-header
-		:heading="title"
-		:sub-heading="subtitle"
+		:title="title"
+		:subtitle="subtitle"
 		:icon="icon"
 	/>
 	<header

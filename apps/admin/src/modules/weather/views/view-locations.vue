@@ -1,58 +1,14 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isLocationsListRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:map-marker-multiple"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('weatherModule.headings.locations') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('weatherModule.subHeadings.locations') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice && isLocationsListRoute"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && isLocationsListRoute"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onLocationCreate"
-	>
-		<span class="uppercase">{{ t('weatherModule.buttons.add.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('weatherModule.headings.locations')"
-		:sub-heading="t('weatherModule.subHeadings.locations')"
+		v-if="isLocationsListRoute || isLGDevice"
+		:title="t('weatherModule.headings.locations')"
+		:subtitle="t('weatherModule.subHeadings.locations')"
 		:icon="'mdi:map-marker-multiple'"
+		:actions="[{ icon: 'mdi:plus', label: t('weatherModule.buttons.add.title'), handler: onLocationCreate }]"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					type="primary"
@@ -114,23 +70,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-locations-adjust
 					v-if="adjustList"
@@ -160,7 +100,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -170,14 +110,14 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { useConfigModule } from '../../config';
-import ListLocations from '../components/list-locations.vue';
 import ListLocationsAdjust from '../components/list-locations-adjust.vue';
+import ListLocations from '../components/list-locations.vue';
 import { useLocationsActions } from '../composables/useLocationsActions';
 import { useLocationsDataSource } from '../composables/useLocationsDataSource';
 import { useLocationsWeather } from '../composables/useLocationsWeather';
@@ -201,7 +141,7 @@ useMeta({
 	title: t('weatherModule.meta.locations.list.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const {
 	fetchLocations,
@@ -366,7 +306,9 @@ onBeforeMount((): void => {
 		console.warn('[WEATHER] Failed to fetch locations weather:', error);
 	});
 
-	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !== undefined;
+	showDrawer.value =
+		route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !==
+		undefined;
 });
 
 onMounted((): void => {
@@ -376,7 +318,9 @@ onMounted((): void => {
 watch(
 	(): string => route.path,
 	(): void => {
-		showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !== undefined;
+		showDrawer.value =
+			route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !==
+			undefined;
 	}
 );
 
@@ -389,9 +333,7 @@ watch(
 		}
 
 		// Check if any location doesn't have weather data yet
-		const hasNewLocationsWithoutWeather = newLocations.some(
-			(location) => !location.draft && !(location.id in weatherByLocation.value)
-		);
+		const hasNewLocationsWithoutWeather = newLocations.some((location) => !location.draft && !(location.id in weatherByLocation.value));
 
 		if (hasNewLocationsWithoutWeather) {
 			fetchLocationsWeather().catch((error: unknown): void => {

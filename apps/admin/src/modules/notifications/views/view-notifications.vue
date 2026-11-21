@@ -1,45 +1,9 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:bell-outline"
-				class="w-[20px] h-[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('notificationsModule.headings.notifications.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('notificationsModule.subHeadings.notifications.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('notificationsModule.headings.notifications.list')"
-		:sub-heading="t('notificationsModule.subHeadings.notifications.list')"
+		:title="t('notificationsModule.headings.notifications.list')"
+		:subtitle="t('notificationsModule.subHeadings.notifications.list')"
 		icon="mdi:bell-outline"
 	/>
 
@@ -68,47 +32,14 @@
 		:with-header="false"
 		:size="isLGDevice ? '300px' : '100%'"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #heading>
-					<app-bar-heading>
-						<template #icon>
-							<icon icon="mdi:filter" />
-						</template>
-
-						<template #title>
-							{{ t('notificationsModule.headings.notifications.adjustFilters') }}
-						</template>
-
-						<template #subtitle>
-							{{ t('notificationsModule.subHeadings.notifications.adjustFilters') }}
-						</template>
-					</app-bar-heading>
-				</template>
-
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						:aria-label="t('notificationsModule.buttons.close.title')"
-						@click="adjustVisible = false"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="adjustVisible = false">
 			<list-notifications-adjust
 				v-if="adjustVisible"
 				v-model:filters="filters"
 				:filters-active="filtersActive"
 				@reset-filters="onResetFilters"
 			/>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 
 	<notification-detail-drawer
@@ -126,11 +57,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElDrawer, ElIcon } from 'element-plus';
+import { ElDrawer } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { ListNotifications, ListNotificationsAdjust, NotificationDetailDrawer } from '../components/components';
 import { type NotificationsBulkActionOutcome, useNotificationsActions, useNotificationsDataSource } from '../composables/composables';
 import { RouteNames } from '../notifications.constants';
@@ -148,7 +77,7 @@ useMeta({
 	title: t('notificationsModule.meta.notifications.list.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const { notifications, hasMore, areLoading, filters, filtersActive, fetchNotifications, loadMoreNotifications, resetFilters } =
 	useNotificationsDataSource();

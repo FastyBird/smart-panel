@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('displaysModule.headings.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('displaysModule.subHeadings.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('displaysModule.headings.adjustFilters')"
+		:subtitle="t('displaysModule.subHeadings.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -118,12 +110,23 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElRadioButton, ElRadioGroup, ElScrollbar, ElText, useNamespace } from 'element-plus';
+import {
+	ElButton,
+	ElCheckbox,
+	ElCheckboxGroup,
+	ElCollapse,
+	ElCollapseItem,
+	ElRadioButton,
+	ElRadioGroup,
+	ElScrollbar,
+	ElText,
+	useNamespace,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../common';
+import { ViewHeader } from '../../../common';
 import type { IDisplaysFilter } from '../composables/types';
 
 import { type IListDisplaysAdjustProps } from './list-displays-adjust.types';
