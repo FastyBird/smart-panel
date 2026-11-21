@@ -63,7 +63,7 @@ const render = () => {
 			plugins: [router],
 			stubs: {
 				// The drawer body renders only while it is open
-				ElDrawer: { props: ['modelValue'], template: '<div v-if="modelValue"><slot /></div>' },
+				ElDrawer: { props: ['modelValue', 'title'], template: '<div v-if="modelValue" :data-title="title"><slot /></div>' },
 			},
 		},
 	});
@@ -128,6 +128,8 @@ describe('LayoutDefault', () => {
 		await find(wrapper, 'app-top-bar').trigger('click');
 
 		expect(find(wrapper, 'layout-menu-drawer').exists()).toBe(true);
+		// Without a visible header the drawer still needs a name for assistive technology
+		expect(find(wrapper, 'layout-menu-drawer').attributes('data-title')).toBe('application.navigation.label');
 	});
 
 	it('uses the app bar and the menu drawer with account actions on phones', async () => {

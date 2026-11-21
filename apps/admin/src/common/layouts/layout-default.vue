@@ -74,6 +74,7 @@
 		<el-drawer
 			v-model="menuState"
 			:with-header="false"
+			:title="t('application.navigation.label')"
 			:class="[ns.e('menu-drawer')]"
 			direction="ltr"
 			size="280px"

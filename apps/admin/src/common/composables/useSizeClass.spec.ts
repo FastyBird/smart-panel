@@ -4,9 +4,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const widths = { tp: ref(false), tl: ref(false), dt: ref(false), wd: ref(false) };
 const coarse = ref(false);
+const reads = { count: 0 };
 
+// Like VueUse's, every read of a breakpoint goes through a getter (which there starts a media-query listener)
 vi.mock('@vueuse/core', () => ({
-	useBreakpoints: vi.fn(() => widths),
+	useBreakpoints: vi.fn(() => ({
+		get tp() {
+			reads.count++;
+			return widths.tp;
+		},
+		get tl() {
+			reads.count++;
+			return widths.tl;
+		},
+		get dt() {
+			reads.count++;
+			return widths.dt;
+		},
+		get wd() {
+			reads.count++;
+			return widths.wd;
+		},
+	})),
 	useMediaQuery: vi.fn(() => coarse),
 }));
 
@@ -60,6 +79,20 @@ describe('useSizeClass', () => {
 		setWidth(800);
 
 		expect(size.isTabletPortrait.value).toBe(true);
+	});
+
+	it('reads each breakpoint getter once, however often the size class changes', async () => {
+		const { useSizeClass } = await import('./useSizeClass');
+		const before = reads.count;
+		const size = useSizeClass();
+
+		for (const px of [390, 800, 1100, 1300, 1700, 390]) {
+			setWidth(px);
+			void size.sizeClass.value;
+		}
+
+		expect(reads.count).toBe(before);
+		expect(before).toBe(4);
 	});
 
 	it('reports touch from a coarse pointer', async () => {

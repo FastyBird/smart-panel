@@ -75,6 +75,17 @@
 		}
 	}
 
+	// Touch screens: every entry is at least 40 px high (docs/admin-ui-design-spec.md, section 6)
+	@media (pointer: coarse) {
+		@include e(item) {
+			min-height: 44px;
+
+			@include when(nested) {
+				min-height: 40px;
+			}
+		}
+	}
+
 	@include e(icon) {
 		flex-shrink: 0;
 		width: 20px;
