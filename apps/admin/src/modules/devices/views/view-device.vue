@@ -93,8 +93,10 @@
 		:class="[ns.b()]"
 	>
 		<!-- Device info card (above tabs) -->
+		<!-- Keyed: its composables read the device id once, so another device needs a fresh summary -->
 		<device-detail
 			v-if="device"
+			:key="device.id"
 			:device="device"
 		/>
 
