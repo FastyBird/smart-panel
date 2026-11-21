@@ -1,10 +1,10 @@
 <template>
 	<view-header
-		:heading="t('mcpModule.oauthManagement.title')"
-		:sub-heading="t('mcpModule.oauthManagement.subtitle')"
+		:title="t('mcpModule.oauthManagement.title')"
+		:subtitle="t('mcpModule.oauthManagement.subtitle')"
 		icon="mdi:shield-key-outline"
 	>
-		<template #extra>
+		<template #actions>
 			<el-button
 				type="danger"
 				plain
@@ -430,40 +430,12 @@
 		data-test-id="mcp-oauth-client-form-drawer"
 		@closed="resetClientForm"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #heading>
-					<app-bar-heading>
-						<template #icon>
-							<icon icon="mdi:shield-key-outline" />
-						</template>
-
-						<template #title>
-							<span data-test-id="drawer-heading-title">
-								{{ editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient') }}
-							</span>
-						</template>
-
-						<template #subtitle>
-							<span data-test-id="drawer-heading-subtitle">{{ t('mcpModule.oauthManagement.clientFormSubtitle') }}</span>
-						</template>
-					</app-bar-heading>
-				</template>
-
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseClientForm()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
+		<app-bar-scope @close="onCloseClientForm()">
+			<view-header
+				:title="editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient')"
+				:subtitle="t('mcpModule.oauthManagement.clientFormSubtitle')"
+				icon="mdi:shield-key-outline"
+			/>
 
 			<el-scrollbar class="grow-1 p-2 md:px-4">
 				<el-form
@@ -555,7 +527,7 @@
 					</el-button>
 				</div>
 			</div>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 
 	<el-drawer
@@ -567,38 +539,12 @@
 		data-test-id="mcp-oauth-grant-form-drawer"
 		@closed="resetGrantForm"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #heading>
-					<app-bar-heading>
-						<template #icon>
-							<icon icon="mdi:shield-key-outline" />
-						</template>
-
-						<template #title>
-							<span data-test-id="drawer-heading-title">{{ t('mcpModule.oauthManagement.editGrant') }}</span>
-						</template>
-
-						<template #subtitle>
-							<span data-test-id="drawer-heading-subtitle">{{ t('mcpModule.oauthManagement.grantFormSubtitle') }}</span>
-						</template>
-					</app-bar-heading>
-				</template>
-
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseGrantForm()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
+		<app-bar-scope @close="onCloseGrantForm()">
+			<view-header
+				:title="t('mcpModule.oauthManagement.editGrant')"
+				:subtitle="t('mcpModule.oauthManagement.grantFormSubtitle')"
+				icon="mdi:shield-key-outline"
+			/>
 
 			<el-scrollbar class="grow-1 p-2 md:px-4">
 				<el-form
@@ -663,7 +609,7 @@
 					</el-button>
 				</div>
 			</div>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -681,7 +627,6 @@ import {
 	ElDrawer,
 	ElForm,
 	ElFormItem,
-	ElIcon,
 	ElInput,
 	ElMessageBox,
 	ElScrollbar,
@@ -698,7 +643,7 @@ import { isEqual } from 'lodash';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBarScope, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import McpOAuthTabFilter from '../components/mcp-oauth-tab-filter.vue';
 import McpTableEmpty from '../components/mcp-table-empty.vue';
 import { useMcpOAuthManagement } from '../composables/useMcpOAuthManagement';

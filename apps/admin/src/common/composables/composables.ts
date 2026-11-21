@@ -1,3 +1,4 @@
+export { provideAppBarHost, useAppBarHost } from './useAppBarHost';
 export { useBackend } from './useBackend';
 export { useBreakpoints } from './useBreakpoints';
 export { useDarkMode } from './useDarkMode';

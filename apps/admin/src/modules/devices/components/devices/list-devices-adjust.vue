@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('devicesModule.headings.devices.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('devicesModule.subHeadings.devices.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('devicesModule.headings.devices.adjustFilters')"
+		:subtitle="t('devicesModule.subHeadings.devices.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -189,7 +181,7 @@ import {
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../../common';
+import { ViewHeader } from '../../../../common';
 import { DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
 import { type IDevicesFilter, useDevicesPlugins } from '../../composables/composables';
 

@@ -14,13 +14,13 @@
 	</define-search>
 	<app-breadcrumbs :items="breadcrumbs" />
 	<view-header
-		:heading="title"
+		:title="title"
 		icon="mdi:wizard-hat"
 		class="wizard-selection-header"
 	>
 		<template
 			v-if="isMDDevice"
-			#extra
+			#actions
 		>
 			<div class="w-80 max-w-full"><reuse-search /></div>
 		</template>

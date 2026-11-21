@@ -1,34 +1,10 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				:icon="deviceIcon"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('devicesModule.headings.devices.control', { device: device?.name }) }}
-		</template>
-
-		<template #subtitle>
-			{{ t('devicesModule.subHeadings.devices.control', { device: device?.name }) }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
+	<view-header
+		:title="t('devicesModule.headings.devices.control', { device: device?.name })"
+		:subtitle="t('devicesModule.subHeadings.devices.control', { device: device?.name })"
+		:icon="deviceIcon"
+		@back="onClose"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -66,11 +42,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, vLoading } from 'element-plus';
+import { ElButton, vLoading } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
 import { DeviceControlForm } from '../components/components';
 import { useDeviceControl, useDeviceIcon } from '../composables/composables';
 import { RouteNames } from '../devices.constants';

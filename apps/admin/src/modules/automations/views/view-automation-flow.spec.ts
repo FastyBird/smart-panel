@@ -129,15 +129,13 @@ vi.mock('../../../common', async () => {
 	const Stub = defineComponent({
 		inheritAttrs: false,
 		setup(_, { slots }) {
-			return () => h('div', [slots.default?.(), slots.extra?.()]);
+			return () => h('div', [slots.default?.(), slots.actions?.()]);
 		},
 	});
 
 	return {
-		AppBarButton: Stub,
-		AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
-		AppBarHeading: Stub,
 		AppBreadcrumbs: Stub,
+		AppBarScope: Stub,
 		ViewHeader: Stub,
 		EntityNotFound: defineComponent({
 			props: { message: { type: String, required: true } },

@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:card-plus-outline"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('pagesCardsPlugin.headings.pages.addCard') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('pagesCardsPlugin.subHeadings.pages.addCard') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('pagesCardsPlugin.buttons.add.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('pagesCardsPlugin.headings.pages.addCard')"
+		:subtitle="t('pagesCardsPlugin.subHeadings.pages.addCard')"
+		icon="mdi:card-plus-outline"
+		left="close"
+		:primary="{ label: t('pagesCardsPlugin.buttons.add.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -110,11 +78,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useBreakpoints, useUuid } from '../../../common';
 import { RouteNames as DashboardRouteNames, FormResult, type FormResultType } from '../../../modules/dashboard';
 import CardAddForm from '../components/card-add-form.vue';
 import { RouteNames } from '../pages-cards.contants';

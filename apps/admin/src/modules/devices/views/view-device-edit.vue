@@ -1,47 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				:icon="deviceIcon"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ device?.name }}
-		</template>
-
-		<template
-			v-if="device?.description !== null"
-			#subtitle
-		>
-			{{ device?.description }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('devicesModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="device?.name ?? ''"
+		:subtitle="device?.description !== null ? device?.description : undefined"
+		:icon="deviceIcon"
+		left="close"
+		:primary="{ label: t('devicesModule.buttons.save.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -134,18 +99,16 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
 	AppBreadcrumbs,
 	type IPlugin,
 	type IPluginElement,
 	SUBMIT_FORM_SM,
+	ViewHeader,
 	useBreakpoints,
 	useFlashMessage,
 	useUuid,

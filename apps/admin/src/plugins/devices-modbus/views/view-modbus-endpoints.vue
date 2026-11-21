@@ -2,11 +2,12 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		:heading="t('devicesModbusPlugin.endpoints.title')"
-		:sub-heading="t('devicesModbusPlugin.endpoints.subtitle')"
+		:title="t('devicesModbusPlugin.endpoints.title')"
+		:subtitle="t('devicesModbusPlugin.endpoints.subtitle')"
 		icon="mdi:lan-connect"
+		@back="() => router.back()"
 	>
-		<template #extra>
+		<template #actions>
 			<el-button
 				type="primary"
 				:disabled="loading"

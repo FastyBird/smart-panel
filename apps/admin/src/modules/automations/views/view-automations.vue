@@ -1,90 +1,17 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isAutomationsListRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				:icon="AUTOMATION_DEFAULT_ICON"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('automations.headings.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('automations.subHeadings.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice && isAutomationsListRoute"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && isAutomationsListRoute"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onAutomationCreate"
-	>
-		<span class="uppercase">{{ t('automations.buttons.add.title') }}</span>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && isAutomationsListRoute"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		:aria-label="t('automations.buttons.fromTemplate.title')"
-		data-test-id="automations-from-template"
-		@click="onAutomationFromTemplate"
-	>
-		<template #icon>
-			<el-icon :size="20">
-				<icon icon="mdi:file-document-multiple-outline" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && isAutomationsListRoute"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		:aria-label="t('automations.buttons.importYaml.title')"
-		data-test-id="automations-import"
-		@click="onAutomationImport"
-	>
-		<template #icon>
-			<el-icon :size="20">
-				<icon icon="mdi:file-import-outline" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('automations.headings.list')"
-		:sub-heading="t('automations.subHeadings.list')"
+		v-if="isAutomationsListRoute || isLGDevice"
+		:title="t('automations.headings.list')"
+		:subtitle="t('automations.subHeadings.list')"
 		:icon="AUTOMATION_DEFAULT_ICON"
+		:actions="[
+			{ icon: 'mdi:plus', label: t('automations.buttons.add.title'), handler: onAutomationCreate },
+			{ icon: 'mdi:file-document-multiple-outline', label: t('automations.buttons.fromTemplate.title'), handler: onAutomationFromTemplate },
+		]"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					type="primary"
@@ -182,23 +109,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-automations-adjust
 					v-if="adjustList"
@@ -229,7 +140,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 
 	<automation-template-dialog
@@ -249,12 +160,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { AUTOMATION_DEFAULT_ICON, AUTOMATION_TEMPLATE_DRAFT_QUERY, RouteNames } from '../automations.constants';
 import { stashAutomationDraft } from '../automations.drafts';
 import {
@@ -290,7 +201,7 @@ useMeta({
 	title: t('automations.headings.list'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const {
 	fetchAutomations,

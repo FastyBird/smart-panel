@@ -1,43 +1,7 @@
 <template>
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:robot-happy"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('buddyModule.headings.chat') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('buddyModule.subHeadings.chat') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('buddyModule.buttons.back.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('buddyModule.headings.chat')"
-		:sub-heading="t('buddyModule.subHeadings.chat')"
+		:title="t('buddyModule.headings.chat')"
+		:subtitle="t('buddyModule.subHeadings.chat')"
 		:icon="'mdi:robot-happy'"
 	/>
 
@@ -162,14 +126,13 @@ import { ElButton, ElCard, ElIcon, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints } from '../../../common';
-import { RouteNames as ConfigRouteNames } from '../../config/config.constants';
+import { ViewHeader } from '../../../common';
 import { useConfigModules } from '../../config/composables/useConfigModules';
-
+import { RouteNames as ConfigRouteNames } from '../../config/config.constants';
 import { useSpaces } from '../../spaces/composables/useSpaces';
-import BuddyConversationList from '../components/buddy-conversation-list.vue';
-import BuddyChatArea from '../components/buddy-chat-area.vue';
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
+import BuddyChatArea from '../components/buddy-chat-area.vue';
+import BuddyConversationList from '../components/buddy-conversation-list.vue';
 import { useBuddyChat } from '../composables/useBuddyChat';
 
 defineOptions({
@@ -182,8 +145,6 @@ const { t } = useI18n();
 useMeta({
 	title: t('buddyModule.meta.chat.title'),
 });
-
-const { isMDDevice } = useBreakpoints();
 
 const { enabled, loaded: modulesLoaded, fetchConfigModules } = useConfigModules();
 // Optimistic for template — prevents flashing the "disabled" card before config loads

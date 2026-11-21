@@ -1,8 +1,5 @@
 export { default as AppBar } from './app-bar.vue';
-export { default as AppBarButton } from './app-bar-button.vue';
-export { default as AppBarContent } from './app-bar-content.vue';
-export { default as AppBarHeading } from './app-bar-heading.vue';
-export { default as AppBarIcon } from './app-bar-icon.vue';
+export { default as AppBarScope } from './app-bar-scope.vue';
 export { default as AppBreadcrumbs } from './app-breadcrumbs.vue';
 export { default as AppNavigation } from './app-navigation.vue';
 export { default as AppSidebar } from './app-sidebar.vue';

@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('scenes.headings.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('scenes.subHeadings.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('scenes.headings.adjustFilters')"
+		:subtitle="t('scenes.subHeadings.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -158,7 +150,7 @@ import {
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../../common';
+import { ViewHeader } from '../../../../common';
 import { useSpaces } from '../../../spaces/composables';
 import { SpaceType, getSpaceIcon } from '../../../spaces/spaces.constants';
 import type { IScenesFilter } from '../../composables/types';

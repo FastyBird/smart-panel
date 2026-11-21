@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('devicesModule.headings.channels.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('devicesModule.subHeadings.channels.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('devicesModule.headings.channels.adjustFilters')"
+		:subtitle="t('devicesModule.subHeadings.channels.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -76,7 +68,7 @@ import { ElButton, ElCollapse, ElCollapseItem, ElOption, ElScrollbar, ElSelect, 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../../common';
+import { ViewHeader } from '../../../../common';
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
 import type { IDevicesFilter } from '../../composables/types';
 

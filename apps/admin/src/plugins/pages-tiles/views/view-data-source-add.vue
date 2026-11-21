@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:database-cog-outline"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('pagesTilesPlugin.headings.pages.addDataSource') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('pagesTilesPlugin.subHeadings.pages.addDataSource') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('pagesTilesPlugin.buttons.add.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('pagesTilesPlugin.headings.pages.addDataSource')"
+		:subtitle="t('pagesTilesPlugin.subHeadings.pages.addDataSource')"
+		icon="mdi:database-cog-outline"
+		left="close"
+		:primary="{ label: t('pagesTilesPlugin.buttons.add.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -144,20 +112,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	type IPlugin,
-	type IPluginElement,
-	useBreakpoints,
-	useUuid,
-} from '../../../common';
+import { AppBreadcrumbs, type IPlugin, type IPluginElement, ViewHeader, useBreakpoints, useUuid } from '../../../common';
 import {
 	RouteNames as DashboardRouteNames,
 	DataSourceAddForm,

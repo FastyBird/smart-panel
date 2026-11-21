@@ -1,46 +1,13 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:view-dashboard"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('dashboardModule.headings.pages.detail', { page: page?.title }) }}
-		</template>
-
-		<template #subtitle>
-			{{ t('dashboardModule.subHeadings.pages.detail', { page: page?.title }) }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('dashboardModule.headings.pages.detail', { page: page?.title })"
-		:sub-heading="t('dashboardModule.subHeadings.pages.detail', { page: page?.title })"
+		:title="t('dashboardModule.headings.pages.detail', { page: page?.title })"
+		:subtitle="t('dashboardModule.subHeadings.pages.detail', { page: page?.title })"
 		icon="mdi:view-dashboard"
+		@back="onClose"
 	>
-		<template #extra>
+		<template #actions>
 			<div
 				id="page-manage-actions"
 				class="flex items-center"
@@ -68,11 +35,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElIcon } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useUuid } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useBreakpoints, useUuid } from '../../../common';
 import { usePage } from '../composables/usePage';
 import { RouteNames } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
@@ -92,7 +55,7 @@ const { meta } = useMeta({});
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const { page, fetchPage, isLoading } = usePage({ id: props.id });
 

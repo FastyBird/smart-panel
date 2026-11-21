@@ -1,32 +1,12 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:backup-restore"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('systemModule.headings.systemBackups.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('systemModule.subHeadings.systemBackups.list') }}
-		</template>
-	</app-bar-heading>
-
 	<view-header
-		:heading="t('systemModule.headings.systemBackups.list')"
-		:sub-heading="t('systemModule.subHeadings.systemBackups.list')"
+		:title="t('systemModule.headings.systemBackups.list')"
+		:subtitle="t('systemModule.subHeadings.systemBackups.list')"
 		icon="mdi:backup-restore"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center gap-2">
 				<el-upload
 					:auto-upload="true"
@@ -71,7 +51,7 @@ import { ElButton, ElUpload } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, ViewHeader } from '../../../common';
 import { SystemBackups } from '../components/components';
 import { RouteNames } from '../system.constants';
 
@@ -81,8 +61,6 @@ defineOptions({
 
 const router = useRouter();
 const { t } = useI18n();
-
-const { isMDDevice } = useBreakpoints();
 
 const backupsList = ref<InstanceType<typeof SystemBackups> | null>(null);
 

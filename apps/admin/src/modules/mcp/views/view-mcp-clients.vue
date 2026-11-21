@@ -1,10 +1,10 @@
 <template>
 	<view-header
-		:heading="t('mcpModule.clients.title')"
-		:sub-heading="t('mcpModule.clients.subtitle')"
+		:title="t('mcpModule.clients.title')"
+		:subtitle="t('mcpModule.clients.subtitle')"
 		icon="mdi:robot-outline"
 	>
-		<template #extra>
+		<template #actions>
 			<el-button
 				type="primary"
 				plain
@@ -85,40 +85,12 @@
 		data-test-id="mcp-client-form-drawer"
 		@closed="resetClientForm"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #heading>
-					<app-bar-heading>
-						<template #icon>
-							<icon icon="mdi:robot-outline" />
-						</template>
-
-						<template #title>
-							<span data-test-id="drawer-heading-title">
-								{{ editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle') }}
-							</span>
-						</template>
-
-						<template #subtitle>
-							<span data-test-id="drawer-heading-subtitle">{{ t('mcpModule.clientForm.formSubtitle') }}</span>
-						</template>
-					</app-bar-heading>
-				</template>
-
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseClientForm()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
+		<app-bar-scope @close="onCloseClientForm()">
+			<view-header
+				:title="editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle')"
+				:subtitle="t('mcpModule.clientForm.formSubtitle')"
+				icon="mdi:robot-outline"
+			/>
 
 			<el-scrollbar class="grow-1 p-2 md:px-4">
 				<el-form
@@ -222,7 +194,7 @@
 					</el-button>
 				</div>
 			</div>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 
 	<el-dialog
@@ -280,7 +252,6 @@ import {
 	ElDrawer,
 	ElForm,
 	ElFormItem,
-	ElIcon,
 	ElInput,
 	ElInputNumber,
 	ElMessageBox,
@@ -293,7 +264,7 @@ import { isEqual } from 'lodash';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBarScope, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useConfigModule } from '../../config/composables/useConfigModule';
 import ListMcpClients from '../components/list-mcp-clients.vue';
 import McpTokenDialog from '../components/mcp-token-dialog.vue';

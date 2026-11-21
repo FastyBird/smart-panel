@@ -67,12 +67,7 @@ vi.mock('../../../common', async () => {
 	});
 
 	return {
-		AppBarButton: StubComponent,
-		AppBarButtonAlign: {
-			LEFT: 'left',
-			RIGHT: 'right',
-		},
-		AppBarHeading: StubComponent,
+		ViewHeader: StubComponent,
 		AppBreadcrumbs: defineComponent({
 			name: 'AppBreadcrumbs',
 			props: {

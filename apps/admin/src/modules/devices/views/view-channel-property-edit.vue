@@ -1,47 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				:icon="propertyIcon"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ property?.name ?? t(`devicesModule.categories.channelsProperties.${property?.category}`) }}
-		</template>
-
-		<template
-			v-if="property?.name !== null"
-			#subtitle
-		>
-			{{ t(`devicesModule.categories.channelsProperties.${property?.category}`) }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('devicesModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="property?.name ?? t(`devicesModule.categories.channelsProperties.${property?.category}`)"
+		:subtitle="property?.name !== null ? t(`devicesModule.categories.channelsProperties.${property?.category}`) : undefined"
+		:icon="propertyIcon"
+		left="close"
+		:primary="{ label: t('devicesModule.buttons.save.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -136,18 +101,16 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
 	AppBreadcrumbs,
 	type IPlugin,
 	type IPluginElement,
 	SUBMIT_FORM_SM,
+	ViewHeader,
 	useBreakpoints,
 	useFlashMessage,
 	useUuid,

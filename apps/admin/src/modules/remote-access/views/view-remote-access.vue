@@ -1,29 +1,9 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:cloud-lock-outline"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('remoteAccessModule.headings.remoteAccess') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('remoteAccessModule.subHeadings.remoteAccess') }}
-		</template>
-	</app-bar-heading>
-
 	<view-header
-		:heading="t('remoteAccessModule.headings.remoteAccess')"
-		:sub-heading="t('remoteAccessModule.subHeadings.remoteAccess')"
+		:title="t('remoteAccessModule.headings.remoteAccess')"
+		:subtitle="t('remoteAccessModule.subHeadings.remoteAccess')"
 		icon="mdi:cloud-lock-outline"
 	/>
 
@@ -100,7 +80,7 @@ import { ElCard, ElScrollbar, ElTabPane, ElTabs, ElTag, vLoading } from 'element
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useFlashMessage } from '../../../common';
 import { AccessUrlsList, AdvisoriesTable, ProviderCards, RemoteAccessStatusBanner } from '../components/components';
 import { useRemoteAccessStatus } from '../composables';
 import { RouteNames } from '../remote-access.constants';
@@ -111,8 +91,6 @@ defineOptions({
 
 const router = useRouter();
 const { t } = useI18n();
-
-const { isMDDevice } = useBreakpoints();
 
 const flashMessage = useFlashMessage();
 

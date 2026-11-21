@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:user-multiple-add"
-				class="w[32px] h[32px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('usersModule.headings.addUser') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('usersModule.subHeadings.addUser') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('usersModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('usersModule.headings.addUser')"
+		:subtitle="t('usersModule.subHeadings.addUser')"
+		icon="mdi:user-multiple-add"
+		left="close"
+		:primary="{ label: t('usersModule.buttons.save.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -109,11 +77,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useBreakpoints, useUuid } from '../../../common';
 import { UserAddForm } from '../components/components';
 import { FormResult, type FormResultType, RouteNames } from '../users.constants';
 

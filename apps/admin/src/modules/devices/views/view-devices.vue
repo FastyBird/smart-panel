@@ -4,59 +4,14 @@
 		:items="breadcrumbs"
 	/>
 
-	<app-bar-heading
-		v-if="!isMDDevice && isDevicesListRoute && !isWizardRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:devices"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('devicesModule.headings.devices.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('devicesModule.subHeadings.devices.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice && isDevicesListRoute && !isWizardRoute"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && isDevicesListRoute && !isWizardRoute"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onDeviceCreate"
-	>
-		<span class="uppercase">{{ t('devicesModule.buttons.manual.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		v-if="!isWizardRoute"
-		:heading="t('devicesModule.headings.devices.list')"
-		:sub-heading="t('devicesModule.subHeadings.devices.list')"
+		v-if="(isDevicesListRoute || isLGDevice) && !isWizardRoute"
+		:title="t('devicesModule.headings.devices.list')"
+		:subtitle="t('devicesModule.subHeadings.devices.list')"
 		icon="mdi:devices"
+		:actions="[{ icon: 'mdi:plus', label: t('devicesModule.buttons.manual.title'), handler: onDeviceCreate }]"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					v-if="enabledWizardOptions.length > 0"
@@ -143,23 +98,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-devices-adjust
 					v-if="adjustList"
@@ -189,7 +128,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -203,17 +142,7 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBar,
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	ViewError,
-	ViewHeader,
-	useBreakpoints,
-	useFlashMessage,
-} from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { ListDevices, ListDevicesAdjust } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';

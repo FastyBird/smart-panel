@@ -1,47 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				:icon="spaceIcon"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ space?.name }}
-		</template>
-
-		<template
-			v-if="space?.description !== null"
-			#subtitle
-		>
-			{{ space?.description }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice && hasEditForm"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('spacesModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="space?.name ?? ''"
+		:subtitle="space?.description !== null ? space?.description : undefined"
+		:icon="spaceIcon"
+		left="close"
+		:primary="hasEditForm ? { label: t('spacesModule.buttons.save.title'), handler: onSubmit } : undefined"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -123,19 +88,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	type IPluginElement,
-	useBreakpoints,
-	useFlashMessage,
-} from '../../../common';
+import { AppBreadcrumbs, type IPluginElement, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useSpace, useSpacesPlugins } from '../composables';
 import { RouteNames, SpaceRoomCategory, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
 import type { ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';

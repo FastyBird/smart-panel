@@ -1,29 +1,9 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:cctv"
-				class="w-[20px] h-[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('camerasModule.headings.cameras') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('camerasModule.subHeadings.cameras') }}
-		</template>
-	</app-bar-heading>
-
 	<view-header
-		:heading="t('camerasModule.headings.cameras')"
-		:sub-heading="t('camerasModule.subHeadings.cameras')"
+		:title="t('camerasModule.headings.cameras')"
+		:subtitle="t('camerasModule.subHeadings.cameras')"
 		icon="mdi:cctv"
 	/>
 
@@ -38,9 +18,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, ViewHeader } from '../../../common';
 import { RouteNames } from '../cameras.constants';
 import { CamerasGrid } from '../components/components';
 
@@ -54,8 +32,6 @@ const router = useRouter();
 useMeta({
 	title: t('camerasModule.menu.title'),
 });
-
-const { isMDDevice } = useBreakpoints();
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => [

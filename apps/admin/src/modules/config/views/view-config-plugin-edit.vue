@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:toy-brick"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ pluginName }}
-		</template>
-
-		<template #subtitle>
-			{{ t('configModule.subHeadings.configPlugin') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSave"
-	>
-		<span class="uppercase">{{ t('configModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="pluginName"
+		:subtitle="t('configModule.subHeadings.configPlugin')"
+		icon="mdi:toy-brick"
+		left="close"
+		:primary="{ label: t('configModule.buttons.save.title'), handler: onSave }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -168,22 +136,15 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElResult, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElMessageBox, ElResult, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	SUBMIT_FORM_SM,
-	useBreakpoints,
-} from '../../../common';
+import { AppBreadcrumbs, SUBMIT_FORM_SM, ViewHeader, useBreakpoints } from '../../../common';
+import IconWithChild from '../../../common/components/icon-with-child.vue';
 import { useConfigPlugin } from '../composables/useConfigPlugin';
 import { usePlugin } from '../composables/usePlugin';
 import { FormResult, RouteNames } from '../config.constants';
-import IconWithChild from '../../../common/components/icon-with-child.vue';
 
 import type { IViewConfigPluginEditProps } from './view-config-plugin-edit.types';
 

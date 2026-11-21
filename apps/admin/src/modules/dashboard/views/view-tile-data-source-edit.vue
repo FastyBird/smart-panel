@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:database-cog-outline"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('dashboardModule.headings.tiles.editDataSource') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('dashboardModule.subHeadings.tiles.editDataSource') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('dashboardModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('dashboardModule.headings.tiles.editDataSource')"
+		:subtitle="t('dashboardModule.subHeadings.tiles.editDataSource')"
+		icon="mdi:database-cog-outline"
+		left="close"
+		:primary="{ label: t('dashboardModule.buttons.save.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -133,18 +101,16 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
 	AppBreadcrumbs,
 	type IPlugin,
 	type IPluginElement,
 	SUBMIT_FORM_SM,
+	ViewHeader,
 	useBreakpoints,
 	useFlashMessage,
 	useUuid,

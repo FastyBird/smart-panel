@@ -50,23 +50,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<view-error>
 					<template #icon>
@@ -81,17 +65,17 @@
 							:key="typeof route.params.module === 'string' ? route.params.module : String(route.params.module)"
 							v-slot="{ Component }"
 						>
-						<component
-							:is="Component"
-							v-model:remote-form-submit="remoteFormSubmit"
-							v-model:remote-form-result="remoteFormResult"
-							v-model:remote-form-changed="remoteFormChanged"
-						/>
+							<component
+								:is="Component"
+								v-model:remote-form-submit="remoteFormSubmit"
+								v-model:remote-form-result="remoteFormResult"
+								v-model:remote-form-changed="remoteFormChanged"
+							/>
 						</router-view>
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -101,17 +85,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { useRoute, useRouter } from 'vue-router';
 
-import { ElCard, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElCard, ElDrawer, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBar,
-	AppBarButton,
-	AppBarButtonAlign,
-	ViewError,
-	useBreakpoints,
-} from '../../../common';
+import { AppBarScope, ViewError, useBreakpoints } from '../../../common';
 import { type IModule } from '../../../common';
 import { useModules } from '../composables/useModules';
 import { FormResult, RouteNames } from '../config.constants';

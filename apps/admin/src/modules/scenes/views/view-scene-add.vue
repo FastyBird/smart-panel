@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:plus"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('scenes.headings.add') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('scenes.subHeadings.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="onClose"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="remoteFormSubmit = true"
-	>
-		<span class="uppercase">{{ t('scenes.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('scenes.headings.add')"
+		:subtitle="t('scenes.subHeadings.list')"
+		icon="mdi:plus"
+		left="close"
+		:primary="{ label: t('scenes.buttons.save.title'), handler: () => (remoteFormSubmit = true) }"
+		@back="onClose"
+	/>
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar class="grow-1 p-2 md:px-4">
@@ -58,11 +26,19 @@
 			style="background-color: var(--el-drawer-bg-color)"
 		>
 			<div class="p-2">
-				<el-button link class="mr-2" @click="onClose">
+				<el-button
+					link
+					class="mr-2"
+					@click="onClose"
+				>
 					{{ t('scenes.buttons.cancel.title') }}
 				</el-button>
 
-				<el-button :loading="saving" type="primary" @click="remoteFormSubmit = true">
+				<el-button
+					:loading="saving"
+					type="primary"
+					@click="remoteFormSubmit = true"
+				>
 					{{ t('scenes.buttons.save.title') }}
 				</el-button>
 			</div>
@@ -75,11 +51,10 @@ import { onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElScrollbar } from 'element-plus';
-import { Icon } from '@iconify/vue';
+import { ElButton, ElScrollbar } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
+import { ViewHeader, useBreakpoints } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
 import SceneAddForm from '../components/scenes/scene-add-form.vue';
 import { FormResult, type FormResultType, RouteNames } from '../scenes.constants';

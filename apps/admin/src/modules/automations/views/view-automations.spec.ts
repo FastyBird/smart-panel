@@ -67,17 +67,14 @@ vi.mock('../../../common', async () => {
 
 	const StubComponent = defineVueComponent({
 		setup(_, { slots }) {
-			return () => h('div', [slots.default?.(), slots['button-right']?.(), slots.extra?.()]);
+			return () => h('div', [slots.default?.(), slots['button-right']?.(), slots.actions?.()]);
 		},
 	});
 
 	return {
-		AppBar: StubComponent,
-		AppBarButton: StubComponent,
-		AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right', BACK: 'back', NONE: 'none' },
-		AppBarHeading: StubComponent,
 		AppBreadcrumbs: StubComponent,
 		ViewError: StubComponent,
+		AppBarScope: StubComponent,
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
 			isMDDevice: mocks.isLGDevice,

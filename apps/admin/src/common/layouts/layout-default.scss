@@ -19,6 +19,22 @@
 		background-color: var(--el-bg-color-page);
 	}
 
+	// The bell keeps its light circle in the top bar; on the dark phone bar it is a plain icon like the menu button
+	@include e(phone-bell) {
+		display: flex;
+		align-items: center;
+
+		.el-button {
+			--el-fill-color-light: transparent;
+			--el-fill-color: var(--fb-sidebar-active-bg);
+			--el-button-text-color: var(--fb-sidebar-active-text);
+			--el-button-hover-text-color: var(--fb-sidebar-active-text);
+
+			width: 44px;
+			height: 44px;
+		}
+	}
+
 	// The menu drawer is teleported to the body, so its styles hang off its own class
 	@include e(menu-drawer) {
 		background: var(--fb-sidebar-bg);

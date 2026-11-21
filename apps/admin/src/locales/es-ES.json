@@ -65,6 +65,10 @@
 			"done": "Listo",
 			"clearSelection": "Borrar selección"
 		},
+		"appBar": {
+			"back": "Atrás",
+			"close": "Cerrar"
+		},
 		"wizardShell": {
 			"steps": "Pasos del asistente",
 			"progress": "Paso {current} de {total} · {label}",

@@ -1,48 +1,13 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isDisplaysListRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:monitor"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('displaysModule.headings.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('displaysModule.subHeadings.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice && isDisplaysListRoute"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('displaysModule.headings.list')"
-		:sub-heading="t('displaysModule.subHeadings.list')"
+		v-if="isDisplaysListRoute || isLGDevice"
+		:title="t('displaysModule.headings.list')"
+		:subtitle="t('displaysModule.subHeadings.list')"
 		icon="mdi:monitor"
 	>
-		<template #extra>
+		<template #actions>
 			<el-button
 				v-if="permitJoinAvailable"
 				:loading="permitJoinActivating"
@@ -99,23 +64,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-displays-adjust
 					v-if="adjustList"
@@ -145,7 +94,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -155,11 +104,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { ListDisplays, ListDisplaysAdjust } from '../components/components';
 import { useDisplaysActions, useDisplaysDataSource, usePermitJoin } from '../composables/composables';
 import { RouteNames } from '../displays.constants';
@@ -182,7 +131,7 @@ useMeta({
 	title: t('displaysModule.meta.displays.list.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 const flashMessage = useFlashMessage();
 
 const {
@@ -359,9 +308,7 @@ const onPermitJoin = async (): Promise<void> => {
 			flashMessage.error(error.message);
 		} else {
 			flashMessage.error(
-				permitJoinActive.value
-					? t('displaysModule.messages.permitJoinDeactivateError')
-					: t('displaysModule.messages.permitJoinError'),
+				permitJoinActive.value ? t('displaysModule.messages.permitJoinDeactivateError') : t('displaysModule.messages.permitJoinError')
 			);
 		}
 	}

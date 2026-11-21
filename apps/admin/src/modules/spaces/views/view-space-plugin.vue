@@ -2,46 +2,13 @@
 	<template v-if="!notFound">
 		<app-breadcrumbs :items="breadcrumbs" />
 
-		<app-bar-heading
-			v-if="!isMDDevice"
-			teleport
-		>
-			<template #icon>
-				<icon
-					:icon="spaceIcon"
-					class="w[20px] h[20px]"
-				/>
-			</template>
-
-			<template #title>
-				{{ t('spacesModule.headings.detail', { space: space?.name }) }}
-			</template>
-
-			<template #subtitle>
-				{{ t('spacesModule.subHeadings.detail', { space: space?.name }) }}
-			</template>
-		</app-bar-heading>
-
-		<app-bar-button
-			v-if="!isMDDevice"
-			:align="AppBarButtonAlign.LEFT"
-			teleport
-			small
-			@click="onClose"
-		>
-			<template #icon>
-				<el-icon :size="24">
-					<icon icon="mdi:chevron-left" />
-				</el-icon>
-			</template>
-		</app-bar-button>
-
 		<view-header
-			:heading="t('spacesModule.headings.detail', { space: space?.name })"
-			:sub-heading="t('spacesModule.subHeadings.detail', { space: space?.name })"
+			:title="t('spacesModule.headings.detail', { space: space?.name })"
+			:subtitle="t('spacesModule.subHeadings.detail', { space: space?.name })"
 			:icon="spaceIcon"
+			@back="onClose"
 		>
-			<template #extra>
+			<template #actions>
 				<div
 					id="space-manage-actions"
 					class="flex items-center"
@@ -82,11 +49,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElIcon } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints } from '../../../common';
 import { useSpace } from '../composables';
 import { RouteNames, SpaceRoomCategory, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
 import type { ISpace } from '../store';
@@ -104,7 +67,7 @@ const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const spaceId = computed(() => props.id);
 

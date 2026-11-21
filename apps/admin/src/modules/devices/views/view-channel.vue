@@ -2,56 +2,19 @@
 	<template v-if="!notFound">
 		<app-breadcrumbs :items="breadcrumbs" />
 
-		<app-bar-heading
-			v-if="!isMDDevice && isChannelRoute"
-			teleport
-		>
-			<template #icon>
-				<icon
-					icon="mdi:chip"
-					class="w[20px] h[20px]"
-				/>
-			</template>
-
-			<template #title>
-				{{ t('devicesModule.headings.channels.detail', { channel: channel?.name }) }}
-			</template>
-
-			<template #subtitle>
-				{{ t('devicesModule.subHeadings.channels.detail', { channel: channel?.name }) }}
-			</template>
-		</app-bar-heading>
-
-		<app-bar-button
-			v-if="!isMDDevice"
-			:align="AppBarButtonAlign.LEFT"
-			teleport
-			small
-			@click="onClose"
-		>
-			<template #icon>
-				<el-icon :size="24">
-					<icon icon="mdi:chevron-left" />
-				</el-icon>
-			</template>
-		</app-bar-button>
-
-		<app-bar-button
-			v-if="!isMDDevice && isChannelRoute && canAddAnotherProperty"
-			:align="AppBarButtonAlign.RIGHT"
-			teleport
-			small
-			@click="onPropertyAdd"
-		>
-			<span class="uppercase">{{ t('devicesModule.buttons.add.title') }}</span>
-		</app-bar-button>
-
 		<view-header
-			:heading="t('devicesModule.headings.channels.detail', { channel: channel?.name })"
-			:sub-heading="t('devicesModule.subHeadings.channels.detail', { channel: channel?.name })"
+			v-if="isChannelRoute || isLGDevice"
+			:title="t('devicesModule.headings.channels.detail', { channel: channel?.name })"
+			:subtitle="t('devicesModule.subHeadings.channels.detail', { channel: channel?.name })"
 			icon="mdi:chip"
+			:actions="[
+				...(isChannelRoute && canAddAnotherProperty
+					? [{ icon: 'mdi:plus', label: t('devicesModule.buttons.add.title'), handler: onPropertyAdd }]
+					: []),
+			]"
+			@back="onClose"
 		>
-			<template #extra>
+			<template #actions>
 				<div class="flex items-center">
 					<el-button
 						type="primary"
@@ -131,23 +94,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-channels-properties-adjust
 					v-if="adjustList"
@@ -178,7 +125,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -188,27 +135,15 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBar,
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	EntityNotFound,
-	ViewError,
-	ViewHeader,
-	useBreakpoints,
-	useFlashMessage,
-	useUuid,
-} from '../../../common';
+import { AppBarScope, AppBreadcrumbs, EntityNotFound, ViewError, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
 import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
 import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables/composables';
-import { DevicesApiException } from '../devices.exceptions';
 import { RouteNames } from '../devices.constants';
+import { DevicesApiException } from '../devices.exceptions';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
 
@@ -228,7 +163,7 @@ const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
 

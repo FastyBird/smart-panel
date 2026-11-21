@@ -1,50 +1,15 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				:icon="extensionIcon"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ extension?.name ?? t('extensionsModule.headings.detail') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('extensionsModule.subHeadings.detail') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push({ name: RouteNames.EXTENSIONS })"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('extensionsModule.breadcrumbs.extensions.list') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="extension?.name ?? t('extensionsModule.headings.detail')"
-		:sub-heading="t('extensionsModule.subHeadings.detail')"
+		:title="extension?.name ?? t('extensionsModule.headings.detail')"
+		:subtitle="t('extensionsModule.subHeadings.detail')"
 		:icon="extensionIcon"
+		@back="router.push({ name: RouteNames.EXTENSIONS })"
 	>
 		<template
 			v-if="extension"
-			#extra
+			#actions
 		>
 			<div class="flex items-center">
 				<el-button
@@ -503,11 +468,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElIcon, ElResult, ElScrollbar, ElSkeleton, ElTabPane, ElTabs, ElTag, ElText, useNamespace } from 'element-plus';
+import { ElButton, ElCard, ElResult, ElScrollbar, ElSkeleton, ElTabPane, ElTabs, ElTag, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, MarkdownRenderer, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, MarkdownRenderer, ViewHeader, useBreakpoints } from '../../../common';
 import { useModules } from '../../config/composables/useModules';
 import { usePlugins } from '../../config/composables/usePlugins';
 import { ExtensionActions, ExtensionLogs } from '../components/components';
@@ -541,7 +506,8 @@ watch(
 		if (val) {
 			meta.title = t('extensionsModule.meta.extensions.detail.title', { extension: extension.value?.name });
 		}
-	}, { immediate: true }
+	},
+	{ immediate: true }
 );
 
 const { toggleEnabled } = useExtensionActions();

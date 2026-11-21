@@ -1,42 +1,15 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice && isTileRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:widget-tree"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('dashboardModule.headings.tiles.detail') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('dashboardModule.subHeadings.tiles.detail') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice && isTileRoute"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onDataSourceAdd"
-	>
-		<span class="uppercase">{{ t('dashboardModule.buttons.add.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('dashboardModule.headings.tiles.detail')"
-		:sub-heading="t('dashboardModule.subHeadings.tiles.detail')"
+		v-if="isTileRoute || isLGDevice"
+		:title="t('dashboardModule.headings.tiles.detail')"
+		:subtitle="t('dashboardModule.subHeadings.tiles.detail')"
 		icon="mdi:widget-tree"
+		:actions="[{ icon: 'mdi:plus', label: t('dashboardModule.buttons.add.title'), handler: onDataSourceAdd }]"
+		@back="() => router.back()"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					type="primary"
@@ -113,23 +86,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-data-sources-adjust
 					v-if="adjustList"
@@ -161,7 +118,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -171,22 +128,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElCard, ElDrawer, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBar,
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	ViewError,
-	ViewHeader,
-	useBreakpoints,
-	useFlashMessage,
-	useUuid,
-} from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
 import ListDataSourcesAdjust from '../components/data-sources/list-data-sources-adjust.vue';
 import ListDataSources from '../components/data-sources/list-data-sources.vue';
 import TileDetail from '../components/tiles/tile-detail.vue';
@@ -214,7 +160,7 @@ const { meta } = useMeta({});
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const { tile, fetchTile, isLoading } = useTile({ id: props.id });
 

@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('dashboardModule.headings.pages.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('dashboardModule.subHeadings.pages.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('dashboardModule.headings.pages.adjustFilters')"
+		:subtitle="t('dashboardModule.subHeadings.pages.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -109,7 +101,7 @@ import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseI
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../../common';
+import { ViewHeader } from '../../../../common';
 import { useDisplays } from '../../../displays';
 import { type IPagesFilter } from '../../composables/types';
 import { usePagesPlugins } from '../../composables/usePagesPlugins';

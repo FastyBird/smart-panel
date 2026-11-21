@@ -5,47 +5,14 @@
 	>
 		<app-breadcrumbs :items="breadcrumbs" />
 
-		<app-bar-heading
-			v-if="!isMDDevice"
-			teleport
-		>
-			<template #icon>
-				<icon
-					:icon="AUTOMATION_FLOW_ICON"
-					class="w[20px] h[20px]"
-				/>
-			</template>
-
-			<template #title>
-				{{ automation?.name ?? t('automations.headings.flow') }}
-			</template>
-
-			<template #subtitle>
-				{{ t('automations.subHeadings.flow') }}
-			</template>
-		</app-bar-heading>
-
-		<app-bar-button
-			v-if="!isMDDevice"
-			:align="AppBarButtonAlign.LEFT"
-			:disabled="saving"
-			teleport
-			small
-			@click="onClose"
-		>
-			<template #icon>
-				<el-icon :size="24">
-					<icon icon="mdi:chevron-left" />
-				</el-icon>
-			</template>
-		</app-bar-button>
-
 		<view-header
-			:heading="automation?.name ?? t('automations.headings.flow')"
-			:sub-heading="t('automations.subHeadings.flow')"
+			:title="automation?.name ?? t('automations.headings.flow')"
+			:subtitle="t('automations.subHeadings.flow')"
 			:icon="AUTOMATION_FLOW_ICON"
+			:back-disabled="saving"
+			@back="onClose"
 		>
-			<template #extra>
+			<template #actions>
 				<el-button
 					link
 					class="mr-2"
@@ -445,16 +412,7 @@ import {
 import { Icon } from '@iconify/vue';
 import { useEventListener } from '@vueuse/core';
 
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	EntityNotFound,
-	ViewHeader,
-	useBreakpoints,
-	useFlashMessage,
-} from '../../../common';
+import { AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import {
 	AUTOMATION_FLOW_ICON,
 	AUTOMATION_STATUS_COLORS,

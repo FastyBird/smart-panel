@@ -65,6 +65,10 @@
 			"done": "Gotowe",
 			"clearSelection": "Wyczyść zaznaczenie"
 		},
+		"appBar": {
+			"back": "Wstecz",
+			"close": "Zamknij"
+		},
 		"wizardShell": {
 			"steps": "Kroki kreatora",
 			"progress": "Krok {current} z {total} · {label}",

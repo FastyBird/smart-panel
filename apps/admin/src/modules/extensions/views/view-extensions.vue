@@ -1,45 +1,9 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:puzzle"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('extensionsModule.headings.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('extensionsModule.subHeadings.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		:heading="t('extensionsModule.headings.list')"
-		:sub-heading="t('extensionsModule.subHeadings.list')"
+		:title="t('extensionsModule.headings.list')"
+		:subtitle="t('extensionsModule.subHeadings.list')"
 		icon="mdi:puzzle"
 	/>
 
@@ -109,30 +73,14 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<list-extensions-adjust
 				v-if="showDrawer"
 				v-model:filters="filters"
 				:filters-active="filtersActive"
 				@reset-filters="onResetFilters"
 			/>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -142,11 +90,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElDrawer, ElIcon, ElTabPane, ElTabs } from 'element-plus';
+import { ElDrawer, ElTabPane, ElTabs } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewHeader } from '../../../common';
 import { ExtensionKind, ExtensionsModuleServiceOwnerKind } from '../../../openapi.constants';
 import { ListExtensions, ListExtensionsAdjust, ServicesList } from '../components/components';
 import { useExtensionActions, useExtensionsDataSource, useServiceActions, useServices } from '../composables/composables';
@@ -171,8 +119,6 @@ const { t } = useI18n();
 useMeta({
 	title: t('extensionsModule.meta.extensions.list.title'),
 });
-
-const { isMDDevice } = useBreakpoints();
 
 const {
 	extensions,

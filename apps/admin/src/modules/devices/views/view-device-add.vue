@@ -1,44 +1,12 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:devices"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('devicesModule.headings.devices.add') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('devicesModule.subHeadings.devices.add') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-	</app-bar-button>
-
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSubmit"
-	>
-		<span class="uppercase">{{ t('devicesModule.buttons.save.title') }}</span>
-	</app-bar-button>
+	<view-header
+		:title="t('devicesModule.headings.devices.add')"
+		:subtitle="t('devicesModule.subHeadings.devices.add')"
+		icon="mdi:devices"
+		left="close"
+		:primary="{ label: t('devicesModule.buttons.save.title'), handler: onSubmit }"
+		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -141,21 +109,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	type IPlugin,
-	type IPluginElement,
-	SUBMIT_FORM_SM,
-	useBreakpoints,
-	useUuid,
-} from '../../../common';
+import { AppBreadcrumbs, type IPlugin, type IPluginElement, SUBMIT_FORM_SM, ViewHeader, useBreakpoints, useUuid } from '../../../common';
 import { DeviceAddForm } from '../components/components';
 import SelectDevicePlugin from '../components/devices/select-device-plugin.vue';
 import { useDevicesPlugins } from '../composables/composables';

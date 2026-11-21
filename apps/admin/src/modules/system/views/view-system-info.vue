@@ -1,32 +1,12 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:hammer"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('systemModule.headings.system.system') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('systemModule.subHeadings.system') }}
-		</template>
-	</app-bar-heading>
-
 	<view-header
-		:heading="t('systemModule.headings.system.system')"
-		:sub-heading="t('systemModule.subHeadings.system')"
+		:title="t('systemModule.headings.system.system')"
+		:subtitle="t('systemModule.subHeadings.system')"
 		icon="mdi:hammer"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					plain
@@ -108,7 +88,7 @@ import { ElButton, ElDialog, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, ViewHeader } from '../../../common';
 import { AboutApplication, ManageSystem, SystemInfoDetail } from '../components/components';
 import { useSystemInfo, useThrottleStatus } from '../composables/composables';
 import { RouteNames } from '../system.constants';
@@ -120,8 +100,6 @@ defineOptions({
 
 const router = useRouter();
 const { t } = useI18n();
-
-const { isMDDevice } = useBreakpoints();
 
 const { systemInfo, fetchSystemInfo, isLoading: isLoadingSystemInfo } = useSystemInfo();
 const { throttleStatus, fetchThrottleStatus, isLoading: isLoadingThrottleStatus } = useThrottleStatus();

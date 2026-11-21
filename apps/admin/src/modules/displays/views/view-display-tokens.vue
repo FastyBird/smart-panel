@@ -1,20 +1,10 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon
-				icon="mdi:key"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('displaysModule.detail.tokens.title') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('displaysModule.detail.tokens.subtitle') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('displaysModule.detail.tokens.title')"
+		:subtitle="t('displaysModule.detail.tokens.subtitle')"
+		icon="mdi:key"
+		@back="() => router.back()"
+	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
@@ -26,9 +16,9 @@
 			class="mb-4"
 		/>
 
-        <div
-            v-loading="isLoadingTokens"
-            class="min-h-[100px]"
+		<div
+			v-loading="isLoadingTokens"
+			class="min-h-[100px]"
 		>
 			<el-table
 				v-loading="isLoadingTokens"
@@ -146,9 +136,9 @@ import { ElAlert, ElButton, ElMessageBox, ElResult, ElTable, ElTableColumn, ElTa
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, AppBreadcrumbs, IconWithChild, useFlashMessage } from '../../../common';
-import { RouteNames } from '../displays.constants';
+import { AppBreadcrumbs, IconWithChild, ViewHeader, useFlashMessage } from '../../../common';
 import { useDisplay } from '../composables/composables';
+import { RouteNames } from '../displays.constants';
 import type { IDisplay } from '../store/displays.store.types';
 
 import type { IViewDisplayTokensProps } from './view-display-tokens.types';
@@ -237,7 +227,7 @@ watch(
 			router.push({ name: RouteNames.DISPLAYS });
 		}
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 onMounted(() => {

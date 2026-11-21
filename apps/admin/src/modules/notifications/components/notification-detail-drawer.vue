@@ -8,37 +8,13 @@
 		:size="isLGDevice ? '40%' : '100%'"
 		@update:model-value="(value: boolean) => emit('update:modelValue', value)"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #heading>
-					<app-bar-heading v-if="notification">
-						<template #icon>
-							<icon :icon="severityIcon" />
-						</template>
-
-						<template #title>
-							{{ notification.title }}
-						</template>
-
-						<template #subtitle>{{ notification.source }} &middot; {{ relativeTime }}</template>
-					</app-bar-heading>
-				</template>
-
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						:aria-label="t('notificationsModule.buttons.close.title')"
-						@click="onClose"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
+		<app-bar-scope @close="onClose">
+			<view-header
+				v-if="notification"
+				:title="notification.title"
+				:subtitle="`${notification.source} · ${relativeTime}`"
+				:icon="severityIcon"
+			/>
 
 			<template v-if="notification">
 				<el-scrollbar class="grow-1 p-2 md:px-4">
@@ -170,7 +146,7 @@
 					</div>
 				</div>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 </template>
 
@@ -178,12 +154,12 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDescriptions, ElDescriptionsItem, ElDrawer, ElIcon, ElScrollbar, ElText } from 'element-plus';
+import { ElButton, ElDescriptions, ElDescriptionsItem, ElDrawer, ElScrollbar, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { formatTimeAgo } from '@vueuse/core';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
+import { AppBarScope, ViewHeader, useBreakpoints } from '../../../common';
 import { NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
 import { SEVERITY_ICONS } from '../notifications.constants';
 import type { INotification } from '../store/notifications.store.schemas';

@@ -37,22 +37,12 @@ vi.mock('../../../common', async () => {
 	mocks.isMDDevice = ref<boolean>(true);
 
 	return {
-		AppBarButton: defineVueComponent({
-			name: 'AppBarButton',
-			props: {
-				align: { type: String, default: 'none' },
-				disabled: { type: Boolean, default: false },
-				loading: { type: Boolean, default: false },
-			},
-			emits: ['click'],
+		// The header hands the phone app bar its Save (`primary`) and its back or close (`onBack`)
+		ViewHeader: defineVueComponent({
+			name: 'ViewHeader',
+			props: ['title', 'subtitle', 'icon', 'back', 'onBack', 'backDisabled', 'left', 'actions', 'primary'],
 			setup(_, { slots }) {
-				return () => h('div', [slots.icon?.(), slots.default?.()]);
-			},
-		}),
-		AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right', BACK: 'back', NONE: 'none' },
-		AppBarHeading: defineVueComponent({
-			setup() {
-				return () => h('div');
+				return () => h('div', [slots.actions?.()]);
 			},
 		}),
 		useBreakpoints: () => ({
@@ -132,8 +122,18 @@ describe('ViewAutomationEdit', (): void => {
 		return wrapper.findAll('button').find((button) => button.text() === 'automations.buttons.save.title')!;
 	};
 
+	// The app bar buttons, read from what the header hands the phone app bar
 	const appBarSave = (wrapper: VueWrapper) => {
-		return wrapper.findAllComponents({ name: 'AppBarButton' }).find((button) => button.props('align') === 'right')!;
+		const primary = wrapper.findComponent({ name: 'ViewHeader' }).props('primary') as
+			| { handler: () => void; disabled?: boolean; loading?: boolean }
+			| undefined;
+
+		return primary
+			? {
+					props: () => ({ disabled: !!primary.disabled, loading: !!primary.loading }),
+					click: () => primary.handler(),
+				}
+			: undefined;
 	};
 
 	afterEach((): void => {
@@ -193,7 +193,7 @@ describe('ViewAutomationEdit', (): void => {
 		// Nothing was asked for before the form could hear it
 		expect(wrapper.findComponent(AutomationEditForm).props('remoteFormSubmit')).toBe(false);
 
-		appBarSave(wrapper).vm.$emit('click');
+		appBarSave(wrapper)!.click();
 
 		await flushPromises();
 
@@ -271,7 +271,12 @@ describe('ViewAutomationEdit', (): void => {
 	};
 
 	const appBarBack = (wrapper: VueWrapper) => {
-		return wrapper.findAllComponents({ name: 'AppBarButton' }).find((button) => button.props('align') === 'left')!;
+		const header = wrapper.findComponent({ name: 'ViewHeader' });
+
+		return {
+			props: (name: string) => (name === 'disabled' ? !!header.props('backDisabled') : undefined),
+			click: () => (header.props('onBack') as () => void)(),
+		};
 	};
 
 	it('can be left again when the automation disappears while its save is on its way', async (): Promise<void> => {
@@ -353,7 +358,7 @@ describe('ViewAutomationEdit', (): void => {
 
 		expect(appBarBack(wrapper).props('disabled')).toBe(true);
 
-		appBarBack(wrapper).vm.$emit('click');
+		appBarBack(wrapper).click();
 
 		await flushPromises();
 
@@ -371,18 +376,18 @@ describe('ViewAutomationEdit', (): void => {
 
 		await mountView();
 
-		expect(appBarSave(wrapper).props()).toMatchObject({ disabled: false, loading: false });
+		expect(appBarSave(wrapper)!.props()).toMatchObject({ disabled: false, loading: false });
 
 		wrapper.findComponent(AutomationEditForm).vm.$emit('update:remote-form-result', FormResult.WORKING);
 
 		await flushPromises();
 
-		expect(appBarSave(wrapper).props()).toMatchObject({ disabled: true, loading: true });
+		expect(appBarSave(wrapper)!.props()).toMatchObject({ disabled: true, loading: true });
 
 		wrapper.findComponent(AutomationEditForm).vm.$emit('update:remote-form-result', FormResult.ERROR);
 
 		await flushPromises();
 
-		expect(appBarSave(wrapper).props()).toMatchObject({ disabled: false, loading: false });
+		expect(appBarSave(wrapper)!.props()).toMatchObject({ disabled: false, loading: false });
 	});
 });

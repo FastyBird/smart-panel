@@ -39,15 +39,12 @@ vi.mock('../../../common', async () => {
 	});
 	return {
 		injectPluginsManager: () => mocks.pluginsManager,
-		AppBar: stub,
-		AppBarButton: stub,
-		AppBarHeading: stub,
 		AppBreadcrumbs: stub,
 		EntityNotFound: stub,
 		IconWithChild: stub,
 		ViewError: stub,
+		AppBarScope: stub,
 		ViewHeader: stub,
-		AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right' },
 		useBreakpoints: () => ({ isMDDevice: vueRef(true), isLGDevice: vueRef(false) }),
 		useFlashMessage: () => ({ error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
 		useUuid: () => ({ validate: () => true }),

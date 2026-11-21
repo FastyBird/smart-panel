@@ -54,39 +54,12 @@
 			direction="rtl"
 			size="40%"
 		>
-			<div class="flex flex-col h-full">
-				<app-bar menu-button-hidden>
-					<template #button-right>
-						<app-bar-button
-							:align="AppBarButtonAlign.RIGHT"
-							class="mr-2"
-							@click="selectedLog = null"
-						>
-							<template #icon>
-								<el-icon>
-									<icon icon="mdi:close" />
-								</el-icon>
-							</template>
-						</app-bar-button>
-					</template>
-				</app-bar>
-
-				<app-bar-heading teleport>
-					<template #icon>
-						<icon
-							icon="mdi:note-text-outline"
-							class="w[20px] h[20px]"
-						/>
-					</template>
-
-					<template #title>
-						{{ t('systemModule.headings.systemLogs.detail') }}
-					</template>
-
-					<template #subtitle>
-						{{ t('systemModule.subHeadings.systemLogs.detail') }}
-					</template>
-				</app-bar-heading>
+			<app-bar-scope @close="selectedLog = null">
+				<view-header
+					:title="t('systemModule.headings.systemLogs.detail')"
+					:subtitle="t('systemModule.subHeadings.systemLogs.detail')"
+					icon="mdi:note-text-outline"
+				/>
 
 				<div class="flex flex-col overflow-hidden h-full">
 					<el-scrollbar
@@ -96,21 +69,21 @@
 						<system-log-detail :system-log="selectedLog" />
 					</el-scrollbar>
 				</div>
-			</div>
+			</app-bar-scope>
 		</el-drawer>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref, type Ref, toRef, watch } from 'vue';
+import { type Ref, computed, onBeforeMount, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElDrawer, ElIcon, ElScrollbar, ElSwitch } from 'element-plus';
+import { ElButton, ElCard, ElDrawer, ElScrollbar, ElSwitch } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading } from '../../../../common';
+import { AppBarScope, ViewHeader } from '../../../../common';
 import { SystemLogDetail, SystemLogsTable } from '../../../../modules/system';
 import type { ILogEntry } from '../../../../modules/system/store/logs-entries.store.types';
 import { useDeviceLogs } from '../../composables/composables';

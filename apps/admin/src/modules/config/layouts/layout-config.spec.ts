@@ -25,9 +25,8 @@ vi.mock('../../../common', async () => {
 
 	return {
 		...actual,
-		AppBarHeading: { template: '<div data-test-id="app-bar-heading"></div>' },
 		AppBreadcrumbs: { template: '<div data-test-id="app-breadcrumbs"></div>' },
-		ViewHeader: { template: '<div data-test-id="view-header"><slot name="extra" /></div>' },
+		ViewHeader: { template: '<div data-test-id="view-header"><slot name="actions" /></div>' },
 		UserAvatar: { template: '<div data-test-id="user-avatar"></div>' },
 		useBreakpoints: vi.fn(() => ({
 			isMDDevice: computed<boolean>(() => true),

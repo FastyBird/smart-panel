@@ -4,49 +4,13 @@
 		:items="breadcrumbs"
 	/>
 
-	<app-bar-heading
-		v-if="!isMDDevice && isSpacesListRoute && !isWizardRoute"
-		teleport
-	>
-		<template #icon>
-			<icon
-				icon="mdi:home-group"
-				class="w[20px] h[20px]"
-			/>
-		</template>
-
-		<template #title>
-			{{ t('spacesModule.headings.list') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('spacesModule.subHeadings.list') }}
-		</template>
-	</app-bar-heading>
-
-	<app-bar-button
-		v-if="!isMDDevice && isSpacesListRoute && !isWizardRoute"
-		:align="AppBarButtonAlign.LEFT"
-		teleport
-		small
-		@click="router.push('/')"
-	>
-		<template #icon>
-			<el-icon :size="24">
-				<icon icon="mdi:chevron-left" />
-			</el-icon>
-		</template>
-
-		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
-	</app-bar-button>
-
 	<view-header
-		v-if="!isWizardRoute"
-		:heading="t('spacesModule.headings.list')"
-		:sub-heading="t('spacesModule.subHeadings.list')"
+		v-if="(isSpacesListRoute || isLGDevice) && !isWizardRoute"
+		:title="t('spacesModule.headings.list')"
+		:subtitle="t('spacesModule.subHeadings.list')"
 		icon="mdi:home-group"
 	>
-		<template #extra>
+		<template #actions>
 			<div class="flex items-center">
 				<el-button
 					v-if="enabledWizardOptions.length > 0"
@@ -110,23 +74,7 @@
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
-		<div class="flex flex-col h-full">
-			<app-bar menu-button-hidden>
-				<template #button-right>
-					<app-bar-button
-						:align="AppBarButtonAlign.RIGHT"
-						class="mr-2"
-						@click="() => onCloseDrawer()"
-					>
-						<template #icon>
-							<el-icon>
-								<icon icon="mdi:close" />
-							</el-icon>
-						</template>
-					</app-bar-button>
-				</template>
-			</app-bar>
-
+		<app-bar-scope @close="onCloseDrawer()">
 			<template v-if="showDrawer">
 				<list-spaces-adjust
 					v-if="adjustList"
@@ -153,7 +101,7 @@
 					</suspense>
 				</view-error>
 			</template>
-		</div>
+		</app-bar-scope>
 	</el-drawer>
 
 	<el-dialog
@@ -208,17 +156,7 @@ import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox } from 'elem
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBar,
-	AppBarButton,
-	AppBarButtonAlign,
-	AppBarHeading,
-	AppBreadcrumbs,
-	ViewError,
-	ViewHeader,
-	useBreakpoints,
-	useFlashMessage,
-} from '../../../common';
+import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { ListSpaces } from '../components/components';
 import ListSpacesAdjust from '../components/list-spaces-adjust.vue';
 import { useSpacesActions, useSpacesDataSource, useSpacesPlugins } from '../composables';
@@ -238,7 +176,7 @@ useMeta({
 	title: t('spacesModule.meta.spaces.list.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
 const {
 	fetchSpaces,

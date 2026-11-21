@@ -1,17 +1,9 @@
 <template>
-	<app-bar-heading teleport>
-		<template #icon>
-			<icon icon="mdi:filter" />
-		</template>
-
-		<template #title>
-			{{ t('systemModule.headings.systemLogs.adjustFilters') }}
-		</template>
-
-		<template #subtitle>
-			{{ t('systemModule.subHeadings.systemLogs.adjustFilters') }}
-		</template>
-	</app-bar-heading>
+	<view-header
+		:title="t('systemModule.headings.systemLogs.adjustFilters')"
+		:subtitle="t('systemModule.subHeadings.systemLogs.adjustFilters')"
+		icon="mdi:filter"
+	/>
 
 	<div
 		:class="[ns.b()]"
@@ -110,7 +102,7 @@ import { ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElIc
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { AppBarHeading } from '../../../../common';
+import { ViewHeader } from '../../../../common';
 import { SystemModuleLogEntrySource } from '../../../../openapi.constants';
 import { SystemModuleLogEntryType } from '../../../../openapi.constants';
 import { type ISystemLogsFilter } from '../../composables/types';
