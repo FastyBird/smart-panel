@@ -418,6 +418,8 @@ describe('ViewDevices', () => {
 			await vm.onDeviceEdit('device-id');
 
 			expect(mocks.routerReplace).toHaveBeenCalledWith(expect.objectContaining({ params: { id: 'device-id' } }));
+			// The discarded changes are gone, so the next form starts clean
+			expect(vm.remoteFormChanged).toBe(false);
 		});
 
 		it('replaces an untouched form without asking', async () => {

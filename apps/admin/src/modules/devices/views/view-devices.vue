@@ -217,7 +217,14 @@ const canReplaceOpenForm = async (): Promise<boolean> => {
 		return true;
 	}
 
-	return confirmDiscard();
+	// Discarded: the next form starts clean, so closing it does not ask about changes that are gone
+	const discard = await confirmDiscard();
+
+	if (discard) {
+		remoteFormChanged.value = false;
+	}
+
+	return discard;
 };
 
 const onCloseDrawer = (done?: () => void): void => {

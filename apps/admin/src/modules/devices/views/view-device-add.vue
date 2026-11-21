@@ -49,9 +49,10 @@
 			/>
 		</el-scrollbar>
 
-		<!-- Wherever the phone app bar is not there to carry Save: in a drawer, and on a page kept open past 720 px -->
+		<!-- Wherever the phone app bar is not there to carry Save: in a drawer, and on a page kept open past 720 px.
+		     Hidden rather than removed, so a plugin's teleported Next button keeps its target through a resize -->
 		<form-footer
-			v-if="inDrawer || !isPhone"
+			v-show="inDrawer || !isPhone"
 			:dirty="remoteFormChanged"
 			:saving="remoteFormResult === FormResult.WORKING"
 			@discard="onDiscard"
