@@ -387,7 +387,11 @@ describe('ViewDevices', () => {
 
 			await flushPromises();
 
-			const vm = wrapper.vm as unknown as { remoteFormChanged: boolean; onDeviceEdit: (id: string) => Promise<void> };
+			const vm = wrapper.vm as unknown as {
+				remoteFormChanged: boolean;
+				onDeviceEdit: (id: string) => Promise<void>;
+				onDeviceCreate: () => Promise<void>;
+			};
 
 			vm.remoteFormChanged = changed;
 
@@ -418,8 +422,19 @@ describe('ViewDevices', () => {
 			await vm.onDeviceEdit('device-id');
 
 			expect(mocks.routerReplace).toHaveBeenCalledWith(expect.objectContaining({ params: { id: 'device-id' } }));
-			// The discarded changes are gone, so the next form starts clean
-			expect(vm.remoteFormChanged).toBe(false);
+		});
+
+		it('leaves the form open, and asks nothing, when the one asked for is already open', async () => {
+			const vm = await openForm(true);
+
+			mocks.routerResolve.mockReturnValueOnce({ path: '/devices/add' });
+
+			await vm.onDeviceCreate();
+
+			expect(mocks.confirmDiscard).not.toHaveBeenCalled();
+			expect(mocks.routerReplace).not.toHaveBeenCalled();
+			// Still changed: closing it later must still ask
+			expect(vm.remoteFormChanged).toBe(true);
 		});
 
 		it('replaces an untouched form without asking', async () => {

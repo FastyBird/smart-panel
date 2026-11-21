@@ -127,7 +127,7 @@
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElButton, ElIcon, ElMessageBox } from 'element-plus';
 
@@ -212,19 +212,17 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 // Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
-const canReplaceOpenForm = async (): Promise<boolean> => {
+const canReplaceOpenForm = async (to?: RouteLocationRaw): Promise<boolean> => {
+	// The form asked for is the one already open: nothing to replace, so nothing to ask
+	if (to !== undefined && router.resolve(to).path === route.path) {
+		return false;
+	}
+
 	if (!showDrawer.value || !remoteFormChanged.value) {
 		return true;
 	}
 
-	// Discarded: the next form starts clean, so closing it does not ask about changes that are gone
-	const discard = await confirmDiscard();
-
-	if (discard) {
-		remoteFormChanged.value = false;
-	}
-
-	return discard;
+	return confirmDiscard();
 };
 
 const onCloseDrawer = (done?: () => void): void => {
@@ -279,7 +277,7 @@ const onDeviceDetail = async (id: IDevice['id']): Promise<void> => {
 };
 
 const onDeviceEdit = async (id: IDevice['id']): Promise<void> => {
-	if (!(await canReplaceOpenForm())) {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICES_EDIT, params: { id } }))) {
 		return;
 	}
 
@@ -323,7 +321,7 @@ const onResetFilters = (): void => {
 };
 
 const onDeviceCreate = async (): Promise<void> => {
-	if (!(await canReplaceOpenForm())) {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICES_ADD }))) {
 		return;
 	}
 
@@ -380,6 +378,10 @@ onMounted((): void => {
 watch(
 	(): string => route.path,
 	(): void => {
+		// Another route means another form (the outlet is keyed by it): its changes start from zero. A navigation
+		// that does not happen leaves the open form, and what it says about its changes, as it was
+		remoteFormChanged.value = false;
+
 		showDrawer.value =
 			route.matched.find((matched) => matched.name === RouteNames.DEVICES_ADD || matched.name === RouteNames.DEVICES_EDIT) !== undefined;
 	}
