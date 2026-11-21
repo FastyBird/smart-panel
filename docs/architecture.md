@@ -140,6 +140,9 @@ The panel app is designed for embedded displays:
 - **API Client** - Generated from OpenAPI specification
 - **Widgets** - Reusable UI components for tiles and controls
 
+The display design system (tokens, fonts, size system, components and screen rules) is defined in
+[`display-ui-design-spec.md`](display-ui-design-spec.md).
+
 ## Data Flow
 
 ### REST API

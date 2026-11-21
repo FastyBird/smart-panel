@@ -7,6 +7,8 @@
 > **Status:** describes the app as implemented in `apps/panel/`. Where something is a stub or known-incomplete, it is called out explicitly.
 >
 > **Companion documents:** `docs/architecture.md`, `docs/domains.md`, `docs/climate-architecture.md`, `docs/media-architecture.md`, `docs/optimistic-ui-architecture.md`, `docs/spaces-rooms-and-zones.md`, `docs/features.md`. The admin app has its own spec: `docs/admin-ui-design-spec.md`.
+>
+> **Visual design:** [`display-ui-design-spec.md`](display-ui-design-spec.md) is authoritative for how the app looks: colours, type, sizing, components and screen layouts. It overrides §3, §4 and §16 of this document and any visual detail elsewhere in it. This document stays the reference for behaviour.
 
 ---
 

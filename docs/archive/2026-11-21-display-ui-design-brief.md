@@ -1,4 +1,9 @@
-# Display UI design brief
+# Display UI design brief (archived)
+
+> **Archived on 2026-11-21. Superseded by [`docs/display-ui-design-spec.md`](../display-ui-design-spec.md).**
+> This was the round 1 brief given to the designer. It records the display's visual language, sizing model and drift
+> before the redesign. Do not use it for new work: its colours, size classes and component guidance are replaced by
+> the spec. Its screen catalogue (§6) and current-state analysis (§3.3, §9) stay useful as background.
 
 > **Round 1 brief, 2026-11-21.** This is the work order for a designer (human or Claude Design) who will produce one
 > design system and a complete set of screen designs for the **FastyBird Smart Panel display app**: the Flutter
@@ -9,7 +14,7 @@
 >
 > **How it relates to the other documents:**
 >
-> - [`display-app-design-spec.md`](display-app-design-spec.md) is the behaviour reference. It describes every
+> - [`display-app-design-spec.md`](../display-app-design-spec.md) is the behaviour reference. It describes every
 >   screen, rule and edge case as of July 2026, in more depth than this brief. Section references such as "spec §8.1"
 >   point into it. Read the matching spec section before you design a screen.
 > - This brief says what to design, adds what changed since July (room modes, schedules, occupancy, automations,
@@ -17,7 +22,7 @@
 >   product decisions for the redesign (§13.1): a fixed set of supported panel sizes, red app colour with per-room
 >   accent colours, thermostat control on the panel, alarm arming on the panel, screen protection, and cameras with a
 >   two-way video doorbell.
-> - [`admin-ui-design-spec.md`](admin-ui-design-spec.md) is the approved admin redesign (November 2026). The display
+> - [`admin-ui-design-spec.md`](../admin-ui-design-spec.md) is the approved admin redesign (November 2026). The display
 >   should look like the same product. See §4.3.
 >
 > When this brief and the code disagree, the code wins. Report the difference instead of designing around it.
@@ -988,11 +993,11 @@ Please give a recommendation for each.
 
 | What | Where |
 |---|---|
-| Behaviour reference (every screen, every rule) | [`docs/display-app-design-spec.md`](display-app-design-spec.md) |
-| Approved admin design (brand alignment) | [`docs/admin-ui-design-spec.md`](admin-ui-design-spec.md) |
-| Room activity modes, schedules, occupancy | [`docs/space-activity-modes.md`](space-activity-modes.md) |
-| Optimistic UI and feedback levels | [`docs/optimistic-ui-architecture.md`](optimistic-ui-architecture.md) |
-| Climate, media domains | [`docs/climate-architecture.md`](climate-architecture.md), [`docs/media-architecture.md`](media-architecture.md) |
+| Behaviour reference (every screen, every rule) | [`docs/display-app-design-spec.md`](../display-app-design-spec.md) |
+| Approved admin design (brand alignment) | [`docs/admin-ui-design-spec.md`](../admin-ui-design-spec.md) |
+| Room activity modes, schedules, occupancy | [`docs/space-activity-modes.md`](../space-activity-modes.md) |
+| Optimistic UI and feedback levels | [`docs/optimistic-ui-architecture.md`](../optimistic-ui-architecture.md) |
+| Climate, media domains | [`docs/climate-architecture.md`](../climate-architecture.md), [`docs/media-architecture.md`](../media-architecture.md) |
 | Tokens and theme | `apps/panel/lib/core/utils/theme.dart` |
 | Scaling and size classes | `apps/panel/lib/core/services/screen.dart`, `core/services/visual_density.dart`, `spec/displays/screen_breakpoints.json`, `spec/displays/grid.json` |
 | Portworld panel range (Android size reference) | `https://portworld-solu.com` (product pages for the YC-SM41P, SM08P and YC-102P) |
@@ -1005,7 +1010,7 @@ Please give a recommendation for each.
 | Security, energy, weather, Buddy | `apps/panel/lib/modules/{security,energy,weather,buddy}/presentation/` |
 | Alarm, doorbell, camera and lock capabilities | `spec/devices/channels.yaml` (`alarm`, `doorbell`, `camera`, `lock`), `spec/devices/devices.yaml` |
 | Security aggregation (arming and alarm states) | `apps/backend/src/modules/security/security.constants.ts` |
-| Cameras module (snapshots, live sessions) | [`docs/cameras-architecture.md`](cameras-architecture.md) |
+| Cameras module (snapshots, live sessions) | [`docs/cameras-architecture.md`](../cameras-architecture.md) |
 | Dashboard pages and tiles | `apps/panel/lib/plugins/pages-*`, `plugins/tiles-*`, `plugins/data-sources-*` |
 | Startup, discovery, settings, overlays, suggestions | `apps/panel/lib/app/`, `apps/panel/lib/features/` |
 | Strings (all six languages) | `apps/panel/lib/l10n/app_*.arb` |

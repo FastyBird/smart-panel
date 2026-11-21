@@ -11,6 +11,7 @@ This is a monorepo for the FastyBird Smart Panel project:
 These files contain detailed domain architecture documentation:
 - `docs/automations-architecture.md` - Automations module: graph model, trigger and run semantics, card contract, adding cards
 - `docs/admin-ui-design-spec.md` - Admin UI design system: tokens, shared components, page templates, screen sizes, plugin slot contract. Read it before any admin screen, plugin form or style change; it overrides admin layout and styling in older specs, plans and tasks
+- `docs/display-ui-design-spec.md` - Display (panel) UI design system: tokens, fonts, size system, component mapping, screen rules, state templates and copy. Read it before any panel screen, shared widget or theme change; it overrides panel layout and styling in older specs, plans and tasks
 - `docs/climate-architecture.md` - Climate domain architecture
 - `docs/media-architecture.md` - Media domain architecture
 - `docs/optimistic-ui-architecture.md` - Panel optimistic UI patterns
