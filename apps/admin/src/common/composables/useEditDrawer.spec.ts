@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file -- a host screen and the form it holds */
 import { computed, defineComponent, h, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -84,5 +85,20 @@ describe('useEditDrawer', () => {
 		sizeClass.value = 'wd';
 
 		expect(form!.mode.value).toBe('drawer');
+
+		// Opened docked on wide, narrowing to desktop keeps it docked
+		open.value = false;
+		open.value = true;
+		sizeClass.value = 'dt';
+
+		expect(form!.mode.value).toBe('docked');
+
+		// And a drawer opened on tablet stays one when the window shrinks to phone
+		open.value = false;
+		sizeClass.value = 'tp';
+		open.value = true;
+		sizeClass.value = 'phone';
+
+		expect(host!.mode.value).toBe('drawer');
 	});
 });

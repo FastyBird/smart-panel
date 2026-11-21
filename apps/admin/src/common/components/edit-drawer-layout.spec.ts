@@ -1,4 +1,5 @@
-import { computed, ref } from 'vue';
+/* eslint-disable vue/one-component-per-file -- a host screen and the form it holds */
+import { computed, defineComponent, h, onMounted, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { createRouter, createWebHistory } from 'vue-router';
 
@@ -8,6 +9,7 @@ import { mount } from '@vue/test-utils';
 
 import enUS from '../../locales/en-US.json';
 import type { SizeClass } from '../composables/types';
+import { provideEditDrawer } from '../composables/useEditDrawer';
 
 import type { EditDrawerLayoutProps } from './edit-drawer-layout.types';
 import EditDrawerLayout from './edit-drawer-layout.vue';
@@ -111,5 +113,64 @@ describe('EditDrawerLayout.vue', () => {
 		(wrapper.findComponent({ name: 'ElDrawer' }).props('beforeClose') as (done: () => void) => void)(done);
 
 		expect(beforeClose).toHaveBeenCalledWith(done);
+	});
+
+	it.each<[SizeClass, SizeClass]>([
+		['dt', 'wd'],
+		['wd', 'dt'],
+	])('keeps a changed form and its draft when the window goes from %s to %s while it is open', async (from, to) => {
+		sizeClass.value = from;
+
+		let mounts = 0;
+
+		// A form with something typed in, held in its own state
+		const Form = defineComponent({
+			setup() {
+				const name = ref('');
+
+				onMounted(() => {
+					mounts++;
+				});
+
+				return () =>
+					h('input', {
+						'data-test-id': 'name',
+						value: name.value,
+						onInput: (event: Event) => (name.value = (event.target as HTMLInputElement).value),
+					});
+			},
+		});
+
+		const open = ref(true);
+
+		const wrapper = mount(
+			defineComponent({
+				setup() {
+					provideEditDrawer(() => open.value);
+
+					return () => h(EditDrawerLayout, { open: open.value }, { default: () => h('div'), form: () => h(Form) });
+				},
+			}),
+			{
+				global: {
+					plugins: [i18n, router],
+					stubs: { ElDrawer: { props: ['modelValue'], template: '<div data-test-id="drawer-stub"><slot v-if="modelValue" /></div>' } },
+				},
+			}
+		);
+
+		await wrapper.find('[data-test-id="name"]').setValue('Kitchen lamp');
+
+		sizeClass.value = to;
+		await wrapper.vm.$nextTick();
+
+		expect(mounts).toBe(1);
+		expect((wrapper.find('[data-test-id="name"]').element as HTMLInputElement).value).toBe('Kitchen lamp');
+
+		sizeClass.value = from;
+		await wrapper.vm.$nextTick();
+
+		expect(mounts).toBe(1);
+		expect((wrapper.find('[data-test-id="name"]').element as HTMLInputElement).value).toBe('Kitchen lamp');
 	});
 });
