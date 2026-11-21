@@ -33,6 +33,10 @@ describe('PluginFormSection.vue', () => {
 		const toggle = wrapper.find('[data-test-id="plugin-form-section-toggle"]');
 
 		expect(toggle.element.tagName).toBe('BUTTON');
+		// Still a heading for screen readers that move by headings; it names the section
+		expect(toggle.element.parentElement?.tagName).toBe('H3');
+		expect(wrapper.find('h3').text()).toBe('Advanced');
+		expect(wrapper.attributes('aria-labelledby')).toBe(wrapper.find('h3').attributes('id'));
 		expect(toggle.attributes('aria-expanded')).toBe('false');
 		expect(toggle.attributes('aria-controls')).toBe(body(wrapper).attributes('id'));
 		expect((body(wrapper).element as HTMLElement).style.display).toBe('none');

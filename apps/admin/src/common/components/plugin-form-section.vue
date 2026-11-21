@@ -4,33 +4,40 @@
 		class="plugin-form-section flex flex-col gap-3.5"
 		data-test-id="plugin-form-section"
 	>
-		<button
+		<!-- An advanced section keeps its heading: the toggle is a button inside the h3 (disclosure pattern) -->
+		<div
 			v-if="props.advanced"
-			:id="headingId"
-			:aria-expanded="isExpanded ? 'true' : 'false'"
-			:aria-controls="bodyId"
-			class="flex items-start gap-2 p-0 border-0 bg-transparent text-left font-inherit cursor-pointer"
-			type="button"
-			data-test-id="plugin-form-section-toggle"
-			@click="toggle"
+			class="flex flex-col"
 		>
-			<icon
-				:icon="isExpanded ? 'mdi:chevron-down' : 'mdi:chevron-right'"
-				width="20"
-				height="20"
-				class="shrink-0 mt-0.5 text-secondary"
-				aria-hidden="true"
-			/>
-			<span class="flex flex-col">
-				<span class="text-[15px] leading-[24px] font-600 text-default">{{ props.title }}</span>
-				<span
-					v-if="props.description"
-					class="text-help"
+			<h3
+				:id="headingId"
+				class="m-0"
+			>
+				<button
+					:aria-expanded="isExpanded ? 'true' : 'false'"
+					:aria-controls="bodyId"
+					class="flex items-start gap-2 p-0 border-0 bg-transparent text-left font-inherit cursor-pointer"
+					type="button"
+					data-test-id="plugin-form-section-toggle"
+					@click="toggle"
 				>
-					{{ props.description }}
-				</span>
+					<icon
+						:icon="isExpanded ? 'mdi:chevron-down' : 'mdi:chevron-right'"
+						width="20"
+						height="20"
+						class="shrink-0 mt-0.5 text-secondary"
+						aria-hidden="true"
+					/>
+					<span class="text-[15px] leading-[24px] font-600 text-default">{{ props.title }}</span>
+				</button>
+			</h3>
+			<span
+				v-if="props.description"
+				class="pl-7 text-help"
+			>
+				{{ props.description }}
 			</span>
-		</button>
+		</div>
 
 		<div
 			v-else
