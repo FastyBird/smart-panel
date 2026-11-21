@@ -165,6 +165,8 @@ describe('explicit operator cover ordering recovery', () => {
 		role.value = 'user';
 		const wrapper = setup();
 		expect(wrapper.find('[data-test-id="cover-ordering-recovery"]').exists()).toBe(false);
+		// Not even an empty card in the Shelly tab
+		expect(wrapper.find('.el-card').exists()).toBe(false);
 		expect(client.GET).not.toHaveBeenCalled();
 		expect(client.POST).not.toHaveBeenCalled();
 	});

@@ -48,14 +48,20 @@
 			</template>
 		</list-filter-bar>
 
-		<devices-row-list
+		<!-- The rows scroll inside the card, so the pagination below stays reachable -->
+		<div
 			v-if="isPhone"
-			:items="props.items"
-			:loading="props.loading"
-			:filters-active="props.filtersActive"
-			@detail="onDetail"
-			@reset-filters="onResetFilters"
-		/>
+			class="flex-grow min-h-0 overflow-y-auto"
+			data-test-id="devices-row-list-scroll"
+		>
+			<devices-row-list
+				:items="props.items"
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				@detail="onDetail"
+				@reset-filters="onResetFilters"
+			/>
+		</div>
 
 		<div
 			v-else

@@ -115,7 +115,10 @@ describe('ListDevices', () => {
 
 		const wrapper = render();
 
-		expect(wrapper.find('[data-test-id="devices-row-list"]').exists()).toBe(true);
+		// Inside a scroll area of its own, with the pagination below it
+		expect(wrapper.find('[data-test-id="devices-row-list-scroll"] [data-test-id="devices-row-list"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="devices-row-list-scroll"]').classes()).toEqual(expect.arrayContaining(['min-h-0', 'overflow-y-auto']));
+		expect(wrapper.find('[data-test-id="devices-row-list-scroll"]').findComponent({ name: 'ElPagination' }).exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="devices-table"]').exists()).toBe(false);
 	});
 
