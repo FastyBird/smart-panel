@@ -292,7 +292,8 @@ const onChannelCreate = async (): Promise<void> => {
 };
 
 const onAdjustList = async (): Promise<void> => {
-	if (!(await canReplaceOpenForm({ name: RouteNames.CHANNELS }))) {
+	// A panel without a route: only an open, changed editor needs asking, whatever page is under it
+	if (!(await canReplaceOpenForm())) {
 		return;
 	}
 
