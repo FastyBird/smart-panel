@@ -54,6 +54,27 @@
 		"typePicker": {
 			"title": "Elige un tipo"
 		},
+		"listFilterBar": {
+			"search": "Buscar",
+			"filters": "Filtros",
+			"filtersCount": "Filtros · {count}",
+			"all": "Todos",
+			"quickFilter": "{label}: {value}",
+			"clearFilter": "Quitar el filtro {label}",
+			"reset": "Restablecer",
+			"done": "Listo",
+			"clearSelection": "Borrar selección"
+		},
+		"wizardShell": {
+			"steps": "Pasos del asistente",
+			"progress": "Paso {current} de {total} · {label}",
+			"completed": "(completado)",
+			"cancel": "Cancelar",
+			"skip": "Omitir",
+			"back": "Atrás",
+			"next": "Siguiente",
+			"finish": "Finalizar"
+		},
 		"buttons": {
 			"home": {
 				"title": "Inicio"

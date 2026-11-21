@@ -74,9 +74,9 @@ dark, and updates all six locales.
 | AR-2 | #1659 | 1 | `chore(admin): add the design system lint rules in warn mode` | AR-1 | merged in #1692 |
 | AR-3 | #1660 | 2 | `feat(admin): add state, status and data display components` | AR-1 | merged in #1701 |
 | AR-4 | #1661 | 2 | `feat(admin): add form footer, secret input and type picker components` | AR-1 | merged in #1702 |
-| AR-5 | #1662 | 2 | `feat(admin): add list filter bar and wizard shell components` | AR-1, AR-4 | open |
+| AR-5 | #1662 | 2 | `feat(admin): add list filter bar and wizard shell components` | AR-1, AR-4 | in review |
 | AR-6 | #1663 | 2 | `feat(admin): add plugin form section and test connection components` | AR-3, AR-4 | open |
-| AR-7 | #1664 | 2 | `feat(admin): add the size-class shell with icon rail and tablet drawer` | AR-1 | in review |
+| AR-7 | #1664 | 2 | `feat(admin): add the size-class shell with icon rail and tablet drawer` | AR-1 | merged in #1703 |
 | AR-8 | #1665 | 2 | `feat(admin): show the page header on every screen and darken the phone app bar` | AR-7 | open |
 | AR-9 | #1666 | 3 | `refactor(admin): move the devices list and detail onto the page templates` | AR-3, AR-5, AR-8 | open |
 | AR-10 | #1667 | 3 | `refactor(admin): move device add and edit onto the edit drawer` | AR-4, AR-6, AR-9 | open |

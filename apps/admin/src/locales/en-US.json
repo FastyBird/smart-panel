@@ -54,6 +54,27 @@
 		"typePicker": {
 			"title": "Choose a type"
 		},
+		"listFilterBar": {
+			"search": "Search",
+			"filters": "Filters",
+			"filtersCount": "Filters · {count}",
+			"all": "All",
+			"quickFilter": "{label}: {value}",
+			"clearFilter": "Clear the {label} filter",
+			"reset": "Reset",
+			"done": "Done",
+			"clearSelection": "Clear selection"
+		},
+		"wizardShell": {
+			"steps": "Wizard steps",
+			"progress": "Step {current} of {total} · {label}",
+			"completed": "(completed)",
+			"cancel": "Cancel",
+			"skip": "Skip",
+			"back": "Back",
+			"next": "Next",
+			"finish": "Finish"
+		},
 		"buttons": {
 			"home": {
 				"title": "Home"

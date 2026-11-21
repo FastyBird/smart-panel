@@ -54,6 +54,27 @@
 		"typePicker": {
 			"title": "Vyberte typ"
 		},
+		"listFilterBar": {
+			"search": "Hledat",
+			"filters": "Filtry",
+			"filtersCount": "Filtry · {count}",
+			"all": "Vše",
+			"quickFilter": "{label}: {value}",
+			"clearFilter": "Zrušit filtr {label}",
+			"reset": "Obnovit",
+			"done": "Hotovo",
+			"clearSelection": "Zrušit výběr"
+		},
+		"wizardShell": {
+			"steps": "Kroky průvodce",
+			"progress": "Krok {current} z {total} · {label}",
+			"completed": "(dokončeno)",
+			"cancel": "Zrušit",
+			"skip": "Přeskočit",
+			"back": "Zpět",
+			"next": "Další",
+			"finish": "Dokončit"
+		},
 		"buttons": {
 			"home": {
 				"title": "Domů"

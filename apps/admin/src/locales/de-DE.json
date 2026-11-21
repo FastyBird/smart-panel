@@ -54,6 +54,27 @@
 		"typePicker": {
 			"title": "Typ auswählen"
 		},
+		"listFilterBar": {
+			"search": "Suchen",
+			"filters": "Filter",
+			"filtersCount": "Filter · {count}",
+			"all": "Alle",
+			"quickFilter": "{label}: {value}",
+			"clearFilter": "Filter {label} entfernen",
+			"reset": "Zurücksetzen",
+			"done": "Fertig",
+			"clearSelection": "Auswahl aufheben"
+		},
+		"wizardShell": {
+			"steps": "Assistentenschritte",
+			"progress": "Schritt {current} von {total} · {label}",
+			"completed": "(abgeschlossen)",
+			"cancel": "Abbrechen",
+			"skip": "Überspringen",
+			"back": "Zurück",
+			"next": "Weiter",
+			"finish": "Fertigstellen"
+		},
 		"buttons": {
 			"home": {
 				"title": "Startseite"
