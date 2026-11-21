@@ -11,6 +11,9 @@ import { mockBackend } from './support/mock-backend';
  * form still closes to the Devices list.
  */
 
+// The first visit waits for the dev server to compile the devices screens
+test.describe.configure({ timeout: 120_000 });
+
 const devices = JSON.parse(readFileSync(path.resolve('e2e/fixtures/devices.json'), 'utf8')) as { id: string }[];
 const DEVICE = devices[0];
 
@@ -29,7 +32,7 @@ for (const [from, to] of [
 		await mockBackend(page, baseURL!, []);
 		await serveDevice(page);
 		await page.setViewportSize({ width: from, height: 860 });
-		await page.goto(`/devices/${DEVICE.id}`);
+		await page.goto(`/devices/${DEVICE.id}`, { timeout: 60_000 });
 
 		const name = page.locator('input[name="name"]');
 
