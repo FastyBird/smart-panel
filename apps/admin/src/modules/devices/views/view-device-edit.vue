@@ -39,29 +39,15 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
+		<form-footer
+			v-if="inDrawer"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			@discard="onDiscard"
+			@close="onClose"
 		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('devicesModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('devicesModule.buttons.close.title') }}
-				</el-button>
-
+			<!-- Plugin add forms with several steps teleport their own primary button (Next) here -->
+			<template #primary>
 				<div
 					:id="SUBMIT_FORM_SM"
 					class="order-2 inline-block [&>*:first-child:not(:only-child)]:hidden"
@@ -88,8 +74,8 @@
 						{{ t('devicesModule.buttons.save.title') }}
 					</el-button>
 				</div>
-			</div>
-		</div>
+			</template>
+		</form-footer>
 	</div>
 </template>
 
@@ -105,11 +91,12 @@ import { Icon } from '@iconify/vue';
 
 import {
 	AppBreadcrumbs,
+	FormFooter,
 	type IPlugin,
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	ViewHeader,
-	useBreakpoints,
+	useEditDrawer,
 	useFlashMessage,
 	useUuid,
 } from '../../../common';
@@ -140,7 +127,8 @@ const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: the form sits in a drawer from tablet portrait up and is its own page on phone
+const { inDrawer } = useEditDrawer();
 
 const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
 const { icon: deviceIcon } = useDeviceIcon({ id: props.id });
@@ -211,13 +199,13 @@ const onDiscard = (): void => {
 	})
 		.then((): void => {
 			if (isDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICE, params: { id: props.id } });
 				} else {
 					router.push({ name: RouteNames.DEVICE, params: { id: props.id } });
 				}
 			} else {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICES });
 				} else {
 					router.push({ name: RouteNames.DEVICES });
@@ -235,13 +223,13 @@ const onSubmit = (): void => {
 
 const onClose = (): void => {
 	if (isDetailRoute.value) {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.DEVICE, params: { id: props.id } });
 		} else {
 			router.push({ name: RouteNames.DEVICE, params: { id: props.id } });
 		}
 	} else {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.DEVICES });
 		} else {
 			router.push({ name: RouteNames.DEVICES });
@@ -280,13 +268,13 @@ watch(
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
 			if (isDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICE, params: { id: props.id } });
 				} else {
 					router.push({ name: RouteNames.DEVICE, params: { id: props.id } });
 				}
 			} else {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICES });
 				} else {
 					router.push({ name: RouteNames.DEVICES });
@@ -316,7 +304,7 @@ watch(
 			// Device was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('devicesModule.messages.devices.deletedWhileEditing'), { duration: 0 });
 			// Redirect to devices list
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.DEVICES });
 			} else {
 				router.push({ name: RouteNames.DEVICES });

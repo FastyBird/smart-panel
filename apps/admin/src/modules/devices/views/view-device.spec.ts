@@ -51,9 +51,9 @@ vi.mock('../../../common', async () => {
 		}),
 		StatusTag: stub,
 		ViewError: stub,
-		AppBarScope: stub,
+		EditDrawerLayout: stub,
 		ViewHeader: stub,
-		useBreakpoints: () => ({ isMDDevice: vueRef(true), isLGDevice: vueRef(false) }),
+		useEditDrawer: () => ({ inDrawer: vueRef(false), mode: vueRef('page'), drawerSize: vueRef('640px') }),
 		useFlashMessage: () => ({ error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
 		useUuid: () => ({ validate: () => true }),
 	};

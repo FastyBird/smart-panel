@@ -710,6 +710,10 @@
 			"title": "Configuración manual"
 		}
 	},
+	"sections": {
+		"general": "General",
+		"identifiers": "Identificadores"
+	},
 	"labels": {
 		"liveTail": "Seguimiento en vivo",
 		"paused": "Pausado",

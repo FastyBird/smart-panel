@@ -1,6 +1,6 @@
 <template>
 	<teleport
-		v-if="isMDDevice && mounted"
+		v-if="isMDDevice && mounted && isTop"
 		:to="`#${BREADCRUMBS_TARGET}`"
 	>
 		<el-breadcrumb separator="/">
@@ -19,8 +19,17 @@
 	</teleport>
 </template>
 
+<script lang="ts">
+import { shallowRef } from 'vue';
+
+// Shared by every instance: the screens currently showing breadcrumbs, outermost first
+const breadcrumbsStack = shallowRef<number[]>([]);
+
+let nextBreadcrumbsId = 0;
+</script>
+
 <script setup lang="ts">
-import { getCurrentInstance, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElBreadcrumb, ElBreadcrumbItem } from 'element-plus';
@@ -42,32 +51,20 @@ const { t } = useI18n();
 
 const mounted = ref<boolean>(false);
 
-const instance = getCurrentInstance();
+// Only the innermost screen's breadcrumbs show. Screens register as they are set up, which is parent before child,
+// so a child's trail covers its parent's whatever order their teleports reach the top bar in (a docked form mounts
+// together with its list, a drawer later)
+const id = nextBreadcrumbsId++;
+
+breadcrumbsStack.value = [...breadcrumbsStack.value, id];
+
+const isTop = computed<boolean>((): boolean => breadcrumbsStack.value.at(-1) === id);
 
 onMounted((): void => {
-	const target: HTMLElement | null = document.getElementById(BREADCRUMBS_TARGET);
-
-	if (target !== null) {
-		target.childNodes.forEach((node) => {
-			if (node instanceof HTMLElement && node.style.display !== 'none') {
-				node.style.display = 'none';
-				node.dataset.componentKey = String(instance?.uid);
-			}
-		});
-	}
-
 	mounted.value = true;
 });
 
 onBeforeUnmount((): void => {
-	const target: HTMLElement | null = document.getElementById(BREADCRUMBS_TARGET);
-
-	if (target !== null) {
-		target.childNodes.forEach((node) => {
-			if (node instanceof HTMLElement && node.style.display === 'none' && node.dataset.componentKey === String(instance?.uid)) {
-				node.style.display = '';
-			}
-		});
-	}
+	breadcrumbsStack.value = breadcrumbsStack.value.filter((entry) => entry !== id);
 });
 </script>

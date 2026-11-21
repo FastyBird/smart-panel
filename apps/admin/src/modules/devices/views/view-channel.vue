@@ -3,7 +3,7 @@
 		<app-breadcrumbs :items="breadcrumbs" />
 
 		<view-header
-			v-if="isChannelRoute || isLGDevice"
+			v-if="isChannelRoute || inDrawer"
 			:title="t('devicesModule.headings.channels.detail', { channel: channel?.name })"
 			:subtitle="t('devicesModule.subHeadings.channels.detail', { channel: channel?.name })"
 			icon="mdi:chip"
@@ -54,25 +54,64 @@
 	/>
 
 	<div
-		v-else-if="isChannelRoute || isLGDevice"
+		v-else-if="isChannelRoute || inDrawer"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
-		<list-channels-properties
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="propertiesPaginated"
-			:all-items="properties"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			@edit="onPropertyEdit"
-			@remove="onPropertyRemove"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-		/>
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-channels-properties
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				:items="propertiesPaginated"
+				:all-items="properties"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				@edit="onPropertyEdit"
+				@remove="onPropertyRemove"
+				@adjust-list="onAdjustList"
+				@reset-filters="onResetFilters"
+			/>
+
+			<template #form>
+				<template v-if="showDrawer">
+					<list-channels-properties-adjust
+						v-if="adjustList"
+						v-model:filters="filters"
+						:filters-active="filtersActive"
+						@reset-filters="onResetFilters"
+					/>
+
+					<view-error v-else>
+						<template #icon>
+							<icon icon="mdi:tune" />
+						</template>
+						<template #message>
+							{{ t('devicesModule.messages.misc.requestError') }}
+						</template>
+
+						<suspense>
+							<router-view
+								:key="props.id"
+								v-slot="{ Component }"
+							>
+								<component
+									:is="Component"
+									v-model:remote-form-changed="remoteFormChanged"
+									:channel="channel"
+								/>
+							</router-view>
+						</suspense>
+					</view-error>
+				</template>
+			</template>
+		</edit-drawer-layout>
 	</div>
 
 	<router-view
@@ -85,48 +124,6 @@
 			:channel="channel"
 		/>
 	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-channels-properties-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
-				/>
-
-				<view-error v-else>
-					<template #icon>
-						<icon icon="mdi:tune" />
-					</template>
-					<template #message>
-						{{ t('devicesModule.messages.misc.requestError') }}
-					</template>
-
-					<suspense>
-						<router-view
-							:key="props.id"
-							v-slot="{ Component }"
-						>
-							<component
-								:is="Component"
-								v-model:remote-form-changed="remoteFormChanged"
-								:channel="channel"
-							/>
-						</router-view>
-					</suspense>
-				</view-error>
-			</template>
-		</app-bar-scope>
-	</el-drawer>
 </template>
 
 <script setup lang="ts">
@@ -135,11 +132,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, EntityNotFound, ViewError, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, EntityNotFound, ViewError, ViewHeader, useEditDrawer, useFlashMessage, useUuid } from '../../../common';
 import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
 import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
@@ -163,7 +160,8 @@ const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
-const { isLGDevice } = useBreakpoints();
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone
+const { inDrawer } = useEditDrawer();
 
 const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
 
@@ -231,7 +229,7 @@ const onCloseDrawer = (done?: () => void): void => {
 				type: 'warning',
 			})
 				.then((): void => {
-					if (isLGDevice.value) {
+					if (inDrawer.value) {
 						router.replace({
 							name: RouteNames.CHANNEL,
 							params: {
@@ -253,7 +251,7 @@ const onCloseDrawer = (done?: () => void): void => {
 					// Just ignore it
 				});
 		} else {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({
 					name: RouteNames.CHANNEL,
 					params: {
@@ -275,7 +273,7 @@ const onCloseDrawer = (done?: () => void): void => {
 };
 
 const onChannelEdit = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNEL_EDIT,
 			params: {
@@ -293,7 +291,7 @@ const onChannelEdit = (): void => {
 };
 
 const onPropertyAdd = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNEL_ADD_PROPERTY,
 			params: {
@@ -311,7 +309,7 @@ const onPropertyAdd = (): void => {
 };
 
 const onPropertyEdit = (id: IChannelProperty['id']): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNEL_EDIT_PROPERTY,
 			params: {
@@ -339,7 +337,7 @@ const onResetFilters = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNELS,
 		});
@@ -429,7 +427,7 @@ watch(
 			// Channel was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('devicesModule.messages.channels.deletedWhileEditing'), { duration: 0 });
 			// Redirect to channels list (we can't access device ID from deleted channel)
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.CHANNELS });
 			} else {
 				router.push({ name: RouteNames.CHANNELS });

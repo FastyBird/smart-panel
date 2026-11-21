@@ -710,6 +710,10 @@
 			"title": "Ručná konfigurácia"
 		}
 	},
+	"sections": {
+		"general": "Všeobecné",
+		"identifiers": "Identifikátory"
+	},
 	"labels": {
 		"liveTail": "Živý prenos",
 		"paused": "Pozastavené",

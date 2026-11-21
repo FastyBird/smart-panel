@@ -710,6 +710,10 @@
 			"title": "Manuelle Konfiguration"
 		}
 	},
+	"sections": {
+		"general": "Allgemein",
+		"identifiers": "Kennungen"
+	},
 	"labels": {
 		"liveTail": "Live-Verfolgung",
 		"paused": "Pausiert",

@@ -5,7 +5,7 @@
 	/>
 
 	<view-header
-		v-if="(isDevicesListRoute || isLGDevice) && !isWizardRoute"
+		v-if="(isDevicesListRoute || inDrawer) && !isWizardRoute"
 		:title="t('devicesModule.headings.devices.list')"
 		:subtitle="t('devicesModule.subHeadings.devices.list')"
 		icon="mdi:devices"
@@ -61,48 +61,35 @@
 	</div>
 
 	<div
-		v-if="(isDevicesListRoute || isLGDevice) && !isWizardRoute"
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+		v-if="(isDevicesListRoute || inDrawer) && !isWizardRoute"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
-		<list-devices
-			ref="list"
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			v-model:show-hidden="showHidden"
-			:items="devicesPaginated"
-			:all-items="devices"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			@detail="onDeviceDetail"
-			@edit="onDeviceEdit"
-			@remove="onDeviceRemove"
-			@reset-filters="onResetFilters"
-			@bulk-action="onBulkAction"
-		/>
-	</div>
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-devices
+				ref="list"
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				v-model:show-hidden="showHidden"
+				:items="devicesPaginated"
+				:all-items="devices"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				@detail="onDeviceDetail"
+				@edit="onDeviceEdit"
+				@remove="onDeviceRemove"
+				@reset-filters="onResetFilters"
+				@bulk-action="onBulkAction"
+			/>
 
-	<router-view
-		v-if="isWizardRoute || (!isDevicesListRoute && !isLGDevice)"
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component :is="Component" />
-	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice && !isWizardRoute"
-		v-model="showDrawer"
-		:show-close="false"
-		size="40%"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
+			<template #form>
 				<view-error>
 					<template #icon>
 						<icon icon="mdi:devices" />
@@ -124,8 +111,16 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<router-view
+		v-if="isWizardRoute || (!isDevicesListRoute && !inDrawer)"
+		:key="props.id"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 </template>
 
 <script setup lang="ts">
@@ -134,11 +129,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, useBreakpoints, useEditDrawer, useFlashMessage } from '../../../common';
 import { ListDevices } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
@@ -161,7 +156,10 @@ useMeta({
 	title: t('devicesModule.meta.devices.list.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isMDDevice } = useBreakpoints();
+
+// Template 4: the add and edit forms open next to the list from tablet portrait up, as their own page on phone
+const { inDrawer } = useEditDrawer();
 
 const flashMessage = useFlashMessage();
 
@@ -219,7 +217,7 @@ const onCloseDrawer = (done?: () => void): void => {
 			type: 'warning',
 		})
 			.then((): void => {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({
 						name: RouteNames.DEVICES,
 					});
@@ -235,7 +233,7 @@ const onCloseDrawer = (done?: () => void): void => {
 				// Just ignore it
 			});
 	} else {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({
 				name: RouteNames.DEVICES,
 			});
@@ -259,7 +257,7 @@ const onDeviceDetail = (id: IDevice['id']): void => {
 };
 
 const onDeviceEdit = (id: IDevice['id']): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICES_EDIT,
 			params: {
@@ -299,7 +297,7 @@ const onResetFilters = (): void => {
 };
 
 const onDeviceCreate = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICES_ADD,
 		});

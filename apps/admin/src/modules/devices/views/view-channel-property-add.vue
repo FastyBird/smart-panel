@@ -43,29 +43,15 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
+		<form-footer
+			v-if="inDrawer"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			@discard="onDiscard"
+			@close="onClose"
 		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('devicesModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('devicesModule.buttons.close.title') }}
-				</el-button>
-
+			<!-- Plugin add forms with several steps teleport their own primary button (Next) here -->
+			<template #primary>
 				<div
 					:id="SUBMIT_FORM_SM"
 					class="order-2 inline-block [&>*:first-child:not(:only-child)]:hidden"
@@ -92,8 +78,8 @@
 						{{ t('devicesModule.buttons.save.title') }}
 					</el-button>
 				</div>
-			</div>
-		</div>
+			</template>
+		</form-footer>
 	</div>
 </template>
 
@@ -109,11 +95,12 @@ import { Icon } from '@iconify/vue';
 
 import {
 	AppBreadcrumbs,
+	FormFooter,
 	type IPlugin,
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	ViewHeader,
-	useBreakpoints,
+	useEditDrawer,
 	useFlashMessage,
 	useUuid,
 } from '../../../common';
@@ -146,7 +133,8 @@ useMeta({
 
 const { generate: uuidGenerate, validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: the form sits in a drawer from tablet portrait up and is its own page on phone
+const { inDrawer } = useEditDrawer();
 
 const newPropertyId = uuidGenerate();
 
@@ -239,20 +227,20 @@ const onDiscard = (): void => {
 	})
 		.then((): void => {
 			if (isChannelDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				} else {
 					router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				}
 			} else if (isDeviceDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 				} else {
 					router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 				}
 			} else {
 				// Fallback to channels list for invalid route context
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNELS });
 				} else {
 					router.push({ name: RouteNames.CHANNELS });
@@ -270,20 +258,20 @@ const onSubmit = (): void => {
 
 const onClose = (): void => {
 	if (isChannelDetailRoute.value) {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 		} else {
 			router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 		}
 	} else if (isDeviceDetailRoute.value) {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 		} else {
 			router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 		}
 	} else {
 		// Fallback to channels list for invalid route context
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.CHANNELS });
 		} else {
 			router.push({ name: RouteNames.CHANNELS });
@@ -312,20 +300,20 @@ onBeforeMount(async (): Promise<void> => {
 		flashMessage.info(t('devicesModule.messages.channelsProperties.noMoreAllowed'));
 
 		if (isChannelDetailRoute.value) {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				await router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 			} else {
 				await router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 			}
 		} else if (isDeviceDetailRoute.value) {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				await router.replace({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 			} else {
 				await router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 			}
 		} else {
 			// Fallback to channels list for invalid route context
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				await router.replace({ name: RouteNames.CHANNELS });
 			} else {
 				await router.push({ name: RouteNames.CHANNELS });
@@ -361,13 +349,13 @@ watch(
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
 			if (isChannelDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				} else {
 					router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				}
 			} else if (isDeviceDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({
 						name: RouteNames.DEVICE,
 						params: { id: channel.value?.device },
@@ -380,7 +368,7 @@ watch(
 				}
 			} else {
 				// Fallback to channels list for invalid route context
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNELS });
 				} else {
 					router.push({ name: RouteNames.CHANNELS });
@@ -397,20 +385,20 @@ watch(
 			flashMessage.info(t('devicesModule.messages.channelsProperties.noMoreAllowed'));
 
 			if (isChannelDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				} else {
 					router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				}
 			} else if (isDeviceDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 				} else {
 					router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 				}
 			} else {
 				// Fallback to channels list for invalid route context
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNELS });
 				} else {
 					router.push({ name: RouteNames.CHANNELS });

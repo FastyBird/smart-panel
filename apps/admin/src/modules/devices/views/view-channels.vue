@@ -2,7 +2,7 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isChannelsListRoute || isLGDevice"
+		v-if="isChannelsListRoute || inDrawer"
 		:title="t('devicesModule.headings.channels.list')"
 		:subtitle="t('devicesModule.subHeadings.channels.list')"
 		icon="mdi:chip"
@@ -27,26 +27,64 @@
 	</view-header>
 
 	<div
-		v-if="isChannelsListRoute || isLGDevice"
+		v-if="isChannelsListRoute || inDrawer"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
-		<list-channels
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="channelsPaginated"
-			:all-items="channels"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			@detail="onChannelDetail"
-			@edit="onChannelEdit"
-			@remove="onChannelRemove"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-		/>
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-channels
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				:items="channelsPaginated"
+				:all-items="channels"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				@detail="onChannelDetail"
+				@edit="onChannelEdit"
+				@remove="onChannelRemove"
+				@adjust-list="onAdjustList"
+				@reset-filters="onResetFilters"
+			/>
+
+			<template #form>
+				<template v-if="showDrawer">
+					<list-channels-adjust
+						v-if="adjustList"
+						v-model:filters="filters"
+						:filters-active="filtersActive"
+						@reset-filters="onResetFilters"
+					/>
+
+					<view-error v-else>
+						<template #icon>
+							<icon icon="mdi:chip" />
+						</template>
+						<template #message>
+							{{ t('devicesModule.messages.misc.requestError') }}
+						</template>
+
+						<suspense>
+							<router-view
+								:key="props.id"
+								v-slot="{ Component }"
+							>
+								<component
+									:is="Component"
+									v-model:remote-form-changed="remoteFormChanged"
+								/>
+							</router-view>
+						</suspense>
+					</view-error>
+				</template>
+			</template>
+		</edit-drawer-layout>
 	</div>
 
 	<router-view
@@ -56,47 +94,6 @@
 	>
 		<component :is="Component" />
 	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-channels-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
-				/>
-
-				<view-error v-else>
-					<template #icon>
-						<icon icon="mdi:chip" />
-					</template>
-					<template #message>
-						{{ t('devicesModule.messages.misc.requestError') }}
-					</template>
-
-					<suspense>
-						<router-view
-							:key="props.id"
-							v-slot="{ Component }"
-						>
-							<component
-								:is="Component"
-								v-model:remote-form-changed="remoteFormChanged"
-							/>
-						</router-view>
-					</suspense>
-				</view-error>
-			</template>
-		</app-bar-scope>
-	</el-drawer>
 </template>
 
 <script setup lang="ts">
@@ -105,11 +102,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, useEditDrawer } from '../../../common';
 import { ListChannels, ListChannelsAdjust } from '../components/components';
 import { useChannelsActions, useChannelsDataSource } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
@@ -132,7 +129,8 @@ useMeta({
 	title: t('devicesModule.meta.channels.list.title'),
 });
 
-const { isLGDevice } = useBreakpoints();
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone
+const { inDrawer } = useEditDrawer();
 
 const {
 	fetchChannels,
@@ -186,7 +184,7 @@ const onCloseDrawer = (done?: () => void): void => {
 				type: 'warning',
 			})
 				.then((): void => {
-					if (isLGDevice.value) {
+					if (inDrawer.value) {
 						router.replace({
 							name: RouteNames.CHANNELS,
 						});
@@ -202,7 +200,7 @@ const onCloseDrawer = (done?: () => void): void => {
 					// Just ignore it
 				});
 		} else {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({
 					name: RouteNames.CHANNELS,
 				});
@@ -227,7 +225,7 @@ const onChannelDetail = (id: IChannel['id']): void => {
 };
 
 const onChannelEdit = (id: IChannel['id']): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNELS_EDIT,
 			params: {
@@ -253,7 +251,7 @@ const onResetFilters = (): void => {
 };
 
 const onChannelCreate = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.CHANNELS_ADD,
 		});

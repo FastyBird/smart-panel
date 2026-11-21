@@ -82,11 +82,17 @@ vi.mock('../../../common', async () => {
 	return {
 		AppBreadcrumbs: StubComponent,
 		ViewError: StubComponent,
-		AppBarScope: StubComponent,
+		EditDrawerLayout: StubComponent,
 		ViewHeader: StubComponent,
 		useBreakpoints: () => ({
 			isMDDevice: vueRef(mocks.isMDDevice),
 			isLGDevice: vueRef(mocks.isLGDevice),
+		}),
+		// The forms open in a drawer where a large screen used to have one; a page of their own otherwise
+		useEditDrawer: () => ({
+			inDrawer: vueRef(mocks.isLGDevice),
+			mode: vueRef(mocks.isLGDevice ? 'drawer' : 'page'),
+			drawerSize: vueRef('640px'),
 		}),
 		useFlashMessage: () => ({
 			success: vi.fn(),

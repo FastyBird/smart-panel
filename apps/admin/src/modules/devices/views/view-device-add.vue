@@ -49,29 +49,15 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
+		<form-footer
+			v-if="inDrawer"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			@discard="onDiscard"
+			@close="onClose"
 		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('devicesModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('devicesModule.buttons.close.title') }}
-				</el-button>
-
+			<!-- Plugin add forms with several steps teleport their own primary button (Next) here -->
+			<template #primary>
 				<div
 					:id="SUBMIT_FORM_SM"
 					class="order-2 inline-block [&>*:first-child:not(:only-child)]:hidden"
@@ -98,8 +84,8 @@
 						{{ t('devicesModule.buttons.save.title') }}
 					</el-button>
 				</div>
-			</div>
-		</div>
+			</template>
+		</form-footer>
 	</div>
 </template>
 
@@ -113,7 +99,7 @@ import { ElAlert, ElButton, ElDivider, ElMessageBox, ElScrollbar } from 'element
 
 import { Icon } from '@iconify/vue';
 
-import { AppBreadcrumbs, type IPlugin, type IPluginElement, SUBMIT_FORM_SM, ViewHeader, useBreakpoints, useUuid } from '../../../common';
+import { AppBreadcrumbs, FormFooter, type IPlugin, type IPluginElement, SUBMIT_FORM_SM, ViewHeader, useEditDrawer, useUuid } from '../../../common';
 import { DeviceAddForm } from '../components/components';
 import SelectDevicePlugin from '../components/devices/select-device-plugin.vue';
 import { useDevicesPlugins } from '../composables/composables';
@@ -141,7 +127,8 @@ useMeta({
 
 const { generate: uuidGenerate } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: the form sits in a drawer from tablet portrait up and is its own page on phone
+const { inDrawer } = useEditDrawer();
 
 const newDeviceId = uuidGenerate();
 
@@ -184,7 +171,7 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.DEVICES });
 			} else {
 				router.push({ name: RouteNames.DEVICES });
@@ -200,7 +187,7 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.DEVICES });
 	} else {
 		router.push({ name: RouteNames.DEVICES });
@@ -215,7 +202,7 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.DEVICES });
 			} else {
 				router.push({ name: RouteNames.DEVICES });

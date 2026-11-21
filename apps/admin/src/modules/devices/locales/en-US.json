@@ -710,6 +710,10 @@
 			"title": "Manual configuration"
 		}
 	},
+	"sections": {
+		"general": "General",
+		"identifiers": "Identifiers"
+	},
 	"labels": {
 		"liveTail": "Live tail",
 		"paused": "Paused",
