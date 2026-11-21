@@ -13,6 +13,7 @@ Every open epic has a GitHub milestone and an epic issue whose sub-issues are ti
 | Matter | Matter | #1191 |
 | Automations | Automations | #1555 |
 | Admin UI redesign | Admin UI redesign | #1657 |
+| Display UI redesign | Display UI redesign | #1710 |
 | Space security domain and activity modes | Space modes and security | #1287 |
 | Animated Buddy face | Buddy face | #1253 |
 | Buddy hardening | Buddy hardening | #1264 |
@@ -511,6 +512,28 @@ Protect epic, built on this epic's components.
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
 
 **Next up:** AR-9, the devices list and detail on the page templates; then AR-10 (device add and edit on the edit drawer) and AR-12 (device wizards on the wizard shell).
+
+---
+
+## 13e. Display UI Redesign (Epic)
+
+> [EPIC-DISPLAY-UI-REDESIGN](epics/EPIC-DISPLAY-UI-REDESIGN.md) — Status: :clipboard: Planned — GitHub #1710, milestone
+> "Display UI redesign"
+
+Move every wall display screen onto one design system: the admin's neutrals, status and domain colours, eight
+per-panel accents, density from the panel's pixel density with Compact, Regular and Expanded classes, one component
+set and every screen on the canvas. Spec: `docs/display-ui-design-spec.md`. Tasks DR-1 … DR-25 are tracked as GitHub
+sub-issues of #1710. Backend-dependent features (room accent field, alarm keypad, doorbell and talk, screen
+protection) get their own epics.
+
+| #   | Phase                                                                          | Scope       | Status              |
+| --- | ------------------------------------------------------------------------------ | ----------- | ------------------- |
+| 1   | Foundations (DR-1 … DR-4): tokens and fonts, size system, accents, checks       | panel, spec | :clipboard: Planned |
+| 2   | Shared components (DR-5 … DR-10)                                                | panel       | :clipboard: Planned |
+| 3   | Screens (DR-11 … DR-23), in the brief's priority order                          | panel       | :clipboard: Planned |
+| 4   | Clean-up and verification on real panels (DR-24, DR-25)                         | panel, docs | :clipboard: Planned |
+
+**Next up:** DR-1 and DR-2 in parallel; then DR-3 and DR-4.
 
 ---
 

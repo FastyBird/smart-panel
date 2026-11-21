@@ -14,6 +14,7 @@ docs/
 ├── automations-architecture.md        # Automations module: graph, engine, cards
 ├── climate-domain.md                  # Climate domain implementation
 ├── device-simulator.md                # Device simulator plugin for testing
+├── display-ui-design-spec.md          # Display UI design system (authoritative for panel screens)
 ├── domains.md                         # Domain architecture (lights, climate, media, etc.)
 ├── energy-module.md                   # Energy module implementation
 ├── extensions.md                      # Extensions system documentation
@@ -35,6 +36,7 @@ docs/
 - [API Conventions](../.ai-rules/API_CONVENTIONS.md) - Backend API patterns
 - [Extensions System](./extensions.md) - How to build and register extensions
 - [Admin UI Design Spec](./admin-ui-design-spec.md) - Tokens, components, page templates, screen sizes and plugin slots for the admin
+- [Display UI Design Spec](./display-ui-design-spec.md) - Tokens, fonts, size system, components and screen rules for the wall display
 - [Automations](./automations-architecture.md) - Automation graph model, run semantics and how to add cards
 - [Domain Architecture](./domains.md) - Domain definitions (lights, climate, media, security, sensors)
 - [Climate Domain](./climate-domain.md) - Climate domain implementation details
@@ -49,4 +51,5 @@ docs/
 AI tools (Claude Code, etc.) should primarily reference:
 1. `CLAUDE.md` (also `AGENTS.md`) - Quick reference for project commands, structure, rules and architecture documents
 2. `docs/admin-ui-design-spec.md` - Admin UI design system; read before any admin UI change
-3. `tasks/` - Task specifications for feature implementation
+3. `docs/display-ui-design-spec.md` - Display UI design system; read before any panel UI change
+4. `tasks/` - Task specifications for feature implementation
