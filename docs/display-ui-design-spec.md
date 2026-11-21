@@ -70,8 +70,7 @@ These replace the 12-family, 7-step palette in `theme.dart`. Light and dark valu
 | `text.disabled` | `#8b919b` | `#6b7079` | Disabled, read-only and offline labels, always with an icon |
 | `brand.app` | `#d9230f` | `#d9230f` | Logo, wordmark and the loading spinner only |
 
-Text placed directly on `surface.page` uses `text.secondary` or darker. Ok text on its light soft tint is 4.499:1,
-AA only after rounding; prefer `text.primary` on an ok soft tile.
+Text placed directly on `surface.page` uses `text.secondary` or darker.
 
 Dark mode is built for a dark room, not inverted: surfaces step up in lightness with elevation (page, card, raised),
 cards get a hairline border instead of a shadow, and every status and domain colour switches to its lighter text
@@ -79,11 +78,12 @@ shade.
 
 ### Status
 
-The fill is the same in both themes and takes white text.
+The fill is the same in both themes and takes white text. The light ok soft is `#e9f4ea`, one step lighter than
+the admin's `#e8f3e9`, which is 4.499:1 under ok text and so misses AA.
 
 | Status | Fill | Text L | Soft L | Border L | Text D | Soft D | Border D | Use |
 |---|---|---|---|---|---|---|---|---|
-| ok | `#2e7d32` | `#2e7d32` | `#e8f3e9` | `#c5e1c7` | `#6cc070` | `#1d2e1f` | `#2c4a2f` | Confirmed, locked, closed, online |
+| ok | `#2e7d32` | `#2e7d32` | `#e9f4ea` | `#c5e1c7` | `#6cc070` | `#1d2e1f` | `#2c4a2f` | Confirmed, locked, closed, online |
 | warning | `#b25e00` | `#a35600` | `#fdf1e2` | `#f3d3a8` | `#f0a742` | `#33261a` | `#5a4223` | Partial, never confirmed, stale, battery low |
 | danger | `#c62828` | `#c62828` | `#fbeaea` | `#f0bcbc` | `#f2706b` | `#3a1f1f` | `#5e2c2c` | Failed, triggered, offline, destructive actions |
 | info | `#5b6675` | `#5b6675` | `#eef0f3` | `#d6dae0` | `#a3acb9` | `#272a2f` | `#3a3e45` | Unknown, paused, neutral notices (grey, not blue) |
@@ -102,11 +102,13 @@ its domain icon.
 | Shading | `#00796b` | `#e0f2f1` | `#4db6ac` | `#14302d` |
 | Media | `#c2185b` | `#fce4ec` | `#f06292` | `#3a1a28` |
 | Sensors | `#00838f` | `#e0f7fa` | `#4dd0e1` | `#133236` |
-| Energy | `#2e7d32` | `#e8f3e9` | `#6cc070` | `#1d2e1f` |
+| Energy | `#2e7d32` | `#e9f4ea` | `#6cc070` | `#1d2e1f` |
 | Cameras | `#3949ab` | `#e8eaf6` | `#7986cb` | `#1f2340` |
 
 - Media moves from red to magenta, so playing music no longer looks like an alarm.
 - Climate on its light soft tint is 4.4:1: use it there for icons only. Text on any soft tile uses `text.primary`.
+- A filled control in a domain or status colour (white label) uses the **light** value as its fill in both themes.
+  The dark value is for text and icons on dark surfaces; white on it fails AA.
 - The thermostat dial uses `#c2571a` (light) and `#f0915a` (dark) for heating, and the Climate colour for cooling.
 
 ### Accents

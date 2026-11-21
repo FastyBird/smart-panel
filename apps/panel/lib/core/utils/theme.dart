@@ -328,7 +328,7 @@ class ThemeColorFamily {
       base: Color(0xFF2E7D32), dark2: Color(0xFF256428),
       light3: Color(0xFF6DA470), light5: Color(0xFF96BE98),
       light7: Color(0xFFC0D8C2), light8: Color(0xFFD5E5D6),
-      light9: Color(0xFFE8F3E9),
+      light9: Color(0xFFE9F4EA),
     ),
     ThemeColors.cameras: ThemeColorFamily(
       base: Color(0xFF3949AB), dark2: Color(0xFF2E3A89),
@@ -413,7 +413,8 @@ class AppTheme {
       primary: isDark ? AppColorsDark.primary : AppColorsLight.primary,
       onPrimary: AppColors.white,
       error: danger.text,
-      onError: AppColors.white,
+      // White on the dark-theme danger shade is 2.8:1.
+      onError: isDark ? n.surfacePage : AppColors.white,
       surface: n.surfaceCard,
       onSurface: n.textPrimary,
       onSurfaceVariant: n.textSecondary,
@@ -758,7 +759,7 @@ class AppStatusPalette {
     AppStatus.ok: AppStatusPalette(
       fill: Color(0xFF2E7D32),
       text: Color(0xFF2E7D32),
-      soft: Color(0xFFE8F3E9),
+      soft: Color(0xFFE9F4EA),
       border: Color(0xFFC5E1C7),
     ),
     AppStatus.warning: AppStatusPalette(
@@ -850,7 +851,7 @@ class AppColorsLight {
   static const Color successLight5 = Color(0xFF96BE98);
   static const Color successLight7 = Color(0xFFC5E1C7);
   static const Color successLight8 = Color(0xFFD5E5D6);
-  static const Color successLight9 = Color(0xFFE8F3E9);
+  static const Color successLight9 = Color(0xFFE9F4EA);
   static const Color successDark2 = Color(0xFF256428);
 
   static const Color warning = Color(0xFFA35600);
@@ -948,7 +949,9 @@ class AppBgColorLight {
 
 class AppTextColorLight {
   static const Color primary = Color(0xFF1B1F26);
-  static const Color secondary = Color(0xFF6E7581);
+  // text.secondary, not text.muted: legacy secondary text is drawn on the page
+  // surface, where muted is 4.2:1.
+  static const Color secondary = Color(0xFF5B6270);
   static const Color regular = Color(0xFF5B6270);
   static const Color placeholder = Color(0xFF8B919B);
   static const Color disabled = Color(0xFF8B919B);
@@ -1353,6 +1356,8 @@ class AppTileHeight {
   static const double horizontal = 50.0;
 }
 
+/// There is no hover state on a touch panel, so hover keeps the fill: the
+/// lighter Element Plus hover shade fails AA under white labels.
 class AppFilledButtonsLightThemes {
   static FilledButtonThemeData get base => FilledButtonThemeData(
     style: createButtonTheme(
@@ -1379,11 +1384,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.primary,
       pressedBgColor: AppColorsLight.primaryDark2,
-      hoveredBgColor: AppColorsLight.primaryLight3,
+      hoveredBgColor: AppColorsLight.primary,
       disabledBgColor: AppColorsLight.primaryLight5,
       borderColor: AppColorsLight.primary,
       pressedBorderColor: AppColorsLight.primaryDark2,
-      hoveredBorderColor: AppColorsLight.primaryLight3,
+      hoveredBorderColor: AppColorsLight.primary,
       disabledBorderColor: AppColorsLight.primaryLight5,
     ),
   );
@@ -1396,11 +1401,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.success,
       pressedBgColor: AppColorsLight.successDark2,
-      hoveredBgColor: AppColorsLight.successLight3,
+      hoveredBgColor: AppColorsLight.success,
       disabledBgColor: AppColorsLight.successLight5,
       borderColor: AppColorsLight.success,
       pressedBorderColor: AppColorsLight.successDark2,
-      hoveredBorderColor: AppColorsLight.successLight3,
+      hoveredBorderColor: AppColorsLight.success,
       disabledBorderColor: AppColorsLight.successLight5,
     ),
   );
@@ -1413,11 +1418,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.warning,
       pressedBgColor: AppColorsLight.warningDark2,
-      hoveredBgColor: AppColorsLight.warningLight3,
+      hoveredBgColor: AppColorsLight.warning,
       disabledBgColor: AppColorsLight.warningLight5,
       borderColor: AppColorsLight.warning,
       pressedBorderColor: AppColorsLight.warningDark2,
-      hoveredBorderColor: AppColorsLight.warningLight3,
+      hoveredBorderColor: AppColorsLight.warning,
       disabledBorderColor: AppColorsLight.warningLight5,
     ),
   );
@@ -1430,11 +1435,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.danger,
       pressedBgColor: AppColorsLight.dangerDark2,
-      hoveredBgColor: AppColorsLight.dangerLight3,
+      hoveredBgColor: AppColorsLight.danger,
       disabledBgColor: AppColorsLight.dangerLight5,
       borderColor: AppColorsLight.danger,
       pressedBorderColor: AppColorsLight.dangerDark2,
-      hoveredBorderColor: AppColorsLight.dangerLight3,
+      hoveredBorderColor: AppColorsLight.danger,
       disabledBorderColor: AppColorsLight.dangerLight5,
     ),
   );
@@ -1447,11 +1452,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.error,
       pressedBgColor: AppColorsLight.errorDark2,
-      hoveredBgColor: AppColorsLight.errorLight3,
+      hoveredBgColor: AppColorsLight.error,
       disabledBgColor: AppColorsLight.errorLight5,
       borderColor: AppColorsLight.error,
       pressedBorderColor: AppColorsLight.errorDark2,
-      hoveredBorderColor: AppColorsLight.errorLight3,
+      hoveredBorderColor: AppColorsLight.error,
       disabledBorderColor: AppColorsLight.errorLight5,
     ),
   );
@@ -1464,11 +1469,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.info,
       pressedBgColor: AppColorsLight.infoDark2,
-      hoveredBgColor: AppColorsLight.infoLight3,
+      hoveredBgColor: AppColorsLight.info,
       disabledBgColor: AppColorsLight.infoLight5,
       borderColor: AppColorsLight.info,
       pressedBorderColor: AppColorsLight.infoDark2,
-      hoveredBorderColor: AppColorsLight.infoLight3,
+      hoveredBorderColor: AppColorsLight.info,
       disabledBorderColor: AppColorsLight.infoLight5,
     ),
   );
@@ -1498,11 +1503,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.flutter,
       pressedBgColor: AppColorsLight.flutterDark2,
-      hoveredBgColor: AppColorsLight.flutterLight3,
+      hoveredBgColor: AppColorsLight.flutter,
       disabledBgColor: AppColorsLight.flutterLight5,
       borderColor: AppColorsLight.flutter,
       pressedBorderColor: AppColorsLight.flutterDark2,
-      hoveredBorderColor: AppColorsLight.flutterLight3,
+      hoveredBorderColor: AppColorsLight.flutter,
       disabledBorderColor: AppColorsLight.flutterLight5,
     ),
   );
@@ -1515,11 +1520,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.teal,
       pressedBgColor: AppColorsLight.tealDark2,
-      hoveredBgColor: AppColorsLight.tealLight3,
+      hoveredBgColor: AppColorsLight.teal,
       disabledBgColor: AppColorsLight.tealLight5,
       borderColor: AppColorsLight.teal,
       pressedBorderColor: AppColorsLight.tealDark2,
-      hoveredBorderColor: AppColorsLight.tealLight3,
+      hoveredBorderColor: AppColorsLight.teal,
       disabledBorderColor: AppColorsLight.tealLight5,
     ),
   );
@@ -1532,11 +1537,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.cyan,
       pressedBgColor: AppColorsLight.cyanDark2,
-      hoveredBgColor: AppColorsLight.cyanLight3,
+      hoveredBgColor: AppColorsLight.cyan,
       disabledBgColor: AppColorsLight.cyanLight5,
       borderColor: AppColorsLight.cyan,
       pressedBorderColor: AppColorsLight.cyanDark2,
-      hoveredBorderColor: AppColorsLight.cyanLight3,
+      hoveredBorderColor: AppColorsLight.cyan,
       disabledBorderColor: AppColorsLight.cyanLight5,
     ),
   );
@@ -1549,11 +1554,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.pink,
       pressedBgColor: AppColorsLight.pinkDark2,
-      hoveredBgColor: AppColorsLight.pinkLight3,
+      hoveredBgColor: AppColorsLight.pink,
       disabledBgColor: AppColorsLight.pinkLight5,
       borderColor: AppColorsLight.pink,
       pressedBorderColor: AppColorsLight.pinkDark2,
-      hoveredBorderColor: AppColorsLight.pinkLight3,
+      hoveredBorderColor: AppColorsLight.pink,
       disabledBorderColor: AppColorsLight.pinkLight5,
     ),
   );
@@ -1566,11 +1571,11 @@ class AppFilledButtonsLightThemes {
       disabledColor: AppColors.white,
       bgColor: AppColorsLight.indigo,
       pressedBgColor: AppColorsLight.indigoDark2,
-      hoveredBgColor: AppColorsLight.indigoLight3,
+      hoveredBgColor: AppColorsLight.indigo,
       disabledBgColor: AppColorsLight.indigoLight5,
       borderColor: AppColorsLight.indigo,
       pressedBorderColor: AppColorsLight.indigoDark2,
-      hoveredBorderColor: AppColorsLight.indigoLight3,
+      hoveredBorderColor: AppColorsLight.indigo,
       disabledBorderColor: AppColorsLight.indigoLight5,
     ),
   );
@@ -1610,6 +1615,9 @@ class AppFilledButtonsLightThemes {
   static Color get indigoForegroundColor => AppColors.white;
 }
 
+/// Dark filled buttons take the light-theme fills: the bright dark-theme
+/// shades are for text and icons on dark surfaces and fail AA under white
+/// labels. There is no hover state on a touch panel, so hover keeps the fill.
 class AppFilledButtonsDarkThemes {
   static FilledButtonThemeData get base => FilledButtonThemeData(
     style: createButtonTheme(
@@ -1635,12 +1643,12 @@ class AppFilledButtonsDarkThemes {
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
       bgColor: AppColorsDark.primary,
-      pressedBgColor: AppColorsDark.primaryDark2,
-      hoveredBgColor: AppColorsDark.primaryLight3,
+      pressedBgColor: AppColorsLight.primaryDark2,
+      hoveredBgColor: AppColorsDark.primary,
       disabledBgColor: AppColorsDark.primaryLight5,
       borderColor: AppColorsDark.primary,
-      pressedBorderColor: AppColorsDark.primaryDark2,
-      hoveredBorderColor: AppColorsDark.primaryLight3,
+      pressedBorderColor: AppColorsLight.primaryDark2,
+      hoveredBorderColor: AppColorsDark.primary,
       disabledBorderColor: AppColorsDark.primaryLight5,
     ),
   );
@@ -1651,13 +1659,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.success,
-      pressedBgColor: AppColorsDark.successDark2,
-      hoveredBgColor: AppColorsDark.successLight3,
+      bgColor: AppColorsLight.success,
+      pressedBgColor: AppColorsLight.successDark2,
+      hoveredBgColor: AppColorsLight.success,
       disabledBgColor: AppColorsDark.successLight5,
-      borderColor: AppColorsDark.success,
-      pressedBorderColor: AppColorsDark.successDark2,
-      hoveredBorderColor: AppColorsDark.successLight3,
+      borderColor: AppColorsLight.success,
+      pressedBorderColor: AppColorsLight.successDark2,
+      hoveredBorderColor: AppColorsLight.success,
       disabledBorderColor: AppColorsDark.successLight5,
     ),
   );
@@ -1668,13 +1676,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.warning,
-      pressedBgColor: AppColorsDark.warningDark2,
-      hoveredBgColor: AppColorsDark.warningLight3,
+      bgColor: AppColorsLight.warning,
+      pressedBgColor: AppColorsLight.warningDark2,
+      hoveredBgColor: AppColorsLight.warning,
       disabledBgColor: AppColorsDark.warningLight5,
-      borderColor: AppColorsDark.warning,
-      pressedBorderColor: AppColorsDark.warningDark2,
-      hoveredBorderColor: AppColorsDark.warningLight3,
+      borderColor: AppColorsLight.warning,
+      pressedBorderColor: AppColorsLight.warningDark2,
+      hoveredBorderColor: AppColorsLight.warning,
       disabledBorderColor: AppColorsDark.warningLight5,
     ),
   );
@@ -1685,13 +1693,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.error,
-      pressedBgColor: AppColorsDark.errorDark2,
-      hoveredBgColor: AppColorsDark.errorLight3,
+      bgColor: AppColorsLight.error,
+      pressedBgColor: AppColorsLight.errorDark2,
+      hoveredBgColor: AppColorsLight.error,
       disabledBgColor: AppColorsDark.errorLight5,
-      borderColor: AppColorsDark.error,
-      pressedBorderColor: AppColorsDark.errorDark2,
-      hoveredBorderColor: AppColorsDark.errorLight3,
+      borderColor: AppColorsLight.error,
+      pressedBorderColor: AppColorsLight.errorDark2,
+      hoveredBorderColor: AppColorsLight.error,
       disabledBorderColor: AppColorsDark.errorLight5,
     ),
   );
@@ -1702,13 +1710,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.danger,
-      pressedBgColor: AppColorsDark.dangerDark2,
-      hoveredBgColor: AppColorsDark.dangerLight3,
+      bgColor: AppColorsLight.danger,
+      pressedBgColor: AppColorsLight.dangerDark2,
+      hoveredBgColor: AppColorsLight.danger,
       disabledBgColor: AppColorsDark.dangerLight5,
-      borderColor: AppColorsDark.danger,
-      pressedBorderColor: AppColorsDark.dangerDark2,
-      hoveredBorderColor: AppColorsDark.dangerLight3,
+      borderColor: AppColorsLight.danger,
+      pressedBorderColor: AppColorsLight.dangerDark2,
+      hoveredBorderColor: AppColorsLight.danger,
       disabledBorderColor: AppColorsDark.dangerLight5,
     ),
   );
@@ -1719,22 +1727,22 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.info,
-      pressedBgColor: AppColorsDark.infoDark2,
-      hoveredBgColor: AppColorsDark.infoLight3,
+      bgColor: AppColorsLight.info,
+      pressedBgColor: AppColorsLight.infoDark2,
+      hoveredBgColor: AppColorsLight.info,
       disabledBgColor: AppColorsDark.infoLight5,
-      borderColor: AppColorsDark.info,
-      pressedBorderColor: AppColorsDark.infoDark2,
-      hoveredBorderColor: AppColorsDark.infoLight3,
+      borderColor: AppColorsLight.info,
+      pressedBorderColor: AppColorsLight.infoDark2,
+      hoveredBorderColor: AppColorsLight.info,
       disabledBorderColor: AppColorsDark.infoLight5,
     ),
   );
 
   static FilledButtonThemeData get neutral => FilledButtonThemeData(
     style: createButtonTheme(
-      color: AppTextColorDark.secondary,
-      pressedColor: AppTextColorDark.secondary,
-      hoveredColor: AppTextColorDark.secondary,
+      color: AppTextColorDark.primary,
+      pressedColor: AppTextColorDark.primary,
+      hoveredColor: AppTextColorDark.primary,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
       bgColor: AppColorsDark.neutralLight7,
       pressedBgColor: AppColorsDark.neutralLight8,
@@ -1753,13 +1761,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.flutter,
-      pressedBgColor: AppColorsDark.flutterDark2,
-      hoveredBgColor: AppColorsDark.flutterLight3,
+      bgColor: AppColorsLight.flutter,
+      pressedBgColor: AppColorsLight.flutterDark2,
+      hoveredBgColor: AppColorsLight.flutter,
       disabledBgColor: AppColorsDark.flutterLight5,
-      borderColor: AppColorsDark.flutter,
-      pressedBorderColor: AppColorsDark.flutterDark2,
-      hoveredBorderColor: AppColorsDark.flutterLight3,
+      borderColor: AppColorsLight.flutter,
+      pressedBorderColor: AppColorsLight.flutterDark2,
+      hoveredBorderColor: AppColorsLight.flutter,
       disabledBorderColor: AppColorsDark.flutterLight5,
     ),
   );
@@ -1770,13 +1778,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.teal,
-      pressedBgColor: AppColorsDark.tealDark2,
-      hoveredBgColor: AppColorsDark.tealLight3,
+      bgColor: AppColorsLight.teal,
+      pressedBgColor: AppColorsLight.tealDark2,
+      hoveredBgColor: AppColorsLight.teal,
       disabledBgColor: AppColorsDark.tealLight5,
-      borderColor: AppColorsDark.teal,
-      pressedBorderColor: AppColorsDark.tealDark2,
-      hoveredBorderColor: AppColorsDark.tealLight3,
+      borderColor: AppColorsLight.teal,
+      pressedBorderColor: AppColorsLight.tealDark2,
+      hoveredBorderColor: AppColorsLight.teal,
       disabledBorderColor: AppColorsDark.tealLight5,
     ),
   );
@@ -1787,13 +1795,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.cyan,
-      pressedBgColor: AppColorsDark.cyanDark2,
-      hoveredBgColor: AppColorsDark.cyanLight3,
+      bgColor: AppColorsLight.cyan,
+      pressedBgColor: AppColorsLight.cyanDark2,
+      hoveredBgColor: AppColorsLight.cyan,
       disabledBgColor: AppColorsDark.cyanLight5,
-      borderColor: AppColorsDark.cyan,
-      pressedBorderColor: AppColorsDark.cyanDark2,
-      hoveredBorderColor: AppColorsDark.cyanLight3,
+      borderColor: AppColorsLight.cyan,
+      pressedBorderColor: AppColorsLight.cyanDark2,
+      hoveredBorderColor: AppColorsLight.cyan,
       disabledBorderColor: AppColorsDark.cyanLight5,
     ),
   );
@@ -1804,13 +1812,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.pink,
-      pressedBgColor: AppColorsDark.pinkDark2,
-      hoveredBgColor: AppColorsDark.pinkLight3,
+      bgColor: AppColorsLight.pink,
+      pressedBgColor: AppColorsLight.pinkDark2,
+      hoveredBgColor: AppColorsLight.pink,
       disabledBgColor: AppColorsDark.pinkLight5,
-      borderColor: AppColorsDark.pink,
-      pressedBorderColor: AppColorsDark.pinkDark2,
-      hoveredBorderColor: AppColorsDark.pinkLight3,
+      borderColor: AppColorsLight.pink,
+      pressedBorderColor: AppColorsLight.pinkDark2,
+      hoveredBorderColor: AppColorsLight.pink,
       disabledBorderColor: AppColorsDark.pinkLight5,
     ),
   );
@@ -1821,13 +1829,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.indigo,
-      pressedBgColor: AppColorsDark.indigoDark2,
-      hoveredBgColor: AppColorsDark.indigoLight3,
+      bgColor: AppColorsLight.indigo,
+      pressedBgColor: AppColorsLight.indigoDark2,
+      hoveredBgColor: AppColorsLight.indigo,
       disabledBgColor: AppColorsDark.indigoLight5,
-      borderColor: AppColorsDark.indigo,
-      pressedBorderColor: AppColorsDark.indigoDark2,
-      hoveredBorderColor: AppColorsDark.indigoLight3,
+      borderColor: AppColorsLight.indigo,
+      pressedBorderColor: AppColorsLight.indigoDark2,
+      hoveredBorderColor: AppColorsLight.indigo,
       disabledBorderColor: AppColorsDark.indigoLight5,
     ),
   );
@@ -1859,7 +1867,7 @@ class AppFilledButtonsDarkThemes {
   static Color get dangerForegroundColor => AppColors.white;
   static Color get errorForegroundColor => AppColors.white;
   static Color get infoForegroundColor => AppColors.white;
-  static Color get neutralForegroundColor => AppTextColorDark.secondary;
+  static Color get neutralForegroundColor => AppTextColorDark.primary;
   static Color get flutterForegroundColor => AppColors.white;
   static Color get tealForegroundColor => AppColors.white;
   static Color get cyanForegroundColor => AppColors.white;

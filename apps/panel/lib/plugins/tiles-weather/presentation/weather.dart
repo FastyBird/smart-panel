@@ -106,7 +106,6 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
                           Text(
                             _getUnit(units),
                             style: TextStyle(
-                              fontFamily: AppNumeralFont.family,
                               fontSize: AppSpacings.scale(20),
                               fontWeight: FontWeight.w600,
                               color:
@@ -120,7 +119,6 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
                       Text(
                         description,
                         style: TextStyle(
-                          fontFamily: AppNumeralFont.family,
                           fontSize: AppFontSize.small,
                           color: Theme.of(context).brightness == Brightness.light
                               ? AppTextColorLight.secondary

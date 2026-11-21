@@ -44,7 +44,6 @@ class WeatherCurrentDataSourceWidget
         Text(
           value,
           style: TextStyle(
-            fontFamily: AppNumeralFont.family,
             fontSize: AppFontSize.small,
           ),
         ),
@@ -58,7 +57,6 @@ class WeatherCurrentDataSourceWidget
           Text(
             unit,
             style: TextStyle(
-              fontFamily: AppNumeralFont.family,
               fontSize: AppFontSize.small,
             ),
           ),
@@ -190,7 +188,6 @@ class WeatherCurrentDataSourceWidget
         Text(
           localizations.value_loading,
           style: TextStyle(
-            fontFamily: AppNumeralFont.family,
             fontSize: AppFontSize.small,
           ),
         ),

@@ -71,6 +71,17 @@ void main() {
       }
     });
 
+    test('legacy secondary text passes AA on the page', () {
+      expect(
+        _contrast(AppTextColorLight.secondary, AppBgColorLight.page),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        _contrast(AppTextColorDark.secondary, AppBgColorDark.page),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
     test('muted text passes AA on cards and raised surfaces', () {
       // Not on the light page (4.2:1): the spec keeps muted text off the page.
       for (final n in [AppNeutralPalette.light, AppNeutralPalette.dark]) {
@@ -89,9 +100,7 @@ void main() {
           final n = AppNeutralPalette.of(brightness);
 
           expect(_contrast(p.text, n.surfaceCard), greaterThanOrEqualTo(4.5));
-          // Ok text on its light soft tint is 4.499:1, AA after rounding; the
-          // values are shared with the admin, so the tolerance is explicit.
-          expect(_contrast(p.text, p.soft), greaterThanOrEqualTo(4.49));
+          expect(_contrast(p.text, p.soft), greaterThanOrEqualTo(4.5));
           expect(_contrast(AppColors.white, p.fill), greaterThanOrEqualTo(4.5));
         });
       }
@@ -173,6 +182,44 @@ void main() {
       expect(dark.dialogTheme.backgroundColor, AppNeutralPalette.dark.surfaceRaised);
       expect(light.colorScheme.primary, AppColorsLight.primary);
     });
+
+    test('the error role pair passes AA in both themes', () {
+      for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
+        final scheme = theme.colorScheme;
+
+        expect(_contrast(scheme.onError, scheme.error), greaterThanOrEqualTo(4.5));
+        expect(_contrast(scheme.error, scheme.surface), greaterThanOrEqualTo(4.5));
+      }
+    });
+
+    for (final dark in [false, true]) {
+      test('filled buttons pass AA in ${dark ? 'dark' : 'light'}', () {
+        final failures = <String>[];
+
+        for (final key in ThemeColors.values) {
+          final style = (dark
+                  ? AppFilledButtonsDarkThemes.forThemeColor(key)
+                  : AppFilledButtonsLightThemes.forThemeColor(key))
+              .style!;
+
+          for (final states in [
+            <WidgetState>{},
+            {WidgetState.pressed},
+            {WidgetState.hovered},
+          ]) {
+            final bg = style.backgroundColor!.resolve(states)!;
+            final fg = style.foregroundColor!.resolve(states)!;
+            final ratio = _contrast(fg, bg);
+
+            if (ratio < 4.5) {
+              failures.add('${key.name} ${states.map((s) => s.name)} ${ratio.toStringAsFixed(2)}');
+            }
+          }
+        }
+
+        expect(failures, isEmpty);
+      });
+    }
 
     test('the startup spinner uses the app colour', () {
       expect(AppTheme.startThemeLight.progressIndicatorTheme.color, AppBrandColors.app);

@@ -53,7 +53,6 @@ class DeviceChannelDataSourceWidget
         Text(
           _getValue(property, channel, context),
           style: TextStyle(
-            fontFamily: AppNumeralFont.family,
             fontSize: AppFontSize.small,
           ),
         ),
@@ -66,7 +65,6 @@ class DeviceChannelDataSourceWidget
           Text(
             unit,
             style: TextStyle(
-              fontFamily: AppNumeralFont.family,
               fontSize: AppFontSize.small,
             ),
           ),
@@ -140,7 +138,6 @@ class DeviceChannelDataSourceWidget
         Text(
           localizations.value_loading,
           style: TextStyle(
-            fontFamily: AppNumeralFont.family,
             fontSize: AppFontSize.small,
           ),
         ),
@@ -163,7 +160,6 @@ class DeviceChannelDataSourceWidget
         Text(
           localizations.value_not_available,
           style: TextStyle(
-            fontFamily: AppNumeralFont.family,
             fontSize: AppFontSize.small,
           ),
         ),

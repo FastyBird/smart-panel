@@ -1599,7 +1599,7 @@ class _LightingHeroCard extends StatelessWidget {
               value,
               style: TextStyle(
                 fontSize: fontSize,
-                fontWeight: FontWeight.w200,
+                fontWeight: AppNumeralFont.display,
                 fontFamily: AppNumeralFont.family,
                 color: textColor,
                 height: 0.7,

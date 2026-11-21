@@ -33,14 +33,13 @@ class TimeTileWidget extends TileWidget<TimeTileView> {
                               Theme.of(context).brightness == Brightness.light
                                   ? AppTextColorLight.primary
                                   : AppTextColorDark.primary,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: AppNumeralFont.display,
                           height: 0.95,
                         ),
                       ),
                       Text(
                         DatetimeUtils.getFormattedDate(now),
                         style: TextStyle(
-                          fontFamily: AppNumeralFont.family,
                           fontSize: AppSpacings.scale(25),
                           color:
                               Theme.of(context).brightness == Brightness.light
