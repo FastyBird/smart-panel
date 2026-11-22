@@ -246,30 +246,48 @@ void main() {
   });
 
   group('system page padding', () {
+    // The 4″ square panel: DPR ≈ 1.76 and density 0.85, so one design px is
+    // not one logical px. AppSpacings caches the registered service on first
+    // use, so it must be registered before any token is read.
+    final dpr = 170 / VisualDensityService.flutterPiPpiPerDpr;
+    late ScreenService active;
+
     setUpAll(() async {
       await locator.reset();
-      // DPR 2 and density 1 give a scale factor of 1, so tokens are design px.
-      locator.registerSingleton<ScreenService>(
-        ScreenService(screenWidth: 1280, screenHeight: 800, pixelRatio: 2),
+      active = ScreenService(
+        screenWidth: 480,
+        screenHeight: 480,
+        pixelRatio: dpr,
+        density: 0.85,
       );
+      locator.registerSingleton<ScreenService>(active);
     });
 
     tearDownAll(() async {
+      active.dispose();
       await locator.reset();
     });
 
-    test('is 6, 8 or 12 by size class, in both orientations', () {
-      final compact = ScreenService(screenWidth: 480, screenHeight: 480, pixelRatio: 2, density: 0.85);
+    test('is the scaled 6 on the active Compact screen', () {
+      final expected = 6 * (2 / dpr) * 0.85;
+
+      expect(active.sizeClass, ScreenSizeClass.compact);
+      expect(active.scale(1), isNot(closeTo(1, 0.01)));
+      expect(active.systemPagePadding(true), closeTo(expected, 0.0001));
+      expect(active.systemPagePadding(false), closeTo(expected, 0.0001));
+    });
+
+    test('is 6, 8 or 12 design px by size class, in both orientations', () {
+      final unit = active.scale(1);
       final regular = ScreenService(screenWidth: 800, screenHeight: 1280, pixelRatio: 2, density: 1.0);
       final expanded = ScreenService(screenWidth: 1920, screenHeight: 1080, pixelRatio: 2, density: 1.0);
 
       for (final landscape in [true, false]) {
-        expect(compact.systemPagePadding(landscape), 6);
-        expect(regular.systemPagePadding(landscape), 8);
-        expect(expanded.systemPagePadding(landscape), 12);
+        expect(active.systemPagePadding(landscape), closeTo(6 * unit, 0.0001));
+        expect(regular.systemPagePadding(landscape), closeTo(8 * unit, 0.0001));
+        expect(expanded.systemPagePadding(landscape), closeTo(12 * unit, 0.0001));
       }
 
-      compact.dispose();
       regular.dispose();
       expanded.dispose();
     });
