@@ -2,11 +2,12 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isAutomationsListRoute || isLGDevice"
+		v-if="isAutomationsListRoute || inDrawer"
 		:title="t('automations.headings.list')"
 		:subtitle="t('automations.subHeadings.list')"
 		:icon="AUTOMATION_DEFAULT_ICON"
 		:actions="[
+			{ icon: 'mdi:magnify', label: t('automations.fields.search.placeholder'), handler: onSearch },
 			{ icon: 'mdi:plus', label: t('automations.buttons.add.title'), handler: onAutomationCreate },
 			{ icon: 'mdi:file-document-multiple-outline', label: t('automations.buttons.fromTemplate.title'), handler: onAutomationFromTemplate },
 		]"
@@ -57,68 +58,50 @@
 	</view-header>
 
 	<div
-		v-if="isAutomationsListRoute || isLGDevice"
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+		v-if="isAutomationsListRoute || inDrawer"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
-		<automation-suggestions
-			:suggestions="suggestions"
-			:answering="answeringSuggestions"
-			@open="onSuggestionOpen"
-			@dismiss="onSuggestionDismiss"
-		/>
-
-		<list-automations
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="automationsPaginated"
-			:all-items="automations"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:load-failed="loadFailed"
-			:filters-active="filtersActive"
-			:updating="updating"
-			:exporting="exportingIds"
-			@edit="onAutomationEdit"
-			@flow="onAutomationFlow"
-			@export="onAutomationExport"
-			@remove="onAutomationRemove"
-			@toggle-enabled="onAutomationToggleEnabled"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-			@retry="onRetry"
-		/>
-	</div>
-
-	<router-view
-		v-else
-		:key="detailKey"
-		v-slot="{ Component }"
-	>
-		<component :is="Component" />
-	</router-view>
-
-	<!-- Details open in the drawer on large screens only; the list adjustment has no other place on any -->
-	<el-drawer
-		v-if="isLGDevice || adjustList"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-automations-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
+		<!-- Template 4: add and edit open next to the list from tablet portrait up, as their own page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<div class="flex flex-col gap-2 flex-1 min-h-0">
+				<automation-suggestions
+					:suggestions="suggestions"
+					:answering="answeringSuggestions"
+					@open="onSuggestionOpen"
+					@dismiss="onSuggestionDismiss"
 				/>
 
-				<view-error v-else>
+				<list-automations
+					ref="list"
+					v-model:filters="filters"
+					v-model:sort-by="sortBy"
+					v-model:sort-dir="sortDir"
+					v-model:paginate-size="paginateSize"
+					v-model:paginate-page="paginatePage"
+					:items="automationsPaginated"
+					:all-items="automations"
+					:total-rows="totalRows"
+					:loading="areLoading"
+					:load-failed="loadFailed"
+					:filters-active="filtersActive"
+					:updating="updating"
+					:exporting="exportingIds"
+					@edit="onAutomationEdit"
+					@flow="onAutomationFlow"
+					@export="onAutomationExport"
+					@remove="onAutomationRemove"
+					@toggle-enabled="onAutomationToggleEnabled"
+					@reset-filters="onResetFilters"
+					@retry="onRetry"
+				/>
+			</div>
+
+			<template #form>
+				<view-error>
 					<template #icon>
 						<icon :icon="AUTOMATION_DEFAULT_ICON" />
 					</template>
@@ -140,8 +123,16 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<router-view
+		v-else
+		:key="detailKey"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 
 	<automation-template-dialog
 		v-model:visible="showTemplateDialog"
@@ -160,21 +151,15 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer } from '../../../common';
 import { AUTOMATION_DEFAULT_ICON, AUTOMATION_TEMPLATE_DRAFT_QUERY, RouteNames } from '../automations.constants';
 import { stashAutomationDraft } from '../automations.drafts';
-import {
-	AutomationImportDialog,
-	AutomationSuggestions,
-	AutomationTemplateDialog,
-	ListAutomations,
-	ListAutomationsAdjust,
-} from '../components/components';
+import { AutomationImportDialog, AutomationSuggestions, AutomationTemplateDialog, ListAutomations } from '../components/components';
 import {
 	useAutomationExport,
 	useAutomationSpaces,
@@ -200,8 +185,6 @@ const { t } = useI18n();
 useMeta({
 	title: t('automations.headings.list'),
 });
-
-const { isLGDevice } = useBreakpoints();
 
 const {
 	fetchAutomations,
@@ -232,7 +215,6 @@ const exportingIds = computed<IAutomation['id'][]>((): IAutomation['id'][] =>
 );
 
 const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
 const showTemplateDialog = ref<boolean>(false);
 const showImportDialog = ref<boolean>(false);
 
@@ -254,6 +236,17 @@ const isAutomationsListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.AUTOMATIONS;
 });
 
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone. After what its
+// getter reads: the provider reads it at once
+const { inDrawer } = provideEditDrawer((): boolean => !isAutomationsListRoute.value);
+
+const list = ref<InstanceType<typeof ListAutomations> | null>(null);
+
+// The phone app bar's Search action
+const onSearch = (): void => {
+	list.value?.focusSearch();
+};
+
 const isDetailRouteOpen = (): boolean => {
 	return route.matched.find((matched) => matched.name === RouteNames.AUTOMATIONS_ADD || matched.name === RouteNames.AUTOMATIONS_EDIT) !== undefined;
 };
@@ -270,7 +263,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const navigate = (name: string, params?: { id: IAutomation['id'] }, query?: Record<string, string>): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name, params, query });
 	} else {
 		router.push({ name, params, query });
@@ -314,15 +307,6 @@ const mayReplaceForm = async (): Promise<boolean> => {
 };
 
 const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
-
-		done?.();
-
-		return;
-	}
-
 	// A save on its way cannot be taken back, so the form stays until it is known how it went
 	if (remoteFormSaving.value) {
 		return;
@@ -337,8 +321,17 @@ const onCloseDrawer = (done?: () => void): void => {
 	});
 };
 
+// Next to a docked form the list stays usable: another automation replaces the open form only when that one may go
 const onAutomationEdit = (id: IAutomation['id']): void => {
-	navigate(RouteNames.AUTOMATIONS_EDIT, { id });
+	if (router.resolve({ name: RouteNames.AUTOMATIONS_EDIT, params: { id } }).path === route.path) {
+		return;
+	}
+
+	mayReplaceForm().then((replace: boolean): void => {
+		if (replace) {
+			navigate(RouteNames.AUTOMATIONS_EDIT, { id });
+		}
+	});
 };
 
 const onAutomationFlow = (id: IAutomation['id']): void => {
@@ -430,11 +423,6 @@ const onAutomationImport = (): void => {
 // The imported automation is created disabled; its flow opens in the editor to be checked before it is enabled
 const onImported = (id: IAutomation['id']): void => {
 	router.push({ name: RouteNames.AUTOMATIONS_FLOW, params: { id } });
-};
-
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
 };
 
 const loadAutomations = (): void => {

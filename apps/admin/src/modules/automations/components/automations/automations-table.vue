@@ -234,12 +234,11 @@
 					:content="t(`automations.statuses.${scope.row.status}.description`)"
 					placement="top"
 				>
-					<el-tag
-						:type="AUTOMATION_STATUS_COLORS[scope.row.status as AutomationStatus]"
+					<status-tag
+						:status="AUTOMATION_STATUS_TAGS[scope.row.status as AutomationStatus]"
+						:label="t(`automations.statuses.${scope.row.status}.title`)"
 						data-test-id="automation-status"
-					>
-						{{ t(`automations.statuses.${scope.row.status}.title`) }}
-					</el-tag>
+					/>
 				</el-tooltip>
 			</template>
 		</el-table-column>
@@ -352,17 +351,17 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAvatar, ElButton, ElIcon, ElLink, ElResult, ElSwitch, ElTable, ElTableColumn, ElTag, ElText, ElTooltip, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElIcon, ElLink, ElResult, ElSwitch, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { IconWithChild } from '../../../../common';
+import { IconWithChild, StatusTag } from '../../../../common';
 import {
 	AUTOMATION_DEFAULT_ICON,
 	AUTOMATION_FLOW_ICON,
 	AUTOMATION_RUN_STATUS_COLORS,
-	AUTOMATION_STATUS_COLORS,
+	AUTOMATION_STATUS_TAGS,
 	type AutomationRunStatus,
 	type AutomationStatus,
 	WHOLE_HOME_SPACE_FILTER,

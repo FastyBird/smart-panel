@@ -15,7 +15,7 @@
 	/>
 
 	<div class="flex flex-col overflow-hidden h-full">
-		<el-scrollbar class="grow-1 p-2 md:px-4">
+		<el-scrollbar class="grow-1 p-2 tp:px-4">
 			<automation-add-form
 				:id="automationId"
 				v-model:remote-form-submit="remoteFormSubmit"
@@ -25,31 +25,16 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					:disabled="saving"
-					link
-					class="mr-2"
-					@click="formChanged ? onDiscard() : onClose()"
-				>
-					{{ t('automations.buttons.cancel.title') }}
-				</el-button>
-
-				<el-button
-					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult === FormResult.WORKING"
-					type="primary"
-					@click="remoteFormSubmit = true"
-				>
-					{{ t('automations.buttons.save.title') }}
-				</el-button>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in a drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-show="inDrawer || !isPhone"
+			:dirty="formChanged"
+			:saving="saving"
+			:can-save="!saving"
+			@save="remoteFormSubmit = true"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -58,10 +43,10 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElMessageBox, ElScrollbar } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 
-import { ViewHeader, useBreakpoints } from '../../../common';
+import { FormFooter, ViewHeader, useEditDrawer, useSizeClass } from '../../../common';
 import { AUTOMATION_TEMPLATE_DRAFT_QUERY, FormResult, type FormResultType, RouteNames } from '../automations.constants';
 import { type IAutomationDraft, discardAutomationDraft, peekAutomationDraft } from '../automations.drafts';
 import { AutomationAddForm } from '../components/components';
@@ -85,7 +70,9 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 // Created from a template, the automation gets the id its generated flow waits under. After a reload the draft
 // is gone, and the form is the blank one.
@@ -117,7 +104,7 @@ const onClose = (): void => {
 		return;
 	}
 
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.AUTOMATIONS });
 	} else {
 		router.push({ name: RouteNames.AUTOMATIONS });
