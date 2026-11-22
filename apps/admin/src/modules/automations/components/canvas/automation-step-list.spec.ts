@@ -56,6 +56,8 @@ const render = (props: Record<string, unknown> = {}) =>
 						issue: { type: String, default: undefined },
 						domain: { type: String, default: undefined },
 						kind: { type: String, default: null },
+						run: { type: Object, default: undefined },
+						selected: { type: Boolean, default: false },
 					},
 					template: '<div />',
 				}),
@@ -108,6 +110,34 @@ describe('AutomationStepList', () => {
 		});
 
 		expect(wrapper.findAll('[data-test-id="automation-step"]').map((step) => step.attributes('data-step-id'))).toEqual(['n1', 'n2']);
+	});
+
+	it('shows what each step did in the run laid over the flow, and none for a step it did not reach', () => {
+		const wrapper = render({
+			run: {
+				overlay: { nodes: { n1: { state: 'passed', visits: 1 }, n2: { state: 'failed', visits: 2, error: 'Broken' } }, edges: {} },
+				ended: true,
+			},
+		});
+
+		const cards = wrapper.findAllComponents({ name: 'AutomationNodeCard' });
+
+		expect(cards[0].props('run')).toEqual(expect.objectContaining({ state: 'passed', visits: 1 }));
+		expect(cards[1].props('run')).toEqual(expect.objectContaining({ state: 'failed', visits: 2 }));
+		expect(cards[2].props('run')).toBeNull();
+	});
+
+	it('scrolls to a step it is pointed at, and marks it', async () => {
+		const wrapper = render();
+		const scroll = vi.fn();
+
+		(wrapper.get('[data-step-id="n3"]').element as HTMLElement).scrollIntoView = scroll;
+
+		(wrapper.vm as unknown as { focusStep: (id: string) => void }).focusStep('n3');
+		await wrapper.vm.$nextTick();
+
+		expect(scroll).toHaveBeenCalledTimes(1);
+		expect(wrapper.findAllComponents({ name: 'AutomationNodeCard' })[2].props('selected')).toBe(true);
 	});
 
 	it('says when the flow has no steps', () => {

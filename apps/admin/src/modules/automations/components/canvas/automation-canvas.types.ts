@@ -25,6 +25,9 @@ export interface IAutomationCanvasProps {
 	initialView?: AutomationCanvasInitialView;
 	// A run laid over the graph, read-only: the cards it reached are lit and the edges it went along marked
 	run?: IAutomationCanvasRun | null;
+	// Pixels at the right edge of the canvas covered by something laid over it (the inspector on tablet portrait):
+	// revealing and focusing a card keep it out of them
+	coveredRight?: number;
 }
 
 export interface IAutomationCanvasRun {

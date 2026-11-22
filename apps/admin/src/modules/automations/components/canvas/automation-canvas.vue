@@ -154,6 +154,7 @@ const props = withDefaults(defineProps<IAutomationCanvasProps>(), {
 	readonly: false,
 	initialView: 'fit',
 	run: null,
+	coveredRight: 0,
 });
 
 const emit = defineEmits<{
@@ -687,10 +688,17 @@ const focusNode = (id: string): void => {
 	removeSelectedElements();
 	addSelectedNodes([node]);
 
-	void setCenter(node.position.x + (node.dimensions.width || 280) / 2, node.position.y + (node.dimensions.height || 56) / 2, {
-		zoom: Math.max(getViewport().zoom, 0.75),
-		duration: 200,
-	});
+	const zoom = Math.max(getViewport().zoom, 0.75);
+
+	// Centred in the part of the canvas that is not covered
+	void setCenter(
+		node.position.x + (node.dimensions.width || 280) / 2 + props.coveredRight / 2 / zoom,
+		node.position.y + (node.dimensions.height || 56) / 2,
+		{
+			zoom,
+			duration: 200,
+		}
+	);
 };
 
 /**
@@ -716,7 +724,10 @@ const revealNode = (id: string): void => {
 	let dx = 0;
 	let dy = 0;
 
-	if (right > rect.width - margin) dx = rect.width - margin - right;
+	// What lies over the right edge of the canvas takes its room, as a panel beside it does
+	const width = rect.width - props.coveredRight;
+
+	if (right > width - margin) dx = width - margin - right;
 	if (left + dx < margin) dx = margin - left;
 	if (bottom > rect.height - margin) dy = rect.height - margin - bottom;
 	if (top + dy < margin) dy = margin - top;

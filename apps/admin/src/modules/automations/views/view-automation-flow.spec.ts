@@ -36,6 +36,7 @@ const graph: IAutomationGraph = {
 const mocks = vi.hoisted(() => ({
 	isMDDevice: true,
 	tabletPortrait: false,
+	focusStep: vi.fn(),
 	routerPush: vi.fn(),
 	leaveGuard: null as null | (() => Promise<boolean>),
 	updateGuard: null as null | ((to: { params: { id: string } }, from: { params: { id: string } }) => Promise<boolean> | boolean),
@@ -203,6 +204,7 @@ vi.mock('../components/components', async () => {
 				readonly: { type: Boolean, required: true },
 				initialView: { type: String, required: true },
 				run: { type: Object, required: false, default: null },
+				coveredRight: { type: Number, required: false, default: 0 },
 			},
 			emits: ['update:graph', 'select', 'reject'],
 			setup(_, { expose }) {
@@ -213,8 +215,12 @@ vi.mock('../components/components', async () => {
 		}),
 		AutomationStepList: defineComponent({
 			name: 'AutomationStepList',
-			props: { graph: { type: Object, required: true } },
-			template: '<div data-test-id="step-list-stub" />',
+			props: { graph: { type: Object, required: true }, run: { type: Object, required: false, default: null } },
+			setup(_, { expose }) {
+				expose({ focusStep: mocks.focusStep });
+
+				return () => h('div', { 'data-test-id': 'step-list-stub' });
+			},
 		}),
 		AutomationPalette: defineComponent({
 			name: 'AutomationPalette',
@@ -567,6 +573,35 @@ describe('ViewAutomationFlow', (): void => {
 			expect(wrapper.findComponent({ name: 'AutomationNodePanel' }).vm.$.uid).toBe(before.vm.$.uid);
 		});
 
+		it('leaves Escape to the Add block sheet or the YAML dialog lying over the panel', async (): Promise<void> => {
+			mocks.tabletPortrait = true;
+
+			await createWrapper();
+
+			canvas().vm.$emit('select', ['a1'], []);
+			await flushPromises();
+
+			await wrapper.get('[data-test-id="add-block"]').trigger('click');
+
+			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+			await flushPromises();
+
+			expect(wrapper.findComponent({ name: 'AutomationNodePanel' }).exists()).toBe(true);
+		});
+
+		it('keeps a card the panel opens over in the part of the canvas left uncovered', async (): Promise<void> => {
+			mocks.tabletPortrait = true;
+
+			await createWrapper();
+
+			expect(canvas().props('coveredRight')).toBe(0);
+
+			canvas().vm.$emit('select', ['a1'], []);
+			await flushPromises();
+
+			expect(canvas().props('coveredRight')).toBe(340);
+		});
+
 		it('closes the panel with Escape only once a form with text that does not parse may be let go', async (): Promise<void> => {
 			const confirm = vi
 				.spyOn(ElMessageBox, 'confirm')
@@ -598,6 +633,18 @@ describe('ViewAutomationFlow', (): void => {
 		});
 	});
 
+	it('points an issue at its step in the list on phone', async (): Promise<void> => {
+		mocks.isMDDevice = false;
+		editor.issues.value = [{ severity: 'error', code: 'invalid_config', message: 'Not valid.', node_id: 'a1', field: 'title', blocking: true }];
+
+		await createWrapper();
+
+		wrapper.findComponent({ name: 'AutomationIssuesList' }).vm.$emit('focus', 'a1');
+		await flushPromises();
+
+		expect(mocks.focusStep).toHaveBeenCalledWith('a1');
+		expect(mocks.canvas.focusNode).not.toHaveBeenCalled();
+	});
 	it('opens the panel for one selected node only, and lets it be dismissed', async (): Promise<void> => {
 		await createWrapper();
 

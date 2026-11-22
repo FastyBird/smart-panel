@@ -16,6 +16,7 @@
 		<li
 			v-for="(step, index) in steps"
 			:key="step.id"
+			:ref="(el) => setStepRef(step.id, el)"
 			:data-step-id="step.id"
 			class="flex items-start gap-2"
 			data-test-id="automation-step"
@@ -28,6 +29,7 @@
 			</span>
 			<automation-node-card
 				v-bind="step.card"
+				:selected="step.id === focusedId"
 				class="flex-1 min-w-0"
 			/>
 		</li>
@@ -35,17 +37,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, markRaw } from 'vue';
+import { type ComponentPublicInstance, computed, markRaw, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { StateView } from '../../../../common';
 import { AUTOMATION_FLOW_ICON, AutomationNodeKind } from '../../automations.constants';
 import { mapIssueSeverities } from '../../automations.graph';
 import { useAutomationNodePresentation } from '../../composables/useAutomationNodePresentation';
+import { useAutomationRunPresentation } from '../../composables/useAutomationRunPresentation';
 import type { IAutomationGraphNode } from '../../store/automations.store.types';
 import type { IAutomationNodeType } from '../../store/node-types.store.types';
 
-import type { IAutomationNodeCardProps } from './automation-node-card.types';
+import type { IAutomationNodeCardProps, IAutomationNodeCardRun } from './automation-node-card.types';
 import AutomationNodeCard from './automation-node-card.vue';
 import type { IAutomationStepListProps } from './automation-step-list.types';
 
@@ -57,11 +60,50 @@ const props = withDefaults(defineProps<IAutomationStepListProps>(), {
 	issues: () => [],
 	summaryComponent: undefined,
 	nodeDomain: undefined,
+	run: null,
 });
 
 const { t } = useI18n();
 
 const { kindLabel, nodeTitle, nodeIcon, nodeSummary } = useAutomationNodePresentation();
+
+const { nodeRunText } = useAutomationRunPresentation();
+
+// What a step did in the run laid over the flow, as on the canvas: undefined without a run, null for a step it did not
+// reach
+const runOf = (id: string): IAutomationNodeCardRun | null | undefined => {
+	if (!props.run) {
+		return undefined;
+	}
+
+	const overlay = props.run.overlay.nodes[id];
+
+	return overlay ? { state: overlay.state, text: nodeRunText(overlay, props.run.ended), visits: overlay.visits } : null;
+};
+
+/*
+ * Focus: an issue or a run summary points at a step; it is scrolled to and marked
+ */
+
+const focusedId = ref<string | null>(null);
+
+const stepRefs = new Map<string, HTMLElement>();
+
+const setStepRef = (id: string, el: Element | ComponentPublicInstance | null): void => {
+	if (el instanceof HTMLElement) {
+		stepRefs.set(id, el);
+	} else {
+		stepRefs.delete(id);
+	}
+};
+
+const focusStep = (id: string): void => {
+	focusedId.value = id;
+
+	stepRefs.get(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+};
+
+defineExpose({ focusStep });
 
 const lookup = (type: string): IAutomationNodeType | null => props.nodeTypes.find((nodeType) => nodeType.type === type) ?? null;
 
@@ -117,6 +159,7 @@ const steps = computed<{ id: string; card: IAutomationNodeCardProps }[]>(() =>
 				summary: nodeSummary(node, nodeType),
 				issue: severities.value.nodes.get(node.id),
 				domain: props.nodeDomain?.(node),
+				run: runOf(node.id),
 				...(component !== null && nodeType !== null ? { summaryComponent: markRaw(component), summaryProps: { nodeType, config: node.config } } : {}),
 			},
 		};

@@ -334,11 +334,13 @@
 						class="grow-1 min-h-0"
 					>
 						<automation-step-list
+							ref="stepList"
 							:graph="graph"
 							:node-types="nodeTypes"
 							:issues="shownIssues"
 							:summary-component="getCardComponent"
 							:node-domain="nodeDomain"
+							:run="canvasRun"
 						/>
 					</el-scrollbar>
 
@@ -354,6 +356,7 @@
 							:issues="shownIssues"
 							:summary-component="getCardComponent"
 							:node-domain="nodeDomain"
+							:covered-right="isTabletPortrait && panelNode !== null ? INSPECTOR_WIDTH : 0"
 							:readonly="readonly"
 							:initial-view="readonly ? 'first-trigger' : 'fit'"
 							:run="canvasRun"
@@ -400,7 +403,7 @@
 					:form="getFormComponent(panelNode.type)"
 					:disabled="reloading || readonly"
 					:class="{ 'automation-flow__inspector--overlay': isTabletPortrait }"
-					:style="{ '--automation-inspector-width': sizeClass === 'wd' ? '360px' : '340px' }"
+					:style="{ '--automation-inspector-width': `${sizeClass === 'wd' ? INSPECTOR_WIDTH_WIDE : INSPECTOR_WIDTH}px` }"
 					@update:config="onConfigUpdate"
 					@update:invalid="setDraftInvalid"
 					@remove="onRemoveNode"
@@ -570,6 +573,12 @@ useMeta({
 
 const canvas = ref<InstanceType<typeof AutomationCanvas> | null>(null);
 
+const stepList = ref<InstanceType<typeof AutomationStepList> | null>(null);
+
+// Template 8: the inspector beside the canvas, wider on wide screens
+const INSPECTOR_WIDTH = 340;
+const INSPECTOR_WIDTH_WIDE = 360;
+
 const ready = ref<boolean>(false);
 const loadFailed = ref<boolean>(false);
 const notFound = ref<boolean>(false);
@@ -692,8 +701,16 @@ const onClosePanel = (): void => {
 
 // On tablet portrait the panel lies over the canvas like a drawer, and Escape closes it the way its close button does:
 // a form holding text that does not parse asks first, and stays open when the answer is no
+// Only when the panel is what lies on top: a dialog, a sheet or a question over it takes Escape for itself
+const anOverlayIsOpen = (): boolean =>
+	paletteSheet.value || showYaml.value || Array.from(document.querySelectorAll<HTMLElement>('.el-overlay')).some((el) => el.style.display !== 'none');
+
 useEventListener(window, 'keydown', (event: KeyboardEvent): void => {
-	if (event.key === 'Escape' && isTabletPortrait.value && panelNode.value !== null && !readonly.value) {
+	if (event.key !== 'Escape' || event.defaultPrevented || !isTabletPortrait.value || panelNode.value === null || readonly.value) {
+		return;
+	}
+
+	if (!anOverlayIsOpen()) {
 		onClosePanel();
 	}
 });
@@ -737,7 +754,10 @@ const onRemoveNode = (): void => {
 const onFocusNode = async (nodeId: string): Promise<void> => {
 	await showPanel(nodeId);
 
-	if (readonly.value || panelFor.value === nodeId) {
+	// On phone the flow is the list of steps: the step is scrolled to there
+	if (readonly.value) {
+		stepList.value?.focusStep(nodeId);
+	} else if (panelFor.value === nodeId) {
 		canvas.value?.focusNode(nodeId);
 	}
 };
