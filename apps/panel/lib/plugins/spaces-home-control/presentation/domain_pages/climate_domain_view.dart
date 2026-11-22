@@ -2435,8 +2435,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           tempText,
           style: TextStyle(
             fontSize: fontSize,
-            fontWeight: FontWeight.w200,
-            fontFamily: 'DIN1451',
+            fontWeight: AppNumeralFont.display,
+            fontFamily: AppNumeralFont.family,
             color: textColor,
             height: 0.7,
           ),

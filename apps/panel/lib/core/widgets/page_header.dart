@@ -261,9 +261,11 @@ class HeaderIconButton extends StatelessWidget {
           return (AppFilledButtonsDarkThemes.primary,
               AppFilledButtonsDarkThemes.primaryForegroundColor);
         case ThemeColors.success:
+        case ThemeColors.energy:
           return (AppFilledButtonsDarkThemes.success,
               AppFilledButtonsDarkThemes.successForegroundColor);
         case ThemeColors.warning:
+        case ThemeColors.lights:
           return (AppFilledButtonsDarkThemes.warning,
               AppFilledButtonsDarkThemes.warningForegroundColor);
         case ThemeColors.danger:
@@ -273,6 +275,7 @@ class HeaderIconButton extends StatelessWidget {
           return (AppFilledButtonsDarkThemes.error,
               AppFilledButtonsDarkThemes.errorForegroundColor);
         case ThemeColors.info:
+        case ThemeColors.climate:
           return (AppFilledButtonsDarkThemes.info,
               AppFilledButtonsDarkThemes.infoForegroundColor);
         case ThemeColors.neutral:
@@ -282,15 +285,19 @@ class HeaderIconButton extends StatelessWidget {
           return (AppFilledButtonsDarkThemes.flutter,
               AppFilledButtonsDarkThemes.flutterForegroundColor);
         case ThemeColors.teal:
+        case ThemeColors.shading:
           return (AppFilledButtonsDarkThemes.teal,
               AppFilledButtonsDarkThemes.tealForegroundColor);
         case ThemeColors.cyan:
+        case ThemeColors.sensors:
           return (AppFilledButtonsDarkThemes.cyan,
               AppFilledButtonsDarkThemes.cyanForegroundColor);
         case ThemeColors.pink:
+        case ThemeColors.media:
           return (AppFilledButtonsDarkThemes.pink,
               AppFilledButtonsDarkThemes.pinkForegroundColor);
         case ThemeColors.indigo:
+        case ThemeColors.cameras:
           return (AppFilledButtonsDarkThemes.indigo,
               AppFilledButtonsDarkThemes.indigoForegroundColor);
       }
@@ -300,9 +307,11 @@ class HeaderIconButton extends StatelessWidget {
           return (AppFilledButtonsLightThemes.primary,
               AppFilledButtonsLightThemes.primaryForegroundColor);
         case ThemeColors.success:
+        case ThemeColors.energy:
           return (AppFilledButtonsLightThemes.success,
               AppFilledButtonsLightThemes.successForegroundColor);
         case ThemeColors.warning:
+        case ThemeColors.lights:
           return (AppFilledButtonsLightThemes.warning,
               AppFilledButtonsLightThemes.warningForegroundColor);
         case ThemeColors.danger:
@@ -312,6 +321,7 @@ class HeaderIconButton extends StatelessWidget {
           return (AppFilledButtonsLightThemes.error,
               AppFilledButtonsLightThemes.errorForegroundColor);
         case ThemeColors.info:
+        case ThemeColors.climate:
           return (AppFilledButtonsLightThemes.info,
               AppFilledButtonsLightThemes.infoForegroundColor);
         case ThemeColors.neutral:
@@ -321,15 +331,19 @@ class HeaderIconButton extends StatelessWidget {
           return (AppFilledButtonsLightThemes.flutter,
               AppFilledButtonsLightThemes.flutterForegroundColor);
         case ThemeColors.teal:
+        case ThemeColors.shading:
           return (AppFilledButtonsLightThemes.teal,
               AppFilledButtonsLightThemes.tealForegroundColor);
         case ThemeColors.cyan:
+        case ThemeColors.sensors:
           return (AppFilledButtonsLightThemes.cyan,
               AppFilledButtonsLightThemes.cyanForegroundColor);
         case ThemeColors.pink:
+        case ThemeColors.media:
           return (AppFilledButtonsLightThemes.pink,
               AppFilledButtonsLightThemes.pinkForegroundColor);
         case ThemeColors.indigo:
+        case ThemeColors.cameras:
           return (AppFilledButtonsLightThemes.indigo,
               AppFilledButtonsLightThemes.indigoForegroundColor);
       }

@@ -36,26 +36,33 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 				case ThemeColors.primary:
 					return (AppFilledButtonsDarkThemes.primary, AppFilledButtonsDarkThemes.primaryForegroundColor);
 				case ThemeColors.success:
+				case ThemeColors.energy:
 					return (AppFilledButtonsDarkThemes.success, AppFilledButtonsDarkThemes.successForegroundColor);
 				case ThemeColors.warning:
+				case ThemeColors.lights:
 					return (AppFilledButtonsDarkThemes.warning, AppFilledButtonsDarkThemes.warningForegroundColor);
 				case ThemeColors.danger:
 					return (AppFilledButtonsDarkThemes.danger, AppFilledButtonsDarkThemes.dangerForegroundColor);
 				case ThemeColors.error:
 					return (AppFilledButtonsDarkThemes.error, AppFilledButtonsDarkThemes.errorForegroundColor);
 				case ThemeColors.info:
+				case ThemeColors.climate:
 					return (AppFilledButtonsDarkThemes.info, AppFilledButtonsDarkThemes.infoForegroundColor);
 				case ThemeColors.neutral:
 					return (AppFilledButtonsDarkThemes.neutral, AppFilledButtonsDarkThemes.neutralForegroundColor);
 				case ThemeColors.flutter:
 					return (AppFilledButtonsDarkThemes.flutter, AppFilledButtonsDarkThemes.flutterForegroundColor);
 				case ThemeColors.teal:
+				case ThemeColors.shading:
 					return (AppFilledButtonsDarkThemes.teal, AppFilledButtonsDarkThemes.tealForegroundColor);
 				case ThemeColors.cyan:
+				case ThemeColors.sensors:
 					return (AppFilledButtonsDarkThemes.cyan, AppFilledButtonsDarkThemes.cyanForegroundColor);
 				case ThemeColors.pink:
+				case ThemeColors.media:
 					return (AppFilledButtonsDarkThemes.pink, AppFilledButtonsDarkThemes.pinkForegroundColor);
 				case ThemeColors.indigo:
+				case ThemeColors.cameras:
 					return (AppFilledButtonsDarkThemes.indigo, AppFilledButtonsDarkThemes.indigoForegroundColor);
 			}
 		} else {
@@ -63,26 +70,33 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 				case ThemeColors.primary:
 					return (AppFilledButtonsLightThemes.primary, AppFilledButtonsLightThemes.primaryForegroundColor);
 				case ThemeColors.success:
+				case ThemeColors.energy:
 					return (AppFilledButtonsLightThemes.success, AppFilledButtonsLightThemes.successForegroundColor);
 				case ThemeColors.warning:
+				case ThemeColors.lights:
 					return (AppFilledButtonsLightThemes.warning, AppFilledButtonsLightThemes.warningForegroundColor);
 				case ThemeColors.danger:
 					return (AppFilledButtonsLightThemes.danger, AppFilledButtonsLightThemes.dangerForegroundColor);
 				case ThemeColors.error:
 					return (AppFilledButtonsLightThemes.error, AppFilledButtonsLightThemes.errorForegroundColor);
 				case ThemeColors.info:
+				case ThemeColors.climate:
 					return (AppFilledButtonsLightThemes.info, AppFilledButtonsLightThemes.infoForegroundColor);
 				case ThemeColors.neutral:
 					return (AppFilledButtonsLightThemes.neutral, AppFilledButtonsLightThemes.neutralForegroundColor);
 				case ThemeColors.flutter:
 					return (AppFilledButtonsLightThemes.flutter, AppFilledButtonsLightThemes.flutterForegroundColor);
 				case ThemeColors.teal:
+				case ThemeColors.shading:
 					return (AppFilledButtonsLightThemes.teal, AppFilledButtonsLightThemes.tealForegroundColor);
 				case ThemeColors.cyan:
+				case ThemeColors.sensors:
 					return (AppFilledButtonsLightThemes.cyan, AppFilledButtonsLightThemes.cyanForegroundColor);
 				case ThemeColors.pink:
+				case ThemeColors.media:
 					return (AppFilledButtonsLightThemes.pink, AppFilledButtonsLightThemes.pinkForegroundColor);
 				case ThemeColors.indigo:
+				case ThemeColors.cameras:
 					return (AppFilledButtonsLightThemes.indigo, AppFilledButtonsLightThemes.indigoForegroundColor);
 			}
 		}

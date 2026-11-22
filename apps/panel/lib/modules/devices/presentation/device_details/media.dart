@@ -386,7 +386,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 		return source;
 	}
 
-	ThemeColors _getThemeColor() => _isOn ? ThemeColors.primary : ThemeColors.neutral;
+	ThemeColors _getThemeColor() => _isOn ? ThemeColors.media : ThemeColors.neutral;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -458,13 +458,13 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 						),
 						HeaderMainIcon(
 							icon: iconData,
-							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+							color: isOn ? ThemeColors.media : ThemeColors.neutral,
 						),
 					],
 				)
 				: HeaderMainIcon(
 					icon: iconData,
-					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+					color: isOn ? ThemeColors.media : ThemeColors.neutral,
 				),
 			trailing: buildCombinedTrailing(
 				config: widget.config,
@@ -472,7 +472,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 					? HeaderIconButton(
 						icon: MdiIcons.power,
 						onTap: _togglePower,
-						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+						color: isOn ? ThemeColors.media : ThemeColors.neutral,
 					)
 					: null,
 			),

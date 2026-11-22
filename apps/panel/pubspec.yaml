@@ -103,6 +103,9 @@ flutter:
   # assets:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/fonts/Roboto-LICENSE.txt
+    - assets/fonts/BarlowSemiCondensed-OFL.txt
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -133,8 +136,20 @@ flutter:
     - family: Roboto
       fonts:
         - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
         - asset: assets/fonts/Roboto-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
+    # Numerals of 18 px and larger (docs/display-ui-design-spec.md §3).
+    - family: BarlowSemiCondensed
+      fonts:
+        - asset: assets/fonts/BarlowSemiCondensed-Light.ttf
+          weight: 300
+        - asset: assets/fonts/BarlowSemiCondensed-Medium.ttf
+          weight: 500
+    # Legacy numeral face, removed in DR-24 once nothing references it.
     - family: DIN1451
       fonts:
         - asset: assets/fonts/DIN-1451.ttf

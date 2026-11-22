@@ -382,7 +382,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 		return source;
 	}
 
-	ThemeColors _getThemeColor() => _isOn ? ThemeColors.primary : ThemeColors.neutral;
+	ThemeColors _getThemeColor() => _isOn ? ThemeColors.media : ThemeColors.neutral;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -454,13 +454,13 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 						),
 						HeaderMainIcon(
 							icon: iconData,
-							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+							color: isOn ? ThemeColors.media : ThemeColors.neutral,
 						),
 					],
 				)
 				: HeaderMainIcon(
 					icon: iconData,
-					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+					color: isOn ? ThemeColors.media : ThemeColors.neutral,
 				),
 			trailing: buildCombinedTrailing(
 				config: widget.config,
@@ -468,7 +468,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 					? HeaderIconButton(
 						icon: MdiIcons.power,
 						onTap: _togglePower,
-						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+						color: isOn ? ThemeColors.media : ThemeColors.neutral,
 					)
 					: null,
 			),

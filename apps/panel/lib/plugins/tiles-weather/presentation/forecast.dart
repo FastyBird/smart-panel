@@ -93,7 +93,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
           Text(
             DatetimeUtils.getShortDayName(forecast.dayTime),
             style: TextStyle(
-              fontFamily: 'DIN1451',
               fontSize: AppFontSize.base,
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.primary
@@ -116,7 +115,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
               Text(
                 wholeDayTemp,
                 style: TextStyle(
-                  fontFamily: 'DIN1451',
                   fontSize: AppFontSize.extraSmall,
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.secondary
@@ -126,7 +124,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
               Text(
                 '/',
                 style: TextStyle(
-                  fontFamily: 'DIN1451',
                   fontSize: AppFontSize.extraSmall,
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.secondary
@@ -136,7 +133,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
               Text(
                 wholeNightTemp,
                 style: TextStyle(
-                  fontFamily: 'DIN1451',
                   fontSize: AppFontSize.extraSmall,
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.secondary
@@ -146,7 +142,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
               Text(
                 _getUnit(units),
                 style: TextStyle(
-                  fontFamily: 'DIN1451',
                   fontSize: AppFontSize.extraSmall,
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.secondary

@@ -115,7 +115,6 @@ class ButtonTileTitle extends StatelessWidget {
                 : (Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.primary
                     : AppTextColorDark.primary)),
-        fontFamily: 'DIN1451',
         fontSize: small ? AppFontSize.extraSmall : AppFontSize.small,
         fontWeight: FontWeight.bold,
       ),
@@ -144,7 +143,6 @@ class ButtonTileSubTitle extends StatelessWidget {
 
     return DefaultTextStyle(
       style: TextStyle(
-        fontFamily: 'DIN1451',
         color: isDisabled
             ? (Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.infoLight9

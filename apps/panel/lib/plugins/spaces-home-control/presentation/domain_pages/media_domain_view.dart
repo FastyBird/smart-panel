@@ -701,7 +701,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				),
 			HeaderIconButton(
 				icon: MdiIcons.power,
-				color: isMediaOn ? ThemeColors.primary : ThemeColors.neutral,
+				color: isMediaOn ? ThemeColors.media : ThemeColors.neutral,
 				onTap: isMediaOn
 					? _deactivateActivity
 					: singleActivityKey != null
@@ -743,7 +743,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	/// for all mode-based colors; avoid using [ThemeColors] or [AppColors*] directly.
 	ThemeColors _getModeColor([MediaActivityKey? mode]) {
 		final key = mode ?? _getCurrentActivityKey();
-		return key == MediaActivityKey.off ? ThemeColors.neutral : ThemeColors.primary;
+		return key == MediaActivityKey.off ? ThemeColors.neutral : ThemeColors.media;
 	}
 
 	/// Resolved colors for current mode (used for header subtitle, accents, borders).

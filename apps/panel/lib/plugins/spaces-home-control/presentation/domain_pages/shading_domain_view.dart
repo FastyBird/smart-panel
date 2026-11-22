@@ -2278,8 +2278,8 @@ class _ShadingHeroCard extends StatelessWidget {
           '$position',
           style: TextStyle(
             fontSize: fontSize,
-            fontWeight: FontWeight.w200,
-            fontFamily: 'DIN1451',
+            fontWeight: AppNumeralFont.display,
+            fontFamily: AppNumeralFont.family,
             color: textColor,
             height: 0.7,
           ),

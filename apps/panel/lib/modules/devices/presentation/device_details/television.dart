@@ -440,7 +440,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 	}
 
 	ThemeColors _getThemeColor() =>
-		_device.isTelevisionOn ? ThemeColors.primary : ThemeColors.neutral;
+		_device.isTelevisionOn ? ThemeColors.media : ThemeColors.neutral;
 
 	String? _getDisplaySource() {
 		if (_device.hasMediaInputSourceLabel) {
@@ -533,13 +533,13 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						),
 						HeaderMainIcon(
 							icon: iconData,
-							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+							color: isOn ? ThemeColors.media : ThemeColors.neutral,
 						),
 					],
 				)
 				: HeaderMainIcon(
 					icon: iconData,
-					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+					color: isOn ? ThemeColors.media : ThemeColors.neutral,
 				),
 			trailing: buildCombinedTrailing(
 				config: widget.config,
@@ -556,7 +556,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						HeaderIconButton(
 							icon: MdiIcons.power,
 							onTap: _togglePower,
-							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+							color: isOn ? ThemeColors.media : ThemeColors.neutral,
 						),
 					],
 				),

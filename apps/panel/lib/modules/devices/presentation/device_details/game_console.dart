@@ -149,7 +149,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 		return localizations.on_state_on;
 	}
 
-	ThemeColors _getThemeColor() => _isOn ? ThemeColors.primary : ThemeColors.neutral;
+	ThemeColors _getThemeColor() => _isOn ? ThemeColors.media : ThemeColors.neutral;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -223,13 +223,13 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 						),
 						HeaderMainIcon(
 							icon: iconData,
-							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+							color: isOn ? ThemeColors.media : ThemeColors.neutral,
 						),
 					],
 				)
 				: HeaderMainIcon(
 					icon: iconData,
-					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+					color: isOn ? ThemeColors.media : ThemeColors.neutral,
 				),
 			trailing: buildCombinedTrailing(
 				config: widget.config,
@@ -237,7 +237,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 					? HeaderIconButton(
 						icon: MdiIcons.power,
 						onTap: _togglePower,
-						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+						color: isOn ? ThemeColors.media : ThemeColors.neutral,
 					)
 					: null,
 			),
