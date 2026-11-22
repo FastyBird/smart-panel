@@ -18,7 +18,7 @@
 				:value="item.value"
 			/>
 		</el-select>
-		<p class="text-xs text-gray-500 mt-1 w-full">
+		<p class="text-xs text-secondary mt-1 w-full">
 			{{ t('devicesModule.fields.devices.room.hint') }}
 			<template v-if="suggestSources">{{ t('devicesVirtualPlugin.wizard.layout.roomHint') }}</template>
 		</p>
@@ -43,7 +43,7 @@
 				:value="item.value"
 			/>
 		</el-select>
-		<p class="text-xs text-gray-500 mt-1 w-full">
+		<p class="text-xs text-secondary mt-1 w-full">
 			{{ t('devicesModule.fields.devices.zones.hint') }}
 			<template v-if="suggestSources">{{ t('devicesVirtualPlugin.wizard.layout.zonesHint') }}</template>
 		</p>

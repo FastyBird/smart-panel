@@ -49,7 +49,7 @@
 
 		<div
 			v-if="showTemplates"
-			class="grid gap-3 lt-sm:grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+			class="grid gap-3 lt-sm:grid-cols-1 sm:grid-cols-2 dt:grid-cols-3"
 		>
 			<el-card
 				v-for="template in templates"

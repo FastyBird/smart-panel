@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file -- stubs of the child components */
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, shallowMount } from '@vue/test-utils';

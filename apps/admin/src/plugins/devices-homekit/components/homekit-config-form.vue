@@ -66,7 +66,7 @@
 			>
 				<template #header>
 					<div class="flex items-center justify-between gap-2 flex-wrap">
-						<span class="font-medium text-base text-gray-900 dark:text-gray-100">
+						<span class="font-medium text-base text-default">
 							{{ store.status?.bridgeName || model.bridgeName }}
 						</span>
 						<div class="flex items-center gap-1.5 flex-wrap">
@@ -98,24 +98,24 @@
 				</template>
 
 				<div class="flex flex-col gap-3">
-					<span class="text-xs text-gray-500">
+					<span class="text-xs text-secondary">
 						{{ t('devicesHomeKitPlugin.status.exposedCount', { count: store.status?.exposedDevicesCount || 0 }) }}
 					</span>
 
 					<!-- QR Code preview if running -->
 					<div
 						v-if="store.status?.running && store.status?.qrCodeDataUri"
-						class="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4"
+						class="pt-3 border-t border-light flex items-center gap-4"
 					>
 						<img
 							:src="store.status.qrCodeDataUri"
 							alt="HomeKit QR Code"
 							width="80"
 							height="80"
-							class="p-1 bg-white rounded border border-gray-200 shrink-0"
+							class="p-1 bg-white rounded border border-light shrink-0"
 						/>
 						<div class="flex flex-col gap-1 min-w-0">
-							<span class="text-xs text-gray-500">{{ t('devicesHomeKitPlugin.wizard.setupCode') }}</span>
+							<span class="text-xs text-secondary">{{ t('devicesHomeKitPlugin.wizard.setupCode') }}</span>
 							<div class="flex items-center gap-2">
 								<span class="text-lg font-mono font-bold">{{ store.status.pincode }}</span>
 								<el-button
@@ -180,7 +180,7 @@
 					:placeholder="t('devicesHomeKitPlugin.fields.config.name.placeholder')"
 					name="bridgeName"
 				/>
-				<div class="text-xs text-gray-500 mt-1">
+				<div class="text-xs text-secondary mt-1">
 					{{ t('devicesHomeKitPlugin.fields.config.name.description') }}
 				</div>
 			</el-form-item>
@@ -201,7 +201,7 @@
 						class="w-full! port-input [&_input]:text-left!"
 						@keydown="filterPortKeydown"
 					/>
-					<div class="text-xs text-gray-500">
+					<div class="text-xs text-secondary">
 						{{ t('devicesHomeKitPlugin.fields.config.port.description') }}
 					</div>
 				</div>
@@ -233,7 +233,7 @@
 							</el-tooltip>
 						</template>
 					</el-input>
-					<div class="text-xs text-gray-500">
+					<div class="text-xs text-secondary">
 						{{ t('devicesHomeKitPlugin.fields.config.pinCode.description') }}
 					</div>
 				</div>

@@ -31,14 +31,14 @@
 
 	<span
 		v-else-if="cell?.render === 'text'"
-		:class="cell.muted ? 'text-gray-500' : undefined"
+		:class="cell.muted ? 'text-secondary' : undefined"
 	>
 		{{ cell.value }}
 	</span>
 
 	<span
 		v-else
-		class="text-gray-400"
+		class="text-muted"
 	>
 		&mdash;
 	</span>

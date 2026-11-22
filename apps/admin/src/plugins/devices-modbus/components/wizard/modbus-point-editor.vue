@@ -47,7 +47,7 @@
 					</el-select>
 					<div
 						v-if="capabilityEditable && lockedChannelCategory"
-						class="text-xs text-gray-500 mt-1 w-[200px]"
+						class="text-xs text-secondary mt-1 w-[200px]"
 						data-test-id="point-editor-capability-locked"
 					>
 						{{ t('devicesModbusPlugin.wizard.points.editor.capabilityLocked') }}

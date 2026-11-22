@@ -45,7 +45,7 @@
 					:value="item.value"
 				/>
 			</el-select>
-			<div class="text-xs text-gray-500 mt-1">
+			<div class="text-xs text-secondary mt-1">
 				{{ t('devicesModbusPlugin.wizard.device.category.hint') }}
 			</div>
 		</el-form-item>
@@ -69,7 +69,7 @@
 					:value="item.value"
 				/>
 			</el-select>
-			<div class="text-xs text-gray-500 mt-1">
+			<div class="text-xs text-secondary mt-1">
 				{{ t('devicesModule.fields.devices.room.hint') }}
 			</div>
 		</el-form-item>
@@ -88,7 +88,7 @@
 				:step-strictly="false"
 				name="devicePollInterval"
 			/>
-			<div class="text-xs text-gray-500 mt-1 w-full">
+			<div class="text-xs text-secondary mt-1 w-full">
 				{{ t('devicesModbusPlugin.wizard.device.pollInterval.hint') }}
 			</div>
 			<el-alert

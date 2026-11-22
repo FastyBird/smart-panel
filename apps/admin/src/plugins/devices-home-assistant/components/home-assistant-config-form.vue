@@ -68,9 +68,9 @@
 					<template #default="{ item }">
 						<div class="flex flex-col">
 							<span class="font-medium">{{ item.value }}</span>
-							<span class="text-xs text-gray-500">
+							<span class="text-xs text-secondary">
 								{{ item.name }}
-								<template v-if="item.version"> (v{{ item.version }})</template>
+								<template v-if="item.version">(v{{ item.version }})</template>
 							</span>
 						</div>
 					</template>

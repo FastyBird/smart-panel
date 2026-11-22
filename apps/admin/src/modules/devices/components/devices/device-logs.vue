@@ -64,7 +64,7 @@
 				<div class="flex flex-col overflow-hidden h-full">
 					<el-scrollbar
 						v-if="selectedLog"
-						class="grow-1 p-2 md:px-4"
+						class="grow-1 p-2 tp:px-4"
 					>
 						<system-log-detail :system-log="selectedLog" />
 					</el-scrollbar>

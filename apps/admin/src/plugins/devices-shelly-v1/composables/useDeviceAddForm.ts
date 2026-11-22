@@ -7,8 +7,8 @@ import { orderBy } from 'natural-orderby';
 
 import { tryOnMounted } from '@vueuse/core';
 
-import { deepClone, getErrorReason, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
+import { deepClone, getErrorReason, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { DevicesApiException, FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
 import type { DevicesShellyV1PluginCreateDeviceInfoOperation } from '../../../openapi.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
@@ -76,72 +76,84 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	const initialModel: Reactive<IShellyV1DeviceAddForm> = deepClone<Reactive<IShellyV1DeviceAddForm>>(toRaw(model));
 
-	const stepOneFormEl = ref<FormInstance | undefined>(undefined);
-	const stepTwoFormEl = ref<FormInstance | undefined>(undefined);
-
-	const activeStep = ref<'one' | 'two'>('one');
+	const formEl = ref<FormInstance | undefined>(undefined);
 
 	const formChanged = ref<boolean>(false);
 
 	const deviceInfo = ref<IShellyV1DeviceInfo | null>(null);
 
-	const submitStep = async (step: 'one' | 'two'): Promise<'ok' | 'added'> => {
-		if (step === 'one') {
-			stepOneFormEl.value!.clearValidate();
+	// Test connection: reads the device at the hostname, with the password when it has one. A failure is returned to
+	// the caller (the test result), not shown as a toast
+	const checkDevice = async (): Promise<IShellyV1DeviceInfo> => {
+		await formEl.value?.validateField(['hostname']);
 
-			const valid = await stepOneFormEl.value!.validate();
+		const errorMessage = t('devicesShellyV1Plugin.messages.devices.notChecked', { device: model.name });
 
-			if (!valid) throw new DevicesShellyV1ValidationException('Form not valid');
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/info`, {
+				body: {
+					data: transformDeviceInfoRequest({
+						hostname: model.hostname,
+						password: model.password,
+					}),
+				},
+			});
 
+			if (typeof responseData !== 'undefined') {
+				const info = transformDeviceInfoResponse(responseData.data);
+
+				// Check if device is reachable
+				if (!info.reachable) {
+					throw new DevicesShellyV1ApiException(t('devicesShellyV1Plugin.messages.devices.notReachable'), 404);
+				}
+
+				// Check if authentication is valid
+				if (info.authRequired && !info.authValid) {
+					throw new DevicesShellyV1ApiException(t('devicesShellyV1Plugin.messages.devices.invalidPassword'), 401);
+				}
+
+				// Only set deviceInfo after validation passes to avoid triggering watchers on invalid data
+				deviceInfo.value = info;
+
+				return deviceInfo.value;
+			}
+
+			let errorReason: string | null = errorMessage;
+
+			if (error) {
+				errorReason = getErrorReason<DevicesShellyV1PluginCreateDeviceInfoOperation>(error, errorReason);
+			}
+
+			throw new DevicesShellyV1ApiException(errorReason, response.status);
+		} catch (error: unknown) {
+			if (error instanceof DevicesShellyV1ApiException) {
+				throw error;
+			}
+
+			throw new DevicesShellyV1ApiException(errorMessage, 500);
+		}
+	};
+
+	// Save checks the device first when it was not tested, then adds it
+	const submit = async (): Promise<'added'> => {
+		formEl.value?.clearValidate();
+
+		const valid = await formEl.value?.validate();
+
+		if (!valid) throw new DevicesShellyV1ValidationException('Form not valid');
+
+		if (deviceInfo.value === null) {
 			formResult.value = FormResult.WORKING;
 
-			const errorMessage = t('devicesShellyV1Plugin.messages.devices.notChecked', { device: model.name });
-
 			try {
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/info`, {
-					body: {
-						data: transformDeviceInfoRequest({
-							hostname: model.hostname,
-							password: model.password,
-						}),
-					},
-				});
-
-				if (typeof responseData !== 'undefined') {
-					const info = transformDeviceInfoResponse(responseData.data);
-
-					// Check if device is reachable
-					if (!info.reachable) {
-						throw new DevicesShellyV1ApiException(t('devicesShellyV1Plugin.messages.devices.notReachable'), 404);
-					}
-
-					// Check if authentication is valid
-					if (info.authRequired && !info.authValid) {
-						throw new DevicesShellyV1ApiException(t('devicesShellyV1Plugin.messages.devices.invalidPassword'), 401);
-					}
-
-					// Only set deviceInfo after validation passes to avoid triggering watchers on invalid data
-					deviceInfo.value = info;
-
-					activeStep.value = 'two';
-
-					formResult.value = FormResult.NONE;
-
-					return 'ok';
-				}
-
-				let errorReason: string | null = errorMessage;
-
-				if (error) {
-					errorReason = getErrorReason<DevicesShellyV1PluginCreateDeviceInfoOperation>(error, errorReason);
-				}
-
-				throw new DevicesShellyV1ApiException(errorReason, response.status);
+				await checkDevice();
 			} catch (error: unknown) {
+				const errorMessage = t('devicesShellyV1Plugin.messages.devices.notChecked', { device: model.name });
+
 				formResult.value = FormResult.ERROR;
 
 				timer = window.setTimeout(clear, 2000);
@@ -154,62 +166,54 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 				throw error;
 			}
-		} else if (step === 'two') {
-			stepTwoFormEl.value!.clearValidate();
+		}
 
-			const valid = await stepTwoFormEl.value!.validate();
+		const parsedModel = ShellyV1DeviceAddFormSchema.safeParse(model);
 
-			if (!valid) throw new DevicesShellyV1ValidationException('Form not valid');
+		if (!parsedModel.success) {
+			logger.error('Schema validation failed with:', parsedModel.error);
 
-			const parsedModel = ShellyV1DeviceAddFormSchema.safeParse(model);
+			throw new DevicesShellyV1ValidationException('Failed to validate create device model.');
+		}
 
-			if (!parsedModel.success) {
-				logger.error('Schema validation failed with:', parsedModel.error);
+		formResult.value = FormResult.WORKING;
 
-				throw new DevicesShellyV1ValidationException('Failed to validate create device model.');
-			}
+		const errorMessage = t('devicesShellyV1Plugin.messages.devices.notCreated', { device: model.name });
 
-			formResult.value = FormResult.WORKING;
-
-			const errorMessage = t('devicesShellyV1Plugin.messages.devices.notCreated', { device: model.name });
-
-			try {
-				await devicesStore.add({
-					id,
-					draft: false,
-					data: {
-						...parsedModel.data,
-						type: DEVICES_SHELLY_V1_TYPE,
-					},
-				});
-			} catch (error: unknown) {
-				formResult.value = FormResult.ERROR;
-
-				timer = window.setTimeout(clear, 2000);
-
-				if (error instanceof DevicesApiException && error.code === 422) {
-					flashMessage.error(error.message);
-				} else {
-					flashMessage.error(errorMessage);
-				}
-
-				throw error;
-			}
-
-			formResult.value = FormResult.OK;
+		try {
+			await devicesStore.add({
+				id,
+				draft: false,
+				data: {
+					...parsedModel.data,
+					type: DEVICES_SHELLY_V1_TYPE,
+				},
+			});
+		} catch (error: unknown) {
+			formResult.value = FormResult.ERROR;
 
 			timer = window.setTimeout(clear, 2000);
 
-			flashMessage.success(
-				t('devicesShellyV1Plugin.messages.devices.created', {
-					device: model.name,
-				})
-			);
+			if (error instanceof DevicesApiException && error.code === 422) {
+				flashMessage.error(error.message);
+			} else {
+				flashMessage.error(errorMessage);
+			}
 
-			return 'added';
-		} else {
-			throw new DevicesShellyV1ValidationException('Unknown step');
+			throw error;
 		}
+
+		formResult.value = FormResult.OK;
+
+		timer = window.setTimeout(clear, 2000);
+
+		flashMessage.success(
+			t('devicesShellyV1Plugin.messages.devices.created', {
+				device: model.name,
+			})
+		);
+
+		return 'added';
 	};
 
 	const clear = (): void => {
@@ -246,14 +250,13 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	return {
 		categoriesOptions,
-		activeStep,
 		deviceInfo,
 		supportedDevices,
 		model,
-		stepOneFormEl,
-		stepTwoFormEl,
+		formEl,
 		formChanged,
-		submitStep,
+		checkDevice,
+		submit,
 		clear,
 		formResult,
 	};

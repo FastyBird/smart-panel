@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
@@ -22,6 +22,7 @@ vi.mock('../../../modules/devices', async () => {
 });
 
 const mockSubmit = vi.fn().mockResolvedValue(undefined);
+const mockCheck = vi.fn();
 
 vi.mock('../composables/useDeviceAddForm', () => ({
 	useDeviceAddForm: () => ({
@@ -36,26 +37,21 @@ vi.mock('../composables/useDeviceAddForm', () => ({
 			description: '',
 			identifier: 'shelly-device',
 		},
-		stepOneFormEl: ref({
+		formEl: ref({
 			clearValidate: vi.fn(),
 			resetFields: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		}),
-		stepTwoFormEl: ref({
-			clearValidate: vi.fn(),
-			resetFields: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		}),
-		activeStep: ref('two'),
 		deviceInfo: ref({
 			id: 'shelly-id',
 			model: 'shelly-model',
 			firmware: '1.0.0',
 		}),
-		supportedDevices: ref([]),
+		supportedDevices: ref([{ name: 'Shelly Plus 1', models: ['SHELLY-MODEL'], categories: [] }]),
 		formChanged: { value: false },
 		formResult: { value: 'none' },
-		submitStep: mockSubmit, // make sure this is defined!
+		submit: mockSubmit,
+		checkDevice: mockCheck,
 	}),
 }));
 
@@ -111,5 +107,32 @@ describe('ShellyNgDeviceAddForm.vue', () => {
 		wrapper.vm.$emit('update:remote-form-changed', true);
 
 		expect(wrapper.emitted('update:remote-form-changed')).toBeTruthy();
+	});
+
+	it('has no steps: Save submits the one form, which tests the device first when needed', async () => {
+		await wrapper.setProps({ remoteFormSubmit: true });
+
+		expect(mockSubmit).toHaveBeenCalledTimes(1);
+		expect(wrapper.text()).not.toContain('devicesShellyNgPlugin.buttons.next.title');
+	});
+
+	it('shows the model and firmware as the connection test result', async () => {
+		mockCheck.mockResolvedValueOnce({ id: 'shelly-id', model: 'shelly-model', firmware: '1.0.0' });
+
+		await wrapper.get('[data-test-id="test-connection-button"]').trigger('click');
+		await flushPromises();
+
+		expect(mockCheck).toHaveBeenCalledTimes(1);
+		expect(wrapper.get('[data-test-id="test-connection-result"]').text()).toContain('Shelly Plus 1');
+		expect(wrapper.get('[data-test-id="test-connection-result"]').text()).toContain('1.0.0');
+	});
+
+	it('shows why the device could not be read', async () => {
+		mockCheck.mockRejectedValueOnce(new Error('Invalid password'));
+
+		await wrapper.get('[data-test-id="test-connection-button"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.get('[data-test-id="test-connection-result"]').text()).toContain('Invalid password');
 	});
 });

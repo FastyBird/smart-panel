@@ -50,20 +50,32 @@ vi.mock('../../../common', async () => {
 	};
 });
 
+const DEVICE_INFO_RESPONSE = {
+	id: 'shellyplus1-a1b2',
+	name: 'Living room',
+	mac: 'A1B2C3D4E5F6',
+	model: 'SNSW-001X16EU',
+	firmware: '1.4.4',
+	app: 'Plus1',
+	authentication: { domain: null, enabled: false },
+	discoverable: true,
+	components: [],
+};
+
+const DEVICE_INFO = { ...DEVICE_INFO_RESPONSE } as unknown as NonNullable<ReturnType<typeof useDeviceAddForm>['deviceInfo']['value']>;
+
 describe('useDeviceAddForm', () => {
 	let form: ReturnType<typeof useDeviceAddForm>;
 
 	const deviceId = uuid().toString();
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		form = useDeviceAddForm({ id: deviceId.toString() });
-		form.stepOneFormEl.value = {
+		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
-		} as unknown as FormInstance;
-		form.stepTwoFormEl.value = {
-			clearValidate: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
+			validateField: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 	});
 
@@ -84,28 +96,63 @@ describe('useDeviceAddForm', () => {
 		expect(form.formChanged.value).toBe(true);
 	});
 
-	it('should submit and call store add method', async () => {
+	it('adds a tested device without reading it again', async () => {
 		form.model.name = 'New Device';
 		form.model.hostname = '192.168.0.1';
 
+		// A changed hostname forgets the last test, so the test comes after it
 		await nextTick();
 
-		await form.submitStep('two');
+		form.deviceInfo.value = DEVICE_INFO;
 
+		await nextTick();
+
+		await form.submit();
+
+		expect(backendClient.POST).not.toHaveBeenCalled();
 		expect(mockAdd).toHaveBeenCalledWith({
 			id: deviceId.toString(),
 			draft: false,
-			data: {
+			data: expect.objectContaining({
 				type: DEVICES_SHELLY_NG_TYPE,
 				id: deviceId.toString(),
-				category: DevicesModuleDeviceCategory.generic,
 				name: 'New Device',
-				description: null,
-				enabled: true,
+				identifier: 'shellyplus1-a1b2',
 				wifiAddress: '192.168.0.1',
-				password: '',
-			},
+			}),
 		});
 		expect(form.formResult.value).toBe(FormResult.OK);
+	});
+
+	it('reads an untested device first, then adds it', async () => {
+		backendClient.POST.mockResolvedValueOnce({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+		form.model.name = 'New Device';
+		form.model.hostname = '192.168.0.1';
+
+		await form.submit();
+
+		expect(backendClient.POST).toHaveBeenCalledTimes(1);
+		expect(form.deviceInfo.value?.model).toBe('SNSW-001X16EU');
+		expect(mockAdd).toHaveBeenCalledTimes(1);
+	});
+
+	it('adds nothing when the device cannot be read', async () => {
+		backendClient.POST.mockResolvedValueOnce({ data: undefined, error: { error: { message: 'Not found' } }, response: { status: 404 } });
+		form.model.name = 'New Device';
+		form.model.hostname = '192.168.0.1';
+
+		await expect(form.submit()).rejects.toThrow();
+
+		expect(mockAdd).not.toHaveBeenCalled();
+		expect(form.formResult.value).toBe(FormResult.ERROR);
+	});
+
+	it('tests the connection without a toast, returning the reason it failed', async () => {
+		backendClient.POST.mockResolvedValueOnce({ data: undefined, error: undefined, response: { status: 500 } });
+		form.model.hostname = '192.168.0.1';
+
+		await expect(form.checkDevice()).rejects.toThrow('devicesShellyNgPlugin.messages.devices.notChecked');
+
+		expect(form.formResult.value).toBe(FormResult.NONE);
 	});
 });

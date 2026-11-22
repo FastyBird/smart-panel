@@ -56,7 +56,7 @@
 					data-test-id="review-binding"
 				>
 					<span class="font-mono">{{ line.property }}</span>
-					<span class="text-gray-500">{{ line.direction }}:</span>
+					<span class="text-secondary">{{ line.direction }}:</span>
 					<span>{{ line.text }}</span>
 				</li>
 			</ul>

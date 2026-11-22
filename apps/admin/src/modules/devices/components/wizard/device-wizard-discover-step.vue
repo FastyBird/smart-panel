@@ -67,7 +67,7 @@
 		>
 			<el-form
 				label-position="top"
-				class="grid gap-3 md:grid-cols-[repeat(auto-fit,minmax(0,1fr))_auto]"
+				class="grid gap-3 tp:grid-cols-[repeat(auto-fit,minmax(0,1fr))_auto]"
 				@submit.prevent="onSubmitForm(control)"
 			>
 				<el-form-item
@@ -90,7 +90,7 @@
 					/>
 				</el-form-item>
 
-				<el-form-item class="mb-0! md:self-end">
+				<el-form-item class="mb-0! tp:self-end">
 					<el-button
 						type="primary"
 						native-type="submit"
@@ -148,7 +148,7 @@
 							<span class="font-medium">{{ row.label }}</span>
 							<span
 								v-if="row.subLabel"
-								class="text-xs text-gray-500"
+								class="text-xs text-secondary"
 							>
 								{{ row.subLabel }}
 							</span>

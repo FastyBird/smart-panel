@@ -80,7 +80,7 @@ dark, and updates all six locales.
 | AR-8 | #1665 | 2 | `feat(admin): show the page header on every screen and darken the phone app bar` | AR-7 | merged in #1706 |
 | AR-9 | #1666 | 3 | `refactor(admin): move the devices list and detail onto the page templates` | AR-3, AR-5, AR-8 | merged in #1708 |
 | AR-10 | #1667 | 3 | `refactor(admin): move device add and edit onto the edit drawer` | AR-4, AR-6, AR-9 | merged in #1709 |
-| AR-11 | #1668 | 3 | `refactor(admin): move device plugin forms onto the slot contract` | AR-6, AR-10 | in progress (single-step forms in review) |
+| AR-11 | #1668 | 3 | `refactor(admin): move device plugin forms onto the slot contract` | AR-6, AR-10 | in review (single-step forms merged in #1741) |
 | AR-12 | #1669 | 3 | `refactor(admin): move the device wizards onto the wizard shell` | AR-4, AR-5, AR-9 | merged in #1739 |
 | AR-13 | #1670 | 3 | `refactor(admin): move automations onto the list and editor templates` | AR-3, AR-5, AR-8 | open |
 | AR-14 | #1671 | 3 | `refactor(admin): move remote access onto the settings and catalogue templates` | AR-3, AR-4, AR-5, AR-6, AR-8 | open |

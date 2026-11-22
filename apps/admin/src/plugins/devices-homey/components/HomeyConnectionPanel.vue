@@ -8,7 +8,7 @@
 			<div class="flex items-center justify-between gap-3">
 				<div>
 					<div class="font-medium">{{ t('devicesHomeyPlugin.status.title') }}</div>
-					<div class="text-xs text-gray-500 mt-1">{{ t('devicesHomeyPlugin.status.description') }}</div>
+					<div class="text-xs text-secondary mt-1">{{ t('devicesHomeyPlugin.status.description') }}</div>
 				</div>
 
 				<el-button
@@ -69,7 +69,7 @@
 		/>
 
 		<div class="font-medium">{{ t('devicesHomeyPlugin.connectionTest.title') }}</div>
-		<p class="text-sm text-gray-500 mt-1 mb-3">
+		<p class="text-sm text-secondary mt-1 mb-3">
 			{{ t('devicesHomeyPlugin.connectionTest.description') }}
 		</p>
 
@@ -96,13 +96,13 @@
 
 		<p
 			v-if="!statusStore.status?.configured"
-			class="text-xs text-gray-500 mt-2"
+			class="text-xs text-secondary mt-2"
 		>
 			{{ t('devicesHomeyPlugin.connectionTest.savedUnavailable') }}
 		</p>
 		<p
 			v-if="candidateRequest === null"
-			class="text-xs text-gray-500 mt-1"
+			class="text-xs text-secondary mt-1"
 		>
 			{{ t('devicesHomeyPlugin.connectionTest.candidateUnavailable') }}
 		</p>

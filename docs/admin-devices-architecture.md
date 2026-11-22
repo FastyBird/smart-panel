@@ -74,6 +74,10 @@ A plugin's `deviceAddForm` and `deviceEditForm` keep their own `el-form`, model 
 </el-form>
 ```
 
+A form that needs several steps runs them in `wizard-shell` instead of steps of its own (spec section 7). It calls `useDeviceFormSteps()` from the devices module while it is mounted: the host leaves out its form footer and the phone app bar's Save, the wizard-shell carries Back, Next and the final action, and Cancel calls the returned `close()`, which leaves the form the way the host's Close does, asking first when it has changes. Home Assistant and Zigbee2MQTT add devices this way. A form whose only extra step was reading the device, such as the Shelly add forms, stays one form: `test-connection` at the end of its connection section reads the device and names the model and firmware, and Save reads it first when it was not tested.
+
+The design system lint rules are errors in `src/modules/devices` and `src/plugins/devices-*` (`eslint.config.ts`, `DESIGN_SYSTEM_MIGRATED_FOLDERS`).
+
 ## Device detail tabs
 
 Register `components.deviceDetailTabs` on the device element. Each tab has a stable `id`, translated `label`, `icon`, a Vue `component`, and an optional `visible(device)` predicate. The host passes `device` to the component and supplies the tab layout and scroll container.

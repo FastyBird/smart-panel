@@ -1,10 +1,10 @@
-import { ref } from 'vue';
+import { defineComponent, h, ref } from 'vue';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
-import { SUBMIT_FORM_SM } from '../../../common';
+import { provideDeviceFormHost } from '../../../modules/devices';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
 import HomeAssistantDeviceAddForm from './home-assistant-device-add-form.vue';
@@ -128,14 +128,8 @@ vi.mock('../../../common/services/plugins', () => ({
 
 describe('HomeAssistantDeviceAddForm.vue', () => {
 	let wrapper: ReturnType<typeof mount>;
-	let teleportTarget: HTMLDivElement;
 
 	beforeEach(() => {
-		// Create teleport target element
-		teleportTarget = document.createElement('div');
-		teleportTarget.id = SUBMIT_FORM_SM;
-		document.body.appendChild(teleportTarget);
-
 		wrapper = mount(HomeAssistantDeviceAddForm, {
 			props: {
 				id: 'abc123',
@@ -157,27 +151,53 @@ describe('HomeAssistantDeviceAddForm.vue', () => {
 		if (wrapper) {
 			await wrapper.unmount();
 		}
-		// Clean up teleport target
-		if (teleportTarget) {
-			try {
-				if (teleportTarget.parentNode) {
-					teleportTarget.parentNode.removeChild(teleportTarget);
-				}
-			} catch {
-				// Ignore cleanup errors
-			}
-		}
 		// Wait for any pending async operations
 		await new Promise((resolve) => setTimeout(resolve, 0));
 	});
 
-	it('renders collapse component', () => {
-		expect(wrapper.findComponent({ name: 'ElCollapse' }).exists()).toBe(true);
-	});
+	it('runs its five steps in the wizard shell, which takes over the host footer and closes through the host', async () => {
+		const close = vi.fn();
+		let host: ReturnType<typeof provideDeviceFormHost> | undefined;
 
-	it('renders collapse items for each step', () => {
-		const collapseItems = wrapper.findAllComponents({ name: 'ElCollapseItem' });
-		expect(collapseItems.length).toBeGreaterThan(0);
+		const hosted = mount(
+			defineComponent({
+				setup() {
+					host = provideDeviceFormHost(close);
+
+					return () => h(HomeAssistantDeviceAddForm, { id: 'abc123', type: DEVICES_HOME_ASSISTANT_TYPE });
+				},
+			}),
+			{
+				global: {
+					stubs: {
+						'device-selection-step': true,
+						'category-selection-step': true,
+						'mapping-preview-step': true,
+						'mapping-customization-step': true,
+						'device-configuration-step': true,
+					},
+				},
+			}
+		);
+
+		const shell = hosted.findComponent({ name: 'WizardShell' });
+
+		expect(shell.props('steps')).toHaveLength(5);
+		expect(shell.props('current')).toBe('one');
+		expect(host!.stepped.value).toBe(true);
+
+		await hosted.get('[data-test-id="wizard-shell-next"]').trigger('click');
+		await flushPromises();
+
+		expect(mockSubmit).toHaveBeenCalledWith('one', undefined);
+
+		await hosted.get('[data-test-id="wizard-shell-cancel"]').trigger('click');
+
+		expect(close).toHaveBeenCalledTimes(1);
+
+		hosted.unmount();
+
+		expect(host!.stepped.value).toBe(false);
 	});
 
 	it('emits update:remote-form-submit when remoteFormSubmit is true', async () => {

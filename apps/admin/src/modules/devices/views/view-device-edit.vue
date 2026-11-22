@@ -17,7 +17,7 @@
 	>
 		<el-scrollbar
 			v-if="device !== null"
-			class="grow-1 p-2 md:px-4"
+			class="grow-1 p-2 tp:px-4"
 		>
 			<component
 				:is="element?.components?.deviceEditForm"

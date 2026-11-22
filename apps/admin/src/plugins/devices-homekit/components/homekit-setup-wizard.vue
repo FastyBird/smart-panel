@@ -61,9 +61,7 @@
 					/>
 
 					<div class="flex items-center gap-2 shrink-0">
-						<span class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-							{{ t('devicesHomeKitPlugin.wizard.filterDevices') }}:
-						</span>
+						<span class="text-sm font-medium text-regular whitespace-nowrap">{{ t('devicesHomeKitPlugin.wizard.filterDevices') }}:</span>
 
 						<el-select
 							v-model="filterMode"
@@ -85,7 +83,7 @@
 				<!-- Devices Table -->
 				<div
 					v-loading="store.fetchingCandidates"
-					class="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden mb-4"
+					class="border border-light rounded-md overflow-hidden mb-4"
 				>
 					<el-table
 						:data="filteredCandidates"
@@ -121,10 +119,10 @@
 						>
 							<template #default="{ row }">
 								<div class="flex flex-col">
-									<span class="font-medium text-gray-900 dark:text-gray-100">{{ row.name }}</span>
+									<span class="font-medium text-default">{{ row.name }}</span>
 									<span
 										v-if="row.roomName"
-										class="text-xs text-gray-500"
+										class="text-xs text-secondary"
 									>
 										{{ row.roomName }}
 									</span>
@@ -181,8 +179,8 @@
 					class="mb-4!"
 				/>
 
-				<div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
-					<span class="text-sm text-gray-600 dark:text-gray-400">
+				<div class="flex items-center justify-between pt-2 border-t border-light">
+					<span class="text-sm text-regular">
 						{{ t('devicesHomeKitPlugin.wizard.selectedCount', { count: selectedCount, total: totalCompatibleCount }) }}
 					</span>
 
@@ -216,12 +214,12 @@
 					class="mb-4!"
 				/>
 
-				<div class="flex flex-col md:flex-row items-center justify-around gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg mb-4">
+				<div class="flex flex-col tp:flex-row items-center justify-around gap-6 p-4 bg-fill-light rounded-lg mb-4">
 					<!-- QR Code -->
 					<div class="flex flex-col items-center">
 						<div
 							v-if="store.status?.qrCodeDataUri"
-							class="p-3 bg-white rounded-lg shadow-sm border border-gray-200"
+							class="p-3 bg-white rounded-lg shadow-sm border border-light"
 						>
 							<img
 								:src="store.status.qrCodeDataUri"
@@ -233,11 +231,11 @@
 						</div>
 						<div
 							v-else
-							class="w-[200px] h-[200px] flex items-center justify-center bg-gray-100 rounded-lg text-gray-400"
+							class="w-[200px] h-[200px] flex items-center justify-center bg-fill rounded-lg text-muted"
 						>
 							<el-icon class="text-4xl"><icon icon="mdi:qrcode-remove" /></el-icon>
 						</div>
-						<span class="text-xs text-gray-500 mt-2">
+						<span class="text-xs text-secondary mt-2">
 							{{ t('devicesHomeKitPlugin.wizard.scanWithCamera') }}
 						</span>
 					</div>
@@ -245,11 +243,11 @@
 					<!-- Pairing Details -->
 					<div class="flex flex-col gap-4 flex-1 max-w-[320px]">
 						<div>
-							<div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+							<div class="text-xs font-medium text-secondary uppercase tracking-wider mb-1">
 								{{ t('devicesHomeKitPlugin.wizard.setupCode') }}
 							</div>
 							<div class="flex items-center gap-2">
-								<span class="text-2xl font-mono font-bold tracking-widest text-gray-900 dark:text-gray-100">
+								<span class="text-2xl font-mono font-bold tracking-widest text-default">
 									{{ store.status?.pincode || '---' }}
 								</span>
 								<el-button
@@ -263,7 +261,7 @@
 						</div>
 
 						<div>
-							<div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+							<div class="text-xs font-medium text-secondary uppercase tracking-wider mb-1">
 								{{ t('devicesHomeKitPlugin.wizard.bridgeStatus') }}
 							</div>
 							<el-alert
@@ -298,7 +296,7 @@
 							</el-alert>
 						</div>
 
-						<ol class="text-xs text-gray-500 dark:text-gray-400 space-y-1 list-decimal pl-4 m-0">
+						<ol class="text-xs text-secondary space-y-1 list-decimal pl-4 m-0">
 							<li>{{ t('devicesHomeKitPlugin.wizard.instruction1') }}</li>
 							<li>{{ t('devicesHomeKitPlugin.wizard.instruction2') }}</li>
 							<li>{{ t('devicesHomeKitPlugin.wizard.instruction3') }}</li>
@@ -306,7 +304,7 @@
 					</div>
 				</div>
 
-				<div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+				<div class="flex items-center justify-between pt-2 border-t border-light">
 					<div class="flex items-center gap-2">
 						<el-button
 							:disabled="isBusy"

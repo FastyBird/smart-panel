@@ -8,14 +8,15 @@ import type { IShellyNgDeviceAddForm, IShellyNgDeviceEditForm, IShellyNgDeviceIn
 
 export interface IUseDeviceAddForm {
 	categoriesOptions: ComputedRef<{ value: DevicesModuleDeviceCategory; label: string }[]>;
-	activeStep: Ref<'one' | 'two'>;
 	supportedDevices: Ref<IShellyNgSupportedDevice[]>;
 	model: Reactive<IShellyNgDeviceAddForm>;
-	stepOneFormEl: Ref<FormInstance | undefined>;
-	stepTwoFormEl: Ref<FormInstance | undefined>;
+	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	deviceInfo: Ref<IShellyNgDeviceInfo | null>;
-	submitStep: (step: 'one' | 'two') => Promise<'ok' | 'added'>;
+	/** Reads the device at the hostname; rejects with the reason it could not */
+	checkDevice: () => Promise<IShellyNgDeviceInfo>;
+	/** Checks the device first when it was not tested, then adds it */
+	submit: () => Promise<'added'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
 }

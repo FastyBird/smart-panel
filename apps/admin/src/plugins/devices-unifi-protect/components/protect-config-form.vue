@@ -34,7 +34,7 @@
 			@use="onUseHost"
 		/>
 
-		<div class="grid grid-cols-1 md:grid-cols-[1fr_10rem] gap-4">
+		<div class="grid grid-cols-1 tp:grid-cols-[1fr_10rem] gap-4">
 			<el-form-item
 				:label="t('devicesUnifiProtectPlugin.config.host.label')"
 				prop="host"
@@ -200,7 +200,7 @@
 					</el-radio-group>
 				</el-form-item>
 
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 tp:grid-cols-2 gap-4">
 					<el-form-item
 						:label="t('devicesUnifiProtectPlugin.config.snapshotMinIntervalMs.label')"
 						prop="snapshotMinIntervalMs"

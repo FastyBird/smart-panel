@@ -77,7 +77,7 @@
 				{{ t('devicesVirtualPlugin.wizard.review.hideSource.label', { device: sourceDevice?.name ?? '' }) }}
 			</el-checkbox>
 
-			<div class="text-xs text-gray-500">
+			<div class="text-xs text-secondary">
 				{{ t('devicesVirtualPlugin.wizard.review.hideSource.hint') }}
 			</div>
 		</template>

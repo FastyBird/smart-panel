@@ -2,7 +2,7 @@
 	<div class="channel-input-diagnostics space-y-4">
 		<!-- Capabilities Section -->
 		<div>
-			<h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+			<h4 class="text-sm font-semibold text-regular mb-2">
 				{{ t('devicesModule.diagnostics.capabilitiesTitle') }}
 			</h4>
 
@@ -33,13 +33,13 @@
 				</template>
 				<span
 					v-else-if="isAnalogInput"
-					class="text-xs text-gray-500 dark:text-gray-400 italic"
+					class="text-xs text-secondary italic"
 				>
 					{{ t('devicesModule.diagnostics.noDiscreteEvents') }}
 				</span>
 				<span
 					v-else
-					class="text-xs text-gray-400 italic"
+					class="text-xs text-muted italic"
 				>
 					{{ t('devicesModule.diagnostics.noCapabilities') }}
 				</span>
@@ -47,7 +47,7 @@
 
 			<div
 				v-else
-				class="text-xs text-gray-400 italic"
+				class="text-xs text-muted italic"
 			>
 				{{ t('devicesModule.diagnostics.noCapabilities') }}
 			</div>
@@ -57,10 +57,10 @@
 		<div>
 			<div class="flex items-center justify-between mb-2">
 				<div class="flex items-center space-x-2">
-					<h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+					<h4 class="text-sm font-semibold text-regular">
 						{{ t('devicesModule.diagnostics.liveEventsTitle') }}
 					</h4>
-					<span class="text-xs text-gray-400">({{ occurrences.length }})</span>
+					<span class="text-xs text-muted">({{ occurrences.length }})</span>
 				</div>
 
 				<el-button
@@ -79,7 +79,7 @@
 
 			<div
 				v-if="occurrences.length === 0"
-				class="py-4 text-center text-xs text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded"
+				class="py-4 text-center text-xs text-muted bg-fill-light rounded"
 			>
 				{{ t('devicesModule.diagnostics.noOccurrences') }}
 			</div>
@@ -97,7 +97,7 @@
 					width="120"
 				>
 					<template #default="{ row }">
-						<span class="font-mono text-xs text-gray-500 dark:text-gray-400">
+						<span class="font-mono text-xs text-secondary">
 							{{ formatTimestamp(row.receivedAt) }}
 						</span>
 					</template>
@@ -123,7 +123,7 @@
 					:label="t('devicesModule.diagnostics.columnData')"
 				>
 					<template #default="{ row }">
-						<span class="font-mono text-xs text-gray-700 dark:text-gray-300">
+						<span class="font-mono text-xs text-regular">
 							{{ row.data !== null && row.data !== undefined ? JSON.stringify(row.data) : '-' }}
 						</span>
 					</template>
@@ -136,13 +136,13 @@
 					<template #default="{ row }">
 						<span
 							v-if="row.nativeEventType"
-							class="font-mono text-xs text-gray-500 dark:text-gray-400"
+							class="font-mono text-xs text-secondary"
 						>
 							{{ row.nativeEventType }}
 						</span>
 						<span
 							v-else
-							class="text-xs text-gray-400 dark:text-gray-600"
+							class="text-xs text-muted"
 						>
 							-
 						</span>
