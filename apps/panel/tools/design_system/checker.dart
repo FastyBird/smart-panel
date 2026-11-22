@@ -307,8 +307,10 @@ class _Visitor extends RecursiveAstVisitor<void> {
     final target = node.target;
     final name = node.methodName.name;
 
-    final isConstructor = target == null ||
-        (target is SimpleIdentifier && _isPrefix(target.name, node));
+    // `palette..Color(…)` has no target either, but calls a method on
+    // `palette`.
+    final isConstructor = !node.isCascaded &&
+        (target == null || (target is SimpleIdentifier && _isPrefix(target.name, node)));
     final namedConstructorOf = switch (target) {
       SimpleIdentifier(:final name) when !_isPrefix(name, node) => name,
       PrefixedIdentifier(:final prefix, :final identifier)
@@ -374,6 +376,16 @@ class _Visitor extends RecursiveAstVisitor<void> {
           FieldDeclaration(:final fields) => inVariables(fields),
           _ => false,
         });
+    // A for-in variable is in scope in the body only, not in the iterable.
+    // A classic for variable is in scope in the whole loop; its own
+    // initialiser cannot use it.
+    bool inLoop(ForLoopParts parts, bool inBody) => switch (parts) {
+          ForEachPartsWithDeclaration(:final loopVariable) => inBody && named(loopVariable.name),
+          ForEachPartsWithPattern(:final pattern) => inBody && _patternDeclares(pattern, name),
+          ForPartsWithDeclarations(:final variables) => inVariables(variables),
+          ForPartsWithPattern(:final variables) => _patternDeclares(variables.pattern, name),
+          _ => false,
+        };
 
     return switch (scope) {
       FunctionExpression(:final parameters) => inParameters(parameters),
@@ -388,16 +400,14 @@ class _Visitor extends RecursiveAstVisitor<void> {
               _patternDeclares(declaration.pattern, name),
             _ => false,
           }),
-      ForStatement(:final forLoopParts) || ForElement(:final forLoopParts) => switch (forLoopParts) {
-          ForEachPartsWithDeclaration(:final loopVariable) => named(loopVariable.name),
-          ForPartsWithDeclarations(:final variables) => inVariables(variables),
-          ForEachPartsWithPattern(:final pattern) => _patternDeclares(pattern, name),
-          ForPartsWithPattern(:final variables) => _patternDeclares(variables.pattern, name),
-          _ => false,
-        },
+      ForStatement(:final forLoopParts, :final body) => inLoop(forLoopParts, child == body),
+      ForElement(:final forLoopParts, :final body) => inLoop(forLoopParts, child == body),
       CatchClause(:final exceptionParameter, :final stackTraceParameter) =>
         named(exceptionParameter?.name) || named(stackTraceParameter?.name),
-      // `if (x case final ui)` binds `ui` in the then branch only.
+      // `if (x case final ui when …)` binds `ui` in the guard and the then
+      // branch, not in `x` or the else branch.
+      GuardedPattern(:final pattern, :final whenClause?) when child == whenClause =>
+        _patternDeclares(pattern, name),
       IfStatement(:final caseClause?, :final thenStatement) =>
         child == thenStatement && _patternDeclares(caseClause.guardedPattern.pattern, name),
       IfElement(:final caseClause?, :final thenElement) =>

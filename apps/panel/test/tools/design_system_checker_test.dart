@@ -132,6 +132,8 @@ final c = AppColors.fromHex(0xFF112233);
 final d = palette.Color(0xFF112233);
 final e = factory.AppBar();
 final f = factory.SwitchListTile.adaptive(value: true);
+final g = palette..Color(0xFF112233);
+final h = factory?..AppBar()..ListTile();
 '''),
         isEmpty,
       );
@@ -145,9 +147,15 @@ import 'package:flutter/material.dart' as material;
 
 void parameter(dynamic ui) => ui.Color(0xFF112233);
 void local() { final ui = palette; ui.Color(0xFF112233); }
-void loop(List items) { for (final ui in items) { ui.Color(0xFF112233); } }
+void loop(List items, List<(Object, int)> pairs) {
+  for (final ui in items) { ui.Color(0xFF112233); }
+  for (final (ui, _) in pairs) { ui.Color(0xFF112233); }
+  final list = [for (final ui in items) ui.Color(0xFF112233)];
+}
 void pattern(Object x) {
   if (x case final ui) { ui.Color(0xFF112233); }
+  if (x case final ui when ui.Color(0xFF112233)) {}
+  final list = [if (x case final ui when ui.Color(0xFF112233)) ui.Color(0xFF112233)];
   switch (x) { case final material: material.AppBar(); }
 }
 final closure = (ui) => ui.Color(0xFF112233);
@@ -170,9 +178,15 @@ void parameter(dynamic ui) => ui.Color(0xFF112233);
 void other() => ui.Color(0xFF112233);
 void pattern(Object x) {
   if (x case final ui) {} else { ui.Color(0xFF112233); }
+  if (ui.Color(0xFF112233) case final ui) {}
+}
+void loops() {
+  for (final ui in [ui.Color(0xFF112233)]) {}
+  for (final (ui, _) in [(ui.Color(0xFF112233), 1)]) {}
+  final list = [for (final ui in [ui.Color(0xFF112233)]) ui];
 }
 '''),
-        ['hex-colour', 'hex-colour'],
+        List.filled(6, 'hex-colour'),
       );
     });
 
