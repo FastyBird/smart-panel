@@ -5,10 +5,13 @@ class SecureStorageFallback {
   late final File _storageFile;
   late Map<String, String> _cache;
 
-  SecureStorageFallback() {
+  /// Stores in `storage.json` under [directory], by default the
+  /// `FB_SECURE_STORAGE_PATH` build value or `/var/smart-panel`.
+  SecureStorageFallback({String? directory}) {
     final storageDir = Directory(
-      String.fromEnvironment('FB_SECURE_STORAGE_PATH',
-          defaultValue: '/var/smart-panel'),
+      directory ??
+          const String.fromEnvironment('FB_SECURE_STORAGE_PATH',
+              defaultValue: '/var/smart-panel'),
     );
 
     try {
@@ -30,7 +33,19 @@ class SecureStorageFallback {
     }
   }
 
-  Future<void> write({required String key, required String value}) async {
+  /// Stores [value] under [key].
+  ///
+  /// A failed file write is logged and the value is kept in memory for this
+  /// run. With [throwOnFailure], the stored state is left as it was and the
+  /// error is rethrown instead, so the caller can report it and retry.
+  Future<void> write({
+    required String key,
+    required String value,
+    bool throwOnFailure = false,
+  }) async {
+    final hadKey = _cache.containsKey(key);
+    final previous = _cache[key];
+
     _cache[key] = value;
 
     try {
@@ -38,6 +53,16 @@ class SecureStorageFallback {
       await _storageFile.writeAsString(data, flush: true);
     } catch (e) {
       stderr.writeln('[SecureStorageFallback] Failed to write key "$key": $e');
+
+      if (throwOnFailure) {
+        if (hadKey) {
+          _cache[key] = previous!;
+        } else {
+          _cache.remove(key);
+        }
+
+        rethrow;
+      }
     }
   }
 

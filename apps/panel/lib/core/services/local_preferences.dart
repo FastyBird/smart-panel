@@ -28,6 +28,10 @@ class LocalPreferencesService extends ChangeNotifier {
   /// The accent last confirmed in storage; a failed save falls back to it.
   AppAccent _storedAccent = AppAccent.blue;
   int _accentWrites = 0;
+
+  /// Accent saves and the reset's delete run one at a time, in order, so the
+  /// last choice is always the one left in storage.
+  Future<void> _accentQueue = Future<void>.value();
   bool _loaded = false;
 
   LocalPreferencesService({
@@ -117,38 +121,54 @@ class LocalPreferencesService extends ChangeNotifier {
 
   /// Persist the panel's accent and apply it to new themes.
   ///
-  /// Throws when the choice cannot be stored. Unless a newer choice was made
-  /// meanwhile, the accent then falls back to the last one stored, so
-  /// choosing the same accent again retries the save.
-  Future<void> setAccent(AppAccent accent) async {
-    if (_accent == accent) return;
+  /// Saves run one at a time, in the order they were made. Throws when the
+  /// choice cannot be stored; unless a newer choice was made meanwhile, the
+  /// accent then falls back to the last one stored, so choosing the same
+  /// accent again retries the save.
+  Future<void> setAccent(AppAccent accent) {
+    if (_accent == accent) return Future<void>.value();
 
     final write = ++_accentWrites;
 
     _accent = accent;
     AppAccents.current = accent;
 
-    try {
-      await _write(key: _accentKey, value: accent.name);
-    } catch (e) {
-      if (write == _accentWrites) {
-        _accent = _storedAccent;
-        AppAccents.current = _storedAccent;
+    return _enqueueAccent(() async {
+      try {
+        await _write(key: _accentKey, value: accent.name, throwOnFailure: true);
+      } catch (e) {
+        if (write == _accentWrites) {
+          _accent = _storedAccent;
+          AppAccents.current = _storedAccent;
 
-        // An earlier save may have notified while this choice was current.
+          notifyListeners();
+        }
+
+        if (kDebugMode) {
+          debugPrint('[LOCAL PREFS] Failed to store accent: $e');
+        }
+
+        rethrow;
+      }
+
+      _storedAccent = accent;
+
+      // Only the newest choice updates the app; an older save that completes
+      // first must not announce a value that is already replaced.
+      if (write == _accentWrites) {
         notifyListeners();
       }
+    });
+  }
 
-      if (kDebugMode) {
-        debugPrint('[LOCAL PREFS] Failed to store accent: $e');
-      }
+  /// Runs [operation] after every earlier accent save or reset has finished.
+  Future<void> _enqueueAccent(Future<void> Function() operation) {
+    final result = _accentQueue.then((_) => operation());
 
-      rethrow;
-    }
+    // Keep the queue going after a failure; the caller still gets the error.
+    _accentQueue = result.catchError((_) {});
 
-    _storedAccent = accent;
-
-    notifyListeners();
+    return result;
   }
 
   /// Clear all cached preferences (used during factory reset).
@@ -157,21 +177,27 @@ class LocalPreferencesService extends ChangeNotifier {
     _darkMode = false;
     _screenPowerOff = false;
     _accent = AppAccent.blue;
-    _storedAccent = AppAccent.blue;
     AppAccents.current = AppAccent.blue;
+
+    // Pending accent saves must not roll back to, or announce, an older value.
+    _accentWrites++;
 
     try {
       if (Platform.isAndroid || Platform.isIOS) {
         await _securedStorage?.delete(key: _languageKey);
         await _securedStorage?.delete(key: _darkModeKey);
         await _securedStorage?.delete(key: _screenPowerOffKey);
-        await _securedStorage?.delete(key: _accentKey);
       } else {
         await _securedStorageFallback?.delete(key: _languageKey);
         await _securedStorageFallback?.delete(key: _darkModeKey);
         await _securedStorageFallback?.delete(key: _screenPowerOffKey);
-        await _securedStorageFallback?.delete(key: _accentKey);
       }
+
+      // After any pending accent save, so it cannot store the accent again.
+      await _enqueueAccent(() async {
+        await _delete(key: _accentKey);
+        _storedAccent = AppAccent.blue;
+      });
 
       if (kDebugMode) {
         debugPrint('[LOCAL PREFS] All preferences cleared');
@@ -193,11 +219,29 @@ class LocalPreferencesService extends ChangeNotifier {
     return await _securedStorageFallback?.read(key: key);
   }
 
-  Future<void> _write({required String key, required String value}) async {
+  /// Writes [value]. Secure storage throws on failure; the file fallback
+  /// only does so with [throwOnFailure].
+  Future<void> _write({
+    required String key,
+    required String value,
+    bool throwOnFailure = false,
+  }) async {
     if (Platform.isAndroid || Platform.isIOS) {
       await _securedStorage?.write(key: key, value: value);
     } else {
-      await _securedStorageFallback?.write(key: key, value: value);
+      await _securedStorageFallback?.write(
+        key: key,
+        value: value,
+        throwOnFailure: throwOnFailure,
+      );
+    }
+  }
+
+  Future<void> _delete({required String key}) async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      await _securedStorage?.delete(key: key);
+    } else {
+      await _securedStorageFallback?.delete(key: key);
     }
   }
 }

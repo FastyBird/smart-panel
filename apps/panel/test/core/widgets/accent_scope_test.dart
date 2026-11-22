@@ -46,14 +46,29 @@ const _spec = <AppAccent, List<int>>{
 class _FakeStorage implements SecureStorageFallback {
   final Map<String, String> values = {};
   bool failWrites = false;
+
+  /// Holds back every write until completed.
   Completer<void>? gate;
 
+  /// Holds back the write of one value until completed.
+  final Map<String, Completer<void>> gates = {};
+
+  /// Values in the order their writes finished.
+  final List<String> written = [];
+
   @override
-  Future<void> write({required String key, required String value}) async {
+  Future<void> write({
+    required String key,
+    required String value,
+    bool throwOnFailure = false,
+  }) async {
     final pending = gate;
     if (pending != null) await pending.future;
+    final own = gates[value];
+    if (own != null) await own.future;
     if (failWrites) throw const FileSystemException('disk full');
     values[key] = value;
+    written.add(value);
   }
 
   @override
@@ -467,6 +482,32 @@ void main() {
     });
   });
 
+  group('SecureStorageFallback', () {
+    late Directory dir;
+
+    setUp(() => dir = Directory.systemTemp.createTempSync('fb-storage'));
+    tearDown(() => dir.deleteSync(recursive: true));
+
+    test('reports a failed write when asked, and keeps the stored value', () async {
+      final storage = SecureStorageFallback(directory: dir.path);
+      await storage.write(key: 'ui_accent', value: 'rose', throwOnFailure: true);
+
+      // A directory in place of the file makes the next write fail.
+      File('${dir.path}/storage.json').deleteSync();
+      Directory('${dir.path}/storage.json').createSync();
+
+      await expectLater(
+        storage.write(key: 'ui_accent', value: 'sage', throwOnFailure: true),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(await storage.read(key: 'ui_accent'), 'rose');
+
+      // Other callers keep the old behaviour: logged, kept in memory.
+      await storage.write(key: 'ui_accent', value: 'sage');
+      expect(await storage.read(key: 'ui_accent'), 'sage');
+    });
+  });
+
   group('LocalPreferencesService', () {
     test('stores the accent and applies it to new themes', () async {
       final prefs = LocalPreferencesService();
@@ -520,6 +561,51 @@ void main() {
 
       // Only the newer save rolls back, and to the last stored accent, not to
       // the unsaved rose it replaced.
+      expect(prefs.accent, AppAccent.blue);
+      expect(AppAccents.current, AppAccent.blue);
+    });
+
+    test('saves run in order, so the last choice is the one stored', () async {
+      final storage = _FakeStorage()
+        ..gates['rose'] = Completer<void>()
+        ..gates['sage'] = Completer<void>();
+      final prefs = LocalPreferencesService(securedStorageFallback: storage);
+
+      final rose = prefs.setAccent(AppAccent.rose);
+      final sage = prefs.setAccent(AppAccent.sage);
+
+      // Sage is released first, but it cannot be written before rose.
+      storage.gates['sage']!.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(storage.written, isEmpty);
+
+      storage.gates['rose']!.complete();
+      await rose;
+      await sage;
+
+      expect(storage.written, ['rose', 'sage']);
+      expect(storage.values['ui_accent'], 'sage');
+      expect(prefs.accent, AppAccent.sage);
+      expect(AppAccents.current, AppAccent.sage);
+
+      // A restart restores the last choice.
+      final restarted = LocalPreferencesService(securedStorageFallback: storage);
+      await restarted.load();
+      expect(restarted.accent, AppAccent.sage);
+    });
+
+    test('a reset waits for a pending save, so the accent stays cleared', () async {
+      final storage = _FakeStorage()..gates['rose'] = Completer<void>();
+      final prefs = LocalPreferencesService(securedStorageFallback: storage);
+
+      final rose = prefs.setAccent(AppAccent.rose);
+      final reset = prefs.clearAll();
+
+      storage.gates['rose']!.complete();
+      await rose;
+      await reset;
+
+      expect(storage.values.containsKey('ui_accent'), isFalse);
       expect(prefs.accent, AppAccent.blue);
       expect(AppAccents.current, AppAccent.blue);
     });
