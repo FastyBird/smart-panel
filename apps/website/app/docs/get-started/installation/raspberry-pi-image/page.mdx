@@ -260,28 +260,40 @@ service when an orientation change is detected.
 
 ### Display Configuration (Display & AIO)
 
-The display service reads its configuration from `/etc/smart-panel/display`. You can adjust the physical
-display dimensions (which control UI scaling — smaller values produce larger UI elements) and the screen rotation:
+The display service reads its configuration from `/etc/smart-panel/display`:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `FB_DISPLAY_DIMENSIONS` | Physical display size as `width_mm,height_mm` | `90,54` |
+| `FB_DISPLAY_DIMENSIONS` | Physical display size as `width_mm,height_mm` | `155,86` |
+| `FB_DISPLAY_DENSITY` | UI density: `0.85`, `1.0`, `1.15`, `1.3` or `1.5` (`compact`, `normal` and `large` mean `0.85`, `1.0` and `1.15`) | `1.15` |
 | `FB_DISPLAY_ROTATION` | Screen rotation in degrees | `0`, `90`, `180`, `270` |
 
-**Seeed reTerminal 5"** — the auto-detected dimensions (~108x65mm) result in small UI elements.
-For a better experience, use these recommended values:
+**How the UI size is chosen.** The app works out the panel's pixel density from its resolution and its size in
+millimetres, then picks the smallest density from `0.85`, `1.0`, `1.15`, `1.3` and `1.5` that keeps text and touch
+targets at a comfortable physical size. A small, sharp panel such as the reTerminal gets `1.5`; a large panel such as
+a 10" one gets `0.85`. The resulting layout (compact, regular or expanded) follows from how much fits on the screen,
+so two panels that show the same amount of content get the same layout.
 
-```bash copy
-sudo sed -i 's/^FB_DISPLAY_DIMENSIONS=.*/FB_DISPLAY_DIMENSIONS=90,54/' /etc/smart-panel/display && sudo systemctl restart smart-panel-display
-```
+Leave both `FB_DISPLAY_DIMENSIONS` and `FB_DISPLAY_DENSITY` empty to use auto-detection, which works for most
+displays, including the reTerminal.
 
-**Official Raspberry Pi 7" Touchscreen:**
+**Wrong millimetres.** If the panel reports its size wrongly, the UI comes out too small or too large. Set
+`FB_DISPLAY_DIMENSIONS` to the real size of the visible area. Smaller values give a larger UI. For example, the
+official Raspberry Pi 7" Touchscreen:
 
 ```bash copy
 sudo sed -i 's/^FB_DISPLAY_DIMENSIONS=.*/FB_DISPLAY_DIMENSIONS=155,86/' /etc/smart-panel/display && sudo systemctl restart smart-panel-display
 ```
 
-Leave `FB_DISPLAY_DIMENSIONS` empty to use auto-detection (works well for most other displays).
+**Preferred size.** To make the UI larger or smaller regardless of the panel, set `FB_DISPLAY_DENSITY`. It wins over
+the computed value:
+
+```bash copy
+grep -q '^FB_DISPLAY_DENSITY=' /etc/smart-panel/display \
+  && sudo sed -i 's/^FB_DISPLAY_DENSITY=.*/FB_DISPLAY_DENSITY=1.15/' /etc/smart-panel/display \
+  || echo 'FB_DISPLAY_DENSITY=1.15' | sudo tee -a /etc/smart-panel/display
+sudo systemctl restart smart-panel-display
+```
 
 To set rotation manually (e.g. upside-down mount):
 

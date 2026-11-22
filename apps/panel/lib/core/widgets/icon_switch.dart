@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -50,8 +49,6 @@ class _IconSwitchState extends State<IconSwitch>
   @override
   Widget build(BuildContext context) {
     final ScreenService screenService = locator<ScreenService>();
-    final VisualDensityService visualDensityService =
-        locator<VisualDensityService>();
 
     return GestureDetector(
       onTap: () {
@@ -64,11 +61,9 @@ class _IconSwitchState extends State<IconSwitch>
       child: SizedBox(
         width: screenService.scale(
           55,
-          density: visualDensityService.density,
         ),
         height: screenService.scale(
           26,
-          density: visualDensityService.density,
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -79,7 +74,6 @@ class _IconSwitchState extends State<IconSwitch>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(screenService.scale(
                   20,
-                  density: visualDensityService.density,
                 )),
                 border: Border.all(
                   color: widget.toggleMode
@@ -95,7 +89,6 @@ class _IconSwitchState extends State<IconSwitch>
                               : AppBorderColorDark.light)),
                   width: screenService.scale(
                     1,
-                    density: visualDensityService.density,
                   ),
                 ),
                 color: widget.toggleMode
@@ -112,11 +105,9 @@ class _IconSwitchState extends State<IconSwitch>
               ),
               width: screenService.scale(
                 55,
-                density: visualDensityService.density,
               ),
               height: screenService.scale(
                 26,
-                density: visualDensityService.density,
               ),
             ),
             // Thumb with Icon
@@ -127,11 +118,9 @@ class _IconSwitchState extends State<IconSwitch>
               child: Container(
                 width: screenService.scale(
                   26,
-                  density: visualDensityService.density,
                 ),
                 height: screenService.scale(
                   26,
-                  density: visualDensityService.density,
                 ),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -150,7 +139,6 @@ class _IconSwitchState extends State<IconSwitch>
                                 : AppBorderColorDark.light)),
                     width: screenService.scale(
                       1,
-                      density: visualDensityService.density,
                     ),
                   ),
                 ),
@@ -178,7 +166,6 @@ class _IconSwitchState extends State<IconSwitch>
                                 : AppBorderColorDark.light)),
                     size: screenService.scale(
                       18,
-                      density: visualDensityService.density,
                     ),
                   ),
                 ),

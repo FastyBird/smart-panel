@@ -149,16 +149,20 @@ class StartupManagerService {
       () => NavigationService(),
     );
     locator.registerLazySingleton(
+      () => VisualDensityService(
+        pixelRatio: pixelRatio,
+        ppiPerDpr: Platform.isAndroid || Platform.isIOS
+            ? VisualDensityService.androidPpiPerDpr
+            : VisualDensityService.flutterPiPpiPerDpr,
+        envDensity: _displayDensityOverride(),
+      ),
+    );
+    locator.registerLazySingleton(
       () => ScreenService(
         screenWidth: screenWidth,
         screenHeight: screenHeight,
         pixelRatio: pixelRatio,
-      ),
-    );
-    locator.registerLazySingleton(
-      () => VisualDensityService(
-        pixelRatio: pixelRatio,
-        envDensity: const String.fromEnvironment('FB_DISPLAY_DENSITY'),
+        density: locator<VisualDensityService>().density,
       ),
     );
     if (Platform.isAndroid || Platform.isIOS) {
@@ -172,6 +176,20 @@ class StartupManagerService {
     ));
     locator.registerSingleton(_eventBus);
     locator.registerSingleton(DeviceControlService());
+  }
+
+  /// `FB_DISPLAY_DENSITY` from the process environment (set by the installer
+  /// in `/etc/smart-panel/display`), else from the build's `--dart-define`.
+  static String? _displayDensityOverride() {
+    final runtime = Platform.environment['FB_DISPLAY_DENSITY']?.trim();
+
+    if (runtime != null && runtime.isNotEmpty) {
+      return runtime;
+    }
+
+    const buildTime = String.fromEnvironment('FB_DISPLAY_DENSITY');
+
+    return buildTime.isEmpty ? null : buildTime;
   }
 
   /// Get the currently configured backend URL

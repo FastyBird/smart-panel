@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -86,10 +85,8 @@ class SliderWithSteps extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenService = locator<ScreenService>();
-    final visualDensityService = locator<VisualDensityService>();
 
-    double scale(double val) =>
-        screenService.scale(val, density: visualDensityService.density);
+    double scale(double val) => screenService.scale(val);
 
     final brightness = Theme.of(context).brightness;
     final isDark = brightness == Brightness.dark;

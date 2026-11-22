@@ -440,7 +440,6 @@ class AppTheme {
           color: n.borderLight,
           width: _screenService.scale(
             1,
-            density: _visualDensityService.density,
           ),
         ),
       ),
@@ -553,7 +552,6 @@ class AppTheme {
             color: AppBorderColorLight.darker,
             width: _screenService.scale(
               1,
-              density: _visualDensityService.density,
             ),
           ),
         ),
@@ -617,7 +615,6 @@ class AppTheme {
             color: AppBorderColorDark.light,
             width: _screenService.scale(
               1,
-              density: _visualDensityService.density,
             ),
           ),
         ),
@@ -1160,27 +1157,25 @@ class AppShadowColor {
 
 class AppBorderRadius {
   static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   /// Dock, sheets, drawers, overlays.
   static double get medium =>
-      _screenService.scale(12.0, density: _visualDensityService.density);
+      _screenService.scale(12.0);
 
   /// Cards, tiles, chips, controls.
   static double get base =>
-      _screenService.scale(8.0, density: _visualDensityService.density);
+      _screenService.scale(8.0);
 
   /// Buttons inside a card, icon tiles.
   static double get inner =>
-      _screenService.scale(6.0, density: _visualDensityService.density);
+      _screenService.scale(6.0);
 
   /// Badges.
   static double get small =>
-      _screenService.scale(4.0, density: _visualDensityService.density);
+      _screenService.scale(4.0);
 
   static double get round =>
-      _screenService.scale(20.0, density: _visualDensityService.density);
+      _screenService.scale(20.0);
 
   /// Scene and status pills.
   static const double pill = 999.0;
@@ -1188,24 +1183,22 @@ class AppBorderRadius {
 
 class AppFontSize {
   static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   static double get extraLarge =>
-      _screenService.scale(18.0, density: _visualDensityService.density);
+      _screenService.scale(18.0);
 
   static double get large =>
-      _screenService.scale(16.0, density: _visualDensityService.density);
+      _screenService.scale(16.0);
 
   static double get base =>
-      _screenService.scale(14.0, density: _visualDensityService.density);
+      _screenService.scale(14.0);
 
   static double get small =>
-      _screenService.scale(12.0, density: _visualDensityService.density);
+      _screenService.scale(12.0);
 
   /// Caption, status line, unit. The smallest size.
   static double get extraSmall =>
-      _screenService.scale(10.0, density: _visualDensityService.density);
+      _screenService.scale(10.0);
 
   /// The 8 px step is retired (under the 2.5 mm caption floor); it now
   /// renders at the caption size.
@@ -1227,41 +1220,39 @@ class AppNumeralFont {
 // Centralized spacing
 class AppSpacings {
   static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   static double scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
+      _screenService.scale(value);
 
   static double unscale(double value) =>
-      _screenService.unscale(value, density: _visualDensityService.density);
+      _screenService.unscale(value);
 
   static double get pXxs =>
-      _screenService.scale(1.0, density: _visualDensityService.density);
+      _screenService.scale(1.0);
 
   static double get pXs =>
-      _screenService.scale(2.0, density: _visualDensityService.density);
+      _screenService.scale(2.0);
 
   static double get pSm =>
-      _screenService.scale(4.0, density: _visualDensityService.density);
+      _screenService.scale(4.0);
 
   static double get pSmMd =>
-      _screenService.scale(6.0, density: _visualDensityService.density);
+      _screenService.scale(6.0);
 
   static double get pMd =>
-      _screenService.scale(8.0, density: _visualDensityService.density);
+      _screenService.scale(8.0);
 
   static double get pMdLg =>
-      _screenService.scale(12.0, density: _visualDensityService.density);
+      _screenService.scale(12.0);
 
   static double get pLg =>
-      _screenService.scale(16.0, density: _visualDensityService.density);
+      _screenService.scale(16.0);
 
   static double get pLgXl =>
-      _screenService.scale(24.0, density: _visualDensityService.density);
+      _screenService.scale(24.0);
 
   static double get pXl =>
-      _screenService.scale(32.0, density: _visualDensityService.density);
+      _screenService.scale(32.0);
 
   static EdgeInsets get paddingXSs => EdgeInsets.all(pXxs);
 
@@ -2881,15 +2872,12 @@ class AppIconButtonsDarkThemes {
 
 class AppTextThemes {
   static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   static TextTheme getBaseTextTheme(Color textColor) {
     return TextTheme(
       headlineLarge: TextStyle(
         fontSize: _screenService.scale(
           20.0,
-          density: _visualDensityService.density,
         ),
         fontWeight: FontWeight.w400,
         color: textColor,
@@ -2897,7 +2885,6 @@ class AppTextThemes {
       headlineMedium: TextStyle(
         fontSize: _screenService.scale(
           18.0,
-          density: _visualDensityService.density,
         ),
         fontWeight: FontWeight.w400,
         color: textColor,
@@ -2905,7 +2892,6 @@ class AppTextThemes {
       headlineSmall: TextStyle(
         fontSize: _screenService.scale(
           16.0,
-          density: _visualDensityService.density,
         ),
         fontWeight: FontWeight.w400,
         color: textColor,
@@ -2913,21 +2899,18 @@ class AppTextThemes {
       bodyLarge: TextStyle(
         fontSize: _screenService.scale(
           16.0,
-          density: _visualDensityService.density,
         ),
         color: textColor,
       ),
       bodyMedium: TextStyle(
         fontSize: _screenService.scale(
           14.0,
-          density: _visualDensityService.density,
         ),
         color: textColor,
       ),
       bodySmall: TextStyle(
         fontSize: _screenService.scale(
           12.0,
-          density: _visualDensityService.density,
         ),
         color: textColor,
       ),
@@ -2985,31 +2968,30 @@ ButtonStyle createButtonTheme({
       if (states.contains(WidgetState.pressed)) {
         return BorderSide(
           color: pressedBorderColor,
-          width: screenService.scale(1, density: visualDensityService.density),
+          width: screenService.scale(1),
         );
       } else if (states.contains(WidgetState.hovered)) {
         return BorderSide(
           color: hoveredBorderColor,
-          width: screenService.scale(1, density: visualDensityService.density),
+          width: screenService.scale(1),
         );
       } else if (states.contains(WidgetState.disabled)) {
         return BorderSide(
           color: disabledBorderColor,
-          width: screenService.scale(1, density: visualDensityService.density),
+          width: screenService.scale(1),
         );
       }
       return BorderSide(
         color: borderColor,
-        width: screenService.scale(1, density: visualDensityService.density),
+        width: screenService.scale(1),
       );
     }),
     padding: WidgetStateProperty.all(
       EdgeInsets.symmetric(
         horizontal: screenService.scale(
           49,
-          density: visualDensityService.density,
         ),
-        vertical: screenService.scale(verticalPaddingBase, density: visualDensityService.density),
+        vertical: screenService.scale(verticalPaddingBase),
       ),
     ),
     minimumSize: WidgetStateProperty.all(
@@ -3019,7 +3001,6 @@ ButtonStyle createButtonTheme({
       TextStyle(
         fontSize: screenService.scale(
           fontSizeBase,
-          density: visualDensityService.density,
         ),
         fontWeight: FontWeight.w500,
       ),
@@ -3048,8 +3029,6 @@ ButtonStyle createIconButtonTheme({
   required Color disabledBorderColor,
 }) {
   final ScreenService screenService = locator<ScreenService>();
-  final VisualDensityService visualDensityService =
-      locator<VisualDensityService>();
 
   final baseStyle = createButtonTheme(
     color: color,
@@ -3074,9 +3053,8 @@ ButtonStyle createIconButtonTheme({
       EdgeInsets.symmetric(
         horizontal: screenService.scale(
           iconPaddingBase,
-          density: visualDensityService.density,
         ),
-        vertical: screenService.scale(iconPaddingBase, density: visualDensityService.density),
+        vertical: screenService.scale(iconPaddingBase),
       ),
     ),
     shape: WidgetStateProperty.all(const CircleBorder()),

@@ -1,16 +1,28 @@
 # Smart Panel Display Configuration
 #
-# Override the physical display dimensions (width_mm,height_mm) to control
-# the UI scaling. Smaller values = larger UI elements.
+# The UI size follows the panel's pixel density, worked out from its
+# resolution and its size in millimetres. Leave both values below empty
+# for auto-detection, which works for most panels, including the reTerminal.
+#
+# Override the physical display dimensions (width_mm,height_mm) when the
+# panel reports them wrongly. Smaller values = larger UI elements.
 #
 # Examples:
-#   reTerminal 5" (default auto-detect ~108x65mm, override for larger UI):
-#     FB_DISPLAY_DIMENSIONS=90,54
 #   7" RPi touchscreen:
 #     FB_DISPLAY_DIMENSIONS=155,86
 #   Leave empty for auto-detection:
 #     FB_DISPLAY_DIMENSIONS=
 FB_DISPLAY_DIMENSIONS=
+
+# Force the UI density instead of computing it. Valid values: 0.85, 1.0,
+# 1.15, 1.3, 1.5 (compact, normal and large mean 0.85, 1.0 and 1.15).
+#
+# Examples:
+#   Larger UI:
+#     FB_DISPLAY_DENSITY=1.15
+#   Leave empty to compute it from the panel:
+#     FB_DISPLAY_DENSITY=
+FB_DISPLAY_DENSITY=
 
 # Rotate the display output. Valid values: 0, 90, 180, 270
 #

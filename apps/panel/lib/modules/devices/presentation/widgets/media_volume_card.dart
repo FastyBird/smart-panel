@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -110,8 +109,7 @@ class MediaVolumeCard extends StatelessWidget {
 		final brightness = Theme.of(context).brightness;
 		final isDark = brightness == Brightness.dark;
 		final screenService = locator<ScreenService>();
-		final visualDensityService = locator<VisualDensityService>();
-		double scale(double v) => screenService.scale(v, density: visualDensityService.density);
+		double scale(double v) => screenService.scale(v);
 		final columnWidth = scale(40);
 		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 

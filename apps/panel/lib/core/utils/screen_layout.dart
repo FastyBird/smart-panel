@@ -7,14 +7,13 @@ extension ScreenLayoutHelpers on ScreenService {
   /// Returns the appropriate padding for system pages based on screen size and orientation.
   double systemPagePadding(bool isLandscape) {
     if (isLandscape) {
-      return isLargeScreen ? AppSpacings.pXl : AppSpacings.pLg;
+      return isExpanded ? AppSpacings.pXl : AppSpacings.pLg;
     }
-    return isSmallScreen ? AppSpacings.pLg : AppSpacings.pXl;
+    return isCompact ? AppSpacings.pLg : AppSpacings.pXl;
   }
 
   /// Returns the spacing below the icon based on orientation and screen size.
   double iconBottomSpacing(bool isLandscape) {
-    final isCompact = isSmallScreen || isMediumScreen;
-    return scale(isCompact && isLandscape ? 12 : 24);
+    return scale(!isExpanded && isLandscape ? 12 : 24);
   }
 }

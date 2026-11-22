@@ -104,24 +104,28 @@ scaleFactor = 2.0 / devicePixelRatio
 size        = designValue × scaleFactor × densityMultiplier
 ```
 
-`densityMultiplier` comes from **visual density**: `compact = 0.85`, `normal = 1.0`, `large = 1.15`.
+`densityMultiplier` is a step of **0.85, 1.0, 1.15, 1.3 or 1.5**, the smallest that makes one design px at least
+0.25 mm on the panel (`ppi / 203.2`, with ppi = `96.52 × DPR` on flutter-pi and `160 × DPR` on Android). The installer
+can override it with `FB_DISPLAY_DENSITY` in `/etc/smart-panel/display` (a step value, or `compact` / `normal` /
+`large` for 0.85 / 1.0 / 1.15). It is resolved once at startup and applies to every value that goes through
+`ScreenService.scale()`. See [`display-ui-design-spec.md`](display-ui-design-spec.md) §4.
 
-Two caveats a designer should know about density, because it is weaker than it looks:
-
-- **It is a build-time choice, not a user setting.** Density is resolved once from the compile-time `FB_DISPLAY_DENSITY` value (`compact` / `normal` / `large`). When that is unset it falls back to **`compact` for DPR ≥ 2.5, `normal` otherwise**. There is no field on the display model and no runtime control — nothing in Settings changes it, and it never updates while the app is running.
-- **It is not applied to every dimension.** The multiplier only reaches values that go through the density-aware token helpers (`AppSpacings.*`, `AppFontSize.*`, `AppBorderRadius.*`). Code that calls `ScreenService.scale(x)` directly gets `normal` regardless. So a `compact` build shrinks the token system but leaves ad-hoc dimensions untouched.
-
-Practical consequence: **design against the DPR-2.0 baseline at `normal` density.** Treat `compact` as a global tightening of spacing/type on very high-DPR panels, not as a layout you need to redraw. When this document says "28 px" it means the design value that gets multiplied — that is the number to put in the design file.
+When this document says "28 px" it means the design value that gets multiplied — that is the number to put in the
+design file.
 
 ### 3.2 Screen-size classes
 
-Breakpoints use DPR-normalised width (physical px for DPR > 1.5, logical px otherwise) and depend on orientation:
+The class comes from the short side of the **effective canvas**, `physical px ÷ 2 ÷ density`, so it is the same in
+both orientations:
 
-| Class | Portrait width | Landscape width |
+| Class | Short side | Legacy getter |
 |---|---|---|
-| **small** | ≤ 600 | ≤ 800 |
-| **medium** | ≤ 800 | ≤ 1150 |
-| **large** | > 800 | > 1150 |
+| **Compact** | < 340 | `isSmallScreen` |
+| **Regular** | 340–479 | `isMediumScreen` |
+| **Expanded** | ≥ 480 | `isLargeScreen` |
+
+A Compact canvas with (near) equal sides also reports `isSquare`. The legacy getters are deprecated; screens move to
+`sizeClass` as the redesign migrates them.
 
 The class changes real layout, not just type size. Common uses:
 
