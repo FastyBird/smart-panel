@@ -63,7 +63,6 @@ import { PluginFormSection, TestConnection, type TestConnectionResult, router, u
 import { DeviceFormFrame, RouteNames as DevicesRouteNames, FormResult, type FormResultType, useDevices } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
-import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import type { IShellyV1DeviceAddForm, IShellyV1DeviceInfo, IShellyV1SupportedDevice } from '../schemas/devices.types';
 
 import type { IShellyV1DeviceAddFormProps } from './shelly-v1-device-add-form.types';
@@ -89,7 +88,7 @@ const { t } = useI18n();
 
 const flashMessage = useFlashMessage();
 
-const { devices, loaded: devicesLoaded, fetchDevices } = useDevices();
+const { loaded: devicesLoaded, fetchDevices } = useDevices();
 
 const {
 	model,
@@ -98,6 +97,7 @@ const {
 	supportedDevices,
 	supportedDevicesLoaded,
 	loadSupportedDevices,
+	findRegistered,
 	formChanged,
 	deviceInfo,
 	checkDevice,
@@ -213,7 +213,8 @@ watch(
 			return;
 		}
 
-		const device = devices.value.find((d) => d.identifier === val.mac && d.type === DEVICES_SHELLY_V1_TYPE);
+		// Hidden devices too: Save stops for the same ones (findRegistered)
+		const device = findRegistered(val);
 
 		if (typeof device !== 'undefined') {
 			flashMessage.success(

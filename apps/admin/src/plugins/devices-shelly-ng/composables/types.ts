@@ -2,7 +2,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
-import type { FormResultType } from '../../../modules/devices';
+import type { FormResultType, IDevice } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IShellyNgDeviceAddForm, IShellyNgDeviceEditForm, IShellyNgDeviceInfo, IShellyNgSupportedDevice } from '../schemas/devices.types';
 
@@ -12,6 +12,8 @@ export interface IUseDeviceAddForm {
 	/** The supported devices list has arrived */
 	supportedDevicesLoaded: Ref<boolean>;
 	loadSupportedDevices: () => Promise<void>;
+	/** A device of this plugin that is in Smart Panel already, hidden ones included */
+	findRegistered: (info: IShellyNgDeviceInfo) => IDevice | undefined;
 	model: Reactive<IShellyNgDeviceAddForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;

@@ -57,6 +57,7 @@ vi.mock('../composables/useDeviceAddForm', async () => {
 				supportedDevices: ref([{ name: 'Shelly Plus 1', models: ['SHELLY-MODEL'], categories: [] }]),
 				supportedDevicesLoaded: state.supportedLoaded,
 				loadSupportedDevices: mockLoadSupported,
+				findRegistered: () => undefined,
 				formChanged: { value: false },
 				formResult: { value: 'none' },
 				submit: mockSubmit,

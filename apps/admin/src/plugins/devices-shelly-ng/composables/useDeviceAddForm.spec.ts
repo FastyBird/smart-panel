@@ -13,8 +13,13 @@ import { useDeviceAddForm } from './useDeviceAddForm';
 const mockAdd = vi.fn();
 const mockFindAll = vi.fn((): { identifier: string | null; type: string }[] => []);
 
+const SUPPORTED = [
+	{ group: 'plus-1', name: 'Shelly Plus 1', models: ['SNSW-001X16EU'], categories: ['lighting', 'switcher'], components: [], system: [] },
+];
+
 const backendClient = {
 	POST: vi.fn(),
+	GET: vi.fn(),
 };
 
 vi.mock('vue-i18n', () => ({
@@ -73,6 +78,7 @@ describe('useDeviceAddForm', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		backendClient.GET.mockResolvedValue({ data: { data: SUPPORTED }, error: undefined, response: { status: 200 } });
 		form = useDeviceAddForm({ id: deviceId.toString() });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -261,5 +267,54 @@ describe('useDeviceAddForm', () => {
 
 		await expect(save).rejects.toThrow('closed');
 		expect(mockAdd).not.toHaveBeenCalled();
+	});
+
+	it('loads the supported devices before adding, and gives the device a category they offer', async () => {
+		backendClient.POST.mockResolvedValueOnce({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+		form.model.name = 'New Device';
+		form.model.hostname = '192.168.0.1';
+
+		await form.submit();
+
+		expect(backendClient.GET).toHaveBeenCalled();
+		expect(mockAdd).toHaveBeenCalledWith(
+			expect.objectContaining({ data: expect.objectContaining({ category: DevicesModuleDeviceCategory.lighting }) })
+		);
+	});
+
+	it('adds nothing while the supported devices cannot be loaded, and lets Save try again', async () => {
+		// The list is asked for when the form opens and again on Save: both fail
+		backendClient.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+		backendClient.POST.mockResolvedValueOnce({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+
+		const failing = useDeviceAddForm({ id: deviceId.toString() });
+		failing.formEl.value = form.formEl.value;
+		failing.model.name = 'New Device';
+		failing.model.hostname = '192.168.0.1';
+
+		await expect(failing.submit()).rejects.toThrow('no supported category');
+
+		expect(mockAdd).not.toHaveBeenCalled();
+		expect(failing.formResult.value).toBe(FormResult.ERROR);
+	});
+
+	it('adds nothing for a device the supported devices do not list', async () => {
+		backendClient.POST.mockResolvedValueOnce({
+			data: { data: { ...DEVICE_INFO_RESPONSE, model: 'UNKNOWN-MODEL' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+		form.model.name = 'New Device';
+		form.model.hostname = '192.168.0.1';
+
+		await expect(form.submit()).rejects.toThrow('no supported category');
+
+		expect(mockAdd).not.toHaveBeenCalled();
+	});
+
+	it('finds a registered device among hidden ones too', () => {
+		mockFindAll.mockReturnValueOnce([{ identifier: 'shellyplus1-a1b2', type: DEVICES_SHELLY_NG_TYPE, hidden: true } as never]);
+
+		expect(form.findRegistered(DEVICE_INFO)).toEqual(expect.objectContaining({ identifier: 'shellyplus1-a1b2' }));
 	});
 });

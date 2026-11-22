@@ -97,6 +97,10 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		});
 	}
 
+	// A device of this plugin that is in Smart Panel already, hidden ones included
+	const findRegistered = (info: IShellyNgDeviceInfo): IDevice | undefined =>
+		devicesStore.findAll().find((device) => device.identifier === info.id && device.type === DEVICES_SHELLY_NG_TYPE);
+
 	// Test connection: reads the device at the hostname, with the password when it has one. A failure is returned to
 	// the caller (the test result), not shown as a toast
 	const checkDevice = async (): Promise<IShellyNgDeviceInfo> => {
@@ -214,12 +218,34 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		}
 
 		// The device is in Smart Panel already: the form opens it instead (see the add form), nothing is added
-		const read = deviceInfo.value as IShellyNgDeviceInfo | null;
-
-		if (read !== null && devicesStore.findAll().some((device) => device.identifier === read.id && device.type === DEVICES_SHELLY_NG_TYPE)) {
+		if (deviceInfo.value !== null && findRegistered(deviceInfo.value) !== undefined) {
 			formResult.value = FormResult.NONE;
 
 			throw new DevicesShellyNgValidationException('The device is already registered.');
+		}
+
+		// The category comes from the supported device the read matched: without the list, or for a device it does
+		// not list, nothing is added and Save can be tried again
+		if (!supportedDevicesLoaded.value) {
+			await fetchSupportedDevices().catch((): void => {
+				// Reported by the list itself
+			});
+		}
+
+		if (!supportedDevicesLoaded.value || deviceGroup.value === null) {
+			formResult.value = FormResult.ERROR;
+
+			timer = window.setTimeout(clear, 2000);
+
+			if (supportedDevicesLoaded.value) {
+				flashMessage.error(t('devicesShellyNgPlugin.headings.device.notSupported'));
+			}
+
+			throw new DevicesShellyNgValidationException('The device has no supported category yet.');
+		}
+
+		if (!categoriesOptions.value.some((option) => option.value === model.category) && categoriesOptions.value[0]) {
+			model.category = categoriesOptions.value[0].value;
 		}
 
 		const parsedModel = ShellyNgDeviceAddFormSchema.safeParse(model);
@@ -316,6 +342,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		deviceInfo,
 		supportedDevices,
 		supportedDevicesLoaded,
+		findRegistered,
 		loadSupportedDevices: (): Promise<void> => fetchSupportedDevices(),
 		model,
 		formEl,
