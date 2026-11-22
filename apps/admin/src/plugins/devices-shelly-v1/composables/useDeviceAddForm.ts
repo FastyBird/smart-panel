@@ -238,9 +238,24 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		// The category comes from the supported device the read matched: without the list, or for a device it does
 		// not list, nothing is added and Save can be tried again
 		if (!supportedDevicesLoaded.value) {
+			const generation = checkGeneration;
+
 			await fetchSupportedDevices().catch((): void => {
 				// Reported by the list itself
 			});
+
+			// While the list loaded, the form may have closed or the credentials changed: this Save is for neither
+			if (disposed) {
+				formResult.value = FormResult.NONE;
+
+				throw new DevicesShellyV1ValidationException('The form was closed before the device was read.');
+			}
+
+			if (generation !== checkGeneration) {
+				formResult.value = FormResult.NONE;
+
+				throw new DevicesShellyV1ValidationException('The credentials changed while the device was read.');
+			}
 		}
 
 		if (!supportedDevicesLoaded.value || deviceGroup.value === null) {

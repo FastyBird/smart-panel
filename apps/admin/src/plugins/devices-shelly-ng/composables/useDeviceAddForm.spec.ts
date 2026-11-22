@@ -4,6 +4,8 @@ import type { FormInstance } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { flushPromises } from '@vue/test-utils';
+
 import { FormResult } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
@@ -316,5 +318,50 @@ describe('useDeviceAddForm', () => {
 		mockFindAll.mockReturnValueOnce([{ identifier: 'shellyplus1-a1b2', type: DEVICES_SHELLY_NG_TYPE, hidden: true } as never]);
 
 		expect(form.findRegistered(DEVICE_INFO)).toEqual(expect.objectContaining({ identifier: 'shellyplus1-a1b2' }));
+	});
+
+	it('adds nothing when the credentials change while Save waits for the supported devices', async () => {
+		let list!: (value: unknown) => void;
+		backendClient.GET.mockReturnValue(new Promise((resolve) => (list = resolve)));
+		backendClient.POST.mockResolvedValueOnce({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+
+		const waiting = useDeviceAddForm({ id: deviceId.toString() });
+		waiting.formEl.value = form.formEl.value;
+		waiting.model.name = 'New Device';
+		waiting.model.hostname = '192.168.0.1';
+		await nextTick();
+
+		const save = waiting.submit();
+
+		await flushPromises();
+		waiting.model.hostname = '192.168.0.2';
+		await nextTick();
+		list({ data: { data: SUPPORTED }, error: undefined, response: { status: 200 } });
+
+		await expect(save).rejects.toThrow('credentials changed');
+		expect(mockAdd).not.toHaveBeenCalled();
+		expect(waiting.formResult.value).toBe(FormResult.NONE);
+	});
+
+	it('adds nothing when the form closes while Save waits for the supported devices', async () => {
+		let list!: (value: unknown) => void;
+		backendClient.GET.mockReturnValue(new Promise((resolve) => (list = resolve)));
+		backendClient.POST.mockResolvedValueOnce({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+
+		const scope = effectScope();
+		const waiting = scope.run(() => useDeviceAddForm({ id: deviceId.toString() }))!;
+		waiting.formEl.value = form.formEl.value;
+		waiting.model.name = 'New Device';
+		waiting.model.hostname = '192.168.0.1';
+		await nextTick();
+
+		const save = waiting.submit();
+
+		await flushPromises();
+		scope.stop();
+		list({ data: { data: SUPPORTED }, error: undefined, response: { status: 200 } });
+
+		await expect(save).rejects.toThrow('closed');
+		expect(mockAdd).not.toHaveBeenCalled();
 	});
 });
