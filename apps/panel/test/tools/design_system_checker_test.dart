@@ -93,6 +93,9 @@ final d = TextStyle(height: 1.2, letterSpacing: 0.5);
     test('reports constructors called through an import prefix', () {
       expect(
         _rules('''
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart' as material;
+
 final a = ui.Color(0xFF112233);
 const b = ui.Color(0xFF112233);
 final c = material.AppBar();
@@ -102,12 +105,31 @@ final d = material.SwitchListTile.adaptive(value: true);
       );
     });
 
+    test('takes prefixes from the imports, whatever their case', () {
+      expect(
+        _rules('''
+import 'dart:ui' as _ui;
+import 'package:flutter/material.dart' as UI;
+
+final a = _ui.Color(0xFF112233);
+final b = UI.AppBar();
+final c = UI.SwitchListTile.adaptive(value: true);
+'''),
+        ['hex-colour', 'stock-widget', 'stock-widget'],
+      );
+    });
+
     test('ignores methods that share a name on other targets', () {
       expect(
         _rules('''
+import 'dart:ui' as ui;
+
 final a = palette.Color(value);
 final b = Colors.white.withValues(alpha: 0.5);
 final c = AppColors.fromHex(0xFF112233);
+final d = palette.Color(0xFF112233);
+final e = factory.AppBar();
+final f = factory.SwitchListTile.adaptive(value: true);
 '''),
         isEmpty,
       );

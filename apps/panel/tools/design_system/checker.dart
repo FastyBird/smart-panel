@@ -192,6 +192,11 @@ List<Finding> checkSource(
     result.lineInfo,
     config,
     _ignoredRules(result.unit.beginToken, result.lineInfo),
+    {
+      for (final directive in result.unit.directives)
+        if (directive is ImportDirective && directive.prefix != null)
+          directive.prefix!.name,
+    },
   );
 
   result.unit.accept(visitor);
@@ -249,7 +254,14 @@ String folderOf(String path) {
 }
 
 class _Visitor extends RecursiveAstVisitor<void> {
-  _Visitor(this.path, this.source, this.lineInfo, this.config, this.ignored);
+  _Visitor(
+    this.path,
+    this.source,
+    this.lineInfo,
+    this.config,
+    this.ignored,
+    this.importPrefixes,
+  );
 
   final String path;
   final String source;
@@ -258,6 +270,9 @@ class _Visitor extends RecursiveAstVisitor<void> {
 
   /// Rules ignored per line number.
   final Map<int, Set<String>> ignored;
+
+  /// The `as` prefixes of this file's imports.
+  final Set<String> importPrefixes;
 
   final List<Finding> findings = [];
 
@@ -281,8 +296,8 @@ class _Visitor extends RecursiveAstVisitor<void> {
   ///
   /// - `Color(…)`, `AppBar(…)`: no target.
   /// - `ui.Color(…)`, `material.AppBar(…)`: the import prefix is the target.
-  ///   Prefixes are lower case and class names upper case, which tells them
-  ///   apart from a named constructor.
+  ///   Only prefixes this file declares count, so `palette.Color(…)` on an
+  ///   object is not a constructor.
   /// - `SwitchListTile.adaptive(…)`: the class is the target.
   /// - `material.SwitchListTile.adaptive(…)`: the prefixed class is the
   ///   target.
@@ -292,11 +307,11 @@ class _Visitor extends RecursiveAstVisitor<void> {
     final name = node.methodName.name;
 
     final isConstructor = target == null ||
-        (target is SimpleIdentifier && _isPrefix(target.name));
+        (target is SimpleIdentifier && importPrefixes.contains(target.name));
     final namedConstructorOf = switch (target) {
-      SimpleIdentifier(:final name) when !_isPrefix(name) => name,
+      SimpleIdentifier(:final name) when !importPrefixes.contains(name) => name,
       PrefixedIdentifier(:final prefix, :final identifier)
-          when _isPrefix(prefix.name) =>
+          when importPrefixes.contains(prefix.name) =>
         identifier.name,
       _ => null,
     };
@@ -312,9 +327,6 @@ class _Visitor extends RecursiveAstVisitor<void> {
 
     super.visitMethodInvocation(node);
   }
-
-  static bool _isPrefix(String name) =>
-      name.isNotEmpty && name[0] == name[0].toLowerCase() && name[0] != name[0].toUpperCase();
 
   @override
   void visitNamedExpression(NamedExpression node) {
