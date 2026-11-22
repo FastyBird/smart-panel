@@ -175,6 +175,41 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const ValueKey('sample-entry'))).data, 'expanded');
   });
 
+  testWidgets('gives entries the canvas as their MediaQuery', (tester) async {
+    await _pump(tester, sections: [
+      GallerySection(
+        id: 'sample',
+        task: 'DR-0',
+        issue: 1,
+        title: 'Sample',
+        entries: [
+          GalleryEntry(
+            title: 'Media',
+            builder: (context) => Text(
+              '${MediaQuery.sizeOf(context)} ${MediaQuery.orientationOf(context).name}',
+              key: const ValueKey('sample-media'),
+            ),
+          ),
+        ],
+      ),
+    ]);
+
+    String media() => tester.widget<Text>(find.byKey(const ValueKey('sample-media'))).data!;
+
+    expect(media(), '${const Size(640, 400)} landscape');
+
+    await _tap(tester, 'gallery-canvas-expanded');
+    await _tap(tester, 'gallery-orientation-portrait');
+
+    expect(media(), '${const Size(540, 960)} portrait');
+
+    // The gallery's own controls keep the panel's media data.
+    final host = tester.element(find.byType(ComponentGalleryScreen));
+
+    expect(MediaQuery.sizeOf(host), const Size(1280, 800));
+    expect(MediaQuery.orientationOf(host), Orientation.landscape);
+  });
+
   test('the theme for an accent matches the panel theme in that accent', () {
     for (final accent in AppAccent.values) {
       final direct = AppTheme.lightThemeFor(accent);

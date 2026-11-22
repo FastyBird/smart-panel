@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/source/line_info.dart';
 import 'package:yaml/yaml.dart';
@@ -185,7 +186,13 @@ List<Finding> checkSource(
   }
 
   final result = parseString(content: source, path: path, throwIfDiagnostics: false);
-  final visitor = _Visitor(path, source, result.lineInfo, config);
+  final visitor = _Visitor(
+    path,
+    source,
+    result.lineInfo,
+    config,
+    _ignoredRules(result.unit.beginToken, result.lineInfo),
+  );
 
   result.unit.accept(visitor);
 
@@ -194,6 +201,39 @@ List<Finding> checkSource(
   return [
     for (final finding in visitor.findings) finding.withStrict(strict),
   ];
+}
+
+final RegExp _ignoreDirective = RegExp(r'^//\s*design-system:\s*ignore\s+([\w-]+)');
+
+/// The rules each line opts out of, from `// design-system: ignore <rule>`
+/// comments. Only real comments count, never text inside a string.
+Map<int, Set<String>> _ignoredRules(Token first, LineInfo lineInfo) {
+  final ignored = <int, Set<String>>{};
+  Token? token = first;
+
+  while (token != null) {
+    Token? comment = token.precedingComments;
+
+    while (comment != null) {
+      final match = _ignoreDirective.firstMatch(comment.lexeme);
+
+      if (match != null) {
+        ignored
+            .putIfAbsent(lineInfo.getLocation(comment.offset).lineNumber, () => {})
+            .add(match.group(1)!);
+      }
+
+      comment = comment.next;
+    }
+
+    if (token.type == TokenType.EOF) {
+      break;
+    }
+
+    token = token.next;
+  }
+
+  return ignored;
 }
 
 /// The folder a finding is counted under: `lib/<area>/<name>`, or the file's
@@ -209,18 +249,17 @@ String folderOf(String path) {
 }
 
 class _Visitor extends RecursiveAstVisitor<void> {
-  _Visitor(this.path, this.source, this.lineInfo, this.config)
-      : _lines = source.split('\n');
+  _Visitor(this.path, this.source, this.lineInfo, this.config, this.ignored);
 
   final String path;
   final String source;
   final LineInfo lineInfo;
   final DesignCheckConfig config;
-  final List<String> _lines;
+
+  /// Rules ignored per line number.
+  final Map<int, Set<String>> ignored;
 
   final List<Finding> findings = [];
-
-  static final RegExp _ignore = RegExp(r'//\s*design-system:\s*ignore\s+([\w-]+)');
 
   @override
   void visitInstanceCreationExpression(InstanceCreationExpression node) {
@@ -237,28 +276,45 @@ class _Visitor extends RecursiveAstVisitor<void> {
     super.visitInstanceCreationExpression(node);
   }
 
-  /// Without resolution, `Color(…)` and `AppBar(…)` without `new` or `const`
-  /// parse as method calls, and `SwitchListTile.adaptive(…)` as a call on a
-  /// target.
+  /// Without resolution, a constructor call without `new` or `const` parses
+  /// as a method call:
+  ///
+  /// - `Color(…)`, `AppBar(…)`: no target.
+  /// - `ui.Color(…)`, `material.AppBar(…)`: the import prefix is the target.
+  ///   Prefixes are lower case and class names upper case, which tells them
+  ///   apart from a named constructor.
+  /// - `SwitchListTile.adaptive(…)`: the class is the target.
+  /// - `material.SwitchListTile.adaptive(…)`: the prefixed class is the
+  ///   target.
   @override
   void visitMethodInvocation(MethodInvocation node) {
     final target = node.target;
     final name = node.methodName.name;
 
-    if (target == null) {
-      if (name == 'Color') {
-        _checkColour(node, node.argumentList);
-      }
+    final isConstructor = target == null ||
+        (target is SimpleIdentifier && _isPrefix(target.name));
+    final namedConstructorOf = switch (target) {
+      SimpleIdentifier(:final name) when !_isPrefix(name) => name,
+      PrefixedIdentifier(:final prefix, :final identifier)
+          when _isPrefix(prefix.name) =>
+        identifier.name,
+      _ => null,
+    };
 
-      if (stockWidgets.contains(name)) {
-        _report(node, DesignRule.stockWidget);
-      }
-    } else if (target is SimpleIdentifier && stockWidgets.contains(target.name)) {
+    if (isConstructor && name == 'Color') {
+      _checkColour(node, node.argumentList);
+    }
+
+    if ((isConstructor && stockWidgets.contains(name)) ||
+        stockWidgets.contains(namedConstructorOf)) {
       _report(node, DesignRule.stockWidget);
     }
 
     super.visitMethodInvocation(node);
   }
+
+  static bool _isPrefix(String name) =>
+      name.isNotEmpty && name[0] == name[0].toLowerCase() && name[0] != name[0].toUpperCase();
 
   @override
   void visitNamedExpression(NamedExpression node) {
@@ -311,21 +367,10 @@ class _Visitor extends RecursiveAstVisitor<void> {
     ));
   }
 
-  bool _isIgnored(int line, DesignRule rule) {
-    for (final index in [line - 1, line - 2]) {
-      if (index < 0 || index >= _lines.length) {
-        continue;
-      }
-
-      for (final match in _ignore.allMatches(_lines[index])) {
-        if (match.group(1) == rule.id) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
+  /// A directive on the line itself or the line above.
+  bool _isIgnored(int line, DesignRule rule) =>
+      (ignored[line]?.contains(rule.id) ?? false) ||
+      (ignored[line - 1]?.contains(rule.id) ?? false);
 }
 
 class _NumberFinder extends RecursiveAstVisitor<void> {

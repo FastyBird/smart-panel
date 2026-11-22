@@ -335,10 +335,22 @@ class _Preview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = canvas.sizeFor(orientation);
+    final logicalSize = Size(
+      AppSpacings.scale(size.width),
+      AppSpacings.scale(size.height),
+    );
     final theme = brightness == Brightness.dark
         ? AppTheme.darkThemeFor(accent)
         : AppTheme.lightThemeFor(accent);
     final outline = Theme.of(context).neutrals.borderBase;
+    // Entries that read MediaQuery see the canvas, not the panel: its size
+    // and so its orientation, and no system insets.
+    final media = MediaQuery.of(context).copyWith(
+      size: logicalSize,
+      padding: EdgeInsets.zero,
+      viewPadding: EdgeInsets.zero,
+      viewInsets: EdgeInsets.zero,
+    );
 
     return Center(
       child: FittedBox(
@@ -349,22 +361,25 @@ class _Preview extends StatelessWidget {
           ),
           child: SizedBox(
             key: const ValueKey('gallery-canvas'),
-            width: AppSpacings.scale(size.width),
-            height: AppSpacings.scale(size.height),
+            width: logicalSize.width,
+            height: logicalSize.height,
             child: ClipRect(
-              child: Theme(
-                data: theme,
-                child: GalleryScope(
-                  canvas: canvas,
-                  orientation: orientation,
-                  brightness: brightness,
-                  accent: accent,
-                  child: Builder(
-                    builder: (context) => Material(
-                      color: Theme.of(context).neutrals.surfacePage,
-                      child: section == null
-                          ? const SizedBox.shrink()
-                          : _SectionView(section: section!),
+              child: MediaQuery(
+                data: media,
+                child: Theme(
+                  data: theme,
+                  child: GalleryScope(
+                    canvas: canvas,
+                    orientation: orientation,
+                    brightness: brightness,
+                    accent: accent,
+                    child: Builder(
+                      builder: (context) => Material(
+                        color: Theme.of(context).neutrals.surfacePage,
+                        child: section == null
+                            ? const SizedBox.shrink()
+                            : _SectionView(section: section!),
+                      ),
                     ),
                   ),
                 ),

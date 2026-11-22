@@ -90,6 +90,29 @@ final d = TextStyle(height: 1.2, letterSpacing: 0.5);
       expect(_rules('final w = SwitchListTile.adaptive(value: true);'), ['stock-widget']);
     });
 
+    test('reports constructors called through an import prefix', () {
+      expect(
+        _rules('''
+final a = ui.Color(0xFF112233);
+const b = ui.Color(0xFF112233);
+final c = material.AppBar();
+final d = material.SwitchListTile.adaptive(value: true);
+'''),
+        ['hex-colour', 'hex-colour', 'stock-widget', 'stock-widget'],
+      );
+    });
+
+    test('ignores methods that share a name on other targets', () {
+      expect(
+        _rules('''
+final a = palette.Color(value);
+final b = Colors.white.withValues(alpha: 0.5);
+final c = AppColors.fromHex(0xFF112233);
+'''),
+        isEmpty,
+      );
+    });
+
     test('ignores other widgets, types, comments and strings', () {
       expect(
         _rules('''
@@ -134,6 +157,21 @@ final c = Color(0xFF000000);
 '''),
         ['hex-colour'],
       );
+    });
+
+    test('are read from comments only, not from strings', () {
+      expect(
+        _rules('''
+final note = '// design-system: ignore hex-colour';
+final a = Color(0xFF112233);
+final b = TextStyle(fontSize: 14); final tip = "// design-system: ignore font-size";
+'''),
+        ['hex-colour', 'font-size'],
+      );
+    });
+
+    test('work in a trailing comment at the end of the file', () {
+      expect(_rules('final a = Color(0xFF112233); // design-system: ignore hex-colour'), isEmpty);
     });
   });
 
