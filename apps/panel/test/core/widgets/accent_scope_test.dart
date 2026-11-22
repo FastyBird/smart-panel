@@ -74,8 +74,19 @@ class _FakeStorage implements SecureStorageFallback {
   @override
   Future<String?> read({required String key}) async => values[key];
 
+  /// Holds back the delete of one key until completed.
+  final Map<String, Completer<void>> deleteGates = {};
+
+  /// Keys whose delete throws.
+  final Set<String> failDeletes = {};
+
   @override
-  Future<void> delete({required String key}) async => values.remove(key);
+  Future<void> delete({required String key}) async {
+    final own = deleteGates[key];
+    if (own != null) await own.future;
+    if (failDeletes.contains(key)) throw const FileSystemException('read-only');
+    values.remove(key);
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -608,6 +619,38 @@ void main() {
       expect(storage.values.containsKey('ui_accent'), isFalse);
       expect(prefs.accent, AppAccent.blue);
       expect(AppAccents.current, AppAccent.blue);
+    });
+
+    test('a choice made while a reset is running lands after it', () async {
+      final storage = _FakeStorage()..deleteGates['ui_language'] = Completer<void>();
+      final prefs = LocalPreferencesService(securedStorageFallback: storage);
+
+      final reset = prefs.clearAll();
+      final violet = prefs.setAccent(AppAccent.violet);
+
+      storage.deleteGates['ui_language']!.complete();
+      await reset;
+      await violet;
+
+      expect(storage.values['ui_accent'], 'violet');
+      expect(prefs.accent, AppAccent.violet);
+      expect(AppAccents.current, AppAccent.violet);
+    });
+
+    test('a reset clears the accent even when another delete fails', () async {
+      final storage = _FakeStorage()..failDeletes.add('ui_language');
+      final prefs = LocalPreferencesService(securedStorageFallback: storage);
+
+      await prefs.setAccent(AppAccent.rose);
+      await prefs.clearAll();
+
+      expect(storage.values.containsKey('ui_accent'), isFalse);
+      expect(prefs.accent, AppAccent.blue);
+
+      // Nothing stale is left to fall back to: a failed save now returns to blue.
+      storage.failWrites = true;
+      await expectLater(prefs.setAccent(AppAccent.sage), throwsA(isA<FileSystemException>()));
+      expect(prefs.accent, AppAccent.blue);
     });
 
     test('a failed newer save falls back to an older save that succeeded', () async {

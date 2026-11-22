@@ -182,6 +182,18 @@ class LocalPreferencesService extends ChangeNotifier {
     // Pending accent saves must not roll back to, or announce, an older value.
     _accentWrites++;
 
+    // Queued before any await: it runs after saves already pending, and a
+    // choice made while the other keys are deleted lands after it. It runs
+    // even when another delete fails.
+    final accentReset = _enqueueAccent(() async {
+      await _delete(key: _accentKey);
+      _storedAccent = AppAccent.blue;
+    }).catchError((Object e) {
+      if (kDebugMode) {
+        debugPrint('[LOCAL PREFS] Failed to clear the accent: $e');
+      }
+    });
+
     try {
       if (Platform.isAndroid || Platform.isIOS) {
         await _securedStorage?.delete(key: _languageKey);
@@ -192,24 +204,21 @@ class LocalPreferencesService extends ChangeNotifier {
         await _securedStorageFallback?.delete(key: _darkModeKey);
         await _securedStorageFallback?.delete(key: _screenPowerOffKey);
       }
-
-      // After any pending accent save, so it cannot store the accent again.
-      await _enqueueAccent(() async {
-        await _delete(key: _accentKey);
-        _storedAccent = AppAccent.blue;
-      });
-
-      if (kDebugMode) {
-        debugPrint('[LOCAL PREFS] All preferences cleared');
-      }
-
-      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[LOCAL PREFS] Failed to clear: $e');
       }
     }
+
+    await accentReset;
+
+    if (kDebugMode) {
+      debugPrint('[LOCAL PREFS] All preferences cleared');
+    }
+
+    notifyListeners();
   }
+
 
   Future<String?> _read({required String key}) async {
     if (Platform.isAndroid || Platform.isIOS) {
