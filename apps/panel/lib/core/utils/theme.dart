@@ -212,9 +212,9 @@ class ThemeColorFamily {
       light9: Color(0xFF1D2E1F),
     ),
     ThemeColors.cameras: ThemeColorFamily(
-      base: Color(0xFF7986CB), dark2: Color(0xFF949ED5),
-      light3: Color(0xFF5D6697), light5: Color(0xFF4A5175),
-      light7: Color(0xFF373C53), light8: Color(0xFF2E3141),
+      base: Color(0xFF8390D2), dark2: Color(0xFF9CA6DB),
+      light3: Color(0xFF646D9C), light5: Color(0xFF4F5678),
+      light7: Color(0xFF3A3F55), light8: Color(0xFF303343),
       light9: Color(0xFF1F2340),
     ),
   };
@@ -300,9 +300,9 @@ class ThemeColorFamily {
       light9: Color(0xFFFDF1E2),
     ),
     ThemeColors.climate: ThemeColorFamily(
-      base: Color(0xFF0277A8), dark2: Color(0xFF025F86),
-      light3: Color(0xFF4EA0C2), light5: Color(0xFF80BBD4),
-      light7: Color(0xFFB3D6E5), light8: Color(0xFFCCE4EE),
+      base: Color(0xFF0272A1), dark2: Color(0xFF025B81),
+      light3: Color(0xFF4E9CBD), light5: Color(0xFF80B8D0),
+      light7: Color(0xFFB3D5E3), light8: Color(0xFFCCE3EC),
       light9: Color(0xFFE3F2FA),
     ),
     ThemeColors.shading: ThemeColorFamily(
@@ -318,16 +318,16 @@ class ThemeColorFamily {
       light9: Color(0xFFFCE4EC),
     ),
     ThemeColors.sensors: ThemeColorFamily(
-      base: Color(0xFF00838F), dark2: Color(0xFF006972),
-      light3: Color(0xFF4CA8B1), light5: Color(0xFF80C1C7),
-      light7: Color(0xFFB2DADD), light8: Color(0xFFCCE6E9),
+      base: Color(0xFF007984), dark2: Color(0xFF00616A),
+      light3: Color(0xFF4CA1A9), light5: Color(0xFF80BCC2),
+      light7: Color(0xFFB2D7DA), light8: Color(0xFFCCE4E6),
       light9: Color(0xFFE0F7FA),
     ),
     ThemeColors.energy: ThemeColorFamily(
       base: Color(0xFF2E7D32), dark2: Color(0xFF256428),
       light3: Color(0xFF6DA470), light5: Color(0xFF96BE98),
       light7: Color(0xFFC0D8C2), light8: Color(0xFFD5E5D6),
-      light9: Color(0xFFE8F3E9),
+      light9: Color(0xFFECF6ED),
     ),
     ThemeColors.cameras: ThemeColorFamily(
       base: Color(0xFF3949AB), dark2: Color(0xFF2E3A89),
@@ -753,7 +753,7 @@ class AppNeutralPalette {
     borderLight: Color(0xFFE8EAEE),
     textPrimary: Color(0xFF1B1F26),
     textSecondary: Color(0xFF5B6270),
-    textMuted: Color(0xFF6E7581),
+    textMuted: Color(0xFF676E7A),
     textDisabled: Color(0xFF8B919B),
   );
 
@@ -800,7 +800,7 @@ class AppStatusPalette {
     AppStatus.ok: AppStatusPalette(
       fill: Color(0xFF2E7D32),
       text: Color(0xFF2E7D32),
-      soft: Color(0xFFE8F3E9),
+      soft: Color(0xFFECF6ED),
       border: Color(0xFFC5E1C7),
     ),
     AppStatus.warning: AppStatusPalette(
@@ -918,7 +918,7 @@ class AppAccentPalette {
   // (fill, text, soft)
   static const Map<AppAccent, (Color, Color, Color)> _dark = {
     AppAccent.blue: (Color(0xFF3570D8), Color(0xFF8AB4F8), Color(0xFF212E48)),
-    AppAccent.teal: (Color(0xFF12857C), Color(0xFF5FD0C5), Color(0xFF193333)),
+    AppAccent.teal: (Color(0xFF11827A), Color(0xFF5FD0C5), Color(0xFF193333)),
     AppAccent.sage: (Color(0xFF5F7D36), Color(0xFFB3CF85), Color(0xFF2A3124)),
     AppAccent.terracotta: (Color(0xFFB85230), Color(0xFFF2A685), Color(0xFF3E2823)),
     AppAccent.rose: (Color(0xFFAD4F78), Color(0xFFF0A3C2), Color(0xFF3B2733)),
@@ -1085,7 +1085,7 @@ class AppColorsLight {
   static const Color successLight5 = Color(0xFF96BE98);
   static const Color successLight7 = Color(0xFFC5E1C7);
   static const Color successLight8 = Color(0xFFD5E5D6);
-  static const Color successLight9 = Color(0xFFE8F3E9);
+  static const Color successLight9 = Color(0xFFECF6ED);
   static const Color successDark2 = Color(0xFF256428);
 
   static const Color warning = Color(0xFFA35600);
@@ -1095,6 +1095,13 @@ class AppColorsLight {
   static const Color warningLight8 = Color(0xFFEDDDCC);
   static const Color warningLight9 = Color(0xFFFDF1E2);
   static const Color warningDark2 = Color(0xFF824500);
+
+  /// Status warning fill: the fill of every filled warning and Lights
+  /// control, in both themes, with a white label.
+  static const Color warningFill = Color(0xFFB25E00);
+
+  /// [warningFill] 20 % toward black.
+  static const Color warningFillPressed = Color(0xFF8E4B00);
 
   static const Color danger = Color(0xFFC62828);
   static const Color dangerLight3 = Color(0xFFD76868);
@@ -1112,13 +1119,13 @@ class AppColorsLight {
   static const Color errorLight9 = Color(0xFFFBEAEA);
   static const Color errorDark2 = Color(0xFF9E2020);
 
-  static const Color info = Color(0xFF0277A8);
-  static const Color infoLight3 = Color(0xFF4EA0C2);
-  static const Color infoLight5 = Color(0xFF80BBD4);
-  static const Color infoLight7 = Color(0xFFB3D6E5);
-  static const Color infoLight8 = Color(0xFFCCE4EE);
+  static const Color info = Color(0xFF0272A1);
+  static const Color infoLight3 = Color(0xFF4E9CBD);
+  static const Color infoLight5 = Color(0xFF80B8D0);
+  static const Color infoLight7 = Color(0xFFB3D5E3);
+  static const Color infoLight8 = Color(0xFFCCE3EC);
   static const Color infoLight9 = Color(0xFFE3F2FA);
-  static const Color infoDark2 = Color(0xFF025F86);
+  static const Color infoDark2 = Color(0xFF025B81);
 
   static const Color neutral = Color(0xFF5B6675);
   static const Color neutralLight3 = Color(0xFF8C949E);
@@ -1144,13 +1151,13 @@ class AppColorsLight {
   static const Color tealLight9 = Color(0xFFE0F2F1);
   static const Color tealDark2 = Color(0xFF006156);
 
-  static const Color cyan = Color(0xFF00838F);
-  static const Color cyanLight3 = Color(0xFF4CA8B1);
-  static const Color cyanLight5 = Color(0xFF80C1C7);
-  static const Color cyanLight7 = Color(0xFFB2DADD);
-  static const Color cyanLight8 = Color(0xFFCCE6E9);
+  static const Color cyan = Color(0xFF007984);
+  static const Color cyanLight3 = Color(0xFF4CA1A9);
+  static const Color cyanLight5 = Color(0xFF80BCC2);
+  static const Color cyanLight7 = Color(0xFFB2D7DA);
+  static const Color cyanLight8 = Color(0xFFCCE4E6);
   static const Color cyanLight9 = Color(0xFFE0F7FA);
-  static const Color cyanDark2 = Color(0xFF006972);
+  static const Color cyanDark2 = Color(0xFF00616A);
 
   static const Color pink = Color(0xFFC2185B);
   static const Color pinkLight3 = Color(0xFFD45D8C);
@@ -1316,13 +1323,13 @@ class AppColorsDark {
   static const Color pinkLight9 = Color(0xFF3A1A28);
   static const Color pinkDark2 = Color(0xFFF381A8);
 
-  static const Color indigo = Color(0xFF7986CB);
-  static const Color indigoLight3 = Color(0xFF5D6697);
-  static const Color indigoLight5 = Color(0xFF4A5175);
-  static const Color indigoLight7 = Color(0xFF373C53);
-  static const Color indigoLight8 = Color(0xFF2E3141);
+  static const Color indigo = Color(0xFF8390D2);
+  static const Color indigoLight3 = Color(0xFF646D9C);
+  static const Color indigoLight5 = Color(0xFF4F5678);
+  static const Color indigoLight7 = Color(0xFF3A3F55);
+  static const Color indigoLight8 = Color(0xFF303343);
   static const Color indigoLight9 = Color(0xFF1F2340);
-  static const Color indigoDark2 = Color(0xFF949ED5);
+  static const Color indigoDark2 = Color(0xFF9CA6DB);
 }
 
 class AppBgColorDark {
@@ -1644,13 +1651,13 @@ class AppFilledButtonsLightThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: AppColors.white,
-      bgColor: AppColorsLight.warning,
-      pressedBgColor: AppColorsLight.warningDark2,
-      hoveredBgColor: AppColorsLight.warning,
+      bgColor: AppColorsLight.warningFill,
+      pressedBgColor: AppColorsLight.warningFillPressed,
+      hoveredBgColor: AppColorsLight.warningFill,
       disabledBgColor: AppColorsLight.warningLight5,
-      borderColor: AppColorsLight.warning,
-      pressedBorderColor: AppColorsLight.warningDark2,
-      hoveredBorderColor: AppColorsLight.warning,
+      borderColor: AppColorsLight.warningFill,
+      pressedBorderColor: AppColorsLight.warningFillPressed,
+      hoveredBorderColor: AppColorsLight.warningFill,
       disabledBorderColor: AppColorsLight.warningLight5,
     ),
   );
@@ -1904,13 +1911,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsLight.warning,
-      pressedBgColor: AppColorsLight.warningDark2,
-      hoveredBgColor: AppColorsLight.warning,
+      bgColor: AppColorsLight.warningFill,
+      pressedBgColor: AppColorsLight.warningFillPressed,
+      hoveredBgColor: AppColorsLight.warningFill,
       disabledBgColor: AppColorsDark.warningLight5,
-      borderColor: AppColorsLight.warning,
-      pressedBorderColor: AppColorsLight.warningDark2,
-      hoveredBorderColor: AppColorsLight.warning,
+      borderColor: AppColorsLight.warningFill,
+      pressedBorderColor: AppColorsLight.warningFillPressed,
+      hoveredBorderColor: AppColorsLight.warningFill,
       disabledBorderColor: AppColorsDark.warningLight5,
     ),
   );
