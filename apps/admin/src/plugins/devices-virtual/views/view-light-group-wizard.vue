@@ -171,7 +171,7 @@
 							<el-descriptions-item :label="t('devicesModule.fields.devices.zones.title')">{{ zoneNames(zoneIds) }}</el-descriptions-item>
 						</virtual-wizard-descriptions>
 					</virtual-wizard-review-section>
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div class="grid grid-cols-1 tp:grid-cols-2 gap-4">
 						<virtual-wizard-review-section
 							:title="t('devicesVirtualPlugin.lightGroup.members')"
 							:count="reviewMembers.length"

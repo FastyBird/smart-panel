@@ -45,7 +45,11 @@
 		</el-form-item>
 
 		<!-- Final Review -->
-		<el-card shadow="never" header-class="py-2! px-4!" body-class="px-0!">
+		<el-card
+			shadow="never"
+			header-class="py-2! px-4!"
+			body-class="px-0!"
+		>
 			<template #header>
 				<div class="font-semibold">
 					{{ t('devicesZigbee2mqttPlugin.fields.mapping.totalExposes') }}:
@@ -58,22 +62,22 @@
 				</div>
 			</template>
 
-			<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+			<div class="grid grid-cols-2 tp:grid-cols-4 gap-4 text-center">
 				<div>
 					<div class="text-2xl font-bold text-green-600">{{ mappedCount }}</div>
-					<div class="text-sm text-gray-500">{{ t('devicesZigbee2mqttPlugin.fields.mapping.mapped') }}</div>
+					<div class="text-sm text-secondary">{{ t('devicesZigbee2mqttPlugin.fields.mapping.mapped') }}</div>
 				</div>
 				<div>
 					<div class="text-2xl font-bold text-yellow-600">{{ partialCount }}</div>
-					<div class="text-sm text-gray-500">{{ t('devicesZigbee2mqttPlugin.fields.mapping.partial') }}</div>
+					<div class="text-sm text-secondary">{{ t('devicesZigbee2mqttPlugin.fields.mapping.partial') }}</div>
 				</div>
 				<div>
 					<div class="text-2xl font-bold text-red-600">{{ unmappedCount }}</div>
-					<div class="text-sm text-gray-500">{{ t('devicesZigbee2mqttPlugin.fields.mapping.unmapped') }}</div>
+					<div class="text-sm text-secondary">{{ t('devicesZigbee2mqttPlugin.fields.mapping.unmapped') }}</div>
 				</div>
 				<div>
 					<div class="text-2xl font-bold text-blue-600">{{ excludedCount }}</div>
-					<div class="text-sm text-gray-500">{{ t('devicesZigbee2mqttPlugin.fields.mapping.excluded') }}</div>
+					<div class="text-sm text-secondary">{{ t('devicesZigbee2mqttPlugin.fields.mapping.excluded') }}</div>
 				</div>
 			</div>
 		</el-card>
@@ -102,9 +106,7 @@ const { t } = useI18n();
 const stepFourFormEl = ref<FormInstance | undefined>(undefined);
 
 const rules = reactive<FormRules<IZigbee2mqttDeviceAddMultiStepForm>>({
-	name: [
-		{ required: true, message: t('devicesZigbee2mqttPlugin.fields.devices.name.validation.required'), trigger: 'change' },
-	],
+	name: [{ required: true, message: t('devicesZigbee2mqttPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
 });
 
 const mappedCount = computed(() => {

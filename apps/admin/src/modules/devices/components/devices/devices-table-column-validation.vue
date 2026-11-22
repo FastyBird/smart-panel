@@ -32,9 +32,7 @@
 				@click.stop
 			>
 				{{ t('devicesModule.validation.status.invalid') }}
-				<template v-if="issueCount > 0">
-					({{ issueCount }})
-				</template>
+				<template v-if="issueCount > 0">({{ issueCount }})</template>
 				<el-icon class="ml-1 inline-block!">
 					<icon :icon="popoverVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" />
 				</el-icon>
@@ -66,7 +64,7 @@
 				</el-table-column>
 				<el-table-column prop="message">
 					<template #default="scope">
-						<div class="text-xs text-gray-500">
+						<div class="text-xs text-secondary">
 							{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
 						</div>
 						<div>{{ scope.row.message }}</div>

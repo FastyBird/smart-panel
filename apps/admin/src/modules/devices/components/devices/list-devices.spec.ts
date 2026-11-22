@@ -39,7 +39,13 @@ vi.mock('../../../../common', async () => {
 		// Renders the slots and re-emits, so the wiring between the list and its bar can be checked
 		ListFilterBar: defineComponent({
 			name: 'ListFilterBar',
-			props: ['search', 'searchPlaceholder', 'quickFilters', 'activeCount', 'selectedCount'],
+			props: {
+				search: { type: String, default: undefined },
+				searchPlaceholder: { type: String, default: undefined },
+				quickFilters: { type: Array, default: () => [] },
+				activeCount: { type: Number, default: 0 },
+				selectedCount: { type: Number, default: 0 },
+			},
 			emits: ['update:search', 'quick-filter', 'reset', 'clear-selection'],
 			setup: (_, { expose }) => expose({ focusSearch }),
 			template: '<div data-test-id="filter-bar"><slot name="filters" /><slot name="bulk" /></div>',

@@ -10,7 +10,11 @@
 			<!-- eslint-disable vue/no-mutating-props -->
 			<el-select
 				v-model="model.haDeviceId"
-				:placeholder="itemsOptionsLoading ? t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.loading') : t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
+				:placeholder="
+					itemsOptionsLoading
+						? t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.loading')
+						: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')
+				"
 				:loading="itemsOptionsLoading"
 				:disabled="itemsOptionsLoading"
 				name="haDeviceId"
@@ -41,7 +45,7 @@
 				</el-option-group>
 			</el-select>
 			<template v-if="!itemsOptionsLoading && totalOptionsCount === 0">
-				<div class="text-sm text-gray-500 mt-2">
+				<div class="text-sm text-secondary mt-2">
 					{{ t('devicesHomeAssistantPlugin.messages.devices.noDiscoveredDevices') }}
 				</div>
 			</template>
@@ -60,18 +64,14 @@
 					<dd class="m-0 inline-block font-bold">
 						{{ selectedItemInfo.name }}
 					</dd>
-					<dt v-if="selectedItemInfo.type === 'device'">
-						{{ t('devicesHomeAssistantPlugin.fields.devices.entities.title') }}:
-					</dt>
+					<dt v-if="selectedItemInfo.type === 'device'">{{ t('devicesHomeAssistantPlugin.fields.devices.entities.title') }}:</dt>
 					<dd
 						v-if="selectedItemInfo.type === 'device'"
 						class="m-0"
 					>
 						{{ selectedItemInfo.entitiesCount }}
 					</dd>
-					<dt v-if="selectedItemInfo.type === 'helper'">
-						{{ t('devicesHomeAssistantPlugin.fields.devices.domain.title') }}:
-					</dt>
+					<dt v-if="selectedItemInfo.type === 'helper'">{{ t('devicesHomeAssistantPlugin.fields.devices.domain.title') }}:</dt>
 					<dd
 						v-if="selectedItemInfo.type === 'helper'"
 						class="m-0"
@@ -108,9 +108,9 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElOption, ElOptionGroup, ElSelect, ElTag, type FormInstance, type FormRules } from 'element-plus';
 
+import type { IDiscoveryOptionGroup } from '../../composables/types';
 import { useDiscoveredDevices } from '../../composables/useDiscoveredDevices';
 import { useDiscoveredHelpers } from '../../composables/useDiscoveredHelpers';
-import type { IDiscoveryOptionGroup } from '../../composables/types';
 import type { IHomeAssistantDeviceAddForm } from '../../schemas/devices.types';
 
 interface IDeviceSelectionStepProps {

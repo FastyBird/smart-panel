@@ -1,13 +1,22 @@
 <template>
-	<div v-if="!preview" class="text-center py-8 text-gray-500">
-		<el-icon :size="48" class="mb-4">
+	<div
+		v-if="!preview"
+		class="text-center py-8 text-secondary"
+	>
+		<el-icon
+			:size="48"
+			class="mb-4"
+		>
 			<icon icon="mdi:information-outline" />
 		</el-icon>
 		<p>{{ t('devicesZigbee2mqttPlugin.messages.mapping.noPreview') }}</p>
 		<p class="text-sm mt-2">{{ t('devicesZigbee2mqttPlugin.messages.mapping.selectDeviceFirst') }}</p>
 	</div>
 
-	<div v-else class="space-y-4">
+	<div
+		v-else
+		class="space-y-4"
+	>
 		<el-alert
 			type="info"
 			:title="t('devicesZigbee2mqttPlugin.headings.device.mappingCustomization')"
@@ -42,7 +51,7 @@
 						>
 							{{ expose.status }}
 						</el-tag>
-						<span class="text-sm text-gray-500 ml-2">({{ expose.exposeType }})</span>
+						<span class="text-sm text-secondary ml-2">({{ expose.exposeType }})</span>
 					</div>
 				</div>
 
@@ -75,18 +84,8 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElAlert,
-	ElCheckbox,
-	ElForm,
-	ElFormItem,
-	ElIcon,
-	ElOption,
-	ElSelect,
-	ElTag,
-	type FormInstance,
-	type FormRules,
-} from 'element-plus';
+import { ElAlert, ElCheckbox, ElForm, ElFormItem, ElIcon, ElOption, ElSelect, ElTag, type FormInstance, type FormRules } from 'element-plus';
+
 import { Icon } from '@iconify/vue';
 
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';

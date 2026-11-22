@@ -157,10 +157,13 @@
 			:property-category="model.category"
 		/>
 
-		<template v-if="haDeviceId">
-			<el-divider />
-
+		<!-- The Home Assistant entity and attribute this property reads (spec section 7: one connection section) -->
+		<plugin-form-section
+			v-if="haDeviceId || (model.haEntityId && model.haEntityId !== DEVICE_NO_ENTITY)"
+			:title="t('devicesHomeAssistantPlugin.sections.connection')"
+		>
 			<el-form-item
+				v-if="haDeviceId"
 				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haEntityId.title')"
 				prop="haEntityId"
 			>
@@ -169,22 +172,20 @@
 					:device-id="haDeviceId"
 				/>
 			</el-form-item>
-		</template>
 
-		<template v-if="model.haEntityId && model.haEntityId !== DEVICE_NO_ENTITY">
-			<el-divider />
-
-			<el-form-item
-				:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.haEntityId}-haAttribute`"
-				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haAttribute.title')"
-				prop="haAttribute"
-			>
-				<select-entity-attribute
-					v-model="model.haAttribute"
-					:entity-id="model.haEntityId"
-				/>
-			</el-form-item>
-		</template>
+			<template v-if="model.haEntityId && model.haEntityId !== DEVICE_NO_ENTITY">
+				<el-form-item
+					:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.haEntityId}-haAttribute`"
+					:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haAttribute.title')"
+					prop="haAttribute"
+				>
+					<select-entity-attribute
+						v-model="model.haAttribute"
+						:entity-id="model.haEntityId"
+					/>
+				</el-form-item>
+			</template>
+		</plugin-form-section>
 
 		<el-divider />
 
@@ -224,6 +225,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules, vLoading } from 'element-plus';
 
+import { PluginFormSection } from '../../../common';
 import {
 	ChannelPropertyFormDataType,
 	ChannelPropertyFormEnum,

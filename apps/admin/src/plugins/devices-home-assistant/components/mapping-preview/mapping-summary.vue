@@ -1,5 +1,9 @@
 <template>
-	<el-card shadow="never" header-class="py-2! px-4!" body-class="px-0!">
+	<el-card
+		shadow="never"
+		header-class="py-2! px-4!"
+		body-class="px-0!"
+	>
 		<template #header>
 			<div class="flex items-center justify-between">
 				<div class="font-semibold">
@@ -19,26 +23,26 @@
 			</div>
 		</template>
 
-		<div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+		<div class="grid grid-cols-2 tp:grid-cols-5 gap-4 text-center">
 			<div>
 				<div class="text-2xl font-bold text-green-600">{{ mappedCount }}</div>
-				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}</div>
+				<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}</div>
 			</div>
 			<div>
 				<div class="text-2xl font-bold text-yellow-600">{{ partialCount }}</div>
-				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.partial') }}</div>
+				<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.partial') }}</div>
 			</div>
 			<div>
 				<div class="text-2xl font-bold text-red-600">{{ unmappedCount }}</div>
-				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmapped') }}</div>
+				<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmapped') }}</div>
 			</div>
 			<div>
-				<div class="text-2xl font-bold text-gray-600">{{ skippedCount }}</div>
-				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.skipped') }}</div>
+				<div class="text-2xl font-bold text-regular">{{ skippedCount }}</div>
+				<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.skipped') }}</div>
 			</div>
 			<div>
 				<div class="text-2xl font-bold text-orange-600">{{ incompatibleCount }}</div>
-				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.incompatible') }}</div>
+				<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.incompatible') }}</div>
 			</div>
 		</div>
 
@@ -87,6 +91,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElCard, ElDivider, ElTag } from 'element-plus';
+
 import { Icon } from '@iconify/vue';
 
 import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.types';

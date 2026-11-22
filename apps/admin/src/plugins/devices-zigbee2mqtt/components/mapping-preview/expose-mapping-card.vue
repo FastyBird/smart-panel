@@ -1,5 +1,10 @@
 <template>
-	<el-card shadow="never" class="mb-2" header-class="py-2! px-4!" body-class="py-2! px-4!">
+	<el-card
+		shadow="never"
+		class="mb-2"
+		header-class="py-2! px-4!"
+		body-class="py-2! px-4!"
+	>
 		<template #header>
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
@@ -11,13 +16,16 @@
 						{{ expose.status }}
 					</el-tag>
 				</div>
-				<div class="flex items-center gap-2 text-sm text-gray-500">
+				<div class="flex items-center gap-2 text-sm text-secondary">
 					<span>{{ expose.exposeType }}</span>
 				</div>
 			</div>
 		</template>
 
-		<div v-if="expose.suggestedChannel" class="mb-3">
+		<div
+			v-if="expose.suggestedChannel"
+			class="mb-3"
+		>
 			<div class="flex items-center gap-2 mb-2">
 				<span class="font-medium">{{ t('devicesZigbee2mqttPlugin.fields.mapping.suggestedChannel.title') }}:</span>
 				<span>{{ expose.suggestedChannel.name }}</span>
@@ -28,12 +36,15 @@
 					{{ expose.suggestedChannel.confidence }}
 				</el-tag>
 			</div>
-			<div class="text-sm text-gray-600">
+			<div class="text-sm text-regular">
 				{{ t(`devicesModule.categories.channels.${expose.suggestedChannel.category}`) }}
 			</div>
 		</div>
 
-		<div v-if="expose.suggestedProperties.length > 0" class="mb-3">
+		<div
+			v-if="expose.suggestedProperties.length > 0"
+			class="mb-3"
+		>
 			<div class="font-medium mb-2">{{ t('devicesZigbee2mqttPlugin.fields.mapping.properties') }}:</div>
 			<div class="grid grid-cols-2 gap-2 text-sm">
 				<div
@@ -41,7 +52,7 @@
 					:key="`${property.category}-${property.z2mProperty}`"
 					class="flex items-center gap-2"
 				>
-					<span class="text-gray-600">{{ property.name }}:</span>
+					<span class="text-regular">{{ property.name }}:</span>
 					<el-tag
 						v-if="property.currentValue !== null && property.currentValue !== undefined"
 						size="small"
@@ -49,12 +60,20 @@
 					>
 						{{ property.currentValue }}
 					</el-tag>
-					<span v-else class="text-gray-400">-</span>
+					<span
+						v-else
+						class="text-muted"
+					>
+						-
+					</span>
 				</div>
 			</div>
 		</div>
 
-		<div v-if="expose.missingRequiredProperties.length > 0" class="mt-2">
+		<div
+			v-if="expose.missingRequiredProperties.length > 0"
+			class="mt-2"
+		>
 			<el-alert
 				type="warning"
 				:title="t('devicesZigbee2mqttPlugin.fields.mapping.missingRequiredProperties')"

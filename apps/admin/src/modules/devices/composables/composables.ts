@@ -37,3 +37,4 @@ export * from './useDeviceWizardState';
 
 export * from './types';
 export * from './useDiscardGuard';
+export * from './useDeviceFormHost';

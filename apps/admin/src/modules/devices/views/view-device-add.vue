@@ -4,14 +4,14 @@
 		:subtitle="t('devicesModule.subHeadings.devices.add')"
 		icon="mdi:devices"
 		left="close"
-		:primary="{ label: t('devicesModule.buttons.save.title'), handler: onSubmit }"
+		:primary="formHost.stepped.value ? undefined : { label: t('devicesModule.buttons.save.title'), handler: onSubmit }"
 		@back="() => (remoteFormChanged ? onDiscard() : onClose())"
 	/>
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div class="flex flex-col overflow-hidden h-full">
-		<el-scrollbar class="grow-1 p-2 md:px-4">
+		<el-scrollbar class="grow-1 p-2 tp:px-4">
 			<select-device-plugin v-model="selectedType" />
 
 			<el-divider />
@@ -49,43 +49,37 @@
 			/>
 		</el-scrollbar>
 
-		<!-- Wherever the phone app bar is not there to carry Save: in a drawer, and on a page kept open past 720 px.
-		     Hidden rather than removed, so a plugin's teleported Next button keeps its target through a resize -->
+		<!-- Wherever the phone app bar is not there to carry Save: in a drawer, and on a page kept open past 720 px. A plugin
+		     form with several steps runs them in its own wizard-shell, footer included -->
 		<form-footer
-			v-show="inDrawer || !isPhone"
+			v-show="!formHost.stepped.value && (inDrawer || !isPhone)"
 			:dirty="remoteFormChanged"
 			:saving="remoteFormResult === FormResult.WORKING"
 			@discard="onDiscard"
 			@close="onClose"
 		>
-			<!-- Plugin add forms with several steps teleport their own primary button (Next) here -->
 			<template #primary>
-				<div
-					:id="SUBMIT_FORM_SM"
-					class="order-2 inline-block [&>*:first-child:not(:only-child)]:hidden"
+				<el-button
+					:loading="remoteFormResult === FormResult.WORKING"
+					:disabled="remoteFormResult !== FormResult.NONE"
+					type="primary"
+					@click="onSubmit"
 				>
-					<el-button
-						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="remoteFormResult !== FormResult.NONE"
-						type="primary"
-						@click="onSubmit"
+					<template
+						v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
+						#icon
 					>
-						<template
-							v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
-							#icon
-						>
-							<icon
-								v-if="remoteFormResult === FormResult.OK"
-								icon="mdi:check-circle"
-							/>
-							<icon
-								v-else-if="remoteFormResult === FormResult.ERROR"
-								icon="mdi:cross-circle"
-							/>
-						</template>
-						{{ t('devicesModule.buttons.save.title') }}
-					</el-button>
-				</div>
+						<icon
+							v-if="remoteFormResult === FormResult.OK"
+							icon="mdi:check-circle"
+						/>
+						<icon
+							v-else-if="remoteFormResult === FormResult.ERROR"
+							icon="mdi:cross-circle"
+						/>
+					</template>
+					{{ t('devicesModule.buttons.save.title') }}
+				</el-button>
 			</template>
 		</form-footer>
 	</div>
@@ -101,20 +95,10 @@ import { ElAlert, ElButton, ElDivider, ElMessageBox, ElScrollbar } from 'element
 
 import { Icon } from '@iconify/vue';
 
-import {
-	AppBreadcrumbs,
-	FormFooter,
-	type IPlugin,
-	type IPluginElement,
-	SUBMIT_FORM_SM,
-	ViewHeader,
-	useEditDrawer,
-	useSizeClass,
-	useUuid,
-} from '../../../common';
+import { AppBreadcrumbs, FormFooter, type IPlugin, type IPluginElement, ViewHeader, useEditDrawer, useSizeClass, useUuid } from '../../../common';
 import { DeviceAddForm } from '../components/components';
 import SelectDevicePlugin from '../components/devices/select-device-plugin.vue';
-import { useDevicesPlugins } from '../composables/composables';
+import { provideDeviceFormHost, useDevicesPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import type { IDevicePluginsComponents, IDevicePluginsSchemas } from '../devices.types';
 
@@ -206,6 +190,9 @@ const onClose = (): void => {
 		router.push({ name: RouteNames.DEVICES });
 	}
 };
+
+// A plugin form with steps leaves through the host, the way Close and Discard do
+const formHost = provideDeviceFormHost((): void => (remoteFormChanged.value ? onDiscard() : onClose()));
 
 onMounted((): void => {
 	emit('update:remote-form-changed', remoteFormChanged.value);

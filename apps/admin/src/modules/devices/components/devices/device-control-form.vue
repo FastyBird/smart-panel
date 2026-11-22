@@ -1,5 +1,5 @@
 <template>
-	<el-scrollbar class="grow-1 p-2 md:px-4">
+	<el-scrollbar class="grow-1 p-2 tp:px-4">
 		<el-space
 			v-if="controllableChannels.length > 0"
 			direction="vertical"
@@ -81,7 +81,7 @@
 											:step="property.step ?? 1"
 											:disabled="isPropertyLoading(property.id)"
 											class="flex-grow touch-action-none"
-											@input="(val: number | number[]) => onPropertyChange(channel.id, property.id, Array.isArray(val) ? val[0] ?? 0 : val)"
+											@input="(val: number | number[]) => onPropertyChange(channel.id, property.id, Array.isArray(val) ? (val[0] ?? 0) : val)"
 										/>
 										<el-text class="min-w-[60px] text-right">
 											{{ getPropertyValue(property.id) ?? '-' }}{{ property.unit ? ` ${property.unit}` : '' }}
@@ -148,7 +148,22 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElAvatar, ElCard, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElResult, ElScrollbar, ElSelect, ElSlider, ElSpace, ElSwitch, ElText } from 'element-plus';
+import {
+	ElAvatar,
+	ElCard,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElInputNumber,
+	ElOption,
+	ElResult,
+	ElScrollbar,
+	ElSelect,
+	ElSlider,
+	ElSpace,
+	ElSwitch,
+	ElText,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

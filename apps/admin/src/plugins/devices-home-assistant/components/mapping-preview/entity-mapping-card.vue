@@ -1,5 +1,10 @@
 <template>
-	<el-card shadow="never" class="mb-2" header-class="py-2! px-4!" body-class="py-2! px-4!">
+	<el-card
+		shadow="never"
+		class="mb-2"
+		header-class="py-2! px-4!"
+		body-class="py-2! px-4!"
+	>
 		<template #header>
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
@@ -11,7 +16,7 @@
 						{{ entity.status }}
 					</el-tag>
 				</div>
-				<div class="flex items-center gap-2 text-sm text-gray-500">
+				<div class="flex items-center gap-2 text-sm text-secondary">
 					<span>{{ entity.domain }}</span>
 					<span v-if="entity.deviceClass">•</span>
 					<span v-if="entity.deviceClass">{{ entity.deviceClass }}</span>
@@ -19,7 +24,10 @@
 			</div>
 		</template>
 
-		<div v-if="entity.suggestedChannel" class="mb-3">
+		<div
+			v-if="entity.suggestedChannel"
+			class="mb-3"
+		>
 			<div class="flex items-center gap-2 mb-2">
 				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel.title') }}:</span>
 				<span>{{ entity.suggestedChannel.name }}</span>
@@ -30,12 +38,15 @@
 					{{ entity.suggestedChannel.confidence }}
 				</el-tag>
 			</div>
-			<div class="text-sm text-gray-600">
+			<div class="text-sm text-regular">
 				{{ t(`devicesModule.categories.channels.${entity.suggestedChannel.category}`) }}
 			</div>
 		</div>
 
-		<div v-if="entity.suggestedProperties.length > 0" class="mb-3">
+		<div
+			v-if="entity.suggestedProperties.length > 0"
+			class="mb-3"
+		>
 			<div class="font-medium mb-2">{{ t('devicesHomeAssistantPlugin.fields.mapping.properties') }}:</div>
 			<div class="grid grid-cols-2 gap-2 text-sm">
 				<div
@@ -43,7 +54,7 @@
 					:key="`${property.category}-${property.haAttribute}`"
 					class="flex items-center gap-2"
 				>
-					<span class="text-gray-600">{{ property.name }}:</span>
+					<span class="text-regular">{{ property.name }}:</span>
 					<el-tag
 						v-if="property.isVirtual"
 						size="small"
@@ -59,17 +70,28 @@
 					>
 						{{ property.currentValue }}
 					</el-tag>
-					<span v-else class="text-gray-400">—</span>
+					<span
+						v-else
+						class="text-muted"
+					>
+						—
+					</span>
 				</div>
 			</div>
 		</div>
 
-		<div v-if="entity.unmappedAttributes.length > 0" class="text-sm text-gray-500">
+		<div
+			v-if="entity.unmappedAttributes.length > 0"
+			class="text-sm text-secondary"
+		>
 			<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmappedAttributes') }}:</span>
 			{{ entity.unmappedAttributes.join(', ') }}
 		</div>
 
-		<div v-if="entity.missingRequiredProperties.length > 0" class="mt-2">
+		<div
+			v-if="entity.missingRequiredProperties.length > 0"
+			class="mt-2"
+		>
 			<el-alert
 				type="warning"
 				:title="t('devicesHomeAssistantPlugin.fields.mapping.missingRequiredProperties')"
@@ -79,7 +101,10 @@
 			/>
 		</div>
 
-		<div v-if="entity.status === 'incompatible' && entity.incompatibleReason" class="mt-2">
+		<div
+			v-if="entity.status === 'incompatible' && entity.incompatibleReason"
+			class="mt-2"
+		>
 			<el-alert
 				type="info"
 				:title="t('devicesHomeAssistantPlugin.fields.mapping.incompatibleChannel')"

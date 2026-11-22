@@ -1,13 +1,22 @@
 <template>
-	<div v-if="!preview" class="text-center py-8 text-gray-500">
-		<el-icon :size="48" class="mb-4">
+	<div
+		v-if="!preview"
+		class="text-center py-8 text-secondary"
+	>
+		<el-icon
+			:size="48"
+			class="mb-4"
+		>
 			<icon icon="mdi:information-outline" />
 		</el-icon>
 		<p>{{ t('devicesHomeAssistantPlugin.messages.mapping.noPreview') }}</p>
 		<p class="text-sm mt-2">{{ t('devicesHomeAssistantPlugin.messages.mapping.selectDeviceFirst') }}</p>
 	</div>
 
-	<div v-else class="space-y-4">
+	<div
+		v-else
+		class="space-y-4"
+	>
 		<el-alert
 			type="info"
 			:title="t('devicesHomeAssistantPlugin.headings.device.mappingCustomization')"
@@ -42,7 +51,7 @@
 						>
 							{{ entity.status }}
 						</el-tag>
-						<span class="text-sm text-gray-500 ml-2">({{ entity.domain }})</span>
+						<span class="text-sm text-secondary ml-2">({{ entity.domain }})</span>
 					</div>
 				</div>
 
@@ -76,6 +85,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElCheckbox, ElForm, ElFormItem, ElIcon, ElOption, ElSelect, ElTag, type FormInstance, type FormRules } from 'element-plus';
+
 import { Icon } from '@iconify/vue';
 
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
@@ -88,7 +98,7 @@ interface IMappingCustomizationStepProps {
 }
 
 // Props are used in template and in functions below
- 
+
 const props = defineProps<IMappingCustomizationStepProps>();
 
 const emit = defineEmits<{
@@ -107,17 +117,17 @@ const sanitizeEntityIdForForm = (entityId: string): string => {
 const isEntityEnabled = (entityId: string): boolean => {
 	const entity = props.preview?.entities.find((e) => e.entityId === entityId);
 	const override = props.entityOverrides?.find((o) => o.entityId === entityId);
-	
+
 	// If there's an explicit skip override, entity is disabled
 	if (override?.skip === true) {
 		return false;
 	}
-	
+
 	// If there's an override with a channel category (and no skip), entity is enabled
 	if (override?.channelCategory) {
 		return true;
 	}
-	
+
 	// If there's an override without category (user checked but hasn't selected category yet), entity is enabled
 	// This allows the checkbox to stay checked and show the category selector
 	if (override && !override.skip && !override.channelCategory) {
@@ -130,7 +140,7 @@ const isEntityEnabled = (entityId: string): boolean => {
 	if (suggestedCategory) {
 		return suggestedCategory !== DevicesModuleChannelCategory.generic;
 	}
-	
+
 	// Entities without a suggested category are disabled by default
 	return false;
 };
@@ -165,7 +175,7 @@ watch(
 			for (const entity of props.preview.entities) {
 				const entityId = entity.entityId;
 				const formKey = `category_${sanitizeEntityIdForForm(entityId)}`;
-				
+
 				if (isEntityEnabled(entityId)) {
 					// Only set form model for enabled entities
 					const category = getEntityChannelCategory(entityId);
@@ -192,12 +202,12 @@ const stepThreeFormEl = ref<FormInstance | undefined>(undefined);
 // Form validation rules
 const formRules = computed<FormRules>(() => {
 	const rules: FormRules = {};
-	
+
 	if (props.preview) {
 		for (const entity of props.preview.entities) {
 			const entityId = entity.entityId;
 			const propName = `category_${sanitizeEntityIdForForm(entityId)}`;
-			
+
 			// Only add validation rule if entity is enabled and missing a category
 			if (isEntityEnabled(entityId) && !getEntityChannelCategory(entityId)) {
 				rules[propName] = [
@@ -210,7 +220,7 @@ const formRules = computed<FormRules>(() => {
 			}
 		}
 	}
-	
+
 	return rules;
 });
 
@@ -264,39 +274,39 @@ const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 
 	if (enabled) {
 		// Enable: remove skip flag and ensure there's a valid category
-			if (existingIndex >= 0) {
-				const override = currentOverrides[existingIndex];
-				if (override?.channelCategory) {
-					// Keep existing custom category, just remove skip
-					currentOverrides[existingIndex] = { entityId, channelCategory: override.channelCategory };
-					// Update form model
-					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = override.channelCategory;
-				} else if (isValidSuggestedCategory) {
-					// Entity is back to default state with valid suggested category, remove override
-					currentOverrides.splice(existingIndex, 1);
-					// Update form model with suggested category
-					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = suggestedCategory;
-				} else {
-					// No valid category yet - add override without category to allow user to select one
-					// This will show the category selector
-					currentOverrides[existingIndex] = { entityId };
-					// Clear form model to trigger validation
-					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = undefined;
-				}
+		if (existingIndex >= 0) {
+			const override = currentOverrides[existingIndex];
+			if (override?.channelCategory) {
+				// Keep existing custom category, just remove skip
+				currentOverrides[existingIndex] = { entityId, channelCategory: override.channelCategory };
+				// Update form model
+				formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = override.channelCategory;
+			} else if (isValidSuggestedCategory) {
+				// Entity is back to default state with valid suggested category, remove override
+				currentOverrides.splice(existingIndex, 1);
+				// Update form model with suggested category
+				formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = suggestedCategory;
 			} else {
-				// No existing override
-				if (isValidSuggestedCategory) {
-					// Entity has valid suggested category, it's already enabled by default
-					// No override needed, but update form model
-					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = suggestedCategory;
-				} else {
-					// Entity needs a category - add override without category (user must select)
-					// This allows the checkbox to be checked, and category selector will be shown
-					currentOverrides.push({ entityId });
-					// Clear form model to trigger validation
-					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = undefined;
-				}
+				// No valid category yet - add override without category to allow user to select one
+				// This will show the category selector
+				currentOverrides[existingIndex] = { entityId };
+				// Clear form model to trigger validation
+				formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = undefined;
 			}
+		} else {
+			// No existing override
+			if (isValidSuggestedCategory) {
+				// Entity has valid suggested category, it's already enabled by default
+				// No override needed, but update form model
+				formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = suggestedCategory;
+			} else {
+				// Entity needs a category - add override without category (user must select)
+				// This allows the checkbox to be checked, and category selector will be shown
+				currentOverrides.push({ entityId });
+				// Clear form model to trigger validation
+				formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = undefined;
+			}
+		}
 	} else {
 		// Disable: set skip flag
 		if (existingIndex >= 0) {

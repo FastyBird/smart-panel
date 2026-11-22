@@ -1,227 +1,69 @@
 <template>
-	<el-collapse
-		v-model="controlledActiveStep"
-		accordion
-		expand-icon-position="left"
+	<!-- Several steps (spec section 7): the steps run in a wizard-shell, which carries the actions in place of the
+	     host's form footer. Every step stays mounted, so its form keeps what was entered when going back -->
+	<wizard-shell
+		:steps="steps"
+		:current="activeStep"
+		:can-continue="canContinue"
+		:busy="busy"
+		:next-label="activeStep === 'five' ? t('devicesZigbee2mqttPlugin.buttons.adoptDevice') : undefined"
+		@back="onPreviousStep"
+		@next="onProcessStep"
+		@cancel="formHost.close"
+		@step="onStep"
 	>
-		<!-- Step 1: Device Selection -->
-		<el-collapse-item
-			:title="t('devicesZigbee2mqttPlugin.headings.device.deviceSelection')"
-			name="one"
-		>
-			<template #icon>
-				<el-icon :size="20">
-					<icon icon="mdi:devices" />
-				</el-icon>
-			</template>
-
+		<div class="p-4">
 			<device-selection-step
+				v-show="activeStep === 'one'"
 				ref="deviceSelectionStepRef"
 				:model="model"
 				:devices-options="devicesOptions"
 				:devices-options-loading="devicesOptionsLoading"
 				@device-change="onDeviceChange"
 			/>
-		</el-collapse-item>
-
-		<!-- Step 2: Category Selection -->
-		<el-collapse-item
-			:title="t('devicesZigbee2mqttPlugin.headings.device.categorySelection')"
-			name="two"
-			:disabled="!reachedSteps.has('two')"
-		>
-			<template #icon>
-				<el-icon :size="20">
-					<icon icon="mdi:tag" />
-				</el-icon>
-			</template>
 
 			<category-selection-step
+				v-show="activeStep === 'two'"
 				ref="categorySelectionStepRef"
 				:model="model"
 				:categories-options="categoriesOptions"
 				:suggested-category="suggestedCategory"
 			/>
-		</el-collapse-item>
-
-		<!-- Step 3: Mapping Preview -->
-		<el-collapse-item
-			:title="t('devicesZigbee2mqttPlugin.headings.device.mappingPreview')"
-			name="three"
-			:disabled="!reachedSteps.has('three')"
-		>
-			<template #icon>
-				<el-icon :size="20">
-					<icon icon="mdi:eye" />
-				</el-icon>
-			</template>
 
 			<mapping-preview-step
+				v-show="activeStep === 'three'"
 				:preview="preview"
 				:is-preview-loading="isPreviewLoading"
 				:preview-error="previewError"
 			/>
-		</el-collapse-item>
-
-		<!-- Step 4: Mapping Customization -->
-		<el-collapse-item
-			:title="t('devicesZigbee2mqttPlugin.headings.device.mappingCustomization')"
-			name="four"
-			:disabled="!reachedSteps.has('four')"
-		>
-			<template #icon>
-				<el-icon :size="20">
-					<icon icon="mdi:tune" />
-				</el-icon>
-			</template>
 
 			<mapping-customization-step
+				v-show="activeStep === 'four'"
 				ref="mappingCustomizationStepRef"
 				:preview="preview"
 				:is-preview-loading="isPreviewLoading"
 				:expose-overrides="exposeOverrides"
 				@update-overrides="onUpdateOverrides"
 			/>
-		</el-collapse-item>
-
-		<!-- Step 5: Device Configuration -->
-		<el-collapse-item
-			:title="t('devicesZigbee2mqttPlugin.headings.device.deviceConfiguration')"
-			name="five"
-			:disabled="!reachedSteps.has('five')"
-		>
-			<template #icon>
-				<el-icon :size="20">
-					<icon icon="mdi:cog" />
-				</el-icon>
-			</template>
 
 			<device-configuration-step
+				v-show="activeStep === 'five'"
 				ref="deviceConfigurationStepRef"
 				:model="model"
 				:preview="preview"
 				:expose-overrides="exposeOverrides"
 			/>
-		</el-collapse-item>
-	</el-collapse>
-
-	<!-- Step Navigation Buttons -->
-	<teleport
-		v-if="activeStep === 'one'"
-		defer
-		:to="`#${SUBMIT_FORM_SM}`"
-	>
-		<el-button
-			:loading="formResult === FormResult.WORKING"
-			:disabled="formResult !== FormResult.NONE"
-			type="primary"
-			@click="onProcessStep"
-		>
-			<template
-				v-if="formResult === FormResult.ERROR"
-				#icon
-			>
-				<icon icon="mdi:cross-circle" />
-			</template>
-			{{ t('devicesZigbee2mqttPlugin.buttons.next') }}
-		</el-button>
-	</teleport>
-
-	<teleport
-		v-else-if="activeStep === 'two'"
-		defer
-		:to="`#${SUBMIT_FORM_SM}`"
-	>
-		<div class="flex gap-2">
-			<el-button @click="onPreviousStep">
-				{{ t('devicesZigbee2mqttPlugin.buttons.previous') }}
-			</el-button>
-			<el-button
-				:loading="formResult === FormResult.WORKING"
-				:disabled="formResult !== FormResult.NONE"
-				type="primary"
-				@click="onProcessStep"
-			>
-				{{ t('devicesZigbee2mqttPlugin.buttons.next') }}
-			</el-button>
 		</div>
-	</teleport>
-
-	<teleport
-		v-else-if="activeStep === 'three'"
-		defer
-		:to="`#${SUBMIT_FORM_SM}`"
-	>
-		<div class="flex gap-2">
-			<el-button @click="onPreviousStep">
-				{{ t('devicesZigbee2mqttPlugin.buttons.previous') }}
-			</el-button>
-			<el-button
-				type="primary"
-				@click="onProcessStep"
-			>
-				{{ t('devicesZigbee2mqttPlugin.buttons.next') }}
-			</el-button>
-		</div>
-	</teleport>
-
-	<teleport
-		v-else-if="activeStep === 'four'"
-		defer
-		:to="`#${SUBMIT_FORM_SM}`"
-	>
-		<div class="flex gap-2">
-			<el-button @click="onPreviousStep">
-				{{ t('devicesZigbee2mqttPlugin.buttons.previous') }}
-			</el-button>
-			<el-button
-				:loading="formResult === FormResult.WORKING || isPreviewLoading"
-				:disabled="formResult !== FormResult.NONE || isPreviewLoading"
-				type="primary"
-				@click="onProcessStep"
-			>
-				{{ t('devicesZigbee2mqttPlugin.buttons.next') }}
-			</el-button>
-		</div>
-	</teleport>
-
-	<teleport
-		v-else-if="activeStep === 'five'"
-		defer
-		:to="`#${SUBMIT_FORM_SM}`"
-	>
-		<div class="flex gap-2">
-			<el-button @click="onPreviousStep">
-				{{ t('devicesZigbee2mqttPlugin.buttons.previous') }}
-			</el-button>
-			<el-button
-				:loading="formResult === FormResult.WORKING || isAdopting"
-				:disabled="formResult !== FormResult.NONE || !preview?.readyToAdopt"
-				type="primary"
-				@click="onProcessStep"
-			>
-				<template
-					v-if="formResult === FormResult.ERROR"
-					#icon
-				>
-					<icon icon="mdi:cross-circle" />
-				</template>
-				{{ t('devicesZigbee2mqttPlugin.buttons.adoptDevice') }}
-			</el-button>
-		</div>
-	</teleport>
+	</wizard-shell>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCollapse, ElCollapseItem, ElIcon } from 'element-plus';
-import { Icon } from '@iconify/vue';
-
-import { SUBMIT_FORM_SM } from '../../../common';
+import { WizardShell, type WizardShellStep } from '../../../common';
+import { FormResult, type FormResultType, useDeviceFormSteps, useDevices } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { FormResult, type FormResultType, useDevices } from '../../../modules/devices';
 import { useDeviceAddFormMultiStep } from '../composables/useDeviceAddFormMultiStep';
 
 import CategorySelectionStep from './steps/category-selection-step.vue';
@@ -229,7 +71,6 @@ import DeviceConfigurationStep from './steps/device-configuration-step.vue';
 import DeviceSelectionStep from './steps/device-selection-step.vue';
 import MappingCustomizationStep from './steps/mapping-customization-step.vue';
 import MappingPreviewStep from './steps/mapping-preview-step.vue';
-
 import type { IZigbee2mqttDeviceAddFormMultiStepProps } from './zigbee2mqtt-device-add-form-multi-step.types';
 
 defineOptions({
@@ -389,6 +230,47 @@ const controlledActiveStep = computed({
 	},
 });
 
+// The host leaves its form footer out while these steps run; Cancel closes the form through it
+const formHost = useDeviceFormSteps();
+
+const steps = computed<WizardShellStep[]>((): WizardShellStep[] => [
+	{ id: 'one', label: t('devicesZigbee2mqttPlugin.headings.device.deviceSelection') },
+	{ id: 'two', label: t('devicesZigbee2mqttPlugin.headings.device.categorySelection') },
+	{ id: 'three', label: t('devicesZigbee2mqttPlugin.headings.device.mappingPreview') },
+	{ id: 'four', label: t('devicesZigbee2mqttPlugin.headings.device.mappingCustomization') },
+	{ id: 'five', label: t('devicesZigbee2mqttPlugin.headings.device.deviceConfiguration') },
+]);
+
+const busy = computed<boolean>(
+	(): boolean =>
+		formResult.value === FormResult.WORKING ||
+		(activeStep.value === 'four' && isPreviewLoading.value) ||
+		(activeStep.value === 'five' && isAdopting.value)
+);
+
+// As the step buttons did: a check under way or just failed holds Next, and the last step waits for a preview that
+// can be adopted
+const canContinue = computed<boolean>((): boolean => {
+	if (activeStep.value === 'three') {
+		return true;
+	}
+
+	if (formResult.value !== FormResult.NONE) {
+		return false;
+	}
+
+	if (activeStep.value === 'four') {
+		return !isPreviewLoading.value;
+	}
+
+	return activeStep.value !== 'five' || preview.value?.readyToAdopt === true;
+});
+
+// A completed step chosen in the stepper: the same way back as the accordion headings gave
+const onStep = (id: string): void => {
+	controlledActiveStep.value = id as typeof controlledActiveStep.value;
+};
+
 const onProcessStep = async (): Promise<void> => {
 	try {
 		if (activeStep.value === 'one') {
@@ -494,8 +376,7 @@ watch(
 			model.enabled = true;
 			model.ieeeAddress = '';
 			model.category =
-				Object.values(DevicesModuleDeviceCategory).find((c) => c !== DevicesModuleDeviceCategory.generic) ||
-				DevicesModuleDeviceCategory.sensor;
+				Object.values(DevicesModuleDeviceCategory).find((c) => c !== DevicesModuleDeviceCategory.generic) || DevicesModuleDeviceCategory.sensor;
 
 			await nextTick();
 

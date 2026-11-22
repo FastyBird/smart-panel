@@ -1,26 +1,20 @@
 <template>
-	<el-collapse
-		v-model="activeStep"
-		accordion
-		expand-icon-position="left"
+	<!-- One form (spec section 7): General first, the connection with its test, no steps. Save tests the device first
+	     when it was not tested -->
+	<el-form
+		ref="formEl"
+		:model="model"
+		:rules="rules"
+		label-position="top"
+		status-icon
 	>
-		<el-collapse-item
-			:title="t('devicesShellyV1Plugin.headings.device.deviceConnection')"
-			name="one"
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="add"
+			:show-id="false"
 		>
-			<template #icon>
-				<el-icon :size="20">
-					<icon icon="mdi:connection" />
-				</el-icon>
-			</template>
-
-			<el-form
-				ref="stepOneFormEl"
-				:model="model"
-				:rules="stepOneFormElRules"
-				label-position="top"
-				status-icon
-			>
+			<plugin-form-section :title="t('devicesShellyV1Plugin.sections.connection')">
 				<el-form-item
 					:label="t('devicesShellyV1Plugin.fields.devices.hostname.title')"
 					prop="hostname"
@@ -28,6 +22,9 @@
 					<el-input
 						v-model="model.hostname"
 						:placeholder="t('devicesShellyV1Plugin.fields.devices.hostname.placeholder')"
+						inputmode="url"
+						autocapitalize="off"
+						autocorrect="off"
 						name="hostname"
 					/>
 				</el-form-item>
@@ -35,173 +32,37 @@
 				<el-form-item
 					:label="t('devicesShellyV1Plugin.fields.devices.password.title')"
 					prop="password"
-					class="mb-0!"
 				>
 					<el-input
 						v-model="model.password"
 						:placeholder="t('devicesShellyV1Plugin.fields.devices.password.placeholder')"
+						type="password"
+						show-password
+						autocomplete="new-password"
 						name="password"
 					/>
 				</el-form-item>
-			</el-form>
-		</el-collapse-item>
 
-		<el-collapse-item
-			:title="t('devicesShellyV1Plugin.headings.device.information')"
-			name="two"
-			:disabled="deviceInfo === null"
-		>
-			<template #icon>
-				<el-icon :size="20">
-					<icon icon="mdi:devices" />
-				</el-icon>
-			</template>
-
-			<el-alert
-				:type="deviceGroup ? 'success' : 'error'"
-				:title="deviceGroup ? t('devicesShellyV1Plugin.headings.device.supported') : t('devicesShellyV1Plugin.headings.device.notSupported')"
-				:closable="false"
-				show-icon
-			>
-				<dl class="grid grid-cols-[auto_1fr] gap-x-4 my-0">
-					<dt>{{ t('devicesShellyV1Plugin.headings.device.model') }}:</dt>
-					<dd class="m-0 inline-block font-bold">
-						{{ deviceGroup !== null ? deviceGroup.name : 'unknown' }}
-					</dd>
-					<dt>{{ t('devicesShellyV1Plugin.headings.device.firmware') }}:</dt>
-					<dd class="m-0 inline-block font-bold">
-						{{ deviceInfo?.firmware }}
-					</dd>
-				</dl>
-			</el-alert>
-
-			<el-form
-				ref="stepTwoFormEl"
-				:model="model"
-				:rules="stepTwoFormElRules"
-				label-position="top"
-				status-icon
-				class="mt-4"
-			>
-				<el-form-item
-					:label="t('devicesShellyV1Plugin.fields.devices.name.title')"
-					prop="name"
-				>
-					<el-input
-						v-model="model.name"
-						:placeholder="t('devicesShellyV1Plugin.fields.devices.name.placeholder')"
-						name="name"
-					/>
-				</el-form-item>
-
-				<el-divider />
-
-				<el-form-item
-					:label="t('devicesShellyV1Plugin.fields.devices.category.title')"
-					prop="category"
-				>
-					<el-select
-						v-model="model.category"
-						:placeholder="t('devicesShellyV1Plugin.fields.devices.category.placeholder')"
-						name="category"
-						filterable
-					>
-						<el-option
-							v-for="item in categoriesOptions"
-							:key="item.value"
-							:label="item.label"
-							:value="item.value"
-						/>
-					</el-select>
-				</el-form-item>
-
-				<el-alert
-					v-if="model.category"
-					type="info"
-					:title="t('devicesModule.fields.devices.category.description')"
-					:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-					:closable="false"
-					show-icon
+				<!-- A result belongs to the hostname and password it was read with: changing either starts a fresh test -->
+				<test-connection
+					:key="`${model.hostname}\u0000${model.password ?? ''}`"
+					:run="onTestConnection"
 				/>
-
-				<el-divider />
-
-				<el-form-item
-					:label="t('devicesShellyV1Plugin.fields.devices.description.title')"
-					prop="description"
-				>
-					<el-input
-						v-model="model.description"
-						:placeholder="t('devicesShellyV1Plugin.fields.devices.description.placeholder')"
-						:rows="4"
-						type="textarea"
-						name="description"
-					/>
-				</el-form-item>
-
-				<el-form-item
-					:label="t('devicesShellyV1Plugin.fields.devices.enabled.title')"
-					prop="enabled"
-					label-position="left"
-				>
-					<el-switch
-						v-model="model.enabled"
-						name="enabled"
-					/>
-				</el-form-item>
-			</el-form>
-		</el-collapse-item>
-	</el-collapse>
-
-	<teleport
-		v-if="activeStep === 'one'"
-		defer
-		:to="`#${SUBMIT_FORM_SM}`"
-	>
-		<el-button
-			:loading="formResult === FormResult.WORKING"
-			:disabled="formResult !== FormResult.NONE"
-			type="primary"
-			@click="onProcessStep"
-		>
-			<template
-				v-if="formResult === FormResult.ERROR"
-				#icon
-			>
-				<icon icon="mdi:cross-circle" />
-			</template>
-			{{ t('devicesShellyV1Plugin.buttons.next.title') }}
-		</el-button>
-	</teleport>
+			</plugin-form-section>
+		</device-form-frame>
+	</el-form>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElAlert,
-	ElButton,
-	ElCollapse,
-	ElCollapseItem,
-	ElDivider,
-	ElForm,
-	ElFormItem,
-	ElIcon,
-	ElInput,
-	ElOption,
-	ElSelect,
-	ElSwitch,
-	type FormRules,
-} from 'element-plus';
+import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { SUBMIT_FORM_SM, router, useFlashMessage } from '../../../common';
-import { RouteNames as DevicesRouteNames, FormResult, type FormResultType, useDevices } from '../../../modules/devices';
+import { PluginFormSection, TestConnection, type TestConnectionResult, router, useFlashMessage } from '../../../common';
+import { DeviceFormFrame, RouteNames as DevicesRouteNames, FormResult, type FormResultType, useDevices } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
-import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import type { IShellyV1DeviceAddForm, IShellyV1DeviceInfo, IShellyV1SupportedDevice } from '../schemas/devices.types';
 
 import type { IShellyV1DeviceAddFormProps } from './shelly-v1-device-add-form.types';
@@ -227,12 +88,24 @@ const { t } = useI18n();
 
 const flashMessage = useFlashMessage();
 
-const { devices, loaded: devicesLoaded, fetchDevices } = useDevices();
+const { loaded: devicesLoaded, fetchDevices } = useDevices();
 
-const { model, stepOneFormEl, stepTwoFormEl, activeStep, categoriesOptions, supportedDevices, formChanged, deviceInfo, submitStep, formResult } =
-	useDeviceAddForm({
-		id: props.id,
-	});
+const {
+	model,
+	formEl,
+	categoriesOptions,
+	supportedDevices,
+	supportedDevicesLoaded,
+	loadSupportedDevices,
+	findRegistered,
+	formChanged,
+	deviceInfo,
+	checkDevice,
+	submit,
+	formResult,
+} = useDeviceAddForm({
+	id: props.id,
+});
 
 const deviceGroup = computed<IShellyV1SupportedDevice | null>((): IShellyV1SupportedDevice | null => {
 	if (deviceInfo.value === null) {
@@ -242,26 +115,39 @@ const deviceGroup = computed<IShellyV1SupportedDevice | null>((): IShellyV1Suppo
 	return supportedDevices.value.find((group) => group.models.includes(deviceInfo.value!.model.toUpperCase())) || null;
 });
 
-const stepOneFormElRules = reactive<FormRules<IShellyV1DeviceAddForm>>({
-	hostname: [{ required: true, message: t('devicesShellyV1Plugin.fields.devices.hostname.validation.required'), trigger: 'change' }],
-});
-
-const stepTwoFormElRules = reactive<FormRules<IShellyV1DeviceAddForm>>({
+const rules = reactive<FormRules<IShellyV1DeviceAddForm>>({
 	name: [{ required: true, message: t('devicesShellyV1Plugin.fields.devices.name.validation.required'), trigger: 'change' }],
 	category: [{ required: true, message: t('devicesShellyV1Plugin.fields.devices.category.validation.required'), trigger: 'change' }],
 	hostname: [{ required: true, message: t('devicesShellyV1Plugin.fields.devices.hostname.validation.required'), trigger: 'change' }],
 });
 
-const onProcessStep = async (): Promise<void> => {
-	if (activeStep.value === 'one') {
-		submitStep('one').catch(() => {
-			// The form is not valid
-		});
-	} else if (activeStep.value === 'two') {
-		submitStep('two').catch(() => {
-			// The form is not valid
+// Test connection: the result names the model and firmware, or why the device could not be read
+const onTestConnection = async (): Promise<TestConnectionResult> => {
+	try {
+		await checkDevice();
+	} catch (error: unknown) {
+		return { ok: false, message: error instanceof Error ? error.message : t('devicesShellyV1Plugin.fields.devices.hostname.validation.required') };
+	}
+
+	// Not supported is a fact about the device only once the list of supported devices is here
+	if (!supportedDevicesLoaded.value) {
+		await loadSupportedDevices().catch((): void => {
+			// Reported below
 		});
 	}
+
+	if (!supportedDevicesLoaded.value) {
+		return { ok: false, message: t('devicesShellyV1Plugin.messages.devices.failedLoadSupportedDevices') };
+	}
+
+	if (deviceGroup.value === null) {
+		return { ok: false, message: t('devicesShellyV1Plugin.headings.device.notSupported') };
+	}
+
+	return {
+		ok: true,
+		message: `${deviceGroup.value.name} · ${t('devicesShellyV1Plugin.headings.device.firmware')} ${deviceInfo.value?.firmware ?? ''}`.trim(),
+	};
 };
 
 onMounted((): void => {
@@ -285,15 +171,9 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			if (activeStep.value === 'one') {
-				submitStep('one').catch(() => {
-					// The form is not valid
-				});
-			} else if (activeStep.value === 'two') {
-				submitStep('two').catch(() => {
-					// The form is not valid
-				});
-			}
+			submit().catch(() => {
+				// The form is not valid, or the device could not be read or added
+			});
 		}
 	}
 );
@@ -304,8 +184,7 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
-			stepOneFormEl.value?.resetFields();
-			stepTwoFormEl.value?.resetFields();
+			formEl.value?.resetFields();
 		}
 	}
 );
@@ -320,7 +199,8 @@ watch(
 watch(
 	(): { value: DevicesModuleDeviceCategory; label: string }[] => categoriesOptions.value,
 	(val: { value: DevicesModuleDeviceCategory; label: string }[]): void => {
-		if (val.length > 0 && val[0]) {
+		// A repeated test rebuilds the options: a category that is still offered stays chosen
+		if (val.length > 0 && val[0] && !val.some((option) => option.value === model.category)) {
 			model.category = val[0].value;
 		}
 	}
@@ -333,7 +213,8 @@ watch(
 			return;
 		}
 
-		const device = devices.value.find((d) => d.identifier === val.mac && d.type === DEVICES_SHELLY_V1_TYPE);
+		// Hidden devices too: Save stops for the same ones (findRegistered)
+		const device = findRegistered(val);
 
 		if (typeof device !== 'undefined') {
 			flashMessage.success(

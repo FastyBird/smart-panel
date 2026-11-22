@@ -25,14 +25,17 @@
 				>
 					<div class="flex flex-row justify-between items-center w-full overflow-hidden">
 						<div class="grow-1">{{ item.label }}</div>
-						<div v-if="item.manufacturer" class="text-sm">
+						<div
+							v-if="item.manufacturer"
+							class="text-sm"
+						>
 							{{ item.manufacturer }}
 						</div>
 					</div>
 				</el-option>
 			</el-select>
 			<template v-if="!devicesOptionsLoading && devicesOptions.length === 0">
-				<div class="text-sm text-gray-500 mt-2">
+				<div class="text-sm text-secondary mt-2">
 					{{ t('devicesZigbee2mqttPlugin.messages.devices.noDiscoveredDevices') }}
 				</div>
 			</template>
@@ -117,9 +120,7 @@ const selectedDeviceInfo = computed(() => {
 });
 
 const rules = reactive<FormRules<IZigbee2mqttDeviceAddMultiStepForm>>({
-	ieeeAddress: [
-		{ required: true, message: t('devicesZigbee2mqttPlugin.fields.devices.ieeeAddress.validation.required'), trigger: 'change' },
-	],
+	ieeeAddress: [{ required: true, message: t('devicesZigbee2mqttPlugin.fields.devices.ieeeAddress.validation.required'), trigger: 'change' }],
 });
 
 const onDeviceChange = (deviceId: string): void => {

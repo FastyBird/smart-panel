@@ -21,7 +21,11 @@ import { designSystemPlugin, designSystemRuleLevels } from './eslint/design-syst
  * migration. When a task moves a folder onto the design system, it adds the folder here and the
  * rules become errors for it, for example 'src/modules/devices' or 'src/plugins/devices-*'.
  */
-const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [];
+const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
+	// AR-9 … AR-12: the devices list, detail, edit drawer, wizards and the device plugin forms
+	'src/modules/devices',
+	'src/plugins/devices-*',
+];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */
 const DESIGN_SYSTEM_EXCEPTIONS: { files: string[]; rules: string[] }[] = [

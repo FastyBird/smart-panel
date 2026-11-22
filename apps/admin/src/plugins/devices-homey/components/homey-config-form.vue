@@ -54,10 +54,10 @@
 				:placeholder="t('devicesHomeyPlugin.config.apiKey.placeholder')"
 			/>
 			<div
-				class="w-full mt-2 text-xs text-gray-500"
+				class="w-full mt-2 text-xs text-secondary"
 				data-test-id="homey-api-key-permissions"
 			>
-				<p class="font-semibold text-gray-600">
+				<p class="font-semibold text-regular">
 					{{ t('devicesHomeyPlugin.config.apiKey.permissionsTitle') }}
 				</p>
 				<p>{{ t('devicesHomeyPlugin.config.apiKey.permissionsIntro') }}</p>
@@ -87,7 +87,7 @@
 			</div>
 		</el-form-item>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div class="grid grid-cols-1 tp:grid-cols-2 gap-4">
 			<el-form-item
 				:label="t('devicesHomeyPlugin.config.connectionTimeout')"
 				prop="connectionTimeout"

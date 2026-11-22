@@ -45,7 +45,11 @@
 		</el-form-item>
 
 		<!-- Final Review -->
-		<el-card shadow="never" header-class="py-2! px-4!" body-class="px-0!">
+		<el-card
+			shadow="never"
+			header-class="py-2! px-4!"
+			body-class="px-0!"
+		>
 			<template #header>
 				<div class="font-semibold">
 					{{ t('devicesHomeAssistantPlugin.fields.mapping.totalEntities') }}:
@@ -58,22 +62,22 @@
 				</div>
 			</template>
 
-			<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+			<div class="grid grid-cols-2 tp:grid-cols-4 gap-4 text-center">
 				<div>
 					<div class="text-2xl font-bold text-green-600">{{ mappedCount }}</div>
-					<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}</div>
+					<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}</div>
 				</div>
 				<div>
 					<div class="text-2xl font-bold text-yellow-600">{{ partialCount }}</div>
-					<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.partial') }}</div>
+					<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.partial') }}</div>
 				</div>
 				<div>
 					<div class="text-2xl font-bold text-red-600">{{ unmappedCount }}</div>
-					<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmapped') }}</div>
+					<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmapped') }}</div>
 				</div>
 				<div>
 					<div class="text-2xl font-bold text-blue-600">{{ excludedCount }}</div>
-					<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.excluded') }}</div>
+					<div class="text-sm text-secondary">{{ t('devicesHomeAssistantPlugin.fields.mapping.excluded') }}</div>
 				</div>
 			</div>
 		</el-card>
@@ -85,6 +89,7 @@ import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormInstance, type FormRules } from 'element-plus';
+
 import type { IHomeAssistantDeviceAddForm } from '../../schemas/devices.types';
 import type { IMappingEntityOverride, IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
@@ -121,7 +126,7 @@ const unmappedCount = computed(() => {
 
 const excludedCount = computed(() => {
 	if (!props.preview) return 0;
-	
+
 	// Count entities that are explicitly excluded (backend-skipped or user-ignored)
 	// This matches what will actually be filtered out in the adoption request
 	return props.preview.entities.filter((entity) => {
@@ -129,18 +134,18 @@ const excludedCount = computed(() => {
 		if (entity.status === 'skipped') {
 			return true;
 		}
-		
+
 		// Exclude if user has manually ignored it (override.skip === true)
 		const override = props.entityOverrides?.find((o) => o.entityId === entity.entityId);
 		if (override?.skip === true) {
 			return true;
 		}
-		
+
 		// Note: We don't count entities without channels/properties here because:
 		// - They're already reflected in their status (unmapped, etc.)
 		// - They might still be included if user adds a category override
 		// - The "excluded" count should only show explicitly excluded entities
-		
+
 		return false;
 	}).length;
 });

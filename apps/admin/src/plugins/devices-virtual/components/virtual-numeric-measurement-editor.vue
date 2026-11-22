@@ -259,7 +259,7 @@
 						</el-form-item>
 					</div>
 					<div v-if="at(2)">
-						<div :class="isTransform ? 'grid grid-cols-1 md:grid-cols-2 gap-x-4' : 'grid grid-cols-1 gap-x-4 max-w-2xl'">
+						<div :class="isTransform ? 'grid grid-cols-1 tp:grid-cols-2 gap-x-4' : 'grid grid-cols-1 gap-x-4 max-w-2xl'">
 							<el-form-item
 								:error="validation.error('operator')"
 								:label="t('devicesVirtualPlugin.measurement.operator')"
@@ -402,7 +402,7 @@
 							</el-form-item>
 						</div>
 						<template v-if="isTransform">
-							<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div class="grid grid-cols-1 tp:grid-cols-2 gap-4">
 								<section
 									v-for="side in ['input', 'output'] as const"
 									:key="side"

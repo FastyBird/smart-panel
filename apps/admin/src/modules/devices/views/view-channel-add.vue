@@ -11,7 +11,7 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div class="flex flex-col overflow-hidden h-full">
-		<el-scrollbar class="grow-1 p-2 md:px-4">
+		<el-scrollbar class="grow-1 p-2 tp:px-4">
 			<template v-if="!props.device">
 				<select-channel-plugin v-model="selectedType" />
 

@@ -1,6 +1,12 @@
 <template>
-	<div v-if="isPreviewLoading" class="flex justify-center items-center py-8">
-		<el-icon class="is-loading" :size="32">
+	<div
+		v-if="isPreviewLoading"
+		class="flex justify-center items-center py-8"
+	>
+		<el-icon
+			class="is-loading"
+			:size="32"
+		>
 			<icon icon="mdi:loading" />
 		</el-icon>
 		<span class="ml-2">{{ t('devicesHomeAssistantPlugin.messages.mapping.previewLoading') }}</span>
@@ -15,9 +21,15 @@
 		show-icon
 	/>
 
-	<div v-else-if="preview" class="space-y-4">
+	<div
+		v-else-if="preview"
+		class="space-y-4"
+	>
 		<!-- Summary -->
-		<mapping-summary :preview="preview" @open-debug="showDebugModal = true" />
+		<mapping-summary
+			:preview="preview"
+			@open-debug="showDebugModal = true"
+		/>
 
 		<!-- Warnings -->
 		<mapping-warnings
@@ -42,7 +54,11 @@
 		<!-- Ready to Adopt Status -->
 		<el-alert
 			:type="preview.readyToAdopt ? 'success' : 'warning'"
-			:title="preview.readyToAdopt ? t('devicesHomeAssistantPlugin.messages.mapping.readyToAdopt') : t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')"
+			:title="
+				preview.readyToAdopt
+					? t('devicesHomeAssistantPlugin.messages.mapping.readyToAdopt')
+					: t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
+			"
 			:closable="false"
 			show-icon
 		/>
@@ -88,8 +104,14 @@
 		</el-dialog>
 	</div>
 
-	<div v-else class="text-center py-8 text-gray-500">
-		<el-icon :size="48" class="mb-4">
+	<div
+		v-else
+		class="text-center py-8 text-secondary"
+	>
+		<el-icon
+			:size="48"
+			class="mb-4"
+		>
 			<icon icon="mdi:information-outline" />
 		</el-icon>
 		<p>{{ t('devicesHomeAssistantPlugin.messages.mapping.noPreview') }}</p>
@@ -102,6 +124,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElDialog, ElIcon, ElInput } from 'element-plus';
+
 import { Icon } from '@iconify/vue';
 
 import { useFlashMessage } from '../../../../common';

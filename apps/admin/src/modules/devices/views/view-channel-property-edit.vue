@@ -19,7 +19,7 @@
 	>
 		<el-scrollbar
 			v-if="property !== null"
-			class="grow-1 p-2 md:px-4"
+			class="grow-1 p-2 tp:px-4"
 		>
 			<component
 				:is="element?.components?.channelPropertyEditForm"
