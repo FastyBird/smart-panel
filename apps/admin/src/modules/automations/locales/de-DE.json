@@ -370,7 +370,9 @@
 				"unknownNodeTypeHint": "Der Blocktyp „{type}“ wird nicht mehr angeboten, vermutlich weil das Plugin, das ihn bereitgestellt hat, entfernt oder deaktiviert wurde. Entfernen Sie den Block oder stellen Sie das Plugin wieder her.",
 				"separateFlows": "Diese Automation enthält mehrere Abläufe, die nicht miteinander verbunden sind. Im Modus „Neu starten“ stoppt ein Auslöser eines Ablaufs auch die anderen, daher gehören unabhängige Abläufe in getrennte Automationen.",
 				"errorCount": "Fehler: {count}",
-				"warningCount": "Warnungen: {count}"
+				"warningCount": "Warnungen: {count}",
+				"noSteps": "Der Ablauf hat noch keine Schritte.",
+				"steps": "Schritte des Ablaufs"
 			},
 			"buttons": {
 				"undo": {
@@ -384,6 +386,9 @@
 				},
 				"removeNode": {
 					"title": "Block entfernen"
+				},
+				"addBlock": {
+					"title": "Block hinzufügen"
 				}
 			},
 			"form": {
@@ -853,6 +858,9 @@
 				},
 				"showNode": {
 					"title": "{node} zeigen"
+				},
+				"loadMore": {
+					"title": "{count} weitere anzeigen"
 				}
 			},
 			"test": {

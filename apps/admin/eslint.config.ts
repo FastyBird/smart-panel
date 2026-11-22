@@ -25,13 +25,12 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	// AR-9 … AR-12: the devices list, detail, edit drawer, wizards and the device plugin forms
 	'src/modules/devices',
 	'src/plugins/devices-*',
+	// AR-13: the automations list, edit drawer and flow editor
+	'src/modules/automations',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */
-const DESIGN_SYSTEM_EXCEPTIONS: { files: string[]; rules: string[] }[] = [
-	// AR-13 (#1670) moves the canvas colours to theme tokens
-	{ files: ['src/modules/automations/components/canvas/**/*.vue'], rules: ['fb-design/no-hex-colors'] },
-];
+const DESIGN_SYSTEM_EXCEPTIONS: { files: string[]; rules: string[] }[] = [];
 
 export default defineConfigWithVueTs(
 	{

@@ -24,6 +24,13 @@
 		<div class="automation-node-card__body">
 			<div class="automation-node-card__heading">
 				<span class="automation-node-card__kind">{{ props.kindLabel }}</span>
+				<domain-icon
+					v-if="props.domain"
+					:domain="props.domain"
+					:size="20"
+					class="automation-node-card__domain"
+					data-test-id="node-domain"
+				/>
 				<span
 					class="automation-node-card__title"
 					data-test-id="node-title"
@@ -82,6 +89,7 @@ import { ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import DomainIcon from '../../../../common/components/domain-icon.vue';
 import type { AutomationRunNodeState } from '../../automations.trace';
 
 import type { IAutomationNodeCardProps } from './automation-node-card.types';

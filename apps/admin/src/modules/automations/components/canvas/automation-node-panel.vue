@@ -194,9 +194,9 @@ const fieldErrors = computed<Record<string, string[]>>((): Record<string, string
 <style scoped lang="scss">
 .automation-node-panel {
 	display: flex;
-	flex: 0 0 340px;
+	flex: 0 0 var(--automation-inspector-width, 340px);
 	flex-direction: column;
-	width: 340px;
+	width: var(--automation-inspector-width, 340px);
 	min-height: 0;
 	border-left: 1px solid var(--el-border-color);
 	background-color: var(--el-bg-color);

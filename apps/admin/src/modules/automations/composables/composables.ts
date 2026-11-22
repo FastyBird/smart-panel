@@ -10,6 +10,7 @@ export * from './useAutomationImport';
 export * from './useAutomationLiveRun';
 export * from './useAutomationModes';
 export * from './useAutomationNodeForm';
+export * from './useAutomationNodeDomain';
 export * from './useAutomationNodeLookups';
 export * from './useAutomationNodePlugins';
 export * from './useAutomationNodePresentation';

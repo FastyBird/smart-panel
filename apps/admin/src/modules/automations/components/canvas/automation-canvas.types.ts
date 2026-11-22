@@ -1,8 +1,9 @@
 import type { Component } from 'vue';
 
+import type { Domain } from '../../../../common/components/domain-icon.types';
 import type { AutomationIssueSeverity } from '../../automations.graph';
 import type { IAutomationRunOverlay } from '../../automations.trace';
-import type { IAutomationGraph, IAutomationGraphIssue } from '../../store/automations.store.types';
+import type { IAutomationGraph, IAutomationGraphIssue, IAutomationGraphNode } from '../../store/automations.store.types';
 import type { IAutomationNodeType } from '../../store/node-types.store.types';
 
 import type { AutomationEdgeTone } from './automation-canvas.mapping';
@@ -18,6 +19,8 @@ export interface IAutomationCanvasProps {
 	issues?: IAutomationGraphIssue[];
 	// The summary component of a card that brings one (`automationNodeCard`), null for the generic summary
 	summaryComponent?: (type: string) => Component | null;
+	/** The domain of the devices a block works with, shown as its domain icon */
+	nodeDomain?: (node: Pick<IAutomationGraphNode, 'config'>) => Domain | undefined;
 	readonly?: boolean;
 	initialView?: AutomationCanvasInitialView;
 	// A run laid over the graph, read-only: the cards it reached are lit and the edges it went along marked

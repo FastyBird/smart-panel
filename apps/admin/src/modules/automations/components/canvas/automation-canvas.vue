@@ -150,6 +150,7 @@ defineOptions({
 const props = withDefaults(defineProps<IAutomationCanvasProps>(), {
 	issues: () => [],
 	summaryComponent: undefined,
+	nodeDomain: undefined,
 	readonly: false,
 	initialView: 'fit',
 	run: null,
@@ -227,6 +228,7 @@ const cardOf = (data: IAutomationCanvasNodeData): IAutomationNodeCardProps => {
 		icon: nodeIcon(data.type, nodeType),
 		title: nodeTitle(data.type, nodeType),
 		summary: nodeSummary(data, nodeType),
+		domain: props.nodeDomain?.(data),
 		...(nodeType !== null && props.summaryComponent ? summaryOf(data, nodeType) : {}),
 	};
 };
@@ -255,7 +257,8 @@ const takenEdges = computed<Set<string> | null>((): Set<string> | null => (props
  * theme class on the document changes.
  */
 
-const readColor = (name: string, fallback: string): string => {
+// Without the variable (a document without the theme) the library draws in the text colour
+const readColor = (name: string, fallback = 'currentColor'): string => {
 	const value = getComputedStyle(container.value ?? document.documentElement)
 		.getPropertyValue(name)
 		.trim();
@@ -264,18 +267,18 @@ const readColor = (name: string, fallback: string): string => {
 };
 
 const readColors = (): IAutomationCanvasColors => ({
-	background: readColor('--el-border-color-darker', '#cdd0d6'),
+	background: readColor('--el-border-color-darker'),
 	edges: {
-		default: readColor('--el-text-color-secondary', '#909399'),
-		positive: readColor('--el-color-success', '#67c23a'),
-		negative: readColor('--el-color-danger', '#f56c6c'),
-		muted: readColor('--el-color-info', '#909399'),
+		default: readColor('--el-text-color-secondary'),
+		positive: readColor('--el-color-success'),
+		negative: readColor('--el-color-danger'),
+		muted: readColor('--el-color-info'),
 	},
 	issues: {
-		error: readColor('--el-color-danger', '#f56c6c'),
-		warning: readColor('--el-color-warning', '#e6a23c'),
+		error: readColor('--el-color-danger'),
+		warning: readColor('--el-color-warning'),
 	},
-	run: readColor('--el-color-primary', '#409eff'),
+	run: readColor('--el-color-primary'),
 });
 
 const colors = ref<IAutomationCanvasColors>(readColors());
@@ -727,8 +730,21 @@ onMounted((): void => {
 	colors.value = readColors();
 });
 
+// A block dragged out of the palette by touch (a long press): added where the finger lifted, when that is over the
+// canvas. Returns the id of the new node, or null when it was dropped elsewhere or the canvas cannot be edited
+const addNodeAt = (type: string, clientX: number, clientY: number): string | null => {
+	const bounds = container.value?.getBoundingClientRect();
+
+	if (props.readonly || !bounds || clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom) {
+		return null;
+	}
+
+	return addNode(type, screenToFlowCoordinate({ x: clientX, y: clientY }));
+};
+
 defineExpose({
 	addNode,
+	addNodeAt,
 	removeNode,
 	removeSelected,
 	clearSelection,

@@ -370,7 +370,9 @@
 				"unknownNodeTypeHint": "The block type \"{type}\" is not offered any more, most likely because the plugin that provided it was removed or disabled. Remove the block, or bring the plugin back.",
 				"separateFlows": "This automation holds several flows that are not connected to each other. In the Restart mode a trigger of one flow also stops the others, so unrelated flows belong to separate automations.",
 				"errorCount": "Errors: {count}",
-				"warningCount": "Warnings: {count}"
+				"warningCount": "Warnings: {count}",
+				"noSteps": "The flow has no steps yet.",
+				"steps": "Steps of the flow"
 			},
 			"buttons": {
 				"undo": {
@@ -384,6 +386,9 @@
 				},
 				"removeNode": {
 					"title": "Remove block"
+				},
+				"addBlock": {
+					"title": "Add block"
 				}
 			},
 			"form": {
@@ -853,6 +858,9 @@
 				},
 				"showNode": {
 					"title": "Show {node}"
+				},
+				"loadMore": {
+					"title": "Show {count} more"
 				}
 			},
 			"test": {

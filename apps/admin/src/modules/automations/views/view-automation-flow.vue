@@ -24,32 +24,22 @@
 			</template>
 		</view-header>
 
-		<div
+		<state-view
 			v-if="!ready"
-			class="flex items-center justify-center grow-1"
-		>
-			<el-icon
-				class="is-loading"
-				:size="32"
-			>
-				<icon icon="mdi:loading" />
-			</el-icon>
-		</div>
+			kind="loading"
+			:title="t('automations.texts.loadingAutomations')"
+			:icon="AUTOMATION_FLOW_ICON"
+		/>
 
 		<!-- A read that failed is not an automation that is gone: it can be tried again -->
-		<div
+		<state-view
 			v-else-if="loadFailed"
-			class="flex flex-col items-center justify-center grow-1 gap-4 p-4"
+			kind="error"
+			:title="t('automations.messages.loadFailed')"
+			icon="mdi:alert-circle-outline"
 			data-test-id="load-failed"
 		>
-			<el-icon
-				:size="48"
-				class="text-gray-300"
-			>
-				<icon icon="mdi:alert-circle-outline" />
-			</el-icon>
-			<div class="text-gray-500">{{ t('automations.messages.loadFailed') }}</div>
-			<div class="flex gap-2">
+			<template #action>
 				<el-button @click="onClose">
 					{{ t('automations.buttons.backToList.title') }}
 				</el-button>
@@ -60,8 +50,8 @@
 				>
 					{{ t('automations.buttons.retry.title') }}
 				</el-button>
-			</div>
-		</div>
+			</template>
+		</state-view>
 
 		<entity-not-found
 			v-else-if="notFound || !automation"
@@ -77,6 +67,20 @@
 		>
 			<div class="automation-flow__bar flex flex-row flex-wrap items-center gap-2 px-3 py-2">
 				<template v-if="!readonly">
+					<!-- Tablet portrait: the palette waits behind this button, in a sheet from the bottom -->
+					<el-button
+						v-if="isTabletPortrait"
+						type="primary"
+						plain
+						data-test-id="add-block"
+						@click="paletteSheet = true"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
+						{{ t('automations.editor.buttons.addBlock.title') }}
+					</el-button>
+
 					<el-button-group>
 						<el-tooltip
 							:content="t('automations.editor.buttons.undo.title')"
@@ -298,13 +302,16 @@
 			/>
 
 			<div class="flex flex-row grow-1 min-h-0">
+				<!-- Template 8: the palette is 240 px, 208 px on tablet landscape; on tablet portrait it is a sheet -->
 				<el-scrollbar
-					v-if="!readonly"
+					v-if="!readonly && !isTabletPortrait"
+					:style="{ flexBasis: isTabletLandscape ? '208px' : '240px' }"
 					class="automation-flow__palette"
 				>
 					<automation-palette
 						:node-types="nodeTypes"
 						@add="onPaletteAdd"
+						@drop="onPaletteDrop"
 					/>
 				</el-scrollbar>
 
@@ -321,7 +328,24 @@
 						@close="closeRun"
 					/>
 
-					<div class="grow-1 min-h-0">
+					<!-- Phone: the flow is read as a list of steps; it is edited from tablet portrait up -->
+					<el-scrollbar
+						v-if="readonly"
+						class="grow-1 min-h-0"
+					>
+						<automation-step-list
+							:graph="graph"
+							:node-types="nodeTypes"
+							:issues="shownIssues"
+							:summary-component="getCardComponent"
+							:node-domain="nodeDomain"
+						/>
+					</el-scrollbar>
+
+					<div
+						v-else
+						class="grow-1 min-h-0"
+					>
 						<automation-canvas
 							:key="`${automation.id}-${readonly ? 'view' : 'edit'}`"
 							ref="canvas"
@@ -329,6 +353,7 @@
 							:node-types="nodeTypes"
 							:issues="shownIssues"
 							:summary-component="getCardComponent"
+							:node-domain="nodeDomain"
 							:readonly="readonly"
 							:initial-view="readonly ? 'first-trigger' : 'fit'"
 							:run="canvasRun"
@@ -359,25 +384,66 @@
 					/>
 				</div>
 
-				<!--
-					Rebuilt when text that did not parse is given up. Below the `md` breakpoint it is only hidden, so
-					what is typed in it is still there once there is room to edit again.
-				-->
-				<automation-node-panel
-					v-if="panelNode"
-					v-show="!readonly"
-					:key="`${panelNode.id}:${draftResets}`"
-					:node="panelNode"
-					:node-type="getNodeType(panelNode.type)"
-					:issues="panelIssues"
-					:form="getFormComponent(panelNode.type)"
-					:disabled="reloading || readonly"
-					@update:config="onConfigUpdate"
-					@update:invalid="setDraftInvalid"
-					@remove="onRemoveNode"
+				<define-panel>
+					<!--
+						Rebuilt when text that did not parse is given up. On phone it is only hidden, so what is typed in it is still
+						there once there is room to edit again.
+					-->
+					<automation-node-panel
+						v-if="panelNode"
+						v-show="!readonly"
+						:key="`${panelNode.id}:${draftResets}`"
+						:node="panelNode"
+						:node-type="getNodeType(panelNode.type)"
+						:issues="panelIssues"
+						:form="getFormComponent(panelNode.type)"
+						:disabled="reloading || readonly"
+						:style="
+							isTabletPortrait
+								? { '--automation-inspector-width': '100%', height: '100%', borderLeft: '0' }
+								: { '--automation-inspector-width': sizeClass === 'wd' ? '360px' : '340px' }
+						"
+						@update:config="onConfigUpdate"
+						@update:invalid="setDraftInvalid"
+						@remove="onRemoveNode"
+						@close="onClosePanel"
+					/>
+				</define-panel>
+
+				<!-- Template 8: the inspector is 340 px beside the canvas (360 px on wide); on tablet portrait a drawer over it -->
+				<el-drawer
+					v-if="isTabletPortrait"
+					:model-value="panelNode !== null && !readonly"
+					:modal="false"
+					:with-header="false"
+					direction="rtl"
+					size="340px"
+					body-class="p-0!"
+					data-test-id="inspector-drawer"
 					@close="onClosePanel"
-				/>
+				>
+					<reuse-panel />
+				</el-drawer>
+
+				<reuse-panel v-else />
 			</div>
+
+			<!-- Tablet portrait: Add block opens the palette as a sheet; a block tapped or dragged out closes it -->
+			<el-drawer
+				v-model="paletteSheet"
+				:title="t('automations.editor.buttons.addBlock.title')"
+				direction="btt"
+				size="60%"
+				append-to-body
+				data-test-id="palette-sheet"
+			>
+				<automation-palette
+					:node-types="nodeTypes"
+					@add="onSheetAdd"
+					@drag-start="paletteSheet = false"
+					@drop="onPaletteDrop"
+				/>
+			</el-drawer>
 
 			<automation-yaml-dialog
 				v-model:visible="showYaml"
@@ -398,10 +464,10 @@ import {
 	ElAlert,
 	ElButton,
 	ElButtonGroup,
+	ElDrawer,
 	ElDropdown,
 	ElDropdownItem,
 	ElDropdownMenu,
-	ElIcon,
 	ElMessageBox,
 	ElScrollbar,
 	ElSwitch,
@@ -410,9 +476,9 @@ import {
 } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
-import { useEventListener } from '@vueuse/core';
+import { createReusableTemplate, useEventListener } from '@vueuse/core';
 
-import { AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, EntityNotFound, StateView, ViewHeader, useFlashMessage, useSizeClass } from '../../../common';
 import {
 	AUTOMATION_FLOW_ICON,
 	AUTOMATION_STATUS_COLORS,
@@ -431,6 +497,7 @@ import {
 	AutomationRunHistory,
 	AutomationRunSummary,
 	AutomationStatusExplanation,
+	AutomationStepList,
 	AutomationTestButton,
 	AutomationYamlDialog,
 	type IAutomationCanvasRun,
@@ -439,6 +506,7 @@ import {
 import {
 	useAutomationEditor,
 	useAutomationExport,
+	useAutomationNodeDomain,
 	useAutomationNodePlugins,
 	useAutomationNodeTypes,
 	useAutomationRunPresentation,
@@ -460,11 +528,18 @@ const { t } = useI18n();
 
 const flashMessage = useFlashMessage();
 
-const { isMDDevice } = useBreakpoints();
+const { sizeClass, isPhone, isTabletPortrait, isTabletLandscape } = useSizeClass();
+
+// The panel of the selected card renders once, beside the canvas or in the tablet portrait drawer
+const [DefinePanel, ReusePanel] = createReusableTemplate();
+
+const paletteSheet = ref<boolean>(false);
 
 const { nodeTypes, fetchNodeTypes, getNodeType } = useAutomationNodeTypes();
 
 const { getFormComponent, getCardComponent } = useAutomationNodePlugins();
+
+const { nodeDomain } = useAutomationNodeDomain();
 
 const {
 	automation,
@@ -522,9 +597,9 @@ const ready = ref<boolean>(false);
 const loadFailed = ref<boolean>(false);
 const notFound = ref<boolean>(false);
 
-// Editing needs room for the palette, the canvas and the form: below the `md` breakpoint the flow can be
-// looked at, and the automation enabled or disabled, but not changed
-const readonly = computed<boolean>((): boolean => !isMDDevice.value);
+// Editing needs room for the canvas: on phone the flow is read as a list of steps, and the automation can be enabled
+// or disabled, but not changed (spec section 6)
+const readonly = computed<boolean>((): boolean => isPhone.value);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => [
@@ -654,6 +729,18 @@ const onConfigUpdate = (config: Record<string, unknown>, field: string): void =>
 
 const onPaletteAdd = (type: string): void => {
 	canvas.value?.addNode(type);
+};
+
+const onSheetAdd = (type: string): void => {
+	paletteSheet.value = false;
+
+	onPaletteAdd(type);
+};
+
+// A block dragged out of the palette with a long press (touch): dropped on the canvas, it lands where the finger
+// lifted; anywhere else it is not added
+const onPaletteDrop = (type: string, clientX: number, clientY: number): void => {
+	canvas.value?.addNodeAt(type, clientX, clientY);
 };
 
 const onRemoveNode = (): void => {

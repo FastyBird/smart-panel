@@ -1,7 +1,7 @@
 /* eslint-disable vue/one-component-per-file */
 import { type Ref, computed, ref } from 'vue';
 
-import { ElMessageBox } from 'element-plus';
+import { ElDrawer, ElMessageBox } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
@@ -35,13 +35,14 @@ const graph: IAutomationGraph = {
 
 const mocks = vi.hoisted(() => ({
 	isMDDevice: true,
+	tabletPortrait: false,
 	routerPush: vi.fn(),
 	leaveGuard: null as null | (() => Promise<boolean>),
 	updateGuard: null as null | ((to: { params: { id: string } }, from: { params: { id: string } }) => Promise<boolean> | boolean),
 	flash: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
 	fetchNodeTypes: vi.fn(),
 	exportAutomation: vi.fn(),
-	canvas: { addNode: vi.fn(), removeNode: vi.fn(), removeSelected: vi.fn(), focusNode: vi.fn(), revealNode: vi.fn() },
+	canvas: { addNode: vi.fn(), addNodeAt: vi.fn(), removeNode: vi.fn(), removeSelected: vi.fn(), focusNode: vi.fn(), revealNode: vi.fn() },
 	editor: null as unknown,
 	runs: null as unknown,
 }));
@@ -118,6 +119,14 @@ vi.mock('../../../common', async () => {
 
 	// The breakpoint can change while the view is open
 	const md = vueRef<boolean>(mocks.isMDDevice);
+	const tp = vueRef<boolean>(false);
+
+	Object.defineProperty(mocks, 'tabletPortrait', {
+		get: (): boolean => tp.value,
+		set: (value: boolean): void => {
+			tp.value = value;
+		},
+	});
 
 	Object.defineProperty(mocks, 'isMDDevice', {
 		get: (): boolean => md.value,
@@ -142,7 +151,16 @@ vi.mock('../../../common', async () => {
 			emits: ['back'],
 			template: '<div data-test-id="not-found">{{ message }}</div>',
 		}),
-		useBreakpoints: () => ({ isMDDevice: vueComputed(() => md.value) }),
+		// Editable from tablet portrait up; on phone the flow is read as a list of steps
+		useSizeClass: () => ({
+			sizeClass: vueComputed(() => (tp.value ? 'tp' : md.value ? 'dt' : 'phone')),
+			isPhone: vueComputed(() => !md.value && !tp.value),
+			isTabletPortrait: vueComputed(() => tp.value),
+			isTabletLandscape: vueComputed(() => false),
+			isDesktop: vueComputed(() => md.value),
+			isTouch: vueComputed(() => false),
+		}),
+		StateView: (await import('../../../common/components/state-view.vue')).default,
 		useFlashMessage: () => mocks.flash,
 	};
 });
@@ -165,6 +183,7 @@ vi.mock('../composables/composables', () => ({
 				? { type, kind: AutomationNodeKind.trigger, name: type, description: '', ports: { inputs: [], outputs: ['out'] }, configSchema: {} }
 				: null,
 	}),
+	useAutomationNodeDomain: () => ({ nodeDomain: () => undefined }),
 	useAutomationNodePlugins: () => ({
 		getFormComponent: () => null,
 		getCardComponent: () => null,
@@ -192,9 +211,14 @@ vi.mock('../components/components', async () => {
 				return () => h('div', { 'data-test-id': 'canvas-stub' });
 			},
 		}),
+		AutomationStepList: defineComponent({
+			name: 'AutomationStepList',
+			props: { graph: { type: Object, required: true } },
+			template: '<div data-test-id="step-list-stub" />',
+		}),
 		AutomationPalette: defineComponent({
 			name: 'AutomationPalette',
-			emits: ['add'],
+			emits: ['add', 'drop', 'drag-start'],
 			template: '<div data-test-id="palette-stub" />',
 		}),
 		AutomationNodePanel: defineComponent({
@@ -448,12 +472,13 @@ describe('ViewAutomationFlow', (): void => {
 		expect(wrapper.find('[data-test-id="canvas-stub"]').exists()).toBe(true);
 	});
 
-	it('is read-only below the md breakpoint: no palette, no save, the first trigger in view', async (): Promise<void> => {
+	it('reads the flow as a list of steps on phone: no canvas, palette or save', async (): Promise<void> => {
 		mocks.isMDDevice = false;
 
 		await createWrapper();
 
-		expect(canvas().props()).toMatchObject({ readonly: true, initialView: 'first-trigger' });
+		expect(wrapper.find('[data-test-id="canvas-stub"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AutomationStepList' }).props('graph')).toEqual(graph);
 		expect(wrapper.find('[data-test-id="palette-stub"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="save-flow"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="undo"]').exists()).toBe(false);
@@ -461,17 +486,60 @@ describe('ViewAutomationFlow', (): void => {
 		// Enabling and disabling stays possible
 		expect(wrapper.find('[data-test-id="toggle-automation"]').exists()).toBe(true);
 
-		canvas().vm.$emit('select', ['a1'], []);
-
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="panel-stub"]').isVisible()).toBe(false);
-
 		press('s');
 		press('z');
 
 		expect(editor.save).not.toHaveBeenCalled();
 		expect(editor.undo).not.toHaveBeenCalled();
+	});
+
+	describe('on tablet portrait', (): void => {
+		afterEach((): void => {
+			mocks.tabletPortrait = false;
+		});
+
+		it('edits with the palette in an Add block sheet and the card panel in a drawer over the canvas', async (): Promise<void> => {
+			mocks.tabletPortrait = true;
+
+			await createWrapper();
+
+			expect(wrapper.find('[data-test-id="canvas-stub"]').exists()).toBe(true);
+			expect(wrapper.find('[data-test-id="save-flow"]').exists()).toBe(true);
+			// No palette beside the canvas: it waits in the sheet
+			expect(wrapper.findAllComponents({ name: 'AutomationPalette' })).toHaveLength(0);
+
+			// Both drawers render into the body: told apart by the side they open from
+			const drawer = (direction: string) => wrapper.findAllComponents(ElDrawer).find((item) => item.props('direction') === direction)!;
+			const sheet = drawer('btt');
+
+			expect(sheet.props('modelValue')).toBe(false);
+
+			await wrapper.get('[data-test-id="add-block"]').trigger('click');
+
+			expect(sheet.props('modelValue')).toBe(true);
+			expect(wrapper.findAllComponents({ name: 'AutomationPalette' })).toHaveLength(1);
+
+			// A tapped card lands in the middle of the canvas and the sheet closes
+			wrapper.findComponent({ name: 'AutomationPalette' }).vm.$emit('add', 'notification.send');
+			await flushPromises();
+
+			expect(mocks.canvas.addNode).toHaveBeenCalledWith('notification.send');
+			expect(sheet.props('modelValue')).toBe(false);
+
+			// A card dragged out by touch lands where it was let go
+			wrapper.findComponent({ name: 'AutomationPalette' }).vm.$emit('drop', 'notification.send', 300, 200);
+
+			expect(mocks.canvas.addNodeAt).toHaveBeenCalledWith('notification.send', 300, 200);
+
+			const inspector = drawer('rtl');
+
+			expect(inspector.props('modelValue')).toBe(false);
+
+			canvas().vm.$emit('select', ['a1'], []);
+			await flushPromises();
+
+			expect(inspector.props('modelValue')).toBe(true);
+		});
 	});
 
 	it('opens the panel for one selected node only, and lets it be dismissed', async (): Promise<void> => {
@@ -663,10 +731,8 @@ describe('ViewAutomationFlow', (): void => {
 		expect(editor.draftInvalid.value).toBe(true);
 		expect(wrapper.find('[data-test-id="unsaved-tag"]').exists()).toBe(true);
 
-		// Looking at another card does not ask about a form that cannot be seen
-		canvas().vm.$emit('select', ['t1'], []);
-		await flushPromises();
-
+		// On phone the flow is a list of steps: there is no canvas to pick another card on
+		expect(wrapper.find('[data-test-id="canvas-stub"]').exists()).toBe(false);
 		expect(confirm).not.toHaveBeenCalled();
 		expect(editor.draftInvalid.value).toBe(true);
 

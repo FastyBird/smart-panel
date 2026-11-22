@@ -30,7 +30,8 @@
 
 			<!--
 				Draggable for a mouse, and a button for everything else: HTML5 drag does not start from a touch
-				(ADR 0003, decision 1), so a tap or Enter adds the card to the middle of the canvas.
+				(ADR 0003, decision 1), so a tap or Enter adds the card to the middle of the canvas. On touch a long press
+				(400 ms, spec section 6) picks the card up instead, to be dropped where the finger lifts.
 			-->
 			<div
 				v-for="item in group.items"
@@ -44,7 +45,8 @@
 				tabindex="0"
 				:data-test-palette="item.type"
 				@dragstart="onDragStart($event, item.type)"
-				@click="onAdd(item.type)"
+				@pointerdown="onPointerDown($event, item)"
+				@click="onClick(item.type)"
 				@keydown.enter.prevent="onAdd(item.type)"
 				@keydown.space.prevent="onAdd(item.type)"
 			>
@@ -54,11 +56,29 @@
 				<span class="automation-palette__name">{{ item.title }}</span>
 			</div>
 		</div>
+
+		<!-- The card being dragged by touch follows the finger -->
+		<teleport to="body">
+			<div
+				v-if="touchDrag !== null && touchDrag.dragging"
+				:style="{ left: `${touchDrag.x}px`, top: `${touchDrag.y}px` }"
+				class="automation-palette__ghost"
+				aria-hidden="true"
+				data-test-id="automation-palette-ghost"
+			>
+				<icon
+					:icon="touchDrag.item.icon"
+					width="18"
+					height="18"
+				/>
+				<span>{{ touchDrag.item.title }}</span>
+			</div>
+		</teleport>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElIcon, ElText } from 'element-plus';
@@ -94,7 +114,16 @@ const props = withDefaults(defineProps<IAutomationPaletteProps>(), {
 
 const emit = defineEmits<{
 	(e: 'add', type: string): void;
+	/** A touch long press picked a card up */
+	(e: 'drag-start', type: string): void;
+	/** The card picked up by touch was let go here (screen coordinates) */
+	(e: 'drop', type: string, clientX: number, clientY: number): void;
 }>();
+
+// How long a finger rests on a card before it is picked up, and how far it may move before that without it being taken
+// for a scroll
+const LONG_PRESS_MS = 400;
+const LONG_PRESS_SLOP = 10;
 
 const { t } = useI18n();
 
@@ -127,6 +156,120 @@ const onAdd = (type: string): void => {
 		emit('add', type);
 	}
 };
+
+/*
+ * Touch drag: a long press picks the card up, it follows the finger and is dropped where the finger lifts
+ */
+
+interface ITouchDrag {
+	item: IPaletteItem;
+	startX: number;
+	startY: number;
+	x: number;
+	y: number;
+	dragging: boolean;
+	timer: number | null;
+}
+
+const touchDrag = ref<ITouchDrag | null>(null);
+
+// The click that follows a long press is not a tap: the card was dragged, not added to the middle
+let swallowClick = false;
+
+const onClick = (type: string): void => {
+	if (swallowClick) {
+		swallowClick = false;
+
+		return;
+	}
+
+	onAdd(type);
+};
+
+// The page must not scroll under a card being dragged
+const onTouchMove = (event: TouchEvent): void => {
+	if (touchDrag.value?.dragging) {
+		event.preventDefault();
+	}
+};
+
+const stopTouchDrag = (): void => {
+	if (touchDrag.value?.timer) {
+		window.clearTimeout(touchDrag.value.timer);
+	}
+
+	touchDrag.value = null;
+
+	window.removeEventListener('pointermove', onPointerMove);
+	window.removeEventListener('pointerup', onPointerUp);
+	window.removeEventListener('pointercancel', stopTouchDrag);
+	window.removeEventListener('touchmove', onTouchMove);
+};
+
+const onPointerMove = (event: PointerEvent): void => {
+	const drag = touchDrag.value;
+
+	if (drag === null) {
+		return;
+	}
+
+	if (!drag.dragging) {
+		// Moved before the press was long enough: it is a scroll, not a drag
+		if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > LONG_PRESS_SLOP) {
+			stopTouchDrag();
+		}
+
+		return;
+	}
+
+	drag.x = event.clientX;
+	drag.y = event.clientY;
+};
+
+const onPointerUp = (event: PointerEvent): void => {
+	const drag = touchDrag.value;
+
+	if (drag?.dragging) {
+		swallowClick = true;
+
+		emit('drop', drag.item.type, event.clientX, event.clientY);
+	}
+
+	stopTouchDrag();
+};
+
+const onPointerDown = (event: PointerEvent, item: IPaletteItem): void => {
+	// A drag that ended away from the card was followed by no click: the next press starts afresh
+	swallowClick = false;
+
+	if (props.disabled || event.pointerType !== 'touch') {
+		return;
+	}
+
+	stopTouchDrag();
+
+	const drag: ITouchDrag = { item, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, dragging: false, timer: null };
+
+	drag.timer = window.setTimeout((): void => {
+		if (touchDrag.value !== null) {
+			touchDrag.value.dragging = true;
+			touchDrag.value.timer = null;
+
+			emit('drag-start', item.type);
+		}
+	}, LONG_PRESS_MS);
+
+	touchDrag.value = drag;
+
+	window.addEventListener('pointermove', onPointerMove);
+	window.addEventListener('pointerup', onPointerUp);
+	window.addEventListener('pointercancel', stopTouchDrag);
+	window.addEventListener('touchmove', onTouchMove, { passive: false });
+};
+
+onBeforeUnmount((): void => {
+	stopTouchDrag();
+});
 
 const onDragStart = (event: DragEvent, type: string): void => {
 	if (props.disabled || !event.dataTransfer) {
@@ -202,6 +345,9 @@ const onDragStart = (event: DragEvent, type: string): void => {
 			opacity: 0.5;
 		}
 
+		// A long press picks the card up: the browser must not open its text or image menu for it
+		-webkit-touch-callout: none;
+
 		.el-icon {
 			flex: none;
 			color: var(--automation-palette-accent);
@@ -213,5 +359,22 @@ const onDragStart = (event: DragEvent, type: string): void => {
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+}
+
+.automation-palette__ghost {
+	position: fixed;
+	z-index: 3000;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px;
+	border: 1px solid var(--el-color-primary);
+	border-radius: var(--el-border-radius-base);
+	background-color: var(--el-bg-color-overlay);
+	box-shadow: var(--fb-shadow-overlay);
+	color: var(--el-text-color-primary);
+	font-size: var(--el-font-size-small);
+	pointer-events: none;
+	transform: translate(-50%, -120%);
 }
 </style>

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, mount } from '@vue/test-utils';
 
@@ -123,5 +123,71 @@ describe('AutomationPalette', (): void => {
 		expect(wrapper.emitted('add')).toBeUndefined();
 		expect(dataTransfer.setData).not.toHaveBeenCalled();
 		expect(wrapper.find('[data-test-palette="manual.start"]').attributes('draggable')).toBe('false');
+	});
+
+	describe('on touch', (): void => {
+		const pointer = (type: string, x: number, y: number, pointerType = 'touch'): PointerEvent =>
+			Object.assign(new Event(type, { bubbles: true }), { clientX: x, clientY: y, pointerType }) as unknown as PointerEvent;
+
+		const item = (): HTMLElement => wrapper.get('[data-test-palette="notification.send"]').element as HTMLElement;
+
+		beforeEach((): void => {
+			vi.useFakeTimers();
+		});
+
+		afterEach((): void => {
+			vi.useRealTimers();
+		});
+
+		it('picks a card up with a 400 ms long press and drops it where the finger lifts, without a tap after it', async (): Promise<void> => {
+			createWrapper();
+
+			item().dispatchEvent(pointer('pointerdown', 10, 10));
+			vi.advanceTimersByTime(399);
+
+			expect(wrapper.emitted('drag-start')).toBeUndefined();
+
+			vi.advanceTimersByTime(1);
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('drag-start')).toEqual([['notification.send']]);
+			expect(document.querySelector('[data-test-id="automation-palette-ghost"]')).not.toBeNull();
+
+			window.dispatchEvent(pointer('pointermove', 300, 200));
+			window.dispatchEvent(pointer('pointerup', 320, 240));
+			item().click();
+
+			expect(wrapper.emitted('drop')).toEqual([['notification.send', 320, 240]]);
+			expect(wrapper.emitted('add')).toBeUndefined();
+		});
+
+		it('takes a finger that moves before the long press for a scroll, and a short press for a tap', async (): Promise<void> => {
+			createWrapper();
+
+			item().dispatchEvent(pointer('pointerdown', 10, 10));
+			window.dispatchEvent(pointer('pointermove', 10, 40));
+			vi.advanceTimersByTime(500);
+
+			expect(wrapper.emitted('drag-start')).toBeUndefined();
+
+			window.dispatchEvent(pointer('pointerup', 10, 40));
+
+			item().dispatchEvent(pointer('pointerdown', 10, 10));
+			vi.advanceTimersByTime(100);
+			window.dispatchEvent(pointer('pointerup', 10, 10));
+			item().click();
+
+			expect(wrapper.emitted('drop')).toBeUndefined();
+			expect(wrapper.emitted('add')).toEqual([['notification.send']]);
+		});
+
+		it('leaves a mouse to HTML5 drag', (): void => {
+			createWrapper();
+
+			item().dispatchEvent(pointer('pointerdown', 10, 10, 'mouse'));
+			vi.advanceTimersByTime(500);
+
+			expect(wrapper.emitted('drag-start')).toBeUndefined();
+		});
 	});
 });

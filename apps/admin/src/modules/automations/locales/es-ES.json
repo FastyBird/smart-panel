@@ -370,7 +370,9 @@
 				"unknownNodeTypeHint": "El tipo de bloque «{type}» ya no se ofrece, probablemente porque el plugin que lo proporcionaba se eliminó o se deshabilitó. Elimine el bloque o restaure el plugin.",
 				"separateFlows": "Esta automatización contiene varios flujos que no están conectados entre sí. En el modo Reiniciar, un disparador de un flujo detiene también los demás, por lo que los flujos no relacionados deben ir en automatizaciones separadas.",
 				"errorCount": "Errores: {count}",
-				"warningCount": "Advertencias: {count}"
+				"warningCount": "Advertencias: {count}",
+				"noSteps": "El flujo aún no tiene pasos.",
+				"steps": "Pasos del flujo"
 			},
 			"buttons": {
 				"undo": {
@@ -384,6 +386,9 @@
 				},
 				"removeNode": {
 					"title": "Eliminar bloque"
+				},
+				"addBlock": {
+					"title": "Añadir bloque"
 				}
 			},
 			"form": {
@@ -853,6 +858,9 @@
 				},
 				"showNode": {
 					"title": "Mostrar {node}"
+				},
+				"loadMore": {
+					"title": "Mostrar {count} más"
 				}
 			},
 			"test": {
