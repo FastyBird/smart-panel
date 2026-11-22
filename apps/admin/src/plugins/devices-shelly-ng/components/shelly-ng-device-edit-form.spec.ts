@@ -110,4 +110,39 @@ describe('ShellyNgDeviceEditForm', () => {
 
 		expect(wrapper.emitted('update:remote-form-changed')).toBeTruthy();
 	});
+
+	describe('with a saved password', () => {
+		beforeEach(async () => {
+			state.model = reactive({ id: '123', name: '', category: 'generic', description: '', password: 'secret' as string | null });
+			wrapper = mount(ShellyNgDeviceEditForm, {
+				global: { stubs: { SpaceSelect: true } },
+				props: { device: { id: '123', type: DEVICES_SHELLY_NG_TYPE, addresses: [] } as unknown as IShellyNgDevice },
+			});
+
+			await wrapper.get('[data-test-id="secret-input-replace"]').trigger('click');
+			await flushPromises();
+		});
+
+		it('sends a replacement exactly as typed, spaces included, and an empty one as no password', async () => {
+			await wrapper.get('input[data-test-id="secret-input-field"]').setValue(' new one ');
+			expect(state.model.password).toBe(' new one ');
+
+			await wrapper.get('input[data-test-id="secret-input-field"]').setValue('   ');
+			expect(state.model.password).toBe('   ');
+
+			await wrapper.get('input[data-test-id="secret-input-field"]').setValue('');
+			expect(state.model.password).toBeNull();
+		});
+
+		it('drops the replacement when the form is reset, showing the saved password again', async () => {
+			await wrapper.get('input[data-test-id="secret-input-field"]').setValue('new-one');
+
+			await wrapper.setProps({ remoteFormReset: true });
+			await flushPromises();
+
+			expect(state.model.password).toBe('secret');
+			expect(wrapper.find('[data-test-id="secret-input-saved"]').exists()).toBe(true);
+			expect(wrapper.find('input[data-test-id="secret-input-field"]').exists()).toBe(false);
+		});
+	});
 });

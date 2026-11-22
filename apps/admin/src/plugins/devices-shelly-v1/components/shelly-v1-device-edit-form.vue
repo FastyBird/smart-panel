@@ -93,12 +93,12 @@ if (pre) {
 }
 
 // The password the device has now, and a new one while the user replaces it: no new one keeps the saved password,
-// an empty one removes it
+// an empty one removes it. A password is sent exactly as typed, spaces included
 const savedPassword = ref<string | null>(model.password ?? null);
 const newPassword = ref<string | undefined>(undefined);
 
 watch(newPassword, (value: string | undefined): void => {
-	model.password = value === undefined ? savedPassword.value : value.trim() || null;
+	model.password = value === undefined ? savedPassword.value : value === '' ? null : value;
 });
 
 const rules = reactive<FormRules<IShellyV1DeviceEditForm>>({
@@ -132,6 +132,9 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
+			// The replacement goes with the rest of the draft: the field shows the saved password again
+			newPassword.value = undefined;
+
 			if (!formEl.value) return;
 
 			formEl.value.resetFields();
