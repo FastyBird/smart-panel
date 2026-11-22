@@ -364,4 +364,29 @@ describe('useDeviceAddForm', () => {
 		await expect(save).rejects.toThrow('closed');
 		expect(mockAdd).not.toHaveBeenCalled();
 	});
+
+	it('runs one Save at a time while a tested device waits for the supported devices', async () => {
+		let list!: (value: unknown) => void;
+		backendClient.GET.mockReturnValue(new Promise((resolve) => (list = resolve)));
+
+		const waiting = useDeviceAddForm({ id: deviceId.toString() });
+		waiting.formEl.value = form.formEl.value;
+		waiting.model.name = 'New Device';
+		waiting.model.hostname = '192.168.0.1';
+		await nextTick();
+		waiting.deviceInfo.value = DEVICE_INFO;
+		await nextTick();
+
+		const first = waiting.submit();
+
+		await flushPromises();
+
+		expect(waiting.formResult.value).toBe(FormResult.WORKING);
+		await expect(waiting.submit()).rejects.toThrow('being saved');
+
+		list({ data: { data: SUPPORTED }, error: undefined, response: { status: 200 } });
+		await first;
+
+		expect(mockAdd).toHaveBeenCalledTimes(1);
+	});
 });

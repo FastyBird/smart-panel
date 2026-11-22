@@ -192,8 +192,26 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		}
 	};
 
+	// One Save at a time: a second one while the first still reads the device or the supported devices would add the
+	// same device twice
+	let submitting = false;
+
 	// Save checks the device first when it was not tested, then adds it
 	const submit = async (): Promise<'added'> => {
+		if (submitting) {
+			throw new DevicesShellyV1ValidationException('The device is being saved.');
+		}
+
+		submitting = true;
+
+		try {
+			return await addDevice();
+		} finally {
+			submitting = false;
+		}
+	};
+
+	const addDevice = async (): Promise<'added'> => {
 		formEl.value?.clearValidate();
 
 		const valid = await formEl.value?.validate();
@@ -238,6 +256,9 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		// The category comes from the supported device the read matched: without the list, or for a device it does
 		// not list, nothing is added and Save can be tried again
 		if (!supportedDevicesLoaded.value) {
+			// Save shows its progress while the list loads
+			formResult.value = FormResult.WORKING;
+
 			const generation = checkGeneration;
 
 			await fetchSupportedDevices().catch((): void => {
