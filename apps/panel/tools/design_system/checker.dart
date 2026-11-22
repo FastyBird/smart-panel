@@ -338,7 +338,8 @@ class _Visitor extends RecursiveAstVisitor<void> {
   }
 
   void _checkColour(AstNode node, ArgumentList arguments) {
-    final first = arguments.arguments.isEmpty ? null : arguments.arguments.first;
+    // `Color((0xFF112233))` is the same colour.
+    final first = arguments.arguments.isEmpty ? null : arguments.arguments.first.unParenthesized;
 
     if (first is IntegerLiteral && first.literal.lexeme.toLowerCase().startsWith('0x')) {
       _report(node, DesignRule.hexColour);

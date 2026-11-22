@@ -23,8 +23,10 @@ void main() {
 final a = Color(0xFF112233);
 const b = Color(0xff445566);
 final c = new Color(0x80112233);
+final d = Color((0xFF112233));
+const e = Color(((0xFF112233)));
 '''),
-        ['hex-colour', 'hex-colour', 'hex-colour'],
+        ['hex-colour', 'hex-colour', 'hex-colour', 'hex-colour', 'hex-colour'],
       );
     });
 
