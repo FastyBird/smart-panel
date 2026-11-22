@@ -289,5 +289,8 @@
 		"selection": {
 			"description": "Importieren Sie Geräte aus Ihrer Home-Assistant-Instanz."
 		}
+	},
+	"sections": {
+		"connection": "Home-Assistant-Verbindung"
 	}
 }

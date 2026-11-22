@@ -59,6 +59,8 @@ describe('HomeAssistantDeviceEditForm', () => {
 
 	beforeEach(() => {
 		wrapper = mount(HomeAssistantDeviceEditForm, {
+			// The room picker reads the spaces store: these tests are about the plugin's own fields
+			global: { stubs: { SpaceSelect: true } },
 			props: {
 				device: {
 					id: '123',

@@ -68,5 +68,8 @@
 			"edited": "Urzadzenie reTerminal '{device}' zostalo zaktualizowane",
 			"notEdited": "Nie udalo sie zaktualizowac urzadzenia reTerminal '{device}'"
 		}
+	},
+	"sections": {
+		"connection": "Połączenie reTerminal"
 	}
 }

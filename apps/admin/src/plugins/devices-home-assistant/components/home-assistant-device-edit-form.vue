@@ -6,119 +6,35 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.id.title')"
-			prop="id"
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="edit"
+			identifier="editable"
 		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.identifier.title')"
-			prop="identifier"
-		>
-			<el-input
-				v-model="model.identifier"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.identifier.placeholder')"
-				name="identifier"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.name.title')"
-			prop="name"
-		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.name.placeholder')"
-				name="name"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-				readonly
-				disabled
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
-			prop="haDeviceId"
-		>
-			<el-select
-				v-model="model.haDeviceId"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
-				:loading="devicesOptionsLoading"
-				name="haDeviceId"
-				filterable
-				disabled
-			>
-				<el-option
-					v-for="item in devicesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
+			<plugin-form-section :title="t('devicesHomeAssistantPlugin.sections.connection')">
+				<el-form-item
+					:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
+					prop="haDeviceId"
+				>
+					<el-select
+						v-model="model.haDeviceId"
+						:placeholder="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
+						:loading="devicesOptionsLoading"
+						name="haDeviceId"
+						filterable
+						disabled
+					>
+						<el-option
+							v-for="item in devicesOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-select>
+				</el-form-item>
+			</plugin-form-section>
+		</device-form-frame>
 	</el-form>
 </template>
 
@@ -126,9 +42,10 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, useDeviceEditForm } from '../../../modules/devices';
+import { PluginFormSection } from '../../../common';
+import { DeviceFormFrame, FormResult, type FormResultType, useDeviceEditForm } from '../../../modules/devices';
 import { useDiscoveredDevicesOptions } from '../composables/useDiscoveredDevicesOptions';
 import type { IHomeAssistantDeviceEditForm } from '../schemas/devices.types';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';

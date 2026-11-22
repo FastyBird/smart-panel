@@ -6,96 +6,12 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesVirtualPlugin.fields.devices.id.title')"
-			prop="id"
-		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('devicesVirtualPlugin.fields.devices.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesVirtualPlugin.fields.devices.identifier.title')"
-			prop="identifier"
-		>
-			<el-input
-				v-model="model.identifier"
-				:placeholder="t('devicesVirtualPlugin.fields.devices.identifier.placeholder')"
-				name="identifier"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesVirtualPlugin.fields.devices.name.title')"
-			prop="name"
-		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesVirtualPlugin.fields.devices.name.placeholder')"
-				name="name"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesVirtualPlugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesVirtualPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-				readonly
-				disabled
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="edit"
+			identifier="editable"
 		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesVirtualPlugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesVirtualPlugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesVirtualPlugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
 	</el-form>
 </template>
 
@@ -103,9 +19,9 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, useDeviceEditForm } from '../../../modules/devices';
+import { DeviceFormFrame, FormResult, type FormResultType, useDeviceEditForm } from '../../../modules/devices';
 import { VIRTUAL_SELECTABLE_CATEGORIES } from '../devices-virtual.constants';
 import type { IVirtualDeviceEditForm } from '../schemas/devices.types';
 import type { IVirtualDevice } from '../store/devices.store.types';

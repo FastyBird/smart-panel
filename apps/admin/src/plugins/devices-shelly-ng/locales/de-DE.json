@@ -169,5 +169,8 @@
 		"selection": {
 			"description": "Shelly-Geräte ab Gen 2 in Ihrem Netzwerk."
 		}
+	},
+	"sections": {
+		"connection": "Shelly-Verbindung"
 	}
 }

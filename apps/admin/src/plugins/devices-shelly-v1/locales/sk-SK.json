@@ -143,5 +143,8 @@
 		"selection": {
 			"description": "Zariadenia Shelly prvej generácie vo vašej sieti."
 		}
+	},
+	"sections": {
+		"connection": "Pripojenie Shelly Gen 1"
 	}
 }

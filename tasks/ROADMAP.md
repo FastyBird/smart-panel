@@ -511,7 +511,7 @@ Protect epic, built on this epic's components.
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :construction: In Progress |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
 
-**Next up:** AR-12, the device wizards on the wizard shell; then AR-11 (device plugin forms on the slot contract).
+**Next up:** AR-11, the device plugin forms on the slot contract: the single-step forms first, then the multi-step add forms on the wizard shell and the Home Assistant property forms.
 
 ---
 

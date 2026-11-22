@@ -68,5 +68,8 @@
 			"edited": "Zariadenie reTerminal '{device}' bolo aktualizované",
 			"notEdited": "Nepodarilo sa aktualizovať zariadenie reTerminal '{device}'"
 		}
+	},
+	"sections": {
+		"connection": "Pripojenie reTerminal"
 	}
 }

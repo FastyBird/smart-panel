@@ -143,5 +143,8 @@
     "selection": {
       "description": "Shelly-Geräte der ersten Generation in Ihrem Netzwerk."
     }
+  },
+  "sections": {
+    "connection": "Shelly-Gen-1-Verbindung"
   }
 }

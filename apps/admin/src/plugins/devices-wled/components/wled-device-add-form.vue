@@ -6,83 +6,25 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesWledPlugin.fields.devices.name.title')"
-			prop="name"
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="add"
+			:show-id="false"
 		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesWledPlugin.fields.devices.name.placeholder')"
-				name="name"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesWledPlugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesWledPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesWledPlugin.fields.devices.hostname.title')"
-			prop="hostname"
-		>
-			<el-input
-				v-model="model.hostname"
-				:placeholder="t('devicesWledPlugin.fields.devices.hostname.placeholder')"
-				name="hostname"
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesWledPlugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesWledPlugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesWledPlugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
+			<plugin-form-section :title="t('devicesWledPlugin.sections.connection')">
+				<el-form-item
+					:label="t('devicesWledPlugin.fields.devices.hostname.title')"
+					prop="hostname"
+				>
+					<el-input
+						v-model="model.hostname"
+						:placeholder="t('devicesWledPlugin.fields.devices.hostname.placeholder')"
+						name="hostname"
+					/>
+				</el-form-item>
+			</plugin-form-section>
+		</device-form-frame>
 	</el-form>
 </template>
 
@@ -90,9 +32,10 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType } from '../../../modules/devices';
+import { PluginFormSection } from '../../../common';
+import { DeviceFormFrame, FormResult, type FormResultType } from '../../../modules/devices';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
 import type { IWledDeviceAddForm } from '../schemas/devices.types';
 

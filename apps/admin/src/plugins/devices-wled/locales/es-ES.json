@@ -140,5 +140,8 @@
 		"selection": {
 			"description": "Controladores de LED direccionables con WLED."
 		}
+	},
+	"sections": {
+		"connection": "Conexión de WLED"
 	}
 }

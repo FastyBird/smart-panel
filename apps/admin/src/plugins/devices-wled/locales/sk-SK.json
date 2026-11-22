@@ -140,5 +140,8 @@
 		"selection": {
 			"description": "Ovládače adresovateľných LED so systémom WLED."
 		}
+	},
+	"sections": {
+		"connection": "Pripojenie WLED"
 	}
 }
