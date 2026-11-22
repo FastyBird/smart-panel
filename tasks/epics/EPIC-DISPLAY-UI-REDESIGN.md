@@ -76,8 +76,8 @@ behaviour in `display-app-design-spec.md`, and updates all six locales.
 
 | ID | Issue | Phase | Task | Depends on | Status |
 |---|---|---|---|---|---|
-| DR-1 | #1711 | 1 | `feat(panel): adopt the redesign colour tokens and fonts` | — | in review |
-| DR-2 | #1712 | 1 | `feat(panel): derive density from pixel density and size classes from the effective canvas` | — | open |
+| DR-1 | #1711 | 1 | `feat(panel): adopt the redesign colour tokens and fonts` | — | done |
+| DR-2 | #1712 | 1 | `feat(panel): derive density from pixel density and size classes from the effective canvas` | — | in review |
 | DR-3 | #1713 | 1 | `feat(panel): add the accent palettes and the accent picker` | DR-1 | open |
 | DR-4 | #1714 | 1 | `chore(panel): add the design system checks and a component gallery` | DR-1 | open |
 | DR-5 | #1715 | 2 | `feat(panel): add one page header for every screen type` | DR-1, DR-2 | open |
