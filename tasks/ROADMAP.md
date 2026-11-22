@@ -511,7 +511,7 @@ Protect epic, built on this epic's components.
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :construction: In Progress |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
 
-**Next up:** AR-9, the devices list and detail on the page templates; then AR-10 (device add and edit on the edit drawer) and AR-12 (device wizards on the wizard shell).
+**Next up:** AR-10, device add and edit on the edit drawer; then AR-11 (device plugin forms on the slot contract) and AR-12 (device wizards on the wizard shell).
 
 ---
 

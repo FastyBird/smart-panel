@@ -81,4 +81,16 @@ describe('FormFooter.vue', () => {
 	it('takes a custom save label', () => {
 		expect(button(render({ saveLabel: 'Add device' }), 'save').text()).toBe('Add device');
 	});
+
+	it('lets the primary slot replace Save', () => {
+		const wrapper = mount(FormFooter, {
+			props: { dirty: true },
+			slots: { primary: '<button data-test-id="next">Next</button>' },
+			global: { plugins: [i18n] },
+		});
+
+		expect(button(wrapper, 'save').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="next"]').exists()).toBe(true);
+		expect(button(wrapper, 'discard').exists()).toBe(true);
+	});
 });

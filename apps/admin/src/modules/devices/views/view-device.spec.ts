@@ -51,9 +51,10 @@ vi.mock('../../../common', async () => {
 		}),
 		StatusTag: stub,
 		ViewError: stub,
-		AppBarScope: stub,
+		EditDrawerLayout: stub,
 		ViewHeader: stub,
-		useBreakpoints: () => ({ isMDDevice: vueRef(true), isLGDevice: vueRef(false) }),
+		// Reads its getter at once, as the real provider does, so a getter declared too late fails the mount
+		provideEditDrawer: (open: () => boolean) => ({ opened: open(), inDrawer: vueRef(false), mode: vueRef('page'), drawerSize: vueRef('640px') }),
 		useFlashMessage: () => ({ error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
 		useUuid: () => ({ validate: () => true }),
 	};
@@ -84,6 +85,7 @@ vi.mock('../../../plugins/devices-virtual/components/components', async () => {
 vi.mock('../../config', () => ({ useConfigPlugins: () => ({ enabled: () => false }) }));
 vi.mock('../devices.mapping', () => ({ deviceChannelsSpecificationOrder: {} }));
 vi.mock('../composables/composables', async () => ({
+	useDiscardGuard: () => ({ confirmDiscard: () => Promise.resolve(true) }),
 	useDevicesPlugins: (await import('../composables/useDevicesPlugins')).useDevicesPlugins,
 	useDeviceCategorySections: () => ref(mocks.sections),
 	useDevice: () => ({ device: mocks.device, isLoading: ref(false), fetchDevice: mocks.fetch }),

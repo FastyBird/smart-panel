@@ -36,3 +36,4 @@ export * from './useDeviceLogs';
 export * from './useDeviceWizardState';
 
 export * from './types';
+export * from './useDiscardGuard';

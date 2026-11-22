@@ -23,15 +23,21 @@
 			{{ t('application.formFooter.close') }}
 		</el-button>
 
-		<el-button
-			:loading="props.saving"
-			:disabled="!props.canSave"
-			type="primary"
-			data-test-id="form-footer-save"
-			@click="emit('save')"
+		<!-- A multi-step plugin form may put its own primary button (Next) here in place of Save -->
+		<slot
+			name="primary"
+			:save="() => emit('save')"
 		>
-			{{ props.saveLabel ?? t('application.formFooter.save') }}
-		</el-button>
+			<el-button
+				:loading="props.saving"
+				:disabled="!props.canSave"
+				type="primary"
+				data-test-id="form-footer-save"
+				@click="emit('save')"
+			>
+				{{ props.saveLabel ?? t('application.formFooter.save') }}
+			</el-button>
+		</slot>
 	</div>
 </template>
 

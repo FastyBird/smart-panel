@@ -41,29 +41,17 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
+		<!-- Wherever the phone app bar is not there to carry Save: in a drawer, and on a page kept open past 720 px.
+		     Hidden rather than removed, so a plugin's teleported Next button keeps its target through a resize -->
+		<form-footer
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			@discard="onDiscard"
+			@close="onClose"
 		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('devicesModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('devicesModule.buttons.close.title') }}
-				</el-button>
-
+			<!-- Plugin add forms with several steps teleport their own primary button (Next) here -->
+			<template #primary>
 				<div
 					:id="SUBMIT_FORM_SM"
 					class="order-2 inline-block [&>*:first-child:not(:only-child)]:hidden"
@@ -90,8 +78,8 @@
 						{{ t('devicesModule.buttons.save.title') }}
 					</el-button>
 				</div>
-			</div>
-		</div>
+			</template>
+		</form-footer>
 	</div>
 </template>
 
@@ -107,12 +95,14 @@ import { Icon } from '@iconify/vue';
 
 import {
 	AppBreadcrumbs,
+	FormFooter,
 	type IPlugin,
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	ViewHeader,
-	useBreakpoints,
+	useEditDrawer,
 	useFlashMessage,
+	useSizeClass,
 	useUuid,
 } from '../../../common';
 import { ChannelPropertyEditForm } from '../components/components';
@@ -143,7 +133,9 @@ const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: the form sits in a drawer from tablet portrait up and is its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel({ id: props.channelId });
 const { property, isLoading, fetchProperty } = useChannelProperty({ channelId: props.channelId, id: props.id });
@@ -241,20 +233,20 @@ const onDiscard = (): void => {
 	})
 		.then((): void => {
 			if (isChannelDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				} else {
 					router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				}
 			} else if (isDeviceDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 				} else {
 					router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 				}
 			} else {
 				// Fallback to channels list for invalid route context
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNELS });
 				} else {
 					router.push({ name: RouteNames.CHANNELS });
@@ -272,20 +264,20 @@ const onSubmit = (): void => {
 
 const onClose = (): void => {
 	if (isChannelDetailRoute.value) {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 		} else {
 			router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 		}
 	} else if (isDeviceDetailRoute.value) {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 		} else {
 			router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 		}
 	} else {
 		// Fallback to channels list for invalid route context
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.CHANNELS });
 		} else {
 			router.push({ name: RouteNames.CHANNELS });
@@ -344,13 +336,13 @@ watch(
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
 			if (isChannelDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				} else {
 					router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				}
 			} else if (isDeviceDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 				} else {
 					router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
@@ -389,7 +381,7 @@ watch(
 			// Channel was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('devicesModule.messages.channels.deletedWhileEditing'), { duration: 0 });
 			// Redirect to channels list
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.CHANNELS });
 			} else {
 				router.push({ name: RouteNames.CHANNELS });
@@ -415,20 +407,20 @@ watch(
 			flashMessage.warning(t('devicesModule.messages.channelsProperties.deletedWhileEditing'), { duration: 0 });
 			// Redirect to channel detail
 			if (isChannelDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				} else {
 					router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				}
 			} else if (isDeviceDetailRoute.value && channel.value?.device) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.DEVICE, params: { id: channel.value.device } });
 				} else {
 					router.push({ name: RouteNames.DEVICE, params: { id: channel.value.device } });
 				}
 			} else {
 				// Fallback to channels list
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.CHANNELS });
 				} else {
 					router.push({ name: RouteNames.CHANNELS });

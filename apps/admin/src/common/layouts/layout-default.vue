@@ -1,57 +1,14 @@
 <template>
 	<div class="h-full min-h-full max-h-full w-full min-w-full max-w-full">
+		<!-- One skeleton for every size class: only the chrome around the page changes, so crossing 720 px keeps the
+		     routed page mounted (and an open form with what was typed in it) -->
 		<el-container
-			v-if="isPhone"
-			direction="vertical"
-			:class="[ns.b()]"
-			class="h-full min-h-full max-h-full w-full min-w-full max-w-full"
-		>
-			<!-- The screen's view-header fills this bar (title, back or close, actions); before one mounts it shows the logo -->
-			<app-bar
-				:title="phoneHeading?.title"
-				:subtitle="phoneHeading?.subtitle"
-				:left="phoneHeading?.left ?? 'menu'"
-				:left-disabled="phoneHeading?.leftDisabled"
-				:actions="phoneHeading?.actions"
-				:primary="phoneHeading?.primary"
-				@left="onPhoneLeft"
-			>
-				<template
-					v-if="phoneHeading === null"
-					#title
-				>
-					<router-link
-						:to="{ name: RouteNames.ROOT }"
-						:aria-label="t('application.buttons.home.title')"
-						class="flex items-center"
-					>
-						<logo class="fill-white h-[30px]" />
-					</router-link>
-				</template>
-
-				<template
-					v-if="(phoneHeading?.left ?? 'menu') === 'menu'"
-					#end
-				>
-					<div :class="[ns.e('phone-bell')]">
-						<notification-bell />
-					</div>
-				</template>
-			</app-bar>
-
-			<el-main class="flex-1">
-				<router-view />
-			</el-main>
-		</el-container>
-
-		<el-container
-			v-else
 			direction="horizontal"
 			:class="[ns.b()]"
 			class="h-full min-h-full max-h-full w-full min-w-full max-w-full"
 		>
 			<el-aside
-				v-if="!isTabletPortrait"
+				v-if="!isPhone && !isTabletPortrait"
 				:class="[ns.e('aside'), { [ns.em('aside', 'collapsed')]: railOnly }]"
 				data-test-id="layout-aside"
 			>
@@ -62,14 +19,50 @@
 				direction="vertical"
 				class="flex-1 overflow-hidden"
 			>
+				<!-- The screen's view-header fills this bar (title, back or close, actions); before one mounts it shows the logo -->
+				<app-bar
+					v-if="isPhone"
+					:title="phoneHeading?.title"
+					:subtitle="phoneHeading?.subtitle"
+					:left="phoneHeading?.left ?? 'menu'"
+					:left-disabled="phoneHeading?.leftDisabled"
+					:actions="phoneHeading?.actions"
+					:primary="phoneHeading?.primary"
+					@left="onPhoneLeft"
+				>
+					<template
+						v-if="phoneHeading === null"
+						#title
+					>
+						<router-link
+							:to="{ name: RouteNames.ROOT }"
+							:aria-label="t('application.buttons.home.title')"
+							class="flex items-center"
+						>
+							<logo class="fill-white h-[30px]" />
+						</router-link>
+					</template>
+
+					<template
+						v-if="(phoneHeading?.left ?? 'menu') === 'menu'"
+						#end
+					>
+						<div :class="[ns.e('phone-bell')]">
+							<notification-bell />
+						</div>
+					</template>
+				</app-bar>
+
 				<app-top-bar
+					v-else
 					v-model:menu-collapsed="mainMenuCollapsed"
 					:menu-button="menuButton"
 					@open-menu="onOpenMenu"
 				/>
 
 				<el-main class="flex-1">
-					<div class="flex flex-col overflow-hidden h-full">
+					<!-- The phone page scrolls in the main area as before; larger screens give it a column of its own -->
+					<div :class="isPhone ? 'contents' : 'flex flex-col overflow-hidden h-full'">
 						<router-view />
 					</div>
 				</el-main>

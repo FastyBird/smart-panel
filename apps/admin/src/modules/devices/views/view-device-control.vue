@@ -19,7 +19,7 @@
 		/>
 
 		<div
-			v-if="isMDDevice"
+			v-if="inDrawer"
 			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
 			style="background-color: var(--el-drawer-bg-color)"
 		>
@@ -44,7 +44,7 @@ import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-rout
 
 import { ElButton, vLoading } from 'element-plus';
 
-import { AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useEditDrawer, useFlashMessage, useUuid } from '../../../common';
 import { DeviceControlForm } from '../components/components';
 import { useDeviceControl, useDeviceIcon } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
@@ -67,7 +67,7 @@ const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { inDrawer } = useEditDrawer();
 
 const deviceControl = useDeviceControl({ id: props.id });
 const { device, isLoading, arePropertiesLoaded, fetchDevice, fetchChannels, fetchProperties } = deviceControl;
@@ -118,13 +118,13 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 
 const onClose = (): void => {
 	if (isDetailRoute.value) {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.DEVICE, params: { id: props.id } });
 		} else {
 			router.push({ name: RouteNames.DEVICE, params: { id: props.id } });
 		}
 	} else {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.DEVICES });
 		} else {
 			router.push({ name: RouteNames.DEVICES });
@@ -185,7 +185,7 @@ watch(
 			// Device was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('devicesModule.messages.devices.deletedWhileEditing'), { duration: 0 });
 			// Redirect to devices list
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.DEVICES });
 			} else {
 				router.push({ name: RouteNames.DEVICES });

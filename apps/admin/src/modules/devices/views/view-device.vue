@@ -3,7 +3,7 @@
 		<app-breadcrumbs :items="breadcrumbs" />
 
 		<view-header
-			v-if="isDeviceRoute || isLGDevice"
+			v-if="isDeviceRoute || inDrawer"
 			:title="t('devicesModule.headings.devices.detail', { device: device?.name })"
 			:subtitle="t('devicesModule.subHeadings.devices.detail', { device: device?.name })"
 			icon="mdi:devices"
@@ -88,231 +88,263 @@
 	/>
 
 	<div
-		v-else-if="isDeviceRoute || isLGDevice"
+		v-else-if="isDeviceRoute || inDrawer"
 		class="flex flex-col flex-1 min-h-0 lt-sm:mx-1 sm:mx-2 mb-2"
 		:class="[ns.b()]"
 	>
-		<!-- Device info card (above tabs) -->
-		<!-- Keyed: its composables read the device id once, so another device needs a fresh summary -->
-		<device-detail
-			v-if="device"
-			:key="device.id"
-			:device="device"
-		/>
-
-		<!-- Tabs -->
-		<el-tabs
-			v-model="activeTab"
-			:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
 		>
-			<el-tab-pane
-				name="overview"
-				class="h-full overflow-hidden"
-			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:information-outline" />
-						{{ t('devicesModule.labels.overview') }}
-					</div>
-				</template>
+			<!-- Device info card (above tabs) -->
+			<!-- Keyed: its composables read the device id once, so another device needs a fresh summary -->
+			<device-detail
+				v-if="device"
+				:key="device.id"
+				:device="device"
+			/>
 
-				<el-scrollbar class="h-full">
-					<template v-if="device">
-						<component
-							:is="section.component"
-							v-for="section in categorySections"
-							:key="`${section.id}:${device.id}`"
-							:device="device"
-							:active="activeTab === 'overview'"
-						/>
+			<!-- Tabs -->
+			<el-tabs
+				v-model="activeTab"
+				:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
+			>
+				<el-tab-pane
+					name="overview"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:information-outline" />
+							{{ t('devicesModule.labels.overview') }}
+						</div>
 					</template>
 
-					<el-space
-						v-if="sortedChannels.length > 0"
-						direction="vertical"
-						size="large"
-						class="w-full mb-2"
-						:class="[ns.e('channels-list')]"
-						fill
-					>
-						<channel-detail
-							v-for="channel in sortedChannels"
-							:key="channel.id"
-							:channel="channel"
-							@channel-edit="onChannelEdit"
-							@channel-remove="onChannelRemove"
-							@property-add="onPropertyAdd"
-							@property-edit="onPropertyEdit"
-							@property-remove="onPropertyRemove"
-						/>
-					</el-space>
-
-					<el-card
-						v-else
-						shadow="never"
-					>
-						<state-view
-							kind="empty"
-							icon="mdi:chip"
-							:title="t('devicesModule.texts.devices.noChannels')"
-						>
-							<template #action>
-								<el-button
-									type="primary"
-									plain
-									@click="onChannelAdd"
-								>
-									<template #icon>
-										<icon icon="mdi:plus" />
-									</template>
-
-									{{ t('devicesModule.buttons.addChannel.title') }}
-								</el-button>
-							</template>
-						</state-view>
-					</el-card>
-				</el-scrollbar>
-			</el-tab-pane>
-
-			<el-tab-pane
-				v-if="validationIssues.length > 0"
-				name="validation"
-				class="h-full overflow-hidden"
-			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:alert-circle-outline" />
-						{{ t('devicesModule.labels.validation') }}
-						<el-tag
-							type="danger"
-							size="small"
-						>
-							{{ validationIssues.length }}
-						</el-tag>
-					</div>
-				</template>
-
-				<el-scrollbar class="h-full">
-					<el-card
-						shadow="never"
-						body-class="p-0!"
-					>
-						<el-table
-							:data="validationIssues"
-							class="w-full"
-						>
-							<el-table-column
-								:label="t('devicesModule.validation.table.severity')"
-								prop="severity"
-								:width="100"
-							>
-								<template #default="scope">
-									<status-tag
-										:status="scope.row.severity === 'error' ? 'danger' : 'warn'"
-										:label="
-											scope.row.severity === 'error' ? t('devicesModule.validation.severity.error') : t('devicesModule.validation.severity.warning')
-										"
-									/>
-								</template>
-							</el-table-column>
-							<el-table-column
-								:label="t('devicesModule.validation.table.type')"
-								prop="type"
-								:width="150"
-							>
-								<template #default="scope">
-									{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
-								</template>
-							</el-table-column>
-							<el-table-column
-								:label="t('devicesModule.validation.table.message')"
-								prop="message"
+					<el-scrollbar class="h-full">
+						<template v-if="device">
+							<component
+								:is="section.component"
+								v-for="section in categorySections"
+								:key="`${section.id}:${device.id}`"
+								:device="device"
+								:active="activeTab === 'overview'"
 							/>
-							<el-table-column
-								:label="t('devicesModule.validation.table.channel')"
-								prop="channelCategory"
-								:width="150"
-							>
-								<template #default="scope">
-									<template v-if="scope.row.channelCategory">
-										{{ t(`devicesModule.categories.channels.${scope.row.channelCategory}`, scope.row.channelCategory) }}
-									</template>
-									<span
-										v-else
-										class="text-muted"
-									>
-										-
-									</span>
-								</template>
-							</el-table-column>
-						</el-table>
-					</el-card>
-				</el-scrollbar>
-			</el-tab-pane>
+						</template>
 
-			<el-tab-pane
-				name="logs"
-				class="h-full overflow-hidden"
-			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:console" />
-						{{ t('devicesModule.labels.logs') }}
-						<el-tag
-							v-if="hasAlerts"
-							type="danger"
-							size="small"
+						<el-space
+							v-if="sortedChannels.length > 0"
+							direction="vertical"
+							size="large"
+							class="w-full mb-2"
+							:class="[ns.e('channels-list')]"
+							fill
 						>
-							{{ alertCount }}
-						</el-tag>
-					</div>
-				</template>
+							<channel-detail
+								v-for="channel in sortedChannels"
+								:key="channel.id"
+								:channel="channel"
+								@channel-edit="onChannelEdit"
+								@channel-remove="onChannelRemove"
+								@property-add="onPropertyAdd"
+								@property-edit="onPropertyEdit"
+								@property-remove="onPropertyRemove"
+							/>
+						</el-space>
 
-				<device-logs
-					v-if="device"
-					v-model:live="logsLive"
-					:device-id="device.id"
-					:logs="sharedDeviceLogs.logs"
-					:has-more="sharedDeviceLogs.hasMore"
-					:is-loading="sharedDeviceLogs.isLoading"
-					:live-ref="sharedDeviceLogs.live"
-					:fetch-logs="sharedDeviceLogs.fetchLogs"
-					:load-more-logs="sharedDeviceLogs.loadMoreLogs"
-					:refresh-logs="sharedDeviceLogs.refreshLogs"
-				/>
-			</el-tab-pane>
-			<el-tab-pane
-				v-for="tab in deviceDetailTabs"
-				:key="tab.id"
-				:name="`plugin:${tab.id}`"
-				lazy
-				class="h-full overflow-hidden"
-			>
-				<template #label>
-					<!-- Plugin tabs: icon and a label of at most 16 characters (spec section 7) -->
-					<div
-						:title="t(tab.label)"
-						class="flex items-center gap-2 px-4"
-					>
-						<icon :icon="tab.icon" />
-						<span class="max-w-[16ch] truncate">{{ t(tab.label) }}</span>
-					</div>
-				</template>
-				<el-scrollbar class="h-full">
-					<component
-						:is="tab.component"
-						v-if="device && activeTab === `plugin:${tab.id}`"
-						:key="device.id"
-						:device="device"
+						<el-card
+							v-else
+							shadow="never"
+						>
+							<state-view
+								kind="empty"
+								icon="mdi:chip"
+								:title="t('devicesModule.texts.devices.noChannels')"
+							>
+								<template #action>
+									<el-button
+										type="primary"
+										plain
+										@click="onChannelAdd"
+									>
+										<template #icon>
+											<icon icon="mdi:plus" />
+										</template>
+
+										{{ t('devicesModule.buttons.addChannel.title') }}
+									</el-button>
+								</template>
+							</state-view>
+						</el-card>
+					</el-scrollbar>
+				</el-tab-pane>
+
+				<el-tab-pane
+					v-if="validationIssues.length > 0"
+					name="validation"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:alert-circle-outline" />
+							{{ t('devicesModule.labels.validation') }}
+							<el-tag
+								type="danger"
+								size="small"
+							>
+								{{ validationIssues.length }}
+							</el-tag>
+						</div>
+					</template>
+
+					<el-scrollbar class="h-full">
+						<el-card
+							shadow="never"
+							body-class="p-0!"
+						>
+							<el-table
+								:data="validationIssues"
+								class="w-full"
+							>
+								<el-table-column
+									:label="t('devicesModule.validation.table.severity')"
+									prop="severity"
+									:width="100"
+								>
+									<template #default="scope">
+										<status-tag
+											:status="scope.row.severity === 'error' ? 'danger' : 'warn'"
+											:label="
+												scope.row.severity === 'error' ? t('devicesModule.validation.severity.error') : t('devicesModule.validation.severity.warning')
+											"
+										/>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('devicesModule.validation.table.type')"
+									prop="type"
+									:width="150"
+								>
+									<template #default="scope">
+										{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('devicesModule.validation.table.message')"
+									prop="message"
+								/>
+								<el-table-column
+									:label="t('devicesModule.validation.table.channel')"
+									prop="channelCategory"
+									:width="150"
+								>
+									<template #default="scope">
+										<template v-if="scope.row.channelCategory">
+											{{ t(`devicesModule.categories.channels.${scope.row.channelCategory}`, scope.row.channelCategory) }}
+										</template>
+										<span
+											v-else
+											class="text-muted"
+										>
+											-
+										</span>
+									</template>
+								</el-table-column>
+							</el-table>
+						</el-card>
+					</el-scrollbar>
+				</el-tab-pane>
+
+				<el-tab-pane
+					name="logs"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:console" />
+							{{ t('devicesModule.labels.logs') }}
+							<el-tag
+								v-if="hasAlerts"
+								type="danger"
+								size="small"
+							>
+								{{ alertCount }}
+							</el-tag>
+						</div>
+					</template>
+
+					<device-logs
+						v-if="device"
+						v-model:live="logsLive"
+						:device-id="device.id"
+						:logs="sharedDeviceLogs.logs"
+						:has-more="sharedDeviceLogs.hasMore"
+						:is-loading="sharedDeviceLogs.isLoading"
+						:live-ref="sharedDeviceLogs.live"
+						:fetch-logs="sharedDeviceLogs.fetchLogs"
+						:load-more-logs="sharedDeviceLogs.loadMoreLogs"
+						:refresh-logs="sharedDeviceLogs.refreshLogs"
 					/>
-				</el-scrollbar>
-			</el-tab-pane>
-		</el-tabs>
+				</el-tab-pane>
+				<el-tab-pane
+					v-for="tab in deviceDetailTabs"
+					:key="tab.id"
+					:name="`plugin:${tab.id}`"
+					lazy
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<!-- Plugin tabs: icon and a label of at most 16 characters (spec section 7) -->
+						<div
+							:title="t(tab.label)"
+							class="flex items-center gap-2 px-4"
+						>
+							<icon :icon="tab.icon" />
+							<span class="max-w-[16ch] truncate">{{ t(tab.label) }}</span>
+						</div>
+					</template>
+					<el-scrollbar class="h-full">
+						<component
+							:is="tab.component"
+							v-if="device && activeTab === `plugin:${tab.id}`"
+							:key="device.id"
+							:device="device"
+						/>
+					</el-scrollbar>
+				</el-tab-pane>
+			</el-tabs>
+
+			<template #form>
+				<template v-if="showDrawer">
+					<view-error>
+						<template #icon>
+							<icon icon="mdi:devices" />
+						</template>
+						<template #message>
+							{{ t('devicesModule.messages.misc.requestError') }}
+						</template>
+
+						<suspense>
+							<router-view
+								:key="`${route.path}-${device?.id}`"
+								v-slot="{ Component }"
+							>
+								<component
+									:is="Component"
+									v-model:remote-form-changed="remoteFormChanged"
+									:device="device"
+								/>
+							</router-view>
+						</suspense>
+					</view-error>
+				</template>
+			</template>
+		</edit-drawer-layout>
 	</div>
 
 	<router-view
 		v-else
-		:key="`${props.id}-${device?.id}`"
+		:key="`${route.path}-${device?.id}`"
 		v-slot="{ Component }"
 	>
 		<component
@@ -320,53 +352,17 @@
 			:device="device"
 		/>
 	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="'40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<view-error>
-					<template #icon>
-						<icon icon="mdi:devices" />
-					</template>
-					<template #message>
-						{{ t('devicesModule.messages.misc.requestError') }}
-					</template>
-
-					<suspense>
-						<router-view
-							:key="`${props.id}-${device?.id}`"
-							v-slot="{ Component }"
-						>
-							<component
-								:is="Component"
-								v-model:remote-form-changed="remoteFormChanged"
-								:device="device"
-							/>
-						</router-view>
-					</suspense>
-				</view-error>
-			</template>
-		</app-bar-scope>
-	</el-drawer>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import {
 	ElButton,
 	ElCard,
-	ElDrawer,
 	ElDropdown,
 	ElDropdownItem,
 	ElDropdownMenu,
@@ -384,14 +380,14 @@ import {
 import { Icon } from '@iconify/vue';
 
 import {
-	AppBarScope,
 	AppBreadcrumbs,
+	EditDrawerLayout,
 	EntityNotFound,
 	StateView,
 	StatusTag,
 	ViewError,
 	ViewHeader,
-	useBreakpoints,
+	provideEditDrawer,
 	useFlashMessage,
 	useUuid,
 } from '../../../common';
@@ -408,6 +404,7 @@ import {
 	useDeviceSpecification,
 	useDeviceValidation,
 	useDevicesPlugins,
+	useDiscardGuard,
 } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesApiException } from '../devices.exceptions';
@@ -433,8 +430,6 @@ const flashMessage = useFlashMessage();
 const ns = useNamespace('view-device');
 
 const { validate: validateUuid } = useUuid();
-
-const { isLGDevice } = useBreakpoints();
 
 const deviceId = computed(() => props.id);
 
@@ -507,6 +502,11 @@ const isDeviceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DEVICE;
 });
 
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone. After what its
+// getter reads: the provider reads it at once
+const { inDrawer } = provideEditDrawer((): boolean => !isDeviceRoute.value);
+const { confirmDiscard } = useDiscardGuard();
+
 const channelsSortOrder = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
 	if (!device.value) {
 		return [];
@@ -548,6 +548,20 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (to?: RouteLocationRaw): Promise<boolean> => {
+	// The form asked for is the one already open: nothing to replace, so nothing to ask
+	if (to !== undefined && router.resolve(to).path === route.path) {
+		return false;
+	}
+
+	if (!showDrawer.value || !remoteFormChanged.value) {
+		return true;
+	}
+
+	return confirmDiscard();
+};
+
 const onCloseDrawer = (done?: () => void): void => {
 	if (remoteFormChanged.value) {
 		ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
@@ -556,7 +570,7 @@ const onCloseDrawer = (done?: () => void): void => {
 			type: 'warning',
 		})
 			.then((): void => {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({
 						name: RouteNames.DEVICE,
 						params: {
@@ -578,7 +592,7 @@ const onCloseDrawer = (done?: () => void): void => {
 				// Just ignore it
 			});
 	} else {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({
 				name: RouteNames.DEVICE,
 				params: {
@@ -598,8 +612,12 @@ const onCloseDrawer = (done?: () => void): void => {
 	}
 };
 
-const onDeviceEdit = (): void => {
-	if (isLGDevice.value) {
+const onDeviceEdit = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICE_EDIT, params: { id: props.id } }))) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_EDIT,
 			params: {
@@ -616,8 +634,12 @@ const onDeviceEdit = (): void => {
 	}
 };
 
-const onDeviceControl = (): void => {
-	if (isLGDevice.value) {
+const onDeviceControl = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICE_CONTROL, params: { id: props.id } }))) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_CONTROL,
 			params: {
@@ -634,8 +656,12 @@ const onDeviceControl = (): void => {
 	}
 };
 
-const onChannelAdd = (): void => {
-	if (isLGDevice.value) {
+const onChannelAdd = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICE_ADD_CHANNEL, params: { id: props.id } }))) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_ADD_CHANNEL,
 			params: {
@@ -652,8 +678,12 @@ const onChannelAdd = (): void => {
 	}
 };
 
-const onChannelEdit = (id: IChannel['id']): void => {
-	if (isLGDevice.value) {
+const onChannelEdit = async (id: IChannel['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { id: props.id, channelId: id } }))) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_EDIT_CHANNEL,
 			params: {
@@ -676,8 +706,12 @@ const onChannelRemove = (id: IChannel['id']): void => {
 	channelsActions.remove(id);
 };
 
-const onPropertyAdd = (channelId: IChannel['id']): void => {
-	if (isLGDevice.value) {
+const onPropertyAdd = async (channelId: IChannel['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICE_CHANNEL_ADD_PROPERTY, params: { id: props.id, channelId: channelId } }))) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_CHANNEL_ADD_PROPERTY,
 			params: {
@@ -696,8 +730,14 @@ const onPropertyAdd = (channelId: IChannel['id']): void => {
 	}
 };
 
-const onPropertyEdit = (channelId: IChannel['id'], id: IChannelProperty['id']): void => {
-	if (isLGDevice.value) {
+const onPropertyEdit = async (channelId: IChannel['id'], id: IChannelProperty['id']): Promise<void> => {
+	if (
+		!(await canReplaceOpenForm({ name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY, params: { id: props.id, channelId: channelId, propertyId: id } }))
+	) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 			params: {
@@ -722,8 +762,12 @@ const onPropertyRemove = (_channelId: IChannel['id'], id: IChannelProperty['id']
 	channelsPropertiesActions.remove(id);
 };
 
-const onClose = (): void => {
-	if (isLGDevice.value) {
+const onClose = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICES }))) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICES,
 		});
@@ -817,6 +861,10 @@ onMounted((): void => {
 watch(
 	(): string => route.path,
 	(): void => {
+		// Another route means another form (the outlet is keyed by it): its changes start from zero. A navigation
+		// that does not happen leaves the open form, and what it says about its changes, as it was
+		remoteFormChanged.value = false;
+
 		showDrawer.value =
 			route.matched.find(
 				(matched) =>
@@ -849,7 +897,7 @@ watch(
 			// Device was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('devicesModule.messages.devices.deletedWhileEditing'), { duration: 0 });
 			// Redirect to devices list
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.DEVICES });
 			} else {
 				router.push({ name: RouteNames.DEVICES });
@@ -866,7 +914,7 @@ watch(
 		if (route.matched.find((matched) => matched.name === RouteNames.DEVICE_ADD_CHANNEL) !== undefined && !canAddAnotherChannel) {
 			flashMessage.info(t('devicesModule.messages.channels.noMoreAllowed'));
 
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({
 					name: RouteNames.DEVICE,
 					params: {

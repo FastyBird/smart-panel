@@ -710,6 +710,10 @@
 			"title": "Konfiguracja ręczna"
 		}
 	},
+	"sections": {
+		"general": "Ogólne",
+		"identifiers": "Identyfikatory"
+	},
 	"labels": {
 		"liveTail": "Podgląd na żywo",
 		"paused": "Wstrzymane",

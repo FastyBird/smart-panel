@@ -5,7 +5,7 @@
 	/>
 
 	<view-header
-		v-if="(isDevicesListRoute || isLGDevice) && !isWizardRoute"
+		v-if="(isDevicesListRoute || inDrawer) && !isWizardRoute"
 		:title="t('devicesModule.headings.devices.list')"
 		:subtitle="t('devicesModule.subHeadings.devices.list')"
 		icon="mdi:devices"
@@ -61,48 +61,35 @@
 	</div>
 
 	<div
-		v-if="(isDevicesListRoute || isLGDevice) && !isWizardRoute"
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+		v-if="(isDevicesListRoute || inDrawer) && !isWizardRoute"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
-		<list-devices
-			ref="list"
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			v-model:show-hidden="showHidden"
-			:items="devicesPaginated"
-			:all-items="devices"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			@detail="onDeviceDetail"
-			@edit="onDeviceEdit"
-			@remove="onDeviceRemove"
-			@reset-filters="onResetFilters"
-			@bulk-action="onBulkAction"
-		/>
-	</div>
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-devices
+				ref="list"
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				v-model:show-hidden="showHidden"
+				:items="devicesPaginated"
+				:all-items="devices"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				@detail="onDeviceDetail"
+				@edit="onDeviceEdit"
+				@remove="onDeviceRemove"
+				@reset-filters="onResetFilters"
+				@bulk-action="onBulkAction"
+			/>
 
-	<router-view
-		v-if="isWizardRoute || (!isDevicesListRoute && !isLGDevice)"
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component :is="Component" />
-	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice && !isWizardRoute"
-		v-model="showDrawer"
-		:show-close="false"
-		size="40%"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
+			<template #form>
 				<view-error>
 					<template #icon>
 						<icon icon="mdi:devices" />
@@ -124,23 +111,31 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<router-view
+		v-if="isWizardRoute || (!isDevicesListRoute && !inDrawer)"
+		:key="props.id"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer, useBreakpoints, useFlashMessage } from '../../../common';
 import { ListDevices } from '../components/components';
-import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
+import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation, useDiscardGuard } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import type { IDevice } from '../store/devices.store.types';
@@ -161,7 +156,7 @@ useMeta({
 	title: t('devicesModule.meta.devices.list.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+const { isMDDevice } = useBreakpoints();
 
 const flashMessage = useFlashMessage();
 
@@ -196,6 +191,11 @@ const isDevicesListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DEVICES;
 });
 
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone. After what its
+// getter reads: the provider reads it at once
+const { inDrawer } = provideEditDrawer((): boolean => !isDevicesListRoute.value);
+const { confirmDiscard } = useDiscardGuard();
+
 const isWizardRoute = computed<boolean>((): boolean => {
 	return route.meta.devicesWizard === true || route.name === RouteNames.DEVICES_WIZARD || route.name === RouteNames.DEVICES_WIZARD_SELECT;
 });
@@ -211,6 +211,20 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (to?: RouteLocationRaw): Promise<boolean> => {
+	// The form asked for is the one already open: nothing to replace, so nothing to ask
+	if (to !== undefined && router.resolve(to).path === route.path) {
+		return false;
+	}
+
+	if (!showDrawer.value || !remoteFormChanged.value) {
+		return true;
+	}
+
+	return confirmDiscard();
+};
+
 const onCloseDrawer = (done?: () => void): void => {
 	if (remoteFormChanged.value) {
 		ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
@@ -219,7 +233,7 @@ const onCloseDrawer = (done?: () => void): void => {
 			type: 'warning',
 		})
 			.then((): void => {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({
 						name: RouteNames.DEVICES,
 					});
@@ -235,7 +249,7 @@ const onCloseDrawer = (done?: () => void): void => {
 				// Just ignore it
 			});
 	} else {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({
 				name: RouteNames.DEVICES,
 			});
@@ -249,7 +263,11 @@ const onCloseDrawer = (done?: () => void): void => {
 	}
 };
 
-const onDeviceDetail = (id: IDevice['id']): void => {
+const onDeviceDetail = async (id: IDevice['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	router.push({
 		name: RouteNames.DEVICE,
 		params: {
@@ -258,8 +276,12 @@ const onDeviceDetail = (id: IDevice['id']): void => {
 	});
 };
 
-const onDeviceEdit = (id: IDevice['id']): void => {
-	if (isLGDevice.value) {
+const onDeviceEdit = async (id: IDevice['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICES_EDIT, params: { id } }))) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICES_EDIT,
 			params: {
@@ -298,8 +320,12 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onDeviceCreate = (): void => {
-	if (isLGDevice.value) {
+const onDeviceCreate = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm({ name: RouteNames.DEVICES_ADD }))) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DEVICES_ADD,
 		});
@@ -315,7 +341,11 @@ const onSearch = (): void => {
 	list.value?.focusSearch();
 };
 
-const onWizard = (): void => {
+const onWizard = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	void router.push({ name: RouteNames.DEVICES_WIZARD_SELECT });
 };
 
@@ -348,6 +378,10 @@ onMounted((): void => {
 watch(
 	(): string => route.path,
 	(): void => {
+		// Another route means another form (the outlet is keyed by it): its changes start from zero. A navigation
+		// that does not happen leaves the open form, and what it says about its changes, as it was
+		remoteFormChanged.value = false;
+
 		showDrawer.value =
 			route.matched.find((matched) => matched.name === RouteNames.DEVICES_ADD || matched.name === RouteNames.DEVICES_EDIT) !== undefined;
 	}
