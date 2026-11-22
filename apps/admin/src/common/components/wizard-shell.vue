@@ -26,7 +26,7 @@
 		</div>
 
 		<nav
-			v-else
+			v-else-if="props.steps.length > 0"
 			:aria-label="t('application.wizardShell.steps')"
 			class="px-5 py-3.5 bg-surface border border-solid border-light rounded-lg"
 			data-test-id="wizard-shell-stepper"
@@ -112,6 +112,7 @@
 			data-test-id="wizard-shell-footer"
 		>
 			<el-button
+				v-if="props.cancellable"
 				:disabled="props.busy"
 				text
 				data-test-id="wizard-shell-cancel"
@@ -131,6 +132,9 @@
 				{{ t('application.bulkActions.selected', { count: props.selectedCount }) }}
 			</span>
 
+			<!-- Further actions of the step, such as "Scan again", left of Skip and Back -->
+			<slot name="actions" />
+
 			<el-button
 				v-if="props.skippable"
 				:disabled="props.busy"
@@ -142,7 +146,7 @@
 			</el-button>
 
 			<el-button
-				v-if="currentIndex > 0"
+				v-if="props.backable ?? currentIndex > 0"
 				:disabled="props.busy"
 				data-test-id="wizard-shell-back"
 				@click="emit('back')"
@@ -151,6 +155,7 @@
 			</el-button>
 
 			<el-button
+				v-if="props.nextVisible"
 				:disabled="!props.canContinue"
 				:loading="props.busy"
 				type="primary"
@@ -187,6 +192,9 @@ const props = withDefaults(defineProps<WizardShellProps>(), {
 	nextLabel: undefined,
 	busy: false,
 	stepWidth: 'form',
+	cancellable: true,
+	backable: undefined,
+	nextVisible: true,
 });
 
 const emit = defineEmits<{

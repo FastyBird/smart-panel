@@ -3,7 +3,7 @@ import type { RouteLocationRaw } from 'vue-router';
 
 import type { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 
-export type IWizardStep = 'discover' | 'confirm' | 'results';
+export type IWizardStep = 'discover' | 'select' | 'confirm' | 'results';
 
 export type IWizardRowStatus = 'checking' | 'ready' | 'needs_credentials' | 'needs_attention' | 'already_registered' | 'unsupported' | 'failed';
 

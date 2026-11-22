@@ -21,6 +21,8 @@ export interface IUseDeviceWizardState {
 	buildSelection: (reviewedRows?: readonly IWizardRow[]) => IWizardAdoptSelection[];
 }
 
+export const STEP_ORDER: IWizardStep[] = ['discover', 'select', 'confirm', 'results'];
+
 export const useDeviceWizardState = (rows: Ref<IWizardRow[]> | ComputedRef<IWizardRow[]> = ref([])): IUseDeviceWizardState => {
 	const selected = reactive<Record<string, boolean>>({});
 	const nameByKey = reactive<Record<string, string>>({});
@@ -36,17 +38,8 @@ export const useDeviceWizardState = (rows: Ref<IWizardRow[]> | ComputedRef<IWiza
 
 	const activeStep = ref<IWizardStep>('discover');
 
-	const activeStepIndex = computed<number>(() => {
-		if (activeStep.value === 'confirm') {
-			return 1;
-		}
-
-		if (activeStep.value === 'results') {
-			return 2;
-		}
-
-		return 0;
-	});
+	// Discover → Select → Confirm → Results
+	const activeStepIndex = computed<number>(() => STEP_ORDER.indexOf(activeStep.value));
 
 	const adoptableRows = computed<IWizardRow[]>(() => rows.value.filter((item) => item.adoptable));
 

@@ -1011,6 +1011,7 @@
 	"wizard": {
 		"steps": {
 			"discover": "Búsqueda",
+			"select": "Selección",
 			"confirm": "Confirmación",
 			"results": "Resultados"
 		},
@@ -1020,7 +1021,10 @@
 			"next": "Siguiente",
 			"adopt": "Añadir dispositivos",
 			"addMore": "Añadir más",
-			"done": "Hecho"
+			"done": "Hecho",
+			"retry": "Reintentar",
+			"retryDevice": "Reintentar {name}",
+			"retryFailed": "Reintentar los fallidos"
 		},
 		"statuses": {
 			"checking": "Comprobando",
@@ -1054,13 +1058,12 @@
 			"empty": "Todavía no se han encontrado dispositivos",
 			"noSelection": "No se seleccionó ningún dispositivo",
 			"resultsSuccess": "Todos los dispositivos seleccionados se añadieron correctamente",
-			"resultsFailed": "Algunos dispositivos no se pudieron añadir"
+			"resultsFailed": "Algunos dispositivos no se pudieron añadir",
+			"confirmHint": "Revisa el nombre y la categoría de cada dispositivo antes de añadirlo."
 		},
-		"variant": "Elegir variante",
 		"loadFailed": "No se pudieron cargar los plugins.",
 		"retry": "Reintentar",
 		"discardChanges": "¿Descartar los cambios sin guardar?",
-		"noPlugins": "No hay asistentes disponibles. Activa un plugin compatible en los ajustes.",
 		"review": {
 			"setting": "Ajuste",
 			"value": "Valor",
@@ -1077,15 +1080,7 @@
 			"numberRange": "Introduzca un número entero entre {minimum} y {maximum}."
 		},
 		"selection": {
-			"title": "¿Qué quiere añadir?",
-			"description": "Elija una integración para conectar dispositivos físicos o cree un dispositivo virtual a partir de los que ya tiene.",
-			"integrations": "Conectar una integración",
-			"integrationsDescription": "Busque dispositivos o configure su conexión y elija qué añadir.",
-			"search": "Buscar",
-			"searchPlaceholder": "Integración o tipo de dispositivo",
-			"noResults": "No hay integraciones ni tipos de dispositivo que coincidan.",
-			"clearSearch": "Borrar búsqueda",
-			"manualHint": "¿Prefiere introducir la configuración manualmente?"
+			"title": "¿Qué quiere añadir?"
 		}
 	},
 	"diagnostics": {

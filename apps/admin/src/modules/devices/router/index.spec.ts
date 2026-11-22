@@ -52,7 +52,7 @@ describe('devices module routes', () => {
 		expect(wizardRoute?.props).toBe(true);
 	});
 
-	it('opens the plugin chooser before the edit route can match the wizard path as an id', () => {
+	it('opens the wizard picker over the list before the edit route can match the wizard path as an id', () => {
 		const devicesRoute = ModuleRoutes.find((route) => route.name === RouteNames.DEVICES);
 		const children = devicesRoute?.children ?? [];
 		const editIndex = children.findIndex((route) => route.name === RouteNames.DEVICES_EDIT);
@@ -61,7 +61,6 @@ describe('devices module routes', () => {
 		expect(wizardFallbackIndex).toBeGreaterThanOrEqual(0);
 		expect(wizardFallbackIndex).toBeLessThan(editIndex);
 		expect(children[wizardFallbackIndex]?.name).toBe(RouteNames.DEVICES_WIZARD_SELECT);
-		expect(children[wizardFallbackIndex]?.component).toBeTypeOf('function');
-		expect(children[wizardFallbackIndex]?.redirect).toBeUndefined();
+		expect(children[wizardFallbackIndex]?.redirect).toEqual({ name: RouteNames.DEVICES, query: { wizard: 'select' } });
 	});
 });

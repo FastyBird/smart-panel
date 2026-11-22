@@ -36,10 +36,10 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// The wizard picker is a dialog over the list. Before `:id`, so "wizard" is never read as a device id
 				path: 'wizard',
 				name: RouteNames.DEVICES_WIZARD_SELECT,
-				component: () => import('../views/view-devices-wizard.vue'),
-				meta: { devicesWizard: true },
+				redirect: { name: RouteNames.DEVICES, query: { wizard: 'select' } },
 			},
 			{
 				path: 'wizard/:type',

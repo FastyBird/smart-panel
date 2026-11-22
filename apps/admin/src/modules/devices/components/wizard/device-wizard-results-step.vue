@@ -18,9 +18,10 @@
 				width="140"
 			>
 				<template #default="{ row }: { row: IWizardResult }">
-					<el-tag :type="wizardResultTagType(row.status)">
-						{{ t(`devicesModule.wizard.statuses.${row.status}`) }}
-					</el-tag>
+					<status-tag
+						:status="resultStatus(row.status)"
+						:label="t(`devicesModule.wizard.statuses.${row.status}`)"
+					/>
 				</template>
 			</el-table-column>
 
@@ -49,16 +50,37 @@
 				<template #default="{ row }: { row: IWizardResult }">
 					<span
 						v-if="row.error"
-						class="text-red-500"
+						class="text-danger"
 					>
 						{{ row.error }}
 					</span>
 					<span
 						v-else
-						class="text-gray-400"
+						class="text-secondary"
 					>
 						&mdash;
 					</span>
+				</template>
+			</el-table-column>
+
+			<el-table-column
+				v-if="hasFailures"
+				width="120"
+				align="right"
+			>
+				<template #default="{ row }: { row: IWizardResult }">
+					<!-- Partial success: a failed device is retried on its own, the added ones stay as they are -->
+					<el-button
+						v-if="row.status === 'failed'"
+						:loading="props.retrying"
+						:disabled="props.retrying"
+						:aria-label="t('devicesModule.wizard.actions.retryDevice', { name: row.name })"
+						size="small"
+						data-test-id="wizard-result-retry"
+						@click="emit('retry', row.key)"
+					>
+						{{ t('devicesModule.wizard.actions.retry') }}
+					</el-button>
 				</template>
 			</el-table-column>
 
@@ -81,7 +103,9 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElAlert, ElButton, ElTable, ElTableColumn } from 'element-plus';
+
+import { StatusTag, type StatusTagStatus } from '../../../../common';
 
 import DeviceWizardCell from './device-wizard-cell.vue';
 import { compareLocale } from './device-wizard.sort';
@@ -95,11 +119,23 @@ interface IProps {
 	results: IWizardResult[];
 	columns: IWizardColumn[];
 	identifierLabel: string;
+	/** A retry of failed devices is on its way */
+	retrying?: boolean;
 }
 
-const props = defineProps<IProps>();
+const props = withDefaults(defineProps<IProps>(), { retrying: false });
+
+const emit = defineEmits<{
+	(e: 'retry', key: string): void;
+}>();
 
 const { t } = useI18n();
+
+const resultStatus = (status: IWizardResult['status']): StatusTagStatus => {
+	const type = wizardResultTagType(status);
+
+	return type === 'success' ? 'ok' : type;
+};
 
 const hasFailures = computed<boolean>(() => props.results.some((item) => item.status === 'failed'));
 

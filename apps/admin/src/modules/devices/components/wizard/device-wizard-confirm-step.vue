@@ -1,196 +1,185 @@
 <template>
-	<div class="flex flex-col gap-3 h-full overflow-hidden">
-		<div
-			data-test-id="wizard-confirm-search"
-			class="shrink-0"
-		>
-			<el-input
-				v-model="search"
-				:placeholder="t('devicesModule.fields.devices.search.placeholder')"
-				clearable
-			/>
-		</div>
+	<!-- The selected devices only: name and category per device before they are added -->
+	<el-form
+		class="flex flex-col gap-3"
+		status-icon
+		@submit.prevent
+	>
+		<p class="m-0 text-help">{{ t('devicesModule.wizard.texts.confirmHint') }}</p>
 
-		<el-alert
-			v-if="fieldError('selection')"
-			:title="fieldError('selection')"
-			type="error"
-			:closable="false"
-		/>
-		<device-wizard-inventory-summary
-			:rows="summaryRows"
-			:visible-count="filteredRows.length"
-		/>
-
-		<div
-			data-test-id="wizard-confirm-table-scroll"
-			class="min-h-0 flex-1 overflow-x-auto overscroll-x-contain"
+		<!-- Tablet portrait and phone: one card per device -->
+		<ul
+			v-if="asCards"
+			class="flex flex-col gap-3 m-0 p-0 list-none"
+			data-test-id="wizard-confirm-cards"
 		>
-			<el-form
-				class="h-full"
-				status-icon
+			<li
+				v-for="row in sortedRows"
+				:key="row.key"
+				class="flex flex-col gap-3 p-3 rounded-lg border border-solid border-light"
+				data-test-id="wizard-confirm-card"
 			>
-				<el-table
-					:data="pageRows"
-					class="h-full w-full"
-					:style="{ minWidth: `${tableMinWidth}px` }"
-					table-layout="fixed"
-					:empty-text="t('devicesModule.wizard.texts.noSelection')"
-					:default-sort="{ prop: 'name', order: 'ascending' }"
-					@sort-change="onSortChange"
-				>
-					<el-table-column width="60">
-						<template #header>
-							<el-checkbox
-								:model-value="allFilteredSelected"
-								:indeterminate="someFilteredSelected && !allFilteredSelected"
-								:disabled="filteredRows.length === 0"
-								@change="
-									(value: boolean | string | number) =>
-										emit(
-											'toggle-rows',
-											filteredRows.map((row) => row.key),
-											value === true
-										)
-								"
-							/>
-						</template>
-						<template #default="{ row }: { row: IWizardRow }">
-							<el-checkbox
-								:model-value="selected[row.key] === true"
-								@change="(value: boolean | string | number) => emit('toggle-row', row.key, value === true)"
-							/>
-						</template>
-					</el-table-column>
+				<div class="flex items-start gap-2">
+					<div class="flex flex-col flex-1 min-w-0">
+						<span class="text-card-title truncate">{{ nameFor(row) }}</span>
+						<span class="text-help truncate">
+							{{ props.identifierLabel }}:
+							<code>{{ row.identifier }}</code>
+						</span>
+					</div>
+					<status-tag
+						:status="row.willUpdate ? 'warn' : 'ok'"
+						:label="changeLabel(row)"
+					/>
+				</div>
 
-					<el-table-column
-						prop="name"
+				<template v-if="props.confirmationMode === 'editable'">
+					<el-form-item
 						:label="t('devicesModule.wizard.columns.name')"
-						min-width="220"
-						sortable="custom"
+						:error="fieldError(`name:${row.key}`)"
+						class="mb-0!"
+						label-position="top"
 					>
-						<template #default="{ row }: { row: IWizardRow }">
-							<el-form-item
-								v-if="confirmationMode === 'editable'"
-								:error="fieldError(`name:${row.key}`)"
-								class="mb-0!"
-							>
-								<el-input
-									:model-value="nameByKey[row.key] ?? ''"
-									:placeholder="t('devicesModule.fields.devices.name.placeholder')"
-									@update:model-value="(value: string) => emit('update-name', row.key, value)"
-								/>
-							</el-form-item>
-							<span
-								v-else
-								class="font-medium"
-							>
-								{{ nameByKey[row.key] ?? row.suggestedName }}
-							</span>
-						</template>
-					</el-table-column>
-
-					<el-table-column
-						prop="identifier"
-						:label="identifierLabel"
-						min-width="150"
-						sortable="custom"
-					>
-						<template #default="{ row }: { row: IWizardRow }">
-							<code class="text-sm">{{ row.identifier }}</code>
-						</template>
-					</el-table-column>
-
-					<el-table-column
-						prop="change"
-						:label="t('devicesModule.wizard.columns.change')"
-						width="170"
-						sortable="custom"
-					>
-						<template #default="{ row }: { row: IWizardRow }">
-							<el-tag
-								size="small"
-								:type="row.willUpdate ? 'warning' : 'success'"
-							>
-								{{ row.willUpdate ? t('devicesModule.wizard.statuses.willUpdate') : t('devicesModule.wizard.statuses.willCreate') }}
-							</el-tag>
-						</template>
-					</el-table-column>
-
-					<el-table-column
-						prop="category"
+						<el-input
+							:model-value="props.nameByKey[row.key] ?? ''"
+							:placeholder="t('devicesModule.fields.devices.name.placeholder')"
+							@update:model-value="(value: string) => emit('update-name', row.key, value)"
+						/>
+					</el-form-item>
+					<el-form-item
 						:label="t('devicesModule.wizard.columns.category')"
-						min-width="240"
-						sortable="custom"
+						:error="fieldError(`category:${row.key}`)"
+						class="mb-0!"
+						label-position="top"
 					>
-						<template #default="{ row }: { row: IWizardRow }">
-							<el-form-item
-								v-if="confirmationMode === 'editable'"
-								:error="fieldError(`category:${row.key}`)"
-								class="mb-0!"
+						<el-select
+							:model-value="props.categoryByKey[row.key] ?? null"
+							:placeholder="t('devicesModule.fields.devices.category.placeholder')"
+							filterable
+							@update:model-value="(value: DevicesModuleDeviceCategory | null) => emit('update-category', row.key, value)"
+						>
+							<el-option
+								v-for="option in row.categoryOptions"
+								:key="option.value"
+								:label="option.label"
+								:value="option.value"
+							/>
+						</el-select>
+					</el-form-item>
+				</template>
+				<span
+					v-else
+					class="text-body"
+				>
+					{{ categoryLabel(row) }}
+				</span>
+			</li>
+		</ul>
+
+		<!-- Tablet landscape and up: a table -->
+		<div
+			v-else
+			class="overflow-x-auto overscroll-x-contain"
+			data-test-id="wizard-confirm-table-scroll"
+		>
+			<el-table
+				:data="sortedRows"
+				:style="{ minWidth: '720px' }"
+				table-layout="fixed"
+				class="w-full"
+				data-test-id="wizard-confirm-table"
+			>
+				<el-table-column
+					:label="t('devicesModule.wizard.columns.name')"
+					min-width="220"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<el-form-item
+							v-if="props.confirmationMode === 'editable'"
+							:error="fieldError(`name:${row.key}`)"
+							class="mb-0!"
+						>
+							<el-input
+								:model-value="props.nameByKey[row.key] ?? ''"
+								:placeholder="t('devicesModule.fields.devices.name.placeholder')"
+								:aria-label="t('devicesModule.wizard.columns.name')"
+								@update:model-value="(value: string) => emit('update-name', row.key, value)"
+							/>
+						</el-form-item>
+						<span
+							v-else
+							class="font-medium"
+						>
+							{{ nameFor(row) }}
+						</span>
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="props.identifierLabel"
+					min-width="150"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<code class="text-sm">{{ row.identifier }}</code>
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('devicesModule.wizard.columns.change')"
+					width="150"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<status-tag
+							:status="row.willUpdate ? 'warn' : 'ok'"
+							:label="changeLabel(row)"
+						/>
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('devicesModule.wizard.columns.category')"
+					min-width="220"
+				>
+					<template #default="{ row }: { row: IWizardRow }">
+						<el-form-item
+							v-if="props.confirmationMode === 'editable'"
+							:error="fieldError(`category:${row.key}`)"
+							class="mb-0!"
+						>
+							<el-select
+								:model-value="props.categoryByKey[row.key] ?? null"
+								:placeholder="t('devicesModule.fields.devices.category.placeholder')"
+								:aria-label="t('devicesModule.wizard.columns.category')"
+								filterable
+								@update:model-value="(value: DevicesModuleDeviceCategory | null) => emit('update-category', row.key, value)"
 							>
-								<el-select
-									:model-value="categoryByKey[row.key] ?? null"
-									:placeholder="t('devicesModule.fields.devices.category.placeholder')"
-									filterable
-									@update:model-value="(value: DevicesModuleDeviceCategory | null) => emit('update-category', row.key, value)"
-								>
-									<el-option
-										v-for="option in row.categoryOptions"
-										:key="option.value"
-										:label="option.label"
-										:value="option.value"
-									/>
-								</el-select>
-							</el-form-item>
-							<span v-else>
-								{{ categoryLabel(row) }}
-							</span>
-						</template>
-					</el-table-column>
-
-					<el-table-column
-						v-for="column in extraColumns"
-						:key="column.key"
-						:prop="column.key"
-						:label="column.label"
-						:width="column.width"
-						:min-width="column.minWidth"
-						:sortable="column.sortable ? 'custom' : false"
-					>
-						<template #default="{ row }: { row: IWizardRow }">
-							<device-wizard-cell :cell="row.cells?.[column.key]" />
-						</template>
-					</el-table-column>
-				</el-table>
-			</el-form>
+								<el-option
+									v-for="option in row.categoryOptions"
+									:key="option.value"
+									:label="option.label"
+									:value="option.value"
+								/>
+							</el-select>
+						</el-form-item>
+						<span v-else>{{ categoryLabel(row) }}</span>
+					</template>
+				</el-table-column>
+			</el-table>
 		</div>
-
-		<el-pagination
-			v-if="filteredRows.length > PAGE_SIZE"
-			v-model:current-page="currentPage"
-			data-test-id="wizard-confirm-pagination"
-			class="shrink-0 justify-center"
-			layout="prev, pager, next"
-			:page-size="PAGE_SIZE"
-			:pager-count="5"
-			:total="filteredRows.length"
-		/>
-	</div>
+	</el-form>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElCheckbox, ElForm, ElFormItem, ElInput, ElOption, ElPagination, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElTable, ElTableColumn } from 'element-plus';
 
+import { StatusTag, useSizeClass } from '../../../../common';
 import type { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 
-import DeviceWizardCell from './device-wizard-cell.vue';
-import DeviceWizardInventorySummary from './device-wizard-inventory-summary.vue';
 import { compareLocale } from './device-wizard.sort';
-import type { IWizardColumn, IWizardRow } from './device-wizard.types';
+import type { IWizardRow } from './device-wizard.types';
 import { useWizardFieldError } from './use-wizard-validation';
 
 defineOptions({
@@ -198,10 +187,8 @@ defineOptions({
 });
 
 interface IProps {
+	/** The selected devices */
 	rows: IWizardRow[];
-	summaryRows: IWizardRow[];
-	columns: IWizardColumn[];
-	selected: Record<string, boolean>;
 	nameByKey: Record<string, string>;
 	categoryByKey: Record<string, DevicesModuleDeviceCategory | null>;
 	identifierLabel: string;
@@ -211,21 +198,18 @@ interface IProps {
 const props = defineProps<IProps>();
 
 const emit = defineEmits<{
-	(e: 'toggle-row', key: string, value: boolean): void;
-	(e: 'toggle-rows', keys: string[], value: boolean): void;
 	(e: 'update-name', key: string, value: string): void;
 	(e: 'update-category', key: string, value: DevicesModuleDeviceCategory | null): void;
 }>();
 
 const { t } = useI18n();
 const fieldError = useWizardFieldError();
+const { isPhone, isTabletPortrait } = useSizeClass();
 
-const PAGE_SIZE = 25;
+// Spec section 6: the Confirm table becomes one card per device on tablet portrait (and on phone)
+const asCards = computed<boolean>(() => isPhone.value || isTabletPortrait.value);
 
-const search = ref<string>('');
-const currentPage = ref<number>(1);
-const sortKey = ref<string | null>('name');
-const sortOrder = ref<'ascending' | 'descending' | null>('ascending');
+const nameFor = (row: IWizardRow): string => props.nameByKey[row.key] || row.suggestedName;
 
 const categoryLabel = (row: IWizardRow): string => {
 	const category = props.categoryByKey[row.key] ?? row.suggestedCategory;
@@ -233,108 +217,9 @@ const categoryLabel = (row: IWizardRow): string => {
 	return row.categoryOptions.find((option) => option.value === category)?.label ?? '';
 };
 
-const filteredRows = computed<IWizardRow[]>(() => {
-	const query = search.value.trim().toLocaleLowerCase();
+const changeLabel = (row: IWizardRow): string =>
+	row.willUpdate ? t('devicesModule.wizard.statuses.willUpdate') : t('devicesModule.wizard.statuses.willCreate');
 
-	if (query.length === 0) {
-		return props.rows;
-	}
-
-	return props.rows.filter((row) => {
-		const values = [
-			row.label,
-			row.subLabel,
-			row.identifier,
-			row.statusLabel ?? t(`devicesModule.wizard.statuses.${row.status}`),
-			props.nameByKey[row.key],
-			categoryLabel(row),
-			...Object.values(row.cells ?? {}).map((cell) => cell.value),
-		];
-
-		return values.some((value) => value?.toLocaleLowerCase().includes(query));
-	});
-});
-
-const allFilteredSelected = computed<boolean>(
-	() => filteredRows.value.length > 0 && filteredRows.value.every((row) => props.selected[row.key] === true)
-);
-
-const someFilteredSelected = computed<boolean>(() => filteredRows.value.some((row) => props.selected[row.key] === true));
-
-const extraColumns = computed<IWizardColumn[]>(() => props.columns.filter((column) => column.steps.includes('confirm')));
-
-const tableMinWidth = computed<number>(() => extraColumns.value.reduce((width, column) => width + (column.width ?? column.minWidth ?? 150), 900));
-
-// `prop`-based sorting can't reach into the parent-owned name / category records, so each
-// editable column gets a comparator that reads the current value rather than the row field.
-const sortByName = (a: IWizardRow, b: IWizardRow): number =>
-	compareLocale(props.nameByKey[a.key] ?? a.suggestedName, props.nameByKey[b.key] ?? b.suggestedName);
-
-const sortByIdentifier = (a: IWizardRow, b: IWizardRow): number => compareLocale(a.identifier, b.identifier);
-
-// Group "will create" rows ahead of "will update" ones so new devices are scanned first.
-const sortByChange = (a: IWizardRow, b: IWizardRow): number => {
-	const diff = (a.willUpdate ? 1 : 0) - (b.willUpdate ? 1 : 0);
-
-	return diff !== 0 ? diff : compareLocale(a.identifier, b.identifier);
-};
-
-const sortByCategory = (a: IWizardRow, b: IWizardRow): number => {
-	return compareLocale(categoryLabel(a), categoryLabel(b));
-};
-
-const sortByCell = (key: string, a: IWizardRow, b: IWizardRow): number => compareLocale(a.cells?.[key]?.value, b.cells?.[key]?.value);
-
-const compareRows = (a: IWizardRow, b: IWizardRow): number => {
-	if (sortKey.value === 'name') {
-		return sortByName(a, b);
-	}
-
-	if (sortKey.value === 'identifier') {
-		return sortByIdentifier(a, b);
-	}
-
-	if (sortKey.value === 'change') {
-		return sortByChange(a, b);
-	}
-
-	if (sortKey.value === 'category') {
-		return sortByCategory(a, b);
-	}
-
-	return sortKey.value === null ? 0 : sortByCell(sortKey.value, a, b);
-};
-
-const sortedRows = computed<IWizardRow[]>(() => {
-	if (sortKey.value === null || sortOrder.value === null) {
-		return filteredRows.value;
-	}
-
-	const direction = sortOrder.value === 'ascending' ? 1 : -1;
-
-	return [...filteredRows.value].sort((a, b) => direction * compareRows(a, b));
-});
-
-const pageRows = computed<IWizardRow[]>(() => {
-	const start = (currentPage.value - 1) * PAGE_SIZE;
-
-	return sortedRows.value.slice(start, start + PAGE_SIZE);
-});
-
-watch(search, () => {
-	currentPage.value = 1;
-});
-
-watch(
-	() => filteredRows.value.length,
-	(count) => {
-		currentPage.value = Math.min(currentPage.value, Math.max(1, Math.ceil(count / PAGE_SIZE)));
-	}
-);
-
-const onSortChange = ({ prop, order }: { prop: string | null; order: 'ascending' | 'descending' | null }): void => {
-	sortKey.value = prop;
-	sortOrder.value = order;
-	currentPage.value = 1;
-};
+// The order is fixed for the step, so a row does not jump while its name is typed
+const sortedRows = computed<IWizardRow[]>(() => [...props.rows].sort((a, b) => compareLocale(a.suggestedName, b.suggestedName)));
 </script>

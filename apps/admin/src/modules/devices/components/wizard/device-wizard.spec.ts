@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 
-import { useBreakpoints } from '../../../../common';
 import { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 
 import DeviceWizardShell from './device-wizard-shell.vue';
@@ -36,6 +35,20 @@ vi.mock('vue-router', () => ({
 	RouterLink: { name: 'RouterLink', template: '<a><slot /></a>' },
 }));
 
+const sizeClass = vi.hoisted(() => ({ value: 'dt' }));
+
+const sizeClassMock = () => ({
+	sizeClass: ref(sizeClass.value),
+	isPhone: computed(() => sizeClass.value === 'phone'),
+	isTabletPortrait: computed(() => sizeClass.value === 'tp'),
+	isTabletLandscape: computed(() => sizeClass.value === 'tl'),
+	isDesktop: computed(() => sizeClass.value === 'dt' || sizeClass.value === 'wd'),
+	isTouch: computed(() => false),
+});
+
+// The shell's stepper and footer read the size class from their own module
+vi.mock('../../../../common/composables/useSizeClass', () => ({ useSizeClass: () => sizeClassMock() }));
+
 vi.mock('../../../../common', async () => {
 	const { defineComponent } = await import('vue');
 
@@ -54,6 +67,9 @@ vi.mock('../../../../common', async () => {
 		// the mobile footer branch, which this default never exercises.
 		useLogger: () => ({ error: vi.fn() }),
 		useBreakpoints: vi.fn(() => ({ isMDDevice: ref(true), isLGDevice: ref(true) })),
+		WizardShell: (await import('../../../../common/components/wizard-shell.vue')).default,
+		StatusTag: (await import('../../../../common/components/status-tag.vue')).default,
+		useSizeClass: () => sizeClassMock(),
 	};
 });
 
@@ -102,78 +118,147 @@ const mountWizard = (adapter: IDeviceWizardAdapter) =>
 		global: { stubs: { 'router-link': true } },
 	});
 
+type Wrapper = ReturnType<typeof mountWizard>;
+
+const NEXT = '[data-test-id="wizard-shell-next"]';
+const SELECT_CHECKBOX = '[data-test-id="wizard-step-select"] tbody input[type="checkbox"]';
+const CONFIRM_NAME = '[data-test-id="wizard-step-confirm"] tbody input[type="text"]';
+
+const click = async (wrapper: Wrapper, selector: string): Promise<void> => {
+	await wrapper.get(selector).trigger('click');
+	await flushPromises();
+};
+
+// Discover → Select
+const toSelect = (wrapper: Wrapper): Promise<void> => click(wrapper, NEXT);
+
+// Discover → Select → Confirm
+const toConfirm = async (wrapper: Wrapper): Promise<void> => {
+	await click(wrapper, NEXT);
+	await click(wrapper, NEXT);
+};
+
+// Confirm → Results: the primary action on Confirm adds the devices
+const adopt = (wrapper: Wrapper): Promise<void> => click(wrapper, NEXT);
+
 describe('DeviceWizard', () => {
+	it('runs Discover, Select, Confirm and Results in the shared wizard shell', async () => {
+		const wrapper = mountWizard(buildAdapter());
+		await flushPromises();
+
+		expect(wrapper.findAll('[data-test-id="wizard-shell-step"]').map((step) => step.text().replace(/^\d+\s*/, ''))).toEqual([
+			'devicesModule.wizard.steps.discover',
+			'devicesModule.wizard.steps.select',
+			'devicesModule.wizard.steps.confirm',
+			'devicesModule.wizard.steps.results',
+		]);
+		expect(wrapper.find('[data-test-id="wizard-step-discover"]').exists()).toBe(true);
+
+		await toSelect(wrapper);
+		expect(wrapper.find('[data-test-id="wizard-step-select"]').exists()).toBe(true);
+		// The shell counts the devices ticked for adoption
+		expect(wrapper.get('[data-test-id="wizard-shell-selected"]').text()).toBe('application.bulkActions.selected');
+
+		await click(wrapper, NEXT);
+		expect(wrapper.find('[data-test-id="wizard-step-confirm"]').exists()).toBe(true);
+		expect(wrapper.get(NEXT).text()).toBe('devicesModule.wizard.actions.adopt');
+
+		await adopt(wrapper);
+		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-shell-cancel"]').exists()).toBe(false);
+	});
+
+	it('keeps Next on Select disabled until a device is ticked', async () => {
+		const wrapper = mountWizard(buildAdapter());
+		await flushPromises();
+		await toSelect(wrapper);
+
+		await wrapper.get(SELECT_CHECKBOX).setValue(false);
+		await flushPromises();
+		expect(wrapper.get(NEXT).attributes('disabled')).toBeDefined();
+
+		await wrapper.get(SELECT_CHECKBOX).setValue(true);
+		await flushPromises();
+		expect(wrapper.get(NEXT).attributes('disabled')).toBeUndefined();
+	});
+
+	it('goes back from Confirm to Select keeping the selection', async () => {
+		const wrapper = mountWizard(buildAdapter());
+		await flushPromises();
+		await toConfirm(wrapper);
+
+		await click(wrapper, '[data-test-id="wizard-shell-back"]');
+
+		expect(wrapper.find('[data-test-id="wizard-step-select"]').exists()).toBe(true);
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(true);
+	});
+
 	it('validates an empty confirmation name at its input before adopting', async () => {
 		const adapter = buildAdapter();
 		const wrapper = mountWizard(adapter);
 		await flushPromises();
-		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('  ');
-		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
+		await toConfirm(wrapper);
+		await wrapper.get(CONFIRM_NAME).setValue('  ');
+		await adopt(wrapper);
 		expect(adapter.adopt).not.toHaveBeenCalled();
 		await vi.waitFor(() =>
 			expect(wrapper.get('[data-test-id="wizard-step-confirm"]').text()).toContain('devicesModule.fields.devices.name.validation.required')
 		);
-		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('Kitchen');
-		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
+		await wrapper.get(CONFIRM_NAME).setValue('Kitchen');
+		await adopt(wrapper);
 		expect(adapter.adopt).toHaveBeenCalledWith([expect.objectContaining({ name: 'Kitchen' })]);
 		wrapper.unmount();
 	});
+
 	it('keeps confirmation rows and entered values fixed during adoption despite session updates', async () => {
 		const rows = ref([row()]);
 		const sessionKey = ref('first');
 		let reject!: (reason: Error) => void;
-		const adopt = vi.fn(
+		const adoptFn = vi.fn(
 			() =>
 				new Promise<[]>((_, fail) => {
 					reject = fail;
 				})
 		);
-		const wrapper = mountWizard(buildAdapter({ rows: computed(() => rows.value), sessionKey: computed(() => sessionKey.value), adopt }));
+		const wrapper = mountWizard(buildAdapter({ rows: computed(() => rows.value), sessionKey: computed(() => sessionKey.value), adopt: adoptFn }));
 		await flushPromises();
-		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('My switch');
+		await toConfirm(wrapper);
+		await wrapper.get(CONFIRM_NAME).setValue('My switch');
 		const before = wrapper.get('[data-test-id="wizard-step-confirm"]').text();
-		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
+		await adopt(wrapper);
 		rows.value = [row({ label: 'Changed', suggestedName: 'Changed', adoptable: false, status: 'already_registered' })];
 		sessionKey.value = 'second';
 		await flushPromises();
 		expect(wrapper.get('[data-test-id="wizard-step-confirm"]').text()).toBe(before);
-		expect(wrapper.get<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').element.value).toBe('My switch');
+		expect(wrapper.get<HTMLInputElement>(CONFIRM_NAME).element.value).toBe('My switch');
 		reject(new Error('Save failed'));
 		await flushPromises();
 		expect(wrapper.get('[data-test-id="wizard-step-confirm"]').text()).toBe(before);
-		expect(adopt).toHaveBeenCalledTimes(1);
-		adopt.mockResolvedValueOnce([]);
-		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
-		expect(adopt).toHaveBeenCalledTimes(2);
-		expect(adopt.mock.calls[1]).toEqual(adopt.mock.calls[0]);
+		expect(adoptFn).toHaveBeenCalledTimes(1);
+		adoptFn.mockResolvedValueOnce([]);
+		await adopt(wrapper);
+		expect(adoptFn).toHaveBeenCalledTimes(2);
+		expect(adoptFn.mock.calls[1]).toEqual(adoptFn.mock.calls[0]);
 		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(true);
 		wrapper.unmount();
 	});
+
 	it('guards unsaved confirmation changes and clears the guard on successful adoption', async () => {
 		const wrapper = mountWizard(buildAdapter());
 		await flushPromises();
-		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
+		await toConfirm(wrapper);
 		const leaving = () => {
 			const event = new Event('beforeunload', { cancelable: true });
 			window.dispatchEvent(event);
 			return event.defaultPrevented;
 		};
 		expect(leaving()).toBe(false);
-		await wrapper.get('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('Unsaved device');
+		await wrapper.get(CONFIRM_NAME).setValue('Unsaved device');
 		expect(leaving()).toBe(true);
-		await wrapper.get('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
+		await adopt(wrapper);
 		expect(leaving()).toBe(false);
 	});
+
 	it('calls start on mount', async () => {
 		const adapter = buildAdapter();
 		mountWizard(adapter);
@@ -220,89 +305,55 @@ describe('DeviceWizard', () => {
 		expect(wrapper.text()).toContain('Shelly NG');
 	});
 
-	it('advances to confirm and reconciles the rows', async () => {
-		const wrapper = mountWizard(buildAdapter());
-		await flushPromises();
-
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="wizard-step-confirm"]').exists()).toBe(true);
-	});
-
 	it('advances even when beforeLeaveDiscover rejects', async () => {
 		const beforeLeaveDiscover = vi.fn().mockRejectedValue(new Error('permit-join off failed'));
 		const wrapper = mountWizard(buildAdapter({ beforeLeaveDiscover }));
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
+		await toSelect(wrapper);
 
 		expect(beforeLeaveDiscover).toHaveBeenCalledOnce();
-		expect(wrapper.find('[data-test-id="wizard-step-confirm"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-step-select"]').exists()).toBe(true);
 	});
 
 	it('stays on confirm when adopt rejects, keeping the user input intact', async () => {
-		const adopt = vi.fn().mockRejectedValue(new Error('network'));
-		const wrapper = mountWizard(buildAdapter({ adopt }));
+		const wrapper = mountWizard(buildAdapter({ adopt: vi.fn().mockRejectedValue(new Error('network')) }));
 		await flushPromises();
+		await toConfirm(wrapper);
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
+		// Edit the name so a real user edit is distinguishable from the adapter's own suggested default
+		await wrapper.get(CONFIRM_NAME).setValue('Custom name');
 
-		// Edit the name so a real user edit is distinguishable from the adapter's own suggested
-		// default, then leave the row selected (the default state).
-		await wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]').setValue('Custom name');
-
-		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
+		await adopt(wrapper);
 
 		expect(wrapper.find('[data-test-id="wizard-step-confirm"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(false);
 
 		// The rejection must not wipe what the user typed or ticked.
-		const nameInput = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkbox = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-		expect(nameInput.element.value).toBe('Custom name');
-		expect(checkbox.element.checked).toBe(true);
-	});
+		expect(wrapper.get<HTMLInputElement>(CONFIRM_NAME).element.value).toBe('Custom name');
 
-	it('advances to results when adopt resolves', async () => {
-		const wrapper = mountWizard(buildAdapter());
-		await flushPromises();
+		await click(wrapper, '[data-test-id="wizard-shell-back"]');
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(true);
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(true);
 	});
 
 	it('hides Add more when the plugin does not declare the capability', async () => {
 		const wrapper = mountWizard(buildAdapter());
 		await flushPromises();
-
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
+		await toConfirm(wrapper);
+		await adopt(wrapper);
 
 		expect(wrapper.find('[data-test-id="wizard-action-addMore"]').exists()).toBe(false);
-		expect(wrapper.find('[data-test-id="wizard-action-done"]').exists()).toBe(true);
+		expect(wrapper.get(NEXT).text()).toBe('devicesModule.wizard.actions.done');
 	});
 
 	it('shows Add more and returns to discover after restart resolves', async () => {
 		const restart = vi.fn().mockResolvedValue(undefined);
 		const wrapper = mountWizard(buildAdapter({ capabilities: { addMore: true }, restart }));
 		await flushPromises();
-
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
-		await wrapper.find('[data-test-id="wizard-action-addMore"]').trigger('click');
-		await flushPromises();
+		await toConfirm(wrapper);
+		await adopt(wrapper);
+		await click(wrapper, '[data-test-id="wizard-action-addMore"]');
 
 		expect(restart).toHaveBeenCalledOnce();
 		expect(wrapper.find('[data-test-id="wizard-step-discover"]').exists()).toBe(true);
@@ -312,33 +363,21 @@ describe('DeviceWizard', () => {
 		const restart = vi.fn().mockResolvedValue(undefined);
 		const wrapper = mountWizard(buildAdapter({ capabilities: { addMore: true }, restart }));
 		await flushPromises();
+		await toSelect(wrapper);
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
+		// Reconciliation pre-selects a `ready` row on first sight, so it is ticked before we ever touch Add more
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(true);
 
-		// Reconciliation pre-selects a `ready` row on first sight and fills the name from the
-		// adapter's suggestion, so both are populated before we ever touch Add more.
-		const nameInputBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkboxBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-		expect(nameInputBefore.element.value).toBe('Living room switch');
-		expect(checkboxBefore.element.checked).toBe(true);
+		await click(wrapper, NEXT);
+		await adopt(wrapper);
+		await click(wrapper, '[data-test-id="wizard-action-addMore"]');
 
-		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
-		await wrapper.find('[data-test-id="wizard-action-addMore"]').trigger('click');
-		await flushPromises();
+		// The mock adapter's `rows` never change, so the wizard only ever reconciles once, on mount. Revisiting Select
+		// after Add more renders straight from whatever `reset()` left behind: unticked if and only if it cleared the state
+		await toSelect(wrapper);
 
-		// The mock adapter's `rows` never change, so the wizard only ever reconciles once, on
-		// mount. Revisiting confirm after Add more therefore renders straight from whatever
-		// `reset()` left behind, with no second reconcile to refill it — the row shows blank/
-		// unchecked here if and only if `reset()` actually cleared the state.
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-
-		const nameInputAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkboxAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-		expect(nameInputAfter.element.value).toBe('');
-		expect(checkboxAfter.element.checked).toBe(false);
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(false);
+		expect(wrapper.get(NEXT).attributes('disabled')).toBeDefined();
 	});
 
 	it('promotes a plugin action control into the footer and wires it to the control handler', async () => {
@@ -350,7 +389,7 @@ describe('DeviceWizard', () => {
 		);
 		await flushPromises();
 
-		const promoted = wrapper.find('[data-test-id="wizard-action-control-restart-scan"]');
+		const promoted = wrapper.find('[data-test-id="wizard-shell-footer"] [data-test-id="wizard-action-control-restart-scan"]');
 		expect(promoted.exists()).toBe(true);
 		expect(promoted.text()).toContain('Scan again');
 
@@ -366,9 +405,7 @@ describe('DeviceWizard', () => {
 			})
 		);
 		await flushPromises();
-
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
+		await toSelect(wrapper);
 
 		expect(wrapper.find('[data-test-id="wizard-action-control-restart-scan"]').exists()).toBe(false);
 	});
@@ -389,22 +426,15 @@ describe('DeviceWizard', () => {
 
 		const wrapper = mountWizard(buildAdapter({ capabilities: { addMore: true }, restart, rows: computed(() => rows.value) }));
 		await flushPromises();
+		await toConfirm(wrapper);
+		await adopt(wrapper);
+		await click(wrapper, '[data-test-id="wizard-action-addMore"]');
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
-		await wrapper.find('[data-test-id="wizard-action-addMore"]').trigger('click');
-		await flushPromises();
+		await toSelect(wrapper);
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(true);
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-
-		const nameInput = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkbox = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-
-		expect(nameInput.element.value).toBe('Hallway dimmer');
-		expect(checkbox.element.checked).toBe(true);
+		await click(wrapper, NEXT);
+		expect(wrapper.get<HTMLInputElement>(CONFIRM_NAME).element.value).toBe('Hallway dimmer');
 	});
 
 	it('clears selection and name state when the adapter reports a new session', async () => {
@@ -416,25 +446,17 @@ describe('DeviceWizard', () => {
 		const sessionKey = ref<string | null>('session-1');
 		const wrapper = mountWizard(buildAdapter({ sessionKey: computed(() => sessionKey.value) }));
 		await flushPromises();
+		await toSelect(wrapper);
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-
-		const nameInputBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkboxBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-		expect(nameInputBefore.element.value).toBe('Living room switch');
-		expect(checkboxBefore.element.checked).toBe(true);
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(true);
 
 		// The user hits "Scan again": a second session id lands.
 		sessionKey.value = 'session-2';
 		await flushPromises();
 
 		// The mock adapter's `rows` never change, so there is no second reconcile to refill the
-		// state — the row renders blank/unchecked if and only if the watch actually reset it.
-		const nameInputAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkboxAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-		expect(nameInputAfter.element.value).toBe('');
-		expect(checkboxAfter.element.checked).toBe(false);
+		// state — the row renders unticked if and only if the watch actually reset it.
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(false);
 	});
 
 	it('does not reset when the first session key arrives', async () => {
@@ -443,17 +465,15 @@ describe('DeviceWizard', () => {
 		const sessionKey = ref<string | null>(null);
 		const wrapper = mountWizard(buildAdapter({ sessionKey: computed(() => sessionKey.value) }));
 		await flushPromises();
-
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
+		await toSelect(wrapper);
 
 		sessionKey.value = 'session-1';
 		await flushPromises();
 
-		const nameInput = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkbox = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-		expect(nameInput.element.value).toBe('Living room switch');
-		expect(checkbox.element.checked).toBe(true);
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(true);
+
+		await click(wrapper, NEXT);
+		expect(wrapper.get<HTMLInputElement>(CONFIRM_NAME).element.value).toBe('Living room switch');
 	});
 
 	it('reconciles the new session rows instead of leaving them blank when rows and sessionKey change in the same flush', async () => {
@@ -463,7 +483,7 @@ describe('DeviceWizard', () => {
 		// fresh rows arrive already populated rather than empty. Vue notifies same-flush watchers
 		// in subscription order, which for a shared dependency matches watch-registration order.
 		// If the `rows` watch reconciles before the `sessionKey` watch resets, the reset silently
-		// wipes what reconcile just filled in, leaving the confirm step blank for about a second.
+		// wipes what reconcile just filled in, leaving the step blank for about a second.
 		const session = ref({ key: 'session-1', currentRow: row() });
 		const wrapper = mountWizard(
 			buildAdapter({
@@ -472,55 +492,29 @@ describe('DeviceWizard', () => {
 			})
 		);
 		await flushPromises();
+		await toSelect(wrapper);
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-
-		const nameInputBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkboxBefore = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-		expect(nameInputBefore.element.value).toBe('Living room switch');
-		expect(checkboxBefore.element.checked).toBe(true);
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(true);
 
 		// "Scan again": a single assignment changes both `rows` and `sessionKey` together, in the
 		// same reactive flush — exactly how the real adapters behave.
 		session.value = { key: 'session-2', currentRow: row({ suggestedName: 'Kitchen relay' }) };
 		await flushPromises();
 
-		const nameInputAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		const checkboxAfter = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="checkbox"]');
-
 		// The new session's row must be reconciled (selected, name filled from the fresh
 		// suggestion) — not blank, which is what reconcile-before-reset produces.
-		expect(nameInputAfter.element.value).toBe('Kitchen relay');
-		expect(checkboxAfter.element.checked).toBe(true);
+		expect(wrapper.get<HTMLInputElement>(SELECT_CHECKBOX).element.checked).toBe(true);
+
+		await click(wrapper, NEXT);
+		expect(wrapper.get<HTMLInputElement>(CONFIRM_NAME).element.value).toBe('Kitchen relay');
 	});
 
 	it('keeps working for an adapter that declares no session key', async () => {
 		const wrapper = mountWizard(buildAdapter());
 		await flushPromises();
+		await toConfirm(wrapper);
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-
-		const nameInput = wrapper.find<HTMLInputElement>('[data-test-id="wizard-step-confirm"] tbody input[type="text"]');
-		expect(nameInput.element.value).toBe('Living room switch');
-	});
-
-	it('renders the same action set in the mobile footer when isMDDevice is false', async () => {
-		vi.mocked(useBreakpoints).mockReturnValueOnce({
-			isXSDevice: computed(() => false),
-			isSMDevice: computed(() => false),
-			isMDDevice: computed(() => false),
-			isLGDevice: computed(() => true),
-			isXLDevice: computed(() => true),
-			isXXLDevice: computed(() => true),
-		});
-
-		const wrapper = mountWizard(buildAdapter());
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="wizard-action-cancel"]').exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(true);
+		expect(wrapper.get<HTMLInputElement>(CONFIRM_NAME).element.value).toBe('Living room switch');
 	});
 
 	it('does not switch back to discover until restart resolves', async () => {
@@ -533,14 +527,10 @@ describe('DeviceWizard', () => {
 		);
 		const wrapper = mountWizard(buildAdapter({ capabilities: { addMore: true }, restart }));
 		await flushPromises();
+		await toConfirm(wrapper);
+		await adopt(wrapper);
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await flushPromises();
-		await wrapper.find('[data-test-id="wizard-action-adopt"]').trigger('click');
-		await flushPromises();
-
-		await wrapper.find('[data-test-id="wizard-action-addMore"]').trigger('click');
-		await flushPromises();
+		await click(wrapper, '[data-test-id="wizard-action-addMore"]');
 
 		// restart() is still in flight: the shell must stay on results, not jump to discover.
 		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(true);
@@ -550,5 +540,61 @@ describe('DeviceWizard', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="wizard-step-discover"]').exists()).toBe(true);
+	});
+
+	it('retries only the failed devices and keeps the rest of the results', async () => {
+		const rows = [row(), row({ key: 'b', identifier: 'b', label: 'Kitchen', suggestedName: 'Kitchen' })];
+		const first: IWizardResult[] = [
+			{ key: 'shelly-1.local', name: 'Living room switch', identifier: 'shelly-1.local', status: 'created', error: null },
+			{ key: 'b', name: 'Kitchen', identifier: 'b', status: 'failed', error: 'Timeout' },
+		];
+		const results = ref<IWizardResult[]>([]);
+		const adoptFn = vi
+			.fn()
+			.mockImplementationOnce(async () => {
+				results.value = first;
+				return first;
+			})
+			.mockImplementationOnce(async () => {
+				const retried: IWizardResult[] = [{ key: 'b', name: 'Kitchen', identifier: 'b', status: 'created', error: null }];
+				results.value = retried;
+				return retried;
+			});
+		const wrapper = mountWizard(buildAdapter({ rows: computed(() => rows), results: computed(() => results.value), adopt: adoptFn }));
+		await flushPromises();
+		await toConfirm(wrapper);
+		await adopt(wrapper);
+
+		expect(wrapper.findAll('[data-test-id="wizard-result-retry"]')).toHaveLength(1);
+
+		await click(wrapper, '[data-test-id="wizard-action-retryFailed"]');
+
+		expect(adoptFn).toHaveBeenLastCalledWith([{ key: 'b', name: 'Kitchen', category: DevicesModuleDeviceCategory.lighting }]);
+		// Both devices are listed, the retried one with its new outcome
+		const text = wrapper.get('[data-test-id="wizard-step-results"]').text();
+		expect(text).toContain('Living room switch');
+		expect(text).toContain('Kitchen');
+		expect(wrapper.find('[data-test-id="wizard-result-retry"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-action-retryFailed"]').exists()).toBe(false);
+	});
+
+	it('retries a single failed device from its row', async () => {
+		const failed: IWizardResult[] = [
+			{ key: 'shelly-1.local', name: 'Living room switch', identifier: 'shelly-1.local', status: 'failed', error: 'Timeout' },
+		];
+		const adoptFn = vi
+			.fn()
+			.mockResolvedValueOnce(failed)
+			.mockResolvedValueOnce([{ ...failed[0], status: 'created', error: null }]);
+		const wrapper = mountWizard(buildAdapter({ results: computed(() => failed), adopt: adoptFn }));
+		await flushPromises();
+		await toConfirm(wrapper);
+		await adopt(wrapper);
+
+		await click(wrapper, '[data-test-id="wizard-result-retry"]');
+
+		expect(adoptFn).toHaveBeenCalledTimes(2);
+		expect(adoptFn.mock.calls[1]).toEqual(adoptFn.mock.calls[0]);
+		expect(wrapper.get('[data-test-id="wizard-step-results"]').text()).toContain('devicesModule.wizard.statuses.created');
 	});
 });

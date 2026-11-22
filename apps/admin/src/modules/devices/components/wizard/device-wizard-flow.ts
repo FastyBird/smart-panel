@@ -20,6 +20,10 @@ export interface IDeviceWizardFlow {
 	busy: boolean;
 	dirty?: boolean;
 	actions: IWizardAction[];
+	/** Shown in the footer on steps that pick devices ("4 selected") */
+	selectedCount?: number;
+	/** `table` widens the step card to 960 px for steps built around a table */
+	stepWidth?: 'form' | 'table';
 }
 
 export interface IDeviceWizardContext {

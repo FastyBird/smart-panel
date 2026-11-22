@@ -1,89 +1,61 @@
 <template>
-	<define-action v-slot="{ action }">
-		<el-button
-			class="ml-0!"
-			:data-test-id="`wizard-action-${action.id}`"
-			:link="action.variant === 'link'"
-			:type="action.variant === 'primary' || action.variant === 'warning' ? action.variant : undefined"
-			:disabled="pending || flow?.busy || action.disabled"
-			:loading="action.loading"
-			@click="run(action)"
-		>
-			<template
-				v-if="action.icon"
-				#icon
-			>
-				<icon :icon="action.icon" />
-			</template>
-			{{ action.label }}
-		</el-button>
-	</define-action>
 	<app-breadcrumbs :items="breadcrumbs" />
 	<view-header
 		:title="title"
 		:subtitle="subtitle"
 		:icon="icon"
+		:on-back="cancel"
+		left="close"
 	/>
-	<header
-		v-if="!isMDDevice"
-		class="flex flex-col gap-2 mx-2 my-2"
+	<!-- Template 9: stepper card, centred step card and the sticky footer, scrolling as one page. The phone page scrolls
+	     in the main area, so there the column only fills it; the footer sits at the bottom either way -->
+	<div
+		:class="['flex flex-col', isPhone ? 'min-h-full' : 'flex-1 min-h-0 overflow-y-auto']"
+		data-test-id="wizard-scroll"
 	>
-		<h1 class="text-lg font-semibold m-0">{{ title }}</h1>
-	</header>
-	<div class="flex-1 min-h-0 flex flex-col lt-sm:mx-1 sm:mx-2 my-2">
-		<el-card
-			shadow="never"
-			class="flex-1 min-h-0 flex flex-col"
-			body-class="flex-1 min-h-0 flex flex-col p-0!"
-		>
-			<template
-				v-if="steps.length"
-				#header
+		<div class="page-pad pb-0! flex-1 box-border flex flex-col">
+			<wizard-shell
+				:steps="shellSteps"
+				:current="`step-${activeStep}`"
+				:can-continue="!!primaryAction && !primaryAction.disabled && !pending"
+				:busy="pending || !!flow?.busy || !!primaryAction?.loading"
+				:selected-count="flow?.selectedCount"
+				:step-width="flow?.stepWidth ?? 'form'"
+				:cancellable="!!cancelAction"
+				:backable="!!backAction"
+				:next-visible="!!primaryAction"
+				:next-label="primaryAction?.label"
+				class="flex-1"
+				@cancel="cancelAction && run(cancelAction)"
+				@back="backAction && run(backAction)"
+				@next="primaryAction && run(primaryAction)"
 			>
-				<div class="md:hidden text-sm">{{ activeStep + 1 }} / {{ steps.length }} · {{ steps[activeStep] }}</div>
-				<el-steps
-					class="lt-md:hidden"
-					:active="activeStep"
-					finish-status="success"
-					align-center
-				>
-					<el-step
-						v-for="(label, index) in steps"
-						:key="index"
-						:title="label"
-					/>
-				</el-steps>
-			</template>
-			<el-scrollbar class="flex-1 min-h-0">
-				<div class="p-4"><slot /></div>
-			</el-scrollbar>
-			<template
-				v-if="actions.length"
-				#footer
-			>
-				<footer data-test-id="wizard-footer">
-					<div
-						class="flex items-center gap-3"
-						data-test-id="wizard-actions"
+				<div class="p-4">
+					<slot />
+				</div>
+				<template #actions>
+					<el-button
+						v-for="action in otherActions"
+						:key="action.id"
+						:data-test-id="`wizard-action-${action.id}`"
+						:link="action.variant === 'link'"
+						:type="action.variant === 'warning' ? 'warning' : undefined"
+						:disabled="pending || flow?.busy || action.disabled"
+						:loading="action.loading"
+						class="ml-0!"
+						@click="run(action)"
 					>
-						<reuse-action
-							v-if="cancelAction"
-							:action="cancelAction"
-						/>
-						<div
-							class="flex flex-1 min-w-0 flex-wrap items-center justify-end gap-2"
-							data-test-id="wizard-navigation-actions"
+						<template
+							v-if="action.icon"
+							#icon
 						>
-							<reuse-action
-								v-for="action in navigationActions"
-								:key="action.id"
-								:action="action"
-							/>
-						</div>
-					</div>
-				</footer>
-			</template>
-		</el-card>
+							<icon :icon="action.icon" />
+						</template>
+						{{ action.label }}
+					</el-button>
+				</template>
+			</wizard-shell>
+		</div>
 	</div>
 </template>
 <script setup lang="ts">
@@ -92,12 +64,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElMessageBox, ElScrollbar, ElStep, ElSteps } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
-import { createReusableTemplate, useEventListener } from '@vueuse/core';
+import { useEventListener } from '@vueuse/core';
 
-import { AppBreadcrumbs, ViewHeader, useBreakpoints, useLogger } from '../../../../common';
+import { AppBreadcrumbs, ViewHeader, WizardShell, type WizardShellStep, useLogger, useSizeClass } from '../../../../common';
 import { RouteNames } from '../../devices.constants';
 
 import { createDeviceWizardContext, deviceWizardContextKey } from './device-wizard-flow';
@@ -115,8 +87,7 @@ const props = withDefaults(
 	{ subtitle: '', icon: 'mdi:wizard-hat', returnRoute: undefined, backRoute: undefined, prefixSteps: () => [] }
 );
 const { t } = useI18n();
-const { isMDDevice } = useBreakpoints();
-const [DefineAction, ReuseAction] = createReusableTemplate<{ action: IWizardAction }>();
+const { isPhone } = useSizeClass();
 const router = useRouter();
 const logger = useLogger();
 const context = createDeviceWizardContext();
@@ -152,8 +123,15 @@ const actions = computed<IWizardAction[]>(() => [
 		: []),
 	...(flow.value?.actions ?? [{ id: 'cancel', label: t('devicesModule.wizard.actions.cancel'), variant: 'link', handler: cancel }]),
 ]);
+const shellSteps = computed<WizardShellStep[]>(() => steps.value.map((label, index) => ({ id: `step-${index}`, label })));
+// The flow's actions land on the shell's own buttons: Cancel, Back (or back to the wizard picker) and the step's one
+// primary action as Next. Anything else, such as "Scan again" or "Add more", sits beside them
 const cancelAction = computed(() => actions.value.find((action) => action.id === 'cancel'));
-const navigationActions = computed(() => actions.value.filter((action) => action.id !== 'cancel'));
+const backAction = computed(() => actions.value.find((action) => action.id === 'back') ?? actions.value.find((action) => action.id === 'choose'));
+const primaryAction = computed(() => actions.value.filter((action) => action.variant === 'primary').at(-1));
+const otherActions = computed(() =>
+	actions.value.filter((action) => action !== cancelAction.value && action !== backAction.value && action !== primaryAction.value)
+);
 const run = async (action: IWizardAction): Promise<void> => {
 	if (pending.value || flow.value?.busy || action.disabled) return;
 	pending.value = true;

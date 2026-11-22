@@ -275,16 +275,19 @@ describe('useDeviceWizardState — derived state', () => {
 		expect(state.buildSelection()).toEqual([{ key: 'shelly-1.local', name: 'Trimmed', category: DevicesModuleDeviceCategory.lighting }]);
 	});
 
-	it('activeStepIndex maps each step to its el-steps index', () => {
+	it('activeStepIndex maps each step to its place in Discover, Select, Confirm, Results', () => {
 		const rows = ref<IWizardRow[]>([]);
 		const state = useDeviceWizardState(rows);
 
 		expect(state.activeStepIndex.value).toBe(0);
 
-		state.activeStep.value = 'confirm';
+		state.activeStep.value = 'select';
 		expect(state.activeStepIndex.value).toBe(1);
 
-		state.activeStep.value = 'results';
+		state.activeStep.value = 'confirm';
 		expect(state.activeStepIndex.value).toBe(2);
+
+		state.activeStep.value = 'results';
+		expect(state.activeStepIndex.value).toBe(3);
 	});
 });

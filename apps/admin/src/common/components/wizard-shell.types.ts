@@ -18,4 +18,10 @@ export type WizardShellProps = {
 	busy?: boolean;
 	/** `table` widens the step card from 720 to 960 px, for steps built around a table (Select, Confirm) */
 	stepWidth?: 'form' | 'table';
+	/** false hides Cancel, for a step with nothing left to cancel (Results) */
+	cancellable?: boolean;
+	/** Overrides when Back shows; by default from the second step on */
+	backable?: boolean;
+	/** false hides Next, for a step that finishes from its own actions */
+	nextVisible?: boolean;
 };

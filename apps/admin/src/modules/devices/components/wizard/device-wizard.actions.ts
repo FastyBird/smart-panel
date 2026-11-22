@@ -5,12 +5,19 @@ export interface IWizardActionsContext {
 	capabilities: IDeviceWizardCapabilities;
 	canContinue: boolean;
 	hasAdoptable: boolean;
+	/** At least one device is ticked on the select step */
+	hasSelection: boolean;
+	/** Devices whose adoption failed, retried from the results step */
+	failedCount: number;
 	busy: boolean;
 	/** The adapter's `action` controls, promoted into the bar on the discover step. */
 	actionControls: IWizardActionControl[];
 	onCancel: () => void;
 	onBack: () => void;
 	onNext: () => void | Promise<void>;
+	onReview: () => void;
+	onBackToSelect: () => void;
+	onRetryFailed: () => void | Promise<void>;
 	onAdopt: () => void | Promise<void>;
 	onAddMore: () => void | Promise<void>;
 	onDone: () => void;
@@ -58,9 +65,23 @@ export const buildWizardActions = (step: IWizardStep, context: IWizardActionsCon
 		];
 	}
 
-	if (step === 'confirm') {
+	if (step === 'select') {
 		return [
 			{ id: 'back', label: t('devicesModule.wizard.actions.back'), variant: 'default', handler: context.onBack },
+			{ id: 'cancel', label: t('devicesModule.wizard.actions.cancel'), variant: 'link', handler: context.onCancel },
+			{
+				id: 'next',
+				label: t('devicesModule.wizard.actions.next'),
+				variant: 'primary',
+				disabled: !context.hasSelection,
+				handler: context.onReview,
+			},
+		];
+	}
+
+	if (step === 'confirm') {
+		return [
+			{ id: 'back', label: t('devicesModule.wizard.actions.back'), variant: 'default', handler: context.onBackToSelect },
 			{ id: 'cancel', label: t('devicesModule.wizard.actions.cancel'), variant: 'link', handler: context.onCancel },
 			{
 				id: 'adopt',
@@ -74,6 +95,16 @@ export const buildWizardActions = (step: IWizardStep, context: IWizardActionsCon
 	}
 
 	const actions: IWizardAction[] = [];
+
+	if (context.failedCount > 0) {
+		actions.push({
+			id: 'retryFailed',
+			label: t('devicesModule.wizard.actions.retryFailed'),
+			variant: 'default',
+			loading: context.busy,
+			handler: context.onRetryFailed,
+		});
+	}
 
 	if (context.capabilities.addMore) {
 		actions.push({

@@ -8,11 +8,16 @@ const context = (overrides: Partial<IWizardActionsContext> = {}): IWizardActions
 	capabilities: { addMore: false },
 	canContinue: true,
 	hasAdoptable: true,
+	hasSelection: true,
+	failedCount: 0,
 	busy: false,
 	actionControls: [],
 	onCancel: vi.fn(),
 	onBack: vi.fn(),
 	onNext: vi.fn(),
+	onReview: vi.fn(),
+	onBackToSelect: vi.fn(),
+	onRetryFailed: vi.fn(),
 	onAdopt: vi.fn(),
 	onAddMore: vi.fn(),
 	onDone: vi.fn(),
@@ -123,5 +128,31 @@ describe('buildWizardActions', () => {
 		actions.find((action) => action.id === 'adopt')?.handler();
 
 		expect(onAdopt).toHaveBeenCalledOnce();
+	});
+
+	it('offers back, cancel and next on the select step, next only with a device ticked', () => {
+		const onReview = vi.fn();
+		const actions = buildWizardActions('select', context({ onReview }));
+
+		expect(actions.map((action) => action.id)).toEqual(['back', 'cancel', 'next']);
+		expect(actions.find((action) => action.id === 'next')?.handler).toBe(onReview);
+		expect(buildWizardActions('select', context({ hasSelection: false })).find((action) => action.id === 'next')?.disabled).toBe(true);
+	});
+
+	it('goes back from confirm to select', () => {
+		const onBackToSelect = vi.fn();
+
+		expect(buildWizardActions('confirm', context({ onBackToSelect })).find((action) => action.id === 'back')?.handler).toBe(onBackToSelect);
+	});
+
+	it('offers to retry the failed devices on the results step only when some failed', () => {
+		expect(buildWizardActions('results', context()).map((action) => action.id)).toEqual(['done']);
+
+		const onRetryFailed = vi.fn();
+		const actions = buildWizardActions('results', context({ failedCount: 2, onRetryFailed }));
+
+		expect(actions.map((action) => action.id)).toEqual(['retryFailed', 'done']);
+		expect(actions[0].handler).toBe(onRetryFailed);
+		expect(actions[0].variant).toBe('default');
 	});
 });
