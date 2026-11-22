@@ -209,7 +209,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
           return Scaffold(
             body: Center(
               child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).accent.text,
               ),
             ),
           );

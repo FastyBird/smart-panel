@@ -50,7 +50,7 @@ class _AppBodyState extends State<AppBody> {
   final LocalPreferencesService _localPrefs = locator<LocalPreferencesService>();
 
   late bool _hasDarkMode = _localPrefs.darkMode;
-  late AppAccent _accent = _localPrefs.accent;
+  late AppAccent _accent;
   late Language _language = _localPrefs.language;
 
   // Connection state management
@@ -107,6 +107,8 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.addListener(_syncStateWithRepository);
     _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
+    // Snapshot the accent before listening, so the first change is detected.
+    _accent = _localPrefs.accent;
     _localPrefs.addListener(_onLocalPrefsChanged);
 
     // Wire security status to overlay controller

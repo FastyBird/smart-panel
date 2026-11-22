@@ -254,7 +254,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 									)
 								: Center(
 									child: CircularProgressIndicator(
-										color: Theme.of(context).colorScheme.primary,
+										color: Theme.of(context).accent.text,
 									),
 								),
 						),

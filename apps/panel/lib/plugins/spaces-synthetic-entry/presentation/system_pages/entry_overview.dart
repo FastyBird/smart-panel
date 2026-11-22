@@ -409,7 +409,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   Widget _buildLoadingState() {
     return Center(
       child: CircularProgressIndicator(
-        color: Theme.of(context).colorScheme.primary,
+        color: Theme.of(context).accent.text,
       ),
     );
   }
@@ -501,7 +501,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
               height: AppSpacings.scale(24),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).accent.text,
               ),
             ),
           )
@@ -619,7 +619,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             fontSize: AppFontSize.small,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
             color: isActive
-                ? Theme.of(context).colorScheme.primary
+                ? Theme.of(context).accent.text
                 : (Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular),
@@ -665,7 +665,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                       height: AppSpacings.scale(24),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).accent.text,
                       ),
                     ),
                   ),
@@ -707,7 +707,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             fontSize: AppFontSize.small,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
             color: isActive
-                ? Theme.of(context).colorScheme.primary
+                ? Theme.of(context).accent.text
                 : (Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular),

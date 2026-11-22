@@ -439,7 +439,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           icon: Icon(
             MdiIcons.close,
             size: AppFontSize.base,
-            color: AppAccentButtons.outlinedForeground(Theme.of(context)),
           ),
           label: Text(localizations.discovery_button_cancel),
         ),
@@ -874,7 +873,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
               icon: Icon(
                 MdiIcons.pencilOutline,
                 size: AppFontSize.base,
-                color: AppAccentButtons.outlinedForeground(Theme.of(context)),
               ),
               label: Text(localizations.discovery_button_manual),
             ),
@@ -914,7 +912,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
               icon: Icon(
                 MdiIcons.pencilOutline,
                 size: AppFontSize.base,
-                color: AppAccentButtons.outlinedForeground(Theme.of(context)),
               ),
               label: Text(localizations.discovery_button_manual),
             ),
@@ -1112,7 +1109,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
               icon: Icon(
                 MdiIcons.arrowLeft,
                 size: AppFontSize.base,
-                color: AppAccentButtons.outlinedForeground(Theme.of(context)),
               ),
               label: Text(localizations.discovery_button_back),
             ),
@@ -1167,7 +1163,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
               icon: Icon(
                 MdiIcons.arrowLeft,
                 size: AppFontSize.base,
-                color: AppAccentButtons.outlinedForeground(Theme.of(context)),
               ),
               label: Text(localizations.discovery_button_back),
             ),

@@ -276,7 +276,8 @@ class _DockTab extends StatelessWidget {
                           vertical: AppSpacings.scale(1),
                         ),
                         decoration: BoxDecoration(
-                          color: accentColor,
+                          // White count: the fill, not the (light in dark) text shade.
+                          color: Theme.of(context).accent.fill,
                           borderRadius:
                               BorderRadius.circular(AppSpacings.scale(8)),
                         ),

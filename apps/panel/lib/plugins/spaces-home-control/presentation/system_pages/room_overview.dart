@@ -944,7 +944,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	Widget _buildLoadingState() {
 		return Center(
 			child: CircularProgressIndicator(
-				color: Theme.of(context).colorScheme.primary,
+				color: Theme.of(context).accent.text,
 			),
 		);
 	}

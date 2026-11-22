@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/accent_swatch_picker.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
@@ -38,6 +41,30 @@ const _spec = <AppAccent, List<int>>{
   AppAccent.sand: [0xFF7A6248, 0xFFF2EFED, 0xFF846B50, 0xFFD9BF9F, 0xFF322D2A],
   AppAccent.graphite: [0xFF4A5261, 0xFFEDEEEF, 0xFF5A6375, 0xFFB6BFCD, 0xFF292C32],
 };
+
+/// Storage whose writes fail, or wait, on demand.
+class _FakeStorage implements SecureStorageFallback {
+  final Map<String, String> values = {};
+  bool failWrites = false;
+  Completer<void>? gate;
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    final pending = gate;
+    if (pending != null) await pending.future;
+    if (failWrites) throw const FileSystemException('disk full');
+    values[key] = value;
+  }
+
+  @override
+  Future<String?> read({required String key}) async => values[key];
+
+  @override
+  Future<void> delete({required String key}) async => values.remove(key);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 ThemeData _theme(AppAccent accent, Brightness brightness) {
   AppAccents.current = accent;
@@ -291,6 +318,42 @@ void main() {
   });
 
   group('accent-owned widgets', () {
+    testWidgets('an outlined accent button paints its icon in the resolved foreground', (tester) async {
+      for (final brightness in Brightness.values) {
+        final theme = _theme(AppAccent.violet, brightness);
+        final p = theme.accent;
+
+        await tester.pumpWidget(_app(
+          theme,
+          Theme(
+            data: theme.copyWith(outlinedButtonTheme: AppAccentButtons.outlined(theme)),
+            child: OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ),
+        ));
+        await tester.pumpAndSettle();
+
+        Color? iconColor() => tester
+            .widget<RichText>(find.descendant(of: find.byType(Icon), matching: find.byType(RichText)))
+            .text
+            .style
+            ?.color;
+
+        expect(iconColor(), p.text, reason: 'at rest, $brightness');
+
+        final gesture = await tester.startGesture(tester.getCenter(find.byType(OutlinedButton)));
+        await tester.pumpAndSettle();
+
+        expect(iconColor(), AppColors.white, reason: 'pressed, $brightness');
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+      }
+    });
+
     testWidgets('a settings switch that is on takes the accent', (tester) async {
       for (final brightness in Brightness.values) {
         for (final accent in AppAccent.values) {
@@ -419,6 +482,60 @@ void main() {
       await prefs.clearAll();
       expect(prefs.accent, AppAccent.blue);
       expect(AppAccents.current, AppAccent.blue);
+    });
+
+    test('a failed save keeps the previous accent and can be retried', () async {
+      final storage = _FakeStorage();
+      final prefs = LocalPreferencesService(securedStorageFallback: storage);
+      var notified = 0;
+      prefs.addListener(() => notified++);
+
+      storage.failWrites = true;
+      await expectLater(prefs.setAccent(AppAccent.violet), throwsA(isA<FileSystemException>()));
+
+      expect(prefs.accent, AppAccent.blue);
+      expect(AppAccents.current, AppAccent.blue);
+      expect(storage.values.containsKey('ui_accent'), isFalse);
+
+      storage.failWrites = false;
+      await prefs.setAccent(AppAccent.violet);
+
+      expect(prefs.accent, AppAccent.violet);
+      expect(storage.values['ui_accent'], 'violet');
+      expect(notified, greaterThan(0));
+    });
+
+    test('a failed older save does not undo a newer choice', () async {
+      final storage = _FakeStorage()..gate = Completer<void>();
+      final prefs = LocalPreferencesService(securedStorageFallback: storage);
+
+      final older = prefs.setAccent(AppAccent.rose);
+      final newer = prefs.setAccent(AppAccent.sage);
+
+      storage.failWrites = true;
+      storage.gate!.complete();
+
+      await expectLater(older, throwsA(isA<FileSystemException>()));
+      await expectLater(newer, throwsA(isA<FileSystemException>()));
+
+      // Only the newer save rolls back, and to the last stored accent, not to
+      // the unsaved rose it replaced.
+      expect(prefs.accent, AppAccent.blue);
+      expect(AppAccents.current, AppAccent.blue);
+    });
+
+    test('a failed newer save falls back to an older save that succeeded', () async {
+      final storage = _FakeStorage();
+      final prefs = LocalPreferencesService(securedStorageFallback: storage);
+
+      await prefs.setAccent(AppAccent.rose);
+
+      storage.failWrites = true;
+      await expectLater(prefs.setAccent(AppAccent.sage), throwsA(isA<FileSystemException>()));
+
+      expect(prefs.accent, AppAccent.rose);
+      expect(AppAccents.current, AppAccent.rose);
+      expect(storage.values['ui_accent'], 'rose');
     });
   });
 }

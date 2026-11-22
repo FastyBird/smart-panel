@@ -104,7 +104,11 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 
-		final accent = Theme.of(context).accent;
+		// The page's own brightness: _isDarkMode changes before the app theme does.
+		final accent = AppAccentPalette.of(
+			_accent,
+			_isDarkMode ? Brightness.dark : Brightness.light,
+		);
 		final primaryColor = accent.text;
 		final primaryBg = accent.soft;
 		final infoColor = _isDarkMode ? AppColorsDark.info : AppColorsLight.info;
@@ -655,7 +659,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		);
 	}
 
-	void _handleAccentChange(AppAccent accent) {
+	Future<void> _handleAccentChange(AppAccent accent) async {
 		HapticFeedback.selectionClick();
 
 		setState(() {
@@ -663,7 +667,18 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		});
 
 		// Applies at once: the app rebuilds its theme in the new accent.
-		_localPrefs.setAccent(accent);
+		try {
+			await _localPrefs.setAccent(accent);
+		} catch (_) {
+			if (!mounted) return;
+
+			// Show what is stored, so tapping the swatch again retries.
+			setState(() {
+				_accent = _localPrefs.accent;
+			});
+
+			Toast.showError(context, message: AppLocalizations.of(context)!.settings_save_failed);
+		}
 	}
 
 	void _handleScreenPowerOffChange(bool state) {

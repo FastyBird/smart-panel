@@ -93,7 +93,7 @@ class _DeckMoreContent extends StatelessWidget {
   Widget _buildItem(BuildContext context, DeckItem item, int index) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isActive = currentIndex == index;
-    final activeColor = Theme.of(context).colorScheme.primary;
+    final activeColor = Theme.of(context).accent.text;
 
     final String label;
     final IconData icon;

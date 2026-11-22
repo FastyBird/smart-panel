@@ -428,7 +428,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   Widget _buildLoadingState() {
     return Center(
       child: CircularProgressIndicator(
-        color: Theme.of(context).colorScheme.primary,
+        color: Theme.of(context).accent.text,
       ),
     );
   }
@@ -546,7 +546,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           Icon(
             icon,
             size: iconSize,
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).accent.text,
           ),
           Text(
             value,
@@ -600,7 +600,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
               height: AppSpacings.scale(24),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).accent.text,
               ),
             ),
           )
@@ -626,7 +626,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).accent.text,
               ),
             )
           : Icon(
@@ -694,7 +694,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             Icon(
               room.icon,
               size: iconSize,
-              color: Theme.of(context).colorScheme.primary,
+              color: Theme.of(context).accent.text,
             ),
             Expanded(
               child: Column(

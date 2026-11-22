@@ -24,6 +24,10 @@ class LocalPreferencesService extends ChangeNotifier {
   bool _darkMode = false;
   bool _screenPowerOff = false;
   AppAccent _accent = AppAccent.blue;
+
+  /// The accent last confirmed in storage; a failed save falls back to it.
+  AppAccent _storedAccent = AppAccent.blue;
+  int _accentWrites = 0;
   bool _loaded = false;
 
   LocalPreferencesService({
@@ -61,6 +65,7 @@ class LocalPreferencesService extends ChangeNotifier {
       }
 
       _accent = AppAccent.fromValue(await _read(key: _accentKey));
+      _storedAccent = _accent;
       AppAccents.current = _accent;
 
       _loaded = true;
@@ -111,13 +116,37 @@ class LocalPreferencesService extends ChangeNotifier {
   }
 
   /// Persist the panel's accent and apply it to new themes.
+  ///
+  /// Throws when the choice cannot be stored. Unless a newer choice was made
+  /// meanwhile, the accent then falls back to the last one stored, so
+  /// choosing the same accent again retries the save.
   Future<void> setAccent(AppAccent accent) async {
     if (_accent == accent) return;
+
+    final write = ++_accentWrites;
 
     _accent = accent;
     AppAccents.current = accent;
 
-    await _write(key: _accentKey, value: accent.name);
+    try {
+      await _write(key: _accentKey, value: accent.name);
+    } catch (e) {
+      if (write == _accentWrites) {
+        _accent = _storedAccent;
+        AppAccents.current = _storedAccent;
+
+        // An earlier save may have notified while this choice was current.
+        notifyListeners();
+      }
+
+      if (kDebugMode) {
+        debugPrint('[LOCAL PREFS] Failed to store accent: $e');
+      }
+
+      rethrow;
+    }
+
+    _storedAccent = accent;
 
     notifyListeners();
   }
@@ -128,6 +157,7 @@ class LocalPreferencesService extends ChangeNotifier {
     _darkMode = false;
     _screenPowerOff = false;
     _accent = AppAccent.blue;
+    _storedAccent = AppAccent.blue;
     AppAccents.current = AppAccent.blue;
 
     try {
