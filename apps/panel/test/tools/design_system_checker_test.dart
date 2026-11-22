@@ -137,6 +137,45 @@ final f = factory.SwitchListTile.adaptive(value: true);
       );
     });
 
+    test('ignores calls on a name that hides an import prefix', () {
+      expect(
+        _rules('''
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart' as material;
+
+void parameter(dynamic ui) => ui.Color(0xFF112233);
+void local() { final ui = palette; ui.Color(0xFF112233); }
+void loop(List items) { for (final ui in items) { ui.Color(0xFF112233); } }
+void pattern(Object x) {
+  if (x case final ui) { ui.Color(0xFF112233); }
+  switch (x) { case final material: material.AppBar(); }
+}
+final closure = (ui) => ui.Color(0xFF112233);
+void caught() { try {} catch (material) { material.SwitchListTile.adaptive(value: true); } }
+class Holder {
+  final ui = palette;
+  void member() => ui.Color(0xFF112233);
+}
+'''),
+        isEmpty,
+      );
+    });
+
+    test('still reports the prefix outside the scope that hides it', () {
+      expect(
+        _rules('''
+import 'dart:ui' as ui;
+
+void parameter(dynamic ui) => ui.Color(0xFF112233);
+void other() => ui.Color(0xFF112233);
+void pattern(Object x) {
+  if (x case final ui) {} else { ui.Color(0xFF112233); }
+}
+'''),
+        ['hex-colour', 'hex-colour'],
+      );
+    });
+
     test('ignores other widgets, types, comments and strings', () {
       expect(
         _rules('''

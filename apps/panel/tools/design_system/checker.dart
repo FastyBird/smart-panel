@@ -297,7 +297,8 @@ class _Visitor extends RecursiveAstVisitor<void> {
   /// - `Color(…)`, `AppBar(…)`: no target.
   /// - `ui.Color(…)`, `material.AppBar(…)`: the import prefix is the target.
   ///   Only prefixes this file declares count, so `palette.Color(…)` on an
-  ///   object is not a constructor.
+  ///   object is not a constructor. Nor is `ui.Color(…)` where a parameter,
+  ///   local or member named `ui` hides the prefix.
   /// - `SwitchListTile.adaptive(…)`: the class is the target.
   /// - `material.SwitchListTile.adaptive(…)`: the prefixed class is the
   ///   target.
@@ -307,11 +308,11 @@ class _Visitor extends RecursiveAstVisitor<void> {
     final name = node.methodName.name;
 
     final isConstructor = target == null ||
-        (target is SimpleIdentifier && importPrefixes.contains(target.name));
+        (target is SimpleIdentifier && _isPrefix(target.name, node));
     final namedConstructorOf = switch (target) {
-      SimpleIdentifier(:final name) when !importPrefixes.contains(name) => name,
+      SimpleIdentifier(:final name) when !_isPrefix(name, node) => name,
       PrefixedIdentifier(:final prefix, :final identifier)
-          when importPrefixes.contains(prefix.name) =>
+          when _isPrefix(prefix.name, node) =>
         identifier.name,
       _ => null,
     };
@@ -335,6 +336,91 @@ class _Visitor extends RecursiveAstVisitor<void> {
     }
 
     super.visitNamedExpression(node);
+  }
+
+  /// Whether [name] means an import prefix at [node]: an import declares it
+  /// and nothing in scope hides it.
+  bool _isPrefix(String name, AstNode node) =>
+      importPrefixes.contains(name) && !_isShadowed(name, node);
+
+  /// Whether a scope around [node] declares [name]. Without resolution this
+  /// is lexical: parameters, locals, loop, catch and pattern variables, local
+  /// functions, and the enclosing type's own members. Inherited members are
+  /// not seen.
+  static bool _isShadowed(String name, AstNode node) {
+    AstNode child = node;
+    AstNode? scope = node.parent;
+
+    while (scope != null) {
+      if (_declares(scope, child, name)) {
+        return true;
+      }
+
+      child = scope;
+      scope = scope.parent;
+    }
+
+    return false;
+  }
+
+  static bool _declares(AstNode scope, AstNode child, String name) {
+    bool named(Token? token) => token?.lexeme == name;
+    bool inParameters(FormalParameterList? list) =>
+        list?.parameters.any((parameter) => named(parameter.name)) ?? false;
+    bool inVariables(VariableDeclarationList list) =>
+        list.variables.any((variable) => named(variable.name));
+    bool inMembers(List<ClassMember> members) => members.any((member) => switch (member) {
+          MethodDeclaration(:final name) => named(name),
+          FieldDeclaration(:final fields) => inVariables(fields),
+          _ => false,
+        });
+
+    return switch (scope) {
+      FunctionExpression(:final parameters) => inParameters(parameters),
+      MethodDeclaration(:final parameters) => inParameters(parameters),
+      ConstructorDeclaration(:final parameters) => inParameters(parameters),
+      // A local is in scope in its whole block; using it earlier is an error.
+      Block(:final statements) => statements.any((statement) => switch (statement) {
+            VariableDeclarationStatement(:final variables) => inVariables(variables),
+            FunctionDeclarationStatement(:final functionDeclaration) =>
+              named(functionDeclaration.name),
+            PatternVariableDeclarationStatement(:final declaration) =>
+              _patternDeclares(declaration.pattern, name),
+            _ => false,
+          }),
+      ForStatement(:final forLoopParts) || ForElement(:final forLoopParts) => switch (forLoopParts) {
+          ForEachPartsWithDeclaration(:final loopVariable) => named(loopVariable.name),
+          ForPartsWithDeclarations(:final variables) => inVariables(variables),
+          ForEachPartsWithPattern(:final pattern) => _patternDeclares(pattern, name),
+          ForPartsWithPattern(:final variables) => _patternDeclares(variables.pattern, name),
+          _ => false,
+        },
+      CatchClause(:final exceptionParameter, :final stackTraceParameter) =>
+        named(exceptionParameter?.name) || named(stackTraceParameter?.name),
+      // `if (x case final ui)` binds `ui` in the then branch only.
+      IfStatement(:final caseClause?, :final thenStatement) =>
+        child == thenStatement && _patternDeclares(caseClause.guardedPattern.pattern, name),
+      IfElement(:final caseClause?, :final thenElement) =>
+        child == thenElement && _patternDeclares(caseClause.guardedPattern.pattern, name),
+      SwitchPatternCase(:final guardedPattern) ||
+      SwitchExpressionCase(:final guardedPattern) =>
+        _patternDeclares(guardedPattern.pattern, name),
+      ClassDeclaration(:final members) ||
+      MixinDeclaration(:final members) ||
+      EnumDeclaration(:final members) ||
+      ExtensionDeclaration(:final members) ||
+      ExtensionTypeDeclaration(:final members) =>
+        inMembers(members),
+      _ => false,
+    };
+  }
+
+  static bool _patternDeclares(DartPattern pattern, String name) {
+    var found = false;
+
+    pattern.accept(_PatternVariableFinder(name, () => found = true));
+
+    return found;
   }
 
   void _checkColour(AstNode node, ArgumentList arguments) {
@@ -384,6 +470,22 @@ class _Visitor extends RecursiveAstVisitor<void> {
   bool _isIgnored(int line, DesignRule rule) =>
       (ignored[line]?.contains(rule.id) ?? false) ||
       (ignored[line - 1]?.contains(rule.id) ?? false);
+}
+
+class _PatternVariableFinder extends RecursiveAstVisitor<void> {
+  _PatternVariableFinder(this.name, this.onFound);
+
+  final String name;
+  final void Function() onFound;
+
+  @override
+  void visitDeclaredVariablePattern(DeclaredVariablePattern node) {
+    if (node.name.lexeme == name) {
+      onFound();
+    }
+
+    super.visitDeclaredVariablePattern(node);
+  }
 }
 
 class _NumberFinder extends RecursiveAstVisitor<void> {
