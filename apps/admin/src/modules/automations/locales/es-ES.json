@@ -121,7 +121,8 @@
 			"flow": "Editar el flujo de la automatización «{automation}»",
 			"remove": "Eliminar la automatización «{automation}»",
 			"enabled": "Automatización «{automation}» activada",
-			"export": "Exportar la automatización \"{automation}\" como YAML"
+			"export": "Exportar la automatización \"{automation}\" como YAML",
+			"more": "Más acciones de la automatización «{automation}»"
 		},
 		"buttons": {
 			"add": {
@@ -168,6 +169,9 @@
 			},
 			"viewYaml": {
 				"title": "Ver como YAML"
+			},
+			"remove": {
+				"title": "Eliminar"
 			}
 		},
 		"messages": {

@@ -121,7 +121,8 @@
 			"flow": "Upraviť priebeh automatizácie „{automation}“",
 			"remove": "Odstrániť automatizáciu „{automation}“",
 			"enabled": "Automatizácia „{automation}“ povolená",
-			"export": "Exportovať automatizáciu „{automation}“ ako YAML"
+			"export": "Exportovať automatizáciu „{automation}“ ako YAML",
+			"more": "Ďalšie akcie automatizácie „{automation}“"
 		},
 		"buttons": {
 			"add": {
@@ -168,6 +169,9 @@
 			},
 			"viewYaml": {
 				"title": "Zobraziť ako YAML"
+			},
+			"remove": {
+				"title": "Odstrániť"
 			}
 		},
 		"messages": {

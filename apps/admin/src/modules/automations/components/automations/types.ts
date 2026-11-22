@@ -4,7 +4,7 @@ export type * from './automation-import-dialog.types';
 export type * from './automation-suggestions.types';
 export type * from './automation-template-dialog.types';
 export type * from './automation-yaml-dialog.types';
-export type * from './automations-filter.types';
+export type * from './automations-row-list.types';
 export type * from './automations-table.types';
 export type * from './list-automations.types';
 export type * from './list-automations-adjust.types';

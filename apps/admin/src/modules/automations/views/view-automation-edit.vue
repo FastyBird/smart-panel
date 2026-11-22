@@ -21,30 +21,20 @@
 	<div class="flex flex-col overflow-hidden h-full">
 		<!-- Only the first read replaces the form. A later one (the store reads the automation again after
 		     a refused save) must leave it mounted, or the outcome of the submit would never get here. -->
-		<div
+		<state-view
 			v-if="!automationReady || (!automation && isLoading)"
-			class="flex items-center justify-center h-full"
-		>
-			<el-icon
-				class="is-loading"
-				:size="32"
-			>
-				<icon icon="mdi:loading" />
-			</el-icon>
-		</div>
+			kind="loading"
+			:title="t('automations.texts.loadingAutomations')"
+			icon="mdi:pencil"
+		/>
 
-		<div
+		<state-view
 			v-else-if="!automation && loadFailed"
-			class="flex flex-col items-center justify-center h-full gap-4 p-4"
+			kind="error"
+			:title="t('automations.messages.loadFailed')"
+			icon="mdi:alert-circle-outline"
 		>
-			<el-icon
-				:size="48"
-				class="text-gray-300"
-			>
-				<icon icon="mdi:alert-circle-outline" />
-			</el-icon>
-			<div class="text-gray-500">{{ t('automations.messages.loadFailed') }}</div>
-			<div class="flex gap-2">
+			<template #action>
 				<el-button @click="onClose">
 					{{ t('automations.buttons.backToList.title') }}
 				</el-button>
@@ -54,30 +44,27 @@
 				>
 					{{ t('automations.buttons.retry.title') }}
 				</el-button>
-			</div>
-		</div>
+			</template>
+		</state-view>
 
-		<div
+		<state-view
 			v-else-if="!automation"
-			class="flex flex-col items-center justify-center h-full gap-4 p-4"
+			kind="not-found"
+			:title="t('automations.messages.notFound')"
+			icon="mdi:robot-off-outline"
 		>
-			<el-icon
-				:size="48"
-				class="text-gray-300"
-			>
-				<icon icon="mdi:robot-off-outline" />
-			</el-icon>
-			<div class="text-gray-500">{{ t('automations.messages.notFound') }}</div>
-			<el-button
-				type="primary"
-				@click="onClose"
-			>
-				{{ t('automations.buttons.backToList.title') }}
-			</el-button>
-		</div>
+			<template #action>
+				<el-button
+					type="primary"
+					@click="onClose"
+				>
+					{{ t('automations.buttons.backToList.title') }}
+				</el-button>
+			</template>
+		</state-view>
 
 		<template v-else>
-			<el-scrollbar class="grow-1 p-2 md:px-4">
+			<el-scrollbar class="grow-1 p-2 tp:px-4">
 				<automation-edit-form
 					:key="automation.id"
 					v-model:remote-form-submit="remoteFormSubmit"
@@ -87,41 +74,16 @@
 				/>
 			</el-scrollbar>
 
-			<div
-				v-if="isMDDevice"
-				class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-				style="background-color: var(--el-drawer-bg-color)"
-			>
-				<div class="p-2">
-					<el-button
-						v-if="formChanged"
-						:disabled="saving"
-						link
-						class="mr-2"
-						@click="onDiscard"
-					>
-						{{ t('automations.buttons.discard.title') }}
-					</el-button>
-					<el-button
-						v-if="!formChanged"
-						:disabled="saving"
-						link
-						class="mr-2"
-						@click="onClose"
-					>
-						{{ t('automations.buttons.close.title') }}
-					</el-button>
-
-					<el-button
-						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="remoteFormResult === FormResult.WORKING || !formChanged"
-						type="primary"
-						@click="remoteFormSubmit = true"
-					>
-						{{ t('automations.buttons.save.title') }}
-					</el-button>
-				</div>
-			</div>
+			<!-- Wherever the phone app bar is not there to carry Save: in a drawer, and on a page kept open past 720 px -->
+			<form-footer
+				v-show="inDrawer || !isPhone"
+				:dirty="formChanged"
+				:saving="saving"
+				:can-save="formChanged && !saving"
+				@save="remoteFormSubmit = true"
+				@discard="onDiscard"
+				@close="onClose"
+			/>
 		</template>
 	</div>
 </template>
@@ -131,11 +93,9 @@ import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElButton, ElMessageBox, ElScrollbar } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { ViewHeader, useBreakpoints } from '../../../common';
+import { FormFooter, StateView, ViewHeader, useEditDrawer, useSizeClass } from '../../../common';
 import { FormResult, type FormResultType, RouteNames } from '../automations.constants';
 import { AutomationsApiException } from '../automations.exceptions';
 import { AutomationEditForm } from '../components/components';
@@ -159,7 +119,9 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const router = useRouter();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const { automation, isLoading, fetchAutomation } = useAutomation({ id: props.id });
 
@@ -178,7 +140,7 @@ const onClose = (): void => {
 		return;
 	}
 
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.AUTOMATIONS });
 	} else {
 		router.push({ name: RouteNames.AUTOMATIONS });

@@ -37,11 +37,10 @@ vi.mock('../../../common', async () => {
 				return () => h('div', [slots.actions?.()]);
 			},
 		}),
-		// Below the medium breakpoint the save lives in the app bar
-		useBreakpoints: () => ({
-			isMDDevice: ref(false),
-			isLGDevice: ref(false),
-		}),
+		FormFooter: (await import('../../../common/components/form-footer.vue')).default,
+		// On phone the save lives in the app bar, and the form is its own page
+		useEditDrawer: () => ({ inDrawer: ref(false) }),
+		useSizeClass: () => ({ isPhone: ref(true) }),
 	};
 });
 

@@ -1,25 +1,51 @@
 <template>
+	<!-- Template 1: one card with the filter bar, the table (a row list on phone) and the pagination -->
 	<el-card
 		shadow="never"
-		class="px-1 py-2 shrink-0"
-		body-class="p-0!"
+		class="flex flex-col flex-grow min-h-0 overflow-hidden"
+		body-class="p-0! flex flex-col flex-grow min-h-0 overflow-hidden"
 	>
-		<automations-filter
-			v-model:filters="innerFilters"
-			:filters-active="props.filtersActive"
-			@reset-filters="emit('reset-filters')"
-			@adjust-list="emit('adjust-list')"
-		/>
-	</el-card>
+		<list-filter-bar
+			ref="filterBar"
+			v-model:search="search"
+			:search-placeholder="t('automations.fields.search.placeholder')"
+			:quick-filters="quickFilters"
+			:active-count="activeCount"
+			@quick-filter="onQuickFilter"
+			@reset="emit('reset-filters')"
+		>
+			<template #filters>
+				<list-automations-adjust v-model:filters="innerFilters" />
+			</template>
+		</list-filter-bar>
 
-	<div
-		ref="wrapper"
-		class="flex-grow overflow-hidden"
-	>
-		<el-card
-			shadow="never"
-			class="max-h-full flex flex-col overflow-hidden box-border"
-			body-class="p-0! max-h-full overflow-hidden flex flex-col"
+		<!-- The rows scroll inside the card, so the pagination below stays reachable -->
+		<div
+			v-if="isPhone"
+			class="flex-grow min-h-0 overflow-y-auto"
+			data-test-id="automations-row-list-scroll"
+		>
+			<automations-row-list
+				:items="props.items"
+				:loading="props.loading"
+				:load-failed="props.loadFailed"
+				:filters-active="props.filtersActive"
+				:updating="props.updating"
+				:exporting="props.exporting"
+				@edit="(id: IAutomation['id']): void => emit('edit', id)"
+				@flow="(id: IAutomation['id']): void => emit('flow', id)"
+				@export="(id: IAutomation['id']): void => emit('export', id)"
+				@remove="(id: IAutomation['id']): void => emit('remove', id)"
+				@toggle-enabled="(id: IAutomation['id'], enabled: boolean): void => emit('toggle-enabled', id, enabled)"
+				@reset-filters="emit('reset-filters')"
+				@retry="emit('retry')"
+			/>
+		</div>
+
+		<div
+			v-else
+			ref="wrapper"
+			class="flex-grow min-h-0 overflow-hidden"
 		>
 			<automations-table
 				v-model:filters="innerFilters"
@@ -41,37 +67,36 @@
 				@reset-filters="emit('reset-filters')"
 				@retry="emit('retry')"
 			/>
+		</div>
 
-			<div
-				ref="paginator"
-				class="flex justify-center w-full py-4"
-			>
-				<el-pagination
-					v-model:current-page="paginatePage"
-					v-model:page-size="paginateSize"
-					:layout="isMDDevice ? 'total, sizes, prev, pager, next, jumper' : 'total, sizes, prev, pager, next'"
-					:total="props.allItems.length"
-					@size-change="onPaginatePageSize"
-					@current-change="onPaginatePage"
-				/>
-			</div>
-		</el-card>
-	</div>
+		<div class="flex flex-wrap justify-end w-full box-border px-4 py-2.5 border-t border-t-solid border-light overflow-hidden">
+			<el-pagination
+				v-model:current-page="paginatePage"
+				v-model:page-size="paginateSize"
+				:layout="isPhone ? 'prev, pager, next' : 'total, sizes, prev, pager, next'"
+				:total="props.allItems.length"
+				@size-change="onPaginatePageSize"
+				@current-change="onPaginatePage"
+			/>
+		</div>
+	</el-card>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { useBreakpoints } from '../../../../common';
+import { ListFilterBar, type ListFilterBarQuickFilter, useSizeClass } from '../../../../common';
 import type { AutomationsSortBy, IAutomationsFilter } from '../../composables/types';
 import type { IAutomation } from '../../store/automations.store.types';
 
-import AutomationsFilter from './automations-filter.vue';
+import AutomationsRowList from './automations-row-list.vue';
 import AutomationsTable from './automations-table.vue';
+import ListAutomationsAdjust from './list-automations-adjust.vue';
 import { type IListAutomationsProps } from './list-automations.types';
 
 defineOptions({
@@ -86,7 +111,6 @@ const emit = defineEmits<{
 	(e: 'export', id: IAutomation['id']): void;
 	(e: 'remove', id: IAutomation['id']): void;
 	(e: 'toggle-enabled', id: IAutomation['id'], enabled: boolean): void;
-	(e: 'adjust-list'): void;
 	(e: 'reset-filters'): void;
 	(e: 'retry'): void;
 	(e: 'update:filters', filters: IAutomationsFilter): void;
@@ -96,12 +120,12 @@ const emit = defineEmits<{
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
-const { isMDDevice } = useBreakpoints();
+const { t } = useI18n();
+const { isPhone } = useSizeClass();
 
 let observer: ResizeObserver | null = null;
 
 const wrapper = ref<HTMLElement | null>(null);
-const paginator = ref<HTMLElement | null>(null);
 
 const innerFilters = useVModel(props, 'filters', emit);
 
@@ -115,6 +139,49 @@ const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
 
+const filterBar = ref<InstanceType<typeof ListFilterBar> | null>(null);
+
+const search = computed<string>({
+	get: (): string => innerFilters.value.search ?? '',
+	set: (value: string): void => {
+		innerFilters.value.search = value === '' ? undefined : value;
+	},
+});
+
+// The bar keeps one quick filter, Enabled; status and space live in the filters drawer
+const quickFilters = computed<ListFilterBarQuickFilter[]>((): ListFilterBarQuickFilter[] => [
+	{
+		id: 'enabled',
+		label: t('automations.filters.enabled.title'),
+		options: [
+			{ value: 'enabled', label: t('automations.filters.enabled.values.enabled') },
+			{ value: 'disabled', label: t('automations.filters.enabled.values.disabled') },
+		],
+		value: innerFilters.value.enabled === 'all' ? null : innerFilters.value.enabled,
+	},
+]);
+
+// Active filters, the search excluded: it is visible in the bar on its own
+const activeCount = computed<number>(
+	(): number =>
+		(innerFilters.value.enabled !== 'all' ? 1 : 0) +
+		(innerFilters.value.statuses.length > 0 ? 1 : 0) +
+		(typeof innerFilters.value.spaceId !== 'undefined' ? 1 : 0)
+);
+
+const onQuickFilter = (id: string, value: string | null): void => {
+	if (id === 'enabled') {
+		innerFilters.value.enabled = (value ?? 'all') as IAutomationsFilter['enabled'];
+	}
+};
+
+// The phone app bar's Search action moves focus to the search field
+const focusSearch = (): void => {
+	filterBar.value?.focusSearch();
+};
+
+defineExpose({ focusSearch });
+
 const onPaginatePageSize = (size: number): void => {
 	emit('update:paginate-size', size);
 };
@@ -123,31 +190,39 @@ const onPaginatePage = (page: number): void => {
 	emit('update:paginate-page', page);
 };
 
-onMounted((): void => {
-	if (!wrapper.value) {
-		return;
+// The table fills its part of the card: the pagination is a sibling below it, so the part is the table's height. The
+// part is rendered only beside a table (not on phone), so the observer follows it as it comes and goes
+const updateHeight = (): void => {
+	if (wrapper.value) {
+		tableHeight.value = wrapper.value.clientHeight;
 	}
+};
 
-	const updateHeight = () => {
-		if (!wrapper.value || !paginator.value) {
+watch(
+	wrapper,
+	(element: HTMLElement | null, previous: HTMLElement | null | undefined): void => {
+		if (observer && previous) {
+			observer.unobserve(previous);
+		}
+
+		if (!element) {
 			return;
 		}
 
-		tableHeight.value = wrapper.value.clientHeight - paginator.value.clientHeight;
-	};
+		if (observer === null && typeof window !== 'undefined' && 'ResizeObserver' in window) {
+			observer = new ResizeObserver(updateHeight);
+		}
 
-	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
-		observer = new ResizeObserver(updateHeight);
-		observer.observe(wrapper.value);
-	}
+		observer?.observe(element);
 
-	updateHeight();
-});
+		updateHeight();
+	},
+	{ flush: 'post' }
+);
 
 onBeforeUnmount((): void => {
-	if (observer && wrapper.value) {
-		observer.unobserve(wrapper.value);
-	}
+	observer?.disconnect();
+	observer = null;
 });
 
 watch(

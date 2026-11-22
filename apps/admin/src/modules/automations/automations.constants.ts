@@ -1,4 +1,5 @@
 // Re-export from generated OpenAPI types — canonical definition is on the backend
+import type { StatusTagStatus } from '../../common/components/status-tag.types';
 import {
 	AutomationsModuleImportReferenceMappingKind as AutomationReferenceKind,
 	AutomationsModuleDataRunStatus as AutomationRunRecordStatus,
@@ -231,3 +232,10 @@ export type AutomationConnectionRejection = 'unknown_node' | 'unknown_port' | 'i
 
 // How many steps of the session can be undone
 export const AUTOMATION_EDITOR_HISTORY_LIMIT = 100;
+
+// The status tag of an automation (spec section 4: a dot and text, never a coloured tag)
+export const AUTOMATION_STATUS_TAGS: Record<AutomationStatus, StatusTagStatus> = {
+	[AutomationStatus.ok]: 'ok',
+	[AutomationStatus.invalid]: 'danger',
+	[AutomationStatus.suspended]: 'warn',
+};

@@ -32,7 +32,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('../../../common', async () => {
-	const { defineComponent: defineVueComponent, h, ref } = await import('vue');
+	const { computed, defineComponent: defineVueComponent, h, ref } = await import('vue');
 
 	mocks.isMDDevice = ref<boolean>(true);
 
@@ -45,10 +45,11 @@ vi.mock('../../../common', async () => {
 				return () => h('div', [slots.actions?.()]);
 			},
 		}),
-		useBreakpoints: () => ({
-			isMDDevice: mocks.isMDDevice,
-			isLGDevice: ref(true),
-		}),
+		FormFooter: (await import('../../../common/components/form-footer.vue')).default,
+		StateView: (await import('../../../common/components/state-view.vue')).default,
+		// From tablet portrait up the form sits in the drawer with its footer; on phone the app bar carries Save
+		useEditDrawer: () => ({ inDrawer: mocks.isMDDevice }),
+		useSizeClass: () => ({ isPhone: computed(() => !mocks.isMDDevice.value) }),
 	};
 });
 
@@ -119,7 +120,7 @@ describe('ViewAutomationEdit', (): void => {
 	};
 
 	const footerSave = (wrapper: VueWrapper) => {
-		return wrapper.findAll('button').find((button) => button.text() === 'automations.buttons.save.title')!;
+		return wrapper.findAll('button').find((button) => button.text() === 'application.formFooter.save')!;
 	};
 
 	// The app bar buttons, read from what the header hands the phone app bar
@@ -318,7 +319,7 @@ describe('ViewAutomationEdit', (): void => {
 
 		expect(wrapper.emitted('update:remote-form-saving')).toEqual([[true]]);
 
-		const discard = footerButton(wrapper, 'automations.buttons.discard.title')!;
+		const discard = footerButton(wrapper, 'application.formFooter.discard')!;
 
 		expect(discard.attributes('disabled')).toBeDefined();
 
@@ -336,7 +337,7 @@ describe('ViewAutomationEdit', (): void => {
 
 		expect(wrapper.emitted('update:remote-form-saving')).toEqual([[true], [false]]);
 
-		await footerButton(wrapper, 'automations.buttons.discard.title')!.trigger('click');
+		await footerButton(wrapper, 'application.formFooter.discard')!.trigger('click');
 		await flushPromises();
 
 		expect(confirm).toHaveBeenCalledTimes(1);
@@ -362,13 +363,14 @@ describe('ViewAutomationEdit', (): void => {
 
 		await flushPromises();
 
-		expect(mocks.routerReplace).not.toHaveBeenCalled();
+		expect(mocks.routerPush).not.toHaveBeenCalled();
 
 		form.vm.$emit('update:remote-form-result', FormResult.OK);
 
 		await flushPromises();
 
-		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
+		// On phone the form is a page of its own, left like one
+		expect(mocks.routerPush).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not let the save in the app bar be used while a submit is on its way', async (): Promise<void> => {

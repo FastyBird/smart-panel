@@ -1,10 +1,5 @@
 <template>
-	<view-header
-		:title="t('automations.headings.adjustFilters')"
-		:subtitle="t('automations.subHeadings.adjustFilters')"
-		icon="mdi:filter"
-	/>
-
+	<!-- The filters drawer of the list's filter bar: its heading and Reset are the bar's -->
 	<div
 		:class="[ns.b()]"
 		class="flex flex-col h-full w-full overflow-hidden"
@@ -104,19 +99,6 @@
 				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
-
-		<div class="px-5 py-2 text-center">
-			<el-button
-				:disabled="!props.filtersActive"
-				@click="emit('reset-filters')"
-			>
-				<template #icon>
-					<icon icon="mdi:filter-remove" />
-				</template>
-
-				{{ t('automations.buttons.resetFilters.title') }}
-			</el-button>
-		</div>
 	</div>
 </template>
 
@@ -124,23 +106,11 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElButton,
-	ElCollapse,
-	ElCollapseItem,
-	ElOption,
-	ElRadioButton,
-	ElRadioGroup,
-	ElScrollbar,
-	ElSelect,
-	ElText,
-	useNamespace,
-} from 'element-plus';
+import { ElCollapse, ElCollapseItem, ElOption, ElRadioButton, ElRadioGroup, ElScrollbar, ElSelect, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { ViewHeader } from '../../../../common';
 import { AutomationStatus, WHOLE_HOME_SPACE_FILTER } from '../../automations.constants';
 import type { IAutomationsFilter } from '../../composables/types';
 import { useAutomationSpaces } from '../../composables/useAutomationSpaces';
@@ -155,7 +125,6 @@ const props = defineProps<IListAutomationsAdjustProps>();
 
 const emit = defineEmits<{
 	(e: 'update:filters', filters: IAutomationsFilter): void;
-	(e: 'reset-filters'): void;
 }>();
 
 const ns = useNamespace('list-automations-adjust');

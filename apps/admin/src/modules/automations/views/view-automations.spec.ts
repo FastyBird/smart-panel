@@ -7,7 +7,7 @@ import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { RouteNames } from '../automations.constants';
 import { discardAutomationDraft, peekAutomationDraft } from '../automations.drafts';
-import { ListAutomations, ListAutomationsAdjust } from '../components/components';
+import { ListAutomations } from '../components/components';
 
 import ViewAutomations from './view-automations.vue';
 
@@ -44,7 +44,8 @@ vi.mock('vue-router', async () => {
 		useRouter: () => ({
 			push: mocks.routerPush,
 			replace: mocks.routerReplace,
-			resolve: (to: unknown) => to,
+			// An automation's edit form lives at its id, as in the real routes
+			resolve: (to: { params?: { id?: string } }) => ({ ...to, path: to.params?.id ? `/automations/${to.params.id}` : undefined }),
 		}),
 	};
 });
@@ -74,12 +75,18 @@ vi.mock('../../../common', async () => {
 	return {
 		AppBreadcrumbs: StubComponent,
 		ViewError: StubComponent,
-		AppBarScope: StubComponent,
 		ViewHeader: StubComponent,
-		useBreakpoints: () => ({
-			isMDDevice: mocks.isLGDevice,
-			isLGDevice: mocks.isLGDevice,
+		// The real layout puts the form in a drawer or beside the list; all that matters here is whether it is open
+		EditDrawerLayout: defineVueComponent({
+			name: 'EditDrawerLayout',
+			props: { open: { type: Boolean, default: false }, beforeClose: { type: Function, default: undefined } },
+			emits: ['close'],
+			setup(props, { slots }) {
+				return () => h('div', [slots.default?.(), props.open ? slots.form?.() : null]);
+			},
 		}),
+		// From tablet portrait up the form opens beside the list; on phone it is a page of its own
+		provideEditDrawer: () => ({ inDrawer: mocks.isLGDevice }),
 	};
 });
 
@@ -93,11 +100,8 @@ vi.mock('../components/components', async () => {
 				loading: { type: Boolean, default: false },
 				loadFailed: { type: Boolean, default: false },
 			},
-			emits: ['adjust-list', 'retry', 'flow', 'export'],
-			template: '<div />',
-		}),
-		ListAutomationsAdjust: defineVueComponent({
-			name: 'ListAutomationsAdjust',
+			emits: ['retry', 'flow', 'export', 'edit'],
+			setup: (_, { expose }) => expose({ focusSearch: vi.fn() }),
 			template: '<div />',
 		}),
 		AutomationTemplateDialog: defineVueComponent({
@@ -166,12 +170,6 @@ describe('ViewAutomations', (): void => {
 		wrapper = mount(ViewAutomations, {
 			global: {
 				stubs: {
-					// The real drawer renders into the body; all that matters here is whether it is there and open
-					ElDrawer: {
-						name: 'ElDrawer',
-						props: { modelValue: { type: Boolean, default: false }, beforeClose: { type: Function, default: undefined } },
-						template: '<div v-if="modelValue"><slot /></div>',
-					},
 					RouterView: {
 						name: 'RouterView',
 						data: () => ({ detail: markRaw(DetailView) }),
@@ -210,7 +208,7 @@ describe('ViewAutomations', (): void => {
 	};
 
 	const closeDrawer = (wrapper: VueWrapper): void => {
-		(wrapper.findComponent({ name: 'ElDrawer' }).props('beforeClose') as () => void)();
+		(wrapper.findComponent({ name: 'EditDrawerLayout' }).props('beforeClose') as () => void)();
 	};
 
 	it('does not hand the changed state of a form that was left to the next one', async (): Promise<void> => {
@@ -243,6 +241,74 @@ describe('ViewAutomations', (): void => {
 
 		expect(confirm).not.toHaveBeenCalled();
 		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
+
+		confirm.mockRestore();
+	});
+
+	it('asks before another automation replaces a changed form, and leaves the open one alone', async (): Promise<void> => {
+		const confirm = vi
+			.spyOn(ElMessageBox, 'confirm')
+			.mockRejectedValueOnce('cancel')
+			.mockResolvedValueOnce('confirm' as never);
+
+		openRoute(editRoute);
+
+		await mountView();
+
+		wrapper.findComponent(DetailView).vm.$emit('update:remote-form-changed', true);
+
+		await flushPromises();
+
+		// The one already open: nothing to replace, nothing to ask
+		mocks.route.path = '/automations/1';
+		wrapper.findComponent(ListAutomations).vm.$emit('edit', '1');
+
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+
+		wrapper.findComponent(ListAutomations).vm.$emit('edit', '2');
+
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
+
+		wrapper.findComponent(ListAutomations).vm.$emit('edit', '2');
+
+		await flushPromises();
+
+		expect(mocks.routerReplace).toHaveBeenCalledWith(expect.objectContaining({ name: RouteNames.AUTOMATIONS_EDIT, params: { id: '2' } }));
+
+		confirm.mockRestore();
+	});
+
+	it('asks before the flow editor takes the place of a changed docked form', async (): Promise<void> => {
+		const confirm = vi
+			.spyOn(ElMessageBox, 'confirm')
+			.mockRejectedValueOnce('cancel')
+			.mockResolvedValueOnce('confirm' as never);
+
+		openRoute(editRoute);
+
+		await mountView();
+
+		wrapper.findComponent(DetailView).vm.$emit('update:remote-form-changed', true);
+
+		await flushPromises();
+
+		wrapper.findComponent(ListAutomations).vm.$emit('flow', 'automation-2');
+
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+
+		wrapper.findComponent(ListAutomations).vm.$emit('flow', 'automation-2');
+
+		await flushPromises();
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: 'automation-2' } });
 
 		confirm.mockRestore();
 	});
@@ -301,23 +367,6 @@ describe('ViewAutomations', (): void => {
 		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
 
 		confirm.mockRestore();
-	});
-
-	it.each([
-		['on a large screen', true],
-		['below the large breakpoint', false],
-	])('opens the list adjustment %s', async (_, isLGDevice): Promise<void> => {
-		mocks.isLGDevice.value = isLGDevice;
-
-		await mountView();
-
-		expect(wrapper.findComponent(ListAutomationsAdjust).exists()).toBe(false);
-
-		wrapper.findComponent(ListAutomations).vm.$emit('adjust-list');
-
-		await flushPromises();
-
-		expect(wrapper.findComponent(ListAutomationsAdjust).exists()).toBe(true);
 	});
 
 	it('hands a failed first load to the list and loads again when asked to', async (): Promise<void> => {
