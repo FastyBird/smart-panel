@@ -594,12 +594,12 @@ describe('ViewAutomationFlow', (): void => {
 
 			await createWrapper();
 
-			expect(canvas().props('coveredRight')).toBe(0);
+			expect((canvas().props() as Record<string, unknown>).coveredRight).toBe(0);
 
 			canvas().vm.$emit('select', ['a1'], []);
 			await flushPromises();
 
-			expect(canvas().props('coveredRight')).toBe(340);
+			expect((canvas().props() as Record<string, unknown>).coveredRight).toBe(340);
 		});
 
 		it('closes the panel with Escape only once a form with text that does not parse may be let go', async (): Promise<void> => {
