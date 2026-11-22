@@ -1,16 +1,21 @@
 import 'dart:io';
 
 import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Caches UI preferences (language, dark mode) locally so the app
+/// Caches UI preferences (language, dark mode, accent) locally so the app
 /// can apply them immediately on startup — before the backend config loads.
+///
+/// The accent is panel-only for now: the backend has no accent field on
+/// spaces or displays yet, so this is where the choice lives.
 class LocalPreferencesService extends ChangeNotifier {
   static const _languageKey = 'ui_language';
   static const _darkModeKey = 'ui_dark_mode';
   static const _screenPowerOffKey = 'ui_screen_power_off';
+  static const _accentKey = 'ui_accent';
 
   final FlutterSecureStorage? _securedStorage;
   final SecureStorageFallback? _securedStorageFallback;
@@ -18,6 +23,7 @@ class LocalPreferencesService extends ChangeNotifier {
   Language _language = Language.english;
   bool _darkMode = false;
   bool _screenPowerOff = false;
+  AppAccent _accent = AppAccent.blue;
   bool _loaded = false;
 
   LocalPreferencesService({
@@ -29,6 +35,7 @@ class LocalPreferencesService extends ChangeNotifier {
   Language get language => _language;
   bool get darkMode => _darkMode;
   bool get screenPowerOff => _screenPowerOff;
+  AppAccent get accent => _accent;
   bool get isLoaded => _loaded;
 
   /// Load cached preferences from local storage.
@@ -53,11 +60,14 @@ class LocalPreferencesService extends ChangeNotifier {
         _screenPowerOff = screenPowerOffValue == 'true';
       }
 
+      _accent = AppAccent.fromValue(await _read(key: _accentKey));
+      AppAccents.current = _accent;
+
       _loaded = true;
 
       if (kDebugMode) {
         debugPrint(
-          '[LOCAL PREFS] Loaded: language=${_language.value}, darkMode=$_darkMode',
+          '[LOCAL PREFS] Loaded: language=${_language.value}, darkMode=$_darkMode, accent=${_accent.name}',
         );
       }
     } catch (e) {
@@ -100,21 +110,37 @@ class LocalPreferencesService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Persist the panel's accent and apply it to new themes.
+  Future<void> setAccent(AppAccent accent) async {
+    if (_accent == accent) return;
+
+    _accent = accent;
+    AppAccents.current = accent;
+
+    await _write(key: _accentKey, value: accent.name);
+
+    notifyListeners();
+  }
+
   /// Clear all cached preferences (used during factory reset).
   Future<void> clearAll() async {
     _language = Language.english;
     _darkMode = false;
     _screenPowerOff = false;
+    _accent = AppAccent.blue;
+    AppAccents.current = AppAccent.blue;
 
     try {
       if (Platform.isAndroid || Platform.isIOS) {
         await _securedStorage?.delete(key: _languageKey);
         await _securedStorage?.delete(key: _darkModeKey);
         await _securedStorage?.delete(key: _screenPowerOffKey);
+        await _securedStorage?.delete(key: _accentKey);
       } else {
         await _securedStorageFallback?.delete(key: _languageKey);
         await _securedStorageFallback?.delete(key: _darkModeKey);
         await _securedStorageFallback?.delete(key: _screenPowerOffKey);
+        await _securedStorageFallback?.delete(key: _accentKey);
       }
 
       if (kDebugMode) {

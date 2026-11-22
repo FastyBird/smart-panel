@@ -930,6 +930,46 @@ class AppLocalizationsCs extends AppLocalizations {
       'Přepnout mezi světlým a tmavým motivem.';
 
   @override
+  String get settings_display_settings_accent_title => 'Barva zvýraznění';
+
+  @override
+  String get settings_display_settings_accent_description =>
+      'Barva tlačítek, přepínačů a aktivní záložky na tomto panelu.';
+
+  @override
+  String get settings_display_settings_accent_preview => 'Náhled';
+
+  @override
+  String get settings_display_settings_accent_preview_button => 'Potvrdit';
+
+  @override
+  String get settings_display_settings_accent_preview_chip => 'Vybráno';
+
+  @override
+  String get accent_blue => 'Modrá';
+
+  @override
+  String get accent_teal => 'Modrozelená';
+
+  @override
+  String get accent_sage => 'Šalvějová';
+
+  @override
+  String get accent_terracotta => 'Terakotová';
+
+  @override
+  String get accent_rose => 'Růžová';
+
+  @override
+  String get accent_violet => 'Fialová';
+
+  @override
+  String get accent_sand => 'Písková';
+
+  @override
+  String get accent_graphite => 'Grafitová';
+
+  @override
   String get settings_display_settings_brightness_title => 'Jas';
 
   @override

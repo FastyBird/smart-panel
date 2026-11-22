@@ -919,6 +919,46 @@ class AppLocalizationsEn extends AppLocalizations {
       'Switch between light and dark theme.';
 
   @override
+  String get settings_display_settings_accent_title => 'Accent color';
+
+  @override
+  String get settings_display_settings_accent_description =>
+      'Color of buttons, switches and the active tab on this panel.';
+
+  @override
+  String get settings_display_settings_accent_preview => 'Preview';
+
+  @override
+  String get settings_display_settings_accent_preview_button => 'Confirm';
+
+  @override
+  String get settings_display_settings_accent_preview_chip => 'Selected';
+
+  @override
+  String get accent_blue => 'Blue';
+
+  @override
+  String get accent_teal => 'Teal';
+
+  @override
+  String get accent_sage => 'Sage';
+
+  @override
+  String get accent_terracotta => 'Terracotta';
+
+  @override
+  String get accent_rose => 'Rose';
+
+  @override
+  String get accent_violet => 'Violet';
+
+  @override
+  String get accent_sand => 'Sand';
+
+  @override
+  String get accent_graphite => 'Graphite';
+
+  @override
   String get settings_display_settings_brightness_title => 'Brightness';
 
   @override

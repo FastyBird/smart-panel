@@ -948,6 +948,46 @@ class AppLocalizationsPl extends AppLocalizations {
       'Przełączanie między jasnym a ciemnym motywem.';
 
   @override
+  String get settings_display_settings_accent_title => 'Kolor akcentu';
+
+  @override
+  String get settings_display_settings_accent_description =>
+      'Kolor przycisków, przełączników i aktywnej karty na tym panelu.';
+
+  @override
+  String get settings_display_settings_accent_preview => 'Podgląd';
+
+  @override
+  String get settings_display_settings_accent_preview_button => 'Potwierdź';
+
+  @override
+  String get settings_display_settings_accent_preview_chip => 'Wybrane';
+
+  @override
+  String get accent_blue => 'Niebieski';
+
+  @override
+  String get accent_teal => 'Morski';
+
+  @override
+  String get accent_sage => 'Szałwiowy';
+
+  @override
+  String get accent_terracotta => 'Terakota';
+
+  @override
+  String get accent_rose => 'Różany';
+
+  @override
+  String get accent_violet => 'Fioletowy';
+
+  @override
+  String get accent_sand => 'Piaskowy';
+
+  @override
+  String get accent_graphite => 'Grafitowy';
+
+  @override
   String get settings_display_settings_brightness_title => 'Jasność';
 
   @override

@@ -313,18 +313,14 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
             width: double.infinity,
             child: Theme(
               data: Theme.of(context).copyWith(
-                filledButtonTheme: isDark
-                    ? AppFilledButtonsDarkThemes.primary
-                    : AppFilledButtonsLightThemes.primary,
+                filledButtonTheme: AppAccentButtons.filled(Theme.of(context)),
               ),
               child: FilledButton.icon(
                 onPressed: _selectedRoom != null ? _confirmSelection : null,
                 icon: Icon(
                   MdiIcons.check,
                   size: AppFontSize.base,
-                  color: isDark
-                      ? AppFilledButtonsDarkThemes.primaryForegroundColor
-                      : AppFilledButtonsLightThemes.primaryForegroundColor,
+                  color: AppAccentButtons.filledForeground(Theme.of(context)),
                 ),
                 label: Text(localizations.room_selection_button_confirm),
                 style: FilledButton.styleFrom(
@@ -421,9 +417,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   width: double.infinity,
                   child: Theme(
                     data: Theme.of(context).copyWith(
-                      filledButtonTheme: isDark
-                          ? AppFilledButtonsDarkThemes.primary
-                          : AppFilledButtonsLightThemes.primary,
+                      filledButtonTheme: AppAccentButtons.filled(Theme.of(context)),
                     ),
                     child: FilledButton.icon(
                       onPressed:
@@ -432,7 +426,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                         MdiIcons.check,
                         size: AppFontSize.base,
                         color: isDark
-                            ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                            ? AppAccentButtons.filledForeground(Theme.of(context))
                             : AppFilledButtonsLightThemes
                                 .primaryForegroundColor,
                       ),

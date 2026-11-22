@@ -977,18 +977,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             ),
             Theme(
               data: ThemeData(
-                filledButtonTheme: Theme.of(context).brightness == Brightness.dark
-                  ? AppFilledButtonsDarkThemes.primary
-                  : AppFilledButtonsLightThemes.primary,
+                filledButtonTheme: AppAccentButtons.filled(Theme.of(context)),
               ),
               child: FilledButton.icon(
                 onPressed: _loadRoomData,
                 icon: Icon(
                   MdiIcons.refresh,
                   size: AppFontSize.base,
-                  color: Theme.of(context).brightness == Brightness.dark
-                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
-                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+                  color: AppAccentButtons.filledForeground(Theme.of(context)),
                 ),
                 label: Text(l.action_retry),
               ),

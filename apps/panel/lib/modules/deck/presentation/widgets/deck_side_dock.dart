@@ -227,10 +227,8 @@ class _DockTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final accentColor = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.primary,
-    ).base;
+    // The active tab follows the panel accent.
+    final accentColor = Theme.of(context).accent.text;
     final Color inactiveColor = isDark
         ? AppTextColorDark.placeholder
         : AppTextColorLight.placeholder;

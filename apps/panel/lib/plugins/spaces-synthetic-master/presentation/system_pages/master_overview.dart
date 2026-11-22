@@ -458,18 +458,14 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           ),
           Theme(
             data: ThemeData(
-              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
-                  ? AppFilledButtonsDarkThemes.primary
-                  : AppFilledButtonsLightThemes.primary,
+              filledButtonTheme: AppAccentButtons.filled(Theme.of(context)),
             ),
             child: FilledButton.icon(
               onPressed: _loadHouseData,
               icon: Icon(
                 MdiIcons.refresh,
                 size: AppFontSize.base,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
-                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+                color: AppAccentButtons.filledForeground(Theme.of(context)),
               ),
               label: Text(AppLocalizations.of(context)!.action_retry),
             ),

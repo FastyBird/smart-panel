@@ -933,6 +933,46 @@ class AppLocalizationsSk extends AppLocalizations {
       'Prepnúť medzi svetlým a tmavým motívom.';
 
   @override
+  String get settings_display_settings_accent_title => 'Farba zvýraznenia';
+
+  @override
+  String get settings_display_settings_accent_description =>
+      'Farba tlačidiel, prepínačov a aktívnej záložky na tomto paneli.';
+
+  @override
+  String get settings_display_settings_accent_preview => 'Náhľad';
+
+  @override
+  String get settings_display_settings_accent_preview_button => 'Potvrdiť';
+
+  @override
+  String get settings_display_settings_accent_preview_chip => 'Vybrané';
+
+  @override
+  String get accent_blue => 'Modrá';
+
+  @override
+  String get accent_teal => 'Modrozelená';
+
+  @override
+  String get accent_sage => 'Šalviová';
+
+  @override
+  String get accent_terracotta => 'Terakotová';
+
+  @override
+  String get accent_rose => 'Ružová';
+
+  @override
+  String get accent_violet => 'Fialová';
+
+  @override
+  String get accent_sand => 'Piesková';
+
+  @override
+  String get accent_graphite => 'Grafitová';
+
+  @override
   String get settings_display_settings_brightness_title => 'Jas';
 
   @override

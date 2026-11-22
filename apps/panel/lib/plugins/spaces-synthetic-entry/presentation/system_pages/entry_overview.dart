@@ -439,18 +439,14 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           ),
           Theme(
             data: ThemeData(
-              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
-                  ? AppFilledButtonsDarkThemes.primary
-                  : AppFilledButtonsLightThemes.primary,
+              filledButtonTheme: AppAccentButtons.filled(Theme.of(context)),
             ),
             child: FilledButton.icon(
               onPressed: _loadSecurityData,
               icon: Icon(
                 MdiIcons.refresh,
                 size: AppFontSize.base,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
-                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+                color: AppAccentButtons.filledForeground(Theme.of(context)),
               ),
               label: Text(AppLocalizations.of(context)!.action_retry),
             ),
@@ -592,10 +588,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             data: ThemeData(
               filledButtonTheme: Theme.of(context).brightness == Brightness.light
                   ? (isActive
-                      ? AppFilledButtonsLightThemes.primary
+                      ? AppAccentButtons.filled(Theme.of(context))
                       : AppFilledButtonsLightThemes.info)
                   : (isActive
-                      ? AppFilledButtonsDarkThemes.primary
+                      ? AppAccentButtons.filled(Theme.of(context))
                       : AppFilledButtonsDarkThemes.info),
             ),
             child: FilledButton(
@@ -608,10 +604,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                 size: AppSpacings.scale(32),
                 color: Theme.of(context).brightness == Brightness.dark
                     ? (isActive
-                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                        ? AppAccentButtons.filledForeground(Theme.of(context))
                         : AppFilledButtonsDarkThemes.infoForegroundColor)
                     : (isActive
-                        ? AppFilledButtonsLightThemes.primaryForegroundColor
+                        ? AppAccentButtons.filledForeground(Theme.of(context))
                         : AppFilledButtonsLightThemes.infoForegroundColor),
               ),
             ),
@@ -679,10 +675,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     filledButtonTheme:
                         Theme.of(context).brightness == Brightness.light
                             ? (isActive
-                                ? AppFilledButtonsLightThemes.primary
+                                ? AppAccentButtons.filled(Theme.of(context))
                                 : AppFilledButtonsLightThemes.info)
                             : (isActive
-                                ? AppFilledButtonsDarkThemes.primary
+                                ? AppAccentButtons.filled(Theme.of(context))
                                 : AppFilledButtonsDarkThemes.info),
                   ),
                   child: FilledButton(
@@ -696,10 +692,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                       size: AppSpacings.scale(32),
                       color: Theme.of(context).brightness == Brightness.dark
                           ? (isActive
-                              ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                              ? AppAccentButtons.filledForeground(Theme.of(context))
                               : AppFilledButtonsDarkThemes.infoForegroundColor)
                           : (isActive
-                              ? AppFilledButtonsLightThemes.primaryForegroundColor
+                              ? AppAccentButtons.filledForeground(Theme.of(context))
                               : AppFilledButtonsLightThemes.infoForegroundColor),
                     ),
                   ),

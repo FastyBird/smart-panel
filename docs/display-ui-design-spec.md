@@ -120,7 +120,7 @@ the card and on their own soft. **Blue is the default.**
 | Accent | Fill L / text L | Soft L | Fill D | Text D | Soft D | Suggested room |
 |---|---|---|---|---|---|---|
 | Blue | `#2563c9` | `#e9effa` | `#3570d8` | `#8ab4f8` | `#212e48` | default |
-| Teal | `#0f766e` | `#e7f1f0` | `#12857c` | `#5fd0c5` | `#193333` | bathroom |
+| Teal | `#0f766e` | `#e7f1f0` | `#12847c` | `#5fd0c5` | `#193333` | bathroom |
 | Sage | `#55702f` | `#eef1ea` | `#5f7d36` | `#b3cf85` | `#2a3124` | garden room |
 | Terracotta | `#b04a26` | `#f7ede9` | `#b85230` | `#f2a685` | `#3e2823` | kitchen |
 | Rose | `#a3476f` | `#f6edf1` | `#ad4f78` | `#f0a3c2` | `#3b2733` | bedroom |
@@ -129,7 +129,10 @@ the card and on their own soft. **Blue is the default.**
 | Graphite | `#4a5261` | `#edeeef` | `#5a6375` | `#b6bfcd` | `#292c32` | hallway |
 
 Amber and red are left out because they are warning and danger; green is replaced by a muted sage so it cannot read as
-"ok".
+"ok". The dark teal fill is `#12847c`, one step darker than the canvas's `#12857c`, which is 4.495:1 under white and so
+misses AA.
+
+The pressed shade is the fill mixed 20 % toward black, in both themes.
 
 **The accent colours:** primary buttons, the active deck tab and dock item, the selected room mode and arm segment,
 selection and focus, switches, slider thumbs and steppers **outside** a domain view, the Buddy button and the screen

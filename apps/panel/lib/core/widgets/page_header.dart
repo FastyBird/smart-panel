@@ -251,10 +251,18 @@ class HeaderIconButton extends StatelessWidget {
   });
 
   static (FilledButtonThemeData theme, Color foreground) _filledButtonFor(
-    Brightness brightness,
+    ThemeData themeData,
     ThemeColors key,
   ) {
-    final isDark = brightness == Brightness.dark;
+    // Primary header buttons follow the panel accent.
+    if (key == ThemeColors.primary) {
+      return (
+        AppAccentButtons.filled(themeData),
+        AppAccentButtons.filledForeground(themeData),
+      );
+    }
+
+    final isDark = themeData.brightness == Brightness.dark;
     if (isDark) {
       switch (key) {
         case ThemeColors.primary:
@@ -352,8 +360,7 @@ class HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final (filledTheme, foregroundColor) = _filledButtonFor(brightness, color);
+    final (filledTheme, foregroundColor) = _filledButtonFor(Theme.of(context), color);
 
     final buttonSize = math.max(AppSpacings.scale(32), 26.0);
     final iconSize = math.max(AppSpacings.scale(15), 12.0);

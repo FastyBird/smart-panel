@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/services/device_control.dart';
 import 'package:fastybird_smart_panel/core/services/local_preferences.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/accent_swatch_picker.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -45,6 +46,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 	late bool _screenPowerOff;
 
+	late AppAccent _accent;
+
 	// Unit override state (null = system default)
 	TemperatureUnit? _temperatureUnit;
 	WindSpeedUnit? _windSpeedUnit;
@@ -77,6 +80,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 			_screenLockDuration = _repository.screenLockDuration;
 			_hasScreenSaver = _repository.hasScreenSaver;
 			_screenPowerOff = _localPrefs.screenPowerOff;
+			_accent = _localPrefs.accent;
 			_temperatureUnit = _repository.temperatureUnit;
 			_windSpeedUnit = _repository.windSpeedUnit;
 			_pressureUnit = _repository.pressureUnit;
@@ -100,8 +104,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 
-		final primaryColor = _isDarkMode ? AppColorsDark.primary : AppColorsLight.primary;
-		final primaryBg = _isDarkMode ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
+		final accent = Theme.of(context).accent;
+		final primaryColor = accent.text;
+		final primaryBg = accent.soft;
 		final infoColor = _isDarkMode ? AppColorsDark.info : AppColorsLight.info;
 		final infoBg = _isDarkMode ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
 
@@ -140,6 +145,26 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 		// Left column cards (landscape) / top cards (portrait)
 		final leftCards = <Widget>[
+			// Accent colour (stored on this panel until spaces have an accent field)
+			SettingsCard(
+				icon: MdiIcons.paletteOutline,
+				iconColor: primaryColor,
+				iconBgColor: primaryBg,
+				label: localizations.settings_display_settings_accent_title,
+				description: localizations.settings_display_settings_accent_description,
+				trailing: Text(
+					AccentSwatchPicker.labelFor(localizations, _accent),
+					style: TextStyle(
+						fontSize: AppFontSize.small,
+						color: Theme.of(context).neutrals.textSecondary,
+					),
+				),
+				bottom: AccentSwatchPicker(
+					value: _accent,
+					onChanged: _handleAccentChange,
+					showPreview: !locator<ScreenService>().isSquare,
+				),
+			),
 			// Theme Mode
 			SettingsCard(
 				icon: MdiIcons.weatherNight,
@@ -628,6 +653,17 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				}
 			},
 		);
+	}
+
+	void _handleAccentChange(AppAccent accent) {
+		HapticFeedback.selectionClick();
+
+		setState(() {
+			_accent = accent;
+		});
+
+		// Applies at once: the app rebuilds its theme in the new accent.
+		_localPrefs.setAccent(accent);
 	}
 
 	void _handleScreenPowerOffChange(bool state) {

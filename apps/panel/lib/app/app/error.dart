@@ -131,9 +131,7 @@ class AppError extends StatelessWidget {
                           // Restart button
                           Theme(
                             data: Theme.of(context).copyWith(
-                              filledButtonTheme: isDark
-                                  ? AppFilledButtonsDarkThemes.primary
-                                  : AppFilledButtonsLightThemes.primary,
+                              filledButtonTheme: AppAccentButtons.filled(Theme.of(context)),
                             ),
                             child: FilledButton.icon(
                               onPressed: _onRestart,
