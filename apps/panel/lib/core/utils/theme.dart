@@ -402,10 +402,10 @@ class AppTheme {
     },
   );
 
-  static ColorScheme _colorScheme(Brightness brightness) {
+  static ColorScheme _colorScheme(Brightness brightness, AppAccent selected) {
     final n = AppNeutralPalette.of(brightness);
     final danger = AppStatusPalette.of(brightness, AppStatus.danger);
-    final accent = AppAccents.palette(brightness);
+    final accent = AppAccentPalette.of(selected, brightness);
     final isDark = brightness == Brightness.dark;
 
     return (isDark ? const ColorScheme.dark() : const ColorScheme.light())
@@ -475,13 +475,13 @@ class AppTheme {
     );
   }
 
-  static List<ThemeExtension<dynamic>> _extensions(Brightness brightness) => [
-        AppAccentTheme.of(AppAccents.current, brightness),
+  static List<ThemeExtension<dynamic>> _extensions(Brightness brightness, AppAccent selected) => [
+        AppAccentTheme.of(selected, brightness),
       ];
 
   /// Switches: white thumb on the accent fill when on.
-  static SwitchThemeData _switchTheme(Brightness brightness) {
-    final accent = AppAccents.palette(brightness);
+  static SwitchThemeData _switchTheme(Brightness brightness, AppAccent selected) {
+    final accent = AppAccentPalette.of(selected, brightness);
     final n = AppNeutralPalette.of(brightness);
 
     return SwitchThemeData(
@@ -495,8 +495,8 @@ class AppTheme {
     );
   }
 
-  static TextSelectionThemeData _textSelectionTheme(Brightness brightness) {
-    final accent = AppAccents.palette(brightness);
+  static TextSelectionThemeData _textSelectionTheme(Brightness brightness, AppAccent selected) {
+    final accent = AppAccentPalette.of(selected, brightness);
 
     return TextSelectionThemeData(
       cursorColor: accent.fill,
@@ -517,8 +517,8 @@ class AppTheme {
         color: AppBrandColors.app,
         linearTrackColor: AppColors.white,
       ),
-      colorScheme: _colorScheme(Brightness.light),
-      extensions: _extensions(Brightness.light),
+      colorScheme: _colorScheme(Brightness.light, AppAccents.current),
+      extensions: _extensions(Brightness.light, AppAccents.current),
       visualDensity: _visualDensityService.visualDensity,
     );
   }
@@ -535,28 +535,32 @@ class AppTheme {
         color: AppBrandColors.app,
         linearTrackColor: AppColors.white,
       ),
-      colorScheme: _colorScheme(Brightness.dark),
-      extensions: _extensions(Brightness.dark),
+      colorScheme: _colorScheme(Brightness.dark, AppAccents.current),
+      extensions: _extensions(Brightness.dark, AppAccents.current),
       visualDensity: _visualDensityService.visualDensity,
     );
   }
 
   /// The light theme in the current accent ([AppAccents.current]).
-  static ThemeData get lightTheme {
+  static ThemeData get lightTheme => lightThemeFor(AppAccents.current);
+
+  /// The light theme in [accent]. The component gallery previews accents
+  /// with it without changing the panel's own accent.
+  static ThemeData lightThemeFor(AppAccent accent) {
     return ThemeData(
       fontFamily: 'Roboto',
       brightness: Brightness.light,
-      primaryColor: AppAccents.palette(Brightness.light).fill,
-      primaryColorLight: AppAccents.palette(Brightness.light).fill,
-      primaryColorDark: AppAccents.palette(Brightness.dark).fill,
+      primaryColor: AppAccentPalette.of(accent, Brightness.light).fill,
+      primaryColorLight: AppAccentPalette.of(accent, Brightness.light).fill,
+      primaryColorDark: AppAccentPalette.of(accent, Brightness.dark).fill,
       scaffoldBackgroundColor: AppBgColorLight.page,
       textTheme: AppTextThemes.light,
       outlinedButtonTheme: AppOutlinedButtonsLightThemes.base,
       filledButtonTheme: AppFilledButtonsLightThemes.base,
-      colorScheme: _colorScheme(Brightness.light),
-      extensions: _extensions(Brightness.light),
-      switchTheme: _switchTheme(Brightness.light),
-      textSelectionTheme: _textSelectionTheme(Brightness.light),
+      colorScheme: _colorScheme(Brightness.light, accent),
+      extensions: _extensions(Brightness.light, accent),
+      switchTheme: _switchTheme(Brightness.light, accent),
+      textSelectionTheme: _textSelectionTheme(Brightness.light, accent),
       cardTheme: _cardTheme(Brightness.light),
       dialogTheme: _dialogTheme(Brightness.light),
       bottomSheetTheme: _bottomSheetTheme(Brightness.light),
@@ -570,12 +574,12 @@ class AppTheme {
         thickness: WidgetStatePropertyAll(0),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: AppAccents.palette(Brightness.light).fill,
+        color: AppAccentPalette.of(accent, Brightness.light).fill,
         linearTrackColor: AppColors.white,
       ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: AppAccents.palette(Brightness.light).fill,
-        thumbColor: AppAccents.palette(Brightness.light).fill,
+        activeTrackColor: AppAccentPalette.of(accent, Brightness.light).fill,
+        thumbColor: AppAccentPalette.of(accent, Brightness.light).fill,
         inactiveTrackColor: AppBorderColorLight.light,
         disabledActiveTrackColor: AppTextColorLight.disabled,
       ),
@@ -610,21 +614,24 @@ class AppTheme {
   }
 
   /// The dark theme in the current accent ([AppAccents.current]).
-  static ThemeData get darkTheme {
+  static ThemeData get darkTheme => darkThemeFor(AppAccents.current);
+
+  /// The dark theme in [accent].
+  static ThemeData darkThemeFor(AppAccent accent) {
     return ThemeData(
       fontFamily: 'Roboto',
       brightness: Brightness.dark,
-      primaryColor: AppAccents.palette(Brightness.dark).fill,
-      primaryColorLight: AppAccents.palette(Brightness.light).fill,
-      primaryColorDark: AppAccents.palette(Brightness.dark).fill,
+      primaryColor: AppAccentPalette.of(accent, Brightness.dark).fill,
+      primaryColorLight: AppAccentPalette.of(accent, Brightness.light).fill,
+      primaryColorDark: AppAccentPalette.of(accent, Brightness.dark).fill,
       scaffoldBackgroundColor: AppBgColorDark.page,
       textTheme: AppTextThemes.dark,
       outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base,
       filledButtonTheme: AppFilledButtonsDarkThemes.base,
-      colorScheme: _colorScheme(Brightness.dark),
-      extensions: _extensions(Brightness.dark),
-      switchTheme: _switchTheme(Brightness.dark),
-      textSelectionTheme: _textSelectionTheme(Brightness.dark),
+      colorScheme: _colorScheme(Brightness.dark, accent),
+      extensions: _extensions(Brightness.dark, accent),
+      switchTheme: _switchTheme(Brightness.dark, accent),
+      textSelectionTheme: _textSelectionTheme(Brightness.dark, accent),
       cardTheme: _cardTheme(Brightness.dark),
       dialogTheme: _dialogTheme(Brightness.dark),
       bottomSheetTheme: _bottomSheetTheme(Brightness.dark),
@@ -638,12 +645,12 @@ class AppTheme {
         thickness: WidgetStatePropertyAll(0),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: AppAccents.palette(Brightness.dark).fill,
+        color: AppAccentPalette.of(accent, Brightness.dark).fill,
         linearTrackColor: AppColors.white,
       ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: AppAccents.palette(Brightness.dark).fill,
-        thumbColor: AppAccents.palette(Brightness.dark).fill,
+        activeTrackColor: AppAccentPalette.of(accent, Brightness.dark).fill,
+        thumbColor: AppAccentPalette.of(accent, Brightness.dark).fill,
         inactiveTrackColor: AppBorderColorDark.light,
         disabledActiveTrackColor: AppTextColorDark.placeholder,
       ),

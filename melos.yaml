@@ -8,6 +8,12 @@ scripts:
   analyze:
     exec: dart analyze .
 
+  check-design-system:
+    run: |
+      cd ./apps/panel && \
+      dart run tools/check_design_system.dart ${FB_DESIGN_CHECK_FORMAT:+--format=$FB_DESIGN_CHECK_FORMAT}
+    description: Reports panel code that breaks the display design system. Findings in the strict folders of apps/panel/tools/design_system.yaml fail; the rest are warnings.
+
   generate-run-config:
     run: bash ./bin/generate_app_run_config.sh
 

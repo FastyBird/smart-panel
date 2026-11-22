@@ -365,6 +365,12 @@ jobs:
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
 
+      # Warnings do not fail the job; findings in strict folders do.
+      - name: "Check the design system"
+        run: "melos run check-design-system"
+        env:
+          FB_DESIGN_CHECK_FORMAT: "github"
+
   panel-tests:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'
