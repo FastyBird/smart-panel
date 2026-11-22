@@ -104,8 +104,9 @@ scaleFactor = 2.0 / devicePixelRatio
 size        = designValue × scaleFactor × densityMultiplier
 ```
 
-`densityMultiplier` is a step of **0.85, 1.0, 1.15, 1.3 or 1.5**, the smallest that makes one design px at least
-0.25 mm on the panel (`ppi / 203.2`, with ppi = `96.52 × DPR` on flutter-pi and `160 × DPR` on Android). The installer
+`densityMultiplier` is a step of **0.85, 1.0, 1.15, 1.3 or 1.5**: the smallest step that is at least `ppi / 203.2`,
+with ppi = `96.52 × DPR` on flutter-pi and `160 × DPR` on Android. The target is one design px of at least 0.25 mm on
+the panel. The steps cap at 1.5, so above 304.8 ppi a design px is smaller than that. The installer
 can override it with `FB_DISPLAY_DENSITY` in `/etc/smart-panel/display` (a step value, or `compact` / `normal` /
 `large` for 0.85 / 1.0 / 1.15). It is resolved once at startup and applies to every value that goes through
 `ScreenService.scale()`. See [`display-ui-design-spec.md`](display-ui-design-spec.md) §4.

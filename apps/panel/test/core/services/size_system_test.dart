@@ -1,5 +1,7 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/screen_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -236,6 +238,36 @@ void main() {
       expect(expanded.isAtLeastLarge, isTrue);
       // ignore: deprecated_member_use_from_same_package
       expect(compact.isAtLeastMedium, isFalse);
+
+      compact.dispose();
+      regular.dispose();
+      expanded.dispose();
+    });
+  });
+
+  group('system page padding', () {
+    setUpAll(() async {
+      await locator.reset();
+      // DPR 2 and density 1 give a scale factor of 1, so tokens are design px.
+      locator.registerSingleton<ScreenService>(
+        ScreenService(screenWidth: 1280, screenHeight: 800, pixelRatio: 2),
+      );
+    });
+
+    tearDownAll(() async {
+      await locator.reset();
+    });
+
+    test('is 6, 8 or 12 by size class, in both orientations', () {
+      final compact = ScreenService(screenWidth: 480, screenHeight: 480, pixelRatio: 2, density: 0.85);
+      final regular = ScreenService(screenWidth: 800, screenHeight: 1280, pixelRatio: 2, density: 1.0);
+      final expanded = ScreenService(screenWidth: 1920, screenHeight: 1080, pixelRatio: 2, density: 1.0);
+
+      for (final landscape in [true, false]) {
+        expect(compact.systemPagePadding(landscape), 6);
+        expect(regular.systemPagePadding(landscape), 8);
+        expect(expanded.systemPagePadding(landscape), 12);
+      }
 
       compact.dispose();
       regular.dispose();

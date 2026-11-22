@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 ///
 /// See `docs/display-ui-design-spec.md` §4. One design px at density 1.0 is
 /// `2 × 25.4 / ppi` mm; the density is the smallest step that makes it at
-/// least 0.25 mm, so the rule is the smallest step ≥ `ppi / 203.2`.
+/// least 0.25 mm, so the rule is the smallest step ≥ `ppi / 203.2`. The steps
+/// cap at 1.5, so above 304.8 ppi a design px falls short of 0.25 mm.
 class VisualDensityService {
   /// The allowed density steps, smallest first.
   static const List<double> steps = [0.85, 1.0, 1.15, 1.3, 1.5];
