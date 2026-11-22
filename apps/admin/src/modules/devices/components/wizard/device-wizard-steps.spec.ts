@@ -69,4 +69,17 @@ describe('shared wizard step transitions', () => {
 		wrapper.unmount();
 		expect(context.flow.value).toBeNull();
 	});
+	it('goes back to a completed step from the stepper, never forward', () => {
+		const context = createDeviceWizardContext();
+		const wrapper = mount(DeviceWizardSteps, {
+			props: { modelValue: 2, steps: ['Device', 'Mapping', 'Review'], canAdvance: true },
+			global: { provide: { [deviceWizardContextKey as symbol]: context } },
+		});
+		const goTo = context.flow.value!.value.goTo!;
+		goTo(0);
+		goTo(2);
+		goTo(3);
+		expect(wrapper.emitted('update:modelValue')).toEqual([[0]]);
+		wrapper.unmount();
+	});
 });

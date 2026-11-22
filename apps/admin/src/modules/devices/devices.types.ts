@@ -60,6 +60,8 @@ export type IDeviceWizardSelection = {
 	description?: string;
 	icon?: string;
 	order?: number;
+	/** Translation key of a short tag on the picker tile, such as "Beta" */
+	badge?: string;
 } & ({ kind: 'integration' } | { kind: 'section'; section: { label: string; description: string } });
 
 export type IDeviceWizardDefinition = {

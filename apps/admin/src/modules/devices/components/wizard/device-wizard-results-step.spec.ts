@@ -6,6 +6,7 @@ import DeviceWizardResultsStep from './device-wizard-results-step.vue';
 import type { IWizardColumn, IWizardResult } from './device-wizard.types';
 
 vi.mock('vue-i18n', () => ({
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),
@@ -118,5 +119,30 @@ describe('DeviceWizardResultsStep', () => {
 		await flushPromises();
 
 		expect(results).toEqual(snapshot);
+	});
+
+	it('offers a retry on each failed device only, and holds it while a retry runs', async () => {
+		const wrapper = mountStep([result(), result({ key: 'b', name: 'Kitchen', identifier: 'b', status: 'failed', error: 'Timeout' })]);
+		await flushPromises();
+
+		const retry = wrapper.findAll('[data-test-id="wizard-result-retry"]');
+
+		expect(retry).toHaveLength(1);
+		expect(retry[0].attributes('aria-label')).toBe('devicesModule.wizard.actions.retryDevice');
+
+		await retry[0].trigger('click');
+
+		expect(wrapper.emitted('retry')).toEqual([['b']]);
+
+		await wrapper.setProps({ retrying: true });
+
+		expect(wrapper.get('[data-test-id="wizard-result-retry"]').attributes('disabled')).toBeDefined();
+	});
+
+	it('offers no retry when every device was added', async () => {
+		const wrapper = mountStep([result()]);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-result-retry"]').exists()).toBe(false);
 	});
 });

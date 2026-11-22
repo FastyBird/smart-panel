@@ -9,27 +9,43 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import { useDeviceWizardComplete, useDeviceWizardFlow } from './device-wizard-flow';
 import DeviceWizardShell from './device-wizard-shell.vue';
+import type { IWizardAction } from './device-wizard.types';
 
-const viewport = vi.hoisted(() => ({ isMDDevice: undefined as unknown as { value: boolean } }));
+const sizeClass = vi.hoisted(() => ({ value: 'dt' }));
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('vue-meta', () => ({ useMeta: () => ({ meta: {} }) }));
-vi.mock('../../../../common', () => ({
+vi.mock('../../../../common/composables/useSizeClass', async () => {
+	const { computed, ref } = await import('vue');
+
+	return {
+		useSizeClass: () => ({
+			sizeClass: ref(sizeClass.value),
+			isPhone: computed(() => sizeClass.value === 'phone'),
+			isTabletPortrait: computed(() => sizeClass.value === 'tp'),
+			isTabletLandscape: computed(() => sizeClass.value === 'tl'),
+			isDesktop: computed(() => sizeClass.value === 'dt' || sizeClass.value === 'wd'),
+			isTouch: computed(() => false),
+		}),
+	};
+});
+vi.mock('../../../../common', async () => ({
 	AppBreadcrumbs: defineComponent({ template: '<div />' }),
 	ViewHeader: defineComponent({
 		props: { title: { type: String, default: '' } },
 		template: '<header><h1>{{ title }}</h1><slot name="actions" /></header>',
 	}),
-	useBreakpoints: () => {
-		viewport.isMDDevice = ref(true);
-		return { isMDDevice: viewport.isMDDevice };
-	},
+	WizardShell: (await import('../../../../common/components/wizard-shell.vue')).default,
 	useLogger: () => ({ error: vi.fn() }),
+	useSizeClass: (await import('../../../../common/composables/useSizeClass')).useSizeClass,
 }));
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+	vi.restoreAllMocks();
+	sizeClass.value = 'dt';
+});
 
-const setup = async () => {
+const setup = async (extraActions: IWizardAction[] = []) => {
 	const busy = ref(false),
 		dirty = ref(false);
 	let complete = () => {};
@@ -44,6 +60,7 @@ const setup = async () => {
 					busy: busy.value,
 					dirty: dirty.value,
 					actions: [
+						...extraActions,
 						{ id: 'cancel', label: 'Cancel', variant: 'link', handler: vi.fn() },
 						{ id: 'back', label: 'Back', variant: 'default', handler: vi.fn() },
 						{ id: 'next', label: 'Next', variant: 'primary', handler: action },
@@ -69,27 +86,43 @@ const setup = async () => {
 };
 
 describe('shared device wizard shell', () => {
-	it('keeps navigation in one footer on desktop and mobile', async () => {
+	it('puts the flow into the shared wizard shell: stepper, step card and one footer', async () => {
 		const { wrapper, action } = await setup();
-		expect(wrapper.text()).toContain('Configure');
-		expect(wrapper.text()).toContain('Plugin content');
-		const footer = wrapper.get('[data-test-id="wizard-footer"]');
-		expect(footer.find('[data-test-id="wizard-action-cancel"]').exists()).toBe(true);
-		expect(
-			footer
-				.get('[data-test-id="wizard-navigation-actions"]')
-				.findAll('button')
-				.map((button) => button.text())
-		).toEqual(['Back', 'Next']);
-		expect(wrapper.find('header [data-test-id="wizard-action-next"]').exists()).toBe(false);
-		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		expect(wrapper.findAll('[data-test-id="wizard-shell-step"]').map((step) => step.text().replace(/^\d+\s*/, ''))).toEqual(['Configure', 'Review']);
+		expect(wrapper.get('[data-test-id="wizard-shell-step-card"]').text()).toContain('Plugin content');
+		const footer = wrapper.get('[data-test-id="wizard-shell-footer"]');
+		expect(footer.findAll('button').map((button) => button.text())).toEqual([
+			'application.wizardShell.cancel',
+			'application.wizardShell.back',
+			'Next',
+		]);
+		expect(wrapper.find('header [data-test-id="wizard-shell-next"]').exists()).toBe(false);
+		await wrapper.get('[data-test-id="wizard-shell-next"]').trigger('click');
 		expect(action).toHaveBeenCalledOnce();
-		viewport.isMDDevice.value = false;
-		await flushPromises();
-		expect(wrapper.findAll('[data-test-id="wizard-actions"]')).toHaveLength(1);
-		expect(wrapper.get('[data-test-id="wizard-footer"]').find('[data-test-id="wizard-action-next"]').exists()).toBe(true);
-		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
-		expect(action).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
+	});
+
+	it('keeps further flow actions beside the shell buttons', async () => {
+		const extra = vi.fn();
+		const { wrapper } = await setup([{ id: 'scan', label: 'Scan again', variant: 'default', handler: extra }]);
+		const footer = wrapper.get('[data-test-id="wizard-shell-footer"]');
+		expect(footer.findAll('button').map((button) => button.text())).toEqual([
+			'application.wizardShell.cancel',
+			'Scan again',
+			'application.wizardShell.back',
+			'Next',
+		]);
+		await wrapper.get('[data-test-id="wizard-action-scan"]').trigger('click');
+		expect(extra).toHaveBeenCalledOnce();
+		wrapper.unmount();
+	});
+
+	it('shows a progress bar in place of the stepper on phone', async () => {
+		sizeClass.value = 'phone';
+		const { wrapper } = await setup();
+		expect(wrapper.find('[data-test-id="wizard-shell-progress"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-shell-stepper"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="wizard-shell-next"]').exists()).toBe(true);
 		wrapper.unmount();
 	});
 
@@ -97,7 +130,7 @@ describe('shared device wizard shell', () => {
 		const { wrapper, router, busy, action } = await setup();
 		busy.value = true;
 		await flushPromises();
-		expect(wrapper.get('[data-test-id="wizard-action-next"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.get('[data-test-id="wizard-shell-next"]').attributes('disabled')).toBeDefined();
 		await router.push('/devices');
 		expect(router.currentRoute.value.path).toBe('/wizard');
 		expect(action).not.toHaveBeenCalled();
@@ -138,8 +171,8 @@ describe('shared device wizard shell', () => {
 					resolve = done;
 				})
 		);
-		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
-		await wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.get('[data-test-id="wizard-shell-next"]').trigger('click');
+		await wrapper.get('[data-test-id="wizard-shell-next"]').trigger('click');
 		expect(action).toHaveBeenCalledOnce();
 		resolve();
 		await flushPromises();

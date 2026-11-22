@@ -33,6 +33,21 @@ vi.mock('vue-router', () => ({
 	onBeforeRouteUpdate: vi.fn(),
 }));
 
+vi.mock('../../../common/composables/useSizeClass', async () => {
+	const { computed, ref } = await import('vue');
+
+	return {
+		useSizeClass: () => ({
+			sizeClass: ref('dt'),
+			isPhone: computed(() => false),
+			isTabletPortrait: computed(() => false),
+			isTabletLandscape: computed(() => false),
+			isDesktop: computed(() => true),
+			isTouch: computed(() => false),
+		}),
+	};
+});
+
 vi.mock('../../../common', async () => {
 	const { defineComponent: defineVueComponent, h, ref } = await import('vue');
 	const Stub = defineVueComponent({
@@ -43,6 +58,8 @@ vi.mock('../../../common', async () => {
 	});
 
 	return {
+		WizardShell: (await import('../../../common/components/wizard-shell.vue')).default,
+		useSizeClass: (await import('../../../common/composables/useSizeClass')).useSizeClass,
 		AppBreadcrumbs: Stub,
 		AppBarScope: Stub,
 		ViewHeader: Stub,
@@ -180,7 +197,7 @@ describe('ViewSimulatorDeviceWizard', () => {
 		vm.form.count = 3;
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 
 		expect(wrapper.find('[data-test-id="wizard-review"]').exists()).toBe(true);
 		expect(vm.previewNames).toEqual(['Office light 1', 'Office light 2', 'Office light 3']);
@@ -195,7 +212,7 @@ describe('ViewSimulatorDeviceWizard', () => {
 		vm.form.count = 1.5;
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushPromises();
 		expect(wrapper.find('[data-test-id="wizard-configure"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="wizard-review"]').exists()).toBe(false);
@@ -214,7 +231,7 @@ describe('ViewSimulatorDeviceWizard', () => {
 		vm.form.simulateInterval = null;
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushPromises();
 		expect(wrapper.find('[data-test-id="wizard-configure"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="wizard-review"]').exists()).toBe(false);
@@ -244,8 +261,8 @@ describe('ViewSimulatorDeviceWizard', () => {
 		vm.form.count = 2;
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
-		await wrapper.find('[data-test-id="wizard-action-generate"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushPromises();
 
 		expect(mocks.generate).toHaveBeenCalledWith(expect.objectContaining({ category: 'lighting', count: 2, namePrefix: 'Office light' }));
@@ -258,7 +275,7 @@ describe('ViewSimulatorDeviceWizard', () => {
 		vm.activeStep = 2;
 		await flushPromises();
 
-		await wrapper.find('[data-test-id="wizard-action-generate-more"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 
 		expect(mocks.reset).toHaveBeenCalledTimes(1);
 		expect(wrapper.find('[data-test-id="wizard-configure"]').exists()).toBe(true);

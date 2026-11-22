@@ -248,4 +248,49 @@ describe('WizardShell.vue', () => {
 
 		expect(wrapper.emitted('step')).toBeUndefined();
 	});
+	it('puts further step actions left of Skip, Back and Next', () => {
+		wrapper = mount(WizardShell, {
+			props: { steps: STEPS, current: 'select', skippable: true },
+			slots: { actions: '<button data-test-id="extra">Scan again</button>' },
+			global: { plugins: [i18n] },
+		});
+
+		const ids = find(wrapper, 'footer')
+			.findAll('button')
+			.map((button) => button.attributes('data-test-id'));
+
+		expect(ids).toEqual(['wizard-shell-cancel', 'extra', 'wizard-shell-skip', 'wizard-shell-back', 'wizard-shell-next']);
+	});
+
+	it('hides Cancel and Next on request and shows Back on the first step when asked', () => {
+		wrapper = render({ current: 'discover', cancellable: false, nextVisible: false, backable: true });
+
+		expect(find(wrapper, 'cancel').exists()).toBe(false);
+		expect(find(wrapper, 'next').exists()).toBe(false);
+		expect(find(wrapper, 'back').exists()).toBe(true);
+
+		wrapper.unmount();
+		wrapper = render({ current: 'confirm', backable: false });
+
+		expect(find(wrapper, 'back').exists()).toBe(false);
+	});
+
+	it.each<SizeClass>(['dt', 'phone'])('leaves the stepper and the progress out until there are steps (%s)', (size) => {
+		sizeClass.value = size;
+		wrapper = render({ steps: [], current: '' });
+
+		expect(find(wrapper, 'stepper').exists()).toBe(false);
+		expect(find(wrapper, 'progress').exists()).toBe(false);
+		expect(find(wrapper, 'step-card').exists()).toBe(true);
+	});
+
+	it('keeps completed steps still when the flow cannot go back to them', async () => {
+		wrapper = render({ current: 'confirm', navigable: false });
+
+		await steps(wrapper)[0].trigger('click');
+
+		expect(wrapper.emitted('step')).toBeUndefined();
+		expect(steps(wrapper)[0].attributes('aria-disabled')).toBe('true');
+		expect(steps(wrapper)[0].classes()).toContain('cursor-default');
+	});
 });

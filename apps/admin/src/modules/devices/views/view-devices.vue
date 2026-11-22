@@ -114,6 +114,13 @@
 		</edit-drawer-layout>
 	</div>
 
+	<!-- Wizard and Add device choose a wizard here, over the list -->
+	<device-wizard-picker
+		:visible="wizardPicker"
+		@update:visible="onWizardPickerVisible"
+		@choose="onWizardChoose"
+	/>
+
 	<router-view
 		v-if="isWizardRoute || (!isDevicesListRoute && !inDrawer)"
 		:key="props.id"
@@ -134,7 +141,7 @@ import { ElButton, ElIcon, ElMessageBox } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer, useBreakpoints, useFlashMessage } from '../../../common';
-import { ListDevices } from '../components/components';
+import { DeviceWizardPicker, ListDevices } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation, useDiscardGuard } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
@@ -197,8 +204,39 @@ const { inDrawer } = provideEditDrawer((): boolean => !isDevicesListRoute.value)
 const { confirmDiscard } = useDiscardGuard();
 
 const isWizardRoute = computed<boolean>((): boolean => {
-	return route.meta.devicesWizard === true || route.name === RouteNames.DEVICES_WIZARD || route.name === RouteNames.DEVICES_WIZARD_SELECT;
+	return route.meta.devicesWizard === true || route.name === RouteNames.DEVICES_WIZARD;
 });
+
+// The wizard picker opens over the list, also from its own address (`/devices/wizard` leads here with `?wizard`)
+const wizardPicker = ref<boolean>(false);
+
+watch(
+	(): unknown => route.query.wizard,
+	(wizard): void => {
+		if (wizard !== undefined && isDevicesListRoute.value) {
+			wizardPicker.value = true;
+		}
+	},
+	{ immediate: true }
+);
+
+const onWizardPickerVisible = (visible: boolean): void => {
+	wizardPicker.value = visible;
+
+	if (!visible && route.query.wizard !== undefined) {
+		void router.replace({ name: RouteNames.DEVICES });
+	}
+};
+
+const onWizardChoose = (to: RouteLocationRaw): void => {
+	wizardPicker.value = false;
+
+	if (route.query.wizard !== undefined) {
+		void router.replace(to);
+	} else {
+		void router.push(to);
+	}
+};
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -346,7 +384,7 @@ const onWizard = async (): Promise<void> => {
 		return;
 	}
 
-	void router.push({ name: RouteNames.DEVICES_WIZARD_SELECT });
+	wizardPicker.value = true;
 };
 
 const refreshList = (): void => {

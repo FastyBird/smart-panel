@@ -59,8 +59,10 @@ const props = withDefaults(
 		finalActions?: IWizardAction[];
 		beforeNext?: () => boolean | void | Promise<boolean | void>;
 		returnRoute?: import('vue-router').RouteLocationRaw;
+		/** `table` widens the host's step card for steps built around a table */
+		stepWidth?: 'form' | 'table';
 	}>(),
-	{ enabled: true, disabled: false, dirty: false, finalActions: () => [], beforeNext: undefined, returnRoute: undefined }
+	{ enabled: true, disabled: false, dirty: false, finalActions: () => [], beforeNext: undefined, returnRoute: undefined, stepWidth: 'form' }
 );
 const emit = defineEmits<{ 'update:modelValue': [step: number] }>();
 const { t } = useI18n();
@@ -117,6 +119,10 @@ if (props.enabled)
 			busy: props.disabled || advancing.value,
 			dirty: props.dirty,
 			actions: actions.value,
+			stepWidth: props.stepWidth,
+			goTo: (step: number): void => {
+				if (step < props.modelValue && !props.disabled && !advancing.value) emit('update:modelValue', step);
+			},
 		}))
 	);
 </script>

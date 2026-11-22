@@ -30,7 +30,8 @@ const mocks = vi.hoisted(() => ({
 		name: 'devices',
 		meta: {},
 		matched: [],
-	},
+		query: {},
+	} as { path: string; name: string; meta: Record<string, unknown>; matched: unknown[]; query: Record<string, string> },
 }));
 
 vi.mock('vue-i18n', () => ({
@@ -115,6 +116,12 @@ vi.mock('../components/components', async () => {
 		}),
 		ListDevicesAdjust: defineVueComponent({
 			template: '<div />',
+		}),
+		DeviceWizardPicker: defineVueComponent({
+			name: 'DeviceWizardPicker',
+			props: { visible: { type: Boolean, default: false } },
+			emits: ['update:visible', 'choose'],
+			template: '<div v-if="visible" data-test-id="wizard-picker" />',
 		}),
 	};
 });
@@ -217,6 +224,7 @@ describe('ViewDevices', () => {
 			name: 'devices',
 			meta: {},
 			matched: [],
+			query: {},
 		};
 	});
 
@@ -241,7 +249,7 @@ describe('ViewDevices', () => {
 	});
 
 	it('leaves catalogue loading to the wizard on direct entry', async () => {
-		mocks.route = { path: '/devices/wizard/devices-virtual', name: 'devices-wizard', meta: {}, matched: [] };
+		mocks.route = { path: '/devices/wizard/devices-virtual', name: 'devices-wizard', meta: {}, matched: [], query: {} };
 		mountView();
 		await flushPromises();
 		expect(mocks.fetchDevices).not.toHaveBeenCalled();
@@ -257,11 +265,11 @@ describe('ViewDevices', () => {
 					path: '/devices',
 					name: 'devices',
 					component: ViewDevices,
-					children: [{ path: 'wizard', name: 'devices-wizard-select', component: defineComponent({ template: '<div />' }) }],
+					children: [{ path: 'wizard/:type', name: 'devices-wizard', component: defineComponent({ template: '<div />' }) }],
 				},
 			],
 		});
-		await router.push('/devices/wizard');
+		await router.push('/devices/wizard/devices-virtual');
 		await router.isReady();
 		const view = mountView({}, router);
 		await flushPromises();
@@ -270,7 +278,7 @@ describe('ViewDevices', () => {
 		await flushPromises();
 		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
 		expect(mocks.fetchValidation).toHaveBeenCalledTimes(1);
-		await router.push('/devices/wizard');
+		await router.push('/devices/wizard/devices-virtual');
 		await flushPromises();
 		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
 		await router.push('/devices');
@@ -369,19 +377,38 @@ describe('ViewDevices', () => {
 		// The restoration is not a fresh request: the store already holds what the previous filter read.
 		expect(mocks.fetchDevices).toHaveBeenCalledTimes(1);
 	});
-	it('opens the shared wizard selection for every registered wizard plugin', async () => {
+	it('opens the wizard picker over the list and starts the wizard chosen in it', async () => {
 		mocks.wizardOptions = [{ value: 'devices-virtual', label: 'Virtual', description: '', disabled: false }];
 		const wrapper = mountView();
+		expect(wrapper.find('[data-test-id="wizard-picker"]').exists()).toBe(false);
 		const button = wrapper.findAll('button').find((item) => item.text().includes('devicesModule.buttons.wizard.title'));
 		await button!.trigger('click');
-		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices-wizard-select' });
-		expect(wrapper.find('[data-test-id="virtual-device-wizard"]').exists()).toBe(false);
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-picker"]').exists()).toBe(true);
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+		const to = { name: 'devices-wizard', params: { type: 'devices-virtual' } };
+		wrapper.findComponent({ name: 'DeviceWizardPicker' }).vm.$emit('choose', to);
+		await flushPromises();
+		expect(mocks.routerPush).toHaveBeenCalledWith(to);
+		expect(wrapper.find('[data-test-id="wizard-picker"]').exists()).toBe(false);
+	});
+
+	it('opens the wizard picker from its own address and returns to the plain list when it is dismissed', async () => {
+		mocks.wizardOptions = [{ value: 'devices-virtual', label: 'Virtual', description: '', disabled: false }];
+		mocks.route = { path: '/devices', name: 'devices', meta: {}, matched: [], query: { wizard: 'select' } };
+		const wrapper = mountView();
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-picker"]').exists()).toBe(true);
+		wrapper.findComponent({ name: 'DeviceWizardPicker' }).vm.$emit('update:visible', false);
+		await flushPromises();
+		expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'devices' });
+		expect(wrapper.find('[data-test-id="wizard-picker"]').exists()).toBe(false);
 	});
 
 	describe('next to an open form', () => {
 		const openForm = async (changed: boolean) => {
 			mocks.isLGDevice = true;
-			mocks.route = { path: '/devices/add', name: 'devices-add', meta: {}, matched: [{ name: 'devices-add' }] } as never;
+			mocks.route = { path: '/devices/add', name: 'devices-add', meta: {}, matched: [{ name: 'devices-add' }], query: {} } as never;
 
 			const wrapper = mountView();
 
@@ -400,7 +427,7 @@ describe('ViewDevices', () => {
 
 		afterEach(() => {
 			mocks.isLGDevice = false;
-			mocks.route = { path: '/devices', name: 'devices', meta: {}, matched: [] } as never;
+			mocks.route = { path: '/devices', name: 'devices', meta: {}, matched: [], query: {} } as never;
 		});
 
 		it('asks before Edit replaces a changed form, and stays when the answer is no', async () => {

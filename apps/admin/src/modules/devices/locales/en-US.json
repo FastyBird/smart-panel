@@ -1011,6 +1011,7 @@
 	"wizard": {
 		"steps": {
 			"discover": "Discovery",
+			"select": "Select",
 			"confirm": "Confirm",
 			"results": "Results"
 		},
@@ -1020,7 +1021,10 @@
 			"next": "Next",
 			"adopt": "Add devices",
 			"addMore": "Add more",
-			"done": "Done"
+			"done": "Done",
+			"retry": "Retry",
+			"retryDevice": "Retry {name}",
+			"retryFailed": "Retry failed"
 		},
 		"statuses": {
 			"checking": "Checking",
@@ -1054,13 +1058,12 @@
 			"empty": "No devices found yet",
 			"noSelection": "No devices were selected",
 			"resultsSuccess": "All selected devices were added successfully",
-			"resultsFailed": "Some devices could not be added"
+			"resultsFailed": "Some devices could not be added",
+			"confirmHint": "Check the name and category of each device before it is added."
 		},
-		"variant": "Choose a variant",
 		"loadFailed": "Could not load plugins.",
 		"retry": "Try again",
 		"discardChanges": "Discard unsaved changes?",
-		"noPlugins": "No wizard is available. Enable a supported plugin in settings.",
 		"review": {
 			"setting": "Setting",
 			"value": "Value",
@@ -1077,15 +1080,7 @@
 			"numberRange": "Enter a whole number from {minimum} to {maximum}."
 		},
 		"selection": {
-			"title": "What do you want to add?",
-			"description": "Pick an integration to connect real devices, or build a virtual device from ones you already have.",
-			"integrations": "Connect an integration",
-			"integrationsDescription": "Discover devices or configure their connection, then choose what to add.",
-			"search": "Search",
-			"searchPlaceholder": "Integration or device type",
-			"noResults": "No matching integrations or device types.",
-			"clearSearch": "Clear search",
-			"manualHint": "Prefer to enter the configuration yourself?"
+			"title": "What do you want to add?"
 		}
 	},
 	"diagnostics": {

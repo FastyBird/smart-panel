@@ -1011,6 +1011,7 @@
 	"wizard": {
 		"steps": {
 			"discover": "Vyhledávání",
+			"select": "Výběr",
 			"confirm": "Potvrzení",
 			"results": "Výsledky"
 		},
@@ -1020,7 +1021,10 @@
 			"next": "Další",
 			"adopt": "Přidat zařízení",
 			"addMore": "Přidat další",
-			"done": "Hotovo"
+			"done": "Hotovo",
+			"retry": "Zkusit znovu",
+			"retryDevice": "Zkusit znovu: {name}",
+			"retryFailed": "Zopakovat neúspěšné"
 		},
 		"statuses": {
 			"checking": "Ověřování",
@@ -1054,13 +1058,12 @@
 			"empty": "Zatím nebyla nalezena žádná zařízení",
 			"noSelection": "Nebyla vybrána žádná zařízení",
 			"resultsSuccess": "Všechna vybraná zařízení byla úspěšně přidána",
-			"resultsFailed": "Některá zařízení se nepodařilo přidat"
+			"resultsFailed": "Některá zařízení se nepodařilo přidat",
+			"confirmHint": "Před přidáním zkontrolujte název a kategorii každého zařízení."
 		},
-		"variant": "Vyberte variantu",
 		"loadFailed": "Načtení pluginů se nezdařilo.",
 		"retry": "Zkusit znovu",
 		"discardChanges": "Zahodit rozpracované změny?",
-		"noPlugins": "Není dostupný žádný průvodce. Zapněte podporovaný plugin v nastavení.",
 		"review": {
 			"setting": "Nastavení",
 			"value": "Hodnota",
@@ -1077,15 +1080,7 @@
 			"numberRange": "Zadejte celé číslo od {minimum} do {maximum}."
 		},
 		"selection": {
-			"title": "Co chcete přidat?",
-			"description": "Vyberte integraci pro připojení skutečných zařízení nebo sestavte virtuální zařízení z těch, která již máte.",
-			"integrations": "Připojit integraci",
-			"integrationsDescription": "Vyhledejte zařízení nebo nastavte jejich připojení a vyberte, co chcete přidat.",
-			"search": "Hledat",
-			"searchPlaceholder": "Integrace nebo typ zařízení",
-			"noResults": "Žádná integrace ani typ zařízení neodpovídá hledání.",
-			"clearSearch": "Vymazat hledání",
-			"manualHint": "Chcete konfiguraci zadat ručně?"
+			"title": "Co chcete přidat?"
 		}
 	},
 	"diagnostics": {

@@ -40,11 +40,11 @@
 					/>
 				</span>
 				<span class="flex flex-col gap-0.5 min-w-0">
-					<span class="flex items-center gap-2">
+					<span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
 						<span class="text-card-title">{{ option.name }}</span>
 						<span
 							v-if="option.badge"
-							class="px-1.5 rounded-[4px] bg-fill text-[12px] leading-[16px] text-secondary"
+							class="px-1.5 rounded-[4px] bg-fill text-[12px] leading-[16px] text-secondary whitespace-nowrap"
 							data-test-id="type-picker-badge"
 						>
 							{{ option.badge }}

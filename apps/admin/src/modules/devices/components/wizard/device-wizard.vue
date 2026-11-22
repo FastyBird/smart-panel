@@ -8,9 +8,9 @@
 		:identifier-label="adapter.identifierLabel"
 		:ready="adapter.ready.value"
 	/>
-	<device-wizard-confirm-step
-		v-else-if="activeStep === 'confirm'"
-		data-test-id="wizard-step-confirm"
+	<device-wizard-select-step
+		v-else-if="activeStep === 'select'"
+		data-test-id="wizard-step-select"
 		:rows="confirmationRows"
 		:summary-rows="reviewedRows ?? adapter.rows.value"
 		:columns="adapter.columns"
@@ -18,18 +18,28 @@
 		:name-by-key="nameByKey"
 		:category-by-key="categoryByKey"
 		:identifier-label="adapter.identifierLabel"
-		:confirmation-mode="adapter.confirmationMode ?? 'editable'"
 		@toggle-row="onToggleRow"
 		@toggle-rows="onToggleRows"
+	/>
+	<device-wizard-confirm-step
+		v-else-if="activeStep === 'confirm'"
+		data-test-id="wizard-step-confirm"
+		:rows="selectedConfirmationRows"
+		:name-by-key="nameByKey"
+		:category-by-key="categoryByKey"
+		:identifier-label="adapter.identifierLabel"
+		:confirmation-mode="adapter.confirmationMode ?? 'editable'"
 		@update-name="onUpdateName"
 		@update-category="onUpdateCategory"
 	/>
 	<device-wizard-results-step
 		v-else
 		data-test-id="wizard-step-results"
-		:results="adapter.results.value"
+		:results="shownResults"
 		:columns="adapter.columns"
 		:identifier-label="adapter.identifierLabel"
+		:retrying="adopting"
+		@retry="(key: string) => onRetry([key])"
 	/>
 </template>
 
@@ -40,15 +50,16 @@ import { useRouter } from 'vue-router';
 
 import { useBreakpoints } from '../../../../common';
 import type { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
-import { useDeviceWizardState } from '../../composables/useDeviceWizardState';
+import { STEP_ORDER, useDeviceWizardState } from '../../composables/useDeviceWizardState';
 import { RouteNames } from '../../devices.constants';
 
 import DeviceWizardConfirmStep from './device-wizard-confirm-step.vue';
 import DeviceWizardDiscoverStep from './device-wizard-discover-step.vue';
 import { useDeviceWizardFlow } from './device-wizard-flow';
 import DeviceWizardResultsStep from './device-wizard-results-step.vue';
+import DeviceWizardSelectStep from './device-wizard-select-step.vue';
 import { buildWizardActions } from './device-wizard.actions';
-import type { IDeviceWizardProps, IWizardAction, IWizardActionControl, IWizardRow } from './device-wizard.types';
+import type { IDeviceWizardProps, IWizardAction, IWizardActionControl, IWizardResult, IWizardRow } from './device-wizard.types';
 import { useWizardValidation } from './use-wizard-validation';
 
 defineOptions({
@@ -72,15 +83,16 @@ const adopting = ref(false);
 const draftEdited = ref(false);
 let deferredSessionReset = false;
 const confirmationRows = computed(() => reviewedRows.value?.filter((row) => row.adoptable) ?? adoptableRows.value);
+const selectedConfirmationRows = computed(() => confirmationRows.value.filter((row) => selected[row.key]));
+// After a retry the results combine both rounds: the retried devices with their new outcome, the rest as they were
+const mergedResults = ref<IWizardResult[] | null>(null);
+const shownResults = computed<IWizardResult[]>(() => mergedResults.value ?? adapter.results.value);
 const { activeStep, activeStepIndex, selected, nameByKey, categoryByKey, adoptableRows, reconcile, reset, buildSelection } = useDeviceWizardState(
 	adapter.rows
 );
 const validation = useWizardValidation(activeStep, () => {
-	const selectedRows = confirmationRows.value.filter((row) => selected[row.key]);
-	const errors: Record<string, string | undefined> = {
-		selection: selectedRows.length ? undefined : t('devicesModule.wizard.validation.minimumItems', { count: 1 }),
-	};
-	for (const row of selectedRows) {
+	const errors: Record<string, string | undefined> = {};
+	for (const row of selectedConfirmationRows.value) {
 		errors[`name:${row.key}`] = nameByKey[row.key]?.trim() ? undefined : t('devicesModule.fields.devices.name.validation.required');
 		errors[`category:${row.key}`] = categoryByKey[row.key] ? undefined : t('devicesModule.fields.devices.category.validation.required');
 	}
@@ -160,7 +172,16 @@ const onNext = async (): Promise<void> => {
 	}
 
 	if (!adoptableRows.value.length) return;
+	activeStep.value = 'select';
+};
+
+const onReview = (): void => {
+	if (!selectedConfirmationRows.value.length) return;
 	activeStep.value = 'confirm';
+};
+
+const onBackToSelect = (): void => {
+	activeStep.value = 'select';
 };
 
 const onBack = (): void => {
@@ -175,13 +196,23 @@ const onBack = (): void => {
 	reconcile(adapter.rows.value);
 };
 
+// Discovery keeps updating the rows until adoption starts: a device that becomes registered meanwhile loses its tick.
+// When none is left to add, Confirm has nothing to confirm, so the flow returns to Select
+watch(
+	() => activeStep.value === 'confirm' && !adopting.value && !reviewedRows.value && selectedConfirmationRows.value.length === 0,
+	(empty: boolean): void => {
+		if (empty) activeStep.value = 'select';
+	}
+);
+
 const onAdopt = async (): Promise<void> => {
-	if (adapter.busy.value || adopting.value || !validation.validate()) return;
+	if (adapter.busy.value || adopting.value || !selectedConfirmationRows.value.length || !validation.validate()) return;
 	reviewedRows.value ??= JSON.parse(JSON.stringify(adapter.rows.value)) as IWizardRow[];
 	adopting.value = true;
 	try {
 		await adapter.adopt(buildSelection(reviewedRows.value));
 
+		mergedResults.value = null;
 		draftEdited.value = false;
 		activeStep.value = 'results';
 	} catch {
@@ -203,7 +234,30 @@ const onAdopt = async (): Promise<void> => {
 // `activeStep` must come AFTER `restart()`. The new session has to be fully in place before
 // the discover step renders, otherwise it mounts against a null session and flashes a
 // misleading offline banner.
+// Partial success: the failed devices go through adoption again with the names and categories confirmed for them
+const onRetry = async (keys: string[]): Promise<void> => {
+	if (adapter.busy.value || adopting.value || !reviewedRows.value) return;
+	const retry = buildSelection(reviewedRows.value).filter((item) => keys.includes(item.key));
+	if (!retry.length) return;
+	// Held before the request: an adapter may clear its own results as soon as a new adoption starts
+	const previous = shownResults.value.slice();
+	mergedResults.value = previous;
+	adopting.value = true;
+	try {
+		const outcome = await adapter.adopt(retry);
+		mergedResults.value = previous.map((result) => outcome.find((item) => item.key === result.key) ?? result);
+	} catch {
+		// The earlier results stay; the adapter reports the error
+		mergedResults.value = previous;
+	} finally {
+		adopting.value = false;
+	}
+};
+
+const failedKeys = computed<string[]>(() => shownResults.value.filter((result) => result.status === 'failed').map((result) => result.key));
+
 const onAddMore = async (): Promise<void> => {
+	mergedResults.value = null;
 	reviewedRows.value = null;
 	deferredSessionReset = false;
 	validation.reset();
@@ -236,11 +290,16 @@ const actions = computed<IWizardAction[]>(() =>
 		capabilities: adapter.capabilities,
 		canContinue: !adapter.busy.value && !adopting.value,
 		hasAdoptable: adoptableRows.value.length > 0,
+		hasSelection: selectedConfirmationRows.value.length > 0,
+		failedCount: failedKeys.value.length,
 		busy: adapter.busy.value || adopting.value,
 		actionControls: actionControls.value,
 		onCancel,
 		onBack,
 		onNext,
+		onReview,
+		onBackToSelect,
+		onRetryFailed: () => onRetry(failedKeys.value),
 		onAdopt,
 		onAddMore,
 		onDone,
@@ -267,11 +326,22 @@ const onUpdateCategory = (key: string, value: DevicesModuleDeviceCategory | null
 };
 useDeviceWizardFlow(
 	computed(() => ({
-		steps: ['discover', 'confirm', 'results'].map((step) => t(`devicesModule.wizard.steps.${step}`)),
+		steps: STEP_ORDER.map((step) => t(`devicesModule.wizard.steps.${step}`)),
 		activeStep: activeStepIndex.value,
 		busy: adapter.busy.value || adopting.value,
 		dirty: draftEdited.value,
 		actions: actions.value,
+		selectedCount: activeStep.value === 'select' || activeStep.value === 'confirm' ? selectedConfirmationRows.value.length : undefined,
+		// Back to Discover or Select from the stepper, as Back does; Results is final
+		goTo:
+			activeStep.value === 'select' || activeStep.value === 'confirm'
+				? (step: number): void => {
+						if (adapter.busy.value || adopting.value) return;
+						if (step === 0) onBack();
+						else if (step === 1 && activeStep.value === 'confirm') onBackToSelect();
+					}
+				: undefined,
+		stepWidth: 'table',
 	}))
 );
 </script>

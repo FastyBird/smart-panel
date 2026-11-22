@@ -178,10 +178,27 @@ vi.mock('../../../modules/devices', () => ({
 	},
 }));
 
+vi.mock('../../../common/composables/useSizeClass', async () => {
+	const { computed, ref } = await import('vue');
+
+	return {
+		useSizeClass: () => ({
+			sizeClass: ref('dt'),
+			isPhone: computed(() => false),
+			isTabletPortrait: computed(() => false),
+			isTabletLandscape: computed(() => false),
+			isDesktop: computed(() => true),
+			isTouch: computed(() => false),
+		}),
+	};
+});
+
 vi.mock('../../../common', async () => {
 	const { defineComponent } = await import('vue');
 
 	return {
+		WizardShell: (await import('../../../common/components/wizard-shell.vue')).default,
+		useSizeClass: (await import('../../../common/composables/useSizeClass')).useSizeClass,
 		AppBreadcrumbs: defineComponent({
 			name: 'AppBreadcrumbs',
 			props: {
@@ -252,7 +269,7 @@ const mountWizard = () => {
 		await wrapper.findComponent({ name: 'ElRadioGroup' }).setValue(category);
 		await flushAsync();
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 	};
 
@@ -270,7 +287,7 @@ const mountWizard = () => {
 		await mappingStep.vm.selectSource(slot.key, sourcePropertyId);
 		await flushAsync();
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 	};
 
@@ -282,16 +299,16 @@ const mountWizard = () => {
 		await wrapper.findComponent(VirtualWizardDetailsStep).find('input').setValue(name);
 		await flushAsync();
 
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
-		await wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 	};
 
 	// Drives the review step's own "Create device" button — the shell has no create action of its
 	// own, so this is the only thing `confirm()` can mean.
 	const confirm = async (): Promise<void> => {
-		await wrapper.find('[data-test-id="wizard-action-create"]').trigger('click');
+		await wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 	};
 
@@ -353,10 +370,10 @@ describe('ViewVirtualDeviceWizard', () => {
 		});
 
 		await nextTick();
-		const steps = wrapper.findAllComponents({ name: 'ElStep' });
+		const steps = wrapper.findAll('[data-test-id="wizard-shell-step"]');
 
 		expect(steps).toHaveLength(3);
-		expect(steps.map((step) => step.props('title'))).toEqual([
+		expect(steps.map((step) => step.text().replace(/^\d+\s*/, ''))).toEqual([
 			'devicesVirtualPlugin.wizard.steps.device',
 			'devicesVirtualPlugin.wizard.steps.mapping',
 			'devicesVirtualPlugin.wizard.steps.review',
@@ -370,7 +387,7 @@ describe('ViewVirtualDeviceWizard', () => {
 		});
 
 		await nextTick();
-		expect(wrapper.findComponent({ name: 'ElSteps' }).props('active')).toBe(0);
+		expect(wrapper.findAll('[data-test-id="wizard-shell-step"]')[0].attributes('aria-current')).toBe('step');
 	});
 
 	it('carries a category chosen in the step back into the wizard state and down again', async () => {
@@ -400,7 +417,7 @@ describe('ViewVirtualDeviceWizard', () => {
 		});
 
 		await nextTick();
-		await wrapper.get('[data-test-id="wizard-action-cancel"]').trigger('click');
+		await wrapper.get('[data-test-id="wizard-shell-cancel"]').trigger('click');
 
 		expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'devices_module-devices' });
 	});
@@ -414,7 +431,7 @@ describe('ViewVirtualDeviceWizard', () => {
 		});
 
 		await nextTick();
-		await wrapper.get('[data-test-id="wizard-action-cancel"]').trigger('click');
+		await wrapper.get('[data-test-id="wizard-shell-cancel"]').trigger('click');
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_module-devices' });
 		expect(mocks.routerReplace).not.toHaveBeenCalled();
@@ -504,8 +521,8 @@ describe('ViewVirtualDeviceWizard', () => {
 		await wizard.wrapper.findComponent({ name: 'VirtualWizardReviewStep' }).vm.$emit('submitting', true);
 		await nextTick();
 
-		expect(wizard.wrapper.find('[data-test-id="wizard-action-back"]').attributes('disabled')).toBeDefined();
-		expect(wizard.wrapper.find('[data-test-id="wizard-action-cancel"]').attributes('disabled')).toBeDefined();
+		expect(wizard.wrapper.find('[data-test-id="wizard-shell-back"]').attributes('disabled')).toBeDefined();
+		expect(wizard.wrapper.find('[data-test-id="wizard-shell-cancel"]').attributes('disabled')).toBeDefined();
 	});
 
 	// Disabling the buttons only covers the ways out the wizard itself offers. The breadcrumb is a
@@ -539,7 +556,7 @@ describe('ViewVirtualDeviceWizard', () => {
 
 		expect(wizard.activeStep.value).toBe(1);
 
-		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-back"]').trigger('click');
 
 		expect(wizard.activeStep.value).toBe(0);
 		expect(wizard.wrapper.findComponent({ name: 'VirtualWizardCategoryStep' }).props('modelValue')).toBe(DevicesModuleDeviceCategory.lighting);
@@ -556,12 +573,12 @@ describe('ViewVirtualDeviceWizard', () => {
 		// Back to mapping, then back to category — the category itself is never touched here, unlike
 		// the "clears a mapping..." test below. The mapping step unmounts on the way back and has to be
 		// re-mounted from scratch on the way forward again.
-		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
-		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-back"]').trigger('click');
 
 		expect(wizard.activeStep.value).toBe(0);
 
-		await wizard.wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 
 		expect(wizard.activeStep.value).toBe(1);
@@ -571,7 +588,7 @@ describe('ViewVirtualDeviceWizard', () => {
 		// the negative space of that test, re-entering the same step without wiping it.
 		expect(wizard.canAdvance.value).toBe(true);
 
-		await wizard.wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 
 		expect(wizard.activeStep.value).toBe(2);
@@ -580,7 +597,7 @@ describe('ViewVirtualDeviceWizard', () => {
 	it('reports invalid mapping through a notification and field errors without an error alert', async () => {
 		const wizard = mountWizard();
 		await wizard.chooseCategory(DevicesModuleDeviceCategory.lighting);
-		await wizard.wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await wizard.wrapper.get('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 		expect(wizard.activeStep.value).toBe(1);
 		expect(flashMessage.error).toHaveBeenCalledWith('devicesModule.wizard.validation.invalidValue');
@@ -606,9 +623,9 @@ describe('ViewVirtualDeviceWizard', () => {
 		await wizard.wrapper.get('[data-add-channel="electrical_power"]').trigger('click');
 		await flushAsync();
 		expect(wizard.wrapper.findComponent(VirtualWizardMappingStep).vm.activeGroup?.specChannel).toBe('electrical_power');
-		await wizard.wrapper.get('[data-test-id="wizard-action-back"]').trigger('click');
+		await wizard.wrapper.get('[data-test-id="wizard-shell-back"]').trigger('click');
 		await flushAsync();
-		await wizard.wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await wizard.wrapper.get('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 		expect(wizard.wrapper.findComponent(VirtualWizardMappingStep).vm.includedGroups.map((group) => group.specChannel)).toContain('electrical_power');
 	});
@@ -628,7 +645,7 @@ describe('ViewVirtualDeviceWizard', () => {
 				})),
 			},
 		}));
-		await wizard.wrapper.get('[data-test-id="wizard-action-next"]').trigger('click');
+		await wizard.wrapper.get('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 		expect(wizard.activeStep.value).toBe(1);
 		expect(mapping.vm.errors['light.on']).toBe('Source contract changed');
@@ -642,8 +659,8 @@ describe('ViewVirtualDeviceWizard', () => {
 
 		expect(wizard.activeStep.value).toBe(2);
 
-		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
-		await wizard.wrapper.find('[data-test-id="wizard-action-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-back"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-back"]').trigger('click');
 
 		expect(wizard.activeStep.value).toBe(0);
 
@@ -654,7 +671,7 @@ describe('ViewVirtualDeviceWizard', () => {
 		await wizard.wrapper.findComponent({ name: 'ElRadioGroup' }).setValue(DevicesModuleDeviceCategory.switcher);
 		await flushAsync();
 
-		await wizard.wrapper.find('[data-test-id="wizard-action-next"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 		await flushAsync();
 
 		expect(wizard.activeStep.value).toBe(1);
@@ -669,11 +686,11 @@ describe('ViewVirtualDeviceWizard', () => {
 		await wizard.setName('Living Room Light');
 		await wizard.confirm();
 
-		expect(wizard.wrapper.find('[data-test-id="wizard-action-cancel"]').exists()).toBe(false);
-		expect(wizard.wrapper.find('[data-test-id="wizard-action-back"]').exists()).toBe(false);
-		expect(wizard.wrapper.find('[data-test-id="wizard-action-next"]').exists()).toBe(false);
+		expect(wizard.wrapper.find('[data-test-id="wizard-shell-cancel"]').exists()).toBe(false);
+		expect(wizard.wrapper.find('[data-test-id="wizard-shell-back"]').exists()).toBe(false);
+		expect(wizard.wrapper.get('[data-test-id="wizard-shell-next"]').text()).toBe('devicesVirtualPlugin.wizard.viewDevice');
 
-		await wizard.wrapper.find('[data-test-id="wizard-action-view-device"]').trigger('click');
+		await wizard.wrapper.find('[data-test-id="wizard-shell-next"]').trigger('click');
 
 		expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'devices_module-device', params: { id: 'created-device-id' } });
 	});
