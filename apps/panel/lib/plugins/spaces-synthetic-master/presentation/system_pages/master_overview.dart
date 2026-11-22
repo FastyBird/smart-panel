@@ -428,7 +428,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   Widget _buildLoadingState() {
     return Center(
       child: CircularProgressIndicator(
-        color: Theme.of(context).colorScheme.primary,
+        color: Theme.of(context).accent.text,
       ),
     );
   }
@@ -458,18 +458,14 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           ),
           Theme(
             data: ThemeData(
-              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
-                  ? AppFilledButtonsDarkThemes.primary
-                  : AppFilledButtonsLightThemes.primary,
+              filledButtonTheme: AppAccentButtons.filled(Theme.of(context)),
             ),
             child: FilledButton.icon(
               onPressed: _loadHouseData,
               icon: Icon(
                 MdiIcons.refresh,
                 size: AppFontSize.base,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
-                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+                color: AppAccentButtons.filledForeground(Theme.of(context)),
               ),
               label: Text(AppLocalizations.of(context)!.action_retry),
             ),
@@ -550,7 +546,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           Icon(
             icon,
             size: iconSize,
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).accent.text,
           ),
           Text(
             value,
@@ -604,7 +600,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
               height: AppSpacings.scale(24),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).accent.text,
               ),
             ),
           )
@@ -630,7 +626,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).accent.text,
               ),
             )
           : Icon(
@@ -698,7 +694,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             Icon(
               room.icon,
               size: iconSize,
-              color: Theme.of(context).colorScheme.primary,
+              color: Theme.of(context).accent.text,
             ),
             Expanded(
               child: Column(

@@ -22,7 +22,7 @@ class SettingsSlider extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
-		final activeColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final activeColor = Theme.of(context).accent.fill;
 		final trackColor = isDark
 				? AppBorderColorDark.light
 				: AppBorderColorLight.light;

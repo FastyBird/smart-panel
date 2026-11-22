@@ -1588,6 +1588,84 @@ abstract class AppLocalizations {
   /// **'Switch between light and dark theme.'**
   String get settings_display_settings_theme_mode_description;
 
+  /// Label for the accent colour picker in display settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Accent color'**
+  String get settings_display_settings_accent_title;
+
+  /// Description of what the accent colour changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Color of buttons, switches and the active tab on this panel.'**
+  String get settings_display_settings_accent_description;
+
+  /// Caption of the accent preview row.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get settings_display_settings_accent_preview;
+
+  /// Sample button label in the accent preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get settings_display_settings_accent_preview_button;
+
+  /// Sample selected-chip label in the accent preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get settings_display_settings_accent_preview_chip;
+
+  /// Name of the blue accent colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get accent_blue;
+
+  /// Name of the teal accent colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Teal'**
+  String get accent_teal;
+
+  /// Name of the sage accent colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Sage'**
+  String get accent_sage;
+
+  /// Name of the terracotta accent colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Terracotta'**
+  String get accent_terracotta;
+
+  /// Name of the rose accent colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Rose'**
+  String get accent_rose;
+
+  /// Name of the violet accent colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Violet'**
+  String get accent_violet;
+
+  /// Name of the sand accent colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Sand'**
+  String get accent_sand;
+
+  /// Name of the graphite accent colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphite'**
+  String get accent_graphite;
+
   /// Label for adjusting the display brightness.
   ///
   /// In en, this message translates to:

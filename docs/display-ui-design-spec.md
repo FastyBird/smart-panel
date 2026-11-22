@@ -66,7 +66,7 @@ These replace the 12-family, 7-step palette in `theme.dart`. Light and dark valu
 | `border.light` | `#e8eaee` | `#2a2c30` | Card outline |
 | `text.primary` | `#1b1f26` | `#e9eaec` | Values, titles, numerals |
 | `text.secondary` | `#5b6270` | `#a2a7af` | Live-state line, units |
-| `text.muted` | `#6e7581` | `#8a9099` | Captions, timestamps, on cards and raised surfaces only (4.2:1 on the light page); the smallest grey that passes AA there |
+| `text.muted` | `#676e7a` | `#8a9099` | Captions and timestamps; the smallest grey that passes AA on every surface |
 | `text.disabled` | `#8b919b` | `#6b7079` | Disabled, read-only and offline labels, always with an icon |
 | `brand.app` | `#d9230f` | `#d9230f` | Logo, wordmark and the loading spinner only |
 
@@ -78,12 +78,11 @@ shade.
 
 ### Status
 
-The fill is the same in both themes and takes white text. The light ok soft is `#e9f4ea`, one step lighter than
-the admin's `#e8f3e9`, which is 4.499:1 under ok text and so misses AA.
+The fill is the same in both themes and takes white text.
 
 | Status | Fill | Text L | Soft L | Border L | Text D | Soft D | Border D | Use |
 |---|---|---|---|---|---|---|---|---|
-| ok | `#2e7d32` | `#2e7d32` | `#e9f4ea` | `#c5e1c7` | `#6cc070` | `#1d2e1f` | `#2c4a2f` | Confirmed, locked, closed, online |
+| ok | `#2e7d32` | `#2e7d32` | `#ecf6ed` | `#c5e1c7` | `#6cc070` | `#1d2e1f` | `#2c4a2f` | Confirmed, locked, closed, online |
 | warning | `#b25e00` | `#a35600` | `#fdf1e2` | `#f3d3a8` | `#f0a742` | `#33261a` | `#5a4223` | Partial, never confirmed, stale, battery low |
 | danger | `#c62828` | `#c62828` | `#fbeaea` | `#f0bcbc` | `#f2706b` | `#3a1f1f` | `#5e2c2c` | Failed, triggered, offline, destructive actions |
 | info | `#5b6675` | `#5b6675` | `#eef0f3` | `#d6dae0` | `#a3acb9` | `#272a2f` | `#3a3e45` | Unknown, paused, neutral notices (grey, not blue) |
@@ -98,17 +97,19 @@ its domain icon.
 | Domain | Light | Soft L | Dark | Soft D |
 |---|---|---|---|---|
 | Lights | `#a35600` | `#fdf1e2` | `#f0a742` | `#33261a` |
-| Climate | `#0277a8` | `#e3f2fa` | `#4fb3e8` | `#16293a` |
+| Climate | `#0272a1` | `#e3f2fa` | `#4fb3e8` | `#16293a` |
 | Shading | `#00796b` | `#e0f2f1` | `#4db6ac` | `#14302d` |
 | Media | `#c2185b` | `#fce4ec` | `#f06292` | `#3a1a28` |
-| Sensors | `#00838f` | `#e0f7fa` | `#4dd0e1` | `#133236` |
-| Energy | `#2e7d32` | `#e9f4ea` | `#6cc070` | `#1d2e1f` |
-| Cameras | `#3949ab` | `#e8eaf6` | `#7986cb` | `#1f2340` |
+| Sensors | `#007984` | `#e0f7fa` | `#4dd0e1` | `#133236` |
+| Energy | `#2e7d32` | `#ecf6ed` | `#6cc070` | `#1d2e1f` |
+| Cameras | `#3949ab` | `#e8eaf6` | `#8390d2` | `#1f2340` |
 
 - Media moves from red to magenta, so playing music no longer looks like an alarm.
-- Climate on its light soft tint is 4.4:1: use it there for icons only. Text on any soft tile uses `text.primary`.
-- A filled control in a domain or status colour (white label) uses the **light** value as its fill in both themes.
-  The dark value is for text and icons on dark surfaces; white on it fails AA.
+- Every domain colour passes AA as text on the card, the page and its own soft, in both themes.
+- A filled control in a domain or status colour has the same fill in light and dark, with a white label: `#b25e00`
+  (the warning fill) for Lights, the light domain value for the other domains, the status fill for a status. The
+  bright dark-theme shade is for text, icons and tracks on dark surfaces only. Accents are the one fill that differs
+  between themes.
 - The thermostat dial uses `#c2571a` (light) and `#f0915a` (dark) for heating, and the Climate colour for cooling.
 
 ### Accents
@@ -120,7 +121,7 @@ the card and on their own soft. **Blue is the default.**
 | Accent | Fill L / text L | Soft L | Fill D | Text D | Soft D | Suggested room |
 |---|---|---|---|---|---|---|
 | Blue | `#2563c9` | `#e9effa` | `#3570d8` | `#8ab4f8` | `#212e48` | default |
-| Teal | `#0f766e` | `#e7f1f0` | `#12857c` | `#5fd0c5` | `#193333` | bathroom |
+| Teal | `#0f766e` | `#e7f1f0` | `#11827a` | `#5fd0c5` | `#193333` | bathroom |
 | Sage | `#55702f` | `#eef1ea` | `#5f7d36` | `#b3cf85` | `#2a3124` | garden room |
 | Terracotta | `#b04a26` | `#f7ede9` | `#b85230` | `#f2a685` | `#3e2823` | kitchen |
 | Rose | `#a3476f` | `#f6edf1` | `#ad4f78` | `#f0a3c2` | `#3b2733` | bedroom |
@@ -130,6 +131,9 @@ the card and on their own soft. **Blue is the default.**
 
 Amber and red are left out because they are warning and danger; green is replaced by a muted sage so it cannot read as
 "ok".
+
+The pressed shade of every filled control (accent, domain or status) is the fill mixed 20 % toward black, in both
+themes. White labels stay above 6.6:1 on every pressed fill.
 
 **The accent colours:** primary buttons, the active deck tab and dock item, the selected room mode and arm segment,
 selection and focus, switches, slider thumbs and steppers **outside** a domain view, the Buddy button and the screen
@@ -144,10 +148,13 @@ work (§10); until they exist the panel stores its own choice locally.
 
 ### Sky
 
-The sky panel is a three-stop vertical gradient with one text colour that passes 4.5:1 at every stop. Four of the 40
-time-of-day and weather combinations are drawn; the rest are still to define (§11). Until they are, map every
-combination onto the nearest drawn one: day with no precipitation → Day clear, day with precipitation or fog → Day
-rain, sunrise and sunset → Dusk, night → Night.
+The sky panel is a three-stop vertical gradient with one text colour that passes 4.5:1 at every stop. All 40
+combinations (four day parts by ten conditions) come from one rule. Each day part has a clear and an overcast
+gradient; a condition mixes between them by its cover factor: clear 0, partly cloudy 0.25, cloudy and snow 0.6, fog
+and drizzle 0.7, sleet 0.75, overcast and rain 0.85, thunderstorm 1. The text colour mixes by the same factor; the
+lowest contrast across all 40 is 4.9:1. On top sit at most four flat layers, with no blur: sun or moon (hidden at
+cover 0.7 and above), stars (night, cover below 0.5), one to three cloud bars and one precipitation layer (rain lines
+or snow dots). Every stop is in `Sky.dc.html` on the canvas; the table lists the four skies drawn first.
 
 | Sky | Gradient stops (top → bottom) | Text | Weather card fill |
 |---|---|---|---|
@@ -496,7 +503,7 @@ from §5 and §7 and add them to the canvas when a designer is available:
 
 | Area | Not drawn yet |
 |---|---|
-| Room overview | Loading and error; room mode outcomes (partial, failed, interrupted, conflict, unavailable); schedule and occupancy variants; the mode chooser on Compact; the Buddy button on this screen; 36 of 40 sky combinations |
+| Room overview | Loading and error; room mode outcomes (partial, failed, interrupted, conflict, unavailable); schedule and occupancy variants; the mode chooser on Compact; the Buddy button on this screen |
 | Domain views | Loading, error, not configured, rollback; role list sheet; Lights capabilities other than brightness and the on/off-only role; Climate cooler-only, system off and the room temperature notice; comfort preset change on Compact landscape |
 | Navigation and overlays | Ring over an entry-delay banner; system action overlays (restart, power off, reset in progress, done, failed); error toasts; inactivity handling |
 | Security, Entry, cameras | Speaker volume and visitor level in the call; doorbell device detail; "answered on another panel" and "no camera"; "camera hidden on this panel"; camera connection states; several alarm systems; unconfigured house modes; square list views for the Security tabs |

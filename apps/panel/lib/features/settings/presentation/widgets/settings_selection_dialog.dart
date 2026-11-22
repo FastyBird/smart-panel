@@ -42,7 +42,7 @@ Future<T?> showSettingsSelectionDialog<T>({
 			final borderColor = isDark ? AppFillColorDark.light : AppBorderColorLight.light;
 			final titleColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 			final textColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-			final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+			final accentColor = Theme.of(context).accent.text;
 			final dividerColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 			final groupColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 

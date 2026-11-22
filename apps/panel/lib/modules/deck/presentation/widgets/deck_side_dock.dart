@@ -227,10 +227,8 @@ class _DockTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final accentColor = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.primary,
-    ).base;
+    // The active tab follows the panel accent.
+    final accentColor = Theme.of(context).accent.text;
     final Color inactiveColor = isDark
         ? AppTextColorDark.placeholder
         : AppTextColorLight.placeholder;
@@ -256,7 +254,7 @@ class _DockTab extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: isActive
-                ? accentColor.withValues(alpha: 0.15)
+                ? Theme.of(context).accent.soft
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(pillRadius),
           ),
@@ -278,7 +276,8 @@ class _DockTab extends StatelessWidget {
                           vertical: AppSpacings.scale(1),
                         ),
                         decoration: BoxDecoration(
-                          color: accentColor,
+                          // White count: the fill, not the (light in dark) text shade.
+                          color: Theme.of(context).accent.fill,
                           borderRadius:
                               BorderRadius.circular(AppSpacings.scale(8)),
                         ),

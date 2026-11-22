@@ -82,10 +82,9 @@ void main() {
       );
     });
 
-    test('muted text passes AA on cards and raised surfaces', () {
-      // Not on the light page (4.2:1): the spec keeps muted text off the page.
+    test('muted text passes AA on every surface', () {
       for (final n in [AppNeutralPalette.light, AppNeutralPalette.dark]) {
-        for (final surface in [n.surfaceCard, n.surfaceRaised]) {
+        for (final surface in [n.surfaceCard, n.surfaceRaised, n.surfacePage]) {
           expect(_contrast(n.textMuted, surface), greaterThanOrEqualTo(4.5));
         }
       }
@@ -100,8 +99,13 @@ void main() {
           final n = AppNeutralPalette.of(brightness);
 
           expect(_contrast(p.text, n.surfaceCard), greaterThanOrEqualTo(4.5));
-          expect(_contrast(p.text, p.soft), greaterThanOrEqualTo(4.5));
           expect(_contrast(AppColors.white, p.fill), greaterThanOrEqualTo(4.5));
+          // Pressed: the fill 20 % toward black.
+          expect(
+            _contrast(AppColors.white, Color.lerp(p.fill, const Color(0xFF000000), 0.2)!),
+            greaterThanOrEqualTo(4.5),
+          );
+          expect(_contrast(p.text, p.soft), greaterThanOrEqualTo(4.5));
         });
       }
     }
@@ -115,6 +119,55 @@ void main() {
   });
 
   group('domain families', () {
+    const domains = [
+      ThemeColors.lights,
+      ThemeColors.climate,
+      ThemeColors.shading,
+      ThemeColors.media,
+      ThemeColors.sensors,
+      ThemeColors.energy,
+      ThemeColors.cameras,
+    ];
+
+    test('match the handoff round 2 values', () {
+      expect(ThemeColorFamily.get(Brightness.light, ThemeColors.climate).base, const Color(0xFF0272A1));
+      expect(ThemeColorFamily.get(Brightness.light, ThemeColors.sensors).base, const Color(0xFF007984));
+      expect(ThemeColorFamily.get(Brightness.dark, ThemeColors.cameras).base, const Color(0xFF8390D2));
+      expect(ThemeColorFamily.get(Brightness.light, ThemeColors.energy).soft, const Color(0xFFECF6ED));
+      expect(AppStatusPalette.of(Brightness.light, AppStatus.ok).soft, const Color(0xFFECF6ED));
+      expect(AppNeutralPalette.light.textMuted, const Color(0xFF676E7A));
+    });
+
+    for (final brightness in Brightness.values) {
+      test('domain text passes AA on the card, the page and its soft in $brightness', () {
+        final failures = <String>[];
+        final n = AppNeutralPalette.of(brightness);
+
+        for (final domain in domains) {
+          final f = ThemeColorFamily.get(brightness, domain);
+
+          for (final (name, surface) in [('card', n.surfaceCard), ('page', n.surfacePage), ('soft', f.soft)]) {
+            final ratio = _contrast(f.base, surface);
+            if (ratio < 4.5) failures.add('${domain.name} on $name ${ratio.toStringAsFixed(2)}');
+          }
+        }
+
+        expect(failures, isEmpty);
+      });
+    }
+
+    test('filled warning and Lights controls use the warning fill in both themes', () {
+      for (final theme in [
+        AppFilledButtonsLightThemes.forThemeColor(ThemeColors.lights),
+        AppFilledButtonsDarkThemes.forThemeColor(ThemeColors.lights),
+        AppFilledButtonsLightThemes.warning,
+        AppFilledButtonsDarkThemes.warning,
+      ]) {
+        expect(theme.style!.backgroundColor!.resolve({}), const Color(0xFFB25E00));
+        expect(theme.style!.backgroundColor!.resolve({WidgetState.pressed}), const Color(0xFF8E4B00));
+      }
+    });
+
     const twins = {
       ThemeColors.lights: ThemeColors.warning,
       ThemeColors.climate: ThemeColors.info,

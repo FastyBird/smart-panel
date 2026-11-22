@@ -209,7 +209,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
           return Scaffold(
             body: Center(
               child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).accent.text,
               ),
             ),
           );
@@ -433,12 +433,8 @@ class _BuddyFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final accentColor = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.primary,
-    ).base;
+    // The Buddy button follows the panel accent.
+    final accentColor = Theme.of(context).accent.fill;
 
     return Consumer<BuddyService>(
       builder: (context, buddyService, _) {

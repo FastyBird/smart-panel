@@ -50,6 +50,7 @@ class _AppBodyState extends State<AppBody> {
   final LocalPreferencesService _localPrefs = locator<LocalPreferencesService>();
 
   late bool _hasDarkMode = _localPrefs.darkMode;
+  late AppAccent _accent;
   late Language _language = _localPrefs.language;
 
   // Connection state management
@@ -106,6 +107,8 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.addListener(_syncStateWithRepository);
     _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
+    // Snapshot the accent before listening, so the first change is detected.
+    _accent = _localPrefs.accent;
     _localPrefs.addListener(_onLocalPrefsChanged);
 
     // Wire security status to overlay controller
@@ -277,6 +280,13 @@ class _AppBodyState extends State<AppBody> {
   /// [_syncStateWithRepository], which itself writes back to
   /// [_localPrefs] and would cause a duplicate cycle.
   void _onLocalPrefsChanged() {
+    // The themes are built from the current accent: rebuild when it changes.
+    if (_localPrefs.accent != _accent) {
+      setState(() {
+        _accent = _localPrefs.accent;
+      });
+    }
+
     _inactivityOverlayProvider.updateConfig(
       screenLockDuration: _displayRepository.screenLockDuration,
       hasScreenSaver: _displayRepository.hasScreenSaver,

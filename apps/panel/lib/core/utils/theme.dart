@@ -4,9 +4,8 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:flutter/material.dart';
 
 extension AppExtendedColors on ThemeData {
-  Color get primary => brightness == Brightness.light
-      ? AppColorsLight.primary
-      : AppColorsDark.primary;
+  /// The accent fill (see [AppAccentTheme]).
+  Color get primary => accent.fill;
 
   Color get success => brightness == Brightness.light
       ? AppColorsLight.success
@@ -213,9 +212,9 @@ class ThemeColorFamily {
       light9: Color(0xFF1D2E1F),
     ),
     ThemeColors.cameras: ThemeColorFamily(
-      base: Color(0xFF7986CB), dark2: Color(0xFF949ED5),
-      light3: Color(0xFF5D6697), light5: Color(0xFF4A5175),
-      light7: Color(0xFF373C53), light8: Color(0xFF2E3141),
+      base: Color(0xFF8390D2), dark2: Color(0xFF9CA6DB),
+      light3: Color(0xFF646D9C), light5: Color(0xFF4F5678),
+      light7: Color(0xFF3A3F55), light8: Color(0xFF303343),
       light9: Color(0xFF1F2340),
     ),
   };
@@ -301,9 +300,9 @@ class ThemeColorFamily {
       light9: Color(0xFFFDF1E2),
     ),
     ThemeColors.climate: ThemeColorFamily(
-      base: Color(0xFF0277A8), dark2: Color(0xFF025F86),
-      light3: Color(0xFF4EA0C2), light5: Color(0xFF80BBD4),
-      light7: Color(0xFFB3D6E5), light8: Color(0xFFCCE4EE),
+      base: Color(0xFF0272A1), dark2: Color(0xFF025B81),
+      light3: Color(0xFF4E9CBD), light5: Color(0xFF80B8D0),
+      light7: Color(0xFFB3D5E3), light8: Color(0xFFCCE3EC),
       light9: Color(0xFFE3F2FA),
     ),
     ThemeColors.shading: ThemeColorFamily(
@@ -319,16 +318,16 @@ class ThemeColorFamily {
       light9: Color(0xFFFCE4EC),
     ),
     ThemeColors.sensors: ThemeColorFamily(
-      base: Color(0xFF00838F), dark2: Color(0xFF006972),
-      light3: Color(0xFF4CA8B1), light5: Color(0xFF80C1C7),
-      light7: Color(0xFFB2DADD), light8: Color(0xFFCCE6E9),
+      base: Color(0xFF007984), dark2: Color(0xFF00616A),
+      light3: Color(0xFF4CA1A9), light5: Color(0xFF80BCC2),
+      light7: Color(0xFFB2D7DA), light8: Color(0xFFCCE4E6),
       light9: Color(0xFFE0F7FA),
     ),
     ThemeColors.energy: ThemeColorFamily(
       base: Color(0xFF2E7D32), dark2: Color(0xFF256428),
       light3: Color(0xFF6DA470), light5: Color(0xFF96BE98),
       light7: Color(0xFFC0D8C2), light8: Color(0xFFD5E5D6),
-      light9: Color(0xFFE9F4EA),
+      light9: Color(0xFFECF6ED),
     ),
     ThemeColors.cameras: ThemeColorFamily(
       base: Color(0xFF3949AB), dark2: Color(0xFF2E3A89),
@@ -406,12 +405,15 @@ class AppTheme {
   static ColorScheme _colorScheme(Brightness brightness) {
     final n = AppNeutralPalette.of(brightness);
     final danger = AppStatusPalette.of(brightness, AppStatus.danger);
+    final accent = AppAccents.palette(brightness);
     final isDark = brightness == Brightness.dark;
 
     return (isDark ? const ColorScheme.dark() : const ColorScheme.light())
         .copyWith(
-      primary: isDark ? AppColorsDark.primary : AppColorsLight.primary,
-      onPrimary: AppColors.white,
+      primary: accent.fill,
+      onPrimary: accent.onFill,
+      primaryContainer: accent.soft,
+      onPrimaryContainer: accent.text,
       error: danger.text,
       // White on the dark-theme danger shade is 2.8:1.
       onError: isDark ? n.surfacePage : AppColors.white,
@@ -473,6 +475,36 @@ class AppTheme {
     );
   }
 
+  static List<ThemeExtension<dynamic>> _extensions(Brightness brightness) => [
+        AppAccentTheme.of(AppAccents.current, brightness),
+      ];
+
+  /// Switches: white thumb on the accent fill when on.
+  static SwitchThemeData _switchTheme(Brightness brightness) {
+    final accent = AppAccents.palette(brightness);
+    final n = AppNeutralPalette.of(brightness);
+
+    return SwitchThemeData(
+      thumbColor: const WidgetStatePropertyAll(AppColors.white),
+      trackColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? accent.fill
+            : n.borderBase,
+      ),
+      trackOutlineColor: const WidgetStatePropertyAll(AppColors.blank),
+    );
+  }
+
+  static TextSelectionThemeData _textSelectionTheme(Brightness brightness) {
+    final accent = AppAccents.palette(brightness);
+
+    return TextSelectionThemeData(
+      cursorColor: accent.fill,
+      selectionColor: accent.fill.withValues(alpha: 0.3),
+      selectionHandleColor: accent.fill,
+    );
+  }
+
   static ThemeData get startThemeLight {
     return ThemeData(
       fontFamily: 'Roboto',
@@ -486,6 +518,7 @@ class AppTheme {
         linearTrackColor: AppColors.white,
       ),
       colorScheme: _colorScheme(Brightness.light),
+      extensions: _extensions(Brightness.light),
       visualDensity: _visualDensityService.visualDensity,
     );
   }
@@ -503,22 +536,27 @@ class AppTheme {
         linearTrackColor: AppColors.white,
       ),
       colorScheme: _colorScheme(Brightness.dark),
+      extensions: _extensions(Brightness.dark),
       visualDensity: _visualDensityService.visualDensity,
     );
   }
 
+  /// The light theme in the current accent ([AppAccents.current]).
   static ThemeData get lightTheme {
     return ThemeData(
       fontFamily: 'Roboto',
       brightness: Brightness.light,
-      primaryColor: AppColorsLight.primary,
-      primaryColorLight: AppColorsLight.primary,
-      primaryColorDark: AppColorsDark.primary,
+      primaryColor: AppAccents.palette(Brightness.light).fill,
+      primaryColorLight: AppAccents.palette(Brightness.light).fill,
+      primaryColorDark: AppAccents.palette(Brightness.dark).fill,
       scaffoldBackgroundColor: AppBgColorLight.page,
       textTheme: AppTextThemes.light,
       outlinedButtonTheme: AppOutlinedButtonsLightThemes.base,
       filledButtonTheme: AppFilledButtonsLightThemes.base,
       colorScheme: _colorScheme(Brightness.light),
+      extensions: _extensions(Brightness.light),
+      switchTheme: _switchTheme(Brightness.light),
+      textSelectionTheme: _textSelectionTheme(Brightness.light),
       cardTheme: _cardTheme(Brightness.light),
       dialogTheme: _dialogTheme(Brightness.light),
       bottomSheetTheme: _bottomSheetTheme(Brightness.light),
@@ -531,12 +569,13 @@ class AppTheme {
         trackVisibility: WidgetStatePropertyAll(false),
         thickness: WidgetStatePropertyAll(0),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColorsLight.primary,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: AppAccents.palette(Brightness.light).fill,
         linearTrackColor: AppColors.white,
       ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: AppColorsLight.primary,
+        activeTrackColor: AppAccents.palette(Brightness.light).fill,
+        thumbColor: AppAccents.palette(Brightness.light).fill,
         inactiveTrackColor: AppBorderColorLight.light,
         disabledActiveTrackColor: AppTextColorLight.disabled,
       ),
@@ -570,18 +609,22 @@ class AppTheme {
     );
   }
 
+  /// The dark theme in the current accent ([AppAccents.current]).
   static ThemeData get darkTheme {
     return ThemeData(
       fontFamily: 'Roboto',
       brightness: Brightness.dark,
-      primaryColor: AppColorsLight.primary,
-      primaryColorLight: AppColorsLight.primary,
-      primaryColorDark: AppColorsDark.primary,
+      primaryColor: AppAccents.palette(Brightness.dark).fill,
+      primaryColorLight: AppAccents.palette(Brightness.light).fill,
+      primaryColorDark: AppAccents.palette(Brightness.dark).fill,
       scaffoldBackgroundColor: AppBgColorDark.page,
       textTheme: AppTextThemes.dark,
       outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base,
       filledButtonTheme: AppFilledButtonsDarkThemes.base,
       colorScheme: _colorScheme(Brightness.dark),
+      extensions: _extensions(Brightness.dark),
+      switchTheme: _switchTheme(Brightness.dark),
+      textSelectionTheme: _textSelectionTheme(Brightness.dark),
       cardTheme: _cardTheme(Brightness.dark),
       dialogTheme: _dialogTheme(Brightness.dark),
       bottomSheetTheme: _bottomSheetTheme(Brightness.dark),
@@ -594,12 +637,13 @@ class AppTheme {
         trackVisibility: WidgetStatePropertyAll(false),
         thickness: WidgetStatePropertyAll(0),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColorsDark.primary,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: AppAccents.palette(Brightness.dark).fill,
         linearTrackColor: AppColors.white,
       ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: AppColorsDark.primary,
+        activeTrackColor: AppAccents.palette(Brightness.dark).fill,
+        thumbColor: AppAccents.palette(Brightness.dark).fill,
         inactiveTrackColor: AppBorderColorDark.light,
         disabledActiveTrackColor: AppTextColorDark.placeholder,
       ),
@@ -709,7 +753,7 @@ class AppNeutralPalette {
     borderLight: Color(0xFFE8EAEE),
     textPrimary: Color(0xFF1B1F26),
     textSecondary: Color(0xFF5B6270),
-    textMuted: Color(0xFF6E7581),
+    textMuted: Color(0xFF676E7A),
     textDisabled: Color(0xFF8B919B),
   );
 
@@ -756,7 +800,7 @@ class AppStatusPalette {
     AppStatus.ok: AppStatusPalette(
       fill: Color(0xFF2E7D32),
       text: Color(0xFF2E7D32),
-      soft: Color(0xFFE9F4EA),
+      soft: Color(0xFFECF6ED),
       border: Color(0xFFC5E1C7),
     ),
     AppStatus.warning: AppStatusPalette(
@@ -820,8 +864,201 @@ class AppClimateColors {
       brightness == Brightness.dark ? heatingDark : heatingLight;
 }
 
+/// The eight accents a panel can take (docs/display-ui-design-spec.md §2).
+/// Amber and red are left out because they are warning and danger.
+enum AppAccent {
+  blue,
+  teal,
+  sage,
+  terracotta,
+  rose,
+  violet,
+  sand,
+  graphite;
+
+  /// The accent stored under [value], or blue.
+  static AppAccent fromValue(String? value) => AppAccent.values.firstWhere(
+        (accent) => accent.name == value,
+        orElse: () => AppAccent.blue,
+      );
+}
+
+/// One accent in one theme: [fill] takes white text, [text] is for text and
+/// icons on a surface, [soft] is the tinted background and [pressed] is the
+/// fill's pressed shade.
+@immutable
+class AppAccentPalette {
+  const AppAccentPalette({
+    required this.fill,
+    required this.text,
+    required this.soft,
+    required this.pressed,
+  });
+
+  final Color fill;
+  final Color text;
+  final Color soft;
+  final Color pressed;
+
+  /// Content colour on [fill] and [pressed].
+  Color get onFill => AppColors.white;
+
+  // (fill, soft); text is the fill in the light theme.
+  static const Map<AppAccent, (Color, Color)> _light = {
+    AppAccent.blue: (Color(0xFF2563C9), Color(0xFFE9EFFA)),
+    AppAccent.teal: (Color(0xFF0F766E), Color(0xFFE7F1F0)),
+    AppAccent.sage: (Color(0xFF55702F), Color(0xFFEEF1EA)),
+    AppAccent.terracotta: (Color(0xFFB04A26), Color(0xFFF7EDE9)),
+    AppAccent.rose: (Color(0xFFA3476F), Color(0xFFF6EDF1)),
+    AppAccent.violet: (Color(0xFF6247C4), Color(0xFFEFEDF9)),
+    AppAccent.sand: (Color(0xFF7A6248), Color(0xFFF2EFED)),
+    AppAccent.graphite: (Color(0xFF4A5261), Color(0xFFEDEEEF)),
+  };
+
+  // (fill, text, soft)
+  static const Map<AppAccent, (Color, Color, Color)> _dark = {
+    AppAccent.blue: (Color(0xFF3570D8), Color(0xFF8AB4F8), Color(0xFF212E48)),
+    AppAccent.teal: (Color(0xFF11827A), Color(0xFF5FD0C5), Color(0xFF193333)),
+    AppAccent.sage: (Color(0xFF5F7D36), Color(0xFFB3CF85), Color(0xFF2A3124)),
+    AppAccent.terracotta: (Color(0xFFB85230), Color(0xFFF2A685), Color(0xFF3E2823)),
+    AppAccent.rose: (Color(0xFFAD4F78), Color(0xFFF0A3C2), Color(0xFF3B2733)),
+    AppAccent.violet: (Color(0xFF6E54D0), Color(0xFFB9A8F7), Color(0xFF2D2846)),
+    AppAccent.sand: (Color(0xFF846B50), Color(0xFFD9BF9F), Color(0xFF322D2A)),
+    AppAccent.graphite: (Color(0xFF5A6375), Color(0xFFB6BFCD), Color(0xFF292C32)),
+  };
+
+  /// The pressed shade: the fill 20 % toward black, so white stays readable.
+  static Color _pressed(Color fill) =>
+      Color.lerp(fill, const Color(0xFF000000), 0.2)!;
+
+  static AppAccentPalette of(AppAccent accent, Brightness brightness) {
+    if (brightness == Brightness.dark) {
+      final (fill, text, soft) = _dark[accent]!;
+
+      return AppAccentPalette(
+        fill: fill,
+        text: text,
+        soft: soft,
+        pressed: _pressed(fill),
+      );
+    }
+
+    final (fill, soft) = _light[accent]!;
+
+    return AppAccentPalette(
+      fill: fill,
+      text: fill,
+      soft: soft,
+      pressed: _pressed(fill),
+    );
+  }
+
+  /// The accent as a legacy colour family, for widgets that take one:
+  /// `base` is the fill, `light9` the soft and `dark2` the pressed shade.
+  ThemeColorFamily family(Brightness brightness) {
+    final toward = brightness == Brightness.dark
+        ? AppNeutralPalette.dark.surfaceCard
+        : AppColors.white;
+
+    Color mix(double t) => Color.lerp(fill, toward, t)!;
+
+    return ThemeColorFamily(
+      base: fill,
+      dark2: pressed,
+      light3: mix(0.3),
+      light5: mix(0.5),
+      light7: mix(0.7),
+      light8: mix(0.8),
+      light9: soft,
+    );
+  }
+
+  static AppAccentPalette lerp(AppAccentPalette a, AppAccentPalette b, double t) {
+    return AppAccentPalette(
+      fill: Color.lerp(a.fill, b.fill, t)!,
+      text: Color.lerp(a.text, b.text, t)!,
+      soft: Color.lerp(a.soft, b.soft, t)!,
+      pressed: Color.lerp(a.pressed, b.pressed, t)!,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is AppAccentPalette &&
+      other.fill == fill &&
+      other.text == text &&
+      other.soft == soft &&
+      other.pressed == pressed;
+
+  @override
+  int get hashCode => Object.hash(fill, text, soft, pressed);
+}
+
+/// The panel's current accent.
+///
+/// Set by [LocalPreferencesService] when the stored choice loads or changes.
+/// [AppTheme] builds its themes from it; widgets read the accent from their
+/// theme ([AppDesignTokens.accent]) and fall back to this outside one.
+class AppAccents {
+  AppAccents._();
+
+  static AppAccent current = AppAccent.blue;
+
+  static AppAccentPalette palette(Brightness brightness) =>
+      AppAccentPalette.of(current, brightness);
+}
+
+/// The accent scope: carries the current accent palette in a [ThemeData].
+///
+/// The accent colours primary buttons, the active deck tab and dock item,
+/// selection, switches and slider thumbs outside domain views. It never
+/// colours status, domain colours, alert overlays, alarm screens or the logo.
+@immutable
+class AppAccentTheme extends ThemeExtension<AppAccentTheme> {
+  const AppAccentTheme({required this.accent, required this.palette});
+
+  factory AppAccentTheme.of(AppAccent accent, Brightness brightness) =>
+      AppAccentTheme(
+        accent: accent,
+        palette: AppAccentPalette.of(accent, brightness),
+      );
+
+  final AppAccent accent;
+  final AppAccentPalette palette;
+
+  @override
+  AppAccentTheme copyWith({AppAccent? accent, AppAccentPalette? palette}) =>
+      AppAccentTheme(
+        accent: accent ?? this.accent,
+        palette: palette ?? this.palette,
+      );
+
+  @override
+  AppAccentTheme lerp(covariant AppAccentTheme? other, double t) {
+    if (other == null) return this;
+
+    return AppAccentTheme(
+      accent: t < 0.5 ? accent : other.accent,
+      palette: AppAccentPalette.lerp(palette, other.palette, t),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is AppAccentTheme &&
+      other.accent == accent &&
+      other.palette == palette;
+
+  @override
+  int get hashCode => Object.hash(accent, palette);
+}
+
 /// Token access from a [ThemeData].
 extension AppDesignTokens on ThemeData {
+  /// The current accent palette (see [AppAccentTheme]).
+  AppAccentPalette get accent =>
+      extension<AppAccentTheme>()?.palette ?? AppAccents.palette(brightness);
+
   AppNeutralPalette get neutrals => AppNeutralPalette.of(brightness);
 
   AppStatusPalette status(AppStatus status) =>
@@ -848,7 +1085,7 @@ class AppColorsLight {
   static const Color successLight5 = Color(0xFF96BE98);
   static const Color successLight7 = Color(0xFFC5E1C7);
   static const Color successLight8 = Color(0xFFD5E5D6);
-  static const Color successLight9 = Color(0xFFE9F4EA);
+  static const Color successLight9 = Color(0xFFECF6ED);
   static const Color successDark2 = Color(0xFF256428);
 
   static const Color warning = Color(0xFFA35600);
@@ -858,6 +1095,13 @@ class AppColorsLight {
   static const Color warningLight8 = Color(0xFFEDDDCC);
   static const Color warningLight9 = Color(0xFFFDF1E2);
   static const Color warningDark2 = Color(0xFF824500);
+
+  /// Status warning fill: the fill of every filled warning and Lights
+  /// control, in both themes, with a white label.
+  static const Color warningFill = Color(0xFFB25E00);
+
+  /// [warningFill] 20 % toward black.
+  static const Color warningFillPressed = Color(0xFF8E4B00);
 
   static const Color danger = Color(0xFFC62828);
   static const Color dangerLight3 = Color(0xFFD76868);
@@ -875,13 +1119,13 @@ class AppColorsLight {
   static const Color errorLight9 = Color(0xFFFBEAEA);
   static const Color errorDark2 = Color(0xFF9E2020);
 
-  static const Color info = Color(0xFF0277A8);
-  static const Color infoLight3 = Color(0xFF4EA0C2);
-  static const Color infoLight5 = Color(0xFF80BBD4);
-  static const Color infoLight7 = Color(0xFFB3D6E5);
-  static const Color infoLight8 = Color(0xFFCCE4EE);
+  static const Color info = Color(0xFF0272A1);
+  static const Color infoLight3 = Color(0xFF4E9CBD);
+  static const Color infoLight5 = Color(0xFF80B8D0);
+  static const Color infoLight7 = Color(0xFFB3D5E3);
+  static const Color infoLight8 = Color(0xFFCCE3EC);
   static const Color infoLight9 = Color(0xFFE3F2FA);
-  static const Color infoDark2 = Color(0xFF025F86);
+  static const Color infoDark2 = Color(0xFF025B81);
 
   static const Color neutral = Color(0xFF5B6675);
   static const Color neutralLight3 = Color(0xFF8C949E);
@@ -907,13 +1151,13 @@ class AppColorsLight {
   static const Color tealLight9 = Color(0xFFE0F2F1);
   static const Color tealDark2 = Color(0xFF006156);
 
-  static const Color cyan = Color(0xFF00838F);
-  static const Color cyanLight3 = Color(0xFF4CA8B1);
-  static const Color cyanLight5 = Color(0xFF80C1C7);
-  static const Color cyanLight7 = Color(0xFFB2DADD);
-  static const Color cyanLight8 = Color(0xFFCCE6E9);
+  static const Color cyan = Color(0xFF007984);
+  static const Color cyanLight3 = Color(0xFF4CA1A9);
+  static const Color cyanLight5 = Color(0xFF80BCC2);
+  static const Color cyanLight7 = Color(0xFFB2D7DA);
+  static const Color cyanLight8 = Color(0xFFCCE4E6);
   static const Color cyanLight9 = Color(0xFFE0F7FA);
-  static const Color cyanDark2 = Color(0xFF006972);
+  static const Color cyanDark2 = Color(0xFF00616A);
 
   static const Color pink = Color(0xFFC2185B);
   static const Color pinkLight3 = Color(0xFFD45D8C);
@@ -1079,13 +1323,13 @@ class AppColorsDark {
   static const Color pinkLight9 = Color(0xFF3A1A28);
   static const Color pinkDark2 = Color(0xFFF381A8);
 
-  static const Color indigo = Color(0xFF7986CB);
-  static const Color indigoLight3 = Color(0xFF5D6697);
-  static const Color indigoLight5 = Color(0xFF4A5175);
-  static const Color indigoLight7 = Color(0xFF373C53);
-  static const Color indigoLight8 = Color(0xFF2E3141);
+  static const Color indigo = Color(0xFF8390D2);
+  static const Color indigoLight3 = Color(0xFF646D9C);
+  static const Color indigoLight5 = Color(0xFF4F5678);
+  static const Color indigoLight7 = Color(0xFF3A3F55);
+  static const Color indigoLight8 = Color(0xFF303343);
   static const Color indigoLight9 = Color(0xFF1F2340);
-  static const Color indigoDark2 = Color(0xFF949ED5);
+  static const Color indigoDark2 = Color(0xFF9CA6DB);
 }
 
 class AppBgColorDark {
@@ -1407,13 +1651,13 @@ class AppFilledButtonsLightThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: AppColors.white,
-      bgColor: AppColorsLight.warning,
-      pressedBgColor: AppColorsLight.warningDark2,
-      hoveredBgColor: AppColorsLight.warning,
+      bgColor: AppColorsLight.warningFill,
+      pressedBgColor: AppColorsLight.warningFillPressed,
+      hoveredBgColor: AppColorsLight.warningFill,
       disabledBgColor: AppColorsLight.warningLight5,
-      borderColor: AppColorsLight.warning,
-      pressedBorderColor: AppColorsLight.warningDark2,
-      hoveredBorderColor: AppColorsLight.warning,
+      borderColor: AppColorsLight.warningFill,
+      pressedBorderColor: AppColorsLight.warningFillPressed,
+      hoveredBorderColor: AppColorsLight.warningFill,
       disabledBorderColor: AppColorsLight.warningLight5,
     ),
   );
@@ -1667,13 +1911,13 @@ class AppFilledButtonsDarkThemes {
       pressedColor: AppColors.white,
       hoveredColor: AppColors.white,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsLight.warning,
-      pressedBgColor: AppColorsLight.warningDark2,
-      hoveredBgColor: AppColorsLight.warning,
+      bgColor: AppColorsLight.warningFill,
+      pressedBgColor: AppColorsLight.warningFillPressed,
+      hoveredBgColor: AppColorsLight.warningFill,
       disabledBgColor: AppColorsDark.warningLight5,
-      borderColor: AppColorsLight.warning,
-      pressedBorderColor: AppColorsLight.warningDark2,
-      hoveredBorderColor: AppColorsLight.warning,
+      borderColor: AppColorsLight.warningFill,
+      pressedBorderColor: AppColorsLight.warningFillPressed,
+      hoveredBorderColor: AppColorsLight.warningFill,
       disabledBorderColor: AppColorsDark.warningLight5,
     ),
   );
@@ -2920,6 +3164,67 @@ class AppTextThemes {
   static TextTheme get light => getBaseTextTheme(AppTextColorLight.regular);
 
   static TextTheme get dark => getBaseTextTheme(AppTextColorDark.regular);
+}
+
+/// Buttons in the current accent. Use these for primary actions outside
+/// domain views, overlays and alarm screens; the legacy `primary` button
+/// themes stay blue for the screens the redesign has not reached yet.
+class AppAccentButtons {
+  AppAccentButtons._();
+
+  /// A filled primary button: white on the accent fill. Hover keeps the fill
+  /// (touch panels have no hover).
+  static FilledButtonThemeData filled(ThemeData theme) {
+    final p = theme.accent;
+    final family = p.family(theme.brightness);
+
+    return FilledButtonThemeData(
+      style: createButtonTheme(
+        color: p.onFill,
+        pressedColor: p.onFill,
+        hoveredColor: p.onFill,
+        disabledColor: p.onFill,
+        bgColor: p.fill,
+        pressedBgColor: p.pressed,
+        hoveredBgColor: p.fill,
+        disabledBgColor: family.light5,
+        borderColor: p.fill,
+        pressedBorderColor: p.pressed,
+        hoveredBorderColor: p.fill,
+        disabledBorderColor: family.light5,
+      ),
+    );
+  }
+
+  /// A tinted secondary button: accent text on the soft background, white on
+  /// the pressed shade while pressed.
+  static OutlinedButtonThemeData outlined(ThemeData theme) {
+    final p = theme.accent;
+    final family = p.family(theme.brightness);
+
+    return OutlinedButtonThemeData(
+      style: createButtonTheme(
+        color: p.text,
+        pressedColor: p.onFill,
+        hoveredColor: p.text,
+        disabledColor: family.light5,
+        bgColor: p.soft,
+        pressedBgColor: p.pressed,
+        hoveredBgColor: p.soft,
+        disabledBgColor: p.soft,
+        borderColor: family.light5,
+        pressedBorderColor: p.pressed,
+        hoveredBorderColor: family.light5,
+        disabledBorderColor: family.light8,
+      ),
+    );
+  }
+
+  /// Text and icon colour inside [filled].
+  static Color filledForeground(ThemeData theme) => theme.accent.onFill;
+
+  /// Text and icon colour inside [outlined].
+  static Color outlinedForeground(ThemeData theme) => theme.accent.text;
 }
 
 ButtonStyle createButtonTheme({

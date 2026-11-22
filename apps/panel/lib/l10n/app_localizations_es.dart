@@ -931,6 +931,46 @@ class AppLocalizationsEs extends AppLocalizations {
       'Cambiar entre tema claro y oscuro.';
 
   @override
+  String get settings_display_settings_accent_title => 'Color de acento';
+
+  @override
+  String get settings_display_settings_accent_description =>
+      'Color de los botones, interruptores y la pestaña activa en este panel.';
+
+  @override
+  String get settings_display_settings_accent_preview => 'Vista previa';
+
+  @override
+  String get settings_display_settings_accent_preview_button => 'Confirmar';
+
+  @override
+  String get settings_display_settings_accent_preview_chip => 'Seleccionado';
+
+  @override
+  String get accent_blue => 'Azul';
+
+  @override
+  String get accent_teal => 'Verde azulado';
+
+  @override
+  String get accent_sage => 'Salvia';
+
+  @override
+  String get accent_terracotta => 'Terracota';
+
+  @override
+  String get accent_rose => 'Rosa';
+
+  @override
+  String get accent_violet => 'Violeta';
+
+  @override
+  String get accent_sand => 'Arena';
+
+  @override
+  String get accent_graphite => 'Grafito';
+
+  @override
   String get settings_display_settings_brightness_title => 'Brillo';
 
   @override

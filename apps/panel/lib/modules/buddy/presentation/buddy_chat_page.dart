@@ -254,7 +254,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 									)
 								: Center(
 									child: CircularProgressIndicator(
-										color: Theme.of(context).colorScheme.primary,
+										color: Theme.of(context).accent.text,
 									),
 								),
 						),
@@ -604,10 +604,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	}
 
 	Widget _buildMicButton(BuildContext context, bool isDark, bool disabled) {
-		final accentColor = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.primary,
-		).base;
+		final accentColor = Theme.of(context).accent.fill;
 
 		return GestureDetector(
 			onTap: disabled ? null : _openVoiceOverlay,
@@ -630,10 +627,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	}
 
 	Widget _buildSendButton(BuildContext context, bool isDark, bool disabled) {
-		final accentColor = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.primary,
-		).base;
+		final accentColor = Theme.of(context).accent.fill;
 
 		return GestureDetector(
 			onTap: disabled ? null : _sendMessage,

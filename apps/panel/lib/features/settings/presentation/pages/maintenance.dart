@@ -270,9 +270,7 @@ class MaintenancePage extends StatelessWidget {
 						Theme(
 							data: ThemeData(
 								outlinedButtonTheme:
-										Theme.of(context).brightness == Brightness.light
-												? AppOutlinedButtonsLightThemes.primary
-												: AppOutlinedButtonsDarkThemes.primary,
+										AppAccentButtons.outlined(Theme.of(context)),
 							),
 							child: OutlinedButton(
 								onPressed: () => Navigator.of(context).pop(),
@@ -294,9 +292,7 @@ class MaintenancePage extends StatelessWidget {
 						Theme(
 							data: ThemeData(
 								filledButtonTheme:
-										Theme.of(context).brightness == Brightness.light
-												? AppFilledButtonsLightThemes.primary
-												: AppFilledButtonsDarkThemes.primary,
+										AppAccentButtons.filled(Theme.of(context)),
 							),
 							child: FilledButton(
 								onPressed: () {

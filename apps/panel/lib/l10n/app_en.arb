@@ -1090,6 +1090,58 @@
   "@settings_display_settings_theme_mode_description": {
     "description": "Description explaining the theme mode setting."
   },
+  "settings_display_settings_accent_title": "Accent color",
+  "@settings_display_settings_accent_title": {
+    "description": "Label for the accent colour picker in display settings."
+  },
+  "settings_display_settings_accent_description": "Color of buttons, switches and the active tab on this panel.",
+  "@settings_display_settings_accent_description": {
+    "description": "Description of what the accent colour changes."
+  },
+  "settings_display_settings_accent_preview": "Preview",
+  "@settings_display_settings_accent_preview": {
+    "description": "Caption of the accent preview row."
+  },
+  "settings_display_settings_accent_preview_button": "Confirm",
+  "@settings_display_settings_accent_preview_button": {
+    "description": "Sample button label in the accent preview."
+  },
+  "settings_display_settings_accent_preview_chip": "Selected",
+  "@settings_display_settings_accent_preview_chip": {
+    "description": "Sample selected-chip label in the accent preview."
+  },
+  "accent_blue": "Blue",
+  "@accent_blue": {
+    "description": "Name of the blue accent colour."
+  },
+  "accent_teal": "Teal",
+  "@accent_teal": {
+    "description": "Name of the teal accent colour."
+  },
+  "accent_sage": "Sage",
+  "@accent_sage": {
+    "description": "Name of the sage accent colour."
+  },
+  "accent_terracotta": "Terracotta",
+  "@accent_terracotta": {
+    "description": "Name of the terracotta accent colour."
+  },
+  "accent_rose": "Rose",
+  "@accent_rose": {
+    "description": "Name of the rose accent colour."
+  },
+  "accent_violet": "Violet",
+  "@accent_violet": {
+    "description": "Name of the violet accent colour."
+  },
+  "accent_sand": "Sand",
+  "@accent_sand": {
+    "description": "Name of the sand accent colour."
+  },
+  "accent_graphite": "Graphite",
+  "@accent_graphite": {
+    "description": "Name of the graphite accent colour."
+  },
   "settings_display_settings_brightness_title": "Brightness",
   "@settings_display_settings_brightness_title": {
     "description": "Label for adjusting the display brightness."

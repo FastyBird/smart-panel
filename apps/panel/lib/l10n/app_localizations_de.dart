@@ -929,6 +929,46 @@ class AppLocalizationsDe extends AppLocalizations {
       'Zwischen hellem und dunklem Design wechseln.';
 
   @override
+  String get settings_display_settings_accent_title => 'Akzentfarbe';
+
+  @override
+  String get settings_display_settings_accent_description =>
+      'Farbe von Schaltflächen, Schaltern und dem aktiven Tab auf diesem Panel.';
+
+  @override
+  String get settings_display_settings_accent_preview => 'Vorschau';
+
+  @override
+  String get settings_display_settings_accent_preview_button => 'Bestätigen';
+
+  @override
+  String get settings_display_settings_accent_preview_chip => 'Ausgewählt';
+
+  @override
+  String get accent_blue => 'Blau';
+
+  @override
+  String get accent_teal => 'Petrol';
+
+  @override
+  String get accent_sage => 'Salbei';
+
+  @override
+  String get accent_terracotta => 'Terrakotta';
+
+  @override
+  String get accent_rose => 'Rosé';
+
+  @override
+  String get accent_violet => 'Violett';
+
+  @override
+  String get accent_sand => 'Sand';
+
+  @override
+  String get accent_graphite => 'Graphit';
+
+  @override
   String get settings_display_settings_brightness_title => 'Helligkeit';
 
   @override

@@ -163,10 +163,7 @@ class _VoiceInputOverlayState extends State<VoiceInputOverlay> {
 	@override
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final colors = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.primary,
-		);
+		final colors = Theme.of(context).accent.family(Theme.of(context).brightness);
 		final localizations = AppLocalizations.of(context)!;
 
 		final seconds = _recordingService.recordingDuration.inSeconds;
