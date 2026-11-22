@@ -43,7 +43,11 @@
 					/>
 				</el-form-item>
 
-				<test-connection :run="onTestConnection" />
+				<!-- A result belongs to the hostname and password it was read with: changing either starts a fresh test -->
+				<test-connection
+					:key="`${model.hostname}\u0000${model.password ?? ''}`"
+					:run="onTestConnection"
+				/>
 			</plugin-form-section>
 		</device-form-frame>
 	</el-form>
@@ -87,7 +91,19 @@ const flashMessage = useFlashMessage();
 
 const { devices, loaded: devicesLoaded, fetchDevices } = useDevices();
 
-const { model, formEl, categoriesOptions, supportedDevices, formChanged, deviceInfo, checkDevice, submit, formResult } = useDeviceAddForm({
+const {
+	model,
+	formEl,
+	categoriesOptions,
+	supportedDevices,
+	supportedDevicesLoaded,
+	loadSupportedDevices,
+	formChanged,
+	deviceInfo,
+	checkDevice,
+	submit,
+	formResult,
+} = useDeviceAddForm({
 	id: props.id,
 });
 
@@ -111,6 +127,17 @@ const onTestConnection = async (): Promise<TestConnectionResult> => {
 		await checkDevice();
 	} catch (error: unknown) {
 		return { ok: false, message: error instanceof Error ? error.message : t('devicesShellyV1Plugin.fields.devices.hostname.validation.required') };
+	}
+
+	// Not supported is a fact about the device only once the list of supported devices is here
+	if (!supportedDevicesLoaded.value) {
+		await loadSupportedDevices().catch((): void => {
+			// Reported below
+		});
+	}
+
+	if (!supportedDevicesLoaded.value) {
+		return { ok: false, message: t('devicesShellyV1Plugin.messages.devices.failedLoadSupportedDevices') };
 	}
 
 	if (deviceGroup.value === null) {
@@ -172,7 +199,8 @@ watch(
 watch(
 	(): { value: DevicesModuleDeviceCategory; label: string }[] => categoriesOptions.value,
 	(val: { value: DevicesModuleDeviceCategory; label: string }[]): void => {
-		if (val.length > 0 && val[0]) {
+		// A repeated test rebuilds the options: a category that is still offered stays chosen
+		if (val.length > 0 && val[0] && !val.some((option) => option.value === model.category)) {
 			model.category = val[0].value;
 		}
 	}

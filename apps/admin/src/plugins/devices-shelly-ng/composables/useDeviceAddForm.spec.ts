@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { effectScope, nextTick } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 import { v4 as uuid } from 'uuid';
@@ -11,6 +11,7 @@ import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { useDeviceAddForm } from './useDeviceAddForm';
 
 const mockAdd = vi.fn();
+const mockFindAll = vi.fn((): { identifier: string | null; type: string }[] => []);
 
 const backendClient = {
 	POST: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock('../../../common', async () => {
 		injectStoresManager: () => ({
 			getStore: () => ({
 				add: mockAdd,
+				findAll: mockFindAll,
 			}),
 		}),
 		useFlashMessage: () => ({
@@ -194,5 +196,70 @@ describe('useDeviceAddForm', () => {
 
 		await expect(check).rejects.toThrow();
 		expect(form.deviceInfo.value).toBeNull();
+	});
+
+	it('lets Save wait for a test already reading the same credentials instead of discarding it', async () => {
+		let answer!: (value: unknown) => void;
+		backendClient.POST.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+		form.model.name = 'New Device';
+		form.model.hostname = '192.168.0.1';
+		await nextTick();
+
+		const test = form.checkDevice();
+		const save = form.submit();
+
+		answer({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+
+		await expect(test).resolves.toEqual(expect.objectContaining({ model: 'SNSW-001X16EU' }));
+		await save;
+
+		expect(backendClient.POST).toHaveBeenCalledTimes(1);
+		expect(mockAdd).toHaveBeenCalledTimes(1);
+	});
+
+	it('adds nothing when the device read on Save is in Smart Panel already', async () => {
+		mockFindAll.mockReturnValueOnce([{ identifier: 'shellyplus1-a1b2', type: DEVICES_SHELLY_NG_TYPE }]);
+		backendClient.POST.mockResolvedValueOnce({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+		form.model.name = 'New Device';
+		form.model.hostname = '192.168.0.1';
+
+		await expect(form.submit()).rejects.toThrow('already registered');
+
+		expect(mockAdd).not.toHaveBeenCalled();
+		expect(form.formResult.value).toBe(FormResult.NONE);
+	});
+
+	it('frees Save again when the model fails its final check', async () => {
+		form.model.name = '';
+		form.model.hostname = '192.168.0.1';
+		await nextTick();
+		form.deviceInfo.value = DEVICE_INFO;
+		await nextTick();
+
+		await expect(form.submit()).rejects.toThrow('Failed to validate create device model.');
+
+		expect(mockAdd).not.toHaveBeenCalled();
+		expect(form.formResult.value).toBe(FormResult.NONE);
+	});
+
+	it('adds nothing when the form closes while Save reads the device', async () => {
+		const scope = effectScope();
+		const scoped = scope.run(() => useDeviceAddForm({ id: deviceId.toString() }))!;
+		scoped.formEl.value = form.formEl.value;
+
+		let answer!: (value: unknown) => void;
+		backendClient.POST.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+		scoped.model.name = 'New Device';
+		scoped.model.hostname = '192.168.0.1';
+		await nextTick();
+
+		const save = scoped.submit();
+
+		await nextTick();
+		scope.stop();
+		answer({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+
+		await expect(save).rejects.toThrow('closed');
+		expect(mockAdd).not.toHaveBeenCalled();
 	});
 });

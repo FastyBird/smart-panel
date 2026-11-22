@@ -9,6 +9,9 @@ import type { IShellyV1DeviceAddForm, IShellyV1DeviceEditForm, IShellyV1DeviceIn
 export interface IUseDeviceAddForm {
 	categoriesOptions: ComputedRef<{ value: DevicesModuleDeviceCategory; label: string }[]>;
 	supportedDevices: Ref<IShellyV1SupportedDevice[]>;
+	/** The supported devices list has arrived */
+	supportedDevicesLoaded: Ref<boolean>;
+	loadSupportedDevices: () => Promise<void>;
 	model: Reactive<IShellyV1DeviceAddForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;

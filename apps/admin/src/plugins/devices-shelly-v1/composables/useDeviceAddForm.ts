@@ -1,4 +1,4 @@
-import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
+import { type Reactive, computed, getCurrentScope, onScopeDispose, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
@@ -37,7 +37,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 	const flashMessage = useFlashMessage();
 	const logger = useLogger();
 
-	const { supportedDevices, fetchDevices: fetchSupportedDevices } = useSupportedDevices();
+	const { supportedDevices, loaded: supportedDevicesLoaded, fetchDevices: fetchSupportedDevices } = useSupportedDevices();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
@@ -82,18 +82,55 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	const deviceInfo = ref<IShellyV1DeviceInfo | null>(null);
 
-	// Each check, and each change of the hostname or password, starts a new generation: a check that comes back for
-	// an older one is not applied
+	// Each change of the hostname or password starts a new generation: a check that comes back for an older one is
+	// not applied
 	let checkGeneration = 0;
+
+	let pendingCheck: { key: string; promise: Promise<IShellyV1DeviceInfo> } | null = null;
+
+	// Save goes on only while the form is shown: picking another plugin mid-check leaves this device unadded
+	let disposed = false;
+
+	if (getCurrentScope()) {
+		onScopeDispose((): void => {
+			disposed = true;
+		});
+	}
 
 	// Test connection: reads the device at the hostname, with the password when it has one. A failure is returned to
 	// the caller (the test result), not shown as a toast
 	const checkDevice = async (): Promise<IShellyV1DeviceInfo> => {
 		await formEl.value?.validateField(['hostname']);
 
-		// A new check replaces the last result, whichever way it ends
-		const generation = ++checkGeneration;
+		// A check already reading these credentials (Test connection, then Save) is the one to wait for
+		const key = `${model.hostname}\u0000${model.password ?? ''}`;
 
+		if (pendingCheck !== null && pendingCheck.key === key) {
+			return pendingCheck.promise;
+		}
+
+		const promise = readDevice();
+
+		pendingCheck = { key, promise };
+
+		promise
+			.finally((): void => {
+				if (pendingCheck?.promise === promise) {
+					pendingCheck = null;
+				}
+			})
+			.catch((): void => {
+				// The caller gets the rejection
+			});
+
+		return promise;
+	};
+
+	const readDevice = async (): Promise<IShellyV1DeviceInfo> => {
+		// The result belongs to the credentials of this generation: changing them while it is read discards it
+		const generation = checkGeneration;
+
+		// A new check replaces the last result, whichever way it ends
 		deviceInfo.value = null;
 
 		const errorMessage = t('devicesShellyV1Plugin.messages.devices.notChecked', { device: model.name });
@@ -181,10 +218,28 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			}
 		}
 
+		if (disposed) {
+			formResult.value = FormResult.NONE;
+
+			throw new DevicesShellyV1ValidationException('The form was closed before the device was read.');
+		}
+
+		// The device is in Smart Panel already: the form opens it instead (see the add form), nothing is added
+		const read = deviceInfo.value as IShellyV1DeviceInfo | null;
+
+		if (read !== null && devicesStore.findAll().some((device) => device.identifier === read.mac && device.type === DEVICES_SHELLY_V1_TYPE)) {
+			formResult.value = FormResult.NONE;
+
+			throw new DevicesShellyV1ValidationException('The device is already registered.');
+		}
+
 		const parsedModel = ShellyV1DeviceAddFormSchema.safeParse(model);
 
 		if (!parsedModel.success) {
 			logger.error('Schema validation failed with:', parsedModel.error);
+
+			// Save is ready again for the corrected form
+			formResult.value = FormResult.NONE;
 
 			throw new DevicesShellyV1ValidationException('Failed to validate create device model.');
 		}
@@ -251,6 +306,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			// A test holds only for the hostname and password it read the device with
 			if (hostname !== oldHostname || password !== oldPassword) {
 				checkGeneration++;
+				pendingCheck = null;
 				deviceInfo.value = null;
 			}
 		}
@@ -267,6 +323,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		categoriesOptions,
 		deviceInfo,
 		supportedDevices,
+		supportedDevicesLoaded,
+		loadSupportedDevices: (): Promise<void> => fetchSupportedDevices(),
 		model,
 		formEl,
 		formChanged,

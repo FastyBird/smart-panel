@@ -23,9 +23,12 @@ vi.mock('../../../modules/devices', async () => {
 
 const state = vi.hoisted(() => ({
 	deviceInfo: undefined as unknown as { value: Record<string, unknown> | null },
+	supportedLoaded: undefined as unknown as { value: boolean },
+	categories: undefined as unknown as { value: { value: string; label: string }[] },
 	model: {} as Record<string, unknown>,
 }));
 
+const mockLoadSupported = vi.fn().mockResolvedValue(undefined);
 const mockSubmit = vi.fn().mockResolvedValue(undefined);
 const mockCheck = vi.fn();
 
@@ -34,14 +37,16 @@ vi.mock('../composables/useDeviceAddForm', async () => {
 
 	return {
 		useDeviceAddForm: () => {
-			state.model = reactive({ id: 'abc123', name: '', category: '', description: '', identifier: 'shelly-device' });
+			state.model = reactive({ id: 'abc123', name: '', category: '', description: '', identifier: 'shelly-device', hostname: '', password: '' });
 			state.deviceInfo = ref(null);
+			state.supportedLoaded = ref(true);
+			state.categories = ref([
+				{ value: 'generic', label: 'Generic' },
+				{ value: 'lighting', label: 'Lighting' },
+			]);
 
 			return {
-				categoriesOptions: [
-					{ value: 'generic', label: 'Generic' },
-					{ value: 'lighting', label: 'Lighting' },
-				],
+				categoriesOptions: state.categories,
 				model: state.model,
 				formEl: ref({
 					clearValidate: vi.fn(),
@@ -50,6 +55,8 @@ vi.mock('../composables/useDeviceAddForm', async () => {
 				}),
 				deviceInfo: state.deviceInfo,
 				supportedDevices: ref([{ name: 'Shelly Plus 1', models: ['SHELLY-MODEL'], categories: [] }]),
+				supportedDevicesLoaded: state.supportedLoaded,
+				loadSupportedDevices: mockLoadSupported,
 				formChanged: { value: false },
 				formResult: { value: 'none' },
 				submit: mockSubmit,
@@ -156,5 +163,56 @@ describe('ShellyNgDeviceAddForm.vue', () => {
 		await flushPromises();
 
 		expect(state.model.name).toBe('Living room');
+	});
+
+	it('tells a support list that did not load apart from an unsupported device', async () => {
+		state.supportedLoaded.value = false;
+		mockCheck.mockImplementationOnce(async () => {
+			state.deviceInfo.value = { id: 'shelly-id', model: 'other-model', firmware: '1.0.0', name: null };
+
+			return state.deviceInfo.value;
+		});
+
+		await wrapper.get('[data-test-id="test-connection-button"]').trigger('click');
+		await flushPromises();
+
+		expect(mockLoadSupported).toHaveBeenCalledTimes(1);
+		expect(wrapper.get('[data-test-id="test-connection-result"]').text()).toContain(
+			'devicesShellyNgPlugin.messages.devices.failedLoadSupportedDevices'
+		);
+	});
+
+	it('clears a shown test result when the hostname changes', async () => {
+		mockCheck.mockImplementationOnce(async () => {
+			state.deviceInfo.value = { id: 'shelly-id', model: 'shelly-model', firmware: '1.0.0', name: null };
+
+			return state.deviceInfo.value;
+		});
+
+		await wrapper.get('[data-test-id="test-connection-button"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.get('[data-test-id="test-connection-result"]').text()).toContain('Shelly Plus 1');
+
+		state.model.hostname = '192.168.1.99';
+		await flushPromises();
+
+		expect(wrapper.get('[data-test-id="test-connection-result"]').text()).toBe('');
+	});
+
+	it('keeps a chosen category that a repeated test still offers', async () => {
+		const options = [
+			{ value: 'outlet', label: 'Outlet' },
+			{ value: 'switcher', label: 'Switcher' },
+		];
+
+		state.categories.value = options;
+		state.model.category = 'switcher';
+		await flushPromises();
+
+		state.categories.value = [...options];
+		await flushPromises();
+
+		expect(state.model.category).toBe('switcher');
 	});
 });
