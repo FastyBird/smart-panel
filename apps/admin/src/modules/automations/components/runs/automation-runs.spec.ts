@@ -214,6 +214,16 @@ describe('automation run components', (): void => {
 			wrapper = mount(AutomationRunHistory, { props: { runs: many, graph, nodeTypes, selectedRunId: many[14].id } });
 
 			expect(wrapper.findAll('[data-test-id="run-item"]')).toHaveLength(20);
+
+			// The tenth run is shown; a newer one arrives and pushes it to eleventh: it stays listed
+			wrapper.unmount();
+			wrapper = mount(AutomationRunHistory, { props: { runs: many.slice(0, 15), graph, nodeTypes, selectedRunId: many[9].id } });
+
+			expect(wrapper.find(`[data-test-run="${many[9].id}"]`).exists()).toBe(true);
+
+			await wrapper.setProps({ runs: [run({ id: 'a1f0c1d2-0000-4000-8000-0000000000ff' }), ...many.slice(0, 15)] });
+
+			expect(wrapper.find(`[data-test-run="${many[9].id}"]`).exists()).toBe(true);
 		});
 
 		it('says when there are no runs, they are loading or could not be loaded', async (): Promise<void> => {

@@ -96,6 +96,20 @@ describe('AutomationStepList', () => {
 		expect(cards[0].props('domain')).toBeUndefined();
 	});
 
+	it('lists a step once when two ports of one step lead to it', () => {
+		const wrapper = render({
+			graph: graph({
+				nodes: [node('n1', 'manual.start', 0), node('n2', 'flow.delay', 360)],
+				edges: [
+					{ id: 'e1', source: 'n1', source_port: 'true', target: 'n2', target_port: 'in' },
+					{ id: 'e2', source: 'n1', source_port: 'false', target: 'n2', target_port: 'in' },
+				],
+			}),
+		});
+
+		expect(wrapper.findAll('[data-test-id="automation-step"]').map((step) => step.attributes('data-step-id'))).toEqual(['n1', 'n2']);
+	});
+
 	it('says when the flow has no steps', () => {
 		const wrapper = render({ graph: graph({ nodes: [], edges: [] }) });
 

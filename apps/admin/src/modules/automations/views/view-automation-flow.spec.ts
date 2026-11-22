@@ -531,14 +531,70 @@ describe('ViewAutomationFlow', (): void => {
 
 			expect(mocks.canvas.addNodeAt).toHaveBeenCalledWith('notification.send', 300, 200);
 
-			const inspector = drawer('rtl');
+			canvas().vm.$emit('select', ['a1'], []);
+			await flushPromises();
 
-			expect(inspector.props('modelValue')).toBe(false);
+			// The panel lies over the canvas like a drawer
+			const panel = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+			expect(panel.isVisible()).toBe(true);
+			expect(panel.classes()).toContain('automation-flow__inspector--overlay');
+		});
+
+		it('keeps the panel, and text in it that does not parse, when the tablet is turned', async (): Promise<void> => {
+			await createWrapper();
 
 			canvas().vm.$emit('select', ['a1'], []);
 			await flushPromises();
 
-			expect(inspector.props('modelValue')).toBe(true);
+			const before = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+			before.vm.$emit('update:invalid', true);
+			await flushPromises();
+
+			mocks.tabletPortrait = true;
+			await flushPromises();
+
+			const turned = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+			expect(turned.vm.$.uid).toBe(before.vm.$.uid);
+			expect(turned.classes()).toContain('automation-flow__inspector--overlay');
+			expect(editor.draftInvalid.value).toBe(true);
+
+			mocks.tabletPortrait = false;
+			await flushPromises();
+
+			expect(wrapper.findComponent({ name: 'AutomationNodePanel' }).vm.$.uid).toBe(before.vm.$.uid);
+		});
+
+		it('closes the panel with Escape only once a form with text that does not parse may be let go', async (): Promise<void> => {
+			const confirm = vi
+				.spyOn(ElMessageBox, 'confirm')
+				.mockRejectedValueOnce('cancel')
+				.mockResolvedValueOnce('confirm' as never);
+
+			mocks.tabletPortrait = true;
+
+			await createWrapper();
+
+			canvas().vm.$emit('select', ['a1'], []);
+			await flushPromises();
+
+			wrapper.findComponent({ name: 'AutomationNodePanel' }).vm.$emit('update:invalid', true);
+			await flushPromises();
+
+			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+			await flushPromises();
+
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(wrapper.findComponent({ name: 'AutomationNodePanel' }).exists()).toBe(true);
+
+			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+			await flushPromises();
+
+			expect(wrapper.findComponent({ name: 'AutomationNodePanel' }).exists()).toBe(false);
+
+			confirm.mockRestore();
 		});
 	});
 

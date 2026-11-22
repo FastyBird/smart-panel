@@ -162,6 +162,8 @@ const onAdd = (type: string): void => {
  */
 
 interface ITouchDrag {
+	// The finger that pressed the card: the others are not part of this drag
+	pointerId: number;
 	item: IPaletteItem;
 	startX: number;
 	startY: number;
@@ -202,14 +204,20 @@ const stopTouchDrag = (): void => {
 
 	window.removeEventListener('pointermove', onPointerMove);
 	window.removeEventListener('pointerup', onPointerUp);
-	window.removeEventListener('pointercancel', stopTouchDrag);
+	window.removeEventListener('pointercancel', onPointerCancel);
 	window.removeEventListener('touchmove', onTouchMove);
+};
+
+const onPointerCancel = (event: PointerEvent): void => {
+	if (touchDrag.value !== null && event.pointerId === touchDrag.value.pointerId) {
+		stopTouchDrag();
+	}
 };
 
 const onPointerMove = (event: PointerEvent): void => {
 	const drag = touchDrag.value;
 
-	if (drag === null) {
+	if (drag === null || event.pointerId !== drag.pointerId) {
 		return;
 	}
 
@@ -229,7 +237,11 @@ const onPointerMove = (event: PointerEvent): void => {
 const onPointerUp = (event: PointerEvent): void => {
 	const drag = touchDrag.value;
 
-	if (drag?.dragging) {
+	if (drag === null || event.pointerId !== drag.pointerId) {
+		return;
+	}
+
+	if (drag.dragging) {
 		swallowClick = true;
 
 		emit('drop', drag.item.type, event.clientX, event.clientY);
@@ -242,13 +254,21 @@ const onPointerDown = (event: PointerEvent, item: IPaletteItem): void => {
 	// A drag that ended away from the card was followed by no click: the next press starts afresh
 	swallowClick = false;
 
-	if (props.disabled || event.pointerType !== 'touch') {
+	// A second finger does not take over a card already pressed or picked up
+	if (props.disabled || event.pointerType !== 'touch' || touchDrag.value !== null) {
 		return;
 	}
 
-	stopTouchDrag();
-
-	const drag: ITouchDrag = { item, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, dragging: false, timer: null };
+	const drag: ITouchDrag = {
+		pointerId: event.pointerId,
+		item,
+		startX: event.clientX,
+		startY: event.clientY,
+		x: event.clientX,
+		y: event.clientY,
+		dragging: false,
+		timer: null,
+	};
 
 	drag.timer = window.setTimeout((): void => {
 		if (touchDrag.value !== null) {
@@ -263,7 +283,7 @@ const onPointerDown = (event: PointerEvent, item: IPaletteItem): void => {
 
 	window.addEventListener('pointermove', onPointerMove);
 	window.addEventListener('pointerup', onPointerUp);
-	window.addEventListener('pointercancel', stopTouchDrag);
+	window.addEventListener('pointercancel', onPointerCancel);
 	window.addEventListener('touchmove', onTouchMove, { passive: false });
 };
 

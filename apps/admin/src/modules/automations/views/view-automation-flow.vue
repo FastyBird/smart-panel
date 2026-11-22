@@ -301,7 +301,7 @@
 				@focus="onFocusNode"
 			/>
 
-			<div class="flex flex-row grow-1 min-h-0">
+			<div class="relative flex flex-row grow-1 min-h-0">
 				<!-- Template 8: the palette is 240 px, 208 px on tablet landscape; on tablet portrait it is a sheet -->
 				<el-scrollbar
 					v-if="!readonly && !isTabletPortrait"
@@ -384,48 +384,28 @@
 					/>
 				</div>
 
-				<define-panel>
-					<!--
-						Rebuilt when text that did not parse is given up. On phone it is only hidden, so what is typed in it is still
-						there once there is room to edit again.
-					-->
-					<automation-node-panel
-						v-if="panelNode"
-						v-show="!readonly"
-						:key="`${panelNode.id}:${draftResets}`"
-						:node="panelNode"
-						:node-type="getNodeType(panelNode.type)"
-						:issues="panelIssues"
-						:form="getFormComponent(panelNode.type)"
-						:disabled="reloading || readonly"
-						:style="
-							isTabletPortrait
-								? { '--automation-inspector-width': '100%', height: '100%', borderLeft: '0' }
-								: { '--automation-inspector-width': sizeClass === 'wd' ? '360px' : '340px' }
-						"
-						@update:config="onConfigUpdate"
-						@update:invalid="setDraftInvalid"
-						@remove="onRemoveNode"
-						@close="onClosePanel"
-					/>
-				</define-panel>
-
-				<!-- Template 8: the inspector is 340 px beside the canvas (360 px on wide); on tablet portrait a drawer over it -->
-				<el-drawer
-					v-if="isTabletPortrait"
-					:model-value="panelNode !== null && !readonly"
-					:modal="false"
-					:with-header="false"
-					direction="rtl"
-					size="340px"
-					body-class="p-0!"
-					data-test-id="inspector-drawer"
+				<!--
+					Template 8: the inspector, 340 px beside the canvas (360 px on wide); on tablet portrait it lies over the canvas
+					as a drawer. One panel in every layout: turning a tablet keeps the form, and what was typed in it, as it is.
+					Rebuilt when text that did not parse is given up. On phone it is only hidden, so what is typed in it is still
+					there once there is room to edit again.
+				-->
+				<automation-node-panel
+					v-if="panelNode"
+					v-show="!readonly"
+					:key="`${panelNode.id}:${draftResets}`"
+					:node="panelNode"
+					:node-type="getNodeType(panelNode.type)"
+					:issues="panelIssues"
+					:form="getFormComponent(panelNode.type)"
+					:disabled="reloading || readonly"
+					:class="{ 'automation-flow__inspector--overlay': isTabletPortrait }"
+					:style="{ '--automation-inspector-width': sizeClass === 'wd' ? '360px' : '340px' }"
+					@update:config="onConfigUpdate"
+					@update:invalid="setDraftInvalid"
+					@remove="onRemoveNode"
 					@close="onClosePanel"
-				>
-					<reuse-panel />
-				</el-drawer>
-
-				<reuse-panel v-else />
+				/>
 			</div>
 
 			<!-- Tablet portrait: Add block opens the palette as a sheet; a block tapped or dragged out closes it -->
@@ -476,7 +456,7 @@ import {
 } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
-import { createReusableTemplate, useEventListener } from '@vueuse/core';
+import { useEventListener } from '@vueuse/core';
 
 import { AppBreadcrumbs, EntityNotFound, StateView, ViewHeader, useFlashMessage, useSizeClass } from '../../../common';
 import {
@@ -529,9 +509,6 @@ const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
 const { sizeClass, isPhone, isTabletPortrait, isTabletLandscape } = useSizeClass();
-
-// The panel of the selected card renders once, beside the canvas or in the tablet portrait drawer
-const [DefinePanel, ReusePanel] = createReusableTemplate();
 
 const paletteSheet = ref<boolean>(false);
 
@@ -712,6 +689,14 @@ const onSelect = (nodeIds: string[], edgeIds: string[]): void => {
 const onClosePanel = (): void => {
 	void showPanel(null);
 };
+
+// On tablet portrait the panel lies over the canvas like a drawer, and Escape closes it the way its close button does:
+// a form holding text that does not parse asks first, and stays open when the answer is no
+useEventListener(window, 'keydown', (event: KeyboardEvent): void => {
+	if (event.key === 'Escape' && isTabletPortrait.value && panelNode.value !== null && !readonly.value) {
+		onClosePanel();
+	}
+});
 
 /*
  * Edits
@@ -1079,6 +1064,16 @@ onBeforeMount(loadEditor);
 	&__palette {
 		flex: 0 0 230px;
 		border-right: 1px solid var(--el-border-color);
+	}
+
+	// Tablet portrait: the inspector lies over the canvas, as a drawer from the right
+	&__inspector--overlay {
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 10;
+		box-shadow: var(--fb-shadow-overlay);
 	}
 }
 </style>

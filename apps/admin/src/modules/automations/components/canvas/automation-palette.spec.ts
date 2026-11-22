@@ -126,8 +126,8 @@ describe('AutomationPalette', (): void => {
 	});
 
 	describe('on touch', (): void => {
-		const pointer = (type: string, x: number, y: number, pointerType = 'touch'): PointerEvent =>
-			Object.assign(new Event(type, { bubbles: true }), { clientX: x, clientY: y, pointerType }) as unknown as PointerEvent;
+		const pointer = (type: string, x: number, y: number, pointerType = 'touch', pointerId = 1): PointerEvent =>
+			Object.assign(new Event(type, { bubbles: true }), { clientX: x, clientY: y, pointerType, pointerId }) as unknown as PointerEvent;
 
 		const item = (): HTMLElement => wrapper.get('[data-test-palette="notification.send"]').element as HTMLElement;
 
@@ -179,6 +179,25 @@ describe('AutomationPalette', (): void => {
 
 			expect(wrapper.emitted('drop')).toBeUndefined();
 			expect(wrapper.emitted('add')).toEqual([['notification.send']]);
+		});
+
+		it('follows only the finger that picked the card up', async (): Promise<void> => {
+			createWrapper();
+
+			item().dispatchEvent(pointer('pointerdown', 10, 10, 'touch', 1));
+			vi.advanceTimersByTime(400);
+			await wrapper.vm.$nextTick();
+
+			// A second finger neither takes the card over nor drops it
+			item().dispatchEvent(pointer('pointerdown', 50, 50, 'touch', 2));
+			window.dispatchEvent(pointer('pointermove', 500, 500, 'touch', 2));
+			window.dispatchEvent(pointer('pointerup', 500, 500, 'touch', 2));
+
+			expect(wrapper.emitted('drop')).toBeUndefined();
+
+			window.dispatchEvent(pointer('pointerup', 120, 80, 'touch', 1));
+
+			expect(wrapper.emitted('drop')).toEqual([['notification.send', 120, 80]]);
 		});
 
 		it('leaves a mouse to HTML5 drag', (): void => {

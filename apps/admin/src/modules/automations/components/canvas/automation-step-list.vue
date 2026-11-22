@@ -85,12 +85,15 @@ const ordered = computed<IAutomationGraphNode[]>((): IAutomationGraphNode[] => {
 		const next = props.graph.edges
 			.filter((edge) => edge.source === node.id)
 			.map((edge) => nodes.get(edge.target))
-			.filter((target): target is IAutomationGraphNode => target !== undefined && !seen.has(target.id))
+			.filter((target): target is IAutomationGraphNode => target !== undefined)
 			.sort(byPosition);
 
+		// Two ports of one step may lead to the same next one: it is listed once
 		next.forEach((target) => {
-			seen.add(target.id);
-			queue.push(target);
+			if (!seen.has(target.id)) {
+				seen.add(target.id);
+				queue.push(target);
+			}
 		});
 	}
 

@@ -165,11 +165,10 @@ const RUNS_PAGE = 10;
 
 const shown = ref<number>(RUNS_PAGE);
 
+// Where the picked run is in the list: it moves when newer runs arrive, or turns up once the history is read
 watch(
-	(): string | null => props.selectedRunId ?? null,
-	(id: string | null): void => {
-		const index = id === null ? -1 : props.runs.findIndex((run) => run.id === id);
-
+	(): number => (props.selectedRunId ? props.runs.findIndex((run) => run.id === props.selectedRunId) : -1),
+	(index: number): void => {
 		if (index >= shown.value) {
 			shown.value = Math.ceil((index + 1) / RUNS_PAGE) * RUNS_PAGE;
 		}
