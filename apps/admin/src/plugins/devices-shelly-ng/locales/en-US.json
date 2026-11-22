@@ -169,5 +169,8 @@
 		"selection": {
 			"description": "Shelly Gen 2 and newer devices on your network."
 		}
+	},
+	"sections": {
+		"connection": "Shelly connection"
 	}
 }

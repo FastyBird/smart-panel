@@ -140,5 +140,8 @@
 		"selection": {
 			"description": "Addressable LED controllers running WLED."
 		}
+	},
+	"sections": {
+		"connection": "WLED connection"
 	}
 }

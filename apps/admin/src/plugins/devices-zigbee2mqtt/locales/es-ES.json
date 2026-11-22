@@ -358,5 +358,8 @@
 				"config": "device_options:\n  retain: true\nmqtt:\n  force_disable_retain: false"
 			}
 		}
+	},
+	"sections": {
+		"connection": "Conexión de Zigbee2MQTT"
 	}
 }

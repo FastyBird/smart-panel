@@ -6,108 +6,34 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.id.title')"
-			prop="id"
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="edit"
 		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.name.title')"
-			prop="name"
-		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.name.placeholder')"
-				name="name"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-				readonly
-				disabled
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.zigbee2mqttDeviceId.title')"
-			prop="identifier"
-		>
-			<el-select
-				v-model="model.identifier"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.zigbee2mqttDeviceId.placeholder')"
-				:loading="devicesOptionsLoading"
-				name="identifier"
-				filterable
-				disabled
-			>
-				<el-option
-					v-for="item in devicesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
+			<plugin-form-section :title="t('devicesZigbee2mqttPlugin.sections.connection')">
+				<el-form-item
+					:label="t('devicesZigbee2mqttPlugin.fields.devices.zigbee2mqttDeviceId.title')"
+					prop="identifier"
+				>
+					<el-select
+						v-model="model.identifier"
+						:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.zigbee2mqttDeviceId.placeholder')"
+						:loading="devicesOptionsLoading"
+						name="identifier"
+						filterable
+						disabled
+					>
+						<el-option
+							v-for="item in devicesOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-select>
+				</el-form-item>
+			</plugin-form-section>
+		</device-form-frame>
 	</el-form>
 </template>
 
@@ -115,10 +41,11 @@
 import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
-import { FormResult, type FormResultType } from '../../../modules/devices';
+import { PluginFormSection } from '../../../common';
+import { DeviceFormFrame, FormResult, type FormResultType } from '../../../modules/devices';
 import { useDeviceEditForm } from '../composables/useDeviceEditForm';
 import { useDiscoveredDevices } from '../composables/useDiscoveredDevices';
 import type { IZigbee2mqttDeviceEditForm } from '../schemas/devices.types';

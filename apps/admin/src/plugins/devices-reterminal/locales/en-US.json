@@ -68,5 +68,8 @@
 			"edited": "reTerminal device '{device}' has been updated",
 			"notEdited": "Failed to update reTerminal device '{device}'"
 		}
+	},
+	"sections": {
+		"connection": "reTerminal connection"
 	}
 }

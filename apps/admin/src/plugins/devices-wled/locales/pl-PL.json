@@ -140,5 +140,8 @@
 		"selection": {
 			"description": "Kontrolery adresowalnych diod LED z WLED."
 		}
+	},
+	"sections": {
+		"connection": "Połączenie WLED"
 	}
 }

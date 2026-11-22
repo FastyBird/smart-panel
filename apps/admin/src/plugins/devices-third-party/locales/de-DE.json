@@ -39,5 +39,8 @@
         }
       }
     }
+  },
+  "sections": {
+    "connection": "Verbindung zum Drittanbieter"
   }
 }

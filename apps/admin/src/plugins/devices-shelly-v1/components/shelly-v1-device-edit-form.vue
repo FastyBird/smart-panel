@@ -6,117 +6,48 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesShellyV1Plugin.fields.devices.id.title')"
-			prop="id"
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="edit"
 		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('devicesShellyV1Plugin.fields.devices.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
+			<plugin-form-section :title="t('devicesShellyV1Plugin.sections.connection')">
+				<el-form-item
+					:label="t('devicesShellyV1Plugin.fields.devices.hostname.title')"
+					prop="hostname"
+				>
+					<el-input
+						v-model="model.hostname"
+						:placeholder="t('devicesShellyV1Plugin.fields.devices.hostname.placeholder')"
+						name="hostname"
+					/>
+				</el-form-item>
 
-		<el-form-item
-			:label="t('devicesShellyV1Plugin.fields.devices.name.title')"
-			prop="name"
-		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesShellyV1Plugin.fields.devices.name.placeholder')"
-				name="name"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesShellyV1Plugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesShellyV1Plugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesShellyV1Plugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesShellyV1Plugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesShellyV1Plugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesShellyV1Plugin.fields.devices.hostname.title')"
-			prop="hostname"
-		>
-			<el-input
-				v-model="model.hostname"
-				:placeholder="t('devicesShellyV1Plugin.fields.devices.hostname.placeholder')"
-				name="hostname"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesShellyV1Plugin.fields.devices.password.title')"
-			prop="password"
-		>
-			<el-input
-				v-model="model.password"
-				:placeholder="t('devicesShellyV1Plugin.fields.devices.password.placeholder')"
-				name="password"
-			/>
-		</el-form-item>
+				<el-form-item
+					:label="t('devicesShellyV1Plugin.fields.devices.password.title')"
+					prop="password"
+				>
+					<!-- The saved password is never shown: Replace reveals an empty field for a new one -->
+					<secret-input
+						v-model="newPassword"
+						:saved-hint="savedPassword ? '' : null"
+						:placeholder="t('devicesShellyV1Plugin.fields.devices.password.placeholder')"
+						name="password"
+					/>
+				</el-form-item>
+			</plugin-form-section>
+		</device-form-frame>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType } from '../../../modules/devices';
+import { PluginFormSection, SecretInput } from '../../../common';
+import { DeviceFormFrame, FormResult, type FormResultType } from '../../../modules/devices';
 import { useDeviceEditForm } from '../composables/useDeviceEditForm';
 import type { IShellyV1DeviceEditForm } from '../schemas/devices.types';
 import type { IShellyV1Device } from '../store/devices.store.types';
@@ -161,6 +92,15 @@ if (pre) {
 	history.replaceState(s, '');
 }
 
+// The password the device has now, and a new one while the user replaces it: no new one keeps the saved password,
+// an empty one removes it. A password is sent exactly as typed, spaces included
+const savedPassword = ref<string | null>(model.password ?? null);
+const newPassword = ref<string | undefined>(undefined);
+
+watch(newPassword, (value: string | undefined): void => {
+	model.password = value === undefined ? savedPassword.value : value === '' ? null : value;
+});
+
 const rules = reactive<FormRules<IShellyV1DeviceEditForm>>({
 	name: [{ required: true, message: t('devicesShellyV1Plugin.fields.devices.name.validation.required'), trigger: 'change' }],
 	category: [{ required: true, message: t('devicesShellyV1Plugin.fields.devices.category.validation.required'), trigger: 'change' }],
@@ -192,6 +132,9 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
+			// The replacement goes with the rest of the draft: the field shows the saved password again
+			newPassword.value = undefined;
+
 			if (!formEl.value) return;
 
 			formEl.value.resetFields();

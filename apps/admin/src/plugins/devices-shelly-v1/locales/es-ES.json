@@ -143,5 +143,8 @@
 		"selection": {
 			"description": "Dispositivos Shelly de primera generación en su red."
 		}
+	},
+	"sections": {
+		"connection": "Conexión de Shelly Gen 1"
 	}
 }

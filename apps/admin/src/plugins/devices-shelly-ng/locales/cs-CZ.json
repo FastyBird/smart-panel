@@ -169,5 +169,8 @@
 		"selection": {
 			"description": "Zařízení Shelly Gen 2 a novější ve vaší síti."
 		}
+	},
+	"sections": {
+		"connection": "Připojení Shelly"
 	}
 }

@@ -1,5 +1,6 @@
 export { default as DeviceAddForm } from './device-add-form.vue';
 export { default as DeviceEditForm } from './device-edit-form.vue';
+export { default as DeviceFormFrame } from './device-form-frame.vue';
 export { default as DeviceControlForm } from './device-control-form.vue';
 export { default as DeviceDetail } from './device-detail.vue';
 export { default as DevicePropertyPicker } from './device-property-picker.vue';

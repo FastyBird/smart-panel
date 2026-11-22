@@ -289,5 +289,8 @@
 		"selection": {
 			"description": "Importujte zařízení ze své instance Home Assistant."
 		}
+	},
+	"sections": {
+		"connection": "Připojení Home Assistant"
 	}
 }

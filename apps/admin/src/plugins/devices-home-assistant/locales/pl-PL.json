@@ -289,5 +289,8 @@
 		"selection": {
 			"description": "Importuj urządzenia ze swojej instancji Home Assistant."
 		}
+	},
+	"sections": {
+		"connection": "Połączenie Home Assistant"
 	}
 }

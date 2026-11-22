@@ -169,5 +169,8 @@
 		"selection": {
 			"description": "Urządzenia Shelly Gen 2 i nowsze w Twojej sieci."
 		}
+	},
+	"sections": {
+		"connection": "Połączenie Shelly"
 	}
 }

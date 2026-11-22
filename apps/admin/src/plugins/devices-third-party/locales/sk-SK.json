@@ -39,5 +39,8 @@
 				}
 			}
 		}
+	},
+	"sections": {
+		"connection": "Pripojenie služby tretej strany"
 	}
 }

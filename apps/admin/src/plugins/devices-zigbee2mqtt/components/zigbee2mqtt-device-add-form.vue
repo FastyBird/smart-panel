@@ -6,70 +6,12 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.name.title')"
-			prop="name"
-		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.name.placeholder')"
-				name="name"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="add"
+			:show-id="false"
 		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
 	</el-form>
 </template>
 
@@ -77,9 +19,9 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType } from '../../../modules/devices';
+import { DeviceFormFrame, FormResult, type FormResultType } from '../../../modules/devices';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
 import type { IZigbee2mqttDeviceAddForm } from '../schemas/devices.types';
 

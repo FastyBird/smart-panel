@@ -6,129 +6,60 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.id.title')"
-			prop="id"
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="edit"
 		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
+			<plugin-form-section :title="t('devicesShellyNgPlugin.sections.connection')">
+				<el-form-item
+					v-if="hasEthernet"
+					:label="t('devicesShellyNgPlugin.fields.devices.ethernetAddress.title')"
+					prop="ethernetAddress"
+				>
+					<el-input
+						v-model="model.ethernetAddress"
+						:placeholder="t('devicesShellyNgPlugin.fields.devices.ethernetAddress.placeholder')"
+						name="ethernetAddress"
+					/>
+				</el-form-item>
 
-		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.name.title')"
-			prop="name"
-		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.name.placeholder')"
-				name="name"
-			/>
-		</el-form-item>
+				<el-form-item
+					:label="t('devicesShellyNgPlugin.fields.devices.wifiAddress.title')"
+					prop="wifiAddress"
+				>
+					<el-input
+						v-model="model.wifiAddress"
+						:placeholder="t('devicesShellyNgPlugin.fields.devices.wifiAddress.placeholder')"
+						name="wifiAddress"
+					/>
+				</el-form-item>
 
-		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			v-if="hasEthernet"
-			:label="t('devicesShellyNgPlugin.fields.devices.ethernetAddress.title')"
-			prop="ethernetAddress"
-		>
-			<el-input
-				v-model="model.ethernetAddress"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.ethernetAddress.placeholder')"
-				name="ethernetAddress"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.wifiAddress.title')"
-			prop="wifiAddress"
-		>
-			<el-input
-				v-model="model.wifiAddress"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.wifiAddress.placeholder')"
-				name="wifiAddress"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.password.title')"
-			prop="password"
-		>
-			<el-input
-				v-model="model.password"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.password.placeholder')"
-				name="password"
-			/>
-		</el-form-item>
+				<el-form-item
+					:label="t('devicesShellyNgPlugin.fields.devices.password.title')"
+					prop="password"
+				>
+					<!-- The saved password is never shown: Replace reveals an empty field for a new one -->
+					<secret-input
+						v-model="newPassword"
+						:saved-hint="savedPassword ? '' : null"
+						:placeholder="t('devicesShellyNgPlugin.fields.devices.password.placeholder')"
+						name="password"
+					/>
+				</el-form-item>
+			</plugin-form-section>
+		</device-form-frame>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType } from '../../../modules/devices';
+import { PluginFormSection, SecretInput } from '../../../common';
+import { DeviceFormFrame, FormResult, type FormResultType } from '../../../modules/devices';
 import { useDeviceEditForm } from '../composables/useDeviceEditForm';
 import type { IShellyNgDeviceEditForm } from '../schemas/devices.types';
 import type { IShellyNgDevice } from '../store/devices.store.types';
@@ -179,6 +110,15 @@ if (pre) {
 	history.replaceState(s, '');
 }
 
+// The password the device has now, and a new one while the user replaces it: no new one keeps the saved password,
+// an empty one removes it. A password is sent exactly as typed, spaces included
+const savedPassword = ref<string | null>(model.password ?? null);
+const newPassword = ref<string | undefined>(undefined);
+
+watch(newPassword, (value: string | undefined): void => {
+	model.password = value === undefined ? savedPassword.value : value === '' ? null : value;
+});
+
 const rules = reactive<FormRules<IShellyNgDeviceEditForm>>({
 	name: [{ required: true, message: t('devicesShellyNgPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
 	category: [{ required: true, message: t('devicesShellyNgPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
@@ -210,6 +150,9 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
+			// The replacement goes with the rest of the draft: the field shows the saved password again
+			newPassword.value = undefined;
+
 			if (!formEl.value) return;
 
 			formEl.value.resetFields();

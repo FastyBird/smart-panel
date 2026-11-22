@@ -140,5 +140,8 @@
 		"selection": {
 			"description": "Controller für adressierbare LEDs mit WLED."
 		}
+	},
+	"sections": {
+		"connection": "WLED-Verbindung"
 	}
 }

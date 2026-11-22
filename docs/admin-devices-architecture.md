@@ -60,6 +60,20 @@ Numeric conversion groups input/output ranges and operator parameters into respo
 
 Empty lists and selectors use the common `EmptyState` (`ElResult` and `IconWithChild`), matching data tables. Do not use `ElEmpty`. A failed review is not an empty list: keep the configuration and validation results visible.
 
+## Device add and edit forms
+
+A plugin's `deviceAddForm` and `deviceEditForm` keep their own `el-form`, model and submit, and lay the form out in `DeviceFormFrame` from the devices module (spec section 7). The frame renders General first (name, category, the room when editing, enabled, description) and Identifiers last (the device id, and the identifier when `identifier` is `editable` or `readonly`); the plugin puts one `plugin-form-section` headed "<Integration> connection" (`<plugin>.sections.connection`) in its default slot, and nothing when it has no connection fields. The frame's fields sit inside the plugin's form, so the plugin's rules (`name`, `category`, …) still validate them. Adding picks the category; editing shows it fixed. A stored secret such as a device password uses `secret-input`: it is never shown, Replace reveals an empty field, and keeping no new value keeps the saved one.
+
+```vue
+<el-form :model="model" :rules="rules" label-position="top">
+	<device-form-frame :model="model" :categories-options="categoriesOptions" mode="edit">
+		<plugin-form-section :title="t('examplePlugin.sections.connection')">
+			<!-- the plugin's connection fields -->
+		</plugin-form-section>
+	</device-form-frame>
+</el-form>
+```
+
 ## Device detail tabs
 
 Register `components.deviceDetailTabs` on the device element. Each tab has a stable `id`, translated `label`, `icon`, a Vue `component`, and an optional `visible(device)` predicate. The host passes `device` to the component and supplies the tab layout and scroll container.

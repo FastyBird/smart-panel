@@ -169,5 +169,8 @@
 		"selection": {
 			"description": "Dispositivos Shelly Gen 2 y posteriores en su red."
 		}
+	},
+	"sections": {
+		"connection": "Conexión de Shelly"
 	}
 }

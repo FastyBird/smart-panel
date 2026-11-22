@@ -68,5 +68,8 @@
 			"edited": "reTerminal-Gerät '{device}' wurde aktualisiert",
 			"notEdited": "Aktualisierung des reTerminal-Geräts '{device}' fehlgeschlagen"
 		}
+	},
+	"sections": {
+		"connection": "reTerminal-Verbindung"
 	}
 }

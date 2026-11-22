@@ -289,5 +289,8 @@
     "selection": {
       "description": "Importe dispositivos de su instancia de Home Assistant."
     }
+  },
+  "sections": {
+    "connection": "Conexión de Home Assistant"
   }
 }

@@ -6,90 +6,32 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesReTerminalPlugin.fields.devices.name.title')"
-			prop="name"
+		<device-form-frame
+			:model="model"
+			:categories-options="categoriesOptions"
+			mode="add"
+			:show-id="false"
 		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesReTerminalPlugin.fields.devices.name.placeholder')"
-				name="name"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesReTerminalPlugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesReTerminalPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesReTerminalPlugin.fields.devices.variant.title')"
-			prop="variant"
-		>
-			<el-select
-				v-model="model.variant"
-				:placeholder="t('devicesReTerminalPlugin.fields.devices.variant.placeholder')"
-				name="variant"
-			>
-				<el-option
-					v-for="item in variantOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesReTerminalPlugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesReTerminalPlugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesReTerminalPlugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
+			<plugin-form-section :title="t('devicesReTerminalPlugin.sections.connection')">
+				<el-form-item
+					:label="t('devicesReTerminalPlugin.fields.devices.variant.title')"
+					prop="variant"
+				>
+					<el-select
+						v-model="model.variant"
+						:placeholder="t('devicesReTerminalPlugin.fields.devices.variant.placeholder')"
+						name="variant"
+					>
+						<el-option
+							v-for="item in variantOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-select>
+				</el-form-item>
+			</plugin-form-section>
+		</device-form-frame>
 	</el-form>
 </template>
 
@@ -97,9 +39,10 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType } from '../../../modules/devices';
+import { PluginFormSection } from '../../../common';
+import { DeviceFormFrame, FormResult, type FormResultType } from '../../../modules/devices';
 import { DevicesReTerminalPluginVariant } from '../../../openapi.constants';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
 import type { IReTerminalDeviceAddForm } from '../schemas/devices.types';
