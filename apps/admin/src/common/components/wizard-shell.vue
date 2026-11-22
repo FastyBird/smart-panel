@@ -3,8 +3,9 @@
 		class="flex flex-col gap-4 min-h-full"
 		data-test-id="wizard-shell"
 	>
+		<!-- Neither shows before the flow has steps -->
 		<div
-			v-if="isPhone"
+			v-if="isPhone && props.steps.length > 0"
 			class="flex flex-col gap-2"
 			data-test-id="wizard-shell-progress"
 		>
@@ -26,7 +27,7 @@
 		</div>
 
 		<nav
-			v-else-if="props.steps.length > 0"
+			v-else-if="!isPhone && props.steps.length > 0"
 			:aria-label="t('application.wizardShell.steps')"
 			class="px-5 py-3.5 bg-surface border border-solid border-light rounded-lg"
 			data-test-id="wizard-shell-stepper"
@@ -44,11 +45,11 @@
 						:ref="(el) => setStepRef(el, index)"
 						:tabindex="index === focusIndex ? 0 : -1"
 						:aria-current="index === currentIndex ? 'step' : undefined"
-						:aria-disabled="index > currentIndex || props.busy ? 'true' : undefined"
+						:aria-disabled="index > currentIndex || props.busy || (index < currentIndex && !props.navigable) ? 'true' : undefined"
 						:class="[
 							'flex items-center gap-2 p-1 -m-1 border-0 bg-transparent rounded-[var(--el-border-radius-base)] font-inherit text-[14px] leading-[22px] whitespace-nowrap',
 							index < currentIndex
-								? 'text-success cursor-pointer'
+								? ['text-success', props.navigable ? 'cursor-pointer' : 'cursor-default']
 								: index === currentIndex
 									? 'text-default font-600 cursor-default'
 									: 'text-secondary cursor-default',
@@ -195,6 +196,7 @@ const props = withDefaults(defineProps<WizardShellProps>(), {
 	cancellable: true,
 	backable: undefined,
 	nextVisible: true,
+	navigable: true,
 });
 
 const emit = defineEmits<{
@@ -301,7 +303,7 @@ const onStepperKeydown = (event: KeyboardEvent): void => {
 };
 
 const onStepClick = (index: number): void => {
-	if (index >= currentIndex.value || props.busy) {
+	if (!props.navigable || index >= currentIndex.value || props.busy) {
 		return;
 	}
 

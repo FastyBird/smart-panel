@@ -275,10 +275,22 @@ describe('WizardShell.vue', () => {
 		expect(find(wrapper, 'back').exists()).toBe(false);
 	});
 
-	it('leaves the stepper out until there are steps', () => {
+	it.each<SizeClass>(['dt', 'phone'])('leaves the stepper and the progress out until there are steps (%s)', (size) => {
+		sizeClass.value = size;
 		wrapper = render({ steps: [], current: '' });
 
 		expect(find(wrapper, 'stepper').exists()).toBe(false);
+		expect(find(wrapper, 'progress').exists()).toBe(false);
 		expect(find(wrapper, 'step-card').exists()).toBe(true);
+	});
+
+	it('keeps completed steps still when the flow cannot go back to them', async () => {
+		wrapper = render({ current: 'confirm', navigable: false });
+
+		await steps(wrapper)[0].trigger('click');
+
+		expect(wrapper.emitted('step')).toBeUndefined();
+		expect(steps(wrapper)[0].attributes('aria-disabled')).toBe('true');
+		expect(steps(wrapper)[0].classes()).toContain('cursor-default');
 	});
 });

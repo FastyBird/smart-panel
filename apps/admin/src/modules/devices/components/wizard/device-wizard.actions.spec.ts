@@ -155,4 +155,8 @@ describe('buildWizardActions', () => {
 		expect(actions[0].handler).toBe(onRetryFailed);
 		expect(actions[0].variant).toBe('default');
 	});
+
+	it('holds Add devices on confirm while no device is ticked', () => {
+		expect(buildWizardActions('confirm', context({ hasSelection: false })).find((action) => action.id === 'adopt')?.disabled).toBe(true);
+	});
 });

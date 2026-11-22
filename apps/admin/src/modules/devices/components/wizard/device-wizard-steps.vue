@@ -120,6 +120,9 @@ if (props.enabled)
 			dirty: props.dirty,
 			actions: actions.value,
 			stepWidth: props.stepWidth,
+			goTo: (step: number): void => {
+				if (step < props.modelValue && !props.disabled && !advancing.value) emit('update:modelValue', step);
+			},
 		}))
 	);
 </script>

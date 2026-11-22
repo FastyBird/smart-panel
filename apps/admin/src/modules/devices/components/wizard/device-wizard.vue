@@ -196,8 +196,17 @@ const onBack = (): void => {
 	reconcile(adapter.rows.value);
 };
 
+// Discovery keeps updating the rows until adoption starts: a device that becomes registered meanwhile loses its tick.
+// When none is left to add, Confirm has nothing to confirm, so the flow returns to Select
+watch(
+	() => activeStep.value === 'confirm' && !adopting.value && !reviewedRows.value && selectedConfirmationRows.value.length === 0,
+	(empty: boolean): void => {
+		if (empty) activeStep.value = 'select';
+	}
+);
+
 const onAdopt = async (): Promise<void> => {
-	if (adapter.busy.value || adopting.value || !validation.validate()) return;
+	if (adapter.busy.value || adopting.value || !selectedConfirmationRows.value.length || !validation.validate()) return;
 	reviewedRows.value ??= JSON.parse(JSON.stringify(adapter.rows.value)) as IWizardRow[];
 	adopting.value = true;
 	try {
@@ -230,13 +239,16 @@ const onRetry = async (keys: string[]): Promise<void> => {
 	if (adapter.busy.value || adopting.value || !reviewedRows.value) return;
 	const retry = buildSelection(reviewedRows.value).filter((item) => keys.includes(item.key));
 	if (!retry.length) return;
-	const previous = shownResults.value;
+	// Held before the request: an adapter may clear its own results as soon as a new adoption starts
+	const previous = shownResults.value.slice();
+	mergedResults.value = previous;
 	adopting.value = true;
 	try {
 		const outcome = await adapter.adopt(retry);
 		mergedResults.value = previous.map((result) => outcome.find((item) => item.key === result.key) ?? result);
 	} catch {
 		// The earlier results stay; the adapter reports the error
+		mergedResults.value = previous;
 	} finally {
 		adopting.value = false;
 	}
@@ -320,6 +332,15 @@ useDeviceWizardFlow(
 		dirty: draftEdited.value,
 		actions: actions.value,
 		selectedCount: activeStep.value === 'select' || activeStep.value === 'confirm' ? selectedConfirmationRows.value.length : undefined,
+		// Back to Discover or Select from the stepper, as Back does; Results is final
+		goTo:
+			activeStep.value === 'select' || activeStep.value === 'confirm'
+				? (step: number): void => {
+						if (adapter.busy.value || adopting.value) return;
+						if (step === 0) onBack();
+						else if (step === 1 && activeStep.value === 'confirm') onBackToSelect();
+					}
+				: undefined,
 		stepWidth: 'table',
 	}))
 );

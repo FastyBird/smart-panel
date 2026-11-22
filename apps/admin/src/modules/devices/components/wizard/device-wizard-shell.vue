@@ -26,6 +26,8 @@
 				:next-visible="!!primaryAction"
 				:next-label="primaryAction?.label"
 				class="flex-1"
+				:navigable="!!flow?.goTo && !context.completed.value"
+				@step="onStep"
 				@cancel="cancelAction && run(cancelAction)"
 				@back="backAction && run(backAction)"
 				@next="primaryAction && run(primaryAction)"
@@ -139,6 +141,21 @@ const run = async (action: IWizardAction): Promise<void> => {
 		await action.handler();
 	} catch (error) {
 		logger.error('Device wizard action failed', error);
+	} finally {
+		pending.value = false;
+	}
+};
+// A completed step chosen in the stepper: the flow goes back to it, counted without the shell's own prefix steps
+const onStep = async (id: string): Promise<void> => {
+	const step = Number(id.replace('step-', '')) - props.prefixSteps.length;
+	const goTo = flow.value?.goTo;
+
+	if (!goTo || step < 0 || pending.value || flow.value?.busy) return;
+	pending.value = true;
+	try {
+		await goTo(step);
+	} catch (error) {
+		logger.error('Device wizard step change failed', error);
 	} finally {
 		pending.value = false;
 	}

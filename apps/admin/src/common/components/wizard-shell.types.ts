@@ -24,4 +24,6 @@ export type WizardShellProps = {
 	backable?: boolean;
 	/** false hides Next, for a step that finishes from its own actions */
 	nextVisible?: boolean;
+	/** false when the flow cannot go back to a completed step: the stepper only shows the steps */
+	navigable?: boolean;
 };

@@ -87,7 +87,7 @@ export const buildWizardActions = (step: IWizardStep, context: IWizardActionsCon
 				id: 'adopt',
 				label: t('devicesModule.wizard.actions.adopt'),
 				variant: 'primary',
-				disabled: !context.canContinue,
+				disabled: !context.canContinue || !context.hasSelection,
 				loading: context.busy,
 				handler: context.onAdopt,
 			},

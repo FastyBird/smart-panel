@@ -597,4 +597,71 @@ describe('DeviceWizard', () => {
 		expect(adoptFn.mock.calls[1]).toEqual(adoptFn.mock.calls[0]);
 		expect(wrapper.get('[data-test-id="wizard-step-results"]').text()).toContain('devicesModule.wizard.statuses.created');
 	});
+
+	it('keeps the results on screen when a retry fails after the adapter cleared them', async () => {
+		const failed: IWizardResult[] = [
+			{ key: 'shelly-1.local', name: 'Living room switch', identifier: 'shelly-1.local', status: 'failed', error: 'Timeout' },
+		];
+		const results = ref<IWizardResult[]>([]);
+		const adoptFn = vi
+			.fn()
+			.mockImplementationOnce(async () => {
+				results.value = failed;
+				return failed;
+			})
+			.mockImplementationOnce(async () => {
+				// Homey clears its results as the new request starts, then the request fails
+				results.value = [];
+				throw new Error('offline');
+			});
+		const wrapper = mountWizard(buildAdapter({ results: computed(() => results.value), adopt: adoptFn }));
+		await flushPromises();
+		await toConfirm(wrapper);
+		await adopt(wrapper);
+
+		await click(wrapper, '[data-test-id="wizard-result-retry"]');
+
+		expect(adoptFn).toHaveBeenCalledTimes(2);
+		expect(wrapper.get('[data-test-id="wizard-step-results"]').text()).toContain('Living room switch');
+		expect(wrapper.find('[data-test-id="wizard-result-retry"]').exists()).toBe(true);
+	});
+
+	it('returns to Select when discovery takes away the last selected device on Confirm', async () => {
+		const rows = ref<IWizardRow[]>([row()]);
+		const adapter = buildAdapter({ rows: computed(() => rows.value) });
+		const wrapper = mountWizard(adapter);
+		await flushPromises();
+		await toConfirm(wrapper);
+
+		// The connector added it meanwhile: reconcile clears its tick
+		rows.value = [row({ status: 'already_registered', willUpdate: true })];
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="wizard-step-select"]').exists()).toBe(true);
+		expect(wrapper.get(NEXT).attributes('disabled')).toBeDefined();
+		expect(adapter.adopt).not.toHaveBeenCalled();
+	});
+
+	it('goes back to Discover or Select from the stepper, and not from Results', async () => {
+		const wrapper = mountWizard(buildAdapter());
+		await flushPromises();
+		await toConfirm(wrapper);
+
+		const steps = () => wrapper.findAll('[data-test-id="wizard-shell-step"]');
+
+		await steps()[1].trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-step-select"]').exists()).toBe(true);
+
+		await steps()[0].trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-step-discover"]').exists()).toBe(true);
+
+		await toConfirm(wrapper);
+		await adopt(wrapper);
+		await steps()[0].trigger('click');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="wizard-step-results"]').exists()).toBe(true);
+		expect(steps()[0].attributes('aria-disabled')).toBe('true');
+	});
 });
