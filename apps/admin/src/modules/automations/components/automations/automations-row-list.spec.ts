@@ -1,8 +1,9 @@
 import { ref } from 'vue';
 
+import { ElDropdown } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
 import { AutomationStatus } from '../../automations.constants';
 import type { IAutomation } from '../../store/automations.store.types';
@@ -69,5 +70,17 @@ describe('AutomationsRowList', () => {
 		await wrapper.find('button').trigger('click');
 
 		expect(wrapper.emitted('reset-filters')).toHaveLength(1);
+	});
+
+	it.each(['flow', 'export', 'remove'])('offers %s from the row menu, as the table does', async (command) => {
+		const wrapper = render({ items: [automation('a')] });
+
+		expect(wrapper.get('[data-test-id="automation-row-more"]').attributes('aria-label')).toBe('automations.aria.more');
+
+		wrapper.findComponent(ElDropdown).vm.$emit('command', command);
+		await flushPromises();
+
+		expect(wrapper.emitted(command)).toEqual([['a']]);
+		expect(wrapper.emitted('edit')).toBeUndefined();
 	});
 });

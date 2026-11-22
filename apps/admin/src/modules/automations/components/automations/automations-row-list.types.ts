@@ -8,4 +8,6 @@ export interface IAutomationsRowListProps {
 	filtersActive: boolean;
 	/** Automations whose Enabled switch is being saved */
 	updating: IAutomation['id'][];
+	/** Automations being exported right now */
+	exporting?: IAutomation['id'][];
 }

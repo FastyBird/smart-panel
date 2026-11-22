@@ -93,6 +93,49 @@
 				data-test-id="toggle-automation"
 				@change="(value: string | number | boolean): void => emit('toggle-enabled', automation.id, value === true)"
 			/>
+
+			<!-- The table's row actions: the flow, YAML export and remove (destructive, so last and in the menu) -->
+			<el-dropdown
+				trigger="click"
+				placement="bottom-end"
+				@command="(command: RowCommand): void => onCommand(command, automation.id)"
+			>
+				<el-button
+					:aria-label="t('automations.aria.more', { automation: automation.name })"
+					text
+					data-test-id="automation-row-more"
+				>
+					<template #icon>
+						<icon icon="mdi:dots-vertical" />
+					</template>
+				</el-button>
+
+				<template #dropdown>
+					<el-dropdown-menu>
+						<el-dropdown-item
+							command="flow"
+							data-test-id="automation-row-flow"
+						>
+							{{ t('automations.buttons.flow.title') }}
+						</el-dropdown-item>
+						<el-dropdown-item
+							command="export"
+							:disabled="props.exporting?.includes(automation.id) ?? false"
+							data-test-id="automation-row-export"
+						>
+							{{ t('automations.buttons.exportYaml.title') }}
+						</el-dropdown-item>
+						<el-dropdown-item
+							command="remove"
+							divided
+							class="text-danger!"
+							data-test-id="automation-row-remove"
+						>
+							{{ t('automations.buttons.remove.title') }}
+						</el-dropdown-item>
+					</el-dropdown-menu>
+				</template>
+			</el-dropdown>
 		</li>
 	</ul>
 </template>
@@ -100,7 +143,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElSwitch } from 'element-plus';
+import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElSwitch } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -118,12 +161,27 @@ const props = defineProps<IAutomationsRowListProps>();
 
 const emit = defineEmits<{
 	(e: 'edit', id: IAutomation['id']): void;
+	(e: 'flow', id: IAutomation['id']): void;
+	(e: 'export', id: IAutomation['id']): void;
+	(e: 'remove', id: IAutomation['id']): void;
 	(e: 'toggle-enabled', id: IAutomation['id'], enabled: boolean): void;
 	(e: 'reset-filters'): void;
 	(e: 'retry'): void;
 }>();
 
 const { t, locale } = useI18n();
+
+type RowCommand = 'flow' | 'export' | 'remove';
+
+const onCommand = (command: RowCommand, id: IAutomation['id']): void => {
+	if (command === 'flow') {
+		emit('flow', id);
+	} else if (command === 'export') {
+		emit('export', id);
+	} else {
+		emit('remove', id);
+	}
+};
 
 // In the language of the application, as the table does
 const formatDate = (date: Date): string => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(date);

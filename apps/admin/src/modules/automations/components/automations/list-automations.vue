@@ -31,7 +31,11 @@
 				:load-failed="props.loadFailed"
 				:filters-active="props.filtersActive"
 				:updating="props.updating"
+				:exporting="props.exporting"
 				@edit="(id: IAutomation['id']): void => emit('edit', id)"
+				@flow="(id: IAutomation['id']): void => emit('flow', id)"
+				@export="(id: IAutomation['id']): void => emit('export', id)"
+				@remove="(id: IAutomation['id']): void => emit('remove', id)"
 				@toggle-enabled="(id: IAutomation['id'], enabled: boolean): void => emit('toggle-enabled', id, enabled)"
 				@reset-filters="emit('reset-filters')"
 				@retry="emit('retry')"
@@ -65,10 +69,7 @@
 			/>
 		</div>
 
-		<div
-			ref="paginator"
-			class="flex flex-wrap justify-end w-full box-border px-4 py-2.5 border-t border-t-solid border-light overflow-hidden"
-		>
+		<div class="flex flex-wrap justify-end w-full box-border px-4 py-2.5 border-t border-t-solid border-light overflow-hidden">
 			<el-pagination
 				v-model:current-page="paginatePage"
 				v-model:page-size="paginateSize"
@@ -82,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElPagination } from 'element-plus';
@@ -125,7 +126,6 @@ const { isPhone } = useSizeClass();
 let observer: ResizeObserver | null = null;
 
 const wrapper = ref<HTMLElement | null>(null);
-const paginator = ref<HTMLElement | null>(null);
 
 const innerFilters = useVModel(props, 'filters', emit);
 
@@ -190,31 +190,39 @@ const onPaginatePage = (page: number): void => {
 	emit('update:paginate-page', page);
 };
 
-onMounted((): void => {
-	if (!wrapper.value) {
-		return;
+// The table fills its part of the card: the pagination is a sibling below it, so the part is the table's height. The
+// part is rendered only beside a table (not on phone), so the observer follows it as it comes and goes
+const updateHeight = (): void => {
+	if (wrapper.value) {
+		tableHeight.value = wrapper.value.clientHeight;
 	}
+};
 
-	const updateHeight = () => {
-		if (!wrapper.value || !paginator.value) {
+watch(
+	wrapper,
+	(element: HTMLElement | null, previous: HTMLElement | null | undefined): void => {
+		if (observer && previous) {
+			observer.unobserve(previous);
+		}
+
+		if (!element) {
 			return;
 		}
 
-		tableHeight.value = wrapper.value.clientHeight - paginator.value.clientHeight;
-	};
+		if (observer === null && typeof window !== 'undefined' && 'ResizeObserver' in window) {
+			observer = new ResizeObserver(updateHeight);
+		}
 
-	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
-		observer = new ResizeObserver(updateHeight);
-		observer.observe(wrapper.value);
-	}
+		observer?.observe(element);
 
-	updateHeight();
-});
+		updateHeight();
+	},
+	{ flush: 'post' }
+);
 
 onBeforeUnmount((): void => {
-	if (observer && wrapper.value) {
-		observer.unobserve(wrapper.value);
-	}
+	observer?.disconnect();
+	observer = null;
 });
 
 watch(

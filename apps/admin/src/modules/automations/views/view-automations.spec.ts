@@ -283,6 +283,36 @@ describe('ViewAutomations', (): void => {
 		confirm.mockRestore();
 	});
 
+	it('asks before the flow editor takes the place of a changed docked form', async (): Promise<void> => {
+		const confirm = vi
+			.spyOn(ElMessageBox, 'confirm')
+			.mockRejectedValueOnce('cancel')
+			.mockResolvedValueOnce('confirm' as never);
+
+		openRoute(editRoute);
+
+		await mountView();
+
+		wrapper.findComponent(DetailView).vm.$emit('update:remote-form-changed', true);
+
+		await flushPromises();
+
+		wrapper.findComponent(ListAutomations).vm.$emit('flow', 'automation-2');
+
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+
+		wrapper.findComponent(ListAutomations).vm.$emit('flow', 'automation-2');
+
+		await flushPromises();
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: 'automation-2' } });
+
+		confirm.mockRestore();
+	});
+
 	it('asks before it closes the drawer over a changed form', async (): Promise<void> => {
 		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValueOnce('cancel');
 

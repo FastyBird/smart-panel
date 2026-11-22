@@ -335,8 +335,13 @@ const onAutomationEdit = (id: IAutomation['id']): void => {
 };
 
 const onAutomationFlow = (id: IAutomation['id']): void => {
-	// The flow editor is a page of its own, so the list stays in the history to come back to
-	router.push({ name: RouteNames.AUTOMATIONS_FLOW, params: { id } });
+	// The flow editor is a page of its own, so the list stays in the history to come back to. A form docked beside the
+	// list goes with the list: asked first when it holds changes, and never while it is being saved
+	mayReplaceForm().then((replace: boolean): void => {
+		if (replace) {
+			router.push({ name: RouteNames.AUTOMATIONS_FLOW, params: { id } });
+		}
+	});
 };
 
 const onAutomationRemove = (id: IAutomation['id']): void => {
