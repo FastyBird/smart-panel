@@ -34,10 +34,8 @@ class MessageBubble extends StatelessWidget {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isUser = message.role == BuddyMessageRole.user;
 
-		final accentColor = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.primary,
-		).base;
+		// Your messages take the panel accent.
+		final accentColor = Theme.of(context).accent.fill;
 
 		final bubbleColor = isUser
 			? accentColor

@@ -246,7 +246,7 @@ class _NavTab extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: AppSpacings.scale(8)),
             decoration: BoxDecoration(
               color: isActive
-                  ? accentColor.withValues(alpha: 0.15)
+                  ? Theme.of(context).accent.soft
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(pillRadius),
             ),

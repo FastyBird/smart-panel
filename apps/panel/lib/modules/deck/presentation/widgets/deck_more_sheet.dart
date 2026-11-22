@@ -129,7 +129,7 @@ class _DeckMoreContent extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: isActive
-              ? activeColor.withValues(alpha: 0.12)
+              ? Theme.of(context).accent.soft
               : (isDark ? AppFillColorDark.lighter : AppFillColorLight.light),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: isActive

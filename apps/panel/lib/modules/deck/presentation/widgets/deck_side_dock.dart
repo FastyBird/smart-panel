@@ -254,7 +254,7 @@ class _DockTab extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: isActive
-                ? accentColor.withValues(alpha: 0.15)
+                ? Theme.of(context).accent.soft
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(pillRadius),
           ),
