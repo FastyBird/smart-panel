@@ -155,4 +155,44 @@ describe('useDeviceAddForm', () => {
 
 		expect(form.formResult.value).toBe(FormResult.NONE);
 	});
+
+	it('forgets a test when the hostname or password changes', async () => {
+		form.model.hostname = '192.168.0.1';
+		await nextTick();
+		form.deviceInfo.value = DEVICE_INFO;
+
+		form.model.password = 'other';
+		await nextTick();
+
+		expect(form.deviceInfo.value).toBeNull();
+	});
+
+	it('forgets the last success when a new test fails', async () => {
+		form.model.hostname = '192.168.0.1';
+		await nextTick();
+		form.deviceInfo.value = DEVICE_INFO;
+		backendClient.POST.mockResolvedValueOnce({ data: undefined, error: undefined, response: { status: 500 } });
+
+		await expect(form.checkDevice()).rejects.toThrow();
+
+		expect(form.deviceInfo.value).toBeNull();
+	});
+
+	it('ignores a test that comes back after the credentials changed', async () => {
+		let answer!: (value: unknown) => void;
+		backendClient.POST.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+		form.model.hostname = '192.168.0.1';
+		await nextTick();
+
+		const check = form.checkDevice();
+
+		await nextTick();
+		form.model.password = 'changed';
+		await nextTick();
+
+		answer({ data: { data: DEVICE_INFO_RESPONSE }, error: undefined, response: { status: 200 } });
+
+		await expect(check).rejects.toThrow();
+		expect(form.deviceInfo.value).toBeNull();
+	});
 });

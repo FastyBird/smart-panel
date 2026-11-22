@@ -185,7 +185,10 @@ watch(
 			return;
 		}
 
-		model.name = val.name || model.name;
+		// The device's own name fills an empty field only: a name the user entered stays
+		if (!model.name?.trim() && val.name) {
+			model.name = val.name;
+		}
 
 		const device = devices.value.find((d) => d.identifier === val.id && d.type === DEVICES_SHELLY_NG_TYPE);
 

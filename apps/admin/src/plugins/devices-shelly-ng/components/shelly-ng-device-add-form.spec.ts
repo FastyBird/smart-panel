@@ -14,46 +14,50 @@ vi.mock('../../../modules/devices', async () => {
 	return {
 		...actual,
 		useDevices: () => ({
-			devices: [],
+			devices: ref([]),
 			loaded: ref(true),
 			fetchDevices: vi.fn(),
 		}),
 	};
 });
 
+const state = vi.hoisted(() => ({
+	deviceInfo: undefined as unknown as { value: Record<string, unknown> | null },
+	model: {} as Record<string, unknown>,
+}));
+
 const mockSubmit = vi.fn().mockResolvedValue(undefined);
 const mockCheck = vi.fn();
 
-vi.mock('../composables/useDeviceAddForm', () => ({
-	useDeviceAddForm: () => ({
-		categoriesOptions: [
-			{ value: 'generic', label: 'Generic' },
-			{ value: 'lighting', label: 'Lighting' },
-		],
-		model: {
-			id: 'abc123',
-			name: '',
-			category: '',
-			description: '',
-			identifier: 'shelly-device',
+vi.mock('../composables/useDeviceAddForm', async () => {
+	const { reactive, ref } = await import('vue');
+
+	return {
+		useDeviceAddForm: () => {
+			state.model = reactive({ id: 'abc123', name: '', category: '', description: '', identifier: 'shelly-device' });
+			state.deviceInfo = ref(null);
+
+			return {
+				categoriesOptions: [
+					{ value: 'generic', label: 'Generic' },
+					{ value: 'lighting', label: 'Lighting' },
+				],
+				model: state.model,
+				formEl: ref({
+					clearValidate: vi.fn(),
+					resetFields: vi.fn(),
+					validate: vi.fn().mockResolvedValue(true),
+				}),
+				deviceInfo: state.deviceInfo,
+				supportedDevices: ref([{ name: 'Shelly Plus 1', models: ['SHELLY-MODEL'], categories: [] }]),
+				formChanged: { value: false },
+				formResult: { value: 'none' },
+				submit: mockSubmit,
+				checkDevice: mockCheck,
+			};
 		},
-		formEl: ref({
-			clearValidate: vi.fn(),
-			resetFields: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		}),
-		deviceInfo: ref({
-			id: 'shelly-id',
-			model: 'shelly-model',
-			firmware: '1.0.0',
-		}),
-		supportedDevices: ref([{ name: 'Shelly Plus 1', models: ['SHELLY-MODEL'], categories: [] }]),
-		formChanged: { value: false },
-		formResult: { value: 'none' },
-		submit: mockSubmit,
-		checkDevice: mockCheck,
-	}),
-}));
+	};
+});
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
@@ -117,7 +121,11 @@ describe('ShellyNgDeviceAddForm.vue', () => {
 	});
 
 	it('shows the model and firmware as the connection test result', async () => {
-		mockCheck.mockResolvedValueOnce({ id: 'shelly-id', model: 'shelly-model', firmware: '1.0.0' });
+		mockCheck.mockImplementationOnce(async () => {
+			state.deviceInfo.value = { id: 'shelly-id', model: 'shelly-model', firmware: '1.0.0', name: null };
+
+			return state.deviceInfo.value;
+		});
 
 		await wrapper.get('[data-test-id="test-connection-button"]').trigger('click');
 		await flushPromises();
@@ -134,5 +142,19 @@ describe('ShellyNgDeviceAddForm.vue', () => {
 		await flushPromises();
 
 		expect(wrapper.get('[data-test-id="test-connection-result"]').text()).toContain('Invalid password');
+	});
+
+	it('fills the name from the device only while the field is empty', async () => {
+		state.model.name = 'Desk lamp';
+		state.deviceInfo.value = { id: 'shelly-id', model: 'shelly-model', firmware: '1.0.0', name: 'shellyplus1-a1b2' };
+		await flushPromises();
+
+		expect(state.model.name).toBe('Desk lamp');
+
+		state.model.name = '';
+		state.deviceInfo.value = { id: 'shelly-id-2', model: 'shelly-model', firmware: '1.0.0', name: 'Living room' };
+		await flushPromises();
+
+		expect(state.model.name).toBe('Living room');
 	});
 });

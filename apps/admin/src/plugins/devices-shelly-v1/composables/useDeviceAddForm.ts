@@ -82,10 +82,19 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	const deviceInfo = ref<IShellyV1DeviceInfo | null>(null);
 
+	// Each check, and each change of the hostname or password, starts a new generation: a check that comes back for
+	// an older one is not applied
+	let checkGeneration = 0;
+
 	// Test connection: reads the device at the hostname, with the password when it has one. A failure is returned to
 	// the caller (the test result), not shown as a toast
 	const checkDevice = async (): Promise<IShellyV1DeviceInfo> => {
 		await formEl.value?.validateField(['hostname']);
+
+		// A new check replaces the last result, whichever way it ends
+		const generation = ++checkGeneration;
+
+		deviceInfo.value = null;
 
 		const errorMessage = t('devicesShellyV1Plugin.messages.devices.notChecked', { device: model.name });
 
@@ -117,6 +126,10 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				}
 
 				// Only set deviceInfo after validation passes to avoid triggering watchers on invalid data
+				if (generation !== checkGeneration) {
+					throw new DevicesShellyV1ApiException(errorMessage, 409);
+				}
+
 				deviceInfo.value = info;
 
 				return deviceInfo.value;
@@ -233,9 +246,11 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 	});
 
 	watch(
-		(): string => model.hostname,
-		(val: string, oldValue: string): void => {
-			if (val !== oldValue) {
+		(): [string, string | null | undefined] => [model.hostname, model.password],
+		([hostname, password], [oldHostname, oldPassword]): void => {
+			// A test holds only for the hostname and password it read the device with
+			if (hostname !== oldHostname || password !== oldPassword) {
+				checkGeneration++;
 				deviceInfo.value = null;
 			}
 		}
