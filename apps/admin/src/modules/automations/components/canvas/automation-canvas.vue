@@ -742,11 +742,18 @@ onMounted((): void => {
 });
 
 // A block dragged out of the palette by touch (a long press): added where the finger lifted, when that is over the
-// canvas. Returns the id of the new node, or null when it was dropped elsewhere or the canvas cannot be edited
+// visible canvas. Returns the id of the new node, or null when it was dropped elsewhere (over what lies on the right
+// edge, too) or the canvas cannot be edited
 const addNodeAt = (type: string, clientX: number, clientY: number): string | null => {
 	const bounds = container.value?.getBoundingClientRect();
 
-	if (props.readonly || !bounds || clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom) {
+	if (!bounds || props.readonly) {
+		return null;
+	}
+
+	const right = bounds.right - props.coveredRight;
+
+	if (clientX < bounds.left || clientX > right || clientY < bounds.top || clientY > bounds.bottom) {
 		return null;
 	}
 

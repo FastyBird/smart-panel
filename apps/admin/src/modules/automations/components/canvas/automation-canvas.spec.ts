@@ -197,6 +197,12 @@ describe('AutomationCanvas', (): void => {
 		expect(canvas.addNodeAt('notification.send', 50, 50)).toBeNull();
 		expect(canvas.addNodeAt('notification.send', 300, 300)).toMatch(/^n_/);
 
+		// The inspector lies over the right 340px: a drop there does not add a node behind it
+		await wrapper.setProps({ coveredRight: 340 });
+
+		expect(canvas.addNodeAt('notification.send', 400, 300)).toBeNull();
+		expect(canvas.addNodeAt('notification.send', 200, 300)).toMatch(/^n_/);
+
 		await wrapper.setProps({ readonly: true });
 
 		expect(canvas.addNodeAt('notification.send', 300, 300)).toBeNull();
