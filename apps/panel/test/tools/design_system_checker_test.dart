@@ -169,6 +169,45 @@ class Holder {
       );
     });
 
+    test('ignores calls on a local name that matches a class', () {
+      expect(
+        _rules('''
+import 'dart:ui' as ListTile;
+
+void parameter(dynamic AppBar) => AppBar.of(context);
+void local() { final ListTile = tiles; ListTile.adaptive(value: true); }
+void guard(dynamic x) {
+  if (x case final ListTile when ListTile.isReady()) {}
+}
+void localFunction() {
+  int Color(int value) => value;
+  Color(0xFF112233);
+}
+class Holder {
+  void AppBar() {}
+  int Color(int value) => value;
+  void build() { AppBar(); Color(0xFF112233); }
+}
+'''),
+        isEmpty,
+      );
+    });
+
+    test('still reports constructors where no local name hides them', () {
+      expect(
+        _rules('''
+void localFunction() {
+  int Color(int value) => value;
+}
+void other() => Color(0xFF112233);
+class Holder {
+  void build() { AppBar(); SwitchListTile.adaptive(value: true); }
+}
+'''),
+        ['hex-colour', 'stock-widget', 'stock-widget'],
+      );
+    });
+
     test('still reports the prefix outside the scope that hides it', () {
       expect(
         _rules('''

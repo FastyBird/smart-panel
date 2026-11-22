@@ -308,11 +308,21 @@ class _Visitor extends RecursiveAstVisitor<void> {
     final name = node.methodName.name;
 
     // `palette..Color(…)` has no target either, but calls a method on
-    // `palette`.
+    // `palette`. A bare `Color(…)` is a local function or member when one
+    // of that name is in scope.
     final isConstructor = !node.isCascaded &&
-        (target == null || (target is SimpleIdentifier && _isPrefix(target.name, node)));
+        switch (target) {
+          null => !_isShadowed(name, node),
+          SimpleIdentifier(name: final prefix) => _isPrefix(prefix, node),
+          _ => false,
+        };
+    // A target is a class only when it is neither an import prefix nor a
+    // parameter, local or member: `ListTile.isReady()` on a variable named
+    // `ListTile` is a method call.
     final namedConstructorOf = switch (target) {
-      SimpleIdentifier(:final name) when !_isPrefix(name, node) => name,
+      SimpleIdentifier(name: final type)
+          when !importPrefixes.contains(type) && !_isShadowed(type, node) =>
+        type,
       PrefixedIdentifier(:final prefix, :final identifier)
           when _isPrefix(prefix.name, node) =>
         identifier.name,
