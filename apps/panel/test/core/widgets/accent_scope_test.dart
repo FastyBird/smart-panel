@@ -30,7 +30,7 @@ double _contrast(Color a, Color b) {
 /// Spec §2 accent table: fill L (= text L), soft L, fill D, text D, soft D.
 const _spec = <AppAccent, List<int>>{
   AppAccent.blue: [0xFF2563C9, 0xFFE9EFFA, 0xFF3570D8, 0xFF8AB4F8, 0xFF212E48],
-  AppAccent.teal: [0xFF0F766E, 0xFFE7F1F0, 0xFF12847C, 0xFF5FD0C5, 0xFF193333],
+  AppAccent.teal: [0xFF0F766E, 0xFFE7F1F0, 0xFF12857C, 0xFF5FD0C5, 0xFF193333],
   AppAccent.sage: [0xFF55702F, 0xFFEEF1EA, 0xFF5F7D36, 0xFFB3CF85, 0xFF2A3124],
   AppAccent.terracotta: [0xFFB04A26, 0xFFF7EDE9, 0xFFB85230, 0xFFF2A685, 0xFF3E2823],
   AppAccent.rose: [0xFFA3476F, 0xFFF6EDF1, 0xFFAD4F78, 0xFFF0A3C2, 0xFF3B2733],
@@ -38,6 +38,11 @@ const _spec = <AppAccent, List<int>>{
   AppAccent.sand: [0xFF7A6248, 0xFFF2EFED, 0xFF846B50, 0xFFD9BF9F, 0xFF322D2A],
   AppAccent.graphite: [0xFF4A5261, 0xFFEDEEEF, 0xFF5A6375, 0xFFB6BFCD, 0xFF292C32],
 };
+
+/// Design values that miss AA, reported to design (spec §11, "Contrast open
+/// with design"). The test fails once a fixed value passes, so the entry can
+/// be removed.
+const _knownDesignMisses = {'teal white/fill dark'};
 
 ThemeData _theme(AppAccent accent, Brightness brightness) {
   AppAccents.current = accent;
@@ -152,8 +157,14 @@ void main() {
           };
 
           pairs.forEach((pair, ratio) {
-            if (ratio < 4.5) {
-              failures.add('${accent.name} $pair ${ratio.toStringAsFixed(2)}');
+            final key = '${accent.name} $pair ${brightness.name}';
+
+            if (_knownDesignMisses.contains(key)) {
+              if (ratio >= 4.5) {
+                failures.add('$key now passes: remove it from _knownDesignMisses');
+              }
+            } else if (ratio < 4.5) {
+              failures.add('$key ${ratio.toStringAsFixed(3)}');
             }
           });
         }

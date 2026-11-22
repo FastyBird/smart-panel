@@ -327,7 +327,7 @@ class ThemeColorFamily {
       base: Color(0xFF2E7D32), dark2: Color(0xFF256428),
       light3: Color(0xFF6DA470), light5: Color(0xFF96BE98),
       light7: Color(0xFFC0D8C2), light8: Color(0xFFD5E5D6),
-      light9: Color(0xFFE9F4EA),
+      light9: Color(0xFFE8F3E9),
     ),
     ThemeColors.cameras: ThemeColorFamily(
       base: Color(0xFF3949AB), dark2: Color(0xFF2E3A89),
@@ -800,7 +800,7 @@ class AppStatusPalette {
     AppStatus.ok: AppStatusPalette(
       fill: Color(0xFF2E7D32),
       text: Color(0xFF2E7D32),
-      soft: Color(0xFFE9F4EA),
+      soft: Color(0xFFE8F3E9),
       border: Color(0xFFC5E1C7),
     ),
     AppStatus.warning: AppStatusPalette(
@@ -918,8 +918,7 @@ class AppAccentPalette {
   // (fill, text, soft)
   static const Map<AppAccent, (Color, Color, Color)> _dark = {
     AppAccent.blue: (Color(0xFF3570D8), Color(0xFF8AB4F8), Color(0xFF212E48)),
-    // The canvas's #12857c is 4.495:1 under white; one step darker passes.
-    AppAccent.teal: (Color(0xFF12847C), Color(0xFF5FD0C5), Color(0xFF193333)),
+    AppAccent.teal: (Color(0xFF12857C), Color(0xFF5FD0C5), Color(0xFF193333)),
     AppAccent.sage: (Color(0xFF5F7D36), Color(0xFFB3CF85), Color(0xFF2A3124)),
     AppAccent.terracotta: (Color(0xFFB85230), Color(0xFFF2A685), Color(0xFF3E2823)),
     AppAccent.rose: (Color(0xFFAD4F78), Color(0xFFF0A3C2), Color(0xFF3B2733)),
@@ -1086,7 +1085,7 @@ class AppColorsLight {
   static const Color successLight5 = Color(0xFF96BE98);
   static const Color successLight7 = Color(0xFFC5E1C7);
   static const Color successLight8 = Color(0xFFD5E5D6);
-  static const Color successLight9 = Color(0xFFE9F4EA);
+  static const Color successLight9 = Color(0xFFE8F3E9);
   static const Color successDark2 = Color(0xFF256428);
 
   static const Color warning = Color(0xFFA35600);

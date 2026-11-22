@@ -78,12 +78,12 @@ shade.
 
 ### Status
 
-The fill is the same in both themes and takes white text. The light ok soft is `#e9f4ea`, one step lighter than
-the admin's `#e8f3e9`, which is 4.499:1 under ok text and so misses AA.
+The fill is the same in both themes and takes white text. Open with design: ok text on the light ok soft is
+4.499:1, just under AA (§11).
 
 | Status | Fill | Text L | Soft L | Border L | Text D | Soft D | Border D | Use |
 |---|---|---|---|---|---|---|---|---|
-| ok | `#2e7d32` | `#2e7d32` | `#e9f4ea` | `#c5e1c7` | `#6cc070` | `#1d2e1f` | `#2c4a2f` | Confirmed, locked, closed, online |
+| ok | `#2e7d32` | `#2e7d32` | `#e8f3e9` | `#c5e1c7` | `#6cc070` | `#1d2e1f` | `#2c4a2f` | Confirmed, locked, closed, online |
 | warning | `#b25e00` | `#a35600` | `#fdf1e2` | `#f3d3a8` | `#f0a742` | `#33261a` | `#5a4223` | Partial, never confirmed, stale, battery low |
 | danger | `#c62828` | `#c62828` | `#fbeaea` | `#f0bcbc` | `#f2706b` | `#3a1f1f` | `#5e2c2c` | Failed, triggered, offline, destructive actions |
 | info | `#5b6675` | `#5b6675` | `#eef0f3` | `#d6dae0` | `#a3acb9` | `#272a2f` | `#3a3e45` | Unknown, paused, neutral notices (grey, not blue) |
@@ -102,7 +102,7 @@ its domain icon.
 | Shading | `#00796b` | `#e0f2f1` | `#4db6ac` | `#14302d` |
 | Media | `#c2185b` | `#fce4ec` | `#f06292` | `#3a1a28` |
 | Sensors | `#00838f` | `#e0f7fa` | `#4dd0e1` | `#133236` |
-| Energy | `#2e7d32` | `#e9f4ea` | `#6cc070` | `#1d2e1f` |
+| Energy | `#2e7d32` | `#e8f3e9` | `#6cc070` | `#1d2e1f` |
 | Cameras | `#3949ab` | `#e8eaf6` | `#7986cb` | `#1f2340` |
 
 - Media moves from red to magenta, so playing music no longer looks like an alarm.
@@ -120,7 +120,7 @@ the card and on their own soft. **Blue is the default.**
 | Accent | Fill L / text L | Soft L | Fill D | Text D | Soft D | Suggested room |
 |---|---|---|---|---|---|---|
 | Blue | `#2563c9` | `#e9effa` | `#3570d8` | `#8ab4f8` | `#212e48` | default |
-| Teal | `#0f766e` | `#e7f1f0` | `#12847c` | `#5fd0c5` | `#193333` | bathroom |
+| Teal | `#0f766e` | `#e7f1f0` | `#12857c` | `#5fd0c5` | `#193333` | bathroom |
 | Sage | `#55702f` | `#eef1ea` | `#5f7d36` | `#b3cf85` | `#2a3124` | garden room |
 | Terracotta | `#b04a26` | `#f7ede9` | `#b85230` | `#f2a685` | `#3e2823` | kitchen |
 | Rose | `#a3476f` | `#f6edf1` | `#ad4f78` | `#f0a3c2` | `#3b2733` | bedroom |
@@ -129,8 +129,7 @@ the card and on their own soft. **Blue is the default.**
 | Graphite | `#4a5261` | `#edeeef` | `#5a6375` | `#b6bfcd` | `#292c32` | hallway |
 
 Amber and red are left out because they are warning and danger; green is replaced by a muted sage so it cannot read as
-"ok". The dark teal fill is `#12847c`, one step darker than the canvas's `#12857c`, which is 4.495:1 under white and so
-misses AA.
+"ok". Open with design: white on the dark teal fill is 4.495:1, just under AA (§11).
 
 The pressed shade is the fill mixed 20 % toward black, in both themes.
 
@@ -512,6 +511,16 @@ from §5 and §7 and add them to the canvas when a designer is available:
 | Buddy, idle, signage | Chat loading and initialisation failed; wake word "Processing"; live level feedback in voice input; 12-hour time and an AM/PM slot on the flip clock |
 
 The variant matrix is also incomplete: most screens have XS, M and L; S and M+ exist only for the room overview.
+
+### Contrast open with design
+
+The code uses the design values as they are. These pairs miss WCAG AA (4.5:1) and are waiting for a design fix; the
+token tests list them as known misses and fail once a fixed value lands, so the exception can be removed.
+
+| Pair | Ratio |
+|---|---|
+| ok text `#2e7d32` on the light ok soft `#e8f3e9` (also Energy on its soft) | 4.499:1 |
+| White on the dark teal accent fill `#12857c` | 4.495:1 |
 
 ## 12. Migration plan
 
