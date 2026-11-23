@@ -38,7 +38,6 @@
 			},
 			"smartOverrides": {
 				"title": "Anulaciones inteligentes",
-				"badge": "Avanzado",
 				"hint": "Configuraciones opcionales para mejorar el comportamiento inteligente y el control basado en intenciones."
 			}
 		}

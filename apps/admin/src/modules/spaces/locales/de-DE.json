@@ -38,7 +38,6 @@
 			},
 			"smartOverrides": {
 				"title": "Intelligente Überschreibungen",
-				"badge": "Erweitert",
 				"hint": "Optionale Einstellungen zur Verbesserung des intelligenten Verhaltens und der absichtsbasierten Steuerung."
 			}
 		}

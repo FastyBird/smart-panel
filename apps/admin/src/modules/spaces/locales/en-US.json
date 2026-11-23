@@ -38,7 +38,6 @@
 			},
 			"smartOverrides": {
 				"title": "Smart overrides",
-				"badge": "Advanced",
 				"hint": "Optional settings to improve smart behavior and intent-based control."
 			}
 		}

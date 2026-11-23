@@ -6,16 +6,7 @@
 		label-position="top"
 		@submit.prevent="onSubmit"
 	>
-		<el-collapse v-model="activeCollapses">
-			<el-collapse-item name="general">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:information-outline" />
-						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.general.title') }}</span>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesModule.edit.sections.general.title')" data-section="general">
 
 				<div class="px-2">
 					<el-form-item
@@ -50,22 +41,12 @@
 						</el-select>
 					</el-form-item>
 				</div>
-			</el-collapse-item>
+			</plugin-form-section>
 
-			<el-collapse-item name="sections">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:view-grid-outline" />
-						</el-icon>
-						<span class="font-medium">
-							{{ t('spacesSignageInfoPanelPlugin.fields.sections.title') }}
-						</span>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesSignageInfoPanelPlugin.fields.sections.title')" data-section="sections">
 
 				<div class="px-2">
-					<p class="text-sm text-gray-500 mb-3">
+					<p class="text-sm text-secondary mb-3">
 						{{ t('spacesSignageInfoPanelPlugin.fields.sections.description') }}
 					</p>
 
@@ -113,25 +94,14 @@
 						/>
 					</el-form-item>
 				</div>
-			</el-collapse-item>
+			</plugin-form-section>
 
-			<el-collapse-item name="announcements">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:message-text-outline" />
-						</el-icon>
-						<span class="font-medium">
-							{{ t('spacesSignageInfoPanelPlugin.announcements.heading') }}
-						</span>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesSignageInfoPanelPlugin.announcements.heading')" data-section="announcements">
 
 				<div class="px-2">
 					<announcements-section :space-id="props.space.id" />
 				</div>
-			</el-collapse-item>
-		</el-collapse>
+			</plugin-form-section>
 
 		<el-alert
 			v-if="loadFailed"
@@ -168,11 +138,8 @@ import { useI18n } from 'vue-i18n';
 import {
 	ElAlert,
 	ElButton,
-	ElCollapse,
-	ElCollapseItem,
 	ElForm,
 	ElFormItem,
-	ElIcon,
 	ElInput,
 	ElOption,
 	ElSelect,
@@ -181,10 +148,8 @@ import {
 	type FormRules,
 } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
 import { MODULES_PREFIX } from '../../../app.constants';
-import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
+import { PluginFormSection, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { type ISpace, SPACES_MODULE_PREFIX, spacesStoreKey } from '../../../modules/spaces';
 import { useLocations } from '../../../modules/weather';
 import type { components } from '../../../openapi';
@@ -221,7 +186,6 @@ const { locations: weatherLocations, fetchLocations } = useLocations();
 
 const layoutOptions = Object.values(SignageInfoPanelLayout);
 
-const activeCollapses = ref<string[]>(['general', 'sections', 'announcements']);
 
 // The subtype fields arrive as snake_case on the REST response but the core
 // spaces store's ISpace currently omits them (it only declares the generic

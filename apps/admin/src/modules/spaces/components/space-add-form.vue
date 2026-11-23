@@ -1,16 +1,7 @@
 <template>
 	<el-form ref="formElRef" :model="model" :rules="rules" label-position="top" @submit.prevent="onSubmit">
-		<el-collapse v-model="activeCollapses">
 			<!-- 1. General Section -->
-			<el-collapse-item name="general">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:information" />
-						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.general.title') }}</span>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesModule.edit.sections.general.title')" data-section="general">
 
 				<div class="px-2">
 					<el-form-item :label="t('spacesModule.fields.spaces.name.title')" prop="name">
@@ -103,18 +94,10 @@
 						/>
 					</el-form-item>
 				</div>
-			</el-collapse-item>
+			</plugin-form-section>
 
 			<!-- 2. Organization Section (Room only) -->
-			<el-collapse-item v-if="model.type === SpaceType.ROOM" name="organization">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:sitemap" />
-						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.organization.title') }}</span>
-					</div>
-				</template>
+			<plugin-form-section v-if="model.type === SpaceType.ROOM" :title="t('spacesModule.edit.sections.organization.title')" data-section="organization">
 
 				<div class="px-2">
 					<el-form-item
@@ -150,8 +133,7 @@
 						show-icon
 					/>
 				</div>
-			</el-collapse-item>
-		</el-collapse>
+			</plugin-form-section>
 
 		<div
 			v-if="!props.hideActions"
@@ -178,8 +160,6 @@ import { Icon } from '@iconify/vue';
 import {
 	ElAlert,
 	ElButton,
-	ElCollapse,
-	ElCollapseItem,
 	ElForm,
 	ElFormItem,
 	ElIcon,
@@ -194,7 +174,7 @@ import {
 import { v4 as uuid } from 'uuid';
 import { useI18n } from 'vue-i18n';
 
-import { IconPicker } from '../../../common';
+import { IconPicker, PluginFormSection } from '../../../common';
 
 import { useSpaceAddForm, useSpaceCategories, useSpaces } from '../composables';
 import {
@@ -246,7 +226,6 @@ watch(formElRef, (newVal) => {
 }, { immediate: true });
 
 // Collapse state - General and Organization open by default
-const activeCollapses = ref<string[]>(['general', 'organization']);
 
 // Track values that were auto-populated from templates (not manually entered)
 const autoPopulatedValues = reactive({
