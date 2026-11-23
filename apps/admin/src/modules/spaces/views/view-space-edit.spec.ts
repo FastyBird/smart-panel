@@ -75,6 +75,9 @@ vi.mock('../../../common', async () => {
 			},
 			template: '<div />',
 		}),
+		FormFooter: defineComponent({ name: 'FormFooter', props: { dirty: Boolean, canSave: Boolean }, template: '<footer />' }),
+		useEditDrawer: () => ({ inDrawer: vueRef(true) }),
+		useSizeClass: () => ({ isPhone: vueRef(false) }),
 		useBreakpoints: () => ({
 			isMDDevice: vueRef(true),
 			isLGDevice: vueRef(false),

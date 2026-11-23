@@ -13,7 +13,6 @@
 		"removeSpace": "Eliminar espacio",
 		"bulkRemoveSpace": "Eliminar espacios",
 		"discard": "Descartar cambios",
-		"adjustFilters": "Filtrar espacios",
 		"selectPlugin": "Seleccionar tipo de espacio"
 	},
 	"edit": {
@@ -46,7 +45,6 @@
 	},
 	"subHeadings": {
 		"list": "Organiza dispositivos y pantallas por habitaciones o zonas",
-		"adjustFilters": "Ajustar filtros de visualización",
 		"add": "Añadir nuevo espacio",
 		"detail": "Gestionar espacio del panel inteligente",
 		"wizard": "Asistente de configuración para espacios, dispositivos y pantallas"
@@ -84,11 +82,9 @@
 			"name": "Nombre",
 			"type": "Tipo",
 			"category": "Categoría",
-			"description": "Descripción",
 			"order": "Orden",
 			"devices": "Dispositivos",
-			"displays": "Pantallas",
-			"actions": "Acciones"
+			"displays": "Pantallas"
 		},
 		"empty": "No se encontraron espacios. Cree su primer espacio para comenzar."
 	},
@@ -266,9 +262,6 @@
 		"close": {
 			"title": "Cerrar"
 		},
-		"discard": {
-			"title": "Descartar"
-		},
 		"edit": {
 			"title": "Editar"
 		},
@@ -292,6 +285,9 @@
 		},
 		"back": {
 			"title": "Volver"
+		},
+		"more": {
+			"title": "Más"
 		}
 	},
 	"detail": {
@@ -452,5 +448,9 @@
 		"rooms": "Habitaciones",
 		"zones": "Zonas",
 		"others": "Otros espacios"
+	},
+	"aria": {
+		"edit": "Editar {space}",
+		"more": "Más acciones para {space}"
 	}
 }

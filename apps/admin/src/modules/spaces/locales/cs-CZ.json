@@ -13,7 +13,6 @@
 		"removeSpace": "Odebrat prostor",
 		"bulkRemoveSpace": "Odebrat prostory",
 		"discard": "Zahodit změny",
-		"adjustFilters": "Filtrovat prostory",
 		"selectPlugin": "Vyberte typ prostoru"
 	},
 	"edit": {
@@ -46,7 +45,6 @@
 	},
 	"subHeadings": {
 		"list": "Organizujte zařízení a displeje podle místností nebo zón",
-		"adjustFilters": "Upravit nastavení filtrů",
 		"add": "Přidat nový prostor",
 		"detail": "Správa prostoru Smart panelu",
 		"wizard": "Průvodce nastavením prostorů, zařízení a displejů"
@@ -84,11 +82,9 @@
 			"name": "Název",
 			"type": "Typ",
 			"category": "Kategorie",
-			"description": "Popis",
 			"order": "Pořadí",
 			"devices": "Zařízení",
-			"displays": "Displeje",
-			"actions": "Akce"
+			"displays": "Displeje"
 		},
 		"empty": "Nebyly nalezeny žádné prostory. Vytvořte svůj první prostor a začněte."
 	},
@@ -266,9 +262,6 @@
 		"close": {
 			"title": "Zavřít"
 		},
-		"discard": {
-			"title": "Zahodit"
-		},
 		"edit": {
 			"title": "Upravit"
 		},
@@ -292,6 +285,9 @@
 		},
 		"back": {
 			"title": "Zpět"
+		},
+		"more": {
+			"title": "Další"
 		}
 	},
 	"detail": {
@@ -452,5 +448,9 @@
 		"rooms": "Místnosti",
 		"zones": "Zóny",
 		"others": "Ostatní prostory"
+	},
+	"aria": {
+		"edit": "Upravit {space}",
+		"more": "Další akce pro {space}"
 	}
 }

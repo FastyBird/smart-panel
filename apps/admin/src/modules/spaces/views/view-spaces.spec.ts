@@ -3,7 +3,7 @@ import { computed, defineComponent, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
 import ViewSpaces from './view-spaces.vue';
 
@@ -55,10 +55,19 @@ vi.mock('../../../common', async () => {
 		ViewError: StubComponent,
 		AppBarScope: StubComponent,
 		ViewHeader: StubComponent,
-		useBreakpoints: () => ({
-			isMDDevice: vueRef(true),
-			isLGDevice: vueRef(false),
+		EditDrawerLayout: StubComponent,
+		TypePicker: defineVueComponent({
+			name: 'TypePicker',
+			props: ['options', 'modelValue', 'visible', 'title'],
+			setup: (props) => () =>
+				h(
+					'div',
+					{ 'data-test-id': 'type-picker' },
+					(props.options as { name: string }[]).map((option) => option.name)
+				),
 		}),
+		provideEditDrawer: () => ({ inDrawer: vueRef(false) }),
+		useSizeClass: () => ({ isPhone: vueRef(false) }),
 		useFlashMessage: () => ({
 			error: vi.fn(),
 		}),
@@ -70,16 +79,8 @@ vi.mock('../components/components', async () => {
 
 	return {
 		ListSpaces: defineVueComponent({
-			template: '<div />',
-		}),
-	};
-});
-
-vi.mock('../components/list-spaces-adjust.vue', async () => {
-	const { defineComponent: defineVueComponent } = await import('vue');
-
-	return {
-		default: defineVueComponent({
+			name: 'ListSpaces',
+			emits: ['configure'],
 			template: '<div />',
 		}),
 	};
@@ -170,10 +171,8 @@ describe('ViewSpaces', () => {
 
 		const wrapper = mountView();
 
-		await wrapper
-			.findAll('button')
-			.find((button) => button.text().includes('spacesModule.buttons.wizard.title'))
-			?.trigger('click');
+		await wrapper.find('[data-test-id="spaces-wizard"]').trigger('click');
+		await flushPromises();
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({
 			name: 'spaces-wizard',
@@ -182,6 +181,35 @@ describe('ViewSpaces', () => {
 			},
 		});
 		expect(wrapper.text()).not.toContain('Home Control Spaces');
+	});
+
+	it('offers the wizard types in the type picker when there are several', async () => {
+		mocks.wizardOptions = [
+			{ value: 'spaces-home-control-plugin', label: 'Home Control Spaces', description: 'Rooms and zones', disabled: false },
+			{ value: 'spaces-signage-info-panel-plugin', label: 'Information panel', description: 'Signage', disabled: false },
+		];
+
+		const wrapper = mountView();
+
+		expect(wrapper.find('[data-test-id="type-picker"]').exists()).toBe(false);
+
+		await wrapper.find('[data-test-id="spaces-wizard"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="type-picker"]').text()).toContain('Home Control Spaces');
+
+		wrapper.findComponent({ name: 'TypePicker' }).vm.$emit('update:model-value', 'spaces-signage-info-panel-plugin');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'spaces-wizard', params: { type: 'spaces-signage-info-panel-plugin' } });
+	});
+
+	it('opens the configure page from a row', async () => {
+		const wrapper = mountView();
+
+		wrapper.findComponent({ name: 'ListSpaces' }).vm.$emit('configure', { name: 'configure', params: { id: 's1' } });
+		await flushPromises();
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'configure', params: { id: 's1' } });
 	});
 
 	it('hides the wizard button when all wizard-capable plugins are disabled', () => {

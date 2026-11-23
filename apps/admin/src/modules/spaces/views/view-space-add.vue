@@ -11,7 +11,7 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div class="flex flex-col overflow-hidden h-full">
-		<el-scrollbar class="grow-1 p-2 md:px-4">
+		<el-scrollbar class="grow-1 p-2 tp:px-4">
 			<!--
 				Plugin-picker flow mirrors the dashboard's page-add experience:
 				the user picks a space type first, and the plugin registered for
@@ -39,7 +39,7 @@
 					ref="formRef"
 					v-model:remote-form-changed="remoteFormChanged"
 					:type="addFormType"
-					:hide-actions="isMDDevice"
+					:hide-actions="true"
 					@saved="onSaved"
 					@cancel="onCancel"
 				/>
@@ -64,38 +64,15 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('spacesModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('spacesModule.buttons.close.title') }}
-				</el-button>
-
-				<el-button
-					v-if="hasAddForm"
-					type="primary"
-					@click="onSubmit"
-				>
-					{{ t('spacesModule.buttons.save.title') }}
-				</el-button>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:can-save="hasAddForm"
+			@save="onSubmit"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -105,9 +82,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDivider, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElAlert, ElDivider, ElMessageBox, ElScrollbar } from 'element-plus';
 
-import { AppBreadcrumbs, type IPluginElement, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, FormFooter, type IPluginElement, ViewHeader, useEditDrawer, useSizeClass } from '../../../common';
 import SelectSpacePlugin from '../components/select-space-plugin.vue';
 import { useSpacesPlugins } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
@@ -133,7 +110,9 @@ useMeta({
 	title: t('spacesModule.meta.spaces.add.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const { getElement } = useSpacesPlugins();
 
@@ -190,7 +169,7 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.SPACES });
 			} else {
 				router.push({ name: RouteNames.SPACES });
@@ -208,7 +187,7 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.SPACES });
 	} else {
 		router.push({ name: RouteNames.SPACES });
@@ -218,7 +197,7 @@ const onClose = (): void => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onSaved = (_savedSpace: ISpace): void => {
 	// Flash message is already shown by the composable, just handle navigation
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.SPACES });
 	} else {
 		router.push({ name: RouteNames.SPACES });
@@ -226,7 +205,7 @@ const onSaved = (_savedSpace: ISpace): void => {
 };
 
 const onCancel = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.SPACES });
 	} else {
 		router.push({ name: RouteNames.SPACES });

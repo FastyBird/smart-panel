@@ -13,7 +13,6 @@
 		"removeSpace": "Usun przestrzen",
 		"bulkRemoveSpace": "Usun przestrzenie",
 		"discard": "Odrzuc zmiany",
-		"adjustFilters": "Filtruj przestrzenie",
 		"selectPlugin": "Wybierz typ przestrzeni"
 	},
 	"edit": {
@@ -46,7 +45,6 @@
 	},
 	"subHeadings": {
 		"list": "Organizuj urzadzenia i wyswietlacze wedlug pokoi lub stref",
-		"adjustFilters": "Dostosuj filtry wyswietlania",
 		"add": "Dodaj nowa przestrzen",
 		"detail": "Zarzadzaj przestrzenia smart panelu",
 		"wizard": "Kreator konfiguracji przestrzeni, urzadzen i wyswietlaczy"
@@ -84,11 +82,9 @@
 			"name": "Nazwa",
 			"type": "Typ",
 			"category": "Kategoria",
-			"description": "Opis",
 			"order": "Kolejnosc",
 			"devices": "Urzadzenia",
-			"displays": "Wyswietlacze",
-			"actions": "Akcje"
+			"displays": "Wyswietlacze"
 		},
 		"empty": "Nie znaleziono przestrzeni. Utworz pierwsza przestrzen, aby rozpoczac."
 	},
@@ -266,9 +262,6 @@
 		"close": {
 			"title": "Zamknij"
 		},
-		"discard": {
-			"title": "Odrzuc"
-		},
 		"edit": {
 			"title": "Edytuj"
 		},
@@ -292,6 +285,9 @@
 		},
 		"back": {
 			"title": "Wroc"
+		},
+		"more": {
+			"title": "Więcej"
 		}
 	},
 	"detail": {
@@ -452,5 +448,9 @@
 		"rooms": "Pokoje",
 		"zones": "Strefy",
 		"others": "Pozostałe przestrzenie"
+	},
+	"aria": {
+		"edit": "Edytuj {space}",
+		"more": "Więcej akcji dla {space}"
 	}
 }

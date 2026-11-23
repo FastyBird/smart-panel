@@ -166,7 +166,7 @@
 					/>
 
 					<!-- Energy widget card -->
-					<div class="border border-solid border-gray-200 rounded-lg p-4 mb-2">
+					<div class="border border-solid border-light rounded-lg p-4 mb-2">
 						<div class="flex items-center justify-between mb-3">
 							<div class="flex items-center gap-2">
 								<icon icon="mdi:flash-outline" class="text-lg" />

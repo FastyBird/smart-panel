@@ -17,7 +17,7 @@
 	>
 		<el-scrollbar
 			v-if="space !== null"
-			class="grow-1 p-2 md:px-4"
+			class="grow-1 p-2 tp:px-4"
 		>
 			<!--
 				Every space type is rendered via its plugin's registered spaceEditForm
@@ -32,7 +32,7 @@
 				v-if="pluginElement?.components?.spaceEditForm"
 				ref="formRef"
 				v-model:remote-form-changed="remoteFormChanged"
-				:hide-actions="isMDDevice"
+				:hide-actions="true"
 				:space="space"
 				@saved="onSaved"
 				@cancel="onCancel"
@@ -47,38 +47,15 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('spacesModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('spacesModule.buttons.close.title') }}
-				</el-button>
-
-				<el-button
-					v-if="hasEditForm"
-					type="primary"
-					@click="onSubmit"
-				>
-					{{ t('spacesModule.buttons.save.title') }}
-				</el-button>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:can-save="hasEditForm && remoteFormChanged"
+			@save="onSubmit"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -88,9 +65,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElAlert, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
-import { AppBreadcrumbs, type IPluginElement, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, FormFooter, type IPluginElement, ViewHeader, useEditDrawer, useFlashMessage, useSizeClass } from '../../../common';
 import { useSpace, useSpacesPlugins } from '../composables';
 import { RouteNames, SpaceRoomCategory, SpaceZoneCategory, getSpaceIcon } from '../spaces.constants';
 import type { ISpacePluginsComponents, ISpacePluginsSchemas } from '../spaces.types';
@@ -119,7 +96,9 @@ const { t } = useI18n();
 const { meta } = useMeta({});
 const flashMessage = useFlashMessage();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const spaceId = computed(() => (props.id ?? route.params.id) as string | undefined);
 
@@ -212,7 +191,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const close = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace(closeRoute.value);
 	} else {
 		router.push(closeRoute.value);
@@ -288,7 +267,7 @@ watch(
 			// Space was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('spacesModule.messages.deletedWhileEditing'));
 			// Redirect to spaces list
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.SPACES });
 			} else {
 				router.push({ name: RouteNames.SPACES });

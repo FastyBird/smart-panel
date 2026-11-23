@@ -1,47 +1,81 @@
 <template>
-	<el-button
-		v-if="plugin?.routes?.configure"
-		size="small"
-		plain
-		data-test-id="configure-space"
-		@click.stop="onConfigureSpace"
+	<div
+		class="inline-flex items-center gap-1"
+		@click.stop
 	>
-		<template #icon>
-			<icon icon="mdi:cogs" />
-		</template>
+		<!-- Spec section 4: Configure keeps its label, Edit is an icon, Remove (destructive) lives in the more menu -->
+		<el-button
+			v-if="plugin?.routes?.configure"
+			size="small"
+			plain
+			data-test-id="configure-space"
+			@click="onConfigureSpace"
+		>
+			<template #icon>
+				<icon icon="mdi:cogs" />
+			</template>
 
-		{{ t('spacesModule.buttons.configure.title') }}
-	</el-button>
-	<el-button
-		size="small"
-		plain
-		class="ml-1!"
-		data-test-id="edit-space"
-		@click.stop="emit('edit', props.space.id)"
-	>
-		<template #icon>
-			<icon icon="mdi:pencil" />
-		</template>
-	</el-button>
-	<el-button
-		size="small"
-		type="warning"
-		plain
-		class="ml-1!"
-		data-test-id="remove-space"
-		@click.stop="emit('remove', props.space.id)"
-	>
-		<template #icon>
-			<icon icon="mdi:trash" />
-		</template>
-	</el-button>
+			{{ t('spacesModule.buttons.configure.title') }}
+		</el-button>
+
+		<el-tooltip
+			:content="t('spacesModule.buttons.edit.title')"
+			placement="top"
+		>
+			<el-button
+				:aria-label="t('spacesModule.aria.edit', { space: props.space.name })"
+				text
+				circle
+				data-test-id="edit-space"
+				@click="emit('edit', props.space.id)"
+			>
+				<template #icon>
+					<icon icon="mdi:pencil" />
+				</template>
+			</el-button>
+		</el-tooltip>
+
+		<el-tooltip
+			:content="t('spacesModule.buttons.more.title')"
+			placement="top"
+		>
+			<el-dropdown
+				trigger="click"
+				placement="bottom-end"
+				@command="emit('remove', props.space.id)"
+			>
+				<el-button
+					:aria-label="t('spacesModule.aria.more', { space: props.space.name })"
+					text
+					circle
+					data-test-id="more-space"
+				>
+					<template #icon>
+						<icon icon="mdi:dots-horizontal" />
+					</template>
+				</el-button>
+
+				<template #dropdown>
+					<el-dropdown-menu>
+						<el-dropdown-item
+							command="remove"
+							class="text-danger!"
+							data-test-id="remove-space"
+						>
+							{{ t('spacesModule.buttons.delete.title') }}
+						</el-dropdown-item>
+					</el-dropdown-menu>
+				</template>
+			</el-dropdown>
+		</el-tooltip>
+	</div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import type { RouteLocationRaw } from 'vue-router';
 
-import { ElButton } from 'element-plus';
+import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -59,10 +93,11 @@ const props = defineProps<ISpacesTableColumnActionsProps>();
 const emit = defineEmits<{
 	(e: 'edit', id: ISpace['id']): void;
 	(e: 'remove', id: ISpace['id']): void;
+	// The page hosting the list leaves for the configure page, so it can ask about a changed form first
+	(e: 'configure', to: RouteLocationRaw): void;
 }>();
 
 const { t } = useI18n();
-const router = useRouter();
 
 const { plugin } = useSpacesPlugin({ type: () => props.space.type });
 
@@ -73,10 +108,6 @@ const onConfigureSpace = (): void => {
 		return;
 	}
 
-	if (typeof configureRoute === 'function') {
-		router.push(configureRoute(props.space.id));
-	} else {
-		router.push(configureRoute);
-	}
+	emit('configure', typeof configureRoute === 'function' ? configureRoute(props.space.id) : configureRoute);
 };
 </script>
