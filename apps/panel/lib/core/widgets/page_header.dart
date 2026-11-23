@@ -194,6 +194,8 @@ class PageHeader extends StatelessWidget {
     return _PageHeaderScope(
       sizeClass: resolvedClass,
       child: Container(
+        // The spec's 36/40/48 is the row (header buttons are 36 at every
+        // class); the page padding sits around it.
         padding: EdgeInsets.all(padding),
         decoration: BoxDecoration(
           color: backgroundColor ?? neutrals.surfacePage,
@@ -387,6 +389,8 @@ class HeaderIconButton extends StatelessWidget {
       enabled: onTap != null,
       selected: onTap != null && color != ThemeColors.neutral,
       label: semanticLabel,
+      // The label replaces the InkWell's semantics, so the tap moves up here.
+      onTap: semanticLabel != null ? onTap : null,
       excludeSemantics: semanticLabel != null,
       child: SizedBox.square(
         dimension: size,

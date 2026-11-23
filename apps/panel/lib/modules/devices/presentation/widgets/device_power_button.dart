@@ -35,8 +35,8 @@ class DevicePowerButton extends StatelessWidget {
       semanticLabel: localizations == null
           ? null
           : isOn
-              ? localizations.power_hint_tap_to_turn_off
-              : localizations.power_hint_tap_to_turn_on,
+          ? localizations.power_hint_tap_to_turn_off
+          : localizations.power_hint_tap_to_turn_on,
       onTap: onTap == null
           ? null
           : () {
@@ -49,17 +49,24 @@ class DevicePowerButton extends StatelessWidget {
 
 /// "On" or "Off" in the body of a device whose power button moved to the
 /// header, until its screen moves onto the redesign.
+///
+/// A screen shown without its header passes [onTap]: the icon then becomes a
+/// [DevicePowerButton], so the device keeps its power control.
 class DevicePowerState extends StatelessWidget {
   const DevicePowerState({
     super.key,
     required this.isOn,
     this.themeColor,
+    this.onTap,
   });
 
   final bool isOn;
 
   /// Colour while on; defaults to [ThemeColors.primary] (the accent).
   final ThemeColors? themeColor;
+
+  /// Toggles the power; only for a screen without its header.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -77,11 +84,18 @@ class DevicePowerState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: AppSpacings.pSm,
           children: [
-            Icon(
-              MdiIcons.power,
-              size: AppSpacings.scale(28),
-              color: isOn ? onColor : theme.neutrals.textSecondary,
-            ),
+            if (onTap != null)
+              DevicePowerButton(
+                isOn: isOn,
+                themeColor: themeColor,
+                onTap: onTap,
+              )
+            else
+              Icon(
+                MdiIcons.power,
+                size: AppSpacings.scale(28),
+                color: isOn ? onColor : theme.neutrals.textSecondary,
+              ),
             Text(
               isOn ? localizations.on_state_on : localizations.on_state_off,
               style: TextStyle(

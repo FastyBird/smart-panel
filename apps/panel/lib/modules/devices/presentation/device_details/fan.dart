@@ -292,6 +292,15 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     setState(() {});
   }
 
+  /// The power toggle; none while the device is offline.
+  VoidCallback? get _powerToggle =>
+      widget._device.isOnline ? () => _setFanPower(!_device.isOn) : null;
+
+  /// The body's power toggle, only when the header (and its power button) is
+  /// hidden.
+  VoidCallback? get _bodyPowerToggle =>
+      (widget.config?.showHeader ?? true) ? null : _powerToggle;
+
   void _setFanPower(bool value) {
     final controller = _controller;
     if (controller == null) return;
@@ -443,7 +452,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         DevicePowerButton(
           isOn: _device.isOn,
           themeColor: _getStatusColor(),
-          onTap: () => _setFanPower(!_device.isOn),
+          onTap: _powerToggle,
         ),
         if (configTrailing != null) configTrailing,
       ],
@@ -675,6 +684,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           DevicePowerState(
             isOn: _device.isOn,
             themeColor: _getStatusColor(),
+            onTap: _bodyPowerToggle,
           ),
           if (_device.fanChannel.hasMode &&
               _device.fanChannel.availableModes.isNotEmpty) ...[
@@ -885,6 +895,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                   child: DevicePowerState(
                     isOn: _device.isOn,
                     themeColor: _getStatusColor(),
+                    onTap: _bodyPowerToggle,
                   ),
                 ),
               ),

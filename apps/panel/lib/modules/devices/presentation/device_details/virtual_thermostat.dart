@@ -488,146 +488,159 @@ class _VirtualThermostatDeviceDetailState
         : null;
 
     return Scaffold(
-      body: Column(
-        children: [
-          PageHeader(
-            title: widget.device.name,
-            onBack: () => Navigator.maybePop(context),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-        onRefresh: _refresh,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        child: Column(
           children: [
-            if (config == null) const LinearProgressIndicator(),
-            if (_error != null)
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            Text(l.thermostatMemberRoom),
-            if (policy['floor'] is Map)
-              Text(
-                '${l.thermostatMemberPolicy}: ${(policy['floor'] as Map)['limit']} °C / ${(policy['floor'] as Map)['recoveryHysteresis']} °C',
-              ),
-            Text('Requested mode: ${requestedMode ?? 'unknown'}'),
-            Text(
-              'Controller readiness: ${readinessCurrent ? readiness : l.thermostatMemberUnavailable}',
+            PageHeader(
+              title: widget.device.name,
+              onBack: () => Navigator.maybePop(context),
             ),
-            if (ambient != null)
-              Text('Ambient: ${ambient.toStringAsFixed(1)} °C'),
-            if (selectedClaim != null)
-              Text(
-                '${l.thermostatMemberSelectedFloor}: ${selected?.identity ?? selectedClaim}: ${floor == null ? l.thermostatMemberUnavailable : '${floor.toStringAsFixed(1)} °C'}',
-              )
-            else if (floor != null)
-              Text('Floor: ${floor.toStringAsFixed(1)} °C'),
-            if (current && runtime['floor_latched'] == true)
-              const Text('Floor protection is holding heating OFF.'),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (current)
-                  for (final reason in reasons) Text('Inhibited: $reason'),
-              ],
-            ),
-            if (inputs.isNotEmpty) ...[
-              const Divider(),
-              const Text('Input freshness'),
-              for (final input in inputs)
-                ListTile(
-                  title: Text(
-                    '${input.role}: ${current ? _evidence.sources.status(input, now, clock) : l.thermostatMemberUnavailable} (${input.sourceKind})',
-                  ),
-                  subtitle: Text(
-                    [
-                      'Quality: ${input.quality}',
-                      if (input.age(elapsed) != null)
-                        'Sample age: ${input.age(elapsed)!.toStringAsFixed(0)} s',
-                      if (input.maximumAgeSeconds != null)
-                        'Allowed age: ${input.maximumAgeSeconds!.toStringAsFixed(0)} s',
-                      if (input.sampledAt != null)
-                        'Sampled: ${input.sampledAt!.toUtc().toIso8601String()}',
-                      if (input.expiresAt != null)
-                        'Expires: ${input.expiresAt!.toUtc().toIso8601String()}',
-                      ...input.reasons,
-                    ].join(' • '),
-                  ),
-                ),
-            ],
-            if (_settingProperty('locked') != null)
-              SwitchListTile(
-                title: const Text('Lock thermostat controls'),
-                value: config?['locked'] == true,
-                onChanged: !_busy
-                    ? (value) {
-                        final command = _command('locked', value);
-                        if (command != null) unawaited(_send([command]));
-                      }
-                    : null,
-              ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final mode in const ['off', 'heat', 'cool', 'auto'])
-                  if ((mode != 'heat' && mode != 'auto' ||
-                          heatSetpoint != null) &&
-                      (mode != 'cool' && mode != 'auto' ||
-                          coolSetpoint != null))
-                    ChoiceChip(
-                      label: Text(mode.toUpperCase()),
-                      selected: requestedMode == mode,
-                      onSelected:
-                          canControl &&
-                              (heatSetpoint == null ||
-                                  _settingProperty('heating_enabled') !=
-                                      null) &&
-                              (coolSetpoint == null ||
-                                  _settingProperty('cooling_enabled') != null)
-                          ? (_) => _setMode(mode)
-                          : null,
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (config == null) const LinearProgressIndicator(),
+                    if (_error != null)
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    Text(l.thermostatMemberRoom),
+                    if (policy['floor'] is Map)
+                      Text(
+                        '${l.thermostatMemberPolicy}: ${(policy['floor'] as Map)['limit']} °C / ${(policy['floor'] as Map)['recoveryHysteresis']} °C',
+                      ),
+                    Text('Requested mode: ${requestedMode ?? 'unknown'}'),
+                    Text(
+                      'Controller readiness: ${readinessCurrent ? readiness : l.thermostatMemberUnavailable}',
                     ),
-              ],
-            ),
-            if (heatSetpoint != null)
-              _setpointRow(
-                'Heating target',
-                'heating_setpoint',
-                heatSetpoint,
-                canControl,
+                    if (ambient != null)
+                      Text('Ambient: ${ambient.toStringAsFixed(1)} °C'),
+                    if (selectedClaim != null)
+                      Text(
+                        '${l.thermostatMemberSelectedFloor}: ${selected?.identity ?? selectedClaim}: ${floor == null ? l.thermostatMemberUnavailable : '${floor.toStringAsFixed(1)} °C'}',
+                      )
+                    else if (floor != null)
+                      Text('Floor: ${floor.toStringAsFixed(1)} °C'),
+                    if (current && runtime['floor_latched'] == true)
+                      const Text('Floor protection is holding heating OFF.'),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (current)
+                          for (final reason in reasons)
+                            Text('Inhibited: $reason'),
+                      ],
+                    ),
+                    if (inputs.isNotEmpty) ...[
+                      const Divider(),
+                      const Text('Input freshness'),
+                      for (final input in inputs)
+                        ListTile(
+                          title: Text(
+                            '${input.role}: ${current ? _evidence.sources.status(input, now, clock) : l.thermostatMemberUnavailable} (${input.sourceKind})',
+                          ),
+                          subtitle: Text(
+                            [
+                              'Quality: ${input.quality}',
+                              if (input.age(elapsed) != null)
+                                'Sample age: ${input.age(elapsed)!.toStringAsFixed(0)} s',
+                              if (input.maximumAgeSeconds != null)
+                                'Allowed age: ${input.maximumAgeSeconds!.toStringAsFixed(0)} s',
+                              if (input.sampledAt != null)
+                                'Sampled: ${input.sampledAt!.toUtc().toIso8601String()}',
+                              if (input.expiresAt != null)
+                                'Expires: ${input.expiresAt!.toUtc().toIso8601String()}',
+                              ...input.reasons,
+                            ].join(' • '),
+                          ),
+                        ),
+                    ],
+                    if (_settingProperty('locked') != null)
+                      SwitchListTile(
+                        title: const Text('Lock thermostat controls'),
+                        value: config?['locked'] == true,
+                        onChanged: !_busy
+                            ? (value) {
+                                final command = _command('locked', value);
+                                if (command != null) {
+                                  unawaited(_send([command]));
+                                }
+                              }
+                            : null,
+                      ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final mode in const [
+                          'off',
+                          'heat',
+                          'cool',
+                          'auto',
+                        ])
+                          if ((mode != 'heat' && mode != 'auto' ||
+                                  heatSetpoint != null) &&
+                              (mode != 'cool' && mode != 'auto' ||
+                                  coolSetpoint != null))
+                            ChoiceChip(
+                              label: Text(mode.toUpperCase()),
+                              selected: requestedMode == mode,
+                              onSelected:
+                                  canControl &&
+                                      (heatSetpoint == null ||
+                                          _settingProperty('heating_enabled') !=
+                                              null) &&
+                                      (coolSetpoint == null ||
+                                          _settingProperty('cooling_enabled') !=
+                                              null)
+                                  ? (_) => _setMode(mode)
+                                  : null,
+                            ),
+                      ],
+                    ),
+                    if (heatSetpoint != null)
+                      _setpointRow(
+                        'Heating target',
+                        'heating_setpoint',
+                        heatSetpoint,
+                        canControl,
+                      ),
+                    if (coolSetpoint != null)
+                      _setpointRow(
+                        'Cooling target',
+                        'cooling_setpoint',
+                        coolSetpoint,
+                        canControl,
+                      ),
+                    const Divider(),
+                    VirtualThermostatMembers(
+                      configuration: config,
+                      runtime: runtime,
+                      elapsed: elapsed,
+                      now: now,
+                      current: current,
+                      expiredMemberClaims: expiredMemberClaims,
+                      freshCoolingClaims: freshCoolingClaims,
+                      unavailableActivityClaims: unavailableActivityClaims,
+                    ),
+                    VirtualThermostatComfort(
+                      key: const ValueKey('virtual-thermostat-comfort'),
+                      deviceId: widget.device.id,
+                      revision: (config?['revision'] as num?)?.toInt(),
+                      disabled: !canControl,
+                      onChanged: () => unawaited(_refresh(force: true)),
+                    ),
+                  ],
+                ),
               ),
-            if (coolSetpoint != null)
-              _setpointRow(
-                'Cooling target',
-                'cooling_setpoint',
-                coolSetpoint,
-                canControl,
-              ),
-            const Divider(),
-            VirtualThermostatMembers(
-              configuration: config,
-              runtime: runtime,
-              elapsed: elapsed,
-              now: now,
-              current: current,
-              expiredMemberClaims: expiredMemberClaims,
-              freshCoolingClaims: freshCoolingClaims,
-              unavailableActivityClaims: unavailableActivityClaims,
-            ),
-            VirtualThermostatComfort(
-              key: const ValueKey('virtual-thermostat-comfort'),
-              deviceId: widget.device.id,
-              revision: (config?['revision'] as num?)?.toInt(),
-              disabled: !canControl,
-              onChanged: () => unawaited(_refresh(force: true)),
             ),
           ],
         ),
-      ),
-          ),
-        ],
       ),
     );
   }

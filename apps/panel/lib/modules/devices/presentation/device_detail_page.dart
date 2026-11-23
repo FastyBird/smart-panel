@@ -125,19 +125,27 @@ class DeviceDetailPage extends StatelessWidget {
         final localizations = AppLocalizations.of(context)!;
 
         return Scaffold(
-          body: Column(
-            children: [
-              PageHeader(
-                title: device.name,
-                subtitle: device.isOnline ? null : localizations.device_status_offline,
-                subtitleIcon: device.isOnline ? null : MdiIcons.alert,
-                subtitleColor: device.isOnline ? null : Theme.of(context).warning,
-                icon: buildDeviceIcon(device.category, device.icon),
-                iconColor: device.isOnline ? ThemeColors.primary : ThemeColors.neutral,
-                onBack: () => Navigator.pop(context),
-              ),
-              Expanded(child: buildDeviceWidget(device)),
-            ],
+          body: SafeArea(
+            child: Column(
+              children: [
+                PageHeader(
+                  title: device.name,
+                  subtitle: device.isOnline
+                      ? null
+                      : localizations.device_status_offline,
+                  subtitleIcon: device.isOnline ? null : MdiIcons.alert,
+                  subtitleColor: device.isOnline
+                      ? null
+                      : Theme.of(context).warning,
+                  icon: buildDeviceIcon(device.category, device.icon),
+                  iconColor: device.isOnline
+                      ? ThemeColors.primary
+                      : ThemeColors.neutral,
+                  onBack: () => Navigator.pop(context),
+                ),
+                Expanded(child: buildDeviceWidget(device)),
+              ],
+            ),
           ),
         );
       },

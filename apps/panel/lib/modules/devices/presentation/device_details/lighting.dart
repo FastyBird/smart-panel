@@ -1147,6 +1147,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             saturation: saturation,
             whiteChannel: white,
             capabilities: _capabilities,
+            onPowerToggle: _bodyPowerToggle,
             onBrightnessChanged: _handleBrightnessChanged,
             onColorTempChanged: _handleColorTempChanged,
             onColorChanged: _handleColorChanged,
@@ -1209,6 +1210,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         saturation: saturation,
         whiteChannel: white,
         capabilities: _capabilities,
+        onPowerToggle: _bodyPowerToggle,
         onBrightnessChanged: _handleBrightnessChanged,
         onColorTempChanged: _handleColorTempChanged,
         onColorChanged: _handleColorChanged,
@@ -1302,6 +1304,22 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
   }
 
+  /// The power toggle; none while the device is offline.
+  VoidCallback? get _powerToggle => widget._device.isOnline
+      ? () {
+          final controller = _selectedController ?? _controller?.light;
+          if (controller != null) {
+            controller.togglePower();
+            setState(() {});
+          }
+        }
+      : null;
+
+  /// The body's power toggle, only when the header (and its power button) is
+  /// hidden.
+  VoidCallback? get _bodyPowerToggle =>
+      (widget.config?.showHeader ?? true) ? null : _powerToggle;
+
   Widget _buildHeaderTrailing(BuildContext context, bool isDark) {
     final hasChannels = _isMultiChannel;
     return Row(
@@ -1329,13 +1347,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         DevicePowerButton(
           isOn: (_selectedController ?? _controller?.light)?.isOn ?? false,
           themeColor: _getStatusColor(),
-          onTap: () {
-            final controller = _selectedController ?? _controller?.light;
-            if (controller != null) {
-              controller.togglePower();
-              setState(() {});
-            }
-          },
+          onTap: _powerToggle,
         ),
       ],
     );
@@ -1450,6 +1462,9 @@ class _LightingHeroCard extends StatelessWidget {
   final ValueChanged<int>? onWhiteChannelChanged;
   final ValueChanged<LightCapability>? onCapabilityChanged;
 
+  /// Power toggle for a power-only light shown without its header.
+  final VoidCallback? onPowerToggle;
+
   const _LightingHeroCard({
     required this.selectedCapability,
     required this.isOn,
@@ -1464,6 +1479,7 @@ class _LightingHeroCard extends StatelessWidget {
     this.onColorChanged,
     this.onWhiteChannelChanged,
     this.onCapabilityChanged,
+    this.onPowerToggle,
   });
 
   bool get _isSimple =>
@@ -1478,6 +1494,7 @@ class _LightingHeroCard extends StatelessWidget {
       return DevicePowerState(
         isOn: isOn,
         themeColor: ThemeColors.primary,
+        onTap: onPowerToggle,
       );
     }
 

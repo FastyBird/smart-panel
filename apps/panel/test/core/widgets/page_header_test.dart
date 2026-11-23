@@ -304,9 +304,18 @@ void main() {
     testWidgets('is labelled for screen readers', (tester) async {
       final semantics = tester.ensureSemantics();
 
-      await _pump(tester, HeaderBackButton(onTap: () {}));
+      var taps = 0;
+      await _pump(tester, HeaderBackButton(onTap: () => taps++));
 
       expect(find.bySemanticsLabel('Back'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byType(HeaderBackButton)),
+        isSemantics(label: 'Back', isButton: true, hasTapAction: true),
+      );
+
+      // A screen reader's activation reaches the callback.
+      tester.semantics.tap(find.semantics.byLabel('Back'));
+      expect(taps, 1);
       semantics.dispose();
     });
   });
@@ -439,6 +448,48 @@ void main() {
       expect(find.bySemanticsLabel('Tap to turn on'), findsOneWidget);
 
       semantics.dispose();
+    });
+
+    testWidgets('can be activated by a screen reader only while enabled', (tester) async {
+      final semantics = tester.ensureSemantics();
+      var taps = 0;
+
+      await _pump(tester, DevicePowerButton(isOn: true, onTap: () => taps++));
+      expect(
+        tester.getSemantics(find.byType(DevicePowerButton)),
+        isSemantics(label: 'Tap to turn off', isEnabled: true, hasTapAction: true),
+      );
+      tester.semantics.tap(find.semantics.byLabel('Tap to turn off'));
+      expect(taps, 1);
+
+      await _pump(tester, const DevicePowerButton(isOn: true));
+      expect(
+        tester.getSemantics(find.byType(DevicePowerButton)),
+        isSemantics(label: 'Tap to turn off', isEnabled: false, hasTapAction: false),
+      );
+
+      semantics.dispose();
+    });
+  });
+
+  group('DevicePowerState', () {
+    testWidgets('only shows the state while the header has the button', (tester) async {
+      await _pump(tester, const DevicePowerState(isOn: true));
+
+      expect(find.text('On'), findsOneWidget);
+      expect(find.byType(DevicePowerButton), findsNothing);
+    });
+
+    testWidgets('carries the power button on a screen without a header', (tester) async {
+      var taps = 0;
+
+      await _pump(tester, DevicePowerState(isOn: false, onTap: () => taps++));
+
+      expect(find.text('Off'), findsOneWidget);
+      expect(find.byType(DevicePowerButton), findsOneWidget);
+
+      await tester.tap(find.byType(DevicePowerButton));
+      expect(taps, 1);
     });
   });
 
