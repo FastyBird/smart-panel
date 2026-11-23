@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 	routerReplace: vi.fn(),
 	currentStep: null as unknown as { value: number },
 	assignableZones: null as unknown as { value: unknown[] },
+	isLoading: null as unknown as { value: boolean },
 }));
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
@@ -53,7 +54,7 @@ vi.mock('../composables', async () => {
 
 	return {
 		useSpacesWizard: () => ({
-			isLoading: vueRef(false),
+			isLoading: (mocks.isLoading = vueRef(false)),
 			currentStep: mocks.currentStep,
 			existingSpaces: vueRef([]),
 			proposedSpaces: vueRef([]),
@@ -105,7 +106,7 @@ vi.mock('../composables', async () => {
 
 const shell = (wrapper: ReturnType<typeof shallowMount>) => wrapper.findComponent({ name: 'WizardShell' });
 
-const mountWizard = () => shallowMount(ViewSpacesWizard, { global: { stubs: { WizardShell: false }, directives: { loading: {} } } });
+const mountWizard = () => shallowMount(ViewSpacesWizard, { global: { stubs: { WizardShell: false } } });
 
 describe('Home Control spaces wizard (template 9)', () => {
 	beforeEach(() => {
@@ -171,6 +172,20 @@ describe('Home Control spaces wizard (template 9)', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="spaces-wizard-advanced"]').exists()).toBe(true);
+	});
+
+	it('masks the step while the wizard loads or saves, so its fields wait too', async () => {
+		const wrapper = mountWizard();
+		await flushPromises();
+
+		const step = wrapper.find('[data-test-id="spaces-wizard-step"]');
+
+		expect(step.find('.el-loading-mask').exists()).toBe(false);
+
+		mocks.isLoading.value = true;
+		await flushPromises();
+
+		expect(step.find('.el-loading-mask').exists()).toBe(true);
 	});
 
 	it('cancels back to the list', async () => {

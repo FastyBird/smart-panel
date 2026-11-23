@@ -28,7 +28,12 @@
 				@next="onNext"
 				@cancel="handleCancel"
 			>
-				<div class="flex flex-col p-4">
+				<!-- The footer waits while the wizard loads or saves; the mask keeps the step itself from being edited meanwhile -->
+				<div
+					v-loading="isLoading"
+					class="flex flex-col p-4"
+					data-test-id="spaces-wizard-step"
+				>
 					<!-- Step 1: Spaces -->
 					<template v-if="currentStep === 0">
 						<el-alert
@@ -825,6 +830,7 @@ import {
 	ElTableColumn,
 	ElTag,
 	ElTooltip,
+	vLoading,
 } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
