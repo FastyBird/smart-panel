@@ -34,6 +34,9 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	'src/modules/mcp',
 	// AR-16: the notifications inbox, the bell and the notifications config form
 	'src/modules/notifications',
+	// AR-17: the spaces list, add, edit and configure screens, the wizard and the space plugins
+	'src/modules/spaces',
+	'src/plugins/spaces-*',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

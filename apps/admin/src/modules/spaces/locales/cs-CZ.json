@@ -38,7 +38,6 @@
 			},
 			"smartOverrides": {
 				"title": "Chytrá přepsání",
-				"badge": "Pokročilé",
 				"hint": "Volitelná nastavení pro zlepšení chytrého chování a ovládání na základě záměrů."
 			}
 		}

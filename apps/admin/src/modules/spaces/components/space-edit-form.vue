@@ -1,16 +1,7 @@
 <template>
 	<el-form ref="formRef" :model="model" :rules="rules" label-position="top" @submit.prevent="onSubmit">
-		<el-collapse v-model="activeCollapses">
 			<!-- 1. General Section -->
-			<el-collapse-item name="general">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:information" />
-						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.general.title') }}</span>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesModule.edit.sections.general.title')" data-section="general">
 
 				<div class="px-2">
 					<el-form-item :label="t('spacesModule.fields.spaces.name.title')" prop="name">
@@ -96,18 +87,10 @@
 						/>
 					</el-form-item>
 				</div>
-			</el-collapse-item>
+			</plugin-form-section>
 
 			<!-- 2. Organization Section (Room only) -->
-			<el-collapse-item v-if="model.type === SpaceType.ROOM" name="organization">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:sitemap" />
-						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.organization.title') }}</span>
-					</div>
-				</template>
+			<plugin-form-section v-if="model.type === SpaceType.ROOM" :title="t('spacesModule.edit.sections.organization.title')" data-section="organization">
 
 				<div class="px-2">
 					<el-form-item
@@ -143,18 +126,10 @@
 						show-icon
 					/>
 				</div>
-			</el-collapse-item>
+			</plugin-form-section>
 
 			<!-- 3. Status Widgets Section -->
-			<el-collapse-item name="statusWidgets">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:view-dashboard-variant" />
-						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.statusWidgets.title') }}</span>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesModule.edit.sections.statusWidgets.title')" advanced data-section="statusWidgets">
 
 				<div class="px-2">
 					<el-alert
@@ -196,19 +171,10 @@
 						</template>
 					</div>
 				</div>
-			</el-collapse-item>
+			</plugin-form-section>
 
 			<!-- 4. Smart Overrides Section -->
-			<el-collapse-item name="smartOverrides">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:tune" />
-						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.smartOverrides.title') }}</span>
-						<el-tag size="small" type="info">{{ t('spacesModule.edit.sections.smartOverrides.badge') }}</el-tag>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesModule.edit.sections.smartOverrides.title')" advanced data-section="smartOverrides">
 
 				<div class="px-2">
 					<el-alert
@@ -238,8 +204,7 @@
 						show-icon
 					/>
 				</div>
-			</el-collapse-item>
-		</el-collapse>
+			</plugin-form-section>
 
 		<div
 			v-if="!hideActions"
@@ -266,8 +231,6 @@ import { Icon } from '@iconify/vue';
 import {
 	ElAlert,
 	ElButton,
-	ElCollapse,
-	ElCollapseItem,
 	ElForm,
 	ElFormItem,
 	ElIcon,
@@ -278,13 +241,12 @@ import {
 	ElSegmented,
 	ElSelect,
 	ElSwitch,
-	ElTag,
 	type FormInstance,
 	type FormRules,
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { IconPicker } from '../../../common';
+import { IconPicker, PluginFormSection } from '../../../common';
 import { useSpaceCategories, useSpaceEditForm, useSpaces } from '../composables';
 import {
 	ENERGY_WIDGET_DEFAULTS,
@@ -332,7 +294,6 @@ watch(formRef, (newVal) => {
 }, { immediate: true });
 
 // Collapse state - General and Organization open by default
-const activeCollapses = ref<string[]>(['general', 'organization']);
 
 // Track values that were auto-populated from templates (not manually entered)
 const autoPopulatedValues = reactive({

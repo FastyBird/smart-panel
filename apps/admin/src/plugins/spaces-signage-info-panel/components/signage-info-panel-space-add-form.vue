@@ -6,16 +6,7 @@
 		label-position="top"
 		@submit.prevent="onSubmit"
 	>
-		<el-collapse v-model="activeCollapses">
-			<el-collapse-item name="general">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:information-outline" />
-						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.general.title') }}</span>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesModule.edit.sections.general.title')" data-section="general">
 
 				<div class="px-2">
 					<el-form-item
@@ -54,22 +45,12 @@
 						</el-select>
 					</el-form-item>
 				</div>
-			</el-collapse-item>
+			</plugin-form-section>
 
-			<el-collapse-item name="sections">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:view-grid-outline" />
-						</el-icon>
-						<span class="font-medium">
-							{{ t('spacesSignageInfoPanelPlugin.fields.sections.title') }}
-						</span>
-					</div>
-				</template>
+			<plugin-form-section :title="t('spacesSignageInfoPanelPlugin.fields.sections.title')" data-section="sections">
 
 				<div class="px-2">
-					<p class="text-sm text-gray-500 mb-3">
+					<p class="text-sm text-secondary mb-3">
 						{{ t('spacesSignageInfoPanelPlugin.fields.sections.description') }}
 					</p>
 
@@ -117,8 +98,7 @@
 						/>
 					</el-form-item>
 				</div>
-			</el-collapse-item>
-		</el-collapse>
+			</plugin-form-section>
 
 		<div
 			v-if="!props.hideActions"
@@ -144,11 +124,8 @@ import { useI18n } from 'vue-i18n';
 
 import {
 	ElButton,
-	ElCollapse,
-	ElCollapseItem,
 	ElForm,
 	ElFormItem,
-	ElIcon,
 	ElInput,
 	ElOption,
 	ElSelect,
@@ -159,10 +136,8 @@ import {
 import { isEqual } from 'lodash';
 import { v4 as uuid } from 'uuid';
 
-import { Icon } from '@iconify/vue';
-
 import { MODULES_PREFIX } from '../../../app.constants';
-import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
+import { PluginFormSection, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import {
 	type ApiSpace,
 	type ISpace,
@@ -209,7 +184,6 @@ const { locations: weatherLocations, fetchLocations } = useLocations();
 
 const layoutOptions = Object.values(SignageInfoPanelLayout);
 
-const activeCollapses = ref<string[]>(['general', 'sections']);
 
 interface SignageAddFormModel {
 	name: string;
