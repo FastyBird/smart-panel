@@ -13,7 +13,6 @@
 		"removeSpace": "Remove space",
 		"bulkRemoveSpace": "Remove spaces",
 		"discard": "Discard changes",
-		"adjustFilters": "Filter spaces",
 		"selectPlugin": "Select a space type"
 	},
 	"edit": {
@@ -46,7 +45,6 @@
 	},
 	"subHeadings": {
 		"list": "Organize devices and displays by rooms or zones",
-		"adjustFilters": "Adjust display filters",
 		"add": "Add new space",
 		"detail": "Manage smart panel space",
 		"wizard": "Setup wizard for spaces, devices and displays"
@@ -84,11 +82,9 @@
 			"name": "Name",
 			"type": "Type",
 			"category": "Category",
-			"description": "Description",
 			"order": "Order",
 			"devices": "Devices",
-			"displays": "Displays",
-			"actions": "Actions"
+			"displays": "Displays"
 		},
 		"empty": "No spaces found. Create your first space to get started."
 	},
@@ -266,9 +262,6 @@
 		"close": {
 			"title": "Close"
 		},
-		"discard": {
-			"title": "Discard"
-		},
 		"edit": {
 			"title": "Edit"
 		},
@@ -292,6 +285,9 @@
 		},
 		"back": {
 			"title": "Go back"
+		},
+		"more": {
+			"title": "More"
 		}
 	},
 	"detail": {
@@ -452,5 +448,9 @@
 		"rooms": "Rooms",
 		"zones": "Zones",
 		"others": "Other spaces"
+	},
+	"aria": {
+		"edit": "Edit {space}",
+		"more": "More actions for {space}"
 	}
 }

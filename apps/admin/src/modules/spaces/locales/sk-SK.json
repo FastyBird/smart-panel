@@ -13,7 +13,6 @@
 		"removeSpace": "Odstrániť priestor",
 		"bulkRemoveSpace": "Odstrániť priestory",
 		"discard": "Zahodiť zmeny",
-		"adjustFilters": "Filtrovať priestory",
 		"selectPlugin": "Vyberte typ priestoru"
 	},
 	"edit": {
@@ -46,7 +45,6 @@
 	},
 	"subHeadings": {
 		"list": "Organizujte zariadenia a displeje podľa miestností alebo zón",
-		"adjustFilters": "Upraviť filtre zobrazenia",
 		"add": "Pridať nový priestor",
 		"detail": "Spravovať priestor smart panelu",
 		"wizard": "Sprievodca nastavením pre priestory, zariadenia a displeje"
@@ -84,11 +82,9 @@
 			"name": "Názov",
 			"type": "Typ",
 			"category": "Kategória",
-			"description": "Popis",
 			"order": "Poradie",
 			"devices": "Zariadenia",
-			"displays": "Displeje",
-			"actions": "Akcie"
+			"displays": "Displeje"
 		},
 		"empty": "Neboli nájdené žiadne priestory. Vytvorte svoj prvý priestor."
 	},
@@ -266,9 +262,6 @@
 		"close": {
 			"title": "Zavrieť"
 		},
-		"discard": {
-			"title": "Zahodiť"
-		},
 		"edit": {
 			"title": "Upraviť"
 		},
@@ -292,6 +285,9 @@
 		},
 		"back": {
 			"title": "Späť"
+		},
+		"more": {
+			"title": "Viac"
 		}
 	},
 	"detail": {
@@ -452,5 +448,9 @@
 		"rooms": "Miestnosti",
 		"zones": "Zóny",
 		"others": "Ostatné priestory"
+	},
+	"aria": {
+		"edit": "Upraviť {space}",
+		"more": "Ďalšie akcie pre {space}"
 	}
 }

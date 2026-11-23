@@ -508,10 +508,10 @@ Protect epic, built on this epic's components.
 | --- | -------------------------------------------------------------------------------------------------------- | ----------- | ------------------- |
 | 1   | Theme and lint (AR-1, AR-2)                                                                              | admin, docs | :white_check_mark: Done |
 | 2   | Shell and shared components (AR-3 … AR-8)                                                                | admin       | :white_check_mark: Done |
-| 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :construction: In Progress |
-| 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
+| 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :white_check_mark: Done |
+| 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :construction: In Progress |
 
-**Next up:** phase 4, starting with AR-17 (spaces), once AR-16 (the notifications inbox) merges and closes phase 3.
+**Next up:** AR-17 part 2 (the Home Control configure page), then part 3 (the Home Control wizard and the signage plugin).
 
 ---
 

@@ -13,7 +13,6 @@
 		"removeSpace": "Bereich entfernen",
 		"bulkRemoveSpace": "Bereiche entfernen",
 		"discard": "Änderungen verwerfen",
-		"adjustFilters": "Bereiche filtern",
 		"selectPlugin": "Bereichstyp auswählen"
 	},
 	"edit": {
@@ -46,7 +45,6 @@
 	},
 	"subHeadings": {
 		"list": "Geräte und Displays nach Räumen oder Zonen organisieren",
-		"adjustFilters": "Anzeigefilter anpassen",
 		"add": "Neuen Bereich hinzufügen",
 		"detail": "Smart Panel Bereich verwalten",
 		"wizard": "Einrichtungsassistent für Bereiche, Geräte und Displays"
@@ -84,11 +82,9 @@
 			"name": "Name",
 			"type": "Typ",
 			"category": "Kategorie",
-			"description": "Beschreibung",
 			"order": "Reihenfolge",
 			"devices": "Geräte",
-			"displays": "Zeigt an",
-			"actions": "Aktionen"
+			"displays": "Zeigt an"
 		},
 		"empty": "Keine Bereiche gefunden. Erstellen Sie Ihren ersten Bereich, um zu beginnen."
 	},
@@ -266,9 +262,6 @@
 		"close": {
 			"title": "Schließen"
 		},
-		"discard": {
-			"title": "Verwerfen"
-		},
 		"edit": {
 			"title": "Bearbeiten"
 		},
@@ -292,6 +285,9 @@
 		},
 		"back": {
 			"title": "Zurück"
+		},
+		"more": {
+			"title": "Mehr"
 		}
 	},
 	"detail": {
@@ -452,5 +448,9 @@
 		"rooms": "Räume",
 		"zones": "Zonen",
 		"others": "Andere Bereiche"
+	},
+	"aria": {
+		"edit": "{space} bearbeiten",
+		"more": "Weitere Aktionen für {space}"
 	}
 }

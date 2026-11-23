@@ -1,6 +1,7 @@
 <template>
 	<el-table
-		v-loading="props.loading"
+		ref="tableEl"
+		v-loading="props.loading && props.items.length > 0"
 		:element-loading-text="t('spacesModule.texts.loadingSpaces')"
 		:data="props.items"
 		:default-sort="
@@ -18,102 +19,34 @@
 		@selection-change="onSelectionChange"
 	>
 		<template #empty>
-			<div
-				v-if="props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:home-group" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:database-refresh" />
-							</template>
-						</icon-with-child>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="props.filtersActive && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:home-group" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-multiple" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('spacesModule.texts.noFilteredSpaces') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="emit('reset-filters')"
-						>
-							<template #icon>
-								<icon icon="mdi:filter-off" />
-							</template>
-
-							{{ t('spacesModule.buttons.resetFilters.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="noResults && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:home-group" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('spacesModule.texts.noSpaces') }}
-					</template>
-				</el-result>
-			</div>
+			<spaces-empty
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				@reset-filters="emit('reset-filters')"
+			/>
 		</template>
 
 		<el-table-column
-			v-if="isMDDevice"
 			type="selection"
-			fixed
-			:width="30"
+			fixed="left"
+			:width="40"
 		/>
 
 		<el-table-column
-			:width="60"
+			:width="56"
 			align="center"
 		>
 			<template #default="scope">
-				<el-avatar :size="32">
+				<span
+					class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-fill-light text-regular"
+					aria-hidden="true"
+				>
 					<icon
-						:icon="scope.row.icon || (scope.row.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1')"
-						class="w[20px] h[20px]"
+						:icon="spaceIcon(scope.row)"
+						width="20"
+						height="20"
 					/>
-				</el-avatar>
+				</span>
 			</template>
 		</el-table-column>
 
@@ -123,18 +56,15 @@
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
 			:min-width="200"
-			class-name="py-0!"
 		>
 			<template #default="scope">
-				<strong class="block">{{ scope.row.name }}</strong>
-				<el-text
+				<span class="block text-card-title truncate">{{ scope.row.name }}</span>
+				<span
 					v-if="scope.row.description"
-					size="small"
-					class="block leading-4"
-					truncated
+					class="block text-help truncate"
 				>
 					{{ scope.row.description }}
-				</el-text>
+				</span>
 			</template>
 		</el-table-column>
 
@@ -146,15 +76,12 @@
 			:width="200"
 		>
 			<template #default="scope">
-				<spaces-table-column-plugin
-					:space="scope.row"
-					:filters="innerFilters"
-					@filter-by="(value: IPluginElement['type'], add: boolean) => onFilterBy(value, add)"
-				/>
+				<spaces-table-column-plugin :space="scope.row" />
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('spacesModule.table.columns.order')"
 			prop="displayOrder"
 			sortable="custom"
@@ -163,41 +90,41 @@
 			align="center"
 		>
 			<template #default="scope">
-				{{ scope.row.displayOrder }}
+				<span class="text-body">{{ scope.row.displayOrder }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			:width="220"
+			:width="232"
 			align="right"
+			fixed="right"
 		>
 			<template #default="scope">
-				<div @click.stop>
-					<spaces-table-column-actions
-						:space="scope.row"
-						@edit="(id: ISpace['id']) => emit('edit', id)"
-						@remove="(id: ISpace['id']) => emit('remove', id)"
-					/>
-				</div>
+				<spaces-table-column-actions
+					:space="scope.row"
+					@edit="(id: ISpace['id']) => emit('edit', id)"
+					@remove="(id: ISpace['id']) => emit('remove', id)"
+				/>
 			</template>
 		</el-table-column>
 	</el-table>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
+import { ElTable, ElTableColumn, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { type IPluginElement, IconWithChild, useBreakpoints } from '../../../common';
+import { useSizeClass } from '../../../common';
 import type { ISpacesFilter } from '../composables/types';
 import { SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
+import SpacesEmpty from './spaces-empty.vue';
 import SpacesTableColumnActions from './spaces-table-column-actions.vue';
 import SpacesTableColumnPlugin from './spaces-table-column-plugin.vue';
 import type { ISpacesTableProps } from './spaces-table.types';
@@ -211,7 +138,6 @@ const props = defineProps<ISpacesTableProps>();
 const emit = defineEmits<{
 	(e: 'edit', id: ISpace['id']): void;
 	(e: 'remove', id: ISpace['id']): void;
-	(e: 'add'): void;
 	(e: 'reset-filters'): void;
 	(e: 'update:filters', filters: ISpacesFilter): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'displayOrder' | undefined): void;
@@ -221,13 +147,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+const { isTabletPortrait } = useSizeClass();
 
-const innerFilters = useVModel(props, 'filters', emit);
+useVModel(props, 'filters', emit);
 
-const noResults = computed<boolean>((): boolean => props.totalRows === 0);
+const tableEl = ref<InstanceType<typeof ElTable> | null>(null);
 
 const tableHeight = computed<number>((): number => props.tableHeight ?? 400);
+
+const spaceIcon = (space: ISpace): string => space.icon || (space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1');
 
 const onSortData = ({ prop, order }: { prop: 'name' | 'type' | 'displayOrder'; order: 'ascending' | 'descending' | null }): void => {
 	emit('update:sort-by', prop);
@@ -242,9 +170,10 @@ const onRowClick = (space: ISpace): void => {
 	emit('edit', space.id);
 };
 
-const onFilterBy = (value: IPluginElement['type'], add: boolean): void => {
-	const filteredTypes = add ? [...innerFilters.value.types, value] : innerFilters.value.types.filter((item) => item !== value);
-
-	innerFilters.value.types = Array.from(new Set(filteredTypes));
+// The filter bar's Clear selection
+const clearSelection = (): void => {
+	tableEl.value?.clearSelection();
 };
+
+defineExpose({ clearSelection, spaceIcon });
 </script>

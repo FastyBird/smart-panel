@@ -5,24 +5,33 @@
 	/>
 
 	<view-header
-		v-if="(isSpacesListRoute || isLGDevice) && !isWizardRoute"
+		v-if="(isSpacesListRoute || inDrawer) && !isWizardRoute"
 		:title="t('spacesModule.headings.list')"
 		:subtitle="t('spacesModule.subHeadings.list')"
 		icon="mdi:home-group"
+		:actions="[
+			{ icon: 'mdi:magnify', label: t('spacesModule.fields.search.placeholder'), handler: onSearch },
+			{ icon: 'mdi:plus', label: t('spacesModule.buttons.add.title'), handler: onAddSpace },
+		]"
 	>
 		<template #actions>
-			<div class="flex items-center">
+			<div class="flex items-center gap-2">
 				<el-button
 					v-if="enabledWizardOptions.length > 0"
+					data-test-id="spaces-wizard"
 					@click="onWizard"
 				>
-					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
+					<template #icon>
+						<icon icon="mdi:wizard-hat" />
+					</template>
+
 					{{ t('spacesModule.buttons.wizard.title') }}
 				</el-button>
 				<el-button
 					type="primary"
 					plain
-					class="ml-2!"
+					class="ml-0!"
+					data-test-id="spaces-add"
 					@click="onAddSpace"
 				>
 					<template #icon>
@@ -35,55 +44,54 @@
 		</template>
 	</view-header>
 
+	<!-- On phone the header's buttons give way to the app bar's search and add; the wizard keeps a row of its own -->
 	<div
-		v-if="(isSpacesListRoute || isLGDevice) && !isWizardRoute"
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+		v-if="isPhone && isSpacesListRoute && enabledWizardOptions.length > 0"
+		class="flex px-3 pt-3"
 	>
-		<list-spaces
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="spacesPaginated"
-			:all-items="spaces"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			@edit="onSpaceEdit"
-			@remove="onSpaceRemove"
-			@add="onAddSpace"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-			@bulk-action="onBulkAction"
-		/>
+		<el-button
+			class="flex-1"
+			data-test-id="spaces-wizard-small"
+			@click="onWizard"
+		>
+			<template #icon>
+				<icon icon="mdi:wizard-hat" />
+			</template>
+
+			{{ t('spacesModule.buttons.wizard.title') }}
+		</el-button>
 	</div>
 
-	<router-view
-		v-if="isWizardRoute || (!isSpacesListRoute && !isLGDevice)"
-		v-slot="{ Component }"
+	<div
+		v-if="(isSpacesListRoute || inDrawer) && !isWizardRoute"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<component :is="Component" />
-	</router-view>
+		<!-- Template 4: add and edit open next to the list from tablet portrait up, as their own page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-spaces
+				ref="list"
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				:items="spacesPaginated"
+				:all-items="spaces"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				@edit="onSpaceEdit"
+				@remove="onSpaceRemove"
+				@reset-filters="onResetFilters"
+				@bulk-action="onBulkAction"
+			/>
 
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-spaces-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
-				/>
-
-				<view-error v-else>
+			<template #form>
+				<view-error>
 					<template #icon>
 						<icon icon="mdi:home-group" />
 					</template>
@@ -101,49 +109,26 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
 
-	<el-dialog
-		v-model="wizardPluginDialogVisible"
-		:title="t('spacesModule.headings.selectPlugin')"
-		width="520px"
+	<router-view
+		v-if="isWizardRoute || (!isSpacesListRoute && !inDrawer)"
+		v-slot="{ Component }"
 	>
-		<div class="flex flex-col gap-2">
-			<el-card
-				v-for="item in wizardOptions"
-				:key="item.value"
-				shadow="never"
-				class="spaces-wizard-plugin-card"
-				:class="{ 'spaces-wizard-plugin-card--disabled': item.disabled }"
-				body-class="p-4!"
-				@click="!item.disabled && onStartWizard(item.value)"
-			>
-				<div class="flex items-start gap-3">
-					<div class="spaces-wizard-plugin-card__icon">
-						<icon icon="mdi:puzzle-outline" />
-					</div>
-					<div class="flex-1 min-w-0 spaces-wizard-plugin-card__content">
-						<h3 class="spaces-wizard-plugin-card__title">
-							{{ item.label }}
-						</h3>
-						<p class="spaces-wizard-plugin-card__description">
-							{{ item.description || '&nbsp;' }}
-						</p>
-					</div>
-					<div class="spaces-wizard-plugin-card__chevron">
-						<icon icon="mdi:chevron-right" />
-					</div>
-				</div>
-			</el-card>
-		</div>
+		<component :is="Component" />
+	</router-view>
 
-		<template #footer>
-			<el-button @click="wizardPluginDialogVisible = false">
-				{{ t('spacesModule.buttons.cancel.title') }}
-			</el-button>
-		</template>
-	</el-dialog>
+	<!-- The space types with a setup wizard; skipped when there is only one -->
+	<type-picker
+		v-if="wizardPluginDialogVisible"
+		:options="wizardPickerOptions"
+		:model-value="null"
+		:visible="wizardPluginDialogVisible"
+		:title="t('spacesModule.headings.selectPlugin')"
+		@update:model-value="onStartWizard"
+		@update:visible="(visible: boolean) => (wizardPluginDialogVisible = visible)"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -152,13 +137,22 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDialog, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import {
+	AppBreadcrumbs,
+	EditDrawerLayout,
+	TypePicker,
+	type TypePickerOption,
+	ViewError,
+	ViewHeader,
+	provideEditDrawer,
+	useFlashMessage,
+	useSizeClass,
+} from '../../../common';
 import { ListSpaces } from '../components/components';
-import ListSpacesAdjust from '../components/list-spaces-adjust.vue';
 import { useSpacesActions, useSpacesDataSource, useSpacesPlugins } from '../composables';
 import { RouteNames } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
@@ -176,7 +170,7 @@ useMeta({
 	title: t('spacesModule.meta.spaces.list.title'),
 });
 
-const { isLGDevice } = useBreakpoints();
+const { isPhone } = useSizeClass();
 
 const {
 	fetchSpaces,
@@ -197,14 +191,28 @@ const { wizardOptions } = useSpacesPlugins();
 const enabledWizardOptions = computed(() => wizardOptions.value.filter((item) => !item.disabled));
 
 const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
 const wizardPluginDialogVisible = ref<boolean>(false);
+
+const list = ref<InstanceType<typeof ListSpaces> | null>(null);
+
+const wizardPickerOptions = computed<TypePickerOption[]>((): TypePickerOption[] =>
+	wizardOptions.value.map((item) => ({
+		id: item.value,
+		icon: 'mdi:puzzle-outline',
+		name: item.label,
+		description: item.description || undefined,
+		disabled: item.disabled,
+	}))
+);
 
 const remoteFormChanged = ref<boolean>(false);
 
 const isSpacesListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACES;
 });
+
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone
+const { inDrawer } = provideEditDrawer((): boolean => !isSpacesListRoute.value && route.name !== RouteNames.SPACES_WIZARD);
 
 const isWizardRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACES_WIZARD;
@@ -221,53 +229,67 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
-
-		done?.();
+const leaveForm = (): void => {
+	if (inDrawer.value) {
+		router.replace({ name: RouteNames.SPACES });
 	} else {
-		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('spacesModule.texts.confirmDiscard'), t('spacesModule.headings.discard'), {
-				confirmButtonText: t('spacesModule.buttons.yes.title'),
-				cancelButtonText: t('spacesModule.buttons.no.title'),
-				type: 'warning',
-			})
-				.then((): void => {
-					if (isLGDevice.value) {
-						router.replace({
-							name: RouteNames.SPACES,
-						});
-					} else {
-						router.push({
-							name: RouteNames.SPACES,
-						});
-					}
-
-					done?.();
-				})
-				.catch((): void => {
-					// Just ignore it
-				});
-		} else {
-			if (isLGDevice.value) {
-				router.replace({
-					name: RouteNames.SPACES,
-				});
-			} else {
-				router.push({
-					name: RouteNames.SPACES,
-				});
-			}
-
-			done?.();
-		}
+		router.push({ name: RouteNames.SPACES });
 	}
 };
 
-const onSpaceEdit = (id: ISpace['id']): void => {
-	if (isLGDevice.value) {
+const onCloseDrawer = (done?: () => void): void => {
+	if (!remoteFormChanged.value) {
+		leaveForm();
+
+		done?.();
+
+		return;
+	}
+
+	ElMessageBox.confirm(t('spacesModule.texts.confirmDiscard'), t('spacesModule.headings.discard'), {
+		confirmButtonText: t('spacesModule.buttons.yes.title'),
+		cancelButtonText: t('spacesModule.buttons.no.title'),
+		type: 'warning',
+	})
+		.then((): void => {
+			leaveForm();
+
+			done?.();
+		})
+		.catch((): void => {
+			// Just ignore it
+		});
+};
+
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => {
+	if (!showDrawer.value || !remoteFormChanged.value) {
+		return true;
+	}
+
+	try {
+		await ElMessageBox.confirm(t('spacesModule.texts.confirmDiscard'), t('spacesModule.headings.discard'), {
+			confirmButtonText: t('spacesModule.buttons.yes.title'),
+			cancelButtonText: t('spacesModule.buttons.no.title'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+const onSpaceEdit = async (id: ISpace['id']): Promise<void> => {
+	if (route.name === RouteNames.SPACES_EDIT && route.params.id === id) {
+		return;
+	}
+
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.SPACES_EDIT,
 			params: {
@@ -296,8 +318,12 @@ const onBulkAction = (action: string, items: ISpace[]): void => {
 	}
 };
 
-const onAddSpace = (): void => {
-	if (isLGDevice.value) {
+const onAddSpace = async (): Promise<void> => {
+	if (route.name === RouteNames.SPACES_ADD || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.SPACES_ADD,
 		});
@@ -312,12 +338,16 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
+// The phone app bar's Search action
+const onSearch = (): void => {
+	list.value?.focusSearch();
 };
 
-const onWizard = (): void => {
+const onWizard = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	if (enabledWizardOptions.value.length === 1 && enabledWizardOptions.value[0]) {
 		onStartWizard(enabledWizardOptions.value[0].value);
 		return;
@@ -353,75 +383,3 @@ watch(
 	}
 );
 </script>
-
-<style scoped lang="scss">
-.spaces-wizard-plugin-card {
-	cursor: pointer;
-	transition: all 0.2s ease;
-
-	&:hover {
-		.spaces-wizard-plugin-card__chevron {
-			opacity: 1;
-			transform: translateX(2px);
-		}
-	}
-}
-
-.spaces-wizard-plugin-card--disabled {
-	cursor: not-allowed;
-	opacity: 0.6;
-}
-
-.spaces-wizard-plugin-card__icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 2.5rem;
-	height: 2.5rem;
-	border-radius: var(--el-border-radius-base);
-	background-color: var(--el-color-success-light-9);
-	color: var(--el-color-success);
-	font-size: 1.25rem;
-	flex-shrink: 0;
-}
-
-.spaces-wizard-plugin-card__content {
-	display: flex;
-	flex-direction: column;
-	min-height: 4.5rem;
-}
-
-.spaces-wizard-plugin-card__title {
-	margin: 0 0 0.25rem 0;
-	font-size: 0.9375rem;
-	font-weight: 600;
-	line-height: 1.3;
-	color: var(--el-text-color-primary);
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
-
-.spaces-wizard-plugin-card__description {
-	margin: 0;
-	font-size: 0.8125rem;
-	line-height: 1.4;
-	color: var(--el-text-color-secondary);
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
-
-.spaces-wizard-plugin-card__chevron {
-	display: flex;
-	align-items: center;
-	color: var(--el-text-color-placeholder);
-	font-size: 1.25rem;
-	opacity: 0.5;
-	transition: all 0.2s ease;
-	flex-shrink: 0;
-	align-self: center;
-}
-</style>
