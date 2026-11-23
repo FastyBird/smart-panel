@@ -92,7 +92,11 @@
     "loading": "Cargando clientes MCP…",
     "noFilteredResults": "Ningún cliente MCP coincide con los filtros actuales.",
     "searchPlaceholder": "Buscar por nombre o descripción",
-    "filterAll": "Todos"
+    "filterAll": "Todos",
+    "enabledFilter": {
+      "enabled": "Habilitado",
+      "disabled": "Deshabilitado"
+    }
   },
   "clientForm": {
     "createTitle": "Crear cliente MCP",

@@ -92,7 +92,11 @@
 		"loading": "Loading MCP clients…",
 		"noFilteredResults": "No MCP client matches the current filters.",
 		"searchPlaceholder": "Search by name or description",
-		"filterAll": "All"
+		"filterAll": "All",
+		"enabledFilter": {
+			"enabled": "Enabled",
+			"disabled": "Disabled"
+		}
 	},
 	"clientForm": {
 		"createTitle": "Create MCP client",

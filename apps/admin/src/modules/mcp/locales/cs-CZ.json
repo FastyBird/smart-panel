@@ -92,7 +92,11 @@
     "loading": "Načítání MCP klientů…",
     "noFilteredResults": "Žádný MCP klient neodpovídá zvoleným filtrům.",
     "searchPlaceholder": "Hledat podle názvu nebo popisu",
-    "filterAll": "Vše"
+    "filterAll": "Vše",
+    "enabledFilter": {
+      "enabled": "Povoleno",
+      "disabled": "Zakázáno"
+    }
   },
   "clientForm": {
     "createTitle": "Vytvořit klienta MCP",

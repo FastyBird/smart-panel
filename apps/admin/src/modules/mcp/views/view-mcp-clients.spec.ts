@@ -382,6 +382,41 @@ describe('ViewMcpClients', () => {
 		expect(vm.clientFormChanged).toBe(false);
 	});
 
+	it('keeps the form while its save is on the way', async () => {
+		let resolveCreate!: (value: unknown) => void;
+		mocks.createClient.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveCreate = resolve;
+				})
+		);
+
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as {
+			openCreate: () => Promise<void>;
+			openEdit: (client: IMcpClient) => Promise<void>;
+			saveClient: () => Promise<void>;
+			clientForm: { name: string };
+		};
+
+		await vm.openCreate();
+		vm.clientForm.name = 'New agent';
+		await nextTick();
+
+		const saving = vm.saveClient();
+		await flushPromises();
+
+		// The save ends by closing the form, so a form opened in its place would close with it
+		await vm.openEdit(client);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+		expect(vm.clientForm.name).toBe('New agent');
+
+		resolveCreate({ token: 'secret', client: { ...client, name: 'New agent' } });
+		await saving;
+	});
+
 	it('opens another client without asking when the form is untouched', async () => {
 		const wrapper = mountView();
 		const vm = wrapper.vm as unknown as {

@@ -171,7 +171,8 @@ const search = computed<string>({
 	},
 });
 
-// The bar keeps one quick filter, the credential status; capabilities live in the filters drawer
+// The bar keeps the credential status and the enabled switch; capabilities live in the filters drawer. Active needs
+// both a live credential and the switch on, so Enabled is the only way to find a disabled client
 const quickFilters = computed<ListFilterBarQuickFilter[]>((): ListFilterBarQuickFilter[] => [
 	{
 		id: 'status',
@@ -182,6 +183,15 @@ const quickFilters = computed<ListFilterBarQuickFilter[]>((): ListFilterBarQuick
 			{ value: 'expired', label: t('mcpModule.status.expired') },
 		],
 		value: innerFilters.value.status === 'all' ? null : innerFilters.value.status,
+	},
+	{
+		id: 'enabled',
+		label: t('mcpModule.clientForm.enabled'),
+		options: [
+			{ value: 'enabled', label: t('mcpModule.clients.enabledFilter.enabled') },
+			{ value: 'disabled', label: t('mcpModule.clients.enabledFilter.disabled') },
+		],
+		value: innerFilters.value.enabled === 'all' ? null : innerFilters.value.enabled,
 	},
 ]);
 
@@ -196,6 +206,8 @@ const activeCount = computed<number>(
 const onQuickFilter = (id: string, value: string | null): void => {
 	if (id === 'status') {
 		innerFilters.value.status = (value ?? 'all') as IMcpClientsFilter['status'];
+	} else if (id === 'enabled') {
+		innerFilters.value.enabled = (value ?? 'all') as IMcpClientsFilter['enabled'];
 	}
 };
 
@@ -221,6 +233,14 @@ const onClearSelection = (): void => {
 	table.value?.clearSelection();
 	selectedItems.value = [];
 };
+
+// The table, and its checked rows, go away on phone. A selection kept here would offer bulk actions on rows nobody
+// can see once the table comes back empty, so it ends with the table
+watch(isPhone, (phone: boolean): void => {
+	if (phone && selectedItems.value.length > 0) {
+		onSelectionChange([]);
+	}
+});
 
 // The phone app bar's Search action moves focus to the search field
 const focusSearch = (): void => {

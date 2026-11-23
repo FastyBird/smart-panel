@@ -370,6 +370,11 @@ const onCloseClientForm = async (done?: () => void): Promise<void> => {
 // On wide screens the form docks beside the list without a scrim, so the list stays usable while the form is open:
 // opening another client or a new one replaces the form and has to run the same guard as closing it
 const openCreate = async (): Promise<void> => {
+	// A save on its way closes the form when it ends, which would close the one opened in its place
+	if (saving.value) {
+		return;
+	}
+
 	if (showClientDialog.value && !(await confirmDiscard())) {
 		return;
 	}
@@ -379,6 +384,11 @@ const openCreate = async (): Promise<void> => {
 };
 
 const openEdit = async (client: IMcpClient): Promise<void> => {
+	// A save on its way closes the form when it ends, which would close the one opened in its place
+	if (saving.value) {
+		return;
+	}
+
 	if (showClientDialog.value && !(await confirmDiscard())) {
 		return;
 	}

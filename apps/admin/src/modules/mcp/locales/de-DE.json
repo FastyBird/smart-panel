@@ -92,7 +92,11 @@
 		"loading": "MCP-Clients werden geladen…",
 		"noFilteredResults": "Kein MCP-Client entspricht den aktuellen Filtern.",
 		"searchPlaceholder": "Nach Name oder Beschreibung suchen",
-		"filterAll": "Alle"
+		"filterAll": "Alle",
+		"enabledFilter": {
+			"enabled": "Aktiviert",
+			"disabled": "Deaktiviert"
+		}
 	},
 	"clientForm": {
 		"createTitle": "MCP-Client erstellen",
