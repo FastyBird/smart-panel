@@ -6,7 +6,14 @@
 		@click="emit('click')"
 	>
 		<div class="flex items-start gap-3">
+			<domain-icon
+				v-if="props.domain"
+				:domain="props.domain"
+				:size="40"
+				class="shrink-0"
+			/>
 			<div
+				v-else
 				class="space-domain-card__icon"
 				:style="{
 					backgroundColor: `var(--el-color-${props.iconColor}-light-9)`,
@@ -70,13 +77,17 @@ import { ElBadge, ElCard, ElSkeleton, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { DomainIcon } from '../../../common';
+
 import type { ISpaceDomainCardProps } from './space-domain-card.types';
 
 defineOptions({
 	name: 'SpaceDomainCard',
 });
 
-const props = defineProps<ISpaceDomainCardProps>();
+const props = withDefaults(defineProps<ISpaceDomainCardProps>(), {
+	domain: undefined,
+});
 
 const emit = defineEmits<{
 	(e: 'click'): void;

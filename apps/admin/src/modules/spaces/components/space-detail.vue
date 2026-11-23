@@ -1,74 +1,44 @@
 <template>
-	<el-card
-		shadow="never"
-		class="mt-2"
-		body-class="p-0!"
+	<section
+		class="flex flex-col gap-4 p-4 tp:p-5 bg-surface border border-solid border-light rounded-lg"
+		data-test-id="space-detail"
 	>
-		<dl class="grid m-0">
-			<dt
-				class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				style="background: var(--el-fill-color-light)"
+		<!-- The summary card of template 3: the space at a glance, with rows a space plugin adds (its parent zone) -->
+		<div class="flex items-center gap-3 min-w-0">
+			<span
+				class="flex items-center justify-center shrink-0 w-10 h-10 rounded-lg bg-primary-soft text-primary"
+				aria-hidden="true"
 			>
-				{{ t('spacesModule.fields.spaces.name.title') }}
-			</dt>
-			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-				<el-text>
-					{{ space.name }}
-				</el-text>
-			</dd>
-			<dt
-				class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				style="background: var(--el-fill-color-light)"
-			>
-				{{ t('spacesModule.fields.spaces.type.title') }}
-			</dt>
-			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-				<spaces-table-column-plugin :space="space" />
-			</dd>
-			<dt
-				v-if="space.description"
-				class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				style="background: var(--el-fill-color-light)"
-			>
-				{{ t('spacesModule.fields.spaces.description.title') }}
-			</dt>
-			<dd
-				v-if="space.description"
-				class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]"
-			>
-				<el-text>
-					{{ space.description }}
-				</el-text>
-			</dd>
-			<dt
-				v-if="space.icon"
-				class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-				style="background: var(--el-fill-color-light)"
-			>
-				{{ t('spacesModule.fields.spaces.icon.title') }}
-			</dt>
-			<dd
-				v-if="space.icon"
-				class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center gap-2 min-w-[8rem]"
-			>
-				<el-icon>
-					<icon :icon="space.icon" />
-				</el-icon>
-				<el-text>
-					{{ space.icon }}
-				</el-text>
-			</dd>
+				<icon
+					:icon="space.icon || 'mdi:home-group'"
+					width="22"
+					height="22"
+				/>
+			</span>
+			<div class="flex flex-col min-w-0">
+				<h2 class="m-0 text-section truncate">{{ space.name }}</h2>
+				<spaces-table-column-plugin
+					:space="space"
+					class="text-help!"
+				/>
+			</div>
+		</div>
 
+		<p
+			v-if="space.description"
+			class="m-0 text-body"
+			data-test-id="space-detail-description"
+		>
+			{{ space.description }}
+		</p>
+
+		<dl class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 m-0 empty:hidden">
 			<slot />
 		</dl>
-	</el-card>
+	</section>
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-
-import { ElCard, ElIcon, ElText } from 'element-plus';
-
 import { Icon } from '@iconify/vue';
 
 import type { ISpaceDetailProps } from './space-detail.types';
@@ -79,6 +49,4 @@ defineOptions({
 });
 
 defineProps<ISpaceDetailProps>();
-
-const { t } = useI18n();
 </script>

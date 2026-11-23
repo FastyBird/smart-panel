@@ -25,7 +25,7 @@
 							<icon icon="mdi:blinds" />
 							<div class="flex flex-col">
 								<span>{{ row.deviceName }}</span>
-								<span v-if="row.channelName" class="text-xs text-gray-400">{{ row.channelName }}</span>
+								<span v-if="row.channelName" class="text-xs text-muted">{{ row.channelName }}</span>
 							</div>
 						</div>
 					</template>
@@ -63,7 +63,7 @@
 				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
 					{{ t('spacesHomeControlPlugin.fields.spaces.coversRoles.applyDefaults') }}
 				</el-button>
-				<div class="text-xs text-gray-400">
+				<div class="text-xs text-muted">
 					{{ t('spacesHomeControlPlugin.fields.spaces.coversRoles.applyDefaultsHint') }}
 				</div>
 			</div>

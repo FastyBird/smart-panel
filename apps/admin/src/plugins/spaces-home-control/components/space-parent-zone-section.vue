@@ -1,11 +1,8 @@
 <template>
-	<dt
-		class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
-		style="background: var(--el-fill-color-light)"
-	>
+	<dt class="text-label">
 		{{ t('spacesModule.detail.parentZone.title') }}
 	</dt>
-	<dd class="col-start-2 m-0 p-2 flex items-center gap-2 min-w-[8rem]">
+	<dd class="m-0 flex items-center gap-2 min-w-0">
 		<div
 			v-if="!isEditingFloor"
 			role="button"
@@ -16,19 +13,17 @@
 			@keydown.enter.prevent="onFloorTextClick"
 			@keydown.space.prevent="onFloorTextClick"
 		>
-			<el-tag
+			<span
 				v-if="currentZone"
-				type="success"
-				size="small"
+				class="inline-flex items-center gap-1 text-body"
+				data-test-id="space-parent-zone"
 			>
-				<div class="flex items-center gap-1">
-					<icon :icon="currentZone.icon || 'mdi:home-floor-1'" />
-					{{ currentZone.name }}
-				</div>
-			</el-tag>
+				<icon :icon="currentZone.icon || 'mdi:home-floor-1'" />
+				{{ currentZone.name }}
+			</span>
 			<span
 				v-else
-				class="text-gray-400 text-sm"
+				class="text-help"
 			>
 				{{ t('spacesModule.detail.parentZone.none') }}
 			</span>
@@ -65,7 +60,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElOption, ElSelect, ElTag } from 'element-plus';
+import { ElOption, ElSelect } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

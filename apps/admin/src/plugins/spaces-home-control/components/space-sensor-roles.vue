@@ -25,7 +25,7 @@
 							<icon icon="mdi:motion-sensor" />
 							<div class="flex flex-col">
 								<span>{{ row.deviceName }}</span>
-								<span class="text-xs text-gray-400">{{ row.channelName }}</span>
+								<span class="text-xs text-muted">{{ row.channelName }}</span>
 							</div>
 						</div>
 					</template>
@@ -62,7 +62,7 @@
 				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
 					{{ t('spacesHomeControlPlugin.fields.spaces.sensorRoles.applyDefaults') }}
 				</el-button>
-				<div class="text-xs text-gray-400 ml-4">
+				<div class="text-xs text-muted ml-4">
 					{{ t('spacesHomeControlPlugin.fields.spaces.sensorRoles.applyDefaultsHint') }}
 				</div>
 			</div>
