@@ -385,12 +385,16 @@ class ButtonTileIcon extends StatelessWidget {
           )
         : Icon(icon, size: glyphSize, color: color);
 
-    final iconButton = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: isDisabled ? null : onTap,
-      child: SizedBox.square(
-        dimension: tapZone,
-        child: Center(child: glyph),
+    // An InkWell, so the toggle takes focus and Enter / Space like a button.
+    final iconButton = SizedBox.square(
+      dimension: tapZone,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: isDisabled ? null : onTap,
+          customBorder: const CircleBorder(),
+          child: Center(child: glyph),
+        ),
       ),
     );
 

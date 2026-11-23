@@ -282,6 +282,10 @@ class _HeroSlots extends StatelessWidget {
         final numeral = available.isFinite && !cramped
             ? metrics.numeralFor(available, hasFeedback: feedback != null)
             : (cramped ? HeroCardMetrics.numeralMin : metrics.numeralMax);
+        // Cramped (inside its own scroll view) or given no height limit at
+        // all (inside a caller's scroll view): the hero takes its content's
+        // height, with no flex children.
+        final shrink = cramped || !constraints.hasBoundedHeight;
 
         Widget paused(Widget control) => offline
             ? IgnorePointer(child: Opacity(opacity: 0.4, child: control))
@@ -289,7 +293,7 @@ class _HeroSlots extends StatelessWidget {
 
         final bigValue = Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: cramped ? MainAxisSize.min : MainAxisSize.max,
+          mainAxisSize: shrink ? MainAxisSize.min : MainAxisSize.max,
           spacing: AppSpacings.scale(2),
           children: [
             Flexible(
@@ -310,7 +314,7 @@ class _HeroSlots extends StatelessWidget {
 
         final column = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: cramped ? MainAxisSize.min : MainAxisSize.max,
+          mainAxisSize: shrink ? MainAxisSize.min : MainAxisSize.max,
           spacing: gap,
           children: [
             if (offline)
@@ -339,7 +343,7 @@ class _HeroSlots extends StatelessWidget {
               ),
             if (inline)
               const Spacer()
-            else if (cramped)
+            else if (shrink)
               bigValue
             else
               Expanded(child: bigValue),

@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -290,6 +291,42 @@ void main() {
       expect(find.byKey(const ValueKey('slider')), findsOneWidget);
       expect(find.byKey(const ValueKey('buttons')), findsOneWidget);
     });
+
+    for (final sizeClass in _classes) {
+      testWidgets('takes its content height inside a scroll view at ${sizeClass.name}', (tester) async {
+        // Landscape, so the hero gets the scroll view's unbounded height.
+        await _pump(
+          tester,
+          SizedBox(
+            width: 600,
+            height: 700,
+            child: SingleChildScrollView(
+              child: HeroCard.slots(
+                sizeClass: sizeClass,
+                orientation: Orientation.landscape,
+                value: '50',
+                unit: ' %',
+                badge: HeroBadge(
+                  icon: MdiIcons.lightbulbOutline,
+                  label: 'Main',
+                  color: ThemeColors.lights,
+                  sizeClass: sizeClass,
+                ),
+                feedback: HeroFeedback(text: 'Brightness · Main', sizeClass: sizeClass),
+                slider: const SizedBox.expand(key: ValueKey('slider')),
+                buttons: const SizedBox.expand(key: ValueKey('buttons')),
+              ),
+            ),
+          ),
+        );
+
+        expect(tester.takeException(), isNull);
+        expect(_richStyle(tester, '50 %').fontSize, HeroCardMetrics.of(sizeClass).numeralMax);
+        expect(find.byKey(const ValueKey('slider')), findsOneWidget);
+        expect(find.byKey(const ValueKey('buttons')), findsOneWidget);
+        expect(tester.getSize(find.byType(HeroCard)).height, lessThan(700));
+      });
+    }
 
     testWidgets('dims the numeral while pending', (tester) async {
       await _pump(tester, _hero(ScreenSizeClass.regular, height: 320, dimmed: true));
@@ -652,6 +689,49 @@ void main() {
         matching: find.byType(SizedBox),
       ).first;
       expect(tester.getSize(zone).shortestSide, greaterThanOrEqualTo(36));
+    });
+
+    testWidgets('the icon toggle takes focus and Enter and Space', (tester) async {
+      var toggles = 0;
+      var opens = 0;
+
+      await _pump(
+        tester,
+        tile(width: 200, cols: 2, onTap: () => opens++, onIconTap: () => toggles++),
+      );
+
+      // The icon toggle is the tile's first focusable control.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final focused = FocusManager.instance.primaryFocus?.context;
+      expect(focused, isNotNull);
+      expect(
+        find.descendant(
+          of: find.byWidget(focused!.widget),
+          matching: find.byIcon(MdiIcons.lightbulbOutline),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect((toggles, opens), (2, 0));
+
+      // Offline, the icon is not a control.
+      await _pump(
+        tester,
+        tile(width: 200, cols: 2, offline: true, onTap: () => opens++, onIconTap: () => toggles++),
+      );
+      expect(
+        tester
+            .widget<InkWell>(
+              find.ancestor(of: find.byIcon(MdiIcons.lightbulbOutline), matching: find.byType(InkWell)),
+            )
+            .onTap,
+        isNull,
+      );
     });
 
     testWidgets('icon toggles and body opens; offline the whole tile opens', (tester) async {
