@@ -104,6 +104,7 @@
 					:space="scope.row"
 					@edit="(id: ISpace['id']) => emit('edit', id)"
 					@remove="(id: ISpace['id']) => emit('remove', id)"
+					@configure="(to: RouteLocationRaw) => emit('configure', to)"
 				/>
 			</template>
 		</el-table-column>
@@ -113,6 +114,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { ElTable, ElTableColumn, vLoading } from 'element-plus';
 
@@ -138,6 +140,7 @@ const props = defineProps<ISpacesTableProps>();
 const emit = defineEmits<{
 	(e: 'edit', id: ISpace['id']): void;
 	(e: 'remove', id: ISpace['id']): void;
+	(e: 'configure', to: RouteLocationRaw): void;
 	(e: 'reset-filters'): void;
 	(e: 'update:filters', filters: ISpacesFilter): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'displayOrder' | undefined): void;

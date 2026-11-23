@@ -46,12 +46,15 @@
 				:space="space"
 				@edit="(id: ISpace['id']) => emit('edit', id)"
 				@remove="(id: ISpace['id']) => emit('remove', id)"
+				@configure="(to: RouteLocationRaw) => emit('configure', to)"
 			/>
 		</li>
 	</ul>
 </template>
 
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router';
+
 import { Icon } from '@iconify/vue';
 
 import { SpaceType } from '../spaces.constants';
@@ -70,6 +73,7 @@ const props = defineProps<{ items: ISpace[]; loading: boolean; filtersActive: bo
 const emit = defineEmits<{
 	(e: 'edit', id: ISpace['id']): void;
 	(e: 'remove', id: ISpace['id']): void;
+	(e: 'configure', to: RouteLocationRaw): void;
 	(e: 'reset-filters'): void;
 }>();
 </script>

@@ -86,6 +86,7 @@
 				:filters-active="filtersActive"
 				@edit="onSpaceEdit"
 				@remove="onSpaceRemove"
+				@configure="onSpaceConfigure"
 				@reset-filters="onResetFilters"
 				@bulk-action="onBulkAction"
 			/>
@@ -141,7 +142,7 @@
 import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElButton, ElMessageBox } from 'element-plus';
 
@@ -313,6 +314,15 @@ const onSpaceEdit = async (id: ISpace['id']): Promise<void> => {
 			},
 		});
 	}
+};
+
+// Leaving for the configure page closes a docked form too, so a changed one asks first
+const onSpaceConfigure = async (to: RouteLocationRaw): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
+	router.push(to);
 };
 
 const onSpaceRemove = (id: ISpace['id']): void => {

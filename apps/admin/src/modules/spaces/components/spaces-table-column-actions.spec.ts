@@ -8,15 +8,10 @@ import type { ISpace } from '../store/spaces.store.types';
 
 import SpacesTableColumnActions from './spaces-table-column-actions.vue';
 
-const push = vi.fn();
 const configure = ref<unknown>(undefined);
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string) => key }),
-}));
-
-vi.mock('vue-router', () => ({
-	useRouter: () => ({ push }),
 }));
 
 vi.mock('../composables', async () => {
@@ -53,13 +48,13 @@ describe('SpacesTableColumnActions', () => {
 		expect(wrapper.emitted('remove')).toEqual([['s1']]);
 	});
 
-	it('opens the plugin configure page when the space type has one', async () => {
+	it('asks the hosting page to open the configure page when the space type has one', async () => {
 		configure.value = (id: string) => ({ name: 'configure', params: { id } });
 
 		const wrapper = mountActions();
 
 		await wrapper.find('[data-test-id="configure-space"]').trigger('click');
 
-		expect(push).toHaveBeenCalledWith({ name: 'configure', params: { id: 's1' } });
+		expect(wrapper.emitted('configure')).toEqual([[{ name: 'configure', params: { id: 's1' } }]]);
 	});
 });

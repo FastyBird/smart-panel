@@ -80,6 +80,7 @@ vi.mock('../components/components', async () => {
 	return {
 		ListSpaces: defineVueComponent({
 			name: 'ListSpaces',
+			emits: ['configure'],
 			template: '<div />',
 		}),
 	};
@@ -200,6 +201,15 @@ describe('ViewSpaces', () => {
 		wrapper.findComponent({ name: 'TypePicker' }).vm.$emit('update:model-value', 'spaces-signage-info-panel-plugin');
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'spaces-wizard', params: { type: 'spaces-signage-info-panel-plugin' } });
+	});
+
+	it('opens the configure page from a row', async () => {
+		const wrapper = mountView();
+
+		wrapper.findComponent({ name: 'ListSpaces' }).vm.$emit('configure', { name: 'configure', params: { id: 's1' } });
+		await flushPromises();
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'configure', params: { id: 's1' } });
 	});
 
 	it('hides the wizard button when all wizard-capable plugins are disabled', () => {

@@ -58,6 +58,7 @@
 				:filters-active="props.filtersActive"
 				@edit="(id: ISpace['id']) => emit('edit', id)"
 				@remove="(id: ISpace['id']) => emit('remove', id)"
+				@configure="(to: RouteLocationRaw) => emit('configure', to)"
 				@reset-filters="emit('reset-filters')"
 			/>
 		</div>
@@ -79,6 +80,7 @@
 				:table-height="tableHeight"
 				@edit="(id: ISpace['id']) => emit('edit', id)"
 				@remove="(id: ISpace['id']) => emit('remove', id)"
+				@configure="(to: RouteLocationRaw) => emit('configure', to)"
 				@reset-filters="emit('reset-filters')"
 				@selected-changes="onSelectionChange"
 			/>
@@ -100,6 +102,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { ElButton, ElCard, ElCheckbox, ElCheckboxGroup, ElPagination } from 'element-plus';
 
@@ -123,6 +126,7 @@ const props = defineProps<IListSpacesProps>();
 const emit = defineEmits<{
 	(e: 'edit', id: ISpace['id']): void;
 	(e: 'remove', id: ISpace['id']): void;
+	(e: 'configure', to: RouteLocationRaw): void;
 	(e: 'reset-filters'): void;
 	(e: 'update:filters', filters: ISpacesFilter): void;
 	(e: 'update:paginate-size', size: number): void;

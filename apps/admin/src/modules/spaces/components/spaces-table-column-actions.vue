@@ -73,7 +73,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTooltip } from 'element-plus';
 
@@ -93,10 +93,11 @@ const props = defineProps<ISpacesTableColumnActionsProps>();
 const emit = defineEmits<{
 	(e: 'edit', id: ISpace['id']): void;
 	(e: 'remove', id: ISpace['id']): void;
+	// The page hosting the list leaves for the configure page, so it can ask about a changed form first
+	(e: 'configure', to: RouteLocationRaw): void;
 }>();
 
 const { t } = useI18n();
-const router = useRouter();
 
 const { plugin } = useSpacesPlugin({ type: () => props.space.type });
 
@@ -107,10 +108,6 @@ const onConfigureSpace = (): void => {
 		return;
 	}
 
-	if (typeof configureRoute === 'function') {
-		router.push(configureRoute(props.space.id));
-	} else {
-		router.push(configureRoute);
-	}
+	emit('configure', typeof configureRoute === 'function' ? configureRoute(props.space.id) : configureRoute);
 };
 </script>
