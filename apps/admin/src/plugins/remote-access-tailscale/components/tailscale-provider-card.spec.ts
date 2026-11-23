@@ -238,6 +238,20 @@ describe('TailscaleProviderCard', () => {
 		expect(menuKeys(wrapper)).toEqual(['signOut', 'resetPreferences']);
 	});
 
+	it('marks sign-out and reset-preferences as destructive, so they come last after the documentation', () => {
+		extension.value = { links: { documentation: 'https://panel.example.test/provider' } };
+
+		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+
+		const menu = card(wrapper).props('menu') as IProviderCardMenuItem[];
+
+		expect(menu.map((item) => [item.key, item.danger === true])).toEqual([
+			['signOut', true],
+			['resetPreferences', true],
+			['documentation', false],
+		]);
+	});
+
 	it('offers no action when the viewer is not the owner and no self-service action applies', () => {
 		profile.value = { role: UsersModuleUserRole.user };
 

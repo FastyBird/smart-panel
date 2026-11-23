@@ -371,6 +371,8 @@ const cardMenu = computed<IProviderCardMenuItem[]>(() => [
 		key,
 		label: actionLabel(key),
 		disabled: isLocalBusy.value && key !== 'disconnect',
+		// Both undo the node's setup: listed last, after a divider
+		danger: key === 'signOut' || key === 'resetPreferences',
 	})),
 	...(documentationLink.value ? [{ key: DOCUMENTATION, label: t('extensionsModule.buttons.documentation') }] : []),
 ]);
