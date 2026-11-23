@@ -1,3 +1,5 @@
+import type { StatusTagStatus } from '../../common';
+
 import type { McpCapability } from './mcp.constants';
 
 export const resolveMcpEndpoint = (location: Pick<Location, 'origin' | 'pathname'>): string => {
@@ -35,4 +37,12 @@ export const resolveMcpClientStatus = (client: {
 	}
 
 	return 'active';
+};
+
+/** The status-tag colour of each client status: revoked and expired lose access, disabled keeps its credential */
+export const MCP_CLIENT_STATUS_TAGS: Record<McpClientStatus, StatusTagStatus> = {
+	active: 'ok',
+	disabled: 'warn',
+	revoked: 'danger',
+	expired: 'danger',
 };

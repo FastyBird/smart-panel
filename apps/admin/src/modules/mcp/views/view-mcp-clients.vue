@@ -2,7 +2,11 @@
 	<view-header
 		:title="t('mcpModule.clients.title')"
 		:subtitle="t('mcpModule.clients.subtitle')"
-		icon="mdi:robot-outline"
+		:icon="MCP_CLIENT_ICON"
+		:actions="[
+			{ icon: 'mdi:magnify', label: t('mcpModule.clients.searchPlaceholder'), handler: onSearch },
+			{ icon: 'mdi:plus', label: t('mcpModule.actions.add'), handler: openCreate },
+		]"
 	>
 		<template #actions>
 			<el-button
@@ -20,212 +24,191 @@
 		</template>
 	</view-header>
 
-	<div class="mcp-clients-page">
-		<el-alert
-			type="info"
-			:title="t('mcpModule.clients.securityTitle')"
-			:description="t('mcpModule.clients.securityDescription')"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-card shadow="never">
-			<template #header>
-				<div class="font-600">{{ t('mcpModule.config.endpoint.title') }}</div>
-			</template>
-			<el-input
-				:model-value="endpointUrl"
-				readonly
-				name="endpoint"
-			>
-				<template #append>
-					<el-button
-						:aria-label="t('mcpModule.actions.copyEndpoint')"
-						@click="copyEndpoint"
-					>
-						<icon icon="mdi:content-copy" />
-					</el-button>
-				</template>
-			</el-input>
-		</el-card>
-
-		<el-alert
-			v-if="error"
-			type="error"
-			:title="t('mcpModule.messages.loadFailed')"
-			:closable="false"
-			show-icon
-		/>
-
-		<list-mcp-clients
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="clientsPaginated"
-			:total-rows="totalRows"
-			:loading="loading"
-			:filters-active="filtersActive"
-			@edit="openEdit"
-			@rotate="openRotate"
-			@revoke="confirmRevoke"
-			@delete="confirmDelete"
-			@reset-filters="resetFilter"
-			@bulk-action="onBulkAction"
-		/>
-	</div>
-
-	<el-drawer
-		v-model="showClientDialog"
-		:show-close="false"
-		:with-header="false"
-		:size="isLGDevice ? '40%' : '100%'"
-		:before-close="onCloseClientForm"
-		data-test-id="mcp-client-form-drawer"
-		@closed="resetClientForm"
-	>
-		<app-bar-scope @close="onCloseClientForm()">
-			<view-header
-				:title="editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle')"
-				:subtitle="t('mcpModule.clientForm.formSubtitle')"
-				icon="mdi:robot-outline"
-			/>
-
-			<el-scrollbar class="grow-1 p-2 md:px-4">
-				<el-form
-					ref="clientFormEl"
-					:model="clientForm"
-					:rules="clientRules"
-					label-position="top"
+	<div class="page-pad flex flex-col flex-1 min-h-0 box-border">
+		<!-- Template 4: add and edit open next to the list. The form has no route of its own, so on phone it takes a
+		     full-width drawer -->
+		<edit-drawer-layout
+			:open="showClientDialog"
+			:before-close="onCloseClientForm"
+			routeless
+			@close="onCloseClientForm()"
+		>
+			<div class="flex flex-col gap-4 flex-1 min-h-0">
+				<section
+					class="flex flex-col gap-3 shrink-0 p-4 tp:p-5 bg-surface border border-solid border-light rounded-lg"
+					data-test-id="mcp-endpoint"
 				>
-					<el-form-item
-						:label="t('mcpModule.clientForm.name')"
-						prop="name"
-					>
-						<el-input
-							v-model="clientForm.name"
-							maxlength="100"
-							name="clientName"
+					<copy-field
+						:value="endpointUrl"
+						:label="t('mcpModule.config.endpoint.title')"
+						data-test-id="mcp-endpoint-url"
+					/>
+					<p class="flex items-start gap-2 m-0 text-help">
+						<icon
+							icon="mdi:shield-lock-outline"
+							width="16"
+							height="16"
+							class="shrink-0 mt-[3px]"
+							aria-hidden="true"
 						/>
-					</el-form-item>
-					<el-form-item
-						:label="t('mcpModule.clientForm.description')"
-						prop="description"
-					>
-						<el-input
-							v-model="clientForm.description"
-							type="textarea"
-							maxlength="500"
-							show-word-limit
-							name="clientDescription"
-						/>
-					</el-form-item>
-					<el-form-item
-						v-if="editingClient"
-						:label="t('mcpModule.clientForm.enabled')"
-						prop="enabled"
-					>
-						<el-switch
-							v-model="clientForm.enabled"
-							name="clientEnabled"
-						/>
-					</el-form-item>
-					<el-form-item
-						:label="t('mcpModule.clientForm.capabilities')"
-						prop="capabilities"
-					>
-						<el-checkbox-group v-model="clientForm.capabilities">
-							<el-checkbox
-								v-for="capability in capabilityOptions"
-								:key="capability"
-								:value="capability"
-								:disabled="!capabilityCeiling.includes(capability) && !clientForm.capabilities.includes(capability)"
-							>
-								{{ t(`mcpModule.capabilities.${capability}.title`) }}
-							</el-checkbox>
-						</el-checkbox-group>
-						<el-alert
-							class="mt-1"
-							type="info"
-							:description="t('mcpModule.clientForm.ceilingHint')"
-							:closable="false"
-							show-icon
-							data-test-id="mcp-client-capability-ceiling-hint"
-						/>
-					</el-form-item>
-					<el-form-item
-						v-if="!editingClient"
-						:label="t('mcpModule.clientForm.expiresInDays')"
-						prop="expiresInDays"
-					>
-						<el-input-number
-							v-model="clientForm.expiresInDays"
-							:min="1"
-							:max="MCP_MAX_TOKEN_EXPIRATION_DAYS"
-							name="expiresInDays"
-						/>
-					</el-form-item>
-				</el-form>
-			</el-scrollbar>
+						<span>
+							<span class="text-label">{{ t('mcpModule.clients.securityTitle') }}.</span>
+							{{ t('mcpModule.clients.securityDescription') }}
+						</span>
+					</p>
+				</section>
 
-			<div
-				class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-				style="background-color: var(--el-drawer-bg-color)"
-			>
-				<div class="p-2">
-					<el-button
-						link
-						class="mr-2"
-						data-test-id="cancel-mcp-client-form"
-						@click="() => onCloseClientForm()"
-					>
-						{{ clientFormChanged ? t('mcpModule.actions.discard') : t('mcpModule.actions.close') }}
-					</el-button>
-
-					<el-button
-						type="primary"
-						:loading="saving"
-						:disabled="saving || !clientFormChanged"
-						data-test-id="save-mcp-client-form"
-						@click="saveClient"
-					>
-						{{ t('mcpModule.actions.save') }}
-					</el-button>
-				</div>
+				<list-mcp-clients
+					ref="list"
+					v-model:filters="filters"
+					v-model:sort-by="sortBy"
+					v-model:sort-dir="sortDir"
+					v-model:paginate-size="paginateSize"
+					v-model:paginate-page="paginatePage"
+					:items="clientsPaginated"
+					:total-rows="totalRows"
+					:loading="loading"
+					:load-failed="error !== null"
+					:filters-active="filtersActive"
+					@edit="openEdit"
+					@rotate="openRotate"
+					@revoke="confirmRevoke"
+					@delete="confirmDelete"
+					@reset-filters="resetFilter"
+					@retry="fetchClients"
+					@bulk-action="onBulkAction"
+				/>
 			</div>
-		</app-bar-scope>
-	</el-drawer>
+
+			<template #form>
+				<view-header
+					:title="editingClient ? t('mcpModule.clientForm.editTitle') : t('mcpModule.clientForm.createTitle')"
+					:subtitle="t('mcpModule.clientForm.formSubtitle')"
+					:icon="editingClient ? 'mdi:pencil' : 'mdi:plus'"
+				/>
+
+				<el-scrollbar class="grow-1 p-2 tp:px-4">
+					<el-form
+						ref="clientFormEl"
+						:model="clientForm"
+						:rules="clientRules"
+						label-position="top"
+						data-test-id="mcp-client-form"
+					>
+						<el-form-item
+							:label="t('mcpModule.clientForm.name')"
+							prop="name"
+						>
+							<el-input
+								v-model="clientForm.name"
+								maxlength="100"
+								name="clientName"
+							/>
+						</el-form-item>
+						<el-form-item
+							:label="t('mcpModule.clientForm.description')"
+							prop="description"
+						>
+							<el-input
+								v-model="clientForm.description"
+								type="textarea"
+								maxlength="500"
+								show-word-limit
+								name="clientDescription"
+							/>
+						</el-form-item>
+						<el-form-item
+							v-if="editingClient"
+							:label="t('mcpModule.clientForm.enabled')"
+							prop="enabled"
+						>
+							<el-switch
+								v-model="clientForm.enabled"
+								name="clientEnabled"
+							/>
+						</el-form-item>
+						<el-form-item
+							:label="t('mcpModule.clientForm.capabilities')"
+							prop="capabilities"
+						>
+							<div class="flex flex-col gap-1 w-full">
+								<el-checkbox-group v-model="clientForm.capabilities">
+									<el-checkbox
+										v-for="capability in capabilityOptions"
+										:key="capability"
+										:value="capability"
+										:disabled="!capabilityCeiling.includes(capability) && !clientForm.capabilities.includes(capability)"
+									>
+										{{ t(`mcpModule.capabilities.${capability}.title`) }}
+									</el-checkbox>
+								</el-checkbox-group>
+								<span
+									class="text-help"
+									data-test-id="mcp-client-capability-ceiling-hint"
+								>
+									{{ t('mcpModule.clientForm.ceilingHint') }}
+								</span>
+							</div>
+						</el-form-item>
+						<el-form-item
+							v-if="!editingClient"
+							:label="t('mcpModule.clientForm.expiresInDays')"
+							prop="expiresInDays"
+						>
+							<el-input-number
+								v-model="clientForm.expiresInDays"
+								:min="1"
+								:max="MCP_MAX_TOKEN_EXPIRATION_DAYS"
+								name="expiresInDays"
+							/>
+						</el-form-item>
+					</el-form>
+				</el-scrollbar>
+
+				<form-footer
+					:dirty="clientFormChanged"
+					:saving="saving"
+					:can-save="clientFormChanged && !saving"
+					:save-label="editingClient ? undefined : t('mcpModule.actions.create')"
+					@save="saveClient"
+					@discard="onCloseClientForm()"
+					@close="onCloseClientForm()"
+				/>
+			</template>
+		</edit-drawer-layout>
+	</div>
 
 	<el-dialog
 		v-model="showRotateDialog"
 		:title="t('mcpModule.rotate.title')"
-		width="min(480px, 94vw)"
+		width="min(480px, calc(100vw - 32px))"
 	>
-		<el-alert
-			type="warning"
-			:description="t('mcpModule.rotate.warning')"
-			:closable="false"
-			show-icon
-			class="mb-4"
-		/>
-		<el-form label-position="top">
-			<el-form-item :label="t('mcpModule.clientForm.expiresInDays')">
-				<el-input-number
-					v-model="rotateExpiresInDays"
-					:min="1"
-					:max="MCP_MAX_TOKEN_EXPIRATION_DAYS"
-				/>
-			</el-form-item>
-		</el-form>
+		<div class="flex flex-col gap-4">
+			<el-alert
+				type="warning"
+				:description="t('mcpModule.rotate.warning')"
+				:closable="false"
+				show-icon
+			/>
+			<el-form label-position="top">
+				<el-form-item :label="t('mcpModule.clientForm.expiresInDays')">
+					<el-input-number
+						v-model="rotateExpiresInDays"
+						:min="1"
+						:max="MCP_MAX_TOKEN_EXPIRATION_DAYS"
+					/>
+				</el-form-item>
+			</el-form>
+		</div>
 		<template #footer>
 			<el-button @click="showRotateDialog = false">{{ t('mcpModule.actions.cancel') }}</el-button>
 			<el-button
-				type="warning"
+				type="primary"
 				:loading="saving"
+				data-test-id="confirm-rotate-mcp-client"
 				@click="confirmRotate"
 			>
-				{{ t('mcpModule.actions.rotate') }}
+				{{ t('mcpModule.rotate.title') }}
 			</el-button>
 		</template>
 	</el-dialog>
@@ -245,11 +228,9 @@ import { useI18n } from 'vue-i18n';
 import {
 	ElAlert,
 	ElButton,
-	ElCard,
 	ElCheckbox,
 	ElCheckboxGroup,
 	ElDialog,
-	ElDrawer,
 	ElForm,
 	ElFormItem,
 	ElInput,
@@ -264,13 +245,13 @@ import { isEqual } from 'lodash';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { CopyField, EditDrawerLayout, FormFooter, ViewHeader, provideEditDrawer, useFlashMessage } from '../../../common';
 import { useConfigModule } from '../../config/composables/useConfigModule';
 import ListMcpClients from '../components/list-mcp-clients.vue';
 import McpTokenDialog from '../components/mcp-token-dialog.vue';
 import { useMcpClients } from '../composables/useMcpClients';
 import { useMcpClientsDataSource } from '../composables/useMcpClientsDataSource';
-import { MCP_DEFAULT_TOKEN_EXPIRATION_DAYS, MCP_MAX_TOKEN_EXPIRATION_DAYS, MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
+import { MCP_CLIENT_ICON, MCP_DEFAULT_TOKEN_EXPIRATION_DAYS, MCP_MAX_TOKEN_EXPIRATION_DAYS, MCP_MODULE_NAME, McpCapability } from '../mcp.constants';
 import { isCapabilitySubset, resolveMcpEndpoint } from '../mcp.utils';
 import type { IMcpClient } from '../schemas/client.types';
 import type { IMcpConfigEditForm } from '../schemas/config.types';
@@ -279,7 +260,6 @@ defineOptions({ name: 'ViewMcpClients' });
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
-const { isLGDevice } = useBreakpoints();
 const { clients, loading, error, fetchClients, createClient, updateClient, rotateClient, revokeClient, deleteClient } = useMcpClients();
 const { clientsPaginated, totalRows, filters, filtersActive, sortBy, sortDir, paginateSize, paginatePage, resetFilter } =
 	useMcpClientsDataSource(clients);
@@ -290,6 +270,16 @@ const endpointUrl = resolveMcpEndpoint(window.location);
 const capabilityCeiling = computed<McpCapability[]>(() => (configModule.value as IMcpConfigEditForm | null)?.capabilities ?? []);
 
 const showClientDialog = ref(false);
+
+// The form keeps the layout it opened in, so a window crossing a size class does not remount it
+provideEditDrawer((): boolean => showClientDialog.value);
+
+const list = ref<InstanceType<typeof ListMcpClients> | null>(null);
+
+// The phone app bar's Search action moves focus to the search field
+const onSearch = (): void => {
+	list.value?.focusSearch();
+};
 const showRotateDialog = ref(false);
 const showTokenDialog = ref(false);
 const saving = ref(false);
@@ -465,7 +455,10 @@ const onBulkAction = async (action: string, items: IMcpClient[]): Promise<void> 
 				t(action === 'revoke' ? 'mcpModule.actions.revoke' : 'mcpModule.actions.delete'),
 				{
 					type: 'warning',
-					confirmButtonText: t(action === 'revoke' ? 'mcpModule.actions.revoke' : 'mcpModule.actions.delete'),
+					// The button repeats the verb and the object, "Delete 3 clients" (spec section 4)
+					confirmButtonText: t(action === 'revoke' ? 'mcpModule.confirm.bulkRevokeButton' : 'mcpModule.confirm.bulkDeleteButton', {
+						count: items.length,
+					}),
 					cancelButtonText: t('mcpModule.actions.cancel'),
 				}
 			);
@@ -539,34 +532,7 @@ const confirmDelete = async (client: IMcpClient): Promise<void> => {
 	}
 };
 
-const copyEndpoint = async (): Promise<void> => {
-	try {
-		await navigator.clipboard.writeText(endpointUrl);
-		flashMessage.success(t('mcpModule.messages.endpointCopied'));
-	} catch {
-		flashMessage.error(t('mcpModule.messages.copyFailed'));
-	}
-};
-
 onMounted(async (): Promise<void> => {
 	await Promise.allSettled([fetchClients(), fetchConfigModule()]);
 });
 </script>
-
-<style scoped>
-.mcp-clients-page {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: 16px;
-	margin: 16px;
-	min-width: 0;
-	overflow: hidden;
-}
-
-@media (max-width: 767px) {
-	.mcp-clients-page {
-		margin: 8px;
-	}
-}
-</style>

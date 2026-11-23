@@ -22,58 +22,57 @@ const mountActions = () =>
 		props: { client },
 		global: {
 			stubs: {
-				ElButton: {
-					name: 'ElButton',
-					props: ['type'],
-					template: '<button :type="type"><slot name="icon" /><slot /></button>',
-				},
+				ElTooltip: { name: 'ElTooltip', props: ['content'], template: '<div><slot /></div>' },
+				ElButton: { name: 'ElButton', template: '<button><slot name="icon" /><slot /></button>' },
+				ElDropdown: { name: 'ElDropdown', emits: ['command'], template: '<div><slot /><slot name="dropdown" /></div>' },
+				ElDropdownMenu: { name: 'ElDropdownMenu', template: '<ul><slot /></ul>' },
+				ElDropdownItem: { name: 'ElDropdownItem', props: ['command', 'disabled', 'divided'], template: '<li><slot /></li>' },
 			},
 		},
 	});
 
 describe('McpClientActions', () => {
-	// The admin renders row actions as icons, or icon plus label — the MCP rows
-	// were text-only, which read as a different control set to every other table.
-	it('renders an icon for every row action', () => {
+	// Spec section 4: icon-only buttons only for edit and more, each with an aria-label
+	it('renders edit and more as labelled icon buttons', () => {
 		const wrapper = mountActions();
-
 		const buttons = wrapper.findAll('button');
 
-		expect(buttons.length).toBeGreaterThan(0);
-		expect(wrapper.findAllComponents(Icon)).toHaveLength(buttons.length);
-	});
+		expect(buttons.map((button) => button.attributes('data-test-id'))).toEqual(['edit-mcp-client', 'more-mcp-client']);
+		expect(wrapper.findAllComponents(Icon)).toHaveLength(2);
 
-	it('exposes a test id for every row action', () => {
-		const wrapper = mountActions();
-
-		for (const button of wrapper.findAll('button')) {
-			expect(button.attributes('data-test-id')).toBeTruthy();
+		for (const button of buttons) {
+			expect(button.attributes('aria-label')).toBeTruthy();
 		}
 	});
 
-	it('labels only the actions a glyph cannot carry on its own', () => {
+	it('lists rotate first and the destructive actions last, after one divider', () => {
 		const wrapper = mountActions();
+		const items = wrapper.findAllComponents({ name: 'ElDropdownItem' });
 
-		// Labelling all four wrapped the actions column onto a second row. Pencil
-		// and trash read on their own; rotate and revoke are close enough in
-		// meaning that dropping their labels would leave them ambiguous.
-		const labelled = wrapper
-			.findAll('button')
-			.filter((button) => button.text().trim() !== '')
-			.map((button) => button.attributes('data-test-id'));
-
-		expect(labelled).toEqual(['rotate-mcp-client', 'revoke-mcp-client']);
+		expect(items.map((item) => item.props('command'))).toEqual(['rotate', 'revoke', 'delete']);
+		expect(items.map((item) => item.props('divided') === true || item.props('divided') === '')).toEqual([false, true, false]);
+		expect(items[1].classes()).toContain('text-danger!');
+		expect(items[2].classes()).toContain('text-danger!');
 	});
 
-	it('uses the warning colour for destructive actions', () => {
+	it('disables revoke once the credential is revoked', () => {
+		const wrapper = mount(McpClientActions, {
+			props: { client: { ...client, credentialRevoked: true } },
+			global: { stubs: { ElDropdownItem: { name: 'ElDropdownItem', props: ['command', 'disabled'], template: '<li><slot /></li>' } } },
+		});
+
+		const revoke = wrapper.findAllComponents({ name: 'ElDropdownItem' }).find((item) => item.props('command') === 'revoke');
+
+		expect(revoke?.props('disabled')).toBe(true);
+	});
+
+	it('emits the chosen menu command with the client', () => {
 		const wrapper = mountActions();
 
-		// Every other module colours destructive row actions `warning`; MCP used
-		// `danger`, which appears nowhere else in a table row.
-		for (const testId of ['revoke-mcp-client', 'delete-mcp-client']) {
-			const button = wrapper.findAllComponents({ name: 'ElButton' }).find((candidate) => candidate.attributes('data-test-id') === testId);
+		wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'rotate');
+		wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'delete');
 
-			expect(button?.props('type')).toBe('warning');
-		}
+		expect(wrapper.emitted('rotate')).toEqual([[client]]);
+		expect(wrapper.emitted('delete')).toEqual([[client]]);
 	});
 });

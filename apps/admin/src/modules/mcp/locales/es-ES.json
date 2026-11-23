@@ -82,8 +82,7 @@
       "status": "Estado",
       "capabilities": "Capacidades",
       "expires": "Caduca",
-      "lastUsed": "Último uso",
-      "actions": "Acciones"
+      "lastUsed": "Último uso"
     },
     "empty": "Todavía no se ha creado ningún cliente MCP.",
     "none": "Ninguna",
@@ -115,8 +114,7 @@
     "title": "Copia ahora la credencial MCP",
     "warningTitle": "Solo se muestra una vez",
     "warningDescription": "Guarda la credencial de {name} en un gestor de contraseñas seguro. No podrá recuperarse después de cerrar este diálogo.",
-    "copy": "Copiar credencial",
-    "copied": "Copiada"
+    "label": "Credencial"
   },
   "status": {
     "active": "Activo",
@@ -129,7 +127,9 @@
     "delete": "¿Eliminar {name}? Su credencial se revocará y el registro del cliente no podrá recuperarse.",
     "bulkRevoke": "¿Revocar las credenciales de {count} clientes seleccionados?",
     "bulkDelete": "¿Eliminar {count} clientes seleccionados?",
-    "discard": "¿Descartar los cambios sin guardar?"
+    "discard": "¿Descartar los cambios sin guardar?",
+    "bulkRevokeButton": "Revocar {count} clientes",
+    "bulkDeleteButton": "Eliminar {count} clientes"
   },
   "oauthConsent": {
     "title": "Autorizar acceso MCP",
@@ -258,5 +258,9 @@
   },
   "headings": {
     "discard": "Descartar cambios"
+  },
+  "aria": {
+    "edit": "Editar {name}",
+    "more": "Más acciones para {name}"
   }
 }

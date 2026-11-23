@@ -82,8 +82,7 @@
 			"status": "Status",
 			"capabilities": "Capabilities",
 			"expires": "Expires",
-			"lastUsed": "Last used",
-			"actions": "Actions"
+			"lastUsed": "Last used"
 		},
 		"empty": "No MCP clients have been created.",
 		"none": "None",
@@ -115,8 +114,7 @@
 		"title": "Copy the MCP credential now",
 		"warningTitle": "Shown only once",
 		"warningDescription": "Save the credential for {name} in a secure password manager. It cannot be retrieved after this dialog closes.",
-		"copy": "Copy credential",
-		"copied": "Copied"
+		"label": "Credential"
 	},
 	"status": {
 		"active": "Active",
@@ -129,7 +127,9 @@
 		"delete": "Delete {name}? Its credential will be revoked and the client record cannot be recovered.",
 		"bulkRevoke": "Revoke credentials for {count} selected clients?",
 		"bulkDelete": "Delete {count} selected clients?",
-		"discard": "Discard the unsaved changes?"
+		"discard": "Discard the unsaved changes?",
+		"bulkRevokeButton": "Revoke {count} clients",
+		"bulkDeleteButton": "Delete {count} clients"
 	},
 	"oauthConsent": {
 		"title": "Authorize MCP access",
@@ -258,5 +258,9 @@
 	},
 	"headings": {
 		"discard": "Discard changes"
+	},
+	"aria": {
+		"edit": "Edit {name}",
+		"more": "More actions for {name}"
 	}
 }

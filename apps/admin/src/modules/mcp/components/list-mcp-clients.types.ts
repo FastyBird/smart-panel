@@ -10,5 +10,6 @@ export interface IListMcpClientsProps {
 	paginateSize: number;
 	paginatePage: number;
 	loading: boolean;
+	loadFailed?: boolean;
 	filtersActive: boolean;
 }

@@ -29,3 +29,6 @@ export const RouteNames = {
 
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 10;
+
+/** Spec section 9: the MCP clients icon, for the header, the rows and the empty states */
+export const MCP_CLIENT_ICON = 'mdi:power-plug-outline';

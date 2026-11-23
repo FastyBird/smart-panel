@@ -1,34 +1,90 @@
 <template>
+	<!-- Template 1: one card with the filter bar, the table (a row list on phone) and the pagination -->
 	<el-card
 		shadow="never"
-		class="px-1 py-2 shrink-0"
-		body-class="p-0!"
+		class="flex flex-col flex-grow min-h-0 overflow-hidden"
+		body-class="p-0! flex flex-col flex-grow min-h-0 overflow-hidden"
 	>
-		<mcp-clients-filter
-			v-model:filters="innerFilters"
-			:filters-active="props.filtersActive"
-			:selected-count="selectedItems.length"
-			:bulk-actions="bulkActions"
-			@reset-filters="emit('reset-filters')"
-			@bulk-action="onBulkAction"
-		/>
-	</el-card>
+		<list-filter-bar
+			ref="filterBar"
+			v-model:search="search"
+			:search-placeholder="t('mcpModule.clients.searchPlaceholder')"
+			:quick-filters="quickFilters"
+			:active-count="activeCount"
+			:selected-count="isPhone ? 0 : selectedItems.length"
+			@quick-filter="onQuickFilter"
+			@reset="emit('reset-filters')"
+			@clear-selection="onClearSelection"
+		>
+			<template #filters>
+				<div class="flex flex-col gap-2">
+					<span class="text-label">{{ t('mcpModule.clientForm.capabilities') }}</span>
+					<el-select
+						v-model="innerFilters.capabilities"
+						:placeholder="t('mcpModule.clients.filterAll')"
+						multiple
+						collapse-tags
+						clearable
+						data-test-id="filter-mcp-clients-capabilities"
+					>
+						<el-option
+							v-for="capability in capabilityOptions"
+							:key="capability"
+							:label="t(`mcpModule.capabilities.${capability}.title`)"
+							:value="capability"
+						/>
+					</el-select>
+				</div>
+			</template>
 
-	<div
-		ref="wrapper"
-		class="flex-grow overflow-hidden"
-	>
-		<el-card
-			shadow="never"
-			class="max-h-full flex flex-col overflow-hidden box-border"
-			body-class="p-0! max-h-full overflow-hidden flex flex-col"
+			<template #bulk>
+				<el-button
+					v-for="action in bulkActions"
+					:key="action.key"
+					:type="action.danger ? 'danger' : undefined"
+					:plain="action.danger"
+					size="small"
+					:data-test-id="`bulk-${action.key}`"
+					@click="onBulkAction(action.key)"
+				>
+					{{ action.label }}
+				</el-button>
+			</template>
+		</list-filter-bar>
+
+		<!-- The rows scroll inside the card, so the pagination below stays reachable -->
+		<div
+			v-if="isPhone"
+			class="flex-grow min-h-0 overflow-y-auto"
+			data-test-id="mcp-clients-row-list-scroll"
+		>
+			<mcp-clients-row-list
+				:items="props.items"
+				:loading="props.loading"
+				:load-failed="props.loadFailed"
+				:filters-active="props.filtersActive"
+				@edit="emit('edit', $event)"
+				@rotate="emit('rotate', $event)"
+				@revoke="emit('revoke', $event)"
+				@delete="emit('delete', $event)"
+				@reset-filters="emit('reset-filters')"
+				@retry="emit('retry')"
+			/>
+		</div>
+
+		<div
+			v-else
+			ref="wrapper"
+			class="flex-grow min-h-0 overflow-hidden"
 		>
 			<mcp-clients-table
+				ref="table"
 				v-model:sort-by="sortBy"
 				v-model:sort-dir="sortDir"
 				:items="props.items"
 				:total-rows="props.totalRows"
 				:loading="props.loading"
+				:load-failed="props.loadFailed"
 				:filters-active="props.filtersActive"
 				:table-height="tableHeight"
 				@edit="emit('edit', $event)"
@@ -36,47 +92,48 @@
 				@revoke="emit('revoke', $event)"
 				@delete="emit('delete', $event)"
 				@reset-filters="emit('reset-filters')"
+				@retry="emit('retry')"
 				@selected-changes="onSelectionChange"
 			/>
+		</div>
 
-			<div
-				ref="paginator"
-				class="flex justify-center w-full py-4"
-			>
-				<el-pagination
-					v-model:current-page="paginatePage"
-					v-model:page-size="paginateSize"
-					:layout="isMDDevice ? 'total, sizes, prev, pager, next, jumper' : 'total, sizes, prev, pager, next'"
-					:total="props.totalRows"
-					@size-change="onPaginatePageSize"
-					@current-change="onPaginatePage"
-				/>
-			</div>
-		</el-card>
-	</div>
+		<div class="flex flex-wrap justify-end w-full box-border px-4 py-2.5 border-t border-t-solid border-light overflow-hidden">
+			<el-pagination
+				v-model:current-page="paginatePage"
+				v-model:page-size="paginateSize"
+				:layout="isPhone ? 'prev, pager, next' : 'total, sizes, prev, pager, next'"
+				:total="props.totalRows"
+				@size-change="onPaginatePageSize"
+				@current-change="onPaginatePage"
+			/>
+		</div>
+	</el-card>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElPagination } from 'element-plus';
+import { ElButton, ElCard, ElOption, ElPagination, ElSelect } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { type IBulkAction, useBreakpoints } from '../../../common';
+import { ListFilterBar, type ListFilterBarQuickFilter, useSizeClass } from '../../../common';
 import type { IMcpClientsFilter, IMcpClientsSortBy } from '../composables/types';
+import { McpCapability } from '../mcp.constants';
 import type { IMcpClient } from '../schemas/client.types';
 
 import type { IListMcpClientsProps } from './list-mcp-clients.types';
-import McpClientsFilter from './mcp-clients-filter.vue';
+import McpClientsRowList from './mcp-clients-row-list.vue';
 import McpClientsTable from './mcp-clients-table.vue';
 
 defineOptions({
 	name: 'ListMcpClients',
 });
 
-const props = defineProps<IListMcpClientsProps>();
+const props = withDefaults(defineProps<IListMcpClientsProps>(), {
+	loadFailed: false,
+});
 
 const emit = defineEmits<{
 	(e: 'edit', client: IMcpClient): void;
@@ -84,6 +141,7 @@ const emit = defineEmits<{
 	(e: 'revoke', client: IMcpClient): void;
 	(e: 'delete', client: IMcpClient): void;
 	(e: 'reset-filters'): void;
+	(e: 'retry'): void;
 	(e: 'update:filters', filters: IMcpClientsFilter): void;
 	(e: 'bulk-action', action: string, items: IMcpClient[]): void;
 	(e: 'update:paginate-size', size: number): void;
@@ -94,47 +152,86 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { isMDDevice } = useBreakpoints();
+const { isPhone } = useSizeClass();
+
+const capabilityOptions = Object.values(McpCapability);
 
 const innerFilters = useVModel(props, 'filters', emit);
 
 const selectedItems = ref<IMcpClient[]>([]);
 
-const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
-	{
-		key: 'enable',
-		label: t('application.bulkActions.enable'),
-		icon: 'mdi:check-circle-outline',
-		type: 'success',
+const filterBar = ref<InstanceType<typeof ListFilterBar> | null>(null);
+
+const table = ref<InstanceType<typeof McpClientsTable> | null>(null);
+
+const search = computed<string>({
+	get: (): string => innerFilters.value.search ?? '',
+	set: (value: string): void => {
+		innerFilters.value.search = value === '' ? undefined : value;
 	},
+});
+
+// The bar keeps one quick filter, the credential status; capabilities live in the filters drawer
+const quickFilters = computed<ListFilterBarQuickFilter[]>((): ListFilterBarQuickFilter[] => [
 	{
-		key: 'disable',
-		label: t('application.bulkActions.disable'),
-		icon: 'mdi:close-circle-outline',
-		type: 'warning',
+		id: 'status',
+		label: t('mcpModule.clients.columns.status'),
+		options: [
+			{ value: 'active', label: t('mcpModule.status.active') },
+			{ value: 'revoked', label: t('mcpModule.status.revoked') },
+			{ value: 'expired', label: t('mcpModule.status.expired') },
+		],
+		value: innerFilters.value.status === 'all' ? null : innerFilters.value.status,
 	},
-	{
-		key: 'revoke',
-		label: t('mcpModule.actions.revoke'),
-		icon: 'mdi:key-remove',
-		type: 'warning',
-	},
-	{
-		key: 'delete',
-		label: t('application.bulkActions.delete'),
-		icon: 'mdi:trash',
-		type: 'danger',
-	},
+]);
+
+// Active filters, the search excluded: it is visible in the bar on its own
+const activeCount = computed<number>(
+	(): number =>
+		(innerFilters.value.status !== 'all' ? 1 : 0) +
+		(innerFilters.value.enabled !== 'all' ? 1 : 0) +
+		(innerFilters.value.capabilities.length > 0 ? 1 : 0)
+);
+
+const onQuickFilter = (id: string, value: string | null): void => {
+	if (id === 'status') {
+		innerFilters.value.status = (value ?? 'all') as IMcpClientsFilter['status'];
+	}
+};
+
+// Destructive actions last, in the danger colour (spec section 4)
+const bulkActions = computed<{ key: string; label: string; danger: boolean }[]>(() => [
+	{ key: 'enable', label: t('application.bulkActions.enable'), danger: false },
+	{ key: 'disable', label: t('application.bulkActions.disable'), danger: false },
+	{ key: 'revoke', label: t('mcpModule.actions.revoke'), danger: true },
+	{ key: 'delete', label: t('application.bulkActions.delete'), danger: true },
 ]);
 
 const onBulkAction = (action: string): void => {
 	emit('bulk-action', action, selectedItems.value);
 };
 
+const onSelectionChange = (selected: IMcpClient[]): void => {
+	selectedItems.value = selected;
+
+	emit('selected-changes', selected);
+};
+
+const onClearSelection = (): void => {
+	table.value?.clearSelection();
+	selectedItems.value = [];
+};
+
+// The phone app bar's Search action moves focus to the search field
+const focusSearch = (): void => {
+	filterBar.value?.focusSearch();
+};
+
+defineExpose({ focusSearch });
+
 let observer: ResizeObserver | null = null;
 
 const wrapper = ref<HTMLElement | null>(null);
-const paginator = ref<HTMLElement | null>(null);
 
 const sortBy = ref<IMcpClientsSortBy | undefined>(props.sortBy);
 const sortDir = ref<'asc' | 'desc' | null>(props.sortDir);
@@ -151,33 +248,39 @@ const onPaginatePage = (page: number): void => {
 	emit('update:paginate-page', page);
 };
 
-const onSelectionChange = (selected: IMcpClient[]): void => {
-	selectedItems.value = selected;
-
-	emit('selected-changes', selected);
+// The table fills its part of the card: the pagination is a sibling below it, so the part is the table's height. The
+// part is rendered only beside a table (not on phone), so the observer follows it as it comes and goes
+const updateHeight = (): void => {
+	if (wrapper.value) {
+		tableHeight.value = wrapper.value.clientHeight;
+	}
 };
 
-onMounted((): void => {
-	if (!wrapper.value) {
-		return;
-	}
+watch(
+	wrapper,
+	(element: HTMLElement | null, previous: HTMLElement | null | undefined): void => {
+		if (observer && previous) {
+			observer.unobserve(previous);
+		}
 
-	const updateHeight = (): void => {
-		tableHeight.value = wrapper.value!.clientHeight - (paginator.value?.clientHeight ?? 0);
-	};
+		if (!element) {
+			return;
+		}
 
-	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
-		observer = new ResizeObserver(updateHeight);
-		observer.observe(wrapper.value);
-	}
+		if (observer === null && typeof window !== 'undefined' && 'ResizeObserver' in window) {
+			observer = new ResizeObserver(updateHeight);
+		}
 
-	updateHeight();
-});
+		observer?.observe(element);
+
+		updateHeight();
+	},
+	{ flush: 'post' }
+);
 
 onBeforeUnmount((): void => {
-	if (observer && wrapper.value) {
-		observer.unobserve(wrapper.value);
-	}
+	observer?.disconnect();
+	observer = null;
 });
 
 watch(

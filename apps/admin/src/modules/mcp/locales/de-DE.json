@@ -82,8 +82,7 @@
 			"status": "Status",
 			"capabilities": "Berechtigungen",
 			"expires": "Gültig bis",
-			"lastUsed": "Zuletzt verwendet",
-			"actions": "Aktionen"
+			"lastUsed": "Zuletzt verwendet"
 		},
 		"empty": "Es wurden noch keine MCP-Clients erstellt.",
 		"none": "Keine",
@@ -115,8 +114,7 @@
 		"title": "MCP-Zugangsdaten jetzt kopieren",
 		"warningTitle": "Wird nur einmal angezeigt",
 		"warningDescription": "Speichern Sie die Zugangsdaten für {name} in einem sicheren Passwortmanager. Nach dem Schließen dieses Dialogs können sie nicht erneut abgerufen werden.",
-		"copy": "Zugangsdaten kopieren",
-		"copied": "Kopiert"
+		"label": "Zugangsdaten"
 	},
 	"status": {
 		"active": "Aktiv",
@@ -129,7 +127,9 @@
 		"delete": "{name} löschen? Die Zugangsdaten werden widerrufen und der Client-Datensatz kann nicht wiederhergestellt werden.",
 		"bulkRevoke": "Anmeldedaten für {count} ausgewählte Clients widerrufen?",
 		"bulkDelete": "{count} ausgewählte Clients löschen?",
-		"discard": "Nicht gespeicherte Änderungen verwerfen?"
+		"discard": "Nicht gespeicherte Änderungen verwerfen?",
+		"bulkRevokeButton": "{count} Clients widerrufen",
+		"bulkDeleteButton": "{count} Clients löschen"
 	},
 	"oauthConsent": {
 		"title": "MCP-Zugriff autorisieren",
@@ -258,5 +258,9 @@
 	},
 	"headings": {
 		"discard": "Änderungen verwerfen"
+	},
+	"aria": {
+		"edit": "{name} bearbeiten",
+		"more": "Weitere Aktionen für {name}"
 	}
 }

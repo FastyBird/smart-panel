@@ -1,6 +1,5 @@
 import { ref } from 'vue';
 
-import { ElAvatar } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
 import { shallowMount } from '@vue/test-utils';
@@ -15,8 +14,9 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('../../../common', () => ({
-	useBreakpoints: () => ({ isMDDevice: ref(true) }),
-	IconWithChild: { name: 'IconWithChild', template: '<div><slot name="primary" /><slot name="secondary" /></div>' },
+	useSizeClass: () => ({ isTabletPortrait: ref(false) }),
+	StatusTag: { name: 'StatusTag', props: ['status', 'label'], template: '<span />' },
+	StateView: { name: 'StateView', props: ['kind', 'title', 'icon'], template: '<div />' },
 }));
 
 const client = {
@@ -53,14 +53,25 @@ const mountTable = () =>
 	});
 
 describe('McpClientsTable', () => {
-	it('renders the row icon in an avatar, as every other list does', () => {
+	it('shows the client status as a status tag', () => {
+		const wrapper = mountTable();
+		const tag = wrapper.findComponent({ name: 'StatusTag' });
+
+		expect(tag.props('status')).toBe('ok');
+		expect(tag.props('label')).toBe('mcpModule.status.active');
+	});
+
+	it('lists the capabilities as text', () => {
 		const wrapper = mountTable();
 
-		// Eight modules render their row icon as `el-avatar :size="32"`; a bare
-		// `el-icon` reads as a different control set at a glance.
-		const avatar = wrapper.findComponent(ElAvatar);
+		expect(wrapper.text()).toContain('mcpModule.capabilities.read.title');
+	});
 
-		expect(avatar.exists()).toBe(true);
-		expect(avatar.props('size')).toBe(32);
+	it('opens the client from a row click', () => {
+		const wrapper = mountTable();
+
+		wrapper.findComponent({ name: 'ElTable' }).vm.$emit('row-click', client);
+
+		expect(wrapper.emitted('edit')).toEqual([[client]]);
 	});
 });

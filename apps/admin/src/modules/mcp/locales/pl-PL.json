@@ -82,8 +82,7 @@
       "status": "Stan",
       "capabilities": "Uprawnienia",
       "expires": "Wygasa",
-      "lastUsed": "Ostatnio użyto",
-      "actions": "Akcje"
+      "lastUsed": "Ostatnio użyto"
     },
     "empty": "Nie utworzono jeszcze żadnych klientów MCP.",
     "none": "Brak",
@@ -115,8 +114,7 @@
     "title": "Skopiuj teraz poświadczenie MCP",
     "warningTitle": "Wyświetlane tylko raz",
     "warningDescription": "Zapisz poświadczenie klienta {name} w bezpiecznym menedżerze haseł. Po zamknięciu tego okna nie będzie można go odzyskać.",
-    "copy": "Kopiuj poświadczenie",
-    "copied": "Skopiowano"
+    "label": "Poświadczenie"
   },
   "status": {
     "active": "Aktywny",
@@ -129,7 +127,9 @@
     "delete": "Usunąć klienta {name}? Jego poświadczenie zostanie unieważnione, a rekordu klienta nie będzie można odzyskać.",
     "bulkRevoke": "Unieważnić poświadczenia dla {count} wybranych klientów?",
     "bulkDelete": "Usunąć {count} wybranych klientów?",
-    "discard": "Odrzucić niezapisane zmiany?"
+    "discard": "Odrzucić niezapisane zmiany?",
+    "bulkRevokeButton": "Unieważnij {count} klientów",
+    "bulkDeleteButton": "Usuń {count} klientów"
   },
   "oauthConsent": {
     "title": "Autoryzuj dostęp MCP",
@@ -258,5 +258,9 @@
   },
   "headings": {
     "discard": "Odrzuć zmiany"
+  },
+  "aria": {
+    "edit": "Edytuj {name}",
+    "more": "Więcej akcji dla {name}"
   }
 }

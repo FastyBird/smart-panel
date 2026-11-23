@@ -7,6 +7,7 @@ export interface IMcpClientsTableProps {
 	sortBy: IMcpClientsSortBy | undefined;
 	sortDir: 'asc' | 'desc' | null;
 	loading: boolean;
+	loadFailed?: boolean;
 	filtersActive: boolean;
 	tableHeight?: number;
 }
