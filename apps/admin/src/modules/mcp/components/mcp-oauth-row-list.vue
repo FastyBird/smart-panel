@@ -23,7 +23,14 @@
 		>
 			<span class="flex flex-col flex-1 min-w-0">
 				<span class="text-card-title truncate">{{ row.title }}</span>
-				<span class="text-help truncate">{{ row.caption }}</span>
+				<!-- Wraps rather than truncates: the scopes and the expiry are what a revoke is decided on, and a phone
+				     row has no other place to show them -->
+				<span
+					class="text-help break-words"
+					data-test-id="mcp-oauth-row-caption"
+				>
+					{{ row.caption }}
+				</span>
 			</span>
 			<status-tag
 				v-if="row.status"
