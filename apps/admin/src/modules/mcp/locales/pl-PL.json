@@ -21,7 +21,8 @@
     "discard": "Odrzuć",
     "yes": "Tak",
     "no": "Nie",
-    "retry": "Ponów"
+    "retry": "Ponów",
+    "more": "Więcej"
   },
   "capabilities": {
     "read": {

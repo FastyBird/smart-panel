@@ -22,49 +22,54 @@
 			</el-button>
 		</el-tooltip>
 
-		<el-dropdown
-			trigger="click"
-			placement="bottom-end"
-			@command="onCommand"
+		<el-tooltip
+			:content="t('mcpModule.actions.more')"
+			placement="top"
 		>
-			<el-button
-				:aria-label="t('mcpModule.aria.more', { name: props.client.name })"
-				text
-				circle
-				data-test-id="more-mcp-client"
+			<el-dropdown
+				trigger="click"
+				placement="bottom-end"
+				@command="onCommand"
 			>
-				<template #icon>
-					<icon icon="mdi:dots-horizontal" />
-				</template>
-			</el-button>
+				<el-button
+					:aria-label="t('mcpModule.aria.more', { name: props.client.name })"
+					text
+					circle
+					data-test-id="more-mcp-client"
+				>
+					<template #icon>
+						<icon icon="mdi:dots-horizontal" />
+					</template>
+				</el-button>
 
-			<template #dropdown>
-				<el-dropdown-menu>
-					<el-dropdown-item
-						command="rotate"
-						data-test-id="rotate-mcp-client"
-					>
-						{{ t('mcpModule.actions.rotate') }}
-					</el-dropdown-item>
-					<el-dropdown-item
-						:disabled="props.client.credentialRevoked"
-						command="revoke"
-						divided
-						class="text-danger!"
-						data-test-id="revoke-mcp-client"
-					>
-						{{ t('mcpModule.actions.revoke') }}
-					</el-dropdown-item>
-					<el-dropdown-item
-						command="delete"
-						class="text-danger!"
-						data-test-id="delete-mcp-client"
-					>
-						{{ t('mcpModule.actions.delete') }}
-					</el-dropdown-item>
-				</el-dropdown-menu>
-			</template>
-		</el-dropdown>
+				<template #dropdown>
+					<el-dropdown-menu>
+						<el-dropdown-item
+							command="rotate"
+							data-test-id="rotate-mcp-client"
+						>
+							{{ t('mcpModule.actions.rotate') }}
+						</el-dropdown-item>
+						<el-dropdown-item
+							:disabled="props.client.credentialRevoked"
+							command="revoke"
+							divided
+							class="text-danger!"
+							data-test-id="revoke-mcp-client"
+						>
+							{{ t('mcpModule.actions.revoke') }}
+						</el-dropdown-item>
+						<el-dropdown-item
+							command="delete"
+							class="text-danger!"
+							data-test-id="delete-mcp-client"
+						>
+							{{ t('mcpModule.actions.delete') }}
+						</el-dropdown-item>
+					</el-dropdown-menu>
+				</template>
+			</el-dropdown>
+		</el-tooltip>
 	</div>
 </template>
 

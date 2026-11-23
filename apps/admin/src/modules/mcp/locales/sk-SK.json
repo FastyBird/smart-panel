@@ -21,7 +21,8 @@
     "discard": "Zahodiť",
     "yes": "Áno",
     "no": "Nie",
-    "retry": "Skúsiť znova"
+    "retry": "Skúsiť znova",
+    "more": "Viac"
   },
   "capabilities": {
     "read": {

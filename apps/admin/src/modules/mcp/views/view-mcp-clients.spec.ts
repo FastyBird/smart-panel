@@ -351,6 +351,53 @@ describe('ViewMcpClients', () => {
 		expect(done).not.toHaveBeenCalled();
 	});
 
+	it('asks before another client replaces a changed form, and keeps the edits when dismissed', async () => {
+		(ElMessageBox.confirm as Mock).mockRejectedValueOnce('cancel');
+
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as {
+			openCreate: () => Promise<void>;
+			openEdit: (client: IMcpClient) => Promise<void>;
+			clientForm: { name: string };
+			clientFormChanged: boolean;
+		};
+
+		await vm.openCreate();
+		vm.clientForm.name = 'Unsaved';
+		await nextTick();
+
+		// The docked form leaves the list usable, so a row click lands here while the form is open
+		wrapper.findComponent({ name: 'ListMcpClients' }).vm.$emit('edit', client);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		expect(vm.clientForm.name).toBe('Unsaved');
+		expect(vm.clientFormChanged).toBe(true);
+
+		await vm.openEdit(client);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledTimes(2);
+		expect(vm.clientForm.name).toBe(client.name);
+		expect(vm.clientFormChanged).toBe(false);
+	});
+
+	it('opens another client without asking when the form is untouched', async () => {
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as {
+			openCreate: () => Promise<void>;
+			openEdit: (client: IMcpClient) => Promise<void>;
+			clientForm: { name: string };
+		};
+
+		await vm.openCreate();
+		await vm.openEdit(client);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+		expect(vm.clientForm.name).toBe(client.name);
+	});
+
 	it('requires confirmation before revoking a credential', async () => {
 		const wrapper = mountView();
 		const list = wrapper.findComponent({ name: 'ListMcpClients' });

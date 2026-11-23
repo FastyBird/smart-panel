@@ -21,7 +21,8 @@
 		"discard": "Discard",
 		"yes": "Yes",
 		"no": "No",
-		"retry": "Retry"
+		"retry": "Retry",
+		"more": "More"
 	},
 	"capabilities": {
 		"read": {

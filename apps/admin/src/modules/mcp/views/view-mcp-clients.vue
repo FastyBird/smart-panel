@@ -338,17 +338,28 @@ const resetClientForm = (): void => {
  * `done` is supplied only by `before-close`; withholding it leaves the drawer
  * open when the confirmation is dismissed.
  */
+// Resolves true when the form may be replaced or closed: nothing was edited, or the user agreed to discard
+const confirmDiscard = async (): Promise<boolean> => {
+	if (!clientFormChanged.value) {
+		return true;
+	}
+
+	try {
+		await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
+			confirmButtonText: t('mcpModule.actions.yes'),
+			cancelButtonText: t('mcpModule.actions.no'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
+};
+
 const onCloseClientForm = async (done?: () => void): Promise<void> => {
-	if (clientFormChanged.value) {
-		try {
-			await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
-				confirmButtonText: t('mcpModule.actions.yes'),
-				cancelButtonText: t('mcpModule.actions.no'),
-				type: 'warning',
-			});
-		} catch {
-			return;
-		}
+	if (!(await confirmDiscard())) {
+		return;
 	}
 
 	showClientDialog.value = false;
@@ -356,17 +367,28 @@ const onCloseClientForm = async (done?: () => void): Promise<void> => {
 	done?.();
 };
 
-const openCreate = (): void => {
+// On wide screens the form docks beside the list without a scrim, so the list stays usable while the form is open:
+// opening another client or a new one replaces the form and has to run the same guard as closing it
+const openCreate = async (): Promise<void> => {
+	if (showClientDialog.value && !(await confirmDiscard())) {
+		return;
+	}
+
 	resetClientForm();
 	showClientDialog.value = true;
 };
 
-const openEdit = (client: IMcpClient): void => {
+const openEdit = async (client: IMcpClient): Promise<void> => {
+	if (showClientDialog.value && !(await confirmDiscard())) {
+		return;
+	}
+
 	editingClient.value = client;
 	clientForm.name = client.name;
 	clientForm.description = client.description ?? '';
 	clientForm.enabled = client.enabled;
 	clientForm.capabilities = [...client.capabilities];
+	clientFormEl.value?.clearValidate();
 	initialClientForm.value = snapshotClientForm();
 	showClientDialog.value = true;
 };

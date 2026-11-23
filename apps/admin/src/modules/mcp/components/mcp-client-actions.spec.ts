@@ -45,6 +45,15 @@ describe('McpClientActions', () => {
 		}
 	});
 
+	it('gives both icon buttons a tooltip', () => {
+		const wrapper = mountActions();
+
+		expect(wrapper.findAllComponents({ name: 'ElTooltip' }).map((tooltip) => tooltip.props('content'))).toEqual([
+			'mcpModule.actions.edit',
+			'mcpModule.actions.more',
+		]);
+	});
+
 	it('lists rotate first and the destructive actions last, after one divider', () => {
 		const wrapper = mountActions();
 		const items = wrapper.findAllComponents({ name: 'ElDropdownItem' });

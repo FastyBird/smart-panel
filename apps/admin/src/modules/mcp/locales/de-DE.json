@@ -21,7 +21,8 @@
 		"discard": "Verwerfen",
 		"yes": "Ja",
 		"no": "Nein",
-		"retry": "Erneut versuchen"
+		"retry": "Erneut versuchen",
+		"more": "Mehr"
 	},
 	"capabilities": {
 		"read": {
