@@ -224,7 +224,15 @@
 		},
 		"aria": {
 			"edit": "Upravit {scene}",
-			"more": "Další akce pro {scene}"
+			"more": "Další akce pro {scene}",
+			"editAction": "Upravit {action}",
+			"moreAction": "Další akce pro {action}"
+		},
+		"actions": {
+			"missing": "Zařízení nebo vlastnost odstraněna",
+			"unknownDevice": "Neznámé zařízení",
+			"unknownChannel": "Neznámý kanál",
+			"unknownProperty": "Neznámá vlastnost"
 		}
 	}
 }

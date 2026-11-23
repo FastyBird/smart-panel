@@ -224,7 +224,15 @@
 		},
 		"aria": {
 			"edit": "{scene} bearbeiten",
-			"more": "Weitere Aktionen für {scene}"
+			"more": "Weitere Aktionen für {scene}",
+			"editAction": "{action} bearbeiten",
+			"moreAction": "Weitere Aktionen für {action}"
+		},
+		"actions": {
+			"missing": "Gerät oder Eigenschaft entfernt",
+			"unknownDevice": "Unbekanntes Gerät",
+			"unknownChannel": "Unbekannter Kanal",
+			"unknownProperty": "Unbekannte Eigenschaft"
 		}
 	}
 }

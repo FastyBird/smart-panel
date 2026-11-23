@@ -224,7 +224,15 @@
 		},
 		"aria": {
 			"edit": "Edytuj {scene}",
-			"more": "Więcej akcji dla {scene}"
+			"more": "Więcej akcji dla {scene}",
+			"editAction": "Edytuj {action}",
+			"moreAction": "Więcej akcji dla {action}"
+		},
+		"actions": {
+			"missing": "Urządzenie lub właściwość usunięte",
+			"unknownDevice": "Nieznane urządzenie",
+			"unknownChannel": "Nieznany kanał",
+			"unknownProperty": "Nieznana właściwość"
 		}
 	}
 }

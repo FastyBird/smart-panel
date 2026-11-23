@@ -4,14 +4,8 @@
 		"description": "Szenen lokal durch Steuerung von Geräteeigenschaften ausführen"
 	},
 	"actionCard": {
-		"device": "Gerät",
-		"channel": "Kanal",
-		"property": "Eigenschaft",
-		"value": "Wert",
-		"unknownDevice": "Unbekanntes Gerät",
-		"unknownChannel": "Unbekannter Kanal",
-		"unknownProperty": "Unbekannte Eigenschaft",
-		"missingResource": "Diese Aktion verweist auf ein gelöschtes Gerät, einen Kanal oder eine Eigenschaft"
+		"on": "Ein",
+		"off": "Aus"
 	},
 	"fields": {
 		"device": {

@@ -224,7 +224,15 @@
 		},
 		"aria": {
 			"edit": "Upraviť {scene}",
-			"more": "Ďalšie akcie pre {scene}"
+			"more": "Ďalšie akcie pre {scene}",
+			"editAction": "Upraviť {action}",
+			"moreAction": "Ďalšie akcie pre {action}"
+		},
+		"actions": {
+			"missing": "Zariadenie alebo vlastnosť odstránená",
+			"unknownDevice": "Neznáme zariadenie",
+			"unknownChannel": "Neznámy kanál",
+			"unknownProperty": "Neznáma vlastnosť"
 		}
 	}
 }
