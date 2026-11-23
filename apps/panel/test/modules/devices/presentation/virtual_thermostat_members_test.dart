@@ -19,6 +19,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.d
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/screen_service.dart';
+
 class MemberDevices extends Mock implements DevicesService {}
 
 class MemberSocket extends SocketService {
@@ -127,6 +129,8 @@ Map<String, dynamic> coolingObservation(
 };
 
 void main() {
+  setUpAll(registerTestScreenService);
+
   coolingReleasedBranchRegressions();
   coolingHttpAdmissionRegressions();
   deadlineFenceTests();

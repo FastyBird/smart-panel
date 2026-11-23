@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/features/gallery/entries/header_entries.dart';
 import 'package:flutter/widgets.dart';
 
 /// One component sample in the gallery.
@@ -46,6 +47,7 @@ const List<GallerySection> gallerySections = [
     task: 'DR-5',
     issue: 1715,
     title: 'Page header',
+    entries: headerEntries,
   ),
   GallerySection(
     id: 'cards',

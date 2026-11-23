@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
@@ -125,45 +125,28 @@ class DeviceDetailPage extends StatelessWidget {
         final localizations = AppLocalizations.of(context)!;
 
         return Scaffold(
-          appBar: AppTopBar(
-            title: device.name,
-            icon: buildDeviceIcon(device.category, device.icon),
-            actions: [
-              // Offline indicator
-              if (!device.isOnline) ...[
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      MdiIcons.alert,
-                      size: AppSpacings.scale(14),
-                      color: Theme.of(context).warning,
-                    ),
-                    SizedBox(width: AppSpacings.scale(4)),
-                    Text(
-                      localizations.device_status_offline,
-                      style: TextStyle(
-                        fontSize: AppSpacings.scale(12),
-                        color: Theme.of(context).warning,
-                      ),
-                    ),
-                  ],
+          body: SafeArea(
+            child: Column(
+              children: [
+                PageHeader(
+                  title: device.name,
+                  subtitle: device.isOnline
+                      ? null
+                      : localizations.device_status_offline,
+                  subtitleIcon: device.isOnline ? null : MdiIcons.alert,
+                  subtitleColor: device.isOnline
+                      ? null
+                      : Theme.of(context).warning,
+                  icon: buildDeviceIcon(device.category, device.icon),
+                  iconColor: device.isOnline
+                      ? ThemeColors.primary
+                      : ThemeColors.neutral,
+                  onBack: () => Navigator.pop(context),
                 ),
-                SizedBox(width: AppSpacings.scale(16)),
+                Expanded(child: buildDeviceWidget(device)),
               ],
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Icon(
-                  MdiIcons.close,
-                  size: AppSpacings.scale(16),
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular,
-                ),
-              ),
-            ],
+            ),
           ),
-          body: buildDeviceWidget(device),
         );
       },
     );

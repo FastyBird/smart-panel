@@ -262,10 +262,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
               mainAxisSize: MainAxisSize.min,
               spacing: AppSpacings.pMd,
               children: [
-                HeaderIconButton(
-                  icon: MdiIcons.arrowLeft,
-                  onTap: () => Navigator.of(context).pop(),
-                ),
+                HeaderBackButton(onTap: () => Navigator.of(context).pop()),
                 HeaderMainIcon(
                   icon: iconData,
                   color: ThemeColors.primary,
@@ -532,10 +529,7 @@ class SensorDetailPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 spacing: AppSpacings.pMd,
                 children: [
-                  HeaderIconButton(
-                    icon: MdiIcons.arrowLeft,
-                    onTap: () => Navigator.pop(context),
-                  ),
+                  HeaderBackButton(onTap: () => Navigator.pop(context)),
                   HeaderMainIcon(
                     icon: sensor.icon,
                     color: _themeColor,

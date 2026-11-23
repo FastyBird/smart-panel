@@ -6,7 +6,6 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Standalone page for viewing a single sensor channel's detail.
 ///
@@ -45,10 +44,7 @@ class SensorChannelDetailPage extends StatelessWidget {
                 spacing: AppSpacings.pMd,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  HeaderIconButton(
-                    icon: MdiIcons.arrowLeft,
-                    onTap: () => Navigator.pop(context),
-                  ),
+                  HeaderBackButton(onTap: () => Navigator.pop(context)),
                   HeaderMainIcon(
                     icon: sensor.icon,
                     color: _themeColor,

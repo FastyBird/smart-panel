@@ -7,6 +7,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.d
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/screen_service.dart';
+
 class _Socket extends SocketService {
   bool connected = true;
   @override
@@ -81,6 +83,8 @@ Future<void> settle(WidgetTester tester) async {
 }
 
 void main() {
+  setUpAll(registerTestScreenService);
+
   late Dio dio;
   setUp(() {
     dio = Dio(BaseOptions(baseUrl: 'http://localhost'));

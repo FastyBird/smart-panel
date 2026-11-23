@@ -67,10 +67,7 @@ class LockDeviceDetail extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       spacing: AppSpacings.pMd,
                       children: [
-                        HeaderIconButton(
-                          icon: MdiIcons.arrowLeft,
-                          onTap: () => Navigator.of(context).pop(),
-                        ),
+                        HeaderBackButton(onTap: () => Navigator.of(context).pop()),
                         HeaderMainIcon(icon: iconData),
                       ],
                     )

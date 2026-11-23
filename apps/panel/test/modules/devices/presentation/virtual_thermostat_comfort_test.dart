@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import '../../../helpers/screen_service.dart';
+
 class ComfortSocket extends Mock implements SocketService {}
 
 class ComfortRoutes extends NavigatorObserver {
@@ -60,6 +62,8 @@ Map<String, dynamic> configured({bool cooling = false}) => {
 };
 
 void main() {
+  setUpAll(registerTestScreenService);
+
   late Dio dio;
   late Map<String, dynamic> state;
   late List<Map<String, dynamic>> writes;

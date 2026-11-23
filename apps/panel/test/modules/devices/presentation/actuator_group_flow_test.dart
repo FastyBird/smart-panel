@@ -14,6 +14,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/screen_service.dart';
+
 class BatchDevicesRepo extends Mock implements DevicesRepository {}
 
 class BatchDeviceControls extends Mock implements DeviceControlsRepository {}
@@ -218,6 +220,8 @@ DeviceView groupDevice(String profile) => DeviceView(
   ],
 );
 void main() {
+  setUpAll(registerTestScreenService);
+
   setUpAll(
     () => registerFallbackValue(const PropertyCommandContext(origin: 'test')),
   );

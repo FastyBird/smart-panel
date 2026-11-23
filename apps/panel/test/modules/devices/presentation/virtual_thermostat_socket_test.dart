@@ -6,6 +6,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.d
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/screen_service.dart';
+
 const runtimeEvent = 'DevicesVirtualPlugin.Thermostat.RuntimeChanged';
 
 class ThermostatSocket extends SocketService {
@@ -53,6 +55,8 @@ class ThermostatSocket extends SocketService {
 }
 
 void main() {
+  setUpAll(registerTestScreenService);
+
   testWidgets(
     'socket hints fence older reads, acknowledge self events and resync across epochs and device lifecycle',
     (tester) async {

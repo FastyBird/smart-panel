@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/api/models/devices_virtual_plugin_data_lig
 import 'package:fastybird_smart_panel/api/models/devices_virtual_plugin_data_light_group_reported_property.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -236,128 +237,154 @@ class _ActuatorGroupDeviceDetailState extends State<ActuatorGroupDeviceDetail> {
         const <DevicesVirtualPluginDataLightGroupCapability>[];
     final exposed = caps.map((cap) => cap.category.json).toSet();
     return Scaffold(
-      appBar: AppBar(title: Text(widget.device.name)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(l.groupActualFeedback),
-          OutlinedButton(
-            key: const ValueKey('group-reload'),
-            onPressed: _state.pending
-                ? null
-                : () => _state.refresh(explicit: true),
-            child: Text(l.groupReload),
-          ),
-          if (_state.pending) const LinearProgressIndicator(),
-          if (_state.error != null || !_state.connected)
-            Text(l.groupUnavailable),
-          if (_state.needsReload) Text(l.groupRepair),
-          if (_error != null) Text(l.groupUncertain),
-          if (config?.profile.json == 'cover') Text(l.groupCoverMeaning),
-          for (final reported
-              in config?.reportedState?.properties ??
-                  const <
-                    DevicesVirtualPluginDataLightGroupReportedProperty
-                  >[]) ...[
-            Text(
-              '${_field(reported.category.json ?? '', l)}: ${_value(reported, l)}',
-              key: ValueKey('group-reported-${reported.category.json}'),
+      body: SafeArea(
+        child: Column(
+          children: [
+            PageHeader(
+              title: widget.device.name,
+              onBack: () => Navigator.maybePop(context),
             ),
-            Text(
-              l.groupContributors(
-                reported.contributors.length,
-                config!.members.length,
-              ),
-            ),
-            if (reported.provenance?.json == 'configured')
-              Text(l.groupConfigured),
-          ],
-          if (config?.reportedState == null) Text(l.groupUnknown),
-          for (final member
-              in config?.members ??
-                  const <DevicesVirtualPluginDataLightGroupMember>[]) ...[
-            Text(
-              '${member.sourceIdentity}${member.sourceChannel == null ? ' · ${l.groupMissing}' : ''}',
-            ),
-            for (final state
-                in config?.reportedState?.members.where(
-                      (state) => state.sourceIdentity == member.sourceIdentity,
-                    ) ??
-                    const <DevicesVirtualPluginDataLightGroupReportedMember>[])
-              Text(state.reasons.join('; ')),
-          ],
-          for (final operation
-              in config?.operations ??
-                  const <
-                    DevicesVirtualPluginDataCoverOperationReadiness
-                  >[]) ...[
-            if (['open', 'close', 'stop'].contains(operation.operation.json))
-              OutlinedButton(
-                key: ValueKey('group-command-${operation.operation.json}'),
-                onPressed: _ready('command', operation.operation.json)
-                    ? () => _send({'command': operation.operation.json})
-                    : null,
-                child: Text(switch (operation.operation.json) {
-                  'open' => l.groupOpen,
-                  'close' => l.groupClose,
-                  _ => l.groupStop,
-                }),
-              ),
-            if (!operation.commandable)
-              Text(
-                '${operation.operation.json}: ${operation.members.expand<String>((member) => member.reasons.map((reason) => '${member.sourceIdentity}: $reason')).join('; ')}',
-              ),
-          ],
-          if (config?.profile.json == 'cover' &&
-              (config?.operations?.isEmpty ?? true))
-            Text(l.groupReadinessUnavailable),
-          for (final cap in caps.where(
-            (cap) => _writable(cap) && cap.category.json != 'command',
-          ))
-            _control(cap, l),
-          for (final tuple in [
-            const ['color_red', 'color_green', 'color_blue'],
-            const ['hue', 'saturation'],
-          ])
-            if (tuple.every(exposed.contains))
-              OutlinedButton(
-                onPressed:
-                    tuple.every(
-                      (category) =>
-                          _ready(category) &&
-                          _numeric(
-                                caps.firstWhere(
-                                  (cap) => cap.category.json == category,
-                                ),
-                              )?.target(_requested[category] ?? '') !=
-                              null,
-                    )
-                    ? () => _send({
-                        for (final category in tuple)
-                          category: _numeric(
-                            caps.firstWhere(
-                              (cap) => cap.category.json == category,
-                            ),
-                          )!.target(_requested[category]!),
-                      })
-                    : null,
-                child: Text(l.groupApplyTogether),
-              ),
-          if (outcome != null)
-            Semantics(
-              liveRegion: true,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  Text(l.groupCommandOutcome(_status(outcome.status, l))),
-                  for (final child in outcome.children)
+                  Text(l.groupActualFeedback),
+                  OutlinedButton(
+                    key: const ValueKey('group-reload'),
+                    onPressed: _state.pending
+                        ? null
+                        : () => _state.refresh(explicit: true),
+                    child: Text(l.groupReload),
+                  ),
+                  if (_state.pending) const LinearProgressIndicator(),
+                  if (_state.error != null || !_state.connected)
+                    Text(l.groupUnavailable),
+                  if (_state.needsReload) Text(l.groupRepair),
+                  if (_error != null) Text(l.groupUncertain),
+                  if (config?.profile.json == 'cover')
+                    Text(l.groupCoverMeaning),
+                  for (final reported
+                      in config?.reportedState?.properties ??
+                          const <
+                            DevicesVirtualPluginDataLightGroupReportedProperty
+                          >[]) ...[
                     Text(
-                      '${child.memberIdentity ?? child.memberId}: ${_status(child.status, l)}${child.reason == null ? '' : ' · ${child.reason}'}',
+                      '${_field(reported.category.json ?? '', l)}: ${_value(reported, l)}',
+                      key: ValueKey('group-reported-${reported.category.json}'),
+                    ),
+                    Text(
+                      l.groupContributors(
+                        reported.contributors.length,
+                        config!.members.length,
+                      ),
+                    ),
+                    if (reported.provenance?.json == 'configured')
+                      Text(l.groupConfigured),
+                  ],
+                  if (config?.reportedState == null) Text(l.groupUnknown),
+                  for (final member
+                      in config?.members ??
+                          const <
+                            DevicesVirtualPluginDataLightGroupMember
+                          >[]) ...[
+                    Text(
+                      '${member.sourceIdentity}${member.sourceChannel == null ? ' · ${l.groupMissing}' : ''}',
+                    ),
+                    for (final state
+                        in config?.reportedState?.members.where(
+                              (state) =>
+                                  state.sourceIdentity == member.sourceIdentity,
+                            ) ??
+                            const <
+                              DevicesVirtualPluginDataLightGroupReportedMember
+                            >[])
+                      Text(state.reasons.join('; ')),
+                  ],
+                  for (final operation
+                      in config?.operations ??
+                          const <
+                            DevicesVirtualPluginDataCoverOperationReadiness
+                          >[]) ...[
+                    if ([
+                      'open',
+                      'close',
+                      'stop',
+                    ].contains(operation.operation.json))
+                      OutlinedButton(
+                        key: ValueKey(
+                          'group-command-${operation.operation.json}',
+                        ),
+                        onPressed: _ready('command', operation.operation.json)
+                            ? () => _send({'command': operation.operation.json})
+                            : null,
+                        child: Text(switch (operation.operation.json) {
+                          'open' => l.groupOpen,
+                          'close' => l.groupClose,
+                          _ => l.groupStop,
+                        }),
+                      ),
+                    if (!operation.commandable)
+                      Text(
+                        '${operation.operation.json}: ${operation.members.expand<String>((member) => member.reasons.map((reason) => '${member.sourceIdentity}: $reason')).join('; ')}',
+                      ),
+                  ],
+                  if (config?.profile.json == 'cover' &&
+                      (config?.operations?.isEmpty ?? true))
+                    Text(l.groupReadinessUnavailable),
+                  for (final cap in caps.where(
+                    (cap) => _writable(cap) && cap.category.json != 'command',
+                  ))
+                    _control(cap, l),
+                  for (final tuple in [
+                    const ['color_red', 'color_green', 'color_blue'],
+                    const ['hue', 'saturation'],
+                  ])
+                    if (tuple.every(exposed.contains))
+                      OutlinedButton(
+                        onPressed:
+                            tuple.every(
+                              (category) =>
+                                  _ready(category) &&
+                                  _numeric(
+                                        caps.firstWhere(
+                                          (cap) =>
+                                              cap.category.json == category,
+                                        ),
+                                      )?.target(_requested[category] ?? '') !=
+                                      null,
+                            )
+                            ? () => _send({
+                                for (final category in tuple)
+                                  category: _numeric(
+                                    caps.firstWhere(
+                                      (cap) => cap.category.json == category,
+                                    ),
+                                  )!.target(_requested[category]!),
+                              })
+                            : null,
+                        child: Text(l.groupApplyTogether),
+                      ),
+                  if (outcome != null)
+                    Semantics(
+                      liveRegion: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l.groupCommandOutcome(_status(outcome.status, l)),
+                          ),
+                          for (final child in outcome.children)
+                            Text(
+                              '${child.memberIdentity ?? child.memberId}: ${_status(child.status, l)}${child.reason == null ? '' : ' · ${child.reason}'}',
+                            ),
+                        ],
+                      ),
                     ),
                 ],
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

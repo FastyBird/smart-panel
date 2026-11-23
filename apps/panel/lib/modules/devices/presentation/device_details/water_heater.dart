@@ -102,10 +102,7 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
               mainAxisSize: MainAxisSize.min,
               spacing: AppSpacings.pMd,
               children: [
-                HeaderIconButton(
-                  icon: MdiIcons.arrowLeft,
-                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-                ),
+                HeaderBackButton(onTap: widget.onBack ?? () => Navigator.of(context).pop()),
                 HeaderMainIcon(
                   icon: iconData,
                   color: _device.isOn ? ThemeColors.warning : ThemeColors.neutral,

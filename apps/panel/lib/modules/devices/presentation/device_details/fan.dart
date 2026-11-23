@@ -292,6 +292,15 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     setState(() {});
   }
 
+  /// The power toggle; none while the device is offline.
+  VoidCallback? get _powerToggle =>
+      _device.isOnline ? () => _setFanPower(!_device.isOn) : null;
+
+  /// The body's power toggle, only when the header (and its power button) is
+  /// hidden.
+  VoidCallback? get _bodyPowerToggle =>
+      (widget.config?.showHeader ?? true) ? null : _powerToggle;
+
   void _setFanPower(bool value) {
     final controller = _controller;
     if (controller == null) return;
@@ -373,8 +382,8 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
 
-    final lastSeenText = widget._device.lastStateChange != null
-        ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
+    final lastSeenText = _device.lastStateChange != null
+        ? DatetimeUtils.formatTimeAgo(_device.lastStateChange!, localizations)
         : null;
 
     final body = Stack(
@@ -386,7 +395,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                 : _buildPortrait(context, isDark);
           },
         ),
-        if (!widget._device.isOnline)
+        if (!_device.isOnline)
           DeviceOfflineState(
             isDark: isDark,
             lastSeenText: lastSeenText,
@@ -431,21 +440,23 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final configTrailing = widget.config?.trailing;
     final showSettings = _hasSettingsOptions;
 
-    Widget? trailing;
-    if (showSettings || configTrailing != null) {
-      trailing = Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          if (showSettings)
-            HeaderIconButton(
-              icon: MdiIcons.cog,
-              onTap: () => _showSettings(context),
-            ),
-          if (configTrailing != null) configTrailing,
-        ],
-      );
-    }
+    final trailing = Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: AppSpacings.pMd,
+      children: [
+        if (showSettings)
+          HeaderIconButton(
+            icon: MdiIcons.cog,
+            onTap: () => _showSettings(context),
+          ),
+        DevicePowerButton(
+          isOn: _device.isOn,
+          themeColor: _getStatusColor(),
+          onTap: _powerToggle,
+        ),
+        if (configTrailing != null) configTrailing,
+      ],
+    );
 
     return PageHeader(
       title: widget.config?.titleOverride ?? _device.name,
@@ -456,10 +467,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
               mainAxisSize: MainAxisSize.min,
               spacing: AppSpacings.pMd,
               children: [
-                HeaderIconButton(
-                  icon: MdiIcons.arrowLeft,
-                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-                ),
+                HeaderBackButton(onTap: widget.onBack ?? () => Navigator.of(context).pop()),
                 HeaderMainIcon(icon: iconData, color: _getStatusColor()),
               ],
             )
@@ -673,11 +681,10 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pMd,
         children: [
-          DevicePowerButton(
+          DevicePowerState(
             isOn: _device.isOn,
             themeColor: _getStatusColor(),
-            showInfoText: false,
-            onTap: () => _setFanPower(!_device.isOn),
+            onTap: _bodyPowerToggle,
           ),
           if (_device.fanChannel.hasMode &&
               _device.fanChannel.availableModes.isNotEmpty) ...[
@@ -885,12 +892,10 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             children: [
               Expanded(
                 child: Center(
-                  child: DevicePowerButton(
+                  child: DevicePowerState(
                     isOn: _device.isOn,
                     themeColor: _getStatusColor(),
-                    showInfoText: false,
-                    size: DevicePowerButton.compactSize,
-                    onTap: () => _setFanPower(!_device.isOn),
+                    onTap: _bodyPowerToggle,
                   ),
                 ),
               ),

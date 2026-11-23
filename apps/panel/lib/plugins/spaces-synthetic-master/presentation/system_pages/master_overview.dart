@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/core/utils/icon.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -301,19 +301,29 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppTopBar(
-        title: widget.viewItem.title,
-        icon: MdiIcons.home,
-        actions: _buildStatusBadges(context),
-      ),
       body: SafeArea(
-        child: Padding(
-          padding: AppSpacings.paddingMd,
-          child: _isLoading
-              ? _buildLoadingState()
-              : _hasError
-                  ? _buildErrorState()
-                  : _buildContent(context, localizations),
+        child: Column(
+          children: [
+            PageHeader(
+              title: widget.viewItem.title,
+              icon: MdiIcons.home,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: AppSpacings.pSm,
+                children: _buildStatusBadges(context),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: AppSpacings.paddingMd,
+                child: _isLoading
+                    ? _buildLoadingState()
+                    : _hasError
+                        ? _buildErrorState()
+                        : _buildContent(context, localizations),
+              ),
+            ),
+          ],
         ),
       ),
     );
