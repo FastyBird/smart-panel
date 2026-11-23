@@ -86,8 +86,8 @@ dark, and updates all six locales.
 | AR-14 | #1671 | 3 | `refactor(admin): move remote access onto the settings and catalogue templates` | AR-3, AR-4, AR-5, AR-6, AR-8 | merged in #1746 and #1747 |
 | AR-15 | #1672 | 3 | `refactor(admin): move MCP clients onto the page templates` | AR-3, AR-4, AR-5, AR-8 | merged in #1748 and #1749 |
 | AR-16 | #1673 | 3 | `feat(admin): turn notifications into a two-pane inbox` | AR-3, AR-5, AR-8 | merged in #1751 |
-| AR-17 | #1674 | 4 | `refactor(admin): move spaces onto the page templates` | AR-9, AR-10 | parts 1 and 2 merged in #1752 and #1754; part 3 (wizard, signage, lint) in review |
-| AR-18 | #1675 | 4 | `refactor(admin): move scenes onto the page templates` | AR-9, AR-10 | open |
+| AR-17 | #1674 | 4 | `refactor(admin): move spaces onto the page templates` | AR-9, AR-10 | merged in #1752, #1754 and #1755 |
+| AR-18 | #1675 | 4 | `refactor(admin): move scenes onto the page templates` | AR-9, AR-10 | part 1 (list, add, edit) in review; part 2 (action card host, lint) next |
 | AR-19 | #1676 | 4 | `refactor(admin): move displays onto the page templates` | AR-9, AR-10 | open |
 | AR-20 | #1677 | 4 | `refactor(admin): move pages and tiles onto the page templates` | AR-9, AR-10, AR-13 | open |
 | AR-21 | #1678 | 4 | `refactor(admin): move weather onto the page templates` | AR-9, AR-10 | open |

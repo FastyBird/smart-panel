@@ -1,6 +1,7 @@
 <template>
 	<el-table
-		v-loading="props.loading"
+		ref="tableEl"
+		v-loading="props.loading && props.items.length > 0"
 		:element-loading-text="t('scenes.texts.loadingScenes')"
 		:data="props.items"
 		:default-sort="
@@ -18,93 +19,21 @@
 		@row-click="onRowClick"
 	>
 		<template #empty>
-			<div
-				v-if="props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:play-circle" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:database-refresh" />
-							</template>
-						</icon-with-child>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="noResults && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:play-circle" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('scenes.texts.noScenes') }}
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="props.filtersActive && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:play-circle" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-multiple" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('scenes.texts.noFilteredScenes') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="emit('reset-filters')"
-						>
-							<template #icon>
-								<icon icon="mdi:filter-off" />
-							</template>
-
-							{{ t('scenes.buttons.resetFilters.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
+			<scenes-empty
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				@reset-filters="emit('reset-filters')"
+			/>
 		</template>
 
 		<el-table-column
-			v-if="isMDDevice"
 			type="selection"
-			fixed
-			:width="30"
+			fixed="left"
+			:width="40"
 		/>
 
 		<el-table-column
-			:width="60"
+			:width="56"
 			align="center"
 		>
 			<template #default="scope">
@@ -118,53 +47,30 @@
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
 			:min-width="180"
-			class-name="py-0!"
 		>
 			<template #default="scope">
-				<template v-if="scope.row.description">
-					<strong class="block">{{ scope.row.name }}</strong>
-					<el-text
-						size="small"
-						class="block leading-4"
-						truncated
-					>
-						{{ scope.row.description }}
-					</el-text>
-				</template>
-				<template v-else>
-					{{ scope.row.name }}
-				</template>
+				<span class="block text-card-title truncate">{{ scope.row.name }}</span>
+				<span
+					v-if="scope.row.description"
+					class="block text-help truncate"
+				>
+					{{ scope.row.description }}
+				</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
 			:label="t('scenes.fields.space')"
 			prop="primarySpaceId"
-			:width="200"
+			:width="180"
 		>
 			<template #default="scope">
-				<el-link
-					:type="isSpaceFilterActive(scope.row.primarySpaceId) ? 'danger' : undefined"
-					underline="never"
-					class="font-400!"
-					@click.stop="onFilterBySpace(scope.row.primarySpaceId)"
-				>
-					<el-icon class="el-icon--left">
-						<icon
-							v-if="isSpaceFilterActive(scope.row.primarySpaceId)"
-							icon="mdi:filter-minus"
-						/>
-						<icon
-							v-else
-							icon="mdi:filter-plus"
-						/>
-					</el-icon>
-					{{ getSpaceName(scope.row.primarySpaceId) }}
-				</el-link>
+				<span class="text-body">{{ getSpaceName(scope.row.primarySpaceId) }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('scenes.fields.category')"
 			prop="category"
 			sortable="custom"
@@ -172,121 +78,77 @@
 			:width="140"
 		>
 			<template #default="scope">
-				<el-tag :type="getCategoryType(scope.row.category)">
-					{{ t(`scenes.categories.${scope.row.category}`) }}
-				</el-tag>
+				<span class="text-body">{{ t(`scenes.categories.${scope.row.category}`) }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
 			:label="t('scenes.fields.enabled')"
 			prop="enabled"
-			:width="110"
+			:width="120"
 		>
 			<template #default="scope">
-				<el-link
-					:type="innerFilters.enabled === (scope.row.enabled ? 'enabled' : 'disabled') ? 'danger' : undefined"
-					underline="never"
-					class="font-400!"
-					@click.stop="onFilterByEnabled(scope.row.enabled)"
-				>
-					<el-icon class="el-icon--left">
-						<icon
-							v-if="innerFilters.enabled === (scope.row.enabled ? 'enabled' : 'disabled')"
-							icon="mdi:filter-minus"
-						/>
-						<icon
-							v-else
-							icon="mdi:filter-plus"
-						/>
-					</el-icon>
-
-					{{
-						scope.row.enabled
-							? t('scenes.filters.enabled.values.enabled')
-							: t('scenes.filters.enabled.values.disabled')
-					}}
-				</el-link>
+				<status-tag
+					:status="scope.row.enabled ? 'ok' : 'warn'"
+					:label="scope.row.enabled ? t('scenes.filters.enabled.values.enabled') : t('scenes.filters.enabled.values.disabled')"
+				/>
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('scenes.fields.lastTriggered')"
 			prop="lastTriggeredAt"
-			:width="160"
+			:width="180"
 		>
 			<template #default="scope">
-				<el-text v-if="scope.row.lastTriggeredAt" size="small">
+				<span
+					v-if="scope.row.lastTriggeredAt"
+					class="text-body"
+				>
 					{{ formatDate(scope.row.lastTriggeredAt) }}
-				</el-text>
-				<el-text v-else size="small" type="info">
+				</span>
+				<span
+					v-else
+					class="text-help"
+				>
 					{{ t('scenes.fields.neverTriggered') }}
-				</el-text>
+				</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			:width="200"
+			:width="176"
 			align="right"
+			fixed="right"
 		>
 			<template #default="scope">
-				<el-button
-					v-if="scope.row.triggerable"
-					size="small"
-					type="success"
-					plain
-					:loading="props.triggering.includes(scope.row.id)"
-					data-test-id="trigger-scene"
-					@click.stop="emit('trigger', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:play" />
-					</template>
-				</el-button>
-				<el-button
-					v-if="scope.row.editable"
-					size="small"
-					plain
-					class="ml-1!"
-					data-test-id="edit-scene"
-					@click.stop="emit('edit', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-				<el-button
-					v-if="scope.row.editable"
-					size="small"
-					type="warning"
-					plain
-					class="ml-1!"
-					data-test-id="remove-scene"
-					@click.stop="emit('remove', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:trash" />
-					</template>
-				</el-button>
+				<scenes-row-actions
+					:scene="scope.row"
+					:triggering="props.triggering.includes(scope.row.id)"
+					@trigger="(id: IScene['id']) => emit('trigger', id)"
+					@edit="(id: IScene['id']) => emit('edit', id)"
+					@remove="(id: IScene['id']) => emit('remove', id)"
+				/>
 			</template>
 		</el-table-column>
 	</el-table>
 </template>
 
 <script setup lang="ts">
-import { computed, inject } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElTable, ElTableColumn, vLoading } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { IconWithChild, useBreakpoints } from '../../../../common';
-import { SceneCategory } from '../../scenes.constants';
+import { StatusTag, useSizeClass } from '../../../../common';
 import type { IScenesFilter } from '../../composables/types';
 import type { IScene } from '../../store/scenes.store.types';
 
+import ScenesEmpty from './scenes-empty.vue';
+import ScenesRowActions from './scenes-row-actions.vue';
 import ScenesTableColumnIcon from './scenes-table-column-icon.vue';
 import type { IScenesTableProps } from './scenes-table.types';
 
@@ -307,39 +169,18 @@ const emit = defineEmits<{
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+const { isTabletPortrait } = useSizeClass();
+
+const tableEl = ref<InstanceType<typeof ElTable> | null>(null);
 
 // Inject spaces from parent (passed through provide)
 const spaces = inject<{ value: Array<{ id: string; name: string }> }>('spaces', { value: [] });
 
-const noResults = computed<boolean>((): boolean => props.totalRows === 0);
-
-const innerFilters = useVModel(props, 'filters', emit);
+useVModel(props, 'filters', emit);
 
 const tableHeight = computed<number>(() => props.tableHeight);
-
-const getCategoryType = (category: SceneCategory): 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined => {
-	const typeMap: Record<SceneCategory, 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined> = {
-		[SceneCategory.generic]: undefined,
-		[SceneCategory.lighting]: 'warning',
-		[SceneCategory.climate]: 'info',
-		[SceneCategory.media]: 'primary',
-		[SceneCategory.work]: undefined,
-		[SceneCategory.relax]: 'success',
-		[SceneCategory.night]: 'info',
-		[SceneCategory.morning]: 'warning',
-		[SceneCategory.party]: 'danger',
-		[SceneCategory.movie]: 'primary',
-		[SceneCategory.away]: undefined,
-		[SceneCategory.home]: 'success',
-		[SceneCategory.security]: 'danger',
-		[SceneCategory.energy]: 'warning',
-		[SceneCategory.custom]: undefined,
-	};
-	return typeMap[category];
-};
 
 const getSpaceName = (primarySpaceId: string | null | undefined): string => {
 	if (!primarySpaceId) {
@@ -350,19 +191,13 @@ const getSpaceName = (primarySpaceId: string | null | undefined): string => {
 };
 
 const formatDate = (date: Date): string => {
-	return new Intl.DateTimeFormat(undefined, {
+	return new Intl.DateTimeFormat(locale.value, {
 		dateStyle: 'medium',
 		timeStyle: 'short',
 	}).format(date);
 };
 
-const onSortData = ({
-	prop,
-	order,
-}: {
-	prop: 'name' | 'category' | 'order';
-	order: 'ascending' | 'descending' | null;
-}): void => {
+const onSortData = ({ prop, order }: { prop: 'name' | 'category' | 'order'; order: 'ascending' | 'descending' | null }): void => {
 	emit('update:sort-by', order === null ? undefined : prop);
 	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
 };
@@ -377,40 +212,10 @@ const onRowClick = (row: IScene): void => {
 	}
 };
 
-const isSpaceFilterActive = (primarySpaceId: string | null | undefined): boolean => {
-	const spaceFilter = primarySpaceId || 'whole_home';
-	return innerFilters.value.primarySpaceId === spaceFilter;
+// The filter bar's Clear selection
+const clearSelection = (): void => {
+	tableEl.value?.clearSelection();
 };
 
-const onFilterBySpace = (primarySpaceId: string | null | undefined): void => {
-	const spaceFilter = primarySpaceId || 'whole_home';
-	if (innerFilters.value.primarySpaceId === spaceFilter) {
-		innerFilters.value.primarySpaceId = undefined;
-	} else {
-		innerFilters.value.primarySpaceId = spaceFilter;
-	}
-};
-
-const onFilterByEnabled = (enabled: boolean): void => {
-	const enabledValue = enabled ? 'enabled' : 'disabled';
-	if (innerFilters.value.enabled === enabledValue) {
-		innerFilters.value.enabled = 'all';
-	} else {
-		innerFilters.value.enabled = enabledValue;
-	}
-};
+defineExpose({ clearSelection, getSpaceName });
 </script>
-
-<style scoped>
-.text-primary {
-	color: var(--fb-primary-text);
-}
-
-.text-success {
-	color: var(--fb-status-ok-text);
-}
-
-.text-danger {
-	color: var(--fb-status-danger-text);
-}
-</style>

@@ -1,10 +1,5 @@
 <template>
-	<view-header
-		:title="t('scenes.headings.adjustFilters')"
-		:subtitle="t('scenes.subHeadings.adjustFilters')"
-		icon="mdi:filter"
-	/>
-
+	<!-- The filters drawer of the list's filter bar: its heading and Reset are the bar's -->
 	<div
 		:class="[ns.b()]"
 		class="flex flex-col h-full w-full overflow-hidden"
@@ -115,18 +110,6 @@
 			</el-collapse>
 		</el-scrollbar>
 
-		<div class="px-5 py-2 text-center">
-			<el-button
-				:disabled="!props.filtersActive"
-				@click="emit('reset-filters')"
-			>
-				<template #icon>
-					<icon icon="mdi:filter-remove" />
-				</template>
-
-				{{ t('scenes.buttons.resetFilters.title') }}
-			</el-button>
-		</div>
 	</div>
 </template>
 
@@ -135,7 +118,6 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
-	ElButton,
 	ElCollapse,
 	ElCollapseItem,
 	ElOption,
@@ -150,7 +132,6 @@ import {
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { ViewHeader } from '../../../../common';
 import { useSpaces } from '../../../spaces/composables';
 import { SpaceType, getSpaceIcon } from '../../../spaces/spaces.constants';
 import type { IScenesFilter } from '../../composables/types';
@@ -166,7 +147,6 @@ const props = defineProps<IListScenesAdjustProps>();
 
 const emit = defineEmits<{
 	(e: 'update:filters', filters: IScenesFilter): void;
-	(e: 'reset-filters'): void;
 }>();
 
 const ns = useNamespace('list-scenes-adjust');

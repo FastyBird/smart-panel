@@ -140,13 +140,13 @@
 				<div class="px-2">
 					<!-- Empty State -->
 					<div v-if="model.actions.length === 0" class="empty-actions-state">
-						<el-icon :size="48" class="text-gray-300 mb-3">
+						<el-icon :size="48" class="text-muted mb-3">
 							<icon icon="mdi:playlist-plus" />
 						</el-icon>
-						<div class="text-gray-600 font-medium mb-1">
+						<div class="text-regular font-medium mb-1">
 							{{ t('scenes.edit.sections.actions.emptyTitle') }}
 						</div>
-						<div class="text-gray-400 text-sm mb-4">
+						<div class="text-muted text-sm mb-4">
 							{{ t('scenes.edit.sections.actions.emptyDescription') }}
 						</div>
 					</div>
@@ -214,7 +214,7 @@
 					</el-dropdown>
 
 					<!-- Helper Text -->
-					<div class="text-gray-400 text-xs mt-2 text-center">
+					<div class="text-muted text-xs mt-2 text-center">
 						{{ t('scenes.edit.sections.actions.helperText') }}
 					</div>
 				</div>

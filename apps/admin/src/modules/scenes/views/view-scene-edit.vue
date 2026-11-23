@@ -29,11 +29,11 @@
 		>
 			<el-icon
 				:size="48"
-				class="text-gray-300"
+				class="text-muted"
 			>
 				<icon icon="mdi:playlist-remove" />
 			</el-icon>
-			<div class="text-gray-500">{{ t('scenes.messages.notFound') }}</div>
+			<div class="text-secondary">{{ t('scenes.messages.notFound') }}</div>
 			<el-button
 				type="primary"
 				@click="onClose"
@@ -44,7 +44,7 @@
 
 		<!-- Form -->
 		<template v-else>
-			<el-scrollbar class="grow-1 p-2 md:px-4">
+			<el-scrollbar class="grow-1 p-2 tp:px-4">
 				<scene-edit-form
 					:key="scene.id"
 					v-model:remote-form-submit="remoteFormSubmit"
@@ -54,39 +54,16 @@
 				/>
 			</el-scrollbar>
 
-			<div
-				v-if="isMDDevice"
-				class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-				style="background-color: var(--el-drawer-bg-color)"
-			>
-				<div class="p-2">
-					<el-button
-						v-if="formChanged"
-						link
-						class="mr-2"
-						@click="onDiscard"
-					>
-						{{ t('scenes.buttons.discard.title') }}
-					</el-button>
-					<el-button
-						v-if="!formChanged"
-						link
-						class="mr-2"
-						@click="onClose"
-					>
-						{{ t('scenes.buttons.close.title') }}
-					</el-button>
-
-					<el-button
-						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="remoteFormResult === FormResult.WORKING || !formChanged"
-						type="primary"
-						@click="remoteFormSubmit = true"
-					>
-						{{ t('scenes.buttons.save.title') }}
-					</el-button>
-				</div>
-			</div>
+			<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+			<form-footer
+				v-show="inDrawer || !isPhone"
+				:dirty="formChanged"
+				:saving="remoteFormResult === FormResult.WORKING"
+				:can-save="formChanged && remoteFormResult !== FormResult.WORKING"
+				@save="remoteFormSubmit = true"
+				@discard="onDiscard"
+				@close="onClose"
+			/>
 		</template>
 	</div>
 </template>
@@ -100,7 +77,7 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { ViewHeader, useBreakpoints } from '../../../common';
+import { FormFooter, ViewHeader, useEditDrawer, useSizeClass } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
 import SceneEditForm from '../components/scenes/scene-edit-form.vue';
 import { useScene } from '../composables/composables';
@@ -121,7 +98,9 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const router = useRouter();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const { scene, isLoading, fetchScene } = useScene({ id: props.id });
 
@@ -141,7 +120,7 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.SCENES });
 			} else {
 				router.push({ name: RouteNames.SCENES });
@@ -153,7 +132,7 @@ const onDiscard = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.SCENES });
 	} else {
 		router.push({ name: RouteNames.SCENES });
@@ -164,7 +143,7 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.SCENES });
 			} else {
 				router.push({ name: RouteNames.SCENES });

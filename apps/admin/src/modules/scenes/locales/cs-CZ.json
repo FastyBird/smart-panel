@@ -9,14 +9,12 @@
 			"edit": "Upravit scénu",
 			"delete": "Smazat scénu",
 			"discard": "Zahodit změny",
-			"adjustFilters": "Upravit filtry",
 			"bulkRemove": "Smazat scény",
 			"bulkEnable": "Povolit scény",
 			"bulkDisable": "Zakázat scény"
 		},
 		"subHeadings": {
-			"list": "Správa scén na jedno klepnutí pro vaši chytrou domácnost",
-			"adjustFilters": "Filtrovat scény podle různých kritérií"
+			"list": "Správa scén na jedno klepnutí pro vaši chytrou domácnost"
 		},
 		"breadcrumbs": {
 			"scenes": "Scény"
@@ -163,14 +161,20 @@
 			"close": {
 				"title": "Zavřít"
 			},
-			"discard": {
-				"title": "Zahodit"
-			},
 			"backToList": {
 				"title": "Zpět na seznam"
 			},
 			"resetFilters": {
 				"title": "Resetovat filtry"
+			},
+			"run": {
+				"title": "Spustit"
+			},
+			"edit": {
+				"title": "Upravit"
+			},
+			"more": {
+				"title": "Další"
 			}
 		},
 		"messages": {
@@ -217,6 +221,10 @@
 			"security": "Zabezpečení",
 			"energy": "Energie",
 			"custom": "Vlastní"
+		},
+		"aria": {
+			"edit": "Upravit {scene}",
+			"more": "Další akce pro {scene}"
 		}
 	}
 }

@@ -9,14 +9,12 @@
 			"edit": "Szene bearbeiten",
 			"delete": "Szene löschen",
 			"discard": "Änderungen verwerfen",
-			"adjustFilters": "Filter anpassen",
 			"bulkRemove": "Szenen löschen",
 			"bulkEnable": "Szenen aktivieren",
 			"bulkDisable": "Szenen deaktivieren"
 		},
 		"subHeadings": {
-			"list": "Szenen per Fingertipp für Ihr Smart Home verwalten",
-			"adjustFilters": "Szenen nach verschiedenen Kriterien filtern"
+			"list": "Szenen per Fingertipp für Ihr Smart Home verwalten"
 		},
 		"breadcrumbs": {
 			"scenes": "Szenen"
@@ -163,14 +161,20 @@
 			"close": {
 				"title": "Schließen"
 			},
-			"discard": {
-				"title": "Verwerfen"
-			},
 			"backToList": {
 				"title": "Zurück zur Liste"
 			},
 			"resetFilters": {
 				"title": "Filter zurücksetzen"
+			},
+			"run": {
+				"title": "Ausführen"
+			},
+			"edit": {
+				"title": "Bearbeiten"
+			},
+			"more": {
+				"title": "Mehr"
 			}
 		},
 		"messages": {
@@ -217,6 +221,10 @@
 			"security": "Sicherheit",
 			"energy": "Energie",
 			"custom": "Benutzerdefiniert"
+		},
+		"aria": {
+			"edit": "{scene} bearbeiten",
+			"more": "Weitere Aktionen für {scene}"
 		}
 	}
 }
