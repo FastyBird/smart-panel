@@ -174,6 +174,13 @@ const { inDrawer } = provideEditDrawer((): boolean => !isScenesListRoute.value);
 // One editor per scene (and one for Add): a new key remounts the routed form
 const formKey = computed<string>((): string => `${String(route.name)}:${typeof route.params?.id === 'string' ? route.params.id : ''}`);
 
+// The changed flag belongs to the editor that is open. Any route change that replaces or closes it (Edit, Add, the
+// drawer's close, the editor's own Close and Discard, the browser's back) clears the flag before the next editor
+// mounts, so that one starts clean. A declined discard leaves the route, and with it the flag, as it was
+watch(formKey, (): void => {
+	remoteFormChanged.value = false;
+});
+
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
 		return [
