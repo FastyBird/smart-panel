@@ -34,7 +34,7 @@
 				:placeholder="t('remoteAccessTailscalePlugin.fields.config.loginServer.placeholder')"
 				name="loginServer"
 			/>
-			<div class="text-sm text-gray-500 mt-1">
+			<div class="text-sm text-secondary mt-1">
 				{{ t('remoteAccessTailscalePlugin.fields.config.loginServer.description') }}
 			</div>
 		</el-form-item>
@@ -92,7 +92,7 @@
 					:value="item"
 				/>
 			</el-select>
-			<div class="text-sm text-gray-500 mt-1">
+			<div class="text-sm text-secondary mt-1">
 				{{ t('remoteAccessTailscalePlugin.fields.config.advertiseTags.description') }}
 			</div>
 		</el-form-item>

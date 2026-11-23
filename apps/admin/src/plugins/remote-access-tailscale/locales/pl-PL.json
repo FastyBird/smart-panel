@@ -22,7 +22,6 @@
 		"cardDescription": "Prywatny dostęp przez Twój tailnet, z HTTPS za pomocą Tailscale Serve.",
 		"funnelWarning": "Funnel publikuje tę instalację w publicznym internecie. Jedyną ochroną jest logowanie do Smart Panel.",
 		"cannotBeUsedYetTitle": "Nie można jeszcze korzystać",
-		"disconnectExplanation": "Rozłączenie kończy bieżącą sesję i zachowuje zalogowanie. Aby Tailscale pozostał wyłączony po ponownym uruchomieniu aplikacji, wyłącz wtyczkę w jej konfiguracji.",
 		"operationInProgress": "Trwa operacja. Rozłączenie pozwala anulować logowanie lub nawiązywanie połączenia."
 	},
 	"buttons": {
@@ -34,13 +33,9 @@
 		"reconnect": "Połącz ponownie",
 		"signOut": "Wyloguj się",
 		"resetPreferences": "Zresetuj preferencje",
-		"copy": "Kopiuj"
+		"copyGrantCommand": "Kopiuj polecenie nadania uprawnień operatora"
 	},
 	"fields": {
-		"tailnet": "Tailnet",
-		"dnsName": "Nazwa MagicDNS",
-		"ipv4": "Adres IPv4",
-		"ipv6": "Adres IPv6",
 		"config": {
 			"hostname": {
 				"title": "Nazwa hosta",

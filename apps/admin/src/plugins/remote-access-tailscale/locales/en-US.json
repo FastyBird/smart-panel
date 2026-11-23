@@ -22,7 +22,6 @@
 		"cardDescription": "Private access over your tailnet, with HTTPS through Tailscale Serve.",
 		"funnelWarning": "Funnel publishes this installation to the public internet. Smart Panel sign-in is the only gate protecting it.",
 		"cannotBeUsedYetTitle": "Cannot be used yet",
-		"disconnectExplanation": "Disconnect stops the current session and keeps your sign-in. To keep Tailscale off after an application restart, disable the plugin in its configuration.",
 		"operationInProgress": "An operation is in progress. Disconnect can cancel sign-in or connection work."
 	},
 	"buttons": {
@@ -34,13 +33,9 @@
 		"reconnect": "Reconnect",
 		"signOut": "Sign out",
 		"resetPreferences": "Reset preferences",
-		"copy": "Copy"
+		"copyGrantCommand": "Copy the operator grant command"
 	},
 	"fields": {
-		"tailnet": "Tailnet",
-		"dnsName": "MagicDNS name",
-		"ipv4": "IPv4 address",
-		"ipv6": "IPv6 address",
 		"config": {
 			"hostname": {
 				"title": "Hostname",

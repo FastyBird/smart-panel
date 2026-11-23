@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type VueWrapper, flushPromises, shallowMount } from '@vue/test-utils';
 
 import type { IService } from '../../../modules/extensions/store/services.store.types';
-import type { IRemoteAccessProvider } from '../../../modules/remote-access';
+import type { IProviderCardAction, IRemoteAccessProvider } from '../../../modules/remote-access';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { useCloudflareTunnelStatusStore } from '../store/cloudflare-tunnel-status.store';
 
@@ -73,19 +73,15 @@ const setService = (state = 'stopped', enabled = true) => {
 const mountCard = async () => {
 	wrapper = shallowMount(CloudflareTunnelProviderCard, {
 		props: { provider: { ...snapshot(0), kind: 'tunnel', capabilities: {} } as unknown as IRemoteAccessProvider },
-		global: {
-			renderStubDefaultSlot: true,
-			stubs: {
-				ElCard: false,
-				ElDropdown: { name: 'ElDropdown', props: ['loading', 'disabled'], template: '<div><slot /><slot name="dropdown" /></div>' },
-			},
-		},
 	});
 	await flushPromises();
 };
-const primary = () => wrapper.findComponent({ name: 'ElDropdown' });
+// The card renders through the module's provider card: its props are what the card shows
+const card = () => wrapper.findComponent({ name: 'ProviderCard' });
+const action = (): IProviderCardAction | null => card().props('action') as IProviderCardAction | null;
+const primaryLabel = (): string => action()?.label ?? '';
 const click = async () => {
-	primary().vm.$emit('click');
+	card().vm.$emit('action', action()!.key);
 	await flushPromises();
 };
 
@@ -116,7 +112,7 @@ describe('Cloudflare card with the real status store and Extensions lifecycle', 
 		await vi.advanceTimersByTimeAsync(30_000);
 		await flushPromises();
 		expect(store.data?.state).toBe('connected');
-		expect(primary().text()).toContain('buttons.disconnect');
+		expect(primaryLabel()).toContain('buttons.disconnect');
 		expect(fns.get).toHaveBeenCalledTimes(2);
 	});
 
@@ -134,11 +130,11 @@ describe('Cloudflare card with the real status store and Extensions lifecycle', 
 			return Promise.resolve(true);
 		});
 		await mountCard();
-		expect(primary().text()).toContain('buttons.connect');
+		expect(primaryLabel()).toContain('buttons.connect');
 		await click();
-		expect(primary().text()).toContain('buttons.disconnect');
+		expect(primaryLabel()).toContain('buttons.disconnect');
 		await click();
-		expect(primary().text()).toContain('buttons.connect');
+		expect(primaryLabel()).toContain('buttons.connect');
 		await click();
 		expect(fns.start).toHaveBeenCalledTimes(2);
 		expect(fns.stop).toHaveBeenCalledTimes(1);
@@ -150,7 +146,7 @@ describe('Cloudflare card with the real status store and Extensions lifecycle', 
 		setService('started');
 		fns.restart.mockResolvedValue(false);
 		await mountCard();
-		expect(primary().text()).toContain('buttons.reconnect');
+		expect(primaryLabel()).toContain('buttons.reconnect');
 		await click();
 		expect(fns.start).not.toHaveBeenCalled();
 		expect(fns.restart).toHaveBeenCalledWith('plugin', 'remote-access-cloudflare-tunnel-plugin', 'tunnel');
@@ -180,11 +176,11 @@ describe('Cloudflare card with the real status store and Extensions lifecycle', 
 			return Promise.resolve(response(current));
 		});
 		await mountCard();
-		primary().vm.$emit('command', 'remove');
+		card().vm.$emit('action', 'remove');
 		await flushPromises();
 		expect(fns.post).toHaveBeenCalledWith('/plugins/remote-access-cloudflare-tunnel/reset', { signal: expect.any(AbortSignal) });
 		expect(store.data?.privilegedSetup?.available).toBe(true);
-		expect(primary().text()).toContain('buttons.configure');
+		expect(primaryLabel()).toContain('buttons.configure');
 		expect(store.semaphore.resetting).toBe(false);
 		expect(fns.aggregate).toHaveBeenCalledTimes(1);
 	});
@@ -193,7 +189,7 @@ describe('Cloudflare card with the real status store and Extensions lifecycle', 
 		await mountCard();
 		acting.value = true;
 		await flushPromises();
-		expect(primary().props('disabled')).toBe(true);
+		expect(action()?.disabled).toBe(true);
 		await click();
 		expect(fns.start).not.toHaveBeenCalled();
 	});
@@ -202,6 +198,6 @@ describe('Cloudflare card with the real status store and Extensions lifecycle', 
 		if (reason === 'disabled') setService('stopped', false);
 		else profile.value = { role: UsersModuleUserRole.user };
 		await mountCard();
-		expect(primary().exists()).toBe(false);
+		expect(action()).toBeNull();
 	});
 });

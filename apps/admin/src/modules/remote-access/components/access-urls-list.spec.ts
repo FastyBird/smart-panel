@@ -20,11 +20,8 @@ const useRemoteAccessUrlsMock = vi.fn<() => IUseRemoteAccessUrls>();
 
 const toDataURL = vi.fn().mockResolvedValue('data:image/png;base64,mockqrcode');
 
-// Plain top-level `vi.fn()` consts, not `vi.hoisted()` - mirrors the pattern already used above for
-// `useRemoteAccessUrlsMock`: `vi.fn()` does not depend on any import that needs linking first, so it
-// is safe to reference from the `vi.mock('../../../common', ...)` factory below.
-const copyMock = vi.fn<(text: string) => Promise<boolean>>();
-const flashSuccessMock = vi.fn();
+// A plain top-level `vi.fn()` const, not `vi.hoisted()` - mirrors `useRemoteAccessUrlsMock` above: `vi.fn()` does not
+// depend on any import that needs linking first, so it is safe to reference from the `vi.mock` factory below.
 const flashErrorMock = vi.fn();
 
 vi.mock('vue-i18n', () => ({
@@ -38,10 +35,14 @@ vi.mock('qrcode', () => ({
 	default: { toDataURL: (...args: unknown[]) => toDataURL(...args) },
 }));
 
+// Copying belongs to the shared copy field (covered by its own spec): here it only has to show the right value
 vi.mock('../../../common', () => ({
-	useClipboard: () => ({ copy: copyMock }),
-	useFlashMessage: () => ({ success: flashSuccessMock, error: flashErrorMock }),
+	CopyField: { name: 'CopyField', props: ['value'], template: '<div class="copy-field">{{ value }}</div>' },
+	StatusTag: { name: 'StatusTag', props: ['status', 'label'], template: '<span class="status-tag">{{ label }}</span>' },
+	useFlashMessage: () => ({ success: vi.fn(), error: flashErrorMock }),
 }));
+
+const qrToggles = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('[data-test-id="access-url-qr-toggle"]');
 
 vi.mock('../composables', () => ({
 	useRemoteAccessUrls: () => useRemoteAccessUrlsMock(),
@@ -53,8 +54,6 @@ describe('AccessUrlsList', () => {
 		// `mockImplementation` (the race-condition regression below) must not leak it forward.
 		toDataURL.mockReset().mockResolvedValue('data:image/png;base64,mockqrcode');
 
-		copyMock.mockReset().mockResolvedValue(true);
-		flashSuccessMock.mockReset();
 		flashErrorMock.mockReset();
 
 		useRemoteAccessUrlsMock.mockReturnValue({
@@ -71,43 +70,27 @@ describe('AccessUrlsList', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders the external endpoints in the exact ranked order, marking only the first as primary', () => {
+	it('renders the internal URL, its candidates and the external endpoints in their ranked order, marking only the first as primary', () => {
 		const wrapper = mount(AccessUrlsList);
 
-		const rows = wrapper.findAll('.font-mono');
-		const rowTexts = rows.map((row) => row.text());
+		const values = wrapper.findAllComponents({ name: 'CopyField' }).map((field) => field.props('value'));
 
-		expect(rowTexts).toContain('https://node.tailnet.ts.net');
-		const urlOrder = rankedExternal.map((endpoint) => endpoint.url).filter((url) => rowTexts.includes(url));
-		expect(urlOrder).toEqual(rankedExternal.map((endpoint) => endpoint.url));
+		expect(values).toEqual(['http://localhost:3000', 'http://192.168.1.5:3000', ...rankedExternal.map((endpoint) => endpoint.url)]);
 
-		const primaryTags = wrapper.findAll('.el-tag').filter((tag) => tag.text() === 'remoteAccessModule.texts.primary');
+		const primaryTags = wrapper.findAllComponents({ name: 'StatusTag' }).filter((tag) => tag.props('label') === 'remoteAccessModule.texts.primary');
 		expect(primaryTags).toHaveLength(1);
 	});
 
-	it('copies a URL to the clipboard when the copy button is pressed and shows a success toast', async () => {
+	it('tags each external endpoint with its transport and scope', () => {
 		const wrapper = mount(AccessUrlsList);
 
-		const copyButtons = wrapper.findAll('button[aria-label="remoteAccessModule.buttons.copy.title"]');
-		await copyButtons[0]!.trigger('click');
-		await flushPromises();
+		const external = wrapper.findAll('[data-test-id="access-url-external"]');
+		const tags = wrapper.findAllComponents({ name: 'StatusTag' });
+		const labels = (index: number): string[] =>
+			tags.filter((tag) => external[index]!.element.contains(tag.element)).map((tag) => `${tag.props('status')}:${tag.props('label')}`);
 
-		expect(copyMock).toHaveBeenCalledWith('http://localhost:3000');
-		expect(flashSuccessMock).toHaveBeenCalledWith('remoteAccessModule.messages.urlCopied');
-		expect(flashErrorMock).not.toHaveBeenCalled();
-	});
-
-	it('shows an error toast only when the clipboard copy actually fails', async () => {
-		copyMock.mockResolvedValue(false);
-
-		const wrapper = mount(AccessUrlsList);
-
-		const copyButtons = wrapper.findAll('button[aria-label="remoteAccessModule.buttons.copy.title"]');
-		await copyButtons[0]!.trigger('click');
-		await flushPromises();
-
-		expect(flashErrorMock).toHaveBeenCalledWith('remoteAccessModule.messages.copyFailed');
-		expect(flashSuccessMock).not.toHaveBeenCalled();
+		expect(labels(1)).toEqual(['ok:remoteAccessModule.texts.https', 'warn:remoteAccessModule.texts.public']);
+		expect(labels(2)).toEqual(['warn:remoteAccessModule.texts.http', 'warn:remoteAccessModule.texts.public']);
 	});
 
 	it('lazily generates and displays a QR code the first time it is requested for a URL', async () => {
@@ -115,10 +98,13 @@ describe('AccessUrlsList', () => {
 
 		expect(wrapper.find('img').exists()).toBe(false);
 
-		const qrButtons = wrapper.findAll('button[aria-label="remoteAccessModule.buttons.showQr.title"]');
+		const qrButtons = qrToggles(wrapper);
+		expect(qrButtons[0]!.attributes('aria-expanded')).toBe('false');
 		await qrButtons[0]!.trigger('click');
 		await flushPromises();
 
+		expect(qrToggles(wrapper)[0]!.attributes('aria-expanded')).toBe('true');
+		expect(qrToggles(wrapper)[0]!.text()).toContain('remoteAccessModule.buttons.hideQr.title');
 		expect(toDataURL).toHaveBeenCalledWith('http://localhost:3000', { width: 180, margin: 2 });
 		expect(wrapper.find('img').attributes('src')).toBe('data:image/png;base64,mockqrcode');
 	});
@@ -126,7 +112,7 @@ describe('AccessUrlsList', () => {
 	it('toggles the QR code closed on a second click without regenerating it', async () => {
 		const wrapper = mount(AccessUrlsList);
 
-		const qrButtons = wrapper.findAll('button[aria-label="remoteAccessModule.buttons.showQr.title"]');
+		const qrButtons = qrToggles(wrapper);
 		await qrButtons[0]!.trigger('click');
 		await flushPromises();
 		await qrButtons[0]!.trigger('click');
@@ -134,6 +120,18 @@ describe('AccessUrlsList', () => {
 
 		expect(wrapper.find('img').exists()).toBe(false);
 		expect(toDataURL).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports a QR code that cannot be generated and closes it', async () => {
+		toDataURL.mockRejectedValue(new Error('too long'));
+
+		const wrapper = mount(AccessUrlsList);
+
+		await qrToggles(wrapper)[0]!.trigger('click');
+		await flushPromises();
+
+		expect(flashErrorMock).toHaveBeenCalledWith('remoteAccessModule.messages.qrFailed');
+		expect(qrToggles(wrapper)[0]!.attributes('aria-expanded')).toBe('false');
 	});
 
 	it('shows a message when no external access is configured', () => {
@@ -163,7 +161,7 @@ describe('AccessUrlsList', () => {
 
 		const wrapper = mount(AccessUrlsList);
 
-		const qrButtons = wrapper.findAll('button[aria-label="remoteAccessModule.buttons.showQr.title"]');
+		const qrButtons = qrToggles(wrapper);
 
 		// Select the internal URL's QR first - its request stays pending.
 		await qrButtons[0]!.trigger('click');

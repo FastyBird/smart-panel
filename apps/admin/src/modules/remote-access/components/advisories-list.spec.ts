@@ -1,6 +1,5 @@
 import { ref } from 'vue';
 
-import { ElTag } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -8,12 +7,12 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { RemoteAccessModuleAdvisorySeverity } from '../../../openapi.constants';
 import type { IRemoteAccessAdvisory } from '../store/remote-access-status.store.types';
 
-import AdvisoriesTable from './advisories-table.vue';
+import AdvisoriesList from './advisories-list.vue';
 
 const advisories = ref<IRemoteAccessAdvisory[]>([]);
 
 vi.mock('vue-i18n', () => ({
-	// `IconWithChild` comes from the `common` barrel, which transitively imports
+	// `StateView` and `StatusTag` come from the `common` barrel, which transitively imports
 	// `src/locales/index.ts` - that module calls `createI18n(...)` at import time, so it has to
 	// exist on the mock too, even though this spec only ever calls `useI18n()` itself. Mirrors
 	// provider-cards.spec.ts (same directory, same full-mount shape).
@@ -25,7 +24,7 @@ vi.mock('../composables', () => ({
 	useRemoteAccessStatus: () => ({ advisories }),
 }));
 
-describe('AdvisoriesTable', () => {
+describe('AdvisoriesList', () => {
 	it('makes the HTTPS-disabled advisory console URL clickable without changing the message', async () => {
 		const consoleUrl = 'https://login.tailscale.com/admin/dns';
 		const message = `HTTPS Serve was requested, but this tailnet does not have HTTPS certificates enabled. Enable them at ${consoleUrl}.`;
@@ -38,7 +37,7 @@ describe('AdvisoriesTable', () => {
 			},
 		];
 
-		const wrapper = mount(AdvisoriesTable);
+		const wrapper = mount(AdvisoriesList);
 		await flushPromises();
 
 		const link = wrapper.find(`a[href="${consoleUrl}"]`);
@@ -46,7 +45,7 @@ describe('AdvisoriesTable', () => {
 		expect(link.text()).toBe(consoleUrl);
 		expect(link.attributes('target')).toBe('_blank');
 		expect(link.attributes('rel')).toBe('noopener noreferrer');
-		expect(wrapper.findAll('tbody tr')[0].findAll('td')[1].text()).toBe(message);
+		expect(wrapper.find('[data-test-id="advisory-message"]').text()).toBe(message);
 		wrapper.unmount();
 	});
 
@@ -60,15 +59,15 @@ describe('AdvisoriesTable', () => {
 			},
 		];
 
-		const wrapper = mount(AdvisoriesTable);
+		const wrapper = mount(AdvisoriesList);
 		await flushPromises();
 
-		expect(wrapper.find('tbody a').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="advisory-message"] a').exists()).toBe(false);
 		expect(wrapper.text()).toContain(advisories.value[0].message);
 		wrapper.unmount();
 	});
 
-	it('renders one row per advisory with the right tag type and "Module" for a null provider', async () => {
+	it('renders one row per advisory with the right severity status and "Module" for a null provider', async () => {
 		advisories.value = [
 			{ code: 'proxy-trust-untrusted', severity: RemoteAccessModuleAdvisorySeverity.critical, message: 'Forwarded headers ignored', provider: null },
 			{
@@ -85,18 +84,20 @@ describe('AdvisoriesTable', () => {
 			},
 		];
 
-		const wrapper = mount(AdvisoriesTable);
+		const wrapper = mount(AdvisoriesList);
 
-		// +1 for the header row - mirrors users-table.spec.ts.
-		expect(wrapper.findAll('tr').length).toBe(advisories.value.length + 1);
+		expect(wrapper.findAll('[data-test-id="advisory"]')).toHaveLength(advisories.value.length);
 
-		// El-table renders each column's scoped-slot content (the tags, the cell text) on a
-		// following tick - mirrors users-table.spec.ts's row-content assertions.
 		await flushPromises();
 
-		const tags = wrapper.findAllComponents(ElTag);
+		const tags = wrapper.findAllComponents({ name: 'StatusTag' });
 
-		expect(tags.map((tag) => tag.props('type'))).toEqual(['danger', 'warning', 'info']);
+		expect(tags.map((tag) => tag.props('status'))).toEqual(['critical', 'warn', 'info']);
+		expect(tags.map((tag) => tag.props('label'))).toEqual([
+			'remoteAccessModule.severity.critical',
+			'remoteAccessModule.severity.warning',
+			'remoteAccessModule.severity.info',
+		]);
 
 		expect(wrapper.text()).toContain('remoteAccessModule.texts.moduleSource');
 		expect(wrapper.text()).toContain('remote-access-tailscale-plugin');
@@ -104,10 +105,10 @@ describe('AdvisoriesTable', () => {
 		expect(wrapper.text()).toContain('proxy-trust-untrusted');
 	});
 
-	it('renders the empty result when there are no advisories', () => {
+	it('renders the empty state when there are no advisories', () => {
 		advisories.value = [];
 
-		const wrapper = mount(AdvisoriesTable);
+		const wrapper = mount(AdvisoriesList);
 
 		expect(wrapper.text()).toContain('remoteAccessModule.texts.noAdvisories');
 	});

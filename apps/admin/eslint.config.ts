@@ -27,6 +27,9 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	'src/plugins/devices-*',
 	// AR-13: the automations list, edit drawer and flow editor
 	'src/modules/automations',
+	// AR-14: remote access and its provider plugins
+	'src/modules/remote-access',
+	'src/plugins/remote-access-*',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

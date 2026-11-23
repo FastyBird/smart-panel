@@ -187,7 +187,8 @@ repeats the verb and object ("Delete 3 devices").
 
 ## 5. Page templates
 
-Every screen is one of ten templates; a new module picks one and fills its slots.
+Every screen is one of ten templates; a new module picks one and fills its slots. Template 5 is built from
+`settings-layout` (banner slot, anchor nav, scroll container) and one `settings-section` card per anchor.
 
 | Template | Desktop composition | Phone (< 720 px) | Used by |
 | --- | --- | --- | --- |

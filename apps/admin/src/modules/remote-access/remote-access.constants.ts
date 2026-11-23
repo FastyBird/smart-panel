@@ -1,3 +1,5 @@
+import type { StatusTagStatus } from '../../common';
+
 export const REMOTE_ACCESS_MODULE_PREFIX = 'remote-access';
 
 export const REMOTE_ACCESS_MODULE_NAME = 'remote-access-module';
@@ -20,3 +22,15 @@ export enum EventType {
 export enum RouteNames {
 	REMOTE_ACCESS = 'remote_access_module-module',
 }
+
+// How each provider state reads as a status tag, for the provider cards of every plugin
+export const PROVIDER_STATE_STATUS: Record<string, StatusTagStatus> = {
+	connected: 'ok',
+	connecting: 'warn',
+	'pending-auth': 'warn',
+	'pending-approval': 'warn',
+	'setup-required': 'warn',
+	error: 'danger',
+};
+
+export const providerStateStatus = (state: string): StatusTagStatus => PROVIDER_STATE_STATUS[state] ?? 'info';

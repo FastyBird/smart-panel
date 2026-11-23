@@ -33,11 +33,11 @@
 					:data-setup-state="stage.state"
 					class="flex items-center gap-2 text-sm"
 				>
-					<el-icon :class="stage.state === 'complete' ? 'text-green-500' : stage.state === 'running' ? 'is-loading' : 'text-gray-400'">
+					<el-icon :class="stage.state === 'complete' ? 'text-green-500' : stage.state === 'running' ? 'is-loading' : 'text-muted'">
 						<icon :icon="setupStageIcons[stage.state]" />
 					</el-icon>
 					<span>{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.steps.${stage.step}`) }}</span>
-					<span class="text-xs text-gray-500">{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.states.${stage.state}`) }}</span>
+					<span class="text-xs text-secondary">{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.states.${stage.state}`) }}</span>
 				</li>
 			</ul>
 			<!-- Set up -->
@@ -59,7 +59,7 @@
 						:key="requirement.code"
 						class="flex items-center gap-2 text-sm"
 					>
-						<el-icon :class="requirement.satisfied ? 'text-green-500' : 'text-gray-400'">
+						<el-icon :class="requirement.satisfied ? 'text-green-500' : 'text-muted'">
 							<icon :icon="requirement.satisfied ? 'mdi:check-circle' : 'mdi:circle-outline'" />
 						</el-icon>
 						<span>{{ requirement.message }}</span>
@@ -115,7 +115,7 @@
 								v-if="remedyPlan.commands.length > 0"
 								class="flex items-start gap-2"
 							>
-								<pre class="font-mono text-xs bg-gray-100 rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
+								<pre class="font-mono text-xs bg-fill rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
 								<el-button
 									size="small"
 									@click="onCopyRemedyCommands"
@@ -148,7 +148,7 @@
 						v-if="remedyPlan.commands.length > 0"
 						class="flex items-start gap-2 mb-4"
 					>
-						<pre class="font-mono text-xs bg-gray-100 rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
+						<pre class="font-mono text-xs bg-fill rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
 						<el-button
 							size="small"
 							@click="onCopyRemedyCommands"
@@ -218,7 +218,7 @@
 								{{ authUrl }}
 							</a>
 
-							<div class="flex items-center gap-2 text-sm text-gray-500">
+							<div class="flex items-center gap-2 text-sm text-secondary">
 								<el-icon
 									v-if="isPolling"
 									class="is-loading"
@@ -231,7 +231,7 @@
 
 						<div
 							v-else-if="isPolling"
-							class="flex items-center gap-2 text-sm text-gray-500"
+							class="flex items-center gap-2 text-sm text-secondary"
 						>
 							<el-icon class="is-loading">
 								<icon icon="mdi:loading" />

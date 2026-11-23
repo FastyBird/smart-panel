@@ -84,6 +84,9 @@
 			"next": "Siguiente",
 			"finish": "Finalizar"
 		},
+		"settingsLayout": {
+			"sections": "Secciones"
+		},
 		"buttons": {
 			"home": {
 				"title": "Inicio"

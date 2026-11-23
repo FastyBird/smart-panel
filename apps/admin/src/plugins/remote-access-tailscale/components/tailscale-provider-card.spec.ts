@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, shallowMount } from '@vue/test-utils';
 
-import type { IRemoteAccessProvider } from '../../../modules/remote-access';
+import type { IProviderCardAction, IProviderCardLine, IProviderCardMenuItem, IRemoteAccessProvider } from '../../../modules/remote-access';
 import {
 	RemoteAccessModuleEndpointScope,
 	RemoteAccessModuleProviderKind,
@@ -60,6 +60,13 @@ vi.mock('../../../modules/extensions', () => ({
 
 vi.mock('../../../modules/remote-access', () => ({
 	useRemoteAccessStatus: () => ({ fetchStatus: fns.fetchRemoteAccessStatus }),
+	ProviderCard: {
+		name: 'ProviderCard',
+		props: ['icon', 'title', 'status', 'statusLabel', 'line', 'endpoints', 'action', 'menu'],
+		emits: ['action'],
+		template: '<div />',
+	},
+	providerStateStatus: (state: string) => state,
 }));
 
 vi.mock('../composables', () => ({
@@ -112,31 +119,21 @@ const mountCard = (provider: Partial<IRemoteAccessProvider>) => {
 	};
 	return shallowMount(TailscaleProviderCard, {
 		props: { provider: { ...baseProvider, ...provider } },
-		global: {
-			// Stubbed children keep their slot content as plain text - mirrors
-			// tailscale-setup-wizard.spec.ts (the split button's default slot is the action label).
-			renderStubDefaultSlot: true,
-			stubs: {
-				// The card's state/HTTPS tags live in ElCard's `#header` and `#footer` named
-				// slots - the generic auto-stub shallowMount gives every other child only ever
-				// renders an unnamed default slot, so ElCard has to render for real.
-				ElCard: false,
-				// ElDropdown is a real Popper/Teleport-based component - letting it render for
-				// real under shallowMount (whose auto-stub still replaces its internal button/
-				// tooltip children) throws deep in Vue's DOM patcher in jsdom. A small stub that
-				// forwards both the default slot (the main button's label) and the `#dropdown`
-				// named slot (the secondary actions) exercises the same primary/secondary mapping
-				// without going through Popper, while still keeping `type`/`loading` inspectable
-				// via `.props(...)` and `@click`/`@command` triggerable via `.vm.$emit(...)`.
-				ElDropdown: {
-					name: 'ElDropdown',
-					props: ['type', 'loading'],
-					template: '<div><slot /><slot name="dropdown" /></div>',
-				},
-			},
-		},
 	});
 };
+
+type CardWrapper = ReturnType<typeof mountCard>;
+
+// The card renders through the module's provider card: its props are what the card shows
+const card = (wrapper: CardWrapper) => wrapper.findComponent({ name: 'ProviderCard' });
+const cardAction = (wrapper: CardWrapper): IProviderCardAction | null => card(wrapper).props('action') as IProviderCardAction | null;
+const menuKeys = (wrapper: CardWrapper): string[] => ((card(wrapper).props('menu') ?? []) as IProviderCardMenuItem[]).map((item) => item.key);
+const cardLine = (wrapper: CardWrapper): IProviderCardLine => card(wrapper).props('line') as IProviderCardLine;
+const choose = async (wrapper: CardWrapper, key: string): Promise<void> => {
+	card(wrapper).vm.$emit('action', key);
+	await flushPromises();
+};
+const runPrimary = (wrapper: CardWrapper): Promise<void> => choose(wrapper, cardAction(wrapper)!.key);
 
 describe('TailscaleProviderCard', () => {
 	beforeEach(() => {
@@ -168,11 +165,8 @@ describe('TailscaleProviderCard', () => {
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.unsupported });
 
 			try {
-				const button = wrapper
-					.findAllComponents({ name: 'ElButton' })
-					.find((button) => button.text().includes('extensionsModule.buttons.documentation'));
-				expect(button).toBeDefined();
-				await button!.vm.$emit('click', new MouseEvent('click'));
+				expect(menuKeys(wrapper)).toContain('documentation');
+				await choose(wrapper, 'documentation');
 				expect(open).toHaveBeenCalledWith(url, '_blank', 'noopener,noreferrer');
 				expect(fns.fetchExtension).not.toHaveBeenCalled();
 			} finally {
@@ -196,10 +190,7 @@ describe('TailscaleProviderCard', () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.unsupported });
 
 		try {
-			const button = wrapper
-				.findAllComponents({ name: 'ElButton' })
-				.find((button) => button.text().includes('extensionsModule.buttons.documentation'));
-			await button!.vm.$emit('click', new MouseEvent('click'));
+			await choose(wrapper, 'documentation');
 			expect(open).toHaveBeenCalledWith('https://panel.example.test/provider', '_blank', 'noopener,noreferrer');
 		} finally {
 			open.mockRestore();
@@ -213,7 +204,7 @@ describe('TailscaleProviderCard', () => {
 			requirements.value = [{ code: 'platform-supported', satisfied: false, message: 'Unsupported platform.', remedy: { commands: [], note } }];
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.unsupported });
 
-			expect(wrapper.text()).not.toContain('extensionsModule.buttons.documentation');
+			expect(menuKeys(wrapper)).not.toContain('documentation');
 			wrapper.unmount();
 		}
 	);
@@ -221,18 +212,14 @@ describe('TailscaleProviderCard', () => {
 	it('offers setup as the primary action for an owner on a fresh node, with no secondary actions', () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
 
-		const dropdown = wrapper.findComponent({ name: 'ElDropdown' });
-
-		expect(dropdown.exists()).toBe(true);
-		expect(dropdown.props('type')).toBe('primary');
-		expect(dropdown.text()).toContain('remoteAccessTailscalePlugin.buttons.setup');
-		expect(wrapper.findAllComponents({ name: 'ElDropdownItem' })).toHaveLength(0);
+		expect(cardAction(wrapper)).toMatchObject({ key: 'setup', label: 'remoteAccessTailscalePlugin.buttons.setup', primary: true });
+		expect(menuKeys(wrapper)).toEqual([]);
 	});
 
 	it('clicking the main button runs the primary action', async () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'example.ts.net' } });
 
-		await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
+		await runPrimary(wrapper);
 
 		expect(fns.connect).toHaveBeenCalledWith();
 	});
@@ -240,56 +227,50 @@ describe('TailscaleProviderCard', () => {
 	it('offers connect as the primary action, and the owner-only actions as secondary, for a disconnected node with a tailnet', () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'example.ts.net' } });
 
-		const dropdown = wrapper.findComponent({ name: 'ElDropdown' });
-
-		expect(dropdown.exists()).toBe(true);
-		expect(dropdown.props('type')).toBeUndefined();
-		expect(dropdown.text()).toContain('remoteAccessTailscalePlugin.buttons.connect');
-
-		const items = wrapper.findAllComponents({ name: 'ElDropdownItem' });
-
-		expect(items.map((item) => item.props('command'))).toEqual(['signOut', 'resetPreferences']);
+		expect(cardAction(wrapper)).toMatchObject({ key: 'connect', label: 'remoteAccessTailscalePlugin.buttons.connect', primary: false });
+		expect(menuKeys(wrapper)).toEqual(['signOut', 'resetPreferences']);
 	});
 
 	it('offers disconnect as the primary action and the owner-only actions as secondary for a connected node', () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
 
-		const dropdown = wrapper.findComponent({ name: 'ElDropdown' });
-
-		expect(dropdown.exists()).toBe(true);
-		expect(dropdown.props('type')).toBeUndefined();
-		expect(dropdown.text()).toContain('remoteAccessTailscalePlugin.buttons.disconnect');
-
-		const items = wrapper.findAllComponents({ name: 'ElDropdownItem' });
-
-		expect(items.map((item) => item.props('command'))).toEqual(['signOut', 'resetPreferences']);
+		expect(cardAction(wrapper)).toMatchObject({ key: 'disconnect', label: 'remoteAccessTailscalePlugin.buttons.disconnect', primary: false });
+		expect(menuKeys(wrapper)).toEqual(['signOut', 'resetPreferences']);
 	});
 
-	it('renders no dropdown when the viewer is not the owner and no self-service action applies', () => {
+	it('offers no action when the viewer is not the owner and no self-service action applies', () => {
 		profile.value = { role: UsersModuleUserRole.user };
 
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
 
-		expect(wrapper.findComponent({ name: 'ElDropdown' }).exists()).toBe(false);
+		expect(cardAction(wrapper)).toBeNull();
+		expect(menuKeys(wrapper)).toEqual([]);
 	});
 
-	it('shows the HTTPS tag when an https endpoint exists', () => {
+	it('shows the published endpoints, HTTPS first', () => {
 		const wrapper = mountCard({
 			state: RemoteAccessModuleProviderState.connected,
-			endpoints: [{ url: 'https://node.tailnet.ts.net', scope: RemoteAccessModuleEndpointScope.private, https: true, label: 'Tailscale (HTTPS)' }],
+			endpoints: [
+				{ url: 'http://100.64.0.1:3000', scope: RemoteAccessModuleEndpointScope.private, https: false, label: 'Tailscale' },
+				{ url: 'https://node.tailnet.ts.net', scope: RemoteAccessModuleEndpointScope.private, https: true, label: 'Tailscale (HTTPS)' },
+			],
 		});
 
-		const tags = wrapper.findAllComponents({ name: 'ElTag' });
-
-		expect(tags.some((tag) => tag.text().includes('remoteAccessModule.texts.https'))).toBe(true);
+		expect(card(wrapper).props('endpoints')).toEqual(['https://node.tailnet.ts.net', 'http://100.64.0.1:3000']);
 	});
 
-	it('does not show the HTTPS tag when there is no https endpoint', () => {
-		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected, endpoints: [] });
+	it("shows the node's name and address while no endpoint is published", () => {
+		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected, endpoints: [], details: { dnsName: 'node.tailnet.ts.net', ipv4: '100.64.0.1' } });
 
-		const tags = wrapper.findAllComponents({ name: 'ElTag' });
+		expect(card(wrapper).props('endpoints')).toEqual(['node.tailnet.ts.net', '100.64.0.1']);
+	});
 
-		expect(tags.some((tag) => tag.text().includes('remoteAccessModule.texts.https'))).toBe(false);
+	it('reads the provider state as a status tag and describes the provider while nothing is wrong', () => {
+		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+
+		expect(card(wrapper).props('status')).toBe('connected');
+		expect(card(wrapper).props('statusLabel')).toBe('remoteAccessModule.status.connected');
+		expect(cardLine(wrapper)).toEqual({ text: 'remoteAccessTailscalePlugin.texts.cardDescription' });
 	});
 
 	describe('refetch after connection actions (F1)', () => {
@@ -298,8 +279,7 @@ describe('TailscaleProviderCard', () => {
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
-			await flushPromises();
+			await runPrimary(wrapper);
 
 			expect(fns.connect).toHaveBeenCalled();
 			expect(fns.refreshStatus).toHaveBeenCalled();
@@ -312,8 +292,7 @@ describe('TailscaleProviderCard', () => {
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
-			await flushPromises();
+			await runPrimary(wrapper);
 
 			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
@@ -324,8 +303,7 @@ describe('TailscaleProviderCard', () => {
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
-			await flushPromises();
+			await runPrimary(wrapper);
 
 			expect(fns.disconnect).toHaveBeenCalled();
 			expect(fns.refreshStatus).toHaveBeenCalled();
@@ -338,8 +316,7 @@ describe('TailscaleProviderCard', () => {
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
-			await flushPromises();
+			await runPrimary(wrapper);
 
 			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
@@ -350,8 +327,7 @@ describe('TailscaleProviderCard', () => {
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
-			await flushPromises();
+			await runPrimary(wrapper);
 
 			expect(fns.connect).toHaveBeenCalled();
 			expect(fns.refreshStatus).toHaveBeenCalled();
@@ -364,74 +340,56 @@ describe('TailscaleProviderCard', () => {
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
-			await flushPromises();
+			await runPrimary(wrapper);
 
 			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
 		});
 	});
 
-	describe('D12: "Cannot be used yet" banner', () => {
-		it('shows the banner naming the first unsatisfied requirement while setup-required', () => {
+	describe('D12: "Cannot be used yet" line', () => {
+		it('names the first unsatisfied requirement while setup-required', () => {
 			requirements.value = [
 				{ code: 'binary-installed', satisfied: true, message: 'Tailscale is installed.', remedy: null },
 				{ code: 'daemon-active', satisfied: false, message: 'tailscaled is not active.', remedy: null },
 			];
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
 
-			const alert = wrapper
-				.findAllComponents({ name: 'ElAlert' })
-				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
-
-			expect(alert).toBeTruthy();
-			expect(alert?.props('description')).toBe('tailscaled is not active.');
+			expect(cardLine(wrapper)).toEqual({ text: 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle: tailscaled is not active.', status: 'warn' });
 		});
 
-		it('shows the banner naming the first unsatisfied requirement while not-installed', () => {
+		it('names the first unsatisfied requirement while not-installed', () => {
 			requirements.value = [{ code: 'binary-installed', satisfied: false, message: 'Tailscale is not installed.', remedy: null }];
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.not_installed });
 
-			const alert = wrapper
-				.findAllComponents({ name: 'ElAlert' })
-				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
-
-			expect(alert?.props('description')).toBe('Tailscale is not installed.');
+			expect(cardLine(wrapper)).toEqual({ text: 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle: Tailscale is not installed.', status: 'warn' });
 		});
 
-		it('does not show the banner once every requirement is satisfied', () => {
+		it('does not say so once every requirement is satisfied', () => {
 			requirements.value = [{ code: 'binary-installed', satisfied: true, message: 'x', remedy: null }];
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
 
-			const alert = wrapper
-				.findAllComponents({ name: 'ElAlert' })
-				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
-
-			expect(alert).toBeUndefined();
+			expect(cardLine(wrapper).text).not.toContain('remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
 		});
 
-		it('does not show the banner for a normal, non-blocked state', () => {
+		it('does not say so for a normal, non-blocked state', () => {
 			requirements.value = [{ code: 'daemon-active', satisfied: false, message: 'x', remedy: null }];
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'x' } });
 
-			const alert = wrapper
-				.findAllComponents({ name: 'ElAlert' })
-				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
-
-			expect(alert).toBeUndefined();
+			expect(cardLine(wrapper).text).not.toContain('remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
 		});
 	});
 
 	describe('D12: operator-not-granted advisory', () => {
-		it('shows the advisory text and the copyable operator-grant command', () => {
+		it('shows the advisory text and offers the operator-grant command in the menu', () => {
 			status.value = { advisories: [{ code: 'operator-not-granted', message: 'The smart-panel operator has not been granted.' }] };
 			requirements.value = [
 				{ code: 'operator-granted', satisfied: false, message: 'x', remedy: { commands: ['sudo tailscale set --operator=smart-panel'], note: null } },
 			];
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
 
-			expect(wrapper.text()).toContain('The smart-panel operator has not been granted.');
-			expect(wrapper.text()).toContain('sudo tailscale set --operator=smart-panel');
+			expect(cardLine(wrapper)).toEqual({ text: 'The smart-panel operator has not been granted.', status: 'danger' });
+			expect(menuKeys(wrapper)).toContain('copyGrantCommand');
 		});
 
 		it('copies the operator-grant command via the shared clipboard composable', async () => {
@@ -441,21 +399,17 @@ describe('TailscaleProviderCard', () => {
 			];
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
 
-			const copyButton = wrapper
-				.findAllComponents({ name: 'ElButton' })
-				.find((button) => button.text().includes('remoteAccessTailscalePlugin.buttons.copy'));
-			await copyButton?.vm.$emit('click');
-			await flushPromises();
+			await choose(wrapper, 'copyGrantCommand');
 
 			expect(fns.copy).toHaveBeenCalledWith('sudo tailscale set --operator=smart-panel');
 			expect(fns.flashSuccess).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.commandCopied');
 		});
 
-		it('does not show the advisory block when there is no operator-not-granted advisory', () => {
+		it('offers no operator-grant command when there is no operator-not-granted advisory', () => {
 			status.value = { advisories: [] };
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
 
-			expect(wrapper.text()).not.toContain('sudo tailscale set --operator');
+			expect(menuKeys(wrapper)).not.toContain('copyGrantCommand');
 		});
 	});
 
@@ -466,47 +420,34 @@ describe('TailscaleProviderCard', () => {
 			);
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'signOut');
-			await flushPromises();
+			await choose(wrapper, 'signOut');
 
-			const hint = wrapper
-				.findAllComponents({ name: 'ElAlert' })
-				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.errors.operatorNotGranted');
-			expect(hint).toBeTruthy();
+			expect(cardLine(wrapper)).toEqual({ text: 'remoteAccessTailscalePlugin.errors.operatorNotGranted', status: 'warn' });
 		});
 
 		it('shows a recovery hint after reset-preferences fails with a known error code', async () => {
 			fns.resetPreferences.mockRejectedValue(new RemoteAccessTailscaleApiException('The daemon is not running.', 409, null, 'daemon-not-active'));
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'resetPreferences');
-			await flushPromises();
+			await choose(wrapper, 'resetPreferences');
 
-			const hint = wrapper
-				.findAllComponents({ name: 'ElAlert' })
-				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.errors.daemonNotActive');
-			expect(hint).toBeTruthy();
+			expect(cardLine(wrapper)).toEqual({ text: 'remoteAccessTailscalePlugin.errors.daemonNotActive', status: 'warn' });
 		});
 
 		it('shows no hint for an unrecognised or absent error code', async () => {
 			fns.logout.mockRejectedValue(new RemoteAccessTailscaleApiException('Internal error detail', 500));
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'signOut');
-			await flushPromises();
+			await choose(wrapper, 'signOut');
 
-			const hint = wrapper
-				.findAllComponents({ name: 'ElAlert' })
-				.find((alert) => typeof alert.props('title') === 'string' && alert.props('title').startsWith('remoteAccessTailscalePlugin.errors.'));
-			expect(hint).toBeUndefined();
+			expect(cardLine(wrapper).text).not.toMatch(/^remoteAccessTailscalePlugin\.errors\./);
 		});
 
 		it('shows the backend reason as a toast for a 409 sign-out failure', async () => {
 			fns.logout.mockRejectedValue(new RemoteAccessTailscaleApiException('A prerequisite is not satisfied.', 409));
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
 
-			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'signOut');
-			await flushPromises();
+			await choose(wrapper, 'signOut');
 
 			expect(fns.flashError).toHaveBeenCalledWith('A prerequisite is not satisfied.');
 		});
