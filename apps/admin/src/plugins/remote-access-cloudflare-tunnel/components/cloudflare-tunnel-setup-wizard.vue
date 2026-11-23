@@ -4,17 +4,17 @@
 		:title="t('remoteAccessCloudflareTunnelPlugin.wizard.title')"
 		:fullscreen="isPhone"
 		:class="isPhone ? 'flex! flex-col' : undefined"
-		:body-class="isPhone ? 'flex-1 flex flex-col min-h-0' : undefined"
+		:body-class="isPhone ? 'flex-1 min-h-0 overflow-y-auto' : undefined"
 		width="min(760px, calc(100vw - 32px))"
 		:close-on-click-modal="false"
 		@update:model-value="onDialogUpdate"
 	>
 		<!-- Spec section 7: provider setup runs in wizard-shell. The flow moves forward on its own (an install job
 			completing, a saved config), so it never goes back to a completed step -->
-		<!-- On phone the dialog fills the screen and the footer sits at its bottom -->
+		<!-- On phone the dialog fills the screen: its body scrolls a tall step, and the shell's min-h-full keeps the
+			footer at the bottom of a short one -->
 		<wizard-shell
 			:steps="shellSteps"
-			class="flex-1"
 			:current="currentStep"
 			:next-label="nextLabel"
 			:next-visible="nextVisible"
