@@ -30,6 +30,13 @@
 - A state that is not drawn (§11) is composed from the templates in §7. Do not invent a new look for it.
 - A screen not yet migrated may still look different. New work follows this spec; a change to an old screen moves it
   onto the redesign when practical.
+- `melos run check-design-system` reports hex colours outside `theme.dart`, raw font sizes and the stock widgets in
+  §1. Findings are warnings, except in the folders listed under `strict` in `apps/panel/tools/design_system.yaml`,
+  where they fail CI; a task that migrates a folder adds it there. A line that must keep a raw value says why with
+  `// design-system: ignore <rule>`.
+- Shared components are shown in the debug-only component gallery (Settings › Component gallery in debug builds),
+  at each class, orientation, theme and accent. Each component task adds its entries to its section in
+  `apps/panel/lib/features/gallery/gallery_sections.dart`.
 
 ## 1. Principles
 

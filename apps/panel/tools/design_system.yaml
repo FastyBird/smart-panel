@@ -1,0 +1,28 @@
+# Design system checks (docs/display-ui-design-spec.md §1, §12).
+#
+# `dart run tools/check_design_system.dart` reads this file. Paths are relative
+# to apps/panel and match by prefix: a folder ends with `/`, a file is its full
+# path.
+#
+# Findings in a `strict` folder fail the check. Findings anywhere else are
+# warnings. When a redesign task has migrated a folder, it adds the folder here
+# in the same PR.
+strict:
+  - lib/features/gallery/
+
+# Generated code is never checked.
+exclude:
+  - lib/api/
+  - lib/spec/
+  - lib/l10n/
+  - lib/mocks/
+  - '*.g.dart'
+  - '*.freezed.dart'
+  - '*.mapper.dart'
+
+# Files where a rule does not apply: the token classes themselves.
+allow:
+  hex-colour:
+    - lib/core/utils/theme.dart
+  font-size:
+    - lib/core/utils/theme.dart

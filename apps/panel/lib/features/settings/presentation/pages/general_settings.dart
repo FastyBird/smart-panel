@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -6,6 +7,7 @@ import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -85,6 +87,16 @@ class GeneralSettingsPage extends StatelessWidget {
 				iconBgColor: dangerBg,
 				route: 'maintenance',
 			),
+			// Developer tool; release builds have neither this entry nor the route.
+			if (kDebugMode)
+				_TileData(
+					label: 'Component gallery',
+					icon: MdiIcons.palette,
+					iconColor: primaryColor,
+					iconBgColor: primaryBg,
+					route: AppRouteNames.gallery,
+					rootRoute: true,
+				),
 		];
 
 		return ListenableBuilder(
@@ -139,7 +151,8 @@ class GeneralSettingsPage extends StatelessWidget {
 																	iconColor: row[i].iconColor,
 																	iconBgColor: row[i].iconBgColor,
 																	onTap: () {
-																		Navigator.of(context).pushNamed(row[i].route);
+																		Navigator.of(context, rootNavigator: row[i].rootRoute)
+																				.pushNamed(row[i].route);
 																	},
 																),
 															),
@@ -171,11 +184,15 @@ class _TileData {
 	final Color iconBgColor;
 	final String route;
 
+	/// Whether [route] is an app route rather than a settings page.
+	final bool rootRoute;
+
 	const _TileData({
 		required this.label,
 		required this.icon,
 		required this.iconColor,
 		required this.iconBgColor,
 		required this.route,
+		this.rootRoute = false,
 	});
 }
