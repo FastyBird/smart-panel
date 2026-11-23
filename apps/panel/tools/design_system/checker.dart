@@ -456,10 +456,15 @@ class _Visitor extends RecursiveAstVisitor<void> {
       SwitchExpressionCase(:final guardedPattern) => _patternDeclares(guardedPattern.pattern, name),
       ClassDeclaration(:final members) ||
       MixinDeclaration(:final members) ||
-      EnumDeclaration(:final members) ||
-      ExtensionDeclaration(:final members) ||
-      ExtensionTypeDeclaration(:final members) =>
+      ExtensionDeclaration(:final members) =>
         inMembers(members),
+      // Enum values are implicit static fields: `enum Palette { ui; … }`.
+      EnumDeclaration(:final constants, :final members) =>
+        constants.any((constant) => named(constant.name)) || inMembers(members),
+      // The representation field is in scope in the members:
+      // `extension type Palette(dynamic ui) { … }`.
+      ExtensionTypeDeclaration(:final representation, :final members) =>
+        named(representation.fieldName) || inMembers(members),
       // The file's own functions, variables and types: `Color(…)` calls a
       // top-level `Color` declared here, not the dart:ui class.
       CompilationUnit(:final declarations) => declarations.any((declaration) => switch (declaration) {

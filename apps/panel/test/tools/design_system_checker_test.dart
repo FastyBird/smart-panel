@@ -82,6 +82,18 @@ final d = TextStyle(height: 1.2, letterSpacing: 0.5);
 
   group('stock widgets', () {
     test('reports each stock widget the design replaces', () {
+      // Spelled out here so that dropping a widget from the checker fails
+      // the test instead of dropping its coverage too.
+      expect(stockWidgets, {
+        'AppBar',
+        'ListTile',
+        'SwitchListTile',
+        'ExpansionTile',
+        'FilterChip',
+        'ActionChip',
+        'AlertDialog',
+      });
+
       for (final widget in stockWidgets) {
         expect(_rules('final w = $widget(title: x);'), ['stock-widget'], reason: widget);
         expect(_rules('final w = const $widget();'), ['stock-widget'], reason: 'const $widget');
@@ -89,6 +101,13 @@ final d = TextStyle(height: 1.2, letterSpacing: 0.5);
     });
 
     test('reports named constructors', () {
+      expect(stockWidgetNamedConstructors, {
+        'SwitchListTile': {'adaptive'},
+        'FilterChip': {'elevated'},
+        'ActionChip': {'elevated'},
+        'AlertDialog': {'adaptive'},
+      });
+
       for (final entry in stockWidgetNamedConstructors.entries) {
         for (final constructor in entry.value) {
           final call = '${entry.key}.$constructor';
@@ -238,6 +257,15 @@ void caught() { try {} catch (material) { material.SwitchListTile.adaptive(value
 class Holder {
   final ui = palette;
   void member() => ui.Color(0xFF112233);
+}
+enum Palette {
+  ui, material;
+  int Color(int value) => value;
+  int AppBar() => 0;
+  void check() { ui.Color(0xFF112233); material.AppBar(); }
+}
+extension type Wrapped(dynamic ui) {
+  void check() => ui.Color(0xFF112233);
 }
 '''),
         isEmpty,
