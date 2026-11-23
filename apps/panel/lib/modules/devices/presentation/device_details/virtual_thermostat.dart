@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_member.dart';
@@ -487,8 +488,14 @@ class _VirtualThermostatDeviceDetailState
         : null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.device.name)),
-      body: RefreshIndicator(
+      body: Column(
+        children: [
+          PageHeader(
+            title: widget.device.name,
+            onBack: () => Navigator.maybePop(context),
+          ),
+          Expanded(
+            child: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -618,6 +625,9 @@ class _VirtualThermostatDeviceDetailState
             ),
           ],
         ),
+      ),
+          ),
+        ],
       ),
     );
   }

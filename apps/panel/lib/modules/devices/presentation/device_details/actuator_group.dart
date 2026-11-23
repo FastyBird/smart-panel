@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/api/models/devices_virtual_plugin_data_lig
 import 'package:fastybird_smart_panel/api/models/devices_virtual_plugin_data_light_group_reported_property.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -236,8 +237,14 @@ class _ActuatorGroupDeviceDetailState extends State<ActuatorGroupDeviceDetail> {
         const <DevicesVirtualPluginDataLightGroupCapability>[];
     final exposed = caps.map((cap) => cap.category.json).toSet();
     return Scaffold(
-      appBar: AppBar(title: Text(widget.device.name)),
-      body: ListView(
+      body: Column(
+        children: [
+          PageHeader(
+            title: widget.device.name,
+            onBack: () => Navigator.maybePop(context),
+          ),
+          Expanded(
+            child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(l.groupActualFeedback),
@@ -357,6 +364,9 @@ class _ActuatorGroupDeviceDetailState extends State<ActuatorGroupDeviceDetail> {
                 ],
               ),
             ),
+        ],
+      ),
+          ),
         ],
       ),
     );

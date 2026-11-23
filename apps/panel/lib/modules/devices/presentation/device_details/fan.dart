@@ -431,21 +431,23 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final configTrailing = widget.config?.trailing;
     final showSettings = _hasSettingsOptions;
 
-    Widget? trailing;
-    if (showSettings || configTrailing != null) {
-      trailing = Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          if (showSettings)
-            HeaderIconButton(
-              icon: MdiIcons.cog,
-              onTap: () => _showSettings(context),
-            ),
-          if (configTrailing != null) configTrailing,
-        ],
-      );
-    }
+    final trailing = Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: AppSpacings.pMd,
+      children: [
+        if (showSettings)
+          HeaderIconButton(
+            icon: MdiIcons.cog,
+            onTap: () => _showSettings(context),
+          ),
+        DevicePowerButton(
+          isOn: _device.isOn,
+          themeColor: _getStatusColor(),
+          onTap: () => _setFanPower(!_device.isOn),
+        ),
+        if (configTrailing != null) configTrailing,
+      ],
+    );
 
     return PageHeader(
       title: widget.config?.titleOverride ?? _device.name,
@@ -456,10 +458,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
               mainAxisSize: MainAxisSize.min,
               spacing: AppSpacings.pMd,
               children: [
-                HeaderIconButton(
-                  icon: MdiIcons.arrowLeft,
-                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-                ),
+                HeaderBackButton(onTap: widget.onBack ?? () => Navigator.of(context).pop()),
                 HeaderMainIcon(icon: iconData, color: _getStatusColor()),
               ],
             )
@@ -673,11 +672,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pMd,
         children: [
-          DevicePowerButton(
+          DevicePowerState(
             isOn: _device.isOn,
             themeColor: _getStatusColor(),
-            showInfoText: false,
-            onTap: () => _setFanPower(!_device.isOn),
           ),
           if (_device.fanChannel.hasMode &&
               _device.fanChannel.availableModes.isNotEmpty) ...[
@@ -885,12 +882,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             children: [
               Expanded(
                 child: Center(
-                  child: DevicePowerButton(
+                  child: DevicePowerState(
                     isOn: _device.isOn,
                     themeColor: _getStatusColor(),
-                    showInfoText: false,
-                    size: DevicePowerButton.compactSize,
-                    onTap: () => _setFanPower(!_device.isOn),
                   ),
                 ),
               ),

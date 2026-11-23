@@ -1154,10 +1154,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             onCapabilityChanged: (value) {
               setState(() => _selectedCapability = value);
             },
-            onPowerToggle: () {
-              activeController.togglePower();
-              setState(() {});
-            },
           ),
           if (showPresets)
             LightingPresetsPanel(
@@ -1219,10 +1215,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         onWhiteChannelChanged: _handleWhiteChannelChanged,
         onCapabilityChanged: (value) {
           setState(() => _selectedCapability = value);
-        },
-        onPowerToggle: () {
-          activeController.togglePower();
-          setState(() {});
         },
       ),
       secondaryContent: showPresets
@@ -1295,10 +1287,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
               mainAxisSize: MainAxisSize.min,
               spacing: AppSpacings.pMd,
               children: [
-                HeaderIconButton(
-                  icon: MdiIcons.arrowLeft,
-                  onTap: () => Navigator.of(context).pop(),
-                ),
+                HeaderBackButton(onTap: () => Navigator.of(context).pop()),
                 HeaderMainIcon(
                   icon: iconData,
                   color: _getStatusColor(),
@@ -1313,10 +1302,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
   }
 
-  Widget? _buildHeaderTrailing(BuildContext context, bool isDark) {
+  Widget _buildHeaderTrailing(BuildContext context, bool isDark) {
     final hasChannels = _isMultiChannel;
-    final hasPower = !_isSimple;
-    if (!hasChannels && !hasPower) return null;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1338,19 +1325,18 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             } : null,
             color: ThemeColors.primary,
           ),
-        if (hasChannels && hasPower) AppSpacings.spacingSmHorizontal,
-        if (hasPower)
-          HeaderIconButton(
-            icon: MdiIcons.power,
-            onTap: () {
-              final controller = _selectedController ?? _controller?.light;
-              if (controller != null) {
-                controller.togglePower();
-                setState(() {});
-              }
-            },
-            color: _getStatusColor(),
-          ),
+        if (hasChannels) AppSpacings.spacingSmHorizontal,
+        DevicePowerButton(
+          isOn: (_selectedController ?? _controller?.light)?.isOn ?? false,
+          themeColor: _getStatusColor(),
+          onTap: () {
+            final controller = _selectedController ?? _controller?.light;
+            if (controller != null) {
+              controller.togglePower();
+              setState(() {});
+            }
+          },
+        ),
       ],
     );
   }
@@ -1463,7 +1449,6 @@ class _LightingHeroCard extends StatelessWidget {
   final Function(Color, double)? onColorChanged;
   final ValueChanged<int>? onWhiteChannelChanged;
   final ValueChanged<LightCapability>? onCapabilityChanged;
-  final VoidCallback? onPowerToggle;
 
   const _LightingHeroCard({
     required this.selectedCapability,
@@ -1479,7 +1464,6 @@ class _LightingHeroCard extends StatelessWidget {
     this.onColorChanged,
     this.onWhiteChannelChanged,
     this.onCapabilityChanged,
-    this.onPowerToggle,
   });
 
   bool get _isSimple =>
@@ -1491,10 +1475,9 @@ class _LightingHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_isSimple) {
-      return DevicePowerButton(
+      return DevicePowerState(
         isOn: isOn,
         themeColor: ThemeColors.primary,
-        onTap: onPowerToggle,
       );
     }
 

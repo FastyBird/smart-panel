@@ -79,17 +79,40 @@ void main() {
       gallerySections.map((section) => section.issue),
       [1715, 1716, 1717, 1718, 1719, 1720],
     );
-    expect(gallerySections.every((section) => section.entries.isEmpty), isTrue);
+    // Sections fill as their tasks land.
+    expect(
+      gallerySections.where((section) => section.entries.isNotEmpty).map((section) => section.task),
+      ['DR-5'],
+    );
   });
 
-  testWidgets('shows every section, empty until its task fills it', (tester) async {
+  testWidgets('shows every section: its entries, or empty until its task fills it', (tester) async {
     await _pump(tester);
 
     for (final section in gallerySections) {
       await _tap(tester, 'gallery-section-${section.id}');
 
       expect(find.byKey(ValueKey('gallery-section-view-${section.id}')), findsOneWidget);
-      expect(find.text('No components yet. ${section.task} adds them here.'), findsOneWidget);
+
+      if (section.entries.isEmpty) {
+        expect(find.text('No components yet. ${section.task} adds them here.'), findsOneWidget);
+      } else {
+        expect(find.byKey(const ValueKey('gallery-section-empty')), findsNothing);
+
+        for (final entry in section.entries) {
+          await tester.scrollUntilVisible(
+            find.text(entry.title),
+            100,
+            scrollable: find
+                .descendant(
+                  of: find.byKey(ValueKey('gallery-section-view-${section.id}')),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          expect(find.text(entry.title), findsOneWidget);
+        }
+      }
     }
   });
 

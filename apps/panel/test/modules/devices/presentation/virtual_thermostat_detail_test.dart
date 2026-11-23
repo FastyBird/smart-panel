@@ -16,9 +16,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import '../../../helpers/screen_service.dart';
+
 class MockDevicesService extends Mock implements DevicesService {}
 
 void main() {
+  setUpAll(registerTestScreenService);
+
   cachedSourceDeadlineTests();
   sameIdMappedViewLifecycleTests();
   testWidgets('shows requested heat separately from suspended physical output', (

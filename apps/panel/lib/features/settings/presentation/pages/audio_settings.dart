@@ -91,10 +91,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 						children: [
 							PageHeader(
 								title: localizations.settings_audio_settings_title,
-								leading: HeaderIconButton(
-									icon: MdiIcons.arrowLeft,
-									onTap: () => Navigator.of(context).pop(),
-								),
+								leading: HeaderBackButton(onTap: () => Navigator.of(context).pop()),
 							),
 							Expanded(
 								child: !_audioOutputSupported && !_audioInputSupported

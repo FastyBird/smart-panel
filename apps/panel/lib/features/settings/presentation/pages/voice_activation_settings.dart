@@ -94,10 +94,7 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 						children: [
 							PageHeader(
 								title: localizations.settings_voice_activation_settings_title,
-								leading: HeaderIconButton(
-									icon: MdiIcons.arrowLeft,
-									onTap: () => Navigator.of(context).pop(),
-								),
+								leading: HeaderBackButton(onTap: () => Navigator.of(context).pop()),
 							),
 							Expanded(
 								child: VerticalScrollWithGradient(

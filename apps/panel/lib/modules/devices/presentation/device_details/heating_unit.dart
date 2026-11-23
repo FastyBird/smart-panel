@@ -438,10 +438,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
               mainAxisSize: MainAxisSize.min,
               spacing: AppSpacings.pMd,
               children: [
-                HeaderIconButton(
-                  icon: MdiIcons.arrowLeft,
-                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-                ),
+                HeaderBackButton(onTap: widget.onBack ?? () => Navigator.of(context).pop()),
                 HeaderMainIcon(icon: iconData, color: _getModeColor()),
               ],
             )

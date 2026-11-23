@@ -9,6 +9,10 @@
 # in the same PR.
 strict:
   - lib/features/gallery/
+  # DR-5: the page header and its parts.
+  - lib/core/widgets/page_header.dart
+  - lib/core/widgets/icon_container.dart
+  - lib/modules/devices/presentation/widgets/device_power_button.dart
 
 # Generated code is never checked.
 exclude:

@@ -1,122 +1,96 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-/// Power button widget for device control.
+/// The device power button. It lives in the page header
+/// (docs/display-ui-design-spec.md §5): a [HeaderIconButton] with the power
+/// icon, tinted with [themeColor] while the device is on.
 class DevicePowerButton extends StatelessWidget {
-  /// Size for compact layouts (e.g. landscape on small/medium screens).
-  static const double compactSize = 130;
-
   const DevicePowerButton({
     super.key,
     required this.isOn,
     this.themeColor,
     this.onTap,
-    this.size = 160,
-    this.showInfoText = true,
   });
 
   final bool isOn;
-  final ThemeColors? themeColor;
-  final VoidCallback? onTap;
-  final double size;
-  final bool showInfoText;
 
-  static const _animationDuration = Duration(milliseconds: 200);
+  /// Tint while on; defaults to [ThemeColors.primary] (the accent).
+  final ThemeColors? themeColor;
+
+  /// Without it the button is disabled.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
-    final colorFamily =
-        ThemeColorFamily.get(brightness, themeColor ?? ThemeColors.primary);
-    final effectiveActiveColor = colorFamily.base;
-    final effectiveActiveBgColor = colorFamily.light9;
-    final effectiveGlowColor = colorFamily.light5;
-    final inactiveBgColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    final inactiveColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final inactiveBorderColor =
-        isDark ? AppColors.blank : AppBorderColorLight.darker;
+    final localizations = AppLocalizations.of(context);
+    final onTap = this.onTap;
 
-    final shadowOffset = Offset(0, AppSpacings.scale(4));
-    final baseShadow = BoxShadow(
-      color: AppShadowColor.light,
-      blurRadius: AppSpacings.scale(20),
-      offset: shadowOffset,
+    return HeaderIconButton(
+      icon: MdiIcons.power,
+      color: isOn ? (themeColor ?? ThemeColors.primary) : ThemeColors.neutral,
+      semanticLabel: localizations == null
+          ? null
+          : isOn
+              ? localizations.power_hint_tap_to_turn_off
+              : localizations.power_hint_tap_to_turn_on,
+      onTap: onTap == null
+          ? null
+          : () {
+              HapticFeedback.mediumImpact();
+              onTap();
+            },
     );
-    final boxShadow = isOn
-        ? [
-            BoxShadow(
-              color: effectiveGlowColor,
-              blurRadius: AppSpacings.scale(40),
-              spreadRadius: 0,
-            ),
-            baseShadow,
-          ]
-        : [baseShadow];
+  }
+}
+
+/// "On" or "Off" in the body of a device whose power button moved to the
+/// header, until its screen moves onto the redesign.
+class DevicePowerState extends StatelessWidget {
+  const DevicePowerState({
+    super.key,
+    required this.isOn,
+    this.themeColor,
+  });
+
+  final bool isOn;
+
+  /// Colour while on; defaults to [ThemeColors.primary] (the accent).
+  final ThemeColors? themeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final localizations = AppLocalizations.of(context)!;
+    final key = themeColor ?? ThemeColors.primary;
+    final onColor = key == ThemeColors.primary
+        ? theme.accent.text
+        : ThemeColorFamily.get(theme.brightness, key).base;
 
     return Padding(
       padding: AppSpacings.paddingLg,
       child: Center(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            spacing: AppSpacings.pMd,
-            children: [
-              GestureDetector(
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                onTap?.call();
-              },
-              child: AnimatedContainer(
-                duration: _animationDuration,
-                width: AppSpacings.scale(size),
-                height: AppSpacings.scale(size),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isOn ? effectiveActiveBgColor : inactiveBgColor,
-                  border: Border.all(
-                    color: isOn ? effectiveActiveColor : inactiveBorderColor,
-                    width: isOn ? AppSpacings.scale(4) : AppSpacings.scale(1),
-                  ),
-                  boxShadow: boxShadow,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: AppSpacings.pMd,
-                  children: [
-                    Icon(
-                      MdiIcons.power,
-                      size: AppSpacings.scale(44),
-                      color: isOn ? effectiveActiveColor : inactiveColor,
-                    ),
-                    Text(
-                      isOn ? 'On' : 'Off',
-                      style: TextStyle(
-                        fontSize: AppSpacings.scale(26),
-                        fontWeight: FontWeight.w300,
-                        color: isOn ? effectiveActiveColor : inactiveColor,
-                      ),
-                    ),
-                  ],
-                ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: AppSpacings.pSm,
+          children: [
+            Icon(
+              MdiIcons.power,
+              size: AppSpacings.scale(28),
+              color: isOn ? onColor : theme.neutrals.textSecondary,
+            ),
+            Text(
+              isOn ? localizations.on_state_on : localizations.on_state_off,
+              style: TextStyle(
+                fontSize: AppFontSize.extraLarge,
+                fontWeight: FontWeight.w500,
+                color: isOn ? onColor : theme.neutrals.textSecondary,
               ),
             ),
-            if (showInfoText) ...[
-              Text(
-                isOn ? 'Tap to turn off' : 'Tap to turn on',
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  color: inactiveColor,
-                ),
-              ),
-            ],
           ],
-        ),
         ),
       ),
     );
