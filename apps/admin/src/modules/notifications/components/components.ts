@@ -1,12 +1,11 @@
 export { default as NotificationBell } from './notification-bell.vue';
 export { default as NotificationItem } from './notification-item.vue';
 export { default as NotificationActions } from './notification-actions.vue';
-export { default as NotificationDetailDrawer } from './notification-detail-drawer.vue';
+export { default as NotificationDetail } from './notification-detail.vue';
 export { default as NotificationPopover } from './notification-popover.vue';
 export { default as NotificationSeverityTag } from './notification-severity-tag.vue';
 export { default as NotificationSeverityDot } from './notification-severity-dot.vue';
-export { default as ListNotifications } from './list-notifications.vue';
+export { default as NotificationsInboxList } from './notifications-inbox-list.vue';
 export { default as ListNotificationsAdjust } from './list-notifications-adjust.vue';
 export { default as NotificationsFilter } from './notifications-filter.vue';
-export { default as NotificationsTable } from './notifications-table.vue';
 export { default as NotificationsConfigForm } from './notifications-config-form.vue';

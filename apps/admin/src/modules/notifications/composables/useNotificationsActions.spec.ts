@@ -17,6 +17,7 @@ const mockDismiss = vi.fn();
 const mockRemove = vi.fn();
 const mockBulkUpdate = vi.fn().mockResolvedValue({ succeeded: [], failed: [] });
 const mockBulkRemove = vi.fn();
+const mockMarkAllRead = vi.fn();
 
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
@@ -55,6 +56,7 @@ vi.mock('../../../common', async () => {
 				remove: mockRemove,
 				bulkUpdate: mockBulkUpdate,
 				bulkRemove: mockBulkRemove,
+				markAllRead: mockMarkAllRead,
 			}),
 		}),
 		useFlashMessage: () => ({
@@ -92,6 +94,35 @@ describe('useNotificationsActions', () => {
 
 			expect(mockMarkRead).toHaveBeenCalledWith({ id: '2', read: false });
 			expect(mockError).toHaveBeenCalled();
+		});
+	});
+
+	describe('markEverythingRead', () => {
+		it('reports a mutation when at least one row was marked read', async () => {
+			mockMarkAllRead.mockResolvedValueOnce({ succeeded: ['a'], failed: [] });
+
+			const { markEverythingRead } = useNotificationsActions();
+
+			expect(await markEverythingRead()).toBe(true);
+			expect(mockError).not.toHaveBeenCalled();
+		});
+
+		it('reports a partial failure but still the mutation', async () => {
+			mockMarkAllRead.mockResolvedValueOnce({ succeeded: ['a'], failed: [{ id: 'b', reason: 'gone' }] });
+
+			const { markEverythingRead } = useNotificationsActions();
+
+			expect(await markEverythingRead()).toBe(true);
+			expect(mockError).toHaveBeenCalledWith('notificationsModule.messages.notifications.notAllMarkedRead');
+		});
+
+		it('reports a failed request and no mutation', async () => {
+			mockMarkAllRead.mockRejectedValueOnce(new Error('offline'));
+
+			const { markEverythingRead } = useNotificationsActions();
+
+			expect(await markEverythingRead()).toBe(false);
+			expect(mockError).toHaveBeenCalledWith('notificationsModule.messages.notifications.notMarkedRead');
 		});
 	});
 

@@ -55,7 +55,6 @@ const ALLOWED_IDENTICAL: Record<string, string[]> = {
 	'fields.filters.status.title': ['de-DE', 'pl-PL'],
 	// "Detail" is the ordinary Czech and Slovak word for a detail view - matches
 	// `devices/locales/{cs-CZ,sk-SK}.json`'s own translation of the same button.
-	'buttons.detail.title': ['cs-CZ', 'sk-SK'],
 	// "No" is simply the correct Spanish word for "no" - an unavoidable coincidence of spelling,
 	// not an untranslated leftover.
 	'buttons.no.title': ['es-ES'],

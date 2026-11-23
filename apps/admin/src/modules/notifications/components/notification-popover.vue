@@ -88,7 +88,7 @@ const { t } = useI18n();
 const router = useRouter();
 
 const { active } = useNotifications();
-const { markRead, markAllRead, dismiss } = useNotificationsActions();
+const { markRead, markEverythingRead, dismiss } = useNotificationsActions();
 const { execute, isExecuting } = useNotificationAction();
 
 // Top N active rows by severity rank, then most recent first - the popover is a glance, the
@@ -112,7 +112,8 @@ const onOpen = (notification: INotification): void => {
 
 	emit('close');
 
-	void router.push({ name: RouteNames.NOTIFICATIONS });
+	// The same detail the inbox opens: beside the list from tablet landscape, its own page below
+	void router.push({ name: RouteNames.NOTIFICATION, params: { id: notification.id } });
 };
 
 const onDismiss = (notification: INotification): void => {
@@ -140,7 +141,7 @@ const onAction = (notification: INotification): void => {
 };
 
 const onMarkAllRead = (): void => {
-	void markAllRead(unreadActiveIds.value);
+	void markEverythingRead();
 };
 
 const onViewAll = (): void => {

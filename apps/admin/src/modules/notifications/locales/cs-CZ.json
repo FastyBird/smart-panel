@@ -34,8 +34,7 @@
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Stavy systému a události, které vyžadují vaši pozornost",
-			"adjustFilters": "Upravit filtry zobrazení"
+			"list": "Stavy systému a události, které vyžadují vaši pozornost"
 		}
 	},
 	"texts": {
@@ -49,7 +48,9 @@
 			"confirmBulkRemove": "Odebrat {count} oznámení? Tuto akci nelze vrátit zpět.",
 			"loading": "Načítání oznámení...",
 			"noNotifications": "Zatím nejsou žádná oznámení",
-			"noFilteredNotifications": "Nebyla nalezena žádná oznámení odpovídající aktivním kritériím filtru"
+			"noFilteredNotifications": "Nebyla nalezena žádná oznámení odpovídající aktivním kritériím filtru",
+			"selectOne": "Vyberte oznámení, které chcete přečíst",
+			"notFound": "Toto oznámení už neexistuje"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" chce spustit \"{label}\". Tato akce může být nebezpečná - pokračovat?",
@@ -160,28 +161,6 @@
 			}
 		}
 	},
-	"table": {
-		"columns": {
-			"severity": {
-				"title": "Závažnost"
-			},
-			"title": {
-				"title": "Název"
-			},
-			"source": {
-				"title": "Zdroj"
-			},
-			"occurrences": {
-				"title": "Počet"
-			},
-			"time": {
-				"title": "Čas"
-			},
-			"actions": {
-				"title": "Akce"
-			}
-		}
-	},
 	"buttons": {
 		"yes": {
 			"title": "Ano"
@@ -210,14 +189,20 @@
 		"close": {
 			"title": "Zavřít"
 		},
-		"detail": {
-			"title": "Detail"
-		},
 		"resetFilters": {
 			"title": "Resetovat filtry"
 		},
 		"reset": {
 			"title": "Resetovat"
+		},
+		"more": {
+			"title": "Další"
+		},
+		"backToList": {
+			"title": "Zpět na oznámení"
 		}
+	},
+	"aria": {
+		"select": "Vybrat {title}"
 	}
 }

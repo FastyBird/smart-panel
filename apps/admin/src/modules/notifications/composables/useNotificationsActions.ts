@@ -25,6 +25,9 @@ export interface IUseNotificationsActions {
 	// failures in `result.failed`; those are still flashed, but a partial success is still a
 	// mutation the caller needs to know about.
 	markAllRead: (ids: INotification['id'][]) => Promise<boolean>;
+	// "Mark all as read" in the header and the bell: every active unread row the store holds, the set the bell counts.
+	// Same boolean projection as `markAllRead`
+	markEverythingRead: () => Promise<boolean>;
 	dismiss: (id: INotification['id'], dismissed?: boolean) => Promise<void>;
 	remove: (id: INotification['id']) => Promise<void>;
 	bulkMarkUnread: (ids: INotification['id'][]) => Promise<NotificationsBulkActionOutcome>;
@@ -64,6 +67,22 @@ export const useNotificationsActions = (): IUseNotificationsActions => {
 			// that partial failure must not be silently swallowed, or "Mark all as read" can leave
 			// rows unread with nothing telling the operator it did not fully apply. The rows that
 			// did succeed still mutated the list, though, so that is still reported as `true`.
+			if (result.failed.length > 0) {
+				flashMessage.error(t('notificationsModule.messages.notifications.notAllMarkedRead'));
+			}
+
+			return result.succeeded.length > 0;
+		} catch {
+			flashMessage.error(t('notificationsModule.messages.notifications.notMarkedRead'));
+
+			return false;
+		}
+	};
+
+	const markEverythingRead = async (): Promise<boolean> => {
+		try {
+			const result = await notificationsStore.markAllRead();
+
 			if (result.failed.length > 0) {
 				flashMessage.error(t('notificationsModule.messages.notifications.notAllMarkedRead'));
 			}
@@ -240,6 +259,7 @@ export const useNotificationsActions = (): IUseNotificationsActions => {
 	return {
 		markRead,
 		markAllRead,
+		markEverythingRead,
 		dismiss,
 		remove,
 		bulkMarkUnread,

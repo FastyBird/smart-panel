@@ -31,7 +31,7 @@ vi.mock('../composables/composables', () => ({
 	}),
 	useNotificationsActions: () => ({
 		markRead: vi.fn(),
-		markAllRead: vi.fn(),
+		markEverythingRead: vi.fn(),
 		dismiss: vi.fn(),
 	}),
 	useNotificationAction: () => ({

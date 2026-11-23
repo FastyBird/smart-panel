@@ -34,8 +34,7 @@
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Stavy systému a udalosti, ktoré si vyžadujú vašu pozornosť",
-			"adjustFilters": "Upraviť filtre zobrazenia"
+			"list": "Stavy systému a udalosti, ktoré si vyžadujú vašu pozornosť"
 		}
 	},
 	"texts": {
@@ -49,7 +48,9 @@
 			"confirmBulkRemove": "Odstrániť {count} upozornení? Túto akciu nie je možné vrátiť.",
 			"loading": "Načítavanie upozornení...",
 			"noNotifications": "Zatiaľ nie sú žiadne upozornenia",
-			"noFilteredNotifications": "Neboli nájdené žiadne upozornenia zodpovedajúce aktívnym filtrom"
+			"noFilteredNotifications": "Neboli nájdené žiadne upozornenia zodpovedajúce aktívnym filtrom",
+			"selectOne": "Vyberte upozornenie, ktoré si chcete prečítať",
+			"notFound": "Toto upozornenie už neexistuje"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" chce spustiť \"{label}\". Táto akcia môže byť nebezpečná - pokračovať?",
@@ -160,28 +161,6 @@
 			}
 		}
 	},
-	"table": {
-		"columns": {
-			"severity": {
-				"title": "Závažnosť"
-			},
-			"title": {
-				"title": "Názov"
-			},
-			"source": {
-				"title": "Zdroj"
-			},
-			"occurrences": {
-				"title": "Počet"
-			},
-			"time": {
-				"title": "Čas"
-			},
-			"actions": {
-				"title": "Akcie"
-			}
-		}
-	},
 	"buttons": {
 		"yes": {
 			"title": "Áno"
@@ -210,14 +189,20 @@
 		"close": {
 			"title": "Zavrieť"
 		},
-		"detail": {
-			"title": "Detail"
-		},
 		"resetFilters": {
 			"title": "Resetovať filtre"
 		},
 		"reset": {
 			"title": "Resetovať"
+		},
+		"more": {
+			"title": "Viac"
+		},
+		"backToList": {
+			"title": "Späť na upozornenia"
 		}
+	},
+	"aria": {
+		"select": "Vybrať {title}"
 	}
 }

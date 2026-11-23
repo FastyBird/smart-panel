@@ -34,8 +34,7 @@
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Stany systemu i zdarzenia, które wymagają Twojej uwagi",
-			"adjustFilters": "Dostosuj filtry wyświetlania"
+			"list": "Stany systemu i zdarzenia, które wymagają Twojej uwagi"
 		}
 	},
 	"texts": {
@@ -49,7 +48,9 @@
 			"confirmBulkRemove": "Usunąć {count} powiadomień? Tej operacji nie można cofnąć.",
 			"loading": "Ładowanie powiadomień...",
 			"noNotifications": "Nie ma jeszcze żadnych powiadomień",
-			"noFilteredNotifications": "Nie znaleziono powiadomień pasujących do aktywnych kryteriów filtra"
+			"noFilteredNotifications": "Nie znaleziono powiadomień pasujących do aktywnych kryteriów filtra",
+			"selectOne": "Wybierz powiadomienie, aby je przeczytać",
+			"notFound": "To powiadomienie już nie istnieje"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" chce uruchomić \"{label}\". Ta czynność może być niebezpieczna - kontynuować?",
@@ -160,28 +161,6 @@
 			}
 		}
 	},
-	"table": {
-		"columns": {
-			"severity": {
-				"title": "Ważność"
-			},
-			"title": {
-				"title": "Tytuł"
-			},
-			"source": {
-				"title": "Źródło"
-			},
-			"occurrences": {
-				"title": "Liczba"
-			},
-			"time": {
-				"title": "Czas"
-			},
-			"actions": {
-				"title": "Akcje"
-			}
-		}
-	},
 	"buttons": {
 		"yes": {
 			"title": "Tak"
@@ -210,14 +189,20 @@
 		"close": {
 			"title": "Zamknij"
 		},
-		"detail": {
-			"title": "Szczegóły"
-		},
 		"resetFilters": {
 			"title": "Resetuj filtry"
 		},
 		"reset": {
 			"title": "Resetuj"
+		},
+		"more": {
+			"title": "Więcej"
+		},
+		"backToList": {
+			"title": "Wróć do powiadomień"
 		}
+	},
+	"aria": {
+		"select": "Zaznacz {title}"
 	}
 }

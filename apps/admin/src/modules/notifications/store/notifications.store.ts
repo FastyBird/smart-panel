@@ -164,6 +164,7 @@ export interface INotificationsStoreActions {
 	remove: (payload: INotificationsRemoveActionPayload) => Promise<void>;
 	bulkUpdate: (payload: INotificationsBulkUpdateActionPayload) => Promise<IBulkResult>;
 	bulkRemove: (payload: INotificationsBulkRemoveActionPayload) => Promise<IBulkResult>;
+	markAllRead: () => Promise<IBulkResult>;
 	isLoaded: () => boolean;
 	refresh: () => Promise<void>;
 }
@@ -690,6 +691,18 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 			}
 		};
 
+		/**
+		 * "Mark all as read": every active row still unread, the same set the bell counts, in one bulk update. Rows the
+		 * store has not loaded stay as they are; the bell only ever counts what is loaded
+		 */
+		const markAllRead = async (): Promise<IBulkResult> =>
+			bulkUpdate({
+				ids: active()
+					.filter((notification) => notification.readAt === null)
+					.map((notification) => notification.id),
+				read: true,
+			});
+
 		// Reconnect refresh contract: the store says whether it holds anything worth re-reading, so
 		// the caller never has to guess from a flag it does not maintain.
 		const isLoaded = (): boolean => firstLoad.value || findAll().length > 0;
@@ -722,6 +735,7 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 			remove,
 			bulkUpdate,
 			bulkRemove,
+			markAllRead,
 			isLoaded,
 			refresh,
 		};

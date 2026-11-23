@@ -34,8 +34,7 @@
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Estados del sistema y eventos que requieren tu atención",
-			"adjustFilters": "Ajustar filtros de visualización"
+			"list": "Estados del sistema y eventos que requieren tu atención"
 		}
 	},
 	"texts": {
@@ -49,7 +48,9 @@
 			"confirmBulkRemove": "¿Eliminar {count} notificaciones? Esta acción no se puede deshacer.",
 			"loading": "Cargando notificaciones...",
 			"noNotifications": "Todavía no hay notificaciones",
-			"noFilteredNotifications": "No se encontraron notificaciones que coincidan con los criterios de filtro activos"
+			"noFilteredNotifications": "No se encontraron notificaciones que coincidan con los criterios de filtro activos",
+			"selectOne": "Selecciona una notificación para leerla",
+			"notFound": "Esta notificación ya no existe"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" quiere ejecutar \"{label}\". Esta acción es potencialmente peligrosa. ¿Continuar?",
@@ -160,28 +161,6 @@
 			}
 		}
 	},
-	"table": {
-		"columns": {
-			"severity": {
-				"title": "Gravedad"
-			},
-			"title": {
-				"title": "Título"
-			},
-			"source": {
-				"title": "Origen"
-			},
-			"occurrences": {
-				"title": "Cantidad"
-			},
-			"time": {
-				"title": "Hora"
-			},
-			"actions": {
-				"title": "Acciones"
-			}
-		}
-	},
 	"buttons": {
 		"yes": {
 			"title": "Sí"
@@ -210,14 +189,20 @@
 		"close": {
 			"title": "Cerrar"
 		},
-		"detail": {
-			"title": "Detalle"
-		},
 		"resetFilters": {
 			"title": "Restablecer filtros"
 		},
 		"reset": {
 			"title": "Restablecer"
+		},
+		"more": {
+			"title": "Más"
+		},
+		"backToList": {
+			"title": "Volver a las notificaciones"
 		}
+	},
+	"aria": {
+		"select": "Seleccionar {title}"
 	}
 }
