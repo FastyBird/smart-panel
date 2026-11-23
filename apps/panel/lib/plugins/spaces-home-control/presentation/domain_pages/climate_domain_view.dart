@@ -1272,6 +1272,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
       icon: currentOption.icon,
       label: currentOption.label,
+      title: AppLocalizations.of(context)!.mode_title_climate,
       color: currentOption.color ?? ThemeColors.neutral,
       popupBuilder: _buildModePopupContent,
     ));
@@ -1279,25 +1280,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
     final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final modes = _getClimateModeOptions(localizations);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-          child: Text(
-            localizations.popup_label_mode.toUpperCase(),
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              fontWeight: FontWeight.w600,
-              letterSpacing: AppSpacings.scale(1),
-              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-            ),
-          ),
-        ),
         for (final mode in modes)
           _buildPopupModeItem(
             context,

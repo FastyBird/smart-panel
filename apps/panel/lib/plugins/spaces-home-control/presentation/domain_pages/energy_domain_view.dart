@@ -308,6 +308,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
     _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
       icon: currentOption.icon,
       label: currentOption.label,
+      title: AppLocalizations.of(context)!.mode_title_energy,
       color: ThemeColors.info,
       popupBuilder: (context, dismiss) {
         return EnergyRangeOptionsList(

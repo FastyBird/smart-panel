@@ -1,0 +1,1081 @@
+import 'package:event_bus/event_bus.dart';
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_stepper.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_switch.dart';
+import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
+import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_slider.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_toggle.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+const _classes = [
+  ScreenSizeClass.compact,
+  ScreenSizeClass.regular,
+  ScreenSizeClass.expanded,
+];
+
+const _brightnesses = [Brightness.light, Brightness.dark];
+
+ThemeData _theme(Brightness brightness, [AppAccent accent = AppAccent.blue]) =>
+    brightness == Brightness.dark
+    ? AppTheme.darkThemeFor(accent)
+    : AppTheme.lightThemeFor(accent);
+
+Future<void> _pump(
+  WidgetTester tester,
+  Widget child, {
+  Brightness brightness = Brightness.light,
+  AppAccent accent = AppAccent.blue,
+}) async {
+  tester.view.physicalSize = const Size(1280, 800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: _theme(brightness, accent),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('en'),
+      home: Scaffold(body: Align(alignment: Alignment.topLeft, child: child)),
+    ),
+  );
+}
+
+ThemeData _themeOf(WidgetTester tester, Finder finder) =>
+    Theme.of(tester.element(finder));
+
+SliderThemeData _sliderTheme(WidgetTester tester) =>
+    SliderTheme.of(tester.element(find.byType(Slider)));
+
+AppSliderTrackShape _track(WidgetTester tester) =>
+    _sliderTheme(tester).trackShape! as AppSliderTrackShape;
+
+AppSliderThumbShape _thumb(WidgetTester tester) =>
+    _sliderTheme(tester).thumbShape! as AppSliderThumbShape;
+
+/// The decoration of the switch's track.
+BoxDecoration _switchTrack(WidgetTester tester) =>
+    tester
+            .widget<AnimatedContainer>(
+              find.descendant(
+                of: find.byType(AppSwitch),
+                matching: find.byType(AnimatedContainer),
+              ),
+            )
+            .decoration!
+        as BoxDecoration;
+
+/// The background and outline of the segment labelled [label].
+({Color background, Color outline}) _segment(WidgetTester tester, String label) {
+  final material = tester.widget<Material>(
+    find
+        .ancestor(of: find.text(label), matching: find.byType(Material))
+        .first,
+  );
+  final shape = material.shape! as RoundedRectangleBorder;
+
+  return (background: material.color!, outline: shape.side.color);
+}
+
+List<ModeOption<String>> _modes() => [
+  ModeOption(value: 'heat', icon: MdiIcons.fire, label: 'Heat'),
+  ModeOption(value: 'cool', icon: MdiIcons.snowflake, label: 'Cool'),
+  ModeOption(value: 'off', icon: MdiIcons.power, label: 'Off'),
+];
+
+void main() {
+  setUpAll(() async {
+    await locator.reset();
+    // DPR 2 at density 1.0: one design px is one logical px.
+    locator.registerSingleton<ScreenService>(
+      ScreenService(screenWidth: 1280, screenHeight: 800, pixelRatio: 2),
+    );
+    locator.registerSingleton<VisualDensityService>(
+      VisualDensityService(pixelRatio: 2),
+    );
+    locator.registerSingleton<EventBus>(EventBus());
+  });
+
+  tearDownAll(() async {
+    await locator.reset();
+  });
+
+  group('ControlTint', () {
+    for (final brightness in _brightnesses) {
+      test('accent outside a domain, the domain colour inside, in ${brightness.name}', () {
+        final theme = _theme(brightness, AppAccent.teal);
+        final accent = AppAccentPalette.of(AppAccent.teal, brightness);
+
+        final outside = ControlTint.of(theme);
+        expect(outside.fill, accent.fill);
+        expect(outside.text, accent.text);
+        expect(outside.soft, accent.soft);
+        expect(ControlTint.of(theme, ThemeColors.primary).fill, accent.fill);
+
+        final climate = ThemeColorFamily.get(brightness, ThemeColors.climate);
+        final inside = ControlTint.of(theme, ThemeColors.climate);
+        expect(inside.fill, climate.base);
+        expect(inside.text, climate.base);
+        expect(inside.soft, climate.soft);
+
+        // A filled Lights control is the warning fill in light, the bright
+        // shade on dark surfaces (spec §2).
+        expect(
+          ControlTint.of(theme, ThemeColors.lights).fill,
+          brightness == Brightness.light
+              ? AppStatusPalette.of(brightness, AppStatus.warning).fill
+              : ThemeColorFamily.get(brightness, ThemeColors.lights).base,
+        );
+      });
+    }
+  });
+
+  group('AppSlider', () {
+    for (final brightness in _brightnesses) {
+      testWidgets('a row slider in ${brightness.name}: fill.base track, accent fill, white thumb', (tester) async {
+        await _pump(
+          tester,
+          SizedBox(width: 300, child: AppSlider(value: 0.5, onChanged: (_) {})),
+          brightness: brightness,
+        );
+
+        final neutrals = AppNeutralPalette.of(brightness);
+        final accent = AppAccentPalette.of(AppAccent.blue, brightness);
+
+        expect(tester.getSize(find.byType(AppSlider)).height, AppSliderMetrics.row.height);
+        expect(_sliderTheme(tester).trackHeight, AppSliderMetrics.row.track);
+        expect(_track(tester).background, neutrals.fillBase);
+        expect(_track(tester).fill, accent.fill);
+        expect(_track(tester).gradient, isNull);
+        expect(_thumb(tester).radius, AppSliderMetrics.row.thumb / 2);
+        expect(_thumb(tester).fill, AppControlColors.thumb);
+        expect(_thumb(tester).ring, accent.fill);
+        expect(_thumb(tester).ringWidth, AppSliderMetrics.ring);
+        expect(_thumb(tester).dashed, isFalse);
+      });
+
+      testWidgets('a domain slider takes the domain colour in ${brightness.name}', (tester) async {
+        await _pump(
+          tester,
+          SizedBox(
+            width: 300,
+            child: AppSlider(value: 0.5, color: ThemeColors.shading, onChanged: (_) {}),
+          ),
+          brightness: brightness,
+        );
+
+        final shading = ThemeColorFamily.get(brightness, ThemeColors.shading).base;
+        expect(_track(tester).fill, shading);
+        expect(_thumb(tester).ring, shading);
+      });
+    }
+
+    for (final sizeClass in _classes) {
+      for (final brightness in _brightnesses) {
+        testWidgets('the hero slider at ${sizeClass.name} in ${brightness.name}', (tester) async {
+          final metrics = AppSliderMetrics.hero(sizeClass);
+
+          await _pump(
+            tester,
+            SizedBox(
+              width: 300,
+              child: AppSlider(
+                value: 0.4,
+                hero: true,
+                sizeClass: sizeClass,
+                color: ThemeColors.lights,
+                onChanged: (_) {},
+              ),
+            ),
+            brightness: brightness,
+          );
+
+          // Track, thumb and height follow the hero's slider slot.
+          expect(tester.getSize(find.byType(AppSlider)).height, metrics.height);
+          expect(_sliderTheme(tester).trackHeight, metrics.track);
+          expect(_thumb(tester).radius, metrics.thumb / 2);
+          expect(
+            _track(tester).fill,
+            ControlTint.of(_theme(brightness), ThemeColors.lights).fill,
+          );
+        });
+      }
+    }
+
+    testWidgets('hero sizes are 36 / 40 / 48 high with 24 / 28 / 32 thumbs', (tester) async {
+      expect(
+        _classes.map((c) => AppSliderMetrics.hero(c).height),
+        [36, 40, 48],
+      );
+      expect(
+        _classes.map((c) => AppSliderMetrics.hero(c).thumb),
+        [24, 28, 32],
+      );
+      expect(
+        _classes.map((c) => AppSliderMetrics.hero(c).track),
+        [12, 14, 16],
+      );
+    });
+
+    for (final brightness in _brightnesses) {
+      testWidgets('pending, not confirmed and disabled thumbs in ${brightness.name}', (tester) async {
+        final theme = _theme(brightness);
+        final neutrals = theme.neutrals;
+
+        for (final (state, ring) in [
+          (ControlState.pending, neutrals.textSecondary),
+          (ControlState.unconfirmed, theme.status(AppStatus.warning).text),
+          (ControlState.disabled, neutrals.textDisabled),
+        ]) {
+          await _pump(
+            tester,
+            SizedBox(
+              width: 300,
+              child: AppSlider(value: 0.5, state: state, onChanged: (_) {}),
+            ),
+            brightness: brightness,
+          );
+
+          expect(_thumb(tester).dashed, isTrue, reason: state.name);
+          expect(_thumb(tester).ring, ring, reason: state.name);
+          expect(_thumb(tester).fill, neutrals.surfaceCard, reason: state.name);
+          expect(_thumb(tester).ringWidth, AppSliderMetrics.dashedRing);
+        }
+
+        // Disabled: the fill is text.disabled and the slider does not move.
+        expect(_track(tester).fill, neutrals.textDisabled);
+        expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNull);
+      });
+    }
+
+    testWidgets('a disabled slider drops its gradient', (tester) async {
+      final gradient = [AppColors.black, AppColors.white];
+
+      await _pump(
+        tester,
+        SizedBox(
+          width: 300,
+          child: AppSlider(value: 0.5, trackGradient: gradient, onChanged: (_) {}),
+        ),
+      );
+      expect(_track(tester).gradient, gradient);
+
+      await _pump(
+        tester,
+        SizedBox(width: 300, child: AppSlider(value: 0.5, trackGradient: gradient)),
+      );
+      expect(_track(tester).gradient, isNull);
+    });
+
+    testWidgets('a tap sets the value; the thumb travels inside the track', (tester) async {
+      double? value;
+      await _pump(
+        tester,
+        SizedBox(width: 322, child: AppSlider(value: 0, onChanged: (v) => value = v)),
+      );
+
+      // 322 wide less a thumb (22) is 300 of travel, starting at 11.
+      final left = tester.getTopLeft(find.byType(AppSlider));
+      await tester.tapAt(left + const Offset(11 + 75, 18));
+      await tester.pump();
+      expect(value, closeTo(0.25, 0.01));
+
+      await tester.tapAt(left + const Offset(321, 18));
+      await tester.pump();
+      expect(value, 1.0);
+    });
+
+    testWidgets('takes focus and steps with the arrow keys', (tester) async {
+      var value = 0.5;
+      await _pump(
+        tester,
+        StatefulBuilder(
+          builder: (context, setState) => SizedBox(
+            width: 300,
+            child: AppSlider(
+              value: value,
+              divisions: 10,
+              onChanged: (v) => setState(() => value = v),
+            ),
+          ),
+        ),
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(value, closeTo(0.6, 0.001));
+    });
+
+    testWidgets('SliderWithSteps draws the one slider without step labels', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 300,
+          child: SliderWithSteps(
+            value: 0.5,
+            steps: const ['Off', 'Low', 'High'],
+            discrete: true,
+            themeColor: ThemeColors.climate,
+            thumbBorderColor: AppColors.black,
+            onChanged: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.byType(AppSlider), findsOneWidget);
+      expect(find.text('Low'), findsNothing);
+      expect(tester.widget<Slider>(find.byType(Slider)).divisions, 2);
+      // A colour slider's ring still shows the picked colour.
+      expect(_thumb(tester).ring, AppColors.black);
+    });
+
+    testWidgets('SliderWithSteps disabled is the disabled look', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 300,
+          child: SliderWithSteps(value: 0.5, enabled: false, onChanged: (_) {}),
+        ),
+      );
+
+      expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNull);
+      expect(_track(tester).fill, AppNeutralPalette.light.textDisabled);
+    });
+
+    testWidgets('CardSlider shows a Barlow card value and the one slider', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 300,
+          child: CardSlider(label: 'Speed', value: 0.4, onChanged: (_) {}),
+        ),
+      );
+
+      final value = tester.widget<Text>(find.text('40 %'));
+      expect(value.style!.fontFamily, AppNumeralFont.family);
+      expect(value.style!.fontSize, 18);
+      expect(value.style!.fontWeight, AppNumeralFont.value);
+      expect(find.byType(AppSlider), findsOneWidget);
+      expect(find.text('Off'), findsNothing);
+    });
+
+    testWidgets('SettingsSlider is the accent slider between its icons', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 300,
+          child: SettingsSlider(
+            value: 0.7,
+            iconSmall: MdiIcons.brightness5,
+            iconLarge: MdiIcons.brightness7,
+            onChanged: (_) {},
+          ),
+        ),
+        accent: AppAccent.rose,
+      );
+
+      expect(_track(tester).fill, AppAccentPalette.of(AppAccent.rose, Brightness.light).fill);
+    });
+  });
+
+  group('AppSwitch', () {
+    for (final brightness in _brightnesses) {
+      testWidgets('sizes and colours in ${brightness.name}', (tester) async {
+        final theme = _theme(brightness, AppAccent.violet);
+        final neutrals = theme.neutrals;
+
+        Future<void> show(bool value, {ThemeColors? color, ControlState state = ControlState.idle}) =>
+            _pump(
+              tester,
+              AppSwitch(value: value, color: color, state: state, onChanged: (_) {}),
+              brightness: brightness,
+              accent: AppAccent.violet,
+            );
+
+        await show(true);
+        // A 52 × 36 tap zone around a 40 × 22 track.
+        expect(tester.getSize(find.byType(AppSwitch)), const Size(52, 36));
+        expect(
+          tester.getSize(
+            find.descendant(of: find.byType(AppSwitch), matching: find.byType(AnimatedContainer)),
+          ),
+          const Size(40, 22),
+        );
+        expect(_switchTrack(tester).color, theme.accent.fill);
+
+        await show(false);
+        expect(_switchTrack(tester).color, AppControlColors.switchOff(brightness));
+
+        await show(true, color: ThemeColors.climate);
+        expect(
+          _switchTrack(tester).color,
+          ThemeColorFamily.get(brightness, ThemeColors.climate).base,
+        );
+
+        await show(true, state: ControlState.disabled);
+        expect(_switchTrack(tester).color, neutrals.textDisabled);
+
+        await show(false, state: ControlState.disabled);
+        expect(_switchTrack(tester).color, neutrals.fillBase);
+      });
+    }
+
+    testWidgets('toggles on tap, Enter and Space; never while disabled', (tester) async {
+      var value = false;
+      await _pump(
+        tester,
+        StatefulBuilder(
+          builder: (context, setState) => AppSwitch(
+            value: value,
+            onChanged: (v) => setState(() => value = v),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(AppSwitch));
+      await tester.pump();
+      expect(value, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(value, isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(value, isTrue);
+
+      var calls = 0;
+      await _pump(
+        tester,
+        AppSwitch(value: true, state: ControlState.disabled, onChanged: (_) => calls++),
+      );
+      await tester.tap(find.byType(AppSwitch));
+      expect(calls, 0);
+    });
+
+    testWidgets('reads as a toggle to screen readers', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        AppSwitch(value: true, semanticLabel: 'Screen saver', onChanged: (_) {}),
+      );
+
+      expect(
+        tester.getSemantics(find.byType(AppSwitch)),
+        isSemantics(
+          label: 'Screen saver',
+          hasToggledState: true,
+          isToggled: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+          isFocusable: true,
+          hasFocusAction: true,
+        ),
+      );
+      handle.dispose();
+    });
+
+    testWidgets('IconSwitch and SettingsToggle draw the one switch', (tester) async {
+      var value = false;
+      await _pump(
+        tester,
+        IconSwitch(
+          switchState: false,
+          iconOn: MdiIcons.check,
+          iconOff: MdiIcons.close,
+          onChanged: (v) => value = v,
+        ),
+      );
+      expect(find.byType(AppSwitch), findsOneWidget);
+      await tester.tap(find.byType(AppSwitch));
+      await tester.pumpAndSettle();
+      expect(value, isTrue);
+      // It flips at once.
+      expect(tester.widget<AppSwitch>(find.byType(AppSwitch)).value, isTrue);
+
+      await _pump(tester, SettingsToggle(value: true, onChanged: (_) {}));
+      expect(find.byType(AppSwitch), findsOneWidget);
+    });
+  });
+
+  group('AppStepper', () {
+    for (final sizeClass in _classes) {
+      for (final brightness in _brightnesses) {
+        testWidgets('layout at ${sizeClass.name} in ${brightness.name}', (tester) async {
+          await _pump(
+            tester,
+            AppStepper(
+              value: 21.5,
+              min: 10,
+              max: 30,
+              step: 0.5,
+              unit: '°',
+              sizeClass: sizeClass,
+              onChanged: (_) {},
+            ),
+            brightness: brightness,
+          );
+
+          final neutrals = AppNeutralPalette.of(brightness);
+          final buttons = find.byType(ControlRoundButton);
+          expect(buttons, findsNWidgets(2));
+          final side = ControlRoundButton.sizeFor(sizeClass);
+          expect(tester.getSize(buttons.first), Size.square(side));
+          expect(side, {ScreenSizeClass.compact: 40, ScreenSizeClass.regular: 48, ScreenSizeClass.expanded: 56}[sizeClass]);
+
+          final button = tester.widget<Material>(
+            find.descendant(of: buttons.first, matching: find.byType(Material)),
+          );
+          expect(button.color, neutrals.fillLight);
+          expect((button.shape! as CircleBorder).side.color, neutrals.borderBase);
+
+          final value = tester.widget<Text>(
+            find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '21.5°'),
+          );
+          expect(value.style!.fontFamily, AppNumeralFont.family);
+          expect(value.style!.fontSize, sizeClass == ScreenSizeClass.expanded ? 28 : 18);
+          expect(value.style!.color, neutrals.textPrimary);
+        });
+      }
+    }
+
+    testWidgets('steps, snaps and stops at the ends', (tester) async {
+      var value = 29.5;
+      await _pump(
+        tester,
+        StatefulBuilder(
+          builder: (context, setState) => AppStepper(
+            value: value,
+            min: 10,
+            max: 30,
+            step: 0.5,
+            onChanged: (v) => setState(() => value = v),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      expect(value, 30);
+
+      // At the top, plus disables.
+      final plus = tester.widget<ControlRoundButton>(
+        find.ancestor(of: find.byIcon(MdiIcons.plus), matching: find.byType(ControlRoundButton)),
+      );
+      expect(plus.onTap, isNull);
+
+      await tester.tap(find.byIcon(MdiIcons.minus));
+      await tester.pump();
+      expect(value, 29.5);
+    });
+
+    testWidgets('pending, not confirmed and disabled values', (tester) async {
+      final theme = _theme(Brightness.light);
+
+      for (final (state, colour) in [
+        (ControlState.pending, theme.neutrals.textSecondary),
+        (ControlState.unconfirmed, theme.status(AppStatus.warning).text),
+        (ControlState.disabled, theme.neutrals.textDisabled),
+      ]) {
+        await _pump(
+          tester,
+          AppStepper(value: 20, min: 10, max: 30, state: state, onChanged: (_) {}),
+        );
+
+        final value = tester.widget<Text>(
+          find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '20'),
+        );
+        expect(value.style!.color, colour, reason: state.name);
+      }
+
+      // Disabled: both buttons do nothing.
+      for (final button in tester.widgetList<ControlRoundButton>(find.byType(ControlRoundButton))) {
+        expect(button.onTap, isNull);
+      }
+    });
+  });
+
+  group('ModeSelector (segmented control)', () {
+    for (final brightness in _brightnesses) {
+      testWidgets('segments and colours in ${brightness.name}', (tester) async {
+        await _pump(
+          tester,
+          SizedBox(
+            width: 400,
+            child: ModeSelector<String>(
+              modes: _modes(),
+              selectedValue: 'heat',
+              onChanged: (_) {},
+            ),
+          ),
+          brightness: brightness,
+          accent: AppAccent.sage,
+        );
+
+        final theme = _themeOf(tester, find.byType(ModeSelector<String>));
+        final neutrals = theme.neutrals;
+
+        // 36 high, 4 apart.
+        final heat = tester.getRect(find.ancestor(of: find.text('Heat'), matching: find.byType(Material)).first);
+        final cool = tester.getRect(find.ancestor(of: find.text('Cool'), matching: find.byType(Material)).first);
+        expect(heat.height, ModeSelector.segmentHeight);
+        expect(cool.left - heat.right, ModeSelector.gap);
+
+        // Selected: the accent's soft and text; unselected: fill.light and
+        // border.light.
+        expect(_segment(tester, 'Heat').background, theme.accent.soft);
+        expect(_segment(tester, 'Heat').outline, theme.accent.text);
+        expect(_segment(tester, 'Cool').background, neutrals.fillLight);
+        expect(_segment(tester, 'Cool').outline, neutrals.borderLight);
+        expect(tester.widget<Text>(find.text('Cool')).style!.color, neutrals.textPrimary);
+      });
+
+      testWidgets('inside a domain view the selected segment is the domain colour in ${brightness.name}', (tester) async {
+        await _pump(
+          tester,
+          SizedBox(
+            width: 400,
+            child: ModeSelector<String>(
+              modes: _modes(),
+              selectedValue: 'cool',
+              color: ThemeColors.climate,
+              onChanged: (_) {},
+            ),
+          ),
+          brightness: brightness,
+        );
+
+        final climate = ThemeColorFamily.get(brightness, ThemeColors.climate);
+        expect(_segment(tester, 'Cool').background, climate.soft);
+        expect(_segment(tester, 'Cool').outline, climate.base);
+        expect(tester.widget<Text>(find.text('Cool')).style!.color, climate.base);
+      });
+    }
+
+    testWidgets('pending and not confirmed mark the selected segment', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: ModeSelector<String>(
+            modes: _modes(),
+            selectedValue: 'heat',
+            state: ControlState.pending,
+            onChanged: (_) {},
+          ),
+        ),
+      );
+      expect(find.byIcon(MdiIcons.refresh), findsOneWidget);
+
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: ModeSelector<String>(
+            modes: _modes(),
+            selectedValue: 'heat',
+            state: ControlState.unconfirmed,
+            onChanged: (_) {},
+          ),
+        ),
+      );
+      expect(find.byIcon(MdiIcons.alert), findsOneWidget);
+      expect(
+        tester.widget<Icon>(find.byIcon(MdiIcons.alert)).color,
+        AppStatusPalette.of(Brightness.light, AppStatus.warning).text,
+      );
+    });
+
+    testWidgets('disabled: every segment is plain and nothing reacts', (tester) async {
+      var calls = 0;
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: ModeSelector<String>(
+            modes: _modes(),
+            selectedValue: 'heat',
+            state: ControlState.disabled,
+            onChanged: (_) => calls++,
+          ),
+        ),
+      );
+
+      final neutrals = AppNeutralPalette.light;
+      expect(_segment(tester, 'Heat').background, neutrals.fillLight);
+      expect(tester.widget<Text>(find.text('Heat')).style!.color, neutrals.textDisabled);
+      await tester.tap(find.text('Cool'));
+      expect(calls, 0);
+    });
+
+    testWidgets('selects on tap and on Enter', (tester) async {
+      String? selected;
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: ModeSelector<String>(
+            modes: _modes(),
+            selectedValue: 'heat',
+            onChanged: (v) => selected = v,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Off'));
+      expect(selected, 'off');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(selected, 'cool');
+    });
+
+    testWidgets('hides labels when a segment is narrower than its minimum', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 150,
+          child: ModeSelector<String>(
+            modes: _modes(),
+            selectedValue: 'heat',
+            onChanged: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.text('Heat'), findsNothing);
+      expect(find.byIcon(MdiIcons.fire), findsOneWidget);
+    });
+
+    testWidgets('IntentModeSelector marks active, matched and last intent', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: IntentModeSelector<String>(
+            modes: _modes(),
+            activeValue: 'heat',
+            lastIntentValue: 'off',
+            color: ThemeColors.lights,
+            onChanged: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.byIcon(MdiIcons.check), findsOneWidget);
+      expect(find.byIcon(MdiIcons.history), findsOneWidget);
+      final lights = ThemeColorFamily.get(Brightness.light, ThemeColors.lights);
+      expect(_segment(tester, 'Heat').background, lights.soft);
+
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: IntentModeSelector<String>(
+            modes: _modes(),
+            matchedValue: 'cool',
+            onChanged: (_) {},
+          ),
+        ),
+      );
+      expect(find.byIcon(MdiIcons.approximatelyEqual), findsOneWidget);
+      expect(
+        _segment(tester, 'Cool').background,
+        AppAccentPalette.of(AppAccent.blue, Brightness.light).soft,
+      );
+    });
+  });
+
+  group('Mode chip and popup', () {
+    BottomNavModeConfig config({String? title = 'Lights mode'}) => BottomNavModeConfig(
+      icon: MdiIcons.sofaOutline,
+      label: 'Relax',
+      title: title,
+      color: ThemeColors.lights,
+      popupBuilder: (context, dismiss) => const SizedBox.shrink(),
+    );
+
+    for (final sizeClass in _classes) {
+      for (final brightness in _brightnesses) {
+        testWidgets('the chip names its domain at ${sizeClass.name} in ${brightness.name}', (tester) async {
+          final handle = tester.ensureSemantics();
+          await _pump(
+            tester,
+            DeckModeChipButton(config: config(), onTap: (_) {}, sizeClass: sizeClass),
+            brightness: brightness,
+          );
+
+          final lights = ThemeColorFamily.get(brightness, ThemeColors.lights);
+          final neutrals = AppNeutralPalette.of(brightness);
+
+          expect(tester.getSize(find.byType(DeckModeChipButton)).height, 36);
+          final material = tester.widget<Material>(
+            find.descendant(of: find.byType(DeckModeChipButton), matching: find.byType(Material)),
+          );
+          expect(material.color, lights.soft);
+
+          // Compact shows the mode alone; screen readers always hear the
+          // domain.
+          final shown = sizeClass == ScreenSizeClass.compact ? 'Relax' : 'Lights mode: Relax';
+          expect(find.text(shown), findsOneWidget);
+          expect(tester.widget<Text>(find.text(shown)).style!.color, neutrals.textPrimary);
+          expect(find.bySemanticsLabel('Lights mode: Relax'), findsOneWidget);
+          handle.dispose();
+        });
+
+        testWidgets('the popup at ${sizeClass.name} in ${brightness.name}', (tester) async {
+          await _pump(
+            tester,
+            DeckModePopupFrame(
+              title: 'Lights mode',
+              sizeClass: sizeClass,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DeckModePopupOption(
+                    icon: MdiIcons.sofaOutline,
+                    label: 'Relax',
+                    isSelected: true,
+                    color: ThemeColors.lights,
+                    sizeClass: sizeClass,
+                    onTap: () {},
+                  ),
+                  DeckModePopupOption(
+                    icon: MdiIcons.weatherNight,
+                    label: 'Night',
+                    isSelected: false,
+                    color: ThemeColors.lights,
+                    sizeClass: sizeClass,
+                    onTap: () {},
+                  ),
+                ],
+              ),
+            ),
+            brightness: brightness,
+          );
+
+          final neutrals = AppNeutralPalette.of(brightness);
+          final lights = ThemeColorFamily.get(brightness, ThemeColors.lights);
+
+          expect(
+            tester.getSize(find.byType(DeckModePopupFrame)).width,
+            DeckModePopupMetrics.widthFor(sizeClass),
+          );
+          final frame = tester.widget<Container>(
+            find.descendant(of: find.byType(DeckModePopupFrame), matching: find.byType(Container)).first,
+          );
+          final decoration = frame.decoration! as BoxDecoration;
+          expect(decoration.color, neutrals.surfaceRaised);
+          expect(decoration.border!.top.color, neutrals.borderLight);
+          // One soft shadow in light; surface steps instead in dark.
+          expect(decoration.boxShadow, brightness == Brightness.light ? isNotEmpty : isNull);
+
+          // The title names the domain.
+          expect(find.text('LIGHTS MODE'), findsOneWidget);
+
+          final option = find.byType(DeckModePopupOption).first;
+          expect(tester.getSize(option).height, DeckModePopupMetrics.optionHeightFor(sizeClass));
+          final selected = tester.widget<Material>(
+            find.descendant(of: option, matching: find.byType(Material)),
+          );
+          expect(selected.color, lights.soft);
+          expect(find.byIcon(MdiIcons.check), findsOneWidget);
+          expect(tester.widget<Icon>(find.byIcon(MdiIcons.check)).color, lights.base);
+        });
+      }
+    }
+
+    testWidgets('without a title the chip shows the mode alone', (tester) async {
+      await _pump(
+        tester,
+        DeckModeChipButton(
+          config: config(title: null),
+          onTap: (_) {},
+          sizeClass: ScreenSizeClass.regular,
+        ),
+      );
+
+      expect(find.text('Relax'), findsOneWidget);
+    });
+  });
+
+  group('CircularControlDial', () {
+    Widget dial({
+      double value = 22,
+      double? second,
+      ValueChanged<double>? onChanged,
+      ValueChanged<double>? onSecondChanged,
+      bool enabled = true,
+      bool isActive = true,
+      ControlState state = ControlState.idle,
+      ScreenSizeClass sizeClass = ScreenSizeClass.regular,
+      double size = 240,
+    }) => CircularControlDial(
+      value: value,
+      secondValue: second,
+      currentValue: 21.4,
+      minValue: 10,
+      maxValue: 30,
+      step: 0.5,
+      size: size,
+      accentType: DialAccentColor.warning,
+      modeLabel: 'Heating',
+      displayFormat: DialDisplayFormat.temperature,
+      temperatureUnitSymbol: '°',
+      enabled: enabled,
+      isActive: isActive,
+      state: state,
+      sizeClass: sizeClass,
+      onChanged: onChanged ?? (_) {},
+      onSecondChanged: onSecondChanged,
+    );
+
+    for (final sizeClass in _classes) {
+      for (final brightness in _brightnesses) {
+        testWidgets('layout at ${sizeClass.name} in ${brightness.name}', (tester) async {
+          await _pump(tester, dial(sizeClass: sizeClass), brightness: brightness);
+
+          final neutrals = AppNeutralPalette.of(brightness);
+
+          // The numeral is 0.27 of the dial, Barlow 300.
+          final numeral = tester.widget<Text>(
+            find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '22°'),
+          );
+          expect(numeral.style!.fontFamily, AppNumeralFont.family);
+          expect(numeral.style!.fontWeight, AppNumeralFont.display);
+          expect(numeral.style!.fontSize, closeTo(240 * DialGeometry.numeral, 0.01));
+          expect(numeral.style!.color, neutrals.textPrimary);
+
+          expect(find.text('Now 21.4°'), findsOneWidget);
+          expect(find.text('Heating'), findsOneWidget);
+
+          // Minus and plus at the foot, inside the dial's box.
+          final buttons = find.byType(ControlRoundButton);
+          expect(buttons, findsNWidgets(2));
+          final box = tester.getRect(find.byType(CircularControlDial));
+          final minus = tester.getRect(buttons.first);
+          final plus = tester.getRect(buttons.last);
+          expect(minus.bottomLeft, box.bottomLeft);
+          expect(plus.bottomRight, box.bottomRight);
+          // The class size, at most a quarter of the dial.
+          final expected = ControlRoundButton.sizeFor(sizeClass)
+              .clamp(ControlRoundButton.minDiameter, 240 * DialGeometry.buttons);
+          expect(minus.width, expected);
+        });
+      }
+    }
+
+    test('the arc is 240° and open at the foot', () {
+      expect(DialGeometry.sweepAngle, closeTo(240 * 3.141592653589793 / 180, 1e-9));
+      expect(DialGeometry.startAngle, closeTo(150 * 3.141592653589793 / 180, 1e-9));
+    });
+
+    testWidgets('minus and plus step the target and report it once settled', (tester) async {
+      final reported = <double>[];
+      await _pump(tester, dial(onChanged: reported.add));
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '23°'),
+        findsOneWidget,
+      );
+      expect(reported, isEmpty);
+
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, [23]);
+    });
+
+    testWidgets('two thumbs: the second is the cool setpoint', (tester) async {
+      final heat = <double>[];
+      final cool = <double>[];
+      await _pump(
+        tester,
+        dial(value: 20, second: 24, onChanged: heat.add, onSecondChanged: cool.add),
+      );
+
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '20–24°'),
+        findsOneWidget,
+      );
+      final numeral = tester.widget<Text>(
+        find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '20–24°'),
+      );
+      expect(numeral.style!.fontSize, closeTo(240 * DialGeometry.numeralTwoThumbs, 0.01));
+
+      // Minus and plus move the first thumb until another is dragged.
+      await tester.tap(find.byIcon(MdiIcons.minus));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [19.5]);
+      expect(cool, isEmpty);
+    });
+
+    testWidgets('disabled or off: dimmed and does not move', (tester) async {
+      var calls = 0;
+      await _pump(tester, dial(enabled: false, isActive: false, onChanged: (_) => calls++));
+
+      final neutrals = AppNeutralPalette.light;
+      final numeral = tester.widget<Text>(
+        find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '22°'),
+      );
+      expect(numeral.style!.color, neutrals.textSecondary);
+      for (final button in tester.widgetList<ControlRoundButton>(find.byType(ControlRoundButton))) {
+        expect(button.onTap, isNull);
+      }
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(calls, 0);
+    });
+
+    testWidgets('steps as a slider for screen readers', (tester) async {
+      final handle = tester.ensureSemantics();
+      final reported = <double>[];
+      await _pump(tester, dial(onChanged: reported.add));
+
+      final node = tester.getSemantics(find.byType(CircularControlDial));
+      expect(node.value, '22°');
+      expect(node.increasedValue, '22.5');
+      final semantics = tester.widget<Semantics>(
+        find.descendant(of: find.byType(CircularControlDial), matching: find.byType(Semantics)).first,
+      );
+      expect(semantics.properties.slider, isTrue);
+      semantics.properties.onIncrease!();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, [22.5]);
+      handle.dispose();
+    });
+  });
+}

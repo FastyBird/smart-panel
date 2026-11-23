@@ -234,6 +234,34 @@ class AppLocalizationsSk extends AppLocalizations {
   String get device_offline_paused_short => 'Ovládanie pozastavené';
 
   @override
+  String get control_decrease => 'Znížiť';
+
+  @override
+  String get control_increase => 'Zvýšiť';
+
+  @override
+  String mode_chip_label(String title, String mode) {
+    return '$title: $mode';
+  }
+
+  @override
+  String get mode_title_lights => 'Režim svetiel';
+
+  @override
+  String get mode_title_climate => 'Režim klímy';
+
+  @override
+  String get mode_title_shading => 'Režim tienenia';
+
+  @override
+  String get mode_title_energy => 'Rozsah energie';
+
+  @override
+  String dial_now(String value) {
+    return 'Teraz $value';
+  }
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

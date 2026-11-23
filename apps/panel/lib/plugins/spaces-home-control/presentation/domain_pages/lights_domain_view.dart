@@ -1249,6 +1249,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
       icon: currentOption.icon,
       label: currentOption.label,
+      title: AppLocalizations.of(context)!.mode_title_lights,
       color: currentOption.color ?? ThemeColors.neutral,
       popupBuilder: _buildModePopupContent,
     ));
@@ -1256,7 +1257,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
     final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final modes = _getLightingModeOptions(context, localizations);
     final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
@@ -1265,18 +1265,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-          child: Text(
-            localizations.popup_label_mode.toUpperCase(),
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              fontWeight: FontWeight.w600,
-              letterSpacing: AppSpacings.scale(1),
-              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-            ),
-          ),
-        ),
         for (final mode in modes)
           _buildPopupModeItem(
             context,

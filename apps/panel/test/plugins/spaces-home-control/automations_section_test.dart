@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_switch.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/automations/models/automation.dart';
 import 'package:fastybird_smart_panel/modules/automations/repositories/automations.dart';
@@ -116,8 +117,8 @@ void main() {
     ),
   );
 
-  Switch switchOf(WidgetTester tester, String id) =>
-      tester.widget<Switch>(find.byKey(ValueKey('automation-switch-$id')));
+  AppSwitch switchOf(WidgetTester tester, String id) =>
+      tester.widget<AppSwitch>(find.byKey(ValueKey('automation-switch-$id')));
 
   String statusOf(WidgetTester tester, String id) =>
       tester.widget<Text>(find.byKey(ValueKey('automation-status-$id'))).data!;
@@ -143,7 +144,7 @@ void main() {
 
       expect(find.text('Automations'), findsOneWidget);
       expect(find.text('Kitchen fan'), findsNothing);
-      expect(find.byType(Switch), findsNWidgets(4));
+      expect(find.byType(AppSwitch), findsNWidgets(4));
 
       final names = tester
           .widgetList<Text>(find.byType(Text))
@@ -190,7 +191,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Automations'), findsNothing);
-    expect(find.byType(Switch), findsNothing);
+    expect(find.byType(AppSwitch), findsNothing);
 
     // An automation moved into the space appears without a reload
     repository.insert([_automation('e', 'Kitchen fan', spaceId: 'room')]);

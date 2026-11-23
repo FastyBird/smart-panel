@@ -294,6 +294,55 @@
   "@device_offline_paused_short": {
     "description": "Short offline note on Compact panels"
   },
+  "control_decrease": "Decrease",
+  "@control_decrease": {
+    "description": "Minus button of a stepper or the thermostat dial, for screen readers"
+  },
+  "control_increase": "Increase",
+  "@control_increase": {
+    "description": "Plus button of a stepper or the thermostat dial, for screen readers"
+  },
+  "mode_chip_label": "{title}: {mode}",
+  "@mode_chip_label": {
+    "description": "Mode chip label that names its domain, e.g. Lights mode: Relax",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Lights mode"
+      },
+      "mode": {
+        "type": "String",
+        "example": "Relax"
+      }
+    }
+  },
+  "mode_title_lights": "Lights mode",
+  "@mode_title_lights": {
+    "description": "Title of the lighting mode chip and popup"
+  },
+  "mode_title_climate": "Climate mode",
+  "@mode_title_climate": {
+    "description": "Title of the climate mode chip and popup"
+  },
+  "mode_title_shading": "Shading mode",
+  "@mode_title_shading": {
+    "description": "Title of the shading mode chip and popup"
+  },
+  "mode_title_energy": "Energy range",
+  "@mode_title_energy": {
+    "description": "Title of the energy range chip and popup"
+  },
+  "dial_now": "Now {value}",
+  "@dial_now": {
+    "description": "Current reading under the thermostat dial target, e.g. Now 21.4°",
+    "placeholders": {
+      "value": {
+        "type": "String",
+        "example": "21.4°"
+      }
+    }
+  },
+
   "devices_offline_skipped": "{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}",
   "@devices_offline_skipped": {
     "description": "Message shown when devices are skipped due to being offline",

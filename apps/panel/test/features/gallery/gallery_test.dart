@@ -1,3 +1,4 @@
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -58,6 +59,8 @@ void main() {
     locator.registerSingleton<VisualDensityService>(
       VisualDensityService(pixelRatio: 2),
     );
+    // The thermostat dial blocks page swipes through the event bus.
+    locator.registerSingleton<EventBus>(EventBus());
   });
 
   tearDown(() => AppAccents.current = AppAccent.blue);
@@ -82,7 +85,7 @@ void main() {
     // Sections fill as their tasks land.
     expect(
       gallerySections.where((section) => section.entries.isNotEmpty).map((section) => section.task),
-      ['DR-5', 'DR-6'],
+      ['DR-5', 'DR-6', 'DR-7'],
     );
   });
 

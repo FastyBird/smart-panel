@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/features/gallery/entries/card_entries.dart';
+import 'package:fastybird_smart_panel/features/gallery/entries/control_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/header_entries.dart';
 import 'package:flutter/widgets.dart';
 
@@ -62,6 +63,7 @@ const List<GallerySection> gallerySections = [
     task: 'DR-7',
     issue: 1717,
     title: 'Slider, switch, stepper, segmented control and mode chip',
+    entries: controlEntries,
   ),
   GallerySection(
     id: 'lists',

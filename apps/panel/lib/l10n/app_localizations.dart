@@ -520,6 +520,54 @@ abstract class AppLocalizations {
   /// **'Controls paused'**
   String get device_offline_paused_short;
 
+  /// Minus button of a stepper or the thermostat dial, for screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease'**
+  String get control_decrease;
+
+  /// Plus button of a stepper or the thermostat dial, for screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Increase'**
+  String get control_increase;
+
+  /// Mode chip label that names its domain, e.g. Lights mode: Relax
+  ///
+  /// In en, this message translates to:
+  /// **'{title}: {mode}'**
+  String mode_chip_label(String title, String mode);
+
+  /// Title of the lighting mode chip and popup
+  ///
+  /// In en, this message translates to:
+  /// **'Lights mode'**
+  String get mode_title_lights;
+
+  /// Title of the climate mode chip and popup
+  ///
+  /// In en, this message translates to:
+  /// **'Climate mode'**
+  String get mode_title_climate;
+
+  /// Title of the shading mode chip and popup
+  ///
+  /// In en, this message translates to:
+  /// **'Shading mode'**
+  String get mode_title_shading;
+
+  /// Title of the energy range chip and popup
+  ///
+  /// In en, this message translates to:
+  /// **'Energy range'**
+  String get mode_title_energy;
+
+  /// Current reading under the thermostat dial target, e.g. Now 21.4°
+  ///
+  /// In en, this message translates to:
+  /// **'Now {value}'**
+  String dial_now(String value);
+
   /// Message shown when devices are skipped due to being offline
   ///
   /// In en, this message translates to:

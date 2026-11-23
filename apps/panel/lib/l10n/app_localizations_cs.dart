@@ -234,6 +234,34 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_offline_paused_short => 'Ovládání pozastaveno';
 
   @override
+  String get control_decrease => 'Snížit';
+
+  @override
+  String get control_increase => 'Zvýšit';
+
+  @override
+  String mode_chip_label(String title, String mode) {
+    return '$title: $mode';
+  }
+
+  @override
+  String get mode_title_lights => 'Režim světel';
+
+  @override
+  String get mode_title_climate => 'Režim klimatu';
+
+  @override
+  String get mode_title_shading => 'Režim stínění';
+
+  @override
+  String get mode_title_energy => 'Rozsah energie';
+
+  @override
+  String dial_now(String value) {
+    return 'Nyní $value';
+  }
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

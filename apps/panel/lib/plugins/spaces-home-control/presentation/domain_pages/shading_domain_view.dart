@@ -576,6 +576,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       BottomNavModeConfig(
         icon: currentOption.icon,
         label: currentOption.label,
+        title: AppLocalizations.of(context)!.mode_title_shading,
         color: currentOption.color ?? ThemeColors.neutral,
         popupBuilder: _buildModePopupContent,
       ),
@@ -584,7 +585,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
     final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final modes = _getCoversModeOptions(localizations);
     final (activeValue, matchedValue, lastIntentValue) =
         _getCoverModeSelectorValues();
@@ -596,20 +596,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-          child: Text(
-            localizations.popup_label_mode.toUpperCase(),
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.0,
-              color: isDark
-                  ? AppTextColorDark.placeholder
-                  : AppTextColorLight.placeholder,
-            ),
-          ),
-        ),
         for (final mode in modes)
           _buildPopupModeItem(
             context,

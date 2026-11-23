@@ -132,116 +132,100 @@ class ValueSelectorRow<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final neutrals = Theme.of(context).neutrals;
     final isDisabled = onChanged == null;
+    final isCompact = layout == ValueSelectorRowLayout.compact;
 
-    // Use disabled colors when onChanged is null
-    final cardColor = isDisabled
-        ? (isDark ? AppFillColorDark.darker : AppFillColorLight.darker)
-        : (isDark ? AppFillColorDark.light : AppFillColorLight.blank);
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final textColor = isDisabled
-        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
-        : (isDark ? AppTextColorDark.primary : AppTextColorLight.primary);
-    final secondaryColor = isDisabled
-        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
-        : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
-    final iconBgColor = isDisabled
-        ? (isDark ? AppFillColorDark.light : AppFillColorLight.light)
-        : (isDark ? AppFillColorDark.darker : AppFillColorLight.light);
-    final iconColor = isDisabled
-        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
-        : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular);
-
-    return Material(
-      color: cardColor,
+    final textColor = isDisabled ? neutrals.textDisabled : neutrals.textPrimary;
+    final valueColor =
+        isDisabled ? neutrals.textDisabled : neutrals.textSecondary;
+    final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppBorderRadius.base),
-      child: InkWell(
-        onTap: onChanged != null
-            ? () {
-                HapticFeedback.lightImpact();
-                _showSelectorSheet(context, isDark);
-              }
-            : null,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-            vertical: layout == ValueSelectorRowLayout.compact
-                ? AppSpacings.pSm
-                : AppSpacings.pMd,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            border: Border.all(
-              color: borderColor,
-              width: AppSpacings.scale(1),
-            ),
-          ),
-          child: Row(
-            spacing: AppSpacings.pMd,
-            children: [
-              // Icon with background container (matching UniversalTile style)
-              Container(
-                width: AppSpacings.scale(32),
-                height: AppSpacings.scale(32),
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: AppSpacings.scale(18),
-                ),
+      side: BorderSide(color: neutrals.borderLight, width: AppSpacings.scale(1)),
+    );
+    final valueText = _getDisplayValue(localizations);
+
+    final valueLabel = Text(
+      valueText,
+      style: TextStyle(color: valueColor, fontSize: AppFontSize.small),
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+    );
+
+    return Semantics(
+      button: true,
+      enabled: !isDisabled,
+      label: '$label: $valueText',
+      onTap: isDisabled ? null : () => _showSelectorSheet(context, isDark),
+      excludeSemantics: true,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: AppSpacings.scale(44)),
+        child: Material(
+          color: isDisabled ? neutrals.fillLight : neutrals.surfaceCard,
+          shape: shape,
+          child: InkWell(
+            onTap: isDisabled
+                ? null
+                : () {
+                    HapticFeedback.lightImpact();
+                    _showSelectorSheet(context, isDark);
+                  },
+            customBorder: shape,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: AppSpacings.pMd,
+                right: AppSpacings.pSm,
+                top: AppSpacings.pSm,
+                bottom: AppSpacings.pSm,
               ),
-              Expanded(
-                child: layout == ValueSelectorRowLayout.compact
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            label,
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: AppFontSize.base,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                          Text(
-                            _getDisplayValue(localizations),
-                            style: TextStyle(
-                              color: secondaryColor,
-                              fontSize: AppFontSize.extraSmall,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ],
-                      )
-                    : Text(
-                        label,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: AppFontSize.base,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-              ),
-              if (layout == ValueSelectorRowLayout.horizontal) ...[
-                Text(
-                  _getDisplayValue(localizations),
-                  style: TextStyle(
-                    color: secondaryColor,
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w500,
+              child: Row(
+                spacing: AppSpacings.pMd,
+                children: [
+                  // The icon tile (radius 6, like the tiles' icon tile).
+                  Container(
+                    width: AppSpacings.scale(28),
+                    height: AppSpacings.scale(28),
+                    decoration: BoxDecoration(
+                      color: neutrals.fillLight,
+                      borderRadius: BorderRadius.circular(AppBorderRadius.inner),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: isDisabled
+                          ? neutrals.textDisabled
+                          : neutrals.textSecondary,
+                      size: AppSpacings.scale(16),
+                    ),
                   ),
-                ),
-              ],
-            ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: AppSpacings.scale(1),
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: AppFontSize.small,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        if (isCompact) valueLabel,
+                      ],
+                    ),
+                  ),
+                  if (!isCompact) Flexible(child: valueLabel),
+                  Icon(
+                    MdiIcons.chevronRight,
+                    size: AppSpacings.scale(14),
+                    color: valueColor,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -259,8 +243,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
   }
 
   void _showSelectorBottomSheet(BuildContext context, bool isDark) {
-    final effectiveActiveColor =
-        activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
+    final effectiveActiveColor = activeColor ?? Theme.of(context).accent.text;
     final found = options.indexWhere((o) => o.value == currentValue);
     final initialIndex = options.isEmpty
         ? -1
@@ -298,19 +281,17 @@ class ValueSelectorRow<T> extends StatelessWidget {
   }
 
   void _showGridDialog(BuildContext context, bool isDark) {
-    final effectiveActiveColor =
-        activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
+    final effectiveActiveColor = activeColor ?? Theme.of(context).accent.text;
     final found = options.indexWhere((o) => o.value == currentValue);
     final initialIndex = options.isEmpty
         ? -1
         : (found < 0 ? 0 : found.clamp(0, options.length - 1));
     final selectedIndexNotifier = ValueNotifier<int>(initialIndex);
 
-    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+    final neutrals = Theme.of(context).neutrals;
+    final bgColor = neutrals.surfaceRaised;
+    final borderColor = neutrals.borderLight;
+    final textColor = neutrals.textPrimary;
 
     showDialog(
       context: context,
@@ -374,11 +355,10 @@ class ValueSelectorRow<T> extends StatelessWidget {
   }
 
   void _showSliderDialog(BuildContext context, bool isDark) {
-    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+    final neutrals = Theme.of(context).neutrals;
+    final bgColor = neutrals.surfaceRaised;
+    final borderColor = neutrals.borderLight;
+    final textColor = neutrals.textPrimary;
 
     // Convert current value to 0.0–1.0 normalized slider position
     double rawValue;
@@ -510,9 +490,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
     ValueNotifier<double> sliderValueNotifier,
     bool isDark,
   ) {
-    final secondaryColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
     String formatSliderValue(double value) {
       if (sliderValueFormatter != null) {
         return sliderValueFormatter!(value);
@@ -527,7 +504,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
         return Text(
           formatSliderValue(value),
           style: TextStyle(
-            color: secondaryColor,
+            color: Theme.of(context).neutrals.textSecondary,
             fontSize: AppFontSize.base,
             fontWeight: FontWeight.w500,
           ),
@@ -751,15 +728,15 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveActiveColor = widget.activeColor ??
-        (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    final secondaryColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final theme = Theme.of(context);
+    final neutrals = theme.neutrals;
+    final effectiveActiveColor = widget.activeColor ?? theme.accent.text;
+    final selectedBackground = widget.activeColor?.withValues(alpha: 0.12) ??
+        theme.accent.soft;
+    final cardColor = neutrals.fillLight;
+    final borderColor = neutrals.borderLight;
+    final textColor = neutrals.textPrimary;
+    final secondaryColor = neutrals.textSecondary;
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -838,9 +815,8 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                             final isSelected = _selectedIndex == index;
 
                             // Double-border technique to prevent UI jumping on selection
-                            final innerBgColor = isSelected
-                                ? effectiveActiveColor.withValues(alpha: 0.12)
-                                : cardColor;
+                            final innerBgColor =
+                                isSelected ? selectedBackground : cardColor;
 
                             return GestureDetector(
                               onTap: () {

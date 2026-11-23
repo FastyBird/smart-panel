@@ -1,5 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_switch.dart';
+import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/automations/models/automation.dart';
@@ -96,20 +98,21 @@ class AutomationsSection extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Semantics(
-                      label: automation.name,
-                      child: Switch(
-                        key: ValueKey('automation-switch-${automation.id}'),
-                        value: automation.enabled,
-                        onChanged: automation.pending
-                            ? null
-                            : (enabled) => _toggle(
-                                context,
-                                automationsService,
-                                automation,
-                                enabled,
-                              ),
-                      ),
+                    AppSwitch(
+                      key: ValueKey('automation-switch-${automation.id}'),
+                      value: automation.enabled,
+                      semanticLabel: automation.name,
+                      state: automation.pending
+                          ? ControlState.pending
+                          : ControlState.idle,
+                      onChanged: automation.pending
+                          ? null
+                          : (enabled) => _toggle(
+                              context,
+                              automationsService,
+                              automation,
+                              enabled,
+                            ),
                     ),
                   ],
                 ),

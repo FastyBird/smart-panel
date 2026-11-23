@@ -385,7 +385,8 @@ void main() {
         for (final accent in AppAccent.values) {
           await tester.pumpWidget(_app(
             _theme(accent, brightness),
-            const SettingsToggle(value: true),
+            // A switch without a handler is read-only and draws disabled.
+            SettingsToggle(value: true, onChanged: (_) {}),
           ));
           await tester.pumpAndSettle();
 
