@@ -276,6 +276,24 @@
       }
     }
   },
+  "device_offline_line": "Offline · last seen {time}",
+  "@device_offline_line": {
+    "description": "Offline state line on tiles, heroes and device details (docs/display-ui-design-spec.md §7)",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "5 min ago"
+      }
+    }
+  },
+  "device_offline_paused": "Controls are paused until the device is back",
+  "@device_offline_paused": {
+    "description": "Offline note on a device hero or detail: the controls do nothing until the device is back"
+  },
+  "device_offline_paused_short": "Controls paused",
+  "@device_offline_paused_short": {
+    "description": "Short offline note on Compact panels"
+  },
   "devices_offline_skipped": "{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}",
   "@devices_offline_skipped": {
     "description": "Message shown when devices are skipped due to being offline",

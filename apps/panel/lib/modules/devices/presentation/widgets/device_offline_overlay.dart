@@ -1,169 +1,72 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/offline_note.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-// Offline status colors
-const Color _offlineColor = Color(0xFF78909C);
-
-/// Combined widget that shows both the backdrop and banner for offline devices.
+/// The offline treatment of a device detail (docs/display-ui-design-spec.md
+/// §7): the controls underneath are dimmed and do not react, and the
+/// [OfflineNote] ("Offline · last seen 21:10. Controls are paused until the
+/// device is back") sits at the top, in the page padding.
 ///
-/// Use this as a single widget in a Stack to show the offline state.
-///
-/// Example usage:
+/// Use it as the last child of a [Stack] over the detail's content:
 /// ```dart
 /// Stack(
 ///   children: [
-///     // Main content
 ///     DevicePortraitLayout(...),
-///     // Offline state
 ///     if (!device.isOnline)
-///       DeviceOfflineState(
-///         isDark: isDark,
-///         lastSeenText: lastSeenText,
-///       ),
+///       DeviceOfflineState(isDark: isDark, lastSeenText: lastSeenText),
 ///   ],
 /// )
 /// ```
 class DeviceOfflineState extends StatelessWidget {
+  /// Kept for existing callers; the colours follow the theme.
   final bool isDark;
+
+  /// When the device was last heard from, already formatted ("5 min ago").
   final String? lastSeenText;
+
+  /// The class to render at; defaults to the screen's.
+  final ScreenSizeClass? sizeClass;
 
   const DeviceOfflineState({
     super.key,
     required this.isDark,
     this.lastSeenText,
+    this.sizeClass,
   });
+
+  /// How much of the page surface covers the paused controls.
+  static const double backdropOpacity = 0.6;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedClass = sizeClass ?? locator<ScreenService>().sizeClass;
+    final padding = AppSpacings.scale(BaseCard.paddingFor(resolvedClass));
+
     return Stack(
       children: [
-        _DeviceOfflineBackdrop(isDark: isDark),
+        // Absorbs taps so the paused controls do not react.
+        Positioned.fill(
+          child: AbsorbPointer(
+            child: ColoredBox(
+              color: Theme.of(
+                context,
+              ).neutrals.surfacePage.withValues(alpha: backdropOpacity),
+            ),
+          ),
+        ),
         Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: _DeviceOfflineBanner(
-            isDark: isDark,
+          top: padding,
+          left: padding,
+          right: padding,
+          child: OfflineNote(
             lastSeenText: lastSeenText,
+            sizeClass: resolvedClass,
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Semi-transparent backdrop that covers the content area when device is offline.
-class _DeviceOfflineBackdrop extends StatelessWidget {
-  final bool isDark;
-
-  const _DeviceOfflineBackdrop({
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: isDark
-          ? AppBgColorDark.pageOverlay50
-          : AppBgColorLight.pageOverlay50,
-    );
-  }
-}
-
-/// Banner shown at the top of device detail content when device is offline.
-class _DeviceOfflineBanner extends StatelessWidget {
-  final bool isDark;
-  final String? lastSeenText;
-
-  const _DeviceOfflineBanner({
-    required this.isDark,
-    this.lastSeenText,
-  });
-
-  Color _textMuted() =>
-      isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-  Color _cardBg() =>
-      isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
-
-  Color _borderColor() =>
-      isDark ? AppColorsDark.infoLight7 : AppColorsLight.infoLight7;
-
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
-    return Container(
-      margin: EdgeInsets.all(AppSpacings.scale(AppSpacings.pLg)),
-      padding: EdgeInsets.all(AppSpacings.scale(16)),
-      decoration: BoxDecoration(
-        color: _cardBg(),
-        borderRadius: BorderRadius.circular(AppSpacings.scale(16)),
-        border: Border.all(
-          color: _borderColor(),
-          width: AppSpacings.scale(1),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Icon
-          Container(
-            width: AppSpacings.scale(40),
-            height: AppSpacings.scale(40),
-            decoration: BoxDecoration(
-              color: _offlineColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(AppSpacings.scale(10)),
-            ),
-            child: Icon(
-              MdiIcons.wifiOff,
-              color: _offlineColor,
-              size: AppSpacings.scale(22),
-            ),
-          ),
-          AppSpacings.spacingLgHorizontal,
-          // Content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      localizations.device_offline_title,
-                      style: TextStyle(
-                        color: _offlineColor,
-                        fontSize: AppSpacings.scale(14),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (lastSeenText != null) ...[
-                      const Spacer(),
-                      Text(
-                        lastSeenText!,
-                        style: TextStyle(
-                          color: _textMuted(),
-                          fontSize: AppSpacings.scale(12),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                AppSpacings.spacingXsVertical,
-                Text(
-                  localizations.device_offline_description,
-                  style: TextStyle(
-                    color: _textMuted(),
-                    fontSize: AppSpacings.scale(12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

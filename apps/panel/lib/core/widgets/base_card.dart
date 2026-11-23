@@ -1,8 +1,11 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
-/// A reusable card container with consistent fill, border, and border-radius
-/// styling that adapts to light/dark theme.
+/// The card (docs/display-ui-design-spec.md §3, §5): `surface.card` with a
+/// 1 px `border.light` outline in both themes, radius 8, no shadow, and the
+/// page padding of its class inside (6 Compact, 8 Regular, 12 Expanded).
 ///
 /// Use this widget wherever a card-like container is needed instead of manually
 /// building Container + BoxDecoration with fill color, border, and borderRadius.
@@ -16,12 +19,10 @@ class BaseCard extends StatelessWidget {
   final double? width;
   final double? height;
 
-  /// Optional card background color. When null, uses the default
-  /// (`surface.card`: AppBgColorLight.base / AppBgColorDark.base).
+  /// Optional card background color. When null, uses `surface.card`.
   final Color? color;
 
-  /// Optional card border color. When null, uses the default
-  /// (`border.light`: AppBorderColorLight.light / AppBorderColorDark.light).
+  /// Optional card border color. When null, uses `border.light`.
   final Color? borderColor;
 
   final double? borderWidth;
@@ -46,6 +47,9 @@ class BaseCard extends StatelessWidget {
   /// [Expanded] children work correctly. Defaults to false ([MainAxisSize.min]).
   final bool expanded;
 
+  /// The class whose padding the card uses; defaults to the screen's.
+  final ScreenSizeClass? sizeClass;
+
   const BaseCard({
     super.key,
     required this.child,
@@ -61,21 +65,33 @@ class BaseCard extends StatelessWidget {
     this.headerTrailing,
     this.headerLine = false,
     this.expanded = false,
+    this.sizeClass,
   });
+
+  /// Padding inside a card, in design px: the page padding of [sizeClass].
+  static double paddingFor(ScreenSizeClass sizeClass) => switch (sizeClass) {
+    ScreenSizeClass.compact => 6,
+    ScreenSizeClass.regular => 8,
+    ScreenSizeClass.expanded => 12,
+  };
 
   bool get _hasHeader => headerTitle != null;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final neutrals = Theme.of(context).neutrals;
 
-    final resolvedColor =
-        color ?? (isDark ? AppBgColorDark.base : AppBgColorLight.base);
-    final resolvedBorderColor = borderColor ??
-        (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+    final resolvedColor = color ?? neutrals.surfaceCard;
+    final resolvedBorderColor = borderColor ?? neutrals.borderLight;
     final finalBorderWidth = borderWidth ?? AppSpacings.scale(1);
 
-    final resolvedPadding = padding ?? AppSpacings.paddingMd;
+    final resolvedPadding =
+        padding ??
+        EdgeInsets.all(
+          AppSpacings.scale(
+            paddingFor(sizeClass ?? locator<ScreenService>().sizeClass),
+          ),
+        );
 
     if (!_hasHeader) {
       return Container(
@@ -85,13 +101,17 @@ class BaseCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: resolvedColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: finalBorderWidth > 0 ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
+          border: finalBorderWidth > 0
+              ? Border.all(color: resolvedBorderColor, width: finalBorderWidth)
+              : null,
         ),
         child: child,
       );
     }
 
-    final resolvedEdgeInsets = resolvedPadding.resolve(Directionality.of(context));
+    final resolvedEdgeInsets = resolvedPadding.resolve(
+      Directionality.of(context),
+    );
 
     return Container(
       width: width,
@@ -99,7 +119,9 @@ class BaseCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: resolvedColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: finalBorderWidth > 0 ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
+        border: finalBorderWidth > 0
+            ? Border.all(color: resolvedBorderColor, width: finalBorderWidth)
+            : null,
       ),
       child: Column(
         mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
@@ -119,7 +141,7 @@ class BaseCard extends StatelessWidget {
                 top: resolvedEdgeInsets.top,
                 bottom: resolvedEdgeInsets.bottom,
               ),
-            )
+            ),
           ),
           if (headerLine) ...[
             Divider(
@@ -164,10 +186,7 @@ class _BaseCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final secondaryColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final secondaryColor = Theme.of(context).neutrals.textSecondary;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -179,17 +198,13 @@ class _BaseCardHeader extends StatelessWidget {
             spacing: AppSpacings.pSm,
             children: [
               if (icon != null)
-                Icon(
-                  icon,
-                  size: AppFontSize.small,
-                  color: secondaryColor,
-                ),
+                Icon(icon, size: AppFontSize.small, color: secondaryColor),
               Text(
                 title.toUpperCase(),
                 style: TextStyle(
                   color: titleColor ?? secondaryColor,
                   fontSize: AppFontSize.small,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],

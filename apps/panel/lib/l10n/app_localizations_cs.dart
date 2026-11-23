@@ -222,6 +222,18 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String device_offline_line(String time) {
+    return 'Offline · naposledy viděno $time';
+  }
+
+  @override
+  String get device_offline_paused =>
+      'Ovládání je pozastaveno, dokud se zařízení nevrátí';
+
+  @override
+  String get device_offline_paused_short => 'Ovládání pozastaveno';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/features/gallery/entries/card_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/header_entries.dart';
 import 'package:flutter/widgets.dart';
 
@@ -54,6 +55,7 @@ const List<GallerySection> gallerySections = [
     task: 'DR-6',
     issue: 1716,
     title: 'Cards, hero card and tiles',
+    entries: cardEntries,
   ),
   GallerySection(
     id: 'controls',

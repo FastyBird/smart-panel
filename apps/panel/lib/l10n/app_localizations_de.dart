@@ -221,6 +221,18 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String device_offline_line(String time) {
+    return 'Offline · zuletzt gesehen $time';
+  }
+
+  @override
+  String get device_offline_paused =>
+      'Die Steuerung ist pausiert, bis das Gerät zurück ist';
+
+  @override
+  String get device_offline_paused_short => 'Steuerung pausiert';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

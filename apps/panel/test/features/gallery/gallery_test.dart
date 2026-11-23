@@ -82,7 +82,7 @@ void main() {
     // Sections fill as their tasks land.
     expect(
       gallerySections.where((section) => section.entries.isNotEmpty).map((section) => section.task),
-      ['DR-5'],
+      ['DR-5', 'DR-6'],
     );
   });
 

@@ -13,6 +13,14 @@ strict:
   - lib/core/widgets/page_header.dart
   - lib/core/widgets/icon_container.dart
   - lib/modules/devices/presentation/widgets/device_power_button.dart
+  # DR-6: cards, the hero card, tiles and the offline treatment.
+  - lib/core/widgets/base_card.dart
+  - lib/core/widgets/hero_card.dart
+  - lib/core/widgets/universal_tile.dart
+  - lib/core/widgets/button_tile.dart
+  - lib/core/widgets/tile_wrappers.dart
+  - lib/core/widgets/offline_note.dart
+  - lib/modules/devices/presentation/widgets/device_offline_overlay.dart
 
 # Generated code is never checked.
 exclude:
