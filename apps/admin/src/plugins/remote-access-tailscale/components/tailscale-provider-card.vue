@@ -1,231 +1,39 @@
 <template>
-	<el-card
-		class="provider-card"
-		shadow="never"
-		header-class="py-2!"
-		body-class="py-3!"
-		footer-class="py-2! px-4!"
-	>
-		<template #header>
-			<div class="provider-card__header">
-				<div class="provider-card__heading">
-					<icon
-						icon="mdi:lan-connect"
-						class="provider-card__icon"
-					/>
-					<h3 class="provider-card__title">{{ t('remoteAccessTailscalePlugin.headings.tailscale') }}</h3>
-				</div>
-				<div class="provider-card__tags">
-					<el-tag
-						:type="stateTagType"
-						size="small"
-					>
-						{{ t(`remoteAccessModule.status.${displayState}`) }}
-					</el-tag>
-					<el-tag
-						v-if="httpsEndpoint"
-						type="success"
-						size="small"
-					>
-						{{ t('remoteAccessModule.texts.https') }}
-					</el-tag>
-				</div>
-			</div>
-		</template>
+	<provider-card
+		icon="mdi:lan-connect"
+		:title="t('remoteAccessTailscalePlugin.headings.tailscale')"
+		:status="providerStateStatus(displayState)"
+		:status-label="t(`remoteAccessModule.status.${displayState}`)"
+		:line="line"
+		:endpoints="endpoints"
+		:action="cardAction"
+		:menu="cardMenu"
+		@action="onCardAction"
+	/>
 
-		<div class="provider-card__content">
-			<el-alert
-				v-if="showCannotBeUsedYetBanner"
-				type="warning"
-				:title="t('remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle')"
-				:description="firstUnsatisfiedRequirement?.message"
-				:closable="false"
-				show-icon
-			/>
-
-			<p
-				v-if="displayMessage"
-				class="provider-card__description"
-			>
-				{{ displayMessage }}
-			</p>
-			<p
-				v-else
-				class="provider-card__description"
-			>
-				{{ t('remoteAccessTailscalePlugin.texts.cardDescription') }}
-			</p>
-
-			<div
-				v-if="tailnet || dnsName || ipv4 || ipv6"
-				class="provider-card__meta"
-			>
-				<div
-					v-if="tailnet"
-					class="provider-card__meta-item"
-				>
-					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.tailnet') }}:</span>
-					<span class="font-mono break-all">{{ tailnet }}</span>
-				</div>
-				<div
-					v-if="dnsName"
-					class="provider-card__meta-item"
-				>
-					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.dnsName') }}:</span>
-					<span class="font-mono break-all">{{ dnsName }}</span>
-				</div>
-				<div
-					v-if="ipv4"
-					class="provider-card__meta-item"
-				>
-					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.ipv4') }}:</span>
-					<span class="font-mono break-all">{{ ipv4 }}</span>
-				</div>
-				<div
-					v-if="ipv6"
-					class="provider-card__meta-item"
-				>
-					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.ipv6') }}:</span>
-					<span class="font-mono break-all">{{ ipv6 }}</span>
-				</div>
-			</div>
-
-			<div
-				v-if="httpsEndpoint"
-				class="text-sm font-mono break-all"
-			>
-				{{ httpsEndpoint.url }}
-			</div>
-
-			<div
-				v-if="unsatisfiedRequirements.length > 0"
-				class="flex flex-col gap-1"
-			>
-				<div
-					v-for="requirement in unsatisfiedRequirements"
-					:key="requirement.code"
-					class="flex items-center gap-2 text-sm text-orange-600"
-				>
-					<icon icon="mdi:alert-circle-outline" />
-					<span>{{ requirement.message }}</span>
-				</div>
-			</div>
-
-			<p
-				v-if="actions.disconnect"
-				class="provider-card__description text-sm"
-			>
-				{{ t('remoteAccessTailscalePlugin.texts.disconnectExplanation') }}
-			</p>
-			<el-alert
-				v-if="status?.control?.operation"
-				type="info"
-				:title="t('remoteAccessTailscalePlugin.texts.operationInProgress')"
-				:closable="false"
-				show-icon
-			/>
-
-			<!-- D12: the operator-not-granted advisory names the exact recovery command, sourced from the operator-granted requirement's own remedy. -->
-			<div
-				v-if="operatorNotGrantedAdvisory"
-				class="flex flex-col gap-1"
-			>
-				<div class="flex items-center gap-2 text-sm text-red-600">
-					<icon icon="mdi:alert-circle" />
-					<span>{{ operatorNotGrantedAdvisory.message }}</span>
-				</div>
-				<div
-					v-if="operatorGrantCommand"
-					class="flex items-start gap-2"
-				>
-					<pre class="font-mono text-xs bg-gray-100 rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ operatorGrantCommand }}</pre>
-					<el-button
-						size="small"
-						@click="onCopyOperatorCommand"
-					>
-						{{ t('remoteAccessTailscalePlugin.buttons.copy') }}
-					</el-button>
-				</div>
-			</div>
-
-			<el-alert
-				v-if="actionErrorHintKey"
-				type="warning"
-				:title="t(actionErrorHintKey)"
-				:closable="false"
-				show-icon
-			/>
-		</div>
-
-		<template
-			v-if="documentationLink || primaryActionKey"
-			#footer
-		>
-			<div class="provider-card__footer">
-				<div class="provider-card__links">
-					<el-button
-						v-if="documentationLink"
-						type="primary"
-						size="small"
-						link
-						@click.stop="openLink(documentationLink)"
-					>
-						<icon
-							icon="mdi:book-open-page-variant"
-							class="mr-1"
-						/>
-						{{ t('extensionsModule.buttons.documentation') }}
-					</el-button>
-				</div>
-
-				<el-dropdown
-					v-if="primaryActionKey"
-					split-button
-					size="small"
-					trigger="click"
-					:type="primaryActionType"
-					:loading="primaryActionLoading"
-					:disabled="primaryActionLoading"
-					@click="onPrimaryAction"
-					@command="onCommand"
-				>
-					{{ actionLabel(primaryActionKey) }}
-					<template #dropdown>
-						<el-dropdown-menu>
-							<el-dropdown-item
-								v-for="key in secondaryActionKeys"
-								:key="key"
-								:command="key"
-								:disabled="isLocalBusy && key !== 'disconnect'"
-							>
-								{{ actionLabel(key) }}
-							</el-dropdown-item>
-						</el-dropdown-menu>
-					</template>
-				</el-dropdown>
-			</div>
-		</template>
-
-		<tailscale-setup-wizard
-			v-if="wizardVisible"
-			v-model:visible="wizardVisible"
-			:initial-step="wizardStep"
-		/>
-	</el-card>
+	<tailscale-setup-wizard
+		v-if="wizardVisible"
+		v-model:visible="wizardVisible"
+		:initial-step="wizardStep"
+	/>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCard, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTag } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
 import { useClipboard, useFlashMessage } from '../../../common';
 import { useSession } from '../../../modules/auth/composables/composables';
 import { useExtension } from '../../../modules/extensions';
-import { type IRemoteAccessProviderCardProps, useRemoteAccessStatus } from '../../../modules/remote-access';
+import {
+	type IProviderCardAction,
+	type IProviderCardLine,
+	type IProviderCardMenuItem,
+	type IRemoteAccessProviderCardProps,
+	ProviderCard,
+	providerStateStatus,
+	useRemoteAccessStatus,
+} from '../../../modules/remote-access';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { useTailscaleStatus } from '../composables';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
@@ -305,14 +113,16 @@ const detailString = (key: string): string | undefined => {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 };
 
-const tailnet = computed(() => detailString('tailnet'));
 const dnsName = computed(() => detailString('dnsName'));
 const ipv4 = computed(() => detailString('ipv4'));
-const ipv6 = computed(() => detailString('ipv6'));
 
-const httpsEndpoint = computed(() => displayEndpoints.value.find((endpoint) => endpoint.https));
+// Up to two endpoints on the card: the published URLs, HTTPS first, or the node's name and address before any is
+// published
+const endpoints = computed<string[]>(() => {
+	const urls = [...displayEndpoints.value].sort((a, b) => Number(b.https) - Number(a.https)).map((endpoint) => endpoint.url);
 
-const unsatisfiedRequirements = computed(() => requirements.value.filter((requirement) => !requirement.satisfied));
+	return urls.length > 0 ? urls : [dnsName.value, ipv4.value].filter((value): value is string => value !== undefined);
+});
 
 // D12: "Cannot be used yet", naming the first unsatisfied requirement - only while a prerequisite
 // (not a normal sign-in step) is what's actually blocking the node.
@@ -329,27 +139,36 @@ const operatorGrantCommand = computed<string | null>(() => findOperatorGrantComm
 
 const actionErrorHintKey = computed<string | null>(() => resolveTailscaleErrorHintKey(actionErrorCode.value));
 
+// The card's one line: how to recover from the last failed action, then what blocks the node, then its status
+const line = computed<IProviderCardLine>(() => {
+	if (actionErrorHintKey.value) {
+		return { text: t(actionErrorHintKey.value), status: 'warn' };
+	}
+
+	if (operatorNotGrantedAdvisory.value) {
+		return { text: operatorNotGrantedAdvisory.value.message, status: 'danger' };
+	}
+
+	if (status.value?.control?.operation) {
+		return { text: t('remoteAccessTailscalePlugin.texts.operationInProgress'), status: 'info' };
+	}
+
+	if (showCannotBeUsedYetBanner.value && firstUnsatisfiedRequirement.value) {
+		return { text: `${t('remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle')}: ${firstUnsatisfiedRequirement.value.message}`, status: 'warn' };
+	}
+
+	if (displayMessage.value) {
+		return { text: displayMessage.value, status: displayState.value === 'error' ? 'danger' : undefined };
+	}
+
+	return { text: t('remoteAccessTailscalePlugin.texts.cardDescription') };
+});
+
 // Mirrors the wizard's own `flashApiError` (see `flashTailscaleApiError`'s doc) - the backend's
 // actual reason for a 409 (e.g. sign-out/reset-preferences refused because a prerequisite isn't
 // satisfied) instead of a generic message.
 const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: string): void =>
 	flashTailscaleApiError(error, meaningfulCodes, fallback, flashMessage.error);
-
-const stateTagType = computed<'success' | 'warning' | 'danger' | 'info'>(() => {
-	switch (displayState.value) {
-		case 'connected':
-			return 'success';
-		case 'error':
-			return 'danger';
-		case 'connecting':
-		case 'pending-auth':
-		case 'pending-approval':
-		case 'setup-required':
-			return 'warning';
-		default:
-			return 'info';
-	}
-});
 
 const isOwner = computed<boolean>(() => profile.value?.role === UsersModuleUserRole.owner);
 
@@ -379,6 +198,9 @@ const documentationLink = computed<string | undefined>(() => {
 		return undefined;
 	}
 });
+
+const DOCUMENTATION = 'documentation';
+const COPY_GRANT_COMMAND = 'copyGrantCommand';
 
 const openLink = (url: string): void => {
 	window.open(url, '_blank', 'noopener,noreferrer');
@@ -528,102 +350,48 @@ const runAction = (key: keyof ITailscaleProviderActions): void => {
 	}
 };
 
-const onPrimaryAction = (): void => {
-	if (primaryActionKey.value === null) return;
+// The card's one action; the other actions, the operator grant command and the documentation are in its ⋯ menu
+const cardAction = computed<IProviderCardAction | null>(() =>
+	primaryActionKey.value === null
+		? null
+		: {
+				key: primaryActionKey.value,
+				label: actionLabel(primaryActionKey.value),
+				primary: primaryActionType.value === 'primary',
+				loading: primaryActionLoading.value,
+				disabled: primaryActionLoading.value,
+			}
+);
 
-	runAction(primaryActionKey.value);
-};
+const cardMenu = computed<IProviderCardMenuItem[]>(() => [
+	...(operatorNotGrantedAdvisory.value && operatorGrantCommand.value
+		? [{ key: COPY_GRANT_COMMAND, label: t('remoteAccessTailscalePlugin.buttons.copyGrantCommand') }]
+		: []),
+	...secondaryActionKeys.value.map((key) => ({
+		key,
+		label: actionLabel(key),
+		disabled: isLocalBusy.value && key !== 'disconnect',
+		// Both undo the node's setup: listed last, after a divider
+		danger: key === 'signOut' || key === 'resetPreferences',
+	})),
+	...(documentationLink.value ? [{ key: DOCUMENTATION, label: t('extensionsModule.buttons.documentation') }] : []),
+]);
 
-const onCommand = (command: string): void => {
-	runAction(command as keyof ITailscaleProviderActions);
+const onCardAction = (key: string): void => {
+	if (key === DOCUMENTATION) {
+		if (documentationLink.value) {
+			openLink(documentationLink.value);
+		}
+
+		return;
+	}
+
+	if (key === COPY_GRANT_COMMAND) {
+		void onCopyOperatorCommand();
+
+		return;
+	}
+
+	runAction(key as keyof ITailscaleProviderActions);
 };
 </script>
-
-<style scoped>
-.provider-card {
-	transition: opacity 0.2s ease;
-}
-
-.provider-card__header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-}
-
-.provider-card__heading {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-	min-width: 0;
-	flex: 1;
-}
-
-.provider-card__icon {
-	font-size: 1.5rem;
-	flex-shrink: 0;
-	color: var(--el-color-primary);
-}
-
-.provider-card__title {
-	margin: 0;
-	font-size: 1rem;
-	font-weight: 600;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	line-height: 1.25;
-}
-
-.provider-card__tags {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: flex-end;
-	flex-shrink: 0;
-	gap: 0.375rem;
-}
-
-.provider-card__content {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-}
-
-.provider-card__description {
-	margin: 0;
-	color: var(--el-text-color-regular);
-	line-height: 1.5;
-}
-
-.provider-card__meta {
-	display: flex;
-	flex-direction: column;
-	gap: 0.25rem;
-}
-
-.provider-card__meta-item {
-	display: flex;
-	align-items: flex-start;
-	gap: 0.25rem;
-	font-size: 0.8125rem;
-	color: var(--el-text-color-secondary);
-}
-
-.provider-card__meta-label {
-	flex-shrink: 0;
-	white-space: nowrap;
-}
-
-.provider-card__footer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.provider-card__links {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.5rem;
-}
-</style>

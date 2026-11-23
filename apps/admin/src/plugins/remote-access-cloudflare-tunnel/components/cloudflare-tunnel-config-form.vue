@@ -35,7 +35,7 @@
 				name="publicHostname"
 				@update:model-value="onPublicHostnameInput"
 			/>
-			<div class="text-xs text-gray-500 mt-1">
+			<div class="text-xs text-secondary mt-1">
 				{{ t('remoteAccessCloudflareTunnelPlugin.fields.config.publicHostname.description') }}
 			</div>
 		</el-form-item>
@@ -67,7 +67,7 @@
 				:placeholder="t('remoteAccessCloudflareTunnelPlugin.fields.config.tunnelToken.placeholder')"
 				name="tunnelToken"
 			/>
-			<div class="text-xs text-gray-500 mt-1">
+			<div class="text-xs text-secondary mt-1">
 				{{ t('remoteAccessCloudflareTunnelPlugin.fields.config.tunnelToken.description') }}
 			</div>
 		</el-form-item>

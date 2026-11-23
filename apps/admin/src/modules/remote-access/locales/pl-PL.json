@@ -25,8 +25,6 @@
 	},
 	"messages": {
 		"requestError": "Wystąpił błąd podczas wczytywania stanu dostępu zdalnego",
-		"urlCopied": "Adres URL został skopiowany do schowka",
-		"copyFailed": "Nie udało się skopiować adresu URL do schowka",
 		"qrFailed": "Nie udało się wygenerować kodu QR",
 		"config": {
 			"edited": "Konfiguracja dostępu zdalnego została pomyślnie zaktualizowana",
@@ -34,11 +32,14 @@
 		}
 	},
 	"buttons": {
-		"copy": {
-			"title": "Kopiuj"
-		},
 		"showQr": {
 			"title": "Pokaż kod QR"
+		},
+		"hideQr": {
+			"title": "Ukryj kod QR"
+		},
+		"more": {
+			"title": "Więcej działań dla {provider}"
 		}
 	},
 	"texts": {
@@ -92,12 +93,6 @@
 		}
 	},
 	"fields": {
-		"advisory": {
-			"severity": "Ważność",
-			"message": "Wiadomość",
-			"provider": "Dostawca",
-			"code": "Kod"
-		},
 		"config": {
 			"internalUrl": {
 				"title": "Wewnętrzny adres URL",

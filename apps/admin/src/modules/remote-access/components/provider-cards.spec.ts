@@ -96,4 +96,21 @@ describe('ProviderCards', () => {
 		expect(wrapper.text()).toContain('Daemon stopped');
 		expect(wrapper.text()).toContain('https://node.tailnet.ts.net');
 	});
+
+	it('frames every card the same way and marks only the provider carrying traffic as active', () => {
+		mockComposable(
+			[
+				tailscaleProvider,
+				{ ...tailscaleProvider, type: 'remote-access-cloudflare-tunnel', state: RemoteAccessModuleProviderState.disconnected },
+			],
+			() => undefined
+		);
+
+		const wrapper = mount(ProviderCards);
+
+		const items = wrapper.findAll('[data-test-id="provider-catalogue-item"]');
+
+		expect(items.map((item) => item.attributes('data-provider-type'))).toEqual(['remote-access-tailscale', 'remote-access-cloudflare-tunnel']);
+		expect(items.map((item) => item.attributes('data-active'))).toEqual(['true', undefined]);
+	});
 });

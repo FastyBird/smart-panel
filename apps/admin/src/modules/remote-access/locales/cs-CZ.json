@@ -25,8 +25,6 @@
 	},
 	"messages": {
 		"requestError": "Při načítání stavu vzdáleného přístupu došlo k chybě",
-		"urlCopied": "URL bylo zkopírováno do schránky",
-		"copyFailed": "Nepodařilo se zkopírovat URL do schránky",
 		"qrFailed": "Nepodařilo se vygenerovat QR kód",
 		"config": {
 			"edited": "Konfigurace vzdáleného přístupu byla úspěšně aktualizována",
@@ -34,11 +32,14 @@
 		}
 	},
 	"buttons": {
-		"copy": {
-			"title": "Kopírovat"
-		},
 		"showQr": {
 			"title": "Zobrazit QR kód"
+		},
+		"hideQr": {
+			"title": "Skrýt QR kód"
+		},
+		"more": {
+			"title": "Další akce pro {provider}"
 		}
 	},
 	"texts": {
@@ -92,12 +93,6 @@
 		}
 	},
 	"fields": {
-		"advisory": {
-			"severity": "Závažnost",
-			"message": "Zpráva",
-			"provider": "Poskytovatel",
-			"code": "Kód"
-		},
 		"config": {
 			"internalUrl": {
 				"title": "Interní URL",

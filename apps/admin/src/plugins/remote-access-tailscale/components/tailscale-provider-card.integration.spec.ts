@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, shallowMount } from '@vue/test-utils';
 
-import type { IRemoteAccessProvider } from '../../../modules/remote-access';
+import type { IProviderCardAction, IProviderCardLine, IRemoteAccessProvider } from '../../../modules/remote-access';
 import { EventType } from '../../../modules/remote-access';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { useTailscaleStatusStore } from '../store/tailscale-status.store';
@@ -54,21 +54,17 @@ const response = (data: ReturnType<typeof snapshot>) => ({ data: { data }, respo
 const mountCard = async () => {
 	wrapper = shallowMount(TailscaleProviderCard, {
 		props: { provider: { ...snapshot(0), kind: 'mesh', capabilities: {} } as unknown as IRemoteAccessProvider },
-		global: {
-			renderStubDefaultSlot: true,
-			stubs: {
-				ElCard: false,
-				ElDropdown: { name: 'ElDropdown', props: ['loading', 'disabled'], template: '<div><slot /><slot name="dropdown" /></div>' },
-			},
-		},
 	});
 	await flushPromises();
 };
-const primary = () => wrapper.findComponent({ name: 'ElDropdown' });
-const hasBusyAlert = () =>
-	wrapper.findAllComponents({ name: 'ElAlert' }).some((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.operationInProgress');
+// The card renders through the module's provider card: its props are what the card shows
+const card = () => wrapper.findComponent({ name: 'ProviderCard' });
+const action = (): IProviderCardAction | null => card().props('action') as IProviderCardAction | null;
+const primaryLabel = (): string => action()?.label ?? '';
+const line = (): IProviderCardLine => card().props('line') as IProviderCardLine;
+const hasBusyAlert = () => line().text === 'remoteAccessTailscalePlugin.texts.operationInProgress';
 const click = async () => {
-	primary().vm.$emit('click');
+	card().vm.$emit('action', action()!.key);
 	await flushPromises();
 };
 
@@ -91,11 +87,11 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 		fns.get.mockRejectedValueOnce(new Error('network failure')).mockResolvedValue(response(snapshot(1)));
 		await mountCard();
 		expect(store.data).toBeNull();
-		expect(primary().exists()).toBe(false);
+		expect(action()).toBeNull();
 		await vi.advanceTimersByTimeAsync(30_000);
 		await flushPromises();
 		expect(store.data?.control?.availableActions).toEqual(['connect']);
-		expect(primary().text()).toContain('buttons.connect');
+		expect(primaryLabel()).toContain('buttons.connect');
 		expect(fns.get).toHaveBeenCalledTimes(2);
 	});
 
@@ -114,14 +110,14 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 			return Promise.resolve(response(current));
 		});
 		await mountCard();
-		expect(primary().text()).toContain('buttons.connect');
+		expect(primaryLabel()).toContain('buttons.connect');
 		await click();
-		expect(primary().text()).toContain('buttons.disconnect');
+		expect(primaryLabel()).toContain('buttons.disconnect');
 		await click();
-		expect(primary().text()).toContain('buttons.connect');
-		expect(primary().text()).not.toContain('buttons.signIn');
+		expect(primaryLabel()).toContain('buttons.connect');
+		expect(primaryLabel()).not.toContain('buttons.signIn');
 		await click();
-		expect(primary().text()).toContain('buttons.disconnect');
+		expect(primaryLabel()).toContain('buttons.disconnect');
 		expect(fns.post.mock.calls.map(([path]) => path)).toEqual([
 			'/plugins/remote-access-tailscale/connect',
 			'/plugins/remote-access-tailscale/disconnect',
@@ -158,7 +154,7 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 		expect(fns.get).toHaveBeenCalledTimes(1);
 		await vi.advanceTimersByTimeAsync(1);
 		await flushPromises();
-		expect(primary().text()).toContain('buttons.connect');
+		expect(primaryLabel()).toContain('buttons.connect');
 		expect(fns.get).toHaveBeenCalledTimes(2);
 		store.onEvent({ event: EventType.PROVIDER_STATUS, data: event });
 		await flushPromises();
@@ -171,10 +167,8 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 		await mountCard();
 		await click();
 		expect(store.semaphore.connecting).toBe(false);
-		expect(primary().props('loading')).toBe(false);
-		expect(
-			wrapper.findAllComponents({ name: 'ElAlert' }).some((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.errors.notSignedIn')
-		).toBe(true);
+		expect(action()?.loading).toBe(false);
+		expect(line().text).toBe('remoteAccessTailscalePlugin.errors.notSignedIn');
 		expect(fns.aggregate).toHaveBeenCalledTimes(1);
 		expect(fns.get).toHaveBeenCalledTimes(2);
 	});
@@ -184,9 +178,9 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 		fns.post.mockResolvedValue(response(snapshot(2)));
 		await mountCard();
 		expect(hasBusyAlert()).toBe(true);
-		expect(primary().props('disabled')).toBe(false);
-		expect(primary().text()).toContain('buttons.resumeSignIn');
-		primary().vm.$emit('command', 'disconnect');
+		expect(action()?.disabled).toBe(false);
+		expect(primaryLabel()).toContain('buttons.resumeSignIn');
+		card().vm.$emit('action', 'disconnect');
 		await flushPromises();
 		expect(fns.post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/disconnect', { signal: expect.any(AbortSignal) });
 	});
@@ -194,7 +188,7 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 	it('reopens pending sign-in from its private status after reload without another login', async () => {
 		fns.get.mockResolvedValue(response(snapshot(1, 'pending-auth', 'started', 'login', ['disconnect'])));
 		await mountCard();
-		expect(primary().text()).toContain('buttons.resumeSignIn');
+		expect(primaryLabel()).toContain('buttons.resumeSignIn');
 		await click();
 		const wizard = wrapper.findComponent({ name: 'TailscaleSetupWizard' });
 		expect(wizard.props('initialStep')).toBe('signin');
@@ -211,13 +205,13 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 			response: { status: 200 },
 		});
 		await mountCard();
-		expect(primary().exists()).toBe(false);
+		expect(action()).toBeNull();
 	});
 
 	it('fails closed for absent control and regular users, and clears its fallback on unmount', async () => {
 		profile.value = { role: UsersModuleUserRole.user };
 		await mountCard();
-		expect(primary().exists()).toBe(false);
+		expect(action()).toBeNull();
 		wrapper.unmount();
 		await vi.advanceTimersByTimeAsync(60_000);
 		expect(fns.get).toHaveBeenCalledTimes(1);

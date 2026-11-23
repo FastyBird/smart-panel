@@ -25,8 +25,6 @@
 	},
 	"messages": {
 		"requestError": "An error occurred while loading remote access status",
-		"urlCopied": "URL has been copied to the clipboard",
-		"copyFailed": "Failed to copy the URL to the clipboard",
 		"qrFailed": "Failed to generate the QR code",
 		"config": {
 			"edited": "Remote access configuration has been successfully updated",
@@ -34,11 +32,14 @@
 		}
 	},
 	"buttons": {
-		"copy": {
-			"title": "Copy"
-		},
 		"showQr": {
 			"title": "Show QR code"
+		},
+		"hideQr": {
+			"title": "Hide QR code"
+		},
+		"more": {
+			"title": "More actions for {provider}"
 		}
 	},
 	"texts": {
@@ -92,12 +93,6 @@
 		}
 	},
 	"fields": {
-		"advisory": {
-			"severity": "Severity",
-			"message": "Message",
-			"provider": "Provider",
-			"code": "Code"
-		},
 		"config": {
 			"internalUrl": {
 				"title": "Internal URL",

@@ -1,194 +1,41 @@
 <template>
-	<el-card
-		class="provider-card"
-		shadow="never"
-		header-class="py-2!"
-		body-class="py-3!"
-		footer-class="py-2! px-4!"
-	>
-		<template #header>
-			<div class="provider-card__header">
-				<div class="provider-card__heading">
-					<icon
-						icon="mdi:cloud-lock-outline"
-						class="provider-card__icon"
-					/>
-					<h3 class="provider-card__title">{{ t('remoteAccessCloudflareTunnelPlugin.headings.cloudflareTunnel') }}</h3>
-				</div>
-				<div class="provider-card__tags">
-					<el-tag
-						:type="stateTagType"
-						size="small"
-					>
-						{{ t(`remoteAccessModule.status.${displayState}`) }}
-					</el-tag>
-					<el-tag
-						v-if="httpsEndpoint"
-						type="success"
-						size="small"
-					>
-						{{ t('remoteAccessModule.texts.https') }}
-					</el-tag>
-				</div>
-			</div>
-		</template>
+	<provider-card
+		icon="mdi:cloud-lock-outline"
+		:title="t('remoteAccessCloudflareTunnelPlugin.headings.cloudflareTunnel')"
+		:status="providerStateStatus(displayState)"
+		:status-label="t(`remoteAccessModule.status.${displayState}`)"
+		:line="line"
+		:endpoints="endpoints"
+		:action="cardAction"
+		:menu="cardMenu"
+		@action="onCardAction"
+	/>
 
-		<div class="provider-card__content">
-			<el-alert
-				v-if="showCannotBeUsedYetBanner"
-				type="warning"
-				:title="t('remoteAccessCloudflareTunnelPlugin.texts.cannotBeUsedYetTitle')"
-				:description="firstUnsatisfiedRequirement?.message"
-				:closable="false"
-				show-icon
-			/>
-
-			<p
-				v-if="displayMessage"
-				class="provider-card__description"
-			>
-				{{ displayMessage }}
-			</p>
-			<p
-				v-else
-				class="provider-card__description"
-			>
-				{{ t('remoteAccessCloudflareTunnelPlugin.texts.cardDescription') }}
-			</p>
-
-			<div
-				v-if="hostname || connectorId || readyConnections !== undefined"
-				class="provider-card__meta"
-			>
-				<div
-					v-if="hostname"
-					class="provider-card__meta-item"
-				>
-					<span class="provider-card__meta-label">{{ t('remoteAccessCloudflareTunnelPlugin.fields.hostname') }}:</span>
-					<span class="font-mono break-all">{{ hostname }}</span>
-				</div>
-				<div
-					v-if="connectorId"
-					class="provider-card__meta-item"
-				>
-					<span class="provider-card__meta-label">{{ t('remoteAccessCloudflareTunnelPlugin.fields.connectorId') }}:</span>
-					<span class="font-mono break-all">{{ connectorId }}</span>
-				</div>
-				<div
-					v-if="readyConnections !== undefined"
-					class="provider-card__meta-item"
-				>
-					<span class="provider-card__meta-label">{{ t('remoteAccessCloudflareTunnelPlugin.fields.readyConnections') }}:</span>
-					<span>{{ readyConnections }}</span>
-				</div>
-			</div>
-
-			<div
-				v-if="httpsEndpoint"
-				class="text-sm font-mono break-all"
-			>
-				{{ httpsEndpoint.url }}
-			</div>
-
-			<div
-				v-if="unsatisfiedRequirements.length > 0"
-				class="flex flex-col gap-1"
-			>
-				<div
-					v-for="requirement in unsatisfiedRequirements"
-					:key="requirement.code"
-					class="flex items-center gap-2 text-sm text-orange-600"
-				>
-					<icon icon="mdi:alert-circle-outline" />
-					<span>{{ requirement.message }}</span>
-				</div>
-			</div>
-
-			<p
-				v-if="actions.disconnect"
-				class="provider-card__description text-sm"
-			>
-				{{ t('remoteAccessCloudflareTunnelPlugin.texts.disconnectExplanation') }}
-			</p>
-
-			<el-alert
-				v-if="actionErrorHintKey"
-				type="warning"
-				:title="t(actionErrorHintKey)"
-				:closable="false"
-				show-icon
-			/>
-		</div>
-
-		<template
-			v-if="documentationLink || primaryActionKey"
-			#footer
-		>
-			<div class="provider-card__footer">
-				<div class="provider-card__links">
-					<el-button
-						v-if="documentationLink"
-						type="primary"
-						size="small"
-						link
-						@click.stop="openLink(documentationLink)"
-					>
-						<icon
-							icon="mdi:book-open-page-variant"
-							class="mr-1"
-						/>
-						{{ t('extensionsModule.buttons.documentation') }}
-					</el-button>
-				</div>
-
-				<el-dropdown
-					v-if="primaryActionKey"
-					split-button
-					size="small"
-					trigger="click"
-					:type="primaryActionType"
-					:loading="primaryActionLoading"
-					:disabled="isActingOnService || isResetting"
-					@click="onPrimaryAction"
-					@command="onCommand"
-				>
-					{{ actionLabel(primaryActionKey) }}
-					<template #dropdown>
-						<el-dropdown-menu>
-							<el-dropdown-item
-								v-for="key in secondaryActionKeys"
-								:key="key"
-								:command="key"
-								:disabled="isActingOnService || isResetting"
-							>
-								{{ actionLabel(key) }}
-							</el-dropdown-item>
-						</el-dropdown-menu>
-					</template>
-				</el-dropdown>
-			</div>
-		</template>
-
-		<cloudflare-tunnel-setup-wizard
-			v-if="wizardVisible"
-			v-model:visible="wizardVisible"
-			:initial-step="wizardStep"
-		/>
-	</el-card>
+	<cloudflare-tunnel-setup-wizard
+		v-if="wizardVisible"
+		v-model:visible="wizardVisible"
+		:initial-step="wizardStep"
+	/>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount, onScopeDispose, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCard, ElDropdown, ElDropdownItem, ElDropdownMenu, ElMessageBox, ElTag } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
+import { ElMessageBox } from 'element-plus';
 
 import { useFlashMessage } from '../../../common';
 import { useSession } from '../../../modules/auth/composables/composables';
 import { useExtension, useServiceActions, useServices } from '../../../modules/extensions';
-import { type IRemoteAccessProviderCardProps, useRemoteAccessStatus } from '../../../modules/remote-access';
+import {
+	type IProviderCardAction,
+	type IProviderCardLine,
+	type IProviderCardMenuItem,
+	type IRemoteAccessProviderCardProps,
+	ProviderCard,
+	providerStateStatus,
+	useRemoteAccessStatus,
+} from '../../../modules/remote-access';
 import { ExtensionsModuleServiceOwnerKind, UsersModuleUserRole } from '../../../openapi.constants';
 import { useCloudflareTunnelStatus } from '../composables';
 import { REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME } from '../remote-access-cloudflare-tunnel.constants';
@@ -277,16 +124,13 @@ const detailString = (key: string): string | undefined => {
 };
 
 const hostname = computed(() => detailString('hostname'));
-const connectorId = computed(() => detailString('connectorId'));
-const readyConnections = computed<number | undefined>(() => {
-	const value = displayDetails.value['readyConnections'];
 
-	return typeof value === 'number' ? value : undefined;
+// Up to two endpoints on the card: the published URLs, HTTPS first, or the hostname before any is published
+const endpoints = computed<string[]>(() => {
+	const urls = [...displayEndpoints.value].sort((a, b) => Number(b.https) - Number(a.https)).map((endpoint) => endpoint.url);
+
+	return urls.length > 0 ? urls : hostname.value ? [hostname.value] : [];
 });
-
-const httpsEndpoint = computed(() => displayEndpoints.value.find((endpoint) => endpoint.https));
-
-const unsatisfiedRequirements = computed(() => requirements.value.filter((requirement) => !requirement.satisfied));
 
 // D12: "Cannot be used yet", naming the first unsatisfied requirement - only while a prerequisite
 // (not a normal lifecycle step) is what's actually blocking the tunnel.
@@ -297,22 +141,25 @@ const showCannotBeUsedYetBanner = computed<boolean>(
 
 const actionErrorHintKey = computed<string | null>(() => resolveCloudflareTunnelErrorHintKey(actionErrorCode.value));
 
+// The card's one line: how to recover from the last failed action, then what blocks the tunnel, then its status
+const line = computed<IProviderCardLine>(() => {
+	if (actionErrorHintKey.value) {
+		return { text: t(actionErrorHintKey.value), status: 'warn' };
+	}
+
+	if (showCannotBeUsedYetBanner.value && firstUnsatisfiedRequirement.value) {
+		return { text: `${t('remoteAccessCloudflareTunnelPlugin.texts.cannotBeUsedYetTitle')}: ${firstUnsatisfiedRequirement.value.message}`, status: 'warn' };
+	}
+
+	if (displayMessage.value) {
+		return { text: displayMessage.value, status: displayState.value === 'error' ? 'danger' : undefined };
+	}
+
+	return { text: t('remoteAccessCloudflareTunnelPlugin.texts.cardDescription') };
+});
+
 const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: string): void =>
 	flashCloudflareTunnelApiError(error, meaningfulCodes, fallback, flashMessage.error);
-
-const stateTagType = computed<'success' | 'warning' | 'danger' | 'info'>(() => {
-	switch (displayState.value) {
-		case 'connected':
-			return 'success';
-		case 'error':
-			return 'danger';
-		case 'connecting':
-		case 'setup-required':
-			return 'warning';
-		default:
-			return 'info';
-	}
-});
 
 const isOwner = computed<boolean>(() => profile.value?.role === UsersModuleUserRole.owner);
 
@@ -330,6 +177,8 @@ const isActingOnService = computed<boolean>(() =>
 );
 
 const documentationLink = computed<string | undefined>(() => extension.value?.links?.documentation ?? undefined);
+
+const DOCUMENTATION = 'documentation';
 
 const openLink = (url: string): void => {
 	window.open(url, '_blank', 'noopener,noreferrer');
@@ -473,102 +322,38 @@ const runAction = (key: keyof ICloudflareTunnelProviderActions): void => {
 	}
 };
 
-const onPrimaryAction = (): void => {
-	if (primaryActionKey.value === null) return;
+// The card's one action; the other actions, and the documentation, are in its ⋯ menu
+const cardAction = computed<IProviderCardAction | null>(() =>
+	primaryActionKey.value === null
+		? null
+		: {
+				key: primaryActionKey.value,
+				label: actionLabel(primaryActionKey.value),
+				primary: primaryActionType.value === 'primary',
+				loading: primaryActionLoading.value,
+				disabled: isActingOnService.value || isResetting.value,
+			}
+);
 
-	runAction(primaryActionKey.value);
-};
+const cardMenu = computed<IProviderCardMenuItem[]>(() => [
+	...secondaryActionKeys.value.map((key) => ({
+		key,
+		label: actionLabel(key),
+		disabled: isActingOnService.value || isResetting.value,
+		danger: key === 'remove',
+	})),
+	...(documentationLink.value ? [{ key: DOCUMENTATION, label: t('extensionsModule.buttons.documentation') }] : []),
+]);
 
-const onCommand = (command: string): void => {
-	runAction(command as keyof ICloudflareTunnelProviderActions);
+const onCardAction = (key: string): void => {
+	if (key === DOCUMENTATION) {
+		if (documentationLink.value) {
+			openLink(documentationLink.value);
+		}
+
+		return;
+	}
+
+	runAction(key as keyof ICloudflareTunnelProviderActions);
 };
 </script>
-
-<style scoped>
-.provider-card {
-	transition: opacity 0.2s ease;
-}
-
-.provider-card__header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-}
-
-.provider-card__heading {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-	min-width: 0;
-	flex: 1;
-}
-
-.provider-card__icon {
-	font-size: 1.5rem;
-	flex-shrink: 0;
-	color: var(--el-color-primary);
-}
-
-.provider-card__title {
-	margin: 0;
-	font-size: 1rem;
-	font-weight: 600;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	line-height: 1.25;
-}
-
-.provider-card__tags {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: flex-end;
-	flex-shrink: 0;
-	gap: 0.375rem;
-}
-
-.provider-card__content {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-}
-
-.provider-card__description {
-	margin: 0;
-	color: var(--el-text-color-regular);
-	line-height: 1.5;
-}
-
-.provider-card__meta {
-	display: flex;
-	flex-direction: column;
-	gap: 0.25rem;
-}
-
-.provider-card__meta-item {
-	display: flex;
-	align-items: flex-start;
-	gap: 0.25rem;
-	font-size: 0.8125rem;
-	color: var(--el-text-color-secondary);
-}
-
-.provider-card__meta-label {
-	flex-shrink: 0;
-	white-space: nowrap;
-}
-
-.provider-card__footer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.provider-card__links {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.5rem;
-}
-</style>

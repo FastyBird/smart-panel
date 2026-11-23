@@ -8,7 +8,7 @@ import { type VueWrapper, flushPromises, shallowMount } from '@vue/test-utils';
 
 import { servicesStoreKey } from '../../../modules/extensions/store/keys';
 import { useServices as useServicesStore } from '../../../modules/extensions/store/services.store';
-import type { IRemoteAccessProvider } from '../../../modules/remote-access';
+import type { IProviderCardAction, IRemoteAccessProvider } from '../../../modules/remote-access';
 import { ExtensionsModuleServiceOwnerKind, UsersModuleUserRole } from '../../../openapi.constants';
 import { useCloudflareTunnelStatusStore } from '../store/cloudflare-tunnel-status.store';
 
@@ -76,17 +76,13 @@ const serviceResponse = (state = 'stopped') => ({
 const mountCard = async () => {
 	wrapper = shallowMount(CloudflareTunnelProviderCard, {
 		props: { provider: { ...snapshot(0), kind: 'tunnel', capabilities: {} } as unknown as IRemoteAccessProvider },
-		global: {
-			renderStubDefaultSlot: true,
-			stubs: {
-				ElCard: false,
-				ElDropdown: { name: 'ElDropdown', props: ['loading', 'disabled'], template: '<div><slot /><slot name="dropdown" /></div>' },
-			},
-		},
 	});
 	await flushPromises();
 };
-const primary = () => wrapper.findComponent({ name: 'ElDropdown' });
+// The card renders through the module's provider card: its props are what the card shows
+const card = () => wrapper.findComponent({ name: 'ProviderCard' });
+const cardAction = (): IProviderCardAction | null => card().props('action') as IProviderCardAction | null;
+const primaryLabel = (): string => cardAction()?.label ?? '';
 
 describe('Cloudflare card with real Extensions lifecycle requests', () => {
 	beforeEach(() => {
@@ -125,18 +121,18 @@ describe('Cloudflare card with real Extensions lifecycle requests', () => {
 			});
 			await mountCard();
 			const invoke = async () => {
-				if (action === 'restart') primary().vm.$emit('command', 'reconnect');
-				else primary().vm.$emit('click');
+				if (action === 'restart') card().vm.$emit('action', 'reconnect');
+				else card().vm.$emit('action', cardAction()!.key);
 				await flushPromises();
 			};
 			await invoke();
-			expect(primary().props('loading')).toBe(true);
+			expect(cardAction()?.loading).toBe(true);
 			expect(servicesStore.acting(ExtensionsModuleServiceOwnerKind.plugin, 'remote-access-cloudflare-tunnel-plugin', 'tunnel')).toBe(true);
 			await vi.advanceTimersByTimeAsync(60_000);
 			await flushPromises();
 			expect(signal?.aborted).toBe(true);
-			expect(primary().props('loading')).toBe(false);
-			expect(primary().text()).toContain(action === 'stop' ? 'buttons.connect' : 'buttons.disconnect');
+			expect(cardAction()?.loading).toBe(false);
+			expect(primaryLabel()).toContain(action === 'stop' ? 'buttons.connect' : 'buttons.disconnect');
 			expect(servicesStore.acting(ExtensionsModuleServiceOwnerKind.plugin, 'remote-access-cloudflare-tunnel-plugin', 'tunnel')).toBe(false);
 			expect(servicesStore.findByKey(ExtensionsModuleServiceOwnerKind.plugin, 'remote-access-cloudflare-tunnel-plugin', 'tunnel')?.state).toBe(
 				currentState
@@ -155,7 +151,7 @@ describe('Cloudflare card with real Extensions lifecycle requests', () => {
 				`/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/${action}`,
 				`/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/${action}`,
 			]);
-			expect(primary().props('loading')).toBe(false);
+			expect(cardAction()?.loading).toBe(false);
 		}
 	);
 
@@ -177,6 +173,6 @@ describe('Cloudflare card with real Extensions lifecycle requests', () => {
 		await vi.advanceTimersByTimeAsync(10_000);
 		await flushPromises();
 		expect(reads).toBe(2);
-		expect(primary().text()).toContain('buttons.connect');
+		expect(primaryLabel()).toContain('buttons.connect');
 	});
 });

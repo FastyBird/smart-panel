@@ -24,7 +24,7 @@
 				name="internalUrl"
 				clearable
 			/>
-			<div class="text-sm text-gray-500 mt-1">
+			<div class="text-sm text-secondary mt-1">
 				{{ t('remoteAccessModule.fields.config.internalUrl.description') }}
 			</div>
 		</el-form-item>
@@ -39,7 +39,7 @@
 				name="externalUrl"
 				clearable
 			/>
-			<div class="text-sm text-gray-500 mt-1">
+			<div class="text-sm text-secondary mt-1">
 				{{ t('remoteAccessModule.fields.config.externalUrl.description') }}
 			</div>
 		</el-form-item>
@@ -86,7 +86,7 @@
 					:value="item"
 				/>
 			</el-select>
-			<div class="text-sm text-gray-500 mt-1">
+			<div class="text-sm text-secondary mt-1">
 				{{ t('remoteAccessModule.fields.config.trustedProxies.description') }}
 			</div>
 		</el-form-item>

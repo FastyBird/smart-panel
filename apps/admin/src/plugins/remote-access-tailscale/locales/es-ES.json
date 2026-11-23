@@ -22,7 +22,6 @@
 		"cardDescription": "Acceso privado a través de tu tailnet, con HTTPS mediante Tailscale Serve.",
 		"funnelWarning": "Funnel publica esta instalación en internet. El inicio de sesión de Smart Panel es la única protección.",
 		"cannotBeUsedYetTitle": "Aún no se puede usar",
-		"disconnectExplanation": "Desconectar finaliza la sesión actual y conserva el inicio de sesión. Para mantener Tailscale desactivado tras reiniciar la aplicación, desactive el plugin en su configuración.",
 		"operationInProgress": "Hay una operación en curso. Desconectar permite cancelar el inicio de sesión o la conexión."
 	},
 	"buttons": {
@@ -34,13 +33,9 @@
 		"reconnect": "Reconectar",
 		"signOut": "Cerrar sesión",
 		"resetPreferences": "Restablecer preferencias",
-		"copy": "Copiar"
+		"copyGrantCommand": "Copiar el comando para conceder el rol de operador"
 	},
 	"fields": {
-		"tailnet": "Tailnet",
-		"dnsName": "Nombre MagicDNS",
-		"ipv4": "Dirección IPv4",
-		"ipv6": "Dirección IPv6",
 		"config": {
 			"hostname": {
 				"title": "Nombre de host",
