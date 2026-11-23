@@ -11,7 +11,7 @@ import NotificationsFilter from './notifications-filter.vue';
 vi.mock('vue-i18n', () => ({
 	// `common`'s index pulls in the app's locale setup, which builds a real i18n instance.
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 const mountFilter = async (props: Partial<{ filtersActive: boolean; selectedCount: number }> = {}): Promise<VueWrapper<ComponentPublicInstance>> => {
@@ -26,6 +26,9 @@ const mountFilter = async (props: Partial<{ filtersActive: boolean; selectedCoun
 			stubs: {
 				ElDrawer: { name: 'ElDrawer', props: ['modelValue'], template: '<div v-if="modelValue"><slot /></div>' },
 				ListNotificationsAdjust: { name: 'ListNotificationsAdjust', props: ['filters', 'filtersActive'], template: '<div />' },
+				ElDropdown: { name: 'ElDropdown', emits: ['command'], template: '<div><slot /><slot name="dropdown" /></div>' },
+				ElDropdownMenu: { template: '<ul><slot /></ul>' },
+				ElDropdownItem: { template: '<li><slot /></li>' },
 			},
 		},
 	});
@@ -69,7 +72,7 @@ describe('NotificationsFilter', () => {
 		expect(wrapper.emitted('reset-filters')).toHaveLength(1);
 	});
 
-	it('shows the bulk bar once rows are selected, destructive last, and forwards its actions', async () => {
+	it('shows the bulk bar once rows are selected, Delete in the more menu, and forwards its actions', async () => {
 		const wrapper = await mountFilter({ selectedCount: 0 });
 
 		expect(wrapper.find('[data-test-id="notifications-filter-bulk"]').exists()).toBe(false);
@@ -78,14 +81,16 @@ describe('NotificationsFilter', () => {
 
 		expect(wrapper.text()).toContain('application.bulkActions.selected');
 
-		const keys = wrapper.findAll('[data-test-id^="bulk-"]').map((button) => button.attributes('data-test-id'));
+		const buttons = wrapper.findAll('button[data-test-id^="bulk-"]').map((button) => button.attributes('data-test-id'));
 
-		expect(keys).toEqual(['bulk-mark-read', 'bulk-mark-unread', 'bulk-dismiss', 'bulk-delete']);
+		expect(buttons).toEqual(['bulk-mark-read', 'bulk-mark-unread', 'bulk-dismiss', 'bulk-more']);
+		expect(wrapper.find('[data-test-id="bulk-delete"]').classes()).toContain('text-danger!');
 
 		await wrapper.find('[data-test-id="bulk-dismiss"]').trigger('click');
+		wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'delete');
 		await wrapper.find('[data-test-id="notifications-clear-selection"]').trigger('click');
 
-		expect(wrapper.emitted('bulk-action')).toEqual([['dismiss']]);
+		expect(wrapper.emitted('bulk-action')).toEqual([['dismiss'], ['delete']]);
 		expect(wrapper.emitted('clear-selection')).toHaveLength(1);
 	});
 });

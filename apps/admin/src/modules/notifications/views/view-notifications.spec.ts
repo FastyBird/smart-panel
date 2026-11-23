@@ -39,7 +39,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('vue-i18n', () => ({
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 vi.mock('vue-meta', () => ({
@@ -312,6 +312,22 @@ describe('ViewNotifications', () => {
 
 			expect(mocks.markRead).toHaveBeenCalledWith(row.id, true);
 			// The initial load, then the read after marking
+			expect(mocks.fetchNotifications).toHaveBeenCalledTimes(2);
+		});
+
+		it('reads the "Unread only" list again when the bell already read the row it opens', async () => {
+			const row = notification({ readAt: new Date('2026-01-02T00:00:00.000Z') });
+
+			mocks.stored.value = [row];
+			mocks.notifications.value = [row];
+			mocks.filters.value.unread = true;
+			openDetail(row.id);
+
+			mountView();
+			await flushPromises();
+
+			expect(mocks.markRead).not.toHaveBeenCalled();
+			// The initial load, then the read for the row that no longer matches
 			expect(mocks.fetchNotifications).toHaveBeenCalledTimes(2);
 		});
 

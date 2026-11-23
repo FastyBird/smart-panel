@@ -132,9 +132,9 @@ import { useI18n } from 'vue-i18n';
 import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
-import { formatTimeAgo } from '@vueuse/core';
 
 import { KvGrid, type KvGridItem, StatusTag } from '../../../common';
+import { formatRelativeTime } from '../notifications.utils';
 import type { INotification } from '../store/notifications.store.schemas';
 
 import NotificationActions from './notification-actions.vue';
@@ -161,7 +161,7 @@ const formatTimestamp = (date: Date): string => new Intl.DateTimeFormat(locale.v
 const metaLine = computed<string>((): string =>
 	[
 		props.notification.source,
-		formatTimeAgo(props.notification.createdAt),
+		formatRelativeTime(props.notification.createdAt, locale.value),
 		props.notification.occurrences > 1
 			? `${t('notificationsModule.fields.notifications.occurrences.title')}: ${props.notification.occurrences}`
 			: null,

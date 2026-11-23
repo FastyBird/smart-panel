@@ -8,7 +8,7 @@ import type { INotification } from '../store/notifications.store.schemas';
 import NotificationsInboxList from './notifications-inbox-list.vue';
 
 vi.mock('vue-i18n', () => ({
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 vi.mock('../../../common', () => ({

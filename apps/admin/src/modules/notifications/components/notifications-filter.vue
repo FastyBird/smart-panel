@@ -97,7 +97,6 @@
 				<el-button
 					v-for="action in BULK_ACTIONS"
 					:key="action.key"
-					:type="action.key === 'delete' ? 'danger' : undefined"
 					plain
 					size="small"
 					class="ml-0!"
@@ -106,6 +105,42 @@
 				>
 					{{ t(action.label) }}
 				</el-button>
+
+				<!-- Spec section 4: the destructive action lives in the more menu -->
+				<el-tooltip
+					:content="t('notificationsModule.buttons.more.title')"
+					placement="top"
+				>
+					<el-dropdown
+						trigger="click"
+						placement="bottom-end"
+						@command="emit('bulk-action', 'delete')"
+					>
+						<el-button
+							:aria-label="t('notificationsModule.buttons.more.title')"
+							text
+							circle
+							size="small"
+							data-test-id="bulk-more"
+						>
+							<template #icon>
+								<icon icon="mdi:dots-horizontal" />
+							</template>
+						</el-button>
+
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item
+									command="delete"
+									class="text-danger!"
+									data-test-id="bulk-delete"
+								>
+									{{ t('application.bulkActions.delete') }}
+								</el-dropdown-item>
+							</el-dropdown-menu>
+						</template>
+					</el-dropdown>
+				</el-tooltip>
 			</div>
 		</div>
 
@@ -131,7 +166,7 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElBadge, ElButton, ElCheckbox, ElDrawer, ElOption, ElSelect, ElTooltip } from 'element-plus';
+import { ElBadge, ElButton, ElCheckbox, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElOption, ElSelect, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -168,12 +203,11 @@ const { isPhone } = useSizeClass();
 
 const STATUSES: INotificationsFilter['status'][] = ['all', 'active', 'dismissed', 'resolved'];
 
-// Destructive last, in the danger colour (spec section 4)
+// The reversible actions as buttons; Delete is in the more menu after them
 const BULK_ACTIONS: { key: string; label: string }[] = [
 	{ key: 'mark-read', label: 'notificationsModule.buttons.markRead.title' },
 	{ key: 'mark-unread', label: 'notificationsModule.buttons.markUnread.title' },
 	{ key: 'dismiss', label: 'notificationsModule.buttons.dismiss.title' },
-	{ key: 'delete', label: 'application.bulkActions.delete' },
 ];
 
 const innerFilters = useVModel(props, 'filters', emit);

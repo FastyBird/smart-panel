@@ -79,7 +79,7 @@
 								×{{ notification.occurrences }}
 							</span>
 						</span>
-						<span class="text-help truncate">{{ notification.source }} · {{ formatTimeAgo(notification.createdAt) }}</span>
+						<span class="text-help truncate">{{ notification.source }} · {{ formatRelativeTime(notification.createdAt, locale) }}</span>
 					</span>
 					<span
 						v-if="notification.readAt === null"
@@ -112,9 +112,8 @@ import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElCheckbox } from 'element-plus';
 
-import { formatTimeAgo } from '@vueuse/core';
-
 import { StateView } from '../../../common';
+import { formatRelativeTime } from '../notifications.utils';
 import type { INotification } from '../store/notifications.store.schemas';
 
 import NotificationSeverityDot from './notification-severity-dot.vue';
@@ -146,7 +145,7 @@ const emit = defineEmits<{
 	(e: 'update:selected-ids', ids: INotification['id'][]): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const onSelect = (id: INotification['id'], selected: boolean): void => {
 	emit('update:selected-ids', selected ? [...props.selectedIds, id] : props.selectedIds.filter((selectedId) => selectedId !== id));

@@ -401,8 +401,20 @@ watch(
 
 		// Through the same path as the detail's Mark as read, so under "Unread only" the list is read again and the row
 		// leaves it
-		if (request === openRequest && notification !== null && notification.readAt === null) {
+		if (request !== openRequest || notification === null) {
+			return;
+		}
+
+		if (notification.readAt === null) {
 			onMarkRead(id, true);
+		} else if (filters.value.unread && notifications.value.some((item) => item.id === id)) {
+			// Read already by another request (the bell marks a row read as it opens it) while the "Unread only" list
+			// still holds it: the list is read again so the row leaves it all the same
+			fetchNotifications().catch((error: unknown): void => {
+				const err = error as Error;
+
+				throw new NotificationsException('Something went wrong', err);
+			});
 		}
 	},
 	{ immediate: true }

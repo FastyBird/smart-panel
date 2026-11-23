@@ -18,7 +18,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('vue-i18n', () => ({
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 const mockExecute = vi.fn();
