@@ -414,7 +414,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
   /// The power toggle; none while the device is offline.
   VoidCallback? get _powerToggle =>
-      widget._device.isOnline ? () => _setFanPower(!_device.isOn) : null;
+      _device.isOnline ? () => _setFanPower(!_device.isOn) : null;
 
   /// The body's power toggle, only when the header (and its power button) is
   /// hidden.
@@ -641,8 +641,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
 
-    final lastSeenText = widget._device.lastStateChange != null
-        ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
+    final lastSeenText = _device.lastStateChange != null
+        ? DatetimeUtils.formatTimeAgo(_device.lastStateChange!, localizations)
         : null;
 
     final body = Stack(
@@ -654,7 +654,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 : _buildPortrait(context, isDark);
           },
         ),
-        if (!widget._device.isOnline)
+        if (!_device.isOnline)
           DeviceOfflineState(
             isDark: isDark,
             lastSeenText: lastSeenText,
