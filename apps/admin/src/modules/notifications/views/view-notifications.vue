@@ -322,6 +322,12 @@ const runBulkAction = async (action: string, ids: INotification['id'][]): Promis
 	if (isMutatingOutcome(outcome)) {
 		selectedIds.value = [];
 
+		// A bulk delete can take the open notification with it, partly successful or not; the detail then has nothing
+		// left to show, as after a single removal
+		if (action === 'delete' && detailId.value !== null && notificationsStore.findById(detailId.value) === null) {
+			onCloseDetail();
+		}
+
 		await fetchNotifications();
 	}
 };
@@ -355,9 +361,17 @@ watch(notifications, (items: INotification[]): void => {
 
 // Opening a notification reads it, as an inbox does; "Mark as unread" in the detail undoes it. One not loaded yet (a
 // link, or the bell from a list filtered differently) is read from the backend first
+// Each opening is one request: moving on to another notification before a read comes back leaves that read without a
+// say over the loading state of the one now open
+let openRequest = 0;
+
 watch(
 	detailId,
 	async (id: INotification['id'] | null): Promise<void> => {
+		const request = ++openRequest;
+
+		openLoading.value = false;
+
 		if (id === null) {
 			return;
 		}
@@ -370,14 +384,18 @@ watch(
 			} catch {
 				// The detail shows "not found"
 			} finally {
-				openLoading.value = false;
+				if (request === openRequest) {
+					openLoading.value = false;
+				}
 			}
 		}
 
 		const notification = notificationsStore.findById(id);
 
-		if (detailId.value === id && notification !== null && notification.readAt === null) {
-			void markRead(id, true);
+		// Through the same path as the detail's Mark as read, so under "Unread only" the list is read again and the row
+		// leaves it
+		if (request === openRequest && notification !== null && notification.readAt === null) {
+			onMarkRead(id, true);
 		}
 	},
 	{ immediate: true }

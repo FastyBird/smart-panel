@@ -1,8 +1,8 @@
 import type { Ref } from 'vue';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 
 import { NotificationsModuleNotificationKind, NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
 import { RouteNames } from '../notifications.constants';
@@ -10,6 +10,9 @@ import type { INotificationsFilter } from '../schemas/list.schemas';
 import type { INotification } from '../store/notifications.store.schemas';
 
 import ViewNotifications from './view-notifications.vue';
+
+// The route is shared by every mount, so a view left mounted would keep acting on the next test's navigation
+enableAutoUnmount(afterEach);
 
 const mocks = vi.hoisted(() => ({
 	markRead: vi.fn(),
@@ -297,6 +300,57 @@ describe('ViewNotifications', () => {
 			expect(mocks.markRead).toHaveBeenCalledWith(row.id, true);
 		});
 
+		it('reads the list again under "Unread only", so the opened row leaves it', async () => {
+			const row = notification();
+
+			mocks.stored.value = [row];
+			mocks.filters.value.unread = true;
+			openDetail(row.id);
+
+			mountView();
+			await flushPromises();
+
+			expect(mocks.markRead).toHaveBeenCalledWith(row.id, true);
+			// The initial load, then the read after marking
+			expect(mocks.fetchNotifications).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps loading for the notification now open when an earlier read comes back first', async () => {
+			const first = notification({ id: 'b2222222-2222-4222-8222-222222222222' });
+			const second = notification({ id: 'c3333333-3333-4333-8333-333333333333' });
+			const pending: Record<string, () => void> = {};
+
+			mocks.storeGet.mockImplementation(
+				({ id }: { id: string }) =>
+					new Promise<void>((resolve) => {
+						pending[id] = (): void => {
+							mocks.stored.value = [...mocks.stored.value, id === first.id ? first : second];
+							resolve();
+						};
+					})
+			);
+
+			openDetail(first.id);
+
+			const wrapper = mountView();
+			await flushPromises();
+
+			openDetail(second.id);
+			await flushPromises();
+
+			pending[first.id]();
+			await flushPromises();
+
+			expect(detail(wrapper).props('loading')).toBe(true);
+			expect(mocks.markRead).not.toHaveBeenCalledWith(first.id, true);
+
+			pending[second.id]();
+			await flushPromises();
+
+			expect(detail(wrapper).props('loading')).toBe(false);
+			expect(detail(wrapper).props('notification')).toEqual(second);
+		});
+
 		it('leaves a read notification alone', async () => {
 			const row = notification({ readAt: new Date('2026-01-02T00:00:00.000Z') });
 
@@ -405,6 +459,42 @@ describe('ViewNotifications', () => {
 
 			expect(mocks.markAllRead).toHaveBeenCalledWith(['1']);
 			expect(mocks.fetchNotifications).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns to the list when a bulk delete takes the open notification with it', async () => {
+			const row = notification({ readAt: new Date('2026-01-02T00:00:00.000Z') });
+
+			mocks.stored.value = [row];
+			mocks.bulkRemove.mockImplementation(async (): Promise<string> => {
+				mocks.stored.value = [];
+
+				return 'mutated';
+			});
+			openDetail(row.id);
+
+			const wrapper = await mountAndClearInitialFetch();
+
+			await select(wrapper, [row.id]);
+			bulk(wrapper, 'delete');
+			await flushPromises();
+
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.NOTIFICATIONS, query: { status: 'all' } });
+		});
+
+		it('stays on the open notification when a bulk delete leaves it', async () => {
+			const row = notification({ readAt: new Date('2026-01-02T00:00:00.000Z') });
+
+			mocks.stored.value = [row];
+			mocks.bulkRemove.mockResolvedValue('mutated');
+			openDetail(row.id);
+
+			const wrapper = await mountAndClearInitialFetch();
+
+			await select(wrapper, ['other']);
+			bulk(wrapper, 'delete');
+			await flushPromises();
+
+			expect(mocks.routerPush).not.toHaveBeenCalled();
 		});
 
 		it('drops a selection when the filters change', async () => {
