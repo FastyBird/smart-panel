@@ -99,8 +99,13 @@
 						{{ t('spacesModule.messages.loadError') }}
 					</template>
 
+					<!-- Keyed by the space: switching from one space to another remounts the editor, so its save goes to the
+					     space now shown and not to the one opened first -->
 					<suspense>
-						<router-view v-slot="{ Component }">
+						<router-view
+							:key="formKey"
+							v-slot="{ Component }"
+						>
 							<component
 								:is="Component"
 								v-model:remote-form-changed="remoteFormChanged"
@@ -114,6 +119,7 @@
 
 	<router-view
 		v-if="isWizardRoute || (!isSpacesListRoute && !inDrawer)"
+		:key="formKey"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -213,6 +219,9 @@ const isSpacesListRoute = computed<boolean>((): boolean => {
 
 // Template 4: forms open next to this page from tablet portrait up, as their own page on phone
 const { inDrawer } = provideEditDrawer((): boolean => !isSpacesListRoute.value && route.name !== RouteNames.SPACES_WIZARD);
+
+// One editor per space (and one for Add): a new key remounts the routed form
+const formKey = computed<string>((): string => `${String(route.name)}:${typeof route.params?.id === 'string' ? route.params.id : ''}`);
 
 const isWizardRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACES_WIZARD;
