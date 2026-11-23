@@ -324,7 +324,7 @@
 						{{ t('spacesHomeControlPlugin.media.activities.deactivate') }}
 					</el-button>
 				</div>
-				<div class="text-xs text-gray-400">
+				<div class="text-xs text-muted">
 					{{ t('spacesHomeControlPlugin.media.activities.applyDefaultsHint') }}
 				</div>
 			</div>

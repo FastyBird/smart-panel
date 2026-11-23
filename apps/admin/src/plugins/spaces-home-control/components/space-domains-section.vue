@@ -1,8 +1,9 @@
 <template>
-	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+	<div class="grid grid-cols-1 tp:grid-cols-2 dt:grid-cols-3 gap-4">
 		<space-domain-card
 			v-for="domain in domains"
 			:key="domain.key"
+			:domain="domain.domain"
 			:icon="domain.icon"
 			:icon-color="domain.iconColor"
 			:title="domain.title"
@@ -456,6 +457,7 @@ const loadMediaActivities = async (): Promise<void> => {
 const domains = computed(() => [
 	{
 		key: 'lighting',
+		domain: 'lights' as const,
 		icon: 'mdi:lightbulb',
 		iconColor: 'warning' as const,
 		title: t('spacesHomeControlPlugin.detail.domains.lighting.title'),
@@ -468,6 +470,7 @@ const domains = computed(() => [
 	},
 	{
 		key: 'climate',
+		domain: 'climate' as const,
 		icon: 'mdi:thermostat',
 		iconColor: 'danger' as const,
 		title: t('spacesHomeControlPlugin.detail.domains.climate.title'),
@@ -480,6 +483,7 @@ const domains = computed(() => [
 	},
 	{
 		key: 'covers',
+		domain: 'covers' as const,
 		icon: 'mdi:blinds',
 		iconColor: 'primary' as const,
 		title: t('spacesHomeControlPlugin.detail.domains.covers.title'),
@@ -492,6 +496,7 @@ const domains = computed(() => [
 	},
 	{
 		key: 'sensor',
+		domain: 'sensors' as const,
 		icon: 'mdi:chart-bell-curve',
 		iconColor: 'success' as const,
 		title: t('spacesHomeControlPlugin.detail.domains.sensor.title'),
@@ -504,6 +509,7 @@ const domains = computed(() => [
 	},
 	{
 		key: 'media',
+		domain: 'media' as const,
 		icon: 'mdi:play-box-multiple',
 		iconColor: 'info' as const,
 		title: t('spacesHomeControlPlugin.detail.domains.media.title'),

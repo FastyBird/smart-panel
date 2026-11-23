@@ -74,6 +74,17 @@ vi.mock('../../../common', async () => {
 		ViewError: defineComponent({
 			template: '<div><slot /><slot name="icon" /><slot name="message" /></div>',
 		}),
+		// Templates 5: the layout renders its banner and the section cards; a section its actions and body
+		SettingsLayout: defineComponent({
+			name: 'SettingsLayout',
+			props: { sections: { type: Array, default: () => [] } },
+			template: '<div><slot name="banner" /><slot /></div>',
+		}),
+		SettingsSection: defineComponent({
+			name: 'SettingsSection',
+			props: { id: { type: String, required: true }, title: { type: String, default: '' }, icon: { type: String, default: undefined } },
+			template: '<section :id="id"><slot name="actions" /><slot /></section>',
+		}),
 		useBackend: () => ({ client: mocks.client }),
 		useBreakpoints: () => ({
 			isLGDevice: (mocks.lgDevice = ref(mocks.isLGDevice)),
@@ -310,6 +321,8 @@ describe('ViewSpaceConfigure', () => {
 				stubs: {
 					RouterView: true,
 					teleport: true,
+					SettingsLayout: false,
+					SettingsSection: false,
 				},
 			},
 		});
@@ -322,11 +335,19 @@ describe('ViewSpaceConfigure', () => {
 		expect(modes.props('spaceId')).toBe('7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d');
 		expect(
 			wrapper
-				.findAllComponents({ name: 'ElTabPane' })
-				.find((tab) => tab.props('name') === 'modes')
+				.findAllComponents({ name: 'SettingsSection' })
+				.find((section) => section.props('id') === 'modes')
 				?.findComponent({ name: 'SpaceActivityModesSection' })
 				.exists()
 		).toBe(true);
+		// One anchor per card, modes included for a room
+		expect((wrapper.findComponent({ name: 'SettingsLayout' }).props('sections') as { id: string }[]).map((section) => section.id)).toEqual([
+			'domains',
+			'modes',
+			'devices',
+			'scenes',
+			'displays',
+		]);
 		expect(domains.findComponent({ name: 'SpaceActivityModesSection' }).exists()).toBe(false);
 	});
 });

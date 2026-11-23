@@ -51,7 +51,7 @@
 								:key="`${sensor.deviceId}-${sensor.channelId}`"
 								class="flex items-center gap-2 text-sm py-1"
 							>
-								<icon :icon="getChannelIcon(sensor.channelCategory)" class="text-gray-400" />
+								<icon :icon="getChannelIcon(sensor.channelCategory)" class="text-muted" />
 								<span>{{ sensor.deviceName }} — {{ sensor.channelName }}</span>
 							</li>
 						</ul>
@@ -59,7 +59,7 @@
 				</el-popover>
 			</div>
 			<!-- Show hint when no roles assigned yet -->
-			<div v-else class="flex items-center gap-2 text-gray-400 text-sm">
+			<div v-else class="flex items-center gap-2 text-muted text-sm">
 				<icon icon="mdi:chart-bell-curve" />
 				{{ t('spacesHomeControlPlugin.detail.sensorRoles.noRolesAssigned') }}
 			</div>

@@ -28,7 +28,7 @@
 	<div
 		v-else
 		data-test-id="space-plugin-route"
-		class="flex-1 overflow-hidden lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+		class="flex flex-col flex-1 min-h-0 overflow-hidden"
 	>
 		<router-view
 			:key="props.id"

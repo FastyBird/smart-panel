@@ -22,7 +22,7 @@
 						<div class="font-medium">{{ row.name }}</div>
 						<div
 							v-if="row.description"
-							class="text-xs text-gray-500"
+							class="text-xs text-secondary"
 						>
 							{{ row.description }}
 						</div>

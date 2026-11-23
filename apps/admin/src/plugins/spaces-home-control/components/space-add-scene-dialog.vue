@@ -99,7 +99,7 @@
 					<el-tag v-if="row.primarySpaceId" size="small" type="warning">
 						{{ getSpaceName(row.primarySpaceId) }}
 					</el-tag>
-					<span v-else class="text-gray-400 text-sm">-</span>
+					<span v-else class="text-muted text-sm">-</span>
 				</template>
 			</el-table-column>
 

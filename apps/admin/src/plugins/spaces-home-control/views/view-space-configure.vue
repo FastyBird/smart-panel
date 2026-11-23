@@ -4,45 +4,6 @@
 		to="#space-manage-actions"
 	>
 		<el-button
-			type="primary"
-			plain
-			class="ml-2!"
-			@click="onAddDevice"
-		>
-			<template #icon>
-				<icon icon="mdi:plus" />
-			</template>
-
-			{{ t('spacesModule.detail.devices.add') }}
-		</el-button>
-
-		<el-button
-			type="primary"
-			plain
-			class="ml-2!"
-			@click="onAddScene"
-		>
-			<template #icon>
-				<icon icon="mdi:plus" />
-			</template>
-
-			{{ t('spacesModule.detail.scenes.add') }}
-		</el-button>
-
-		<el-button
-			type="primary"
-			plain
-			class="ml-2!"
-			@click="onAddDisplay"
-		>
-			<template #icon>
-				<icon icon="mdi:plus" />
-			</template>
-
-			{{ t('spacesModule.detail.displays.add') }}
-		</el-button>
-
-		<el-button
 			plain
 			class="ml-2!"
 			data-test-id="edit-space"
@@ -51,154 +12,155 @@
 			<template #icon>
 				<icon icon="mdi:pencil" />
 			</template>
+
+			{{ t('spacesModule.buttons.edit.title') }}
 		</el-button>
 	</teleport>
 
 	<div
 		v-show="!isSpaceEditRoute || isLGDevice"
-		class="flex flex-col h-full min-h-0"
+		class="flex flex-col flex-1 h-full min-h-0"
 	>
-		<space-detail :space="props.space">
-			<space-parent-zone-section
-				v-if="props.space.type === SpaceType.ROOM"
-				:space="props.space"
-			/>
-		</space-detail>
+		<!-- Template 5: the space summary on top, then one card per area with an anchor nav from desktop. Each area's
+		     add action sits in its own card -->
+		<settings-layout :sections="sections">
+			<template #banner>
+				<space-detail :space="props.space">
+					<space-parent-zone-section
+						v-if="props.space.type === SpaceType.ROOM"
+						:space="props.space"
+					/>
+				</space-detail>
+			</template>
 
-		<el-tabs
-			v-model="activeTab"
-			:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
-		>
-			<el-tab-pane
-				name="domains"
-				class="h-full overflow-hidden"
+			<settings-section
+				id="domains"
+				:title="t('spacesModule.detail.domains.title')"
+				icon="mdi:view-dashboard"
 			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:view-dashboard" />
-						{{ t('spacesModule.detail.domains.title') }}
-					</div>
-				</template>
+				<space-domains-section :space="props.space" />
+			</settings-section>
 
-				<el-scrollbar class="h-full">
-					<space-domains-section :space="props.space" />
-				</el-scrollbar>
-			</el-tab-pane>
-
-			<el-tab-pane
+			<settings-section
 				v-if="occupancySupported"
-				name="modes"
-				class="h-full overflow-hidden"
+				id="modes"
+				:title="t('spacesHomeControlPlugin.activityModes.title')"
+				icon="mdi:home-switch"
 			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:home-switch" />
-						{{ t('spacesHomeControlPlugin.activityModes.title') }}
-					</div>
-				</template>
-				<el-scrollbar class="h-full">
+				<div class="flex flex-col gap-4">
 					<space-activity-modes-section :space-id="props.space.id" />
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 m-2">
-						<el-card shadow="never">
-							<h3>{{ t('spacesHomeControlPlugin.schedules.title') }}</h3>
-							<p>{{ t('spacesHomeControlPlugin.modesLayout.scheduleDescription') }}</p>
-							<p>{{ activationSummary('schedule') }}</p>
-							<el-button
-								data-test-id="configure-schedule"
-								@click="showSchedule = true"
-							>
-								{{ t('spacesHomeControlPlugin.modesLayout.configure') }}
-							</el-button>
-						</el-card>
-						<el-card shadow="never">
-							<h3>{{ t('spacesHomeControlPlugin.modesLayout.presenceTitle') }}</h3>
-							<p>{{ t('spacesHomeControlPlugin.modesLayout.presenceDescription') }}</p>
-							<p>{{ activationSummary('occupancy') }}</p>
-							<el-button
-								data-test-id="configure-presence"
-								@click="showOccupancy = true"
-							>
-								{{ t('spacesHomeControlPlugin.modesLayout.configure') }}
-							</el-button>
-						</el-card>
-					</div>
-				</el-scrollbar>
-			</el-tab-pane>
 
-			<el-tab-pane
-				name="devices"
-				class="h-full overflow-hidden"
-			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:devices" />
-						{{ t('spacesModule.detail.devices.title') }}
+					<div class="grid gap-3 tp:grid-cols-2">
+						<div class="flex flex-col gap-2 p-4 border border-solid border-light rounded-lg">
+							<h3 class="m-0 text-card-title">{{ t('spacesHomeControlPlugin.schedules.title') }}</h3>
+							<p class="m-0 text-help">{{ t('spacesHomeControlPlugin.modesLayout.scheduleDescription') }}</p>
+							<p class="m-0 text-body">{{ activationSummary('schedule') }}</p>
+							<div>
+								<el-button
+									data-test-id="configure-schedule"
+									@click="showSchedule = true"
+								>
+									{{ t('spacesHomeControlPlugin.modesLayout.configure') }}
+								</el-button>
+							</div>
+						</div>
+						<div class="flex flex-col gap-2 p-4 border border-solid border-light rounded-lg">
+							<h3 class="m-0 text-card-title">{{ t('spacesHomeControlPlugin.modesLayout.presenceTitle') }}</h3>
+							<p class="m-0 text-help">{{ t('spacesHomeControlPlugin.modesLayout.presenceDescription') }}</p>
+							<p class="m-0 text-body">{{ activationSummary('occupancy') }}</p>
+							<div>
+								<el-button
+									data-test-id="configure-presence"
+									@click="showOccupancy = true"
+								>
+									{{ t('spacesHomeControlPlugin.modesLayout.configure') }}
+								</el-button>
+							</div>
+						</div>
 					</div>
+				</div>
+			</settings-section>
+
+			<settings-section
+				id="devices"
+				:title="t('spacesModule.detail.devices.title')"
+				icon="mdi:devices"
+			>
+				<template #actions>
+					<el-button
+						plain
+						size="small"
+						data-test-id="add-space-device"
+						@click="onAddDevice"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
+
+						{{ t('spacesModule.detail.devices.add') }}
+					</el-button>
 				</template>
 
-				<el-scrollbar class="h-full">
-					<el-card
-						shadow="never"
-						body-class="p-0!"
-					>
-						<space-devices-section
-							:space-id="props.space.id"
-							:space-type="props.space.type"
-							@open-add-dialog="onAddDevice"
-						/>
-					</el-card>
-				</el-scrollbar>
-			</el-tab-pane>
+				<space-devices-section
+					:space-id="props.space.id"
+					:space-type="props.space.type"
+					@open-add-dialog="onAddDevice"
+				/>
+			</settings-section>
 
-			<el-tab-pane
-				name="scenes"
-				class="h-full overflow-hidden"
+			<settings-section
+				id="scenes"
+				:title="t('spacesModule.detail.scenes.title')"
+				icon="mdi:play-box-multiple"
 			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:play-box-multiple" />
-						{{ t('spacesModule.detail.scenes.title') }}
-					</div>
+				<template #actions>
+					<el-button
+						plain
+						size="small"
+						data-test-id="add-space-scene"
+						@click="onAddScene"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
+
+						{{ t('spacesModule.detail.scenes.add') }}
+					</el-button>
 				</template>
 
-				<el-scrollbar class="h-full">
-					<el-card
-						shadow="never"
-						body-class="p-0!"
-					>
-						<space-scenes-section
-							:space-id="props.space.id"
-							@open-add-dialog="onAddScene"
-						/>
-					</el-card>
-				</el-scrollbar>
-			</el-tab-pane>
+				<space-scenes-section
+					:space-id="props.space.id"
+					@open-add-dialog="onAddScene"
+				/>
+			</settings-section>
 
-			<el-tab-pane
-				name="displays"
-				class="h-full overflow-hidden"
+			<settings-section
+				id="displays"
+				:title="t('spacesModule.detail.displays.title')"
+				icon="mdi:monitor"
 			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:monitor" />
-						{{ t('spacesModule.detail.displays.title') }}
-					</div>
+				<template #actions>
+					<el-button
+						plain
+						size="small"
+						data-test-id="add-space-display"
+						@click="onAddDisplay"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
+
+						{{ t('spacesModule.detail.displays.add') }}
+					</el-button>
 				</template>
 
-				<el-scrollbar class="h-full">
-					<el-card
-						shadow="never"
-						body-class="p-0!"
-					>
-						<space-displays-section
-							ref="displaysSectionRef"
-							:space-id="props.space.id"
-							@open-add-dialog="onAddDisplay"
-						/>
-					</el-card>
-				</el-scrollbar>
-			</el-tab-pane>
-		</el-tabs>
+				<space-displays-section
+					ref="displaysSectionRef"
+					:space-id="props.space.id"
+					@open-add-dialog="onAddDisplay"
+				/>
+			</settings-section>
+		</settings-layout>
 	</div>
 
 	<el-dialog
@@ -310,11 +272,11 @@ import { computed, onBeforeMount, onMounted, onScopeDispose, ref, watch } from '
 import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDialog, ElDrawer, ElMessageBox, ElScrollbar, ElTabPane, ElTabs, useNamespace } from 'element-plus';
+import { ElButton, ElDialog, ElDrawer, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, ViewError, useBreakpoints } from '../../../common';
+import { AppBarScope, SettingsLayout, type SettingsLayoutSection, SettingsSection, ViewError, useBreakpoints } from '../../../common';
 import { useDevices } from '../../../modules/devices/composables/useDevices';
 import { useDisplays } from '../../../modules/displays/composables/useDisplays';
 import { useScenes } from '../../../modules/scenes/composables/useScenes';
@@ -350,8 +312,6 @@ const router = useRouter();
 const { t } = useI18n();
 const { isLGDevice } = useBreakpoints();
 
-const ns = useNamespace('view-space');
-
 const { fetchDevices, loaded: devicesLoaded } = useDevices();
 const { fetchScenes, loaded: scenesLoaded } = useScenes();
 const { fetchDisplays, isLoaded: displaysLoaded } = useDisplays();
@@ -360,13 +320,6 @@ const { fetchSpaces, firstLoadFinished: spacesFirstLoadFinished } = useSpaces();
 const mounted = ref<boolean>(false);
 const showDrawer = ref<boolean>(false);
 
-const validTabs = computed(() => ['domains', 'devices', 'scenes', 'displays', ...(occupancySupported.value ? ['modes'] : [])]);
-const activeTab = computed<string>({
-	get: () => (typeof route.query?.tab === 'string' && validTabs.value.includes(route.query.tab) ? route.query.tab : 'domains'),
-	set: (tab) => {
-		void router.replace({ query: { ...route.query, tab: tab === 'domains' ? undefined : tab } });
-	},
-});
 const showSchedule = ref(false);
 const showOccupancy = ref(false);
 const showAddDeviceDialog = ref<boolean>(false);
@@ -376,6 +329,15 @@ const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>
 const remoteFormChanged = ref<boolean>(false);
 const scheduleSectionRef = ref<InstanceType<typeof SpaceModeScheduleSection> | null>(null);
 const occupancySupported = computed(() => [SpaceType.ROOM, SpaceType.ZONE].includes(props.space.type));
+
+// The anchor nav of template 5, in the order of the cards
+const sections = computed<SettingsLayoutSection[]>((): SettingsLayoutSection[] => [
+	{ id: 'domains', label: t('spacesModule.detail.domains.title'), icon: 'mdi:view-dashboard' },
+	...(occupancySupported.value ? [{ id: 'modes', label: t('spacesHomeControlPlugin.activityModes.title'), icon: 'mdi:home-switch' }] : []),
+	{ id: 'devices', label: t('spacesModule.detail.devices.title'), icon: 'mdi:devices' },
+	{ id: 'scenes', label: t('spacesModule.detail.scenes.title'), icon: 'mdi:play-box-multiple' },
+	{ id: 'displays', label: t('spacesModule.detail.displays.title'), icon: 'mdi:monitor' },
+]);
 const occupancyEditorSpaceId = ref<string | null>(null);
 let occupancyTypeGeneration = 0;
 const occupancySectionRef = ref<InstanceType<typeof SpaceOccupancySection> | null>(null);
@@ -542,7 +504,3 @@ watch(
 	}
 );
 </script>
-
-<style rel="stylesheet/scss" lang="scss" scoped>
-@use 'view-space-configure.scss';
-</style>

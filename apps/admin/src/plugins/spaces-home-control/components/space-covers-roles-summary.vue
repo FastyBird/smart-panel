@@ -51,7 +51,7 @@
 								:key="`${device.deviceId}-${device.channelId}`"
 								class="flex items-center gap-2 text-sm py-1"
 							>
-								<icon icon="mdi:blinds-horizontal" class="text-gray-400" />
+								<icon icon="mdi:blinds-horizontal" class="text-muted" />
 								<span>{{ device.deviceName }}</span>
 							</li>
 						</ul>
@@ -59,7 +59,7 @@
 				</el-popover>
 			</div>
 			<!-- Show hint when no roles assigned yet -->
-			<div v-else class="flex items-center gap-2 text-gray-400 text-sm">
+			<div v-else class="flex items-center gap-2 text-muted text-sm">
 				<icon icon="mdi:blinds" />
 				{{ t('spacesHomeControlPlugin.detail.coversRoles.noRolesAssigned') }}
 			</div>
