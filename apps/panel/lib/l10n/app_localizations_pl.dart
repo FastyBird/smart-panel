@@ -223,6 +223,18 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
+  String device_offline_line(String time) {
+    return 'Rozłączony · ostatnio widziano $time';
+  }
+
+  @override
+  String get device_offline_paused =>
+      'Sterowanie jest wstrzymane do powrotu urządzenia';
+
+  @override
+  String get device_offline_paused_short => 'Sterowanie wstrzymane';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

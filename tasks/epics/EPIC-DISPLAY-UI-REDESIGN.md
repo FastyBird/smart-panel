@@ -80,8 +80,8 @@ behaviour in `display-app-design-spec.md`, and updates all six locales.
 | DR-2 | #1712 | 1 | `feat(panel): derive density from pixel density and size classes from the effective canvas` | — | done |
 | DR-3 | #1713 | 1 | `feat(panel): add the accent palettes and the accent picker` | DR-1 | done |
 | DR-4 | #1714 | 1 | `chore(panel): add the design system checks and a component gallery` | DR-1 | done |
-| DR-5 | #1715 | 2 | `feat(panel): add one page header for every screen type` | DR-1, DR-2 | in review |
-| DR-6 | #1716 | 2 | `feat(panel): re-skin cards, the hero card and tiles` | DR-1, DR-2 | open |
+| DR-5 | #1715 | 2 | `feat(panel): add one page header for every screen type` | DR-1, DR-2 | done |
+| DR-6 | #1716 | 2 | `feat(panel): re-skin cards, the hero card and tiles` | DR-1, DR-2 | in review |
 | DR-7 | #1717 | 2 | `feat(panel): add one slider, switch, stepper, segmented control and mode chip` | DR-1, DR-2, DR-3 | open |
 | DR-8 | #1718 | 2 | `feat(panel): re-skin list rows, sheets, drawers, dialogs, toasts and banners` | DR-1, DR-2, DR-3 | open |
 | DR-9 | #1719 | 2 | `feat(panel): add state templates, loading skeletons and the outcome indicator` | DR-1, DR-2, DR-8 | open |

@@ -13,17 +13,19 @@ enum TileLayout {
   horizontal,
 }
 
-/// Universal tile widget for consistent UI across domains.
+/// Universal tile widget for consistent UI across domains
+/// (docs/display-ui-design-spec.md §2, §5, §7).
 ///
-/// Supports:
-/// - Vertical layout (icon top, text bottom) for grids
-/// - Horizontal layout (icon left, text right) for lists
-/// - Active/inactive states with color theming
-/// - Offline state (shows warning badge)
-/// - Selection indicator
-/// - Separate icon tap and tile tap callbacks
-/// - Glow effect when active
-/// - Warning badge for offline devices
+/// - Vertical layout (icon top, text bottom) for grids, horizontal (icon
+///   left, text right) for lists.
+/// - Default: `surface.card` with a `border.light` outline, radius 8.
+/// - Active: the soft tint of [activeColor], the domain colour on the icon
+///   and `text.primary` on the text. Selected adds a domain-colour outline.
+/// - Offline: the state line in the warning colour, a warning badge in the
+///   corner and the icon dimmed to `text.disabled`.
+/// - Separate icon tap and tile tap callbacks; the icon is the on/off zone.
+///
+/// [activeColor] `primary` (the default) follows the panel accent.
 ///
 /// Used for: light tiles, scene tiles, sensor tiles, auxiliary tiles,
 /// channel tiles, role tiles, etc.
@@ -60,10 +62,15 @@ class UniversalTile extends StatelessWidget {
   final VoidCallback? onTileTap;
 
   // Visual options
+  /// No longer drawn: tiles have no shadow. Kept so callers compile.
   final bool showGlow;
   final bool showSelectionIndicator;
   final bool showWarningBadge;
+
+  /// No longer drawn: tiles have one outline. Kept so callers compile.
   final bool showDoubleBorder;
+
+  /// No longer used: every tile has its outline. Kept so callers compile.
   final bool showInactiveBorder;
 
   // Font sizes (optional overrides)
@@ -76,8 +83,10 @@ class UniversalTile extends StatelessWidget {
   final Widget? accessories;
 
   // Optional padding override for the tile content area.
-  // Defaults to horizontal: pMd, vertical: pSm.
   final EdgeInsetsGeometry? contentPadding;
+
+  /// The class to render at; defaults to the screen's.
+  final ScreenSizeClass? sizeClass;
 
   UniversalTile({
     super.key,
@@ -102,245 +111,54 @@ class UniversalTile extends StatelessWidget {
     this.statusFontSize,
     this.accessories,
     this.contentPadding,
+    this.sizeClass,
   });
+
+  /// Side of the icon tile in the horizontal layout, in design px; with its
+  /// padding it is the 36 px on/off tap zone.
+  static const double horizontalIconTile = 36;
+
+  static const double horizontalIconSize = 20;
+
+  /// Offline and lock badge in the tile's corner.
+  static const double badgeSize = 12;
 
   @override
   Widget build(BuildContext context) {
-    return layout == TileLayout.vertical
-        ? _buildVerticalTile(context)
-        : _buildHorizontalTile(context);
-  }
-
-  // ============================================================================
-  // VERTICAL LAYOUT (icon top, text bottom)
-  // ============================================================================
-
-  Widget _buildVerticalTile(BuildContext context) {
-    final colors = _getTileColors(context);
-    final isLargeScreen = _screenService.isLargeScreen;
-
-    return GestureDetector(
-      onTap: onTileTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
-            color: colors.outerBorderColor,
-            width: colors.borderWidth,
-          ),
-          boxShadow: (isActive && showGlow && !isOffline)
-              ? [
-                  BoxShadow(
-                    color: colors.accentColorLight5.withValues(alpha: 0.35),
-                    blurRadius: AppSpacings.scale(8),
-                    spreadRadius: AppSpacings.scale(1),
-                  ),
-                ]
-              : [],
-        ),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: colors.tileBgColor,
-            borderRadius: BorderRadius.circular(
-              AppBorderRadius.base - colors.borderWidth,
-            ),
-            border: showDoubleBorder
-                ? Border.all(
-                    color: colors.innerBorderColor,
-                    width: colors.borderWidth,
-                  )
-                : null,
-          ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: contentPadding ??
-                    EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pMd,
-                      vertical: AppSpacings.pSm,
-                    ),
-                child: Column(
-                  children: [
-                    // Icon - takes available space
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: AppSpacings.pMd),
-                        child: Center(
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final iconSize = constraints.maxHeight;
-                              return _buildIconButton(
-                                context,
-                                colors,
-                                iconSize,
-                                iconSize * 0.6,
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Name + Status grouped together
-                    Text(
-                      name,
-                      style: TextStyle(
-                        color: colors.textColor,
-                        fontSize: nameFontSize ??
-                            (isLargeScreen ? AppFontSize.base : AppFontSize.small),
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                    ),
-
-                    // Status (optional)
-                    if (status != null) ...[
-                      Text(
-                        status!,
-                        style: TextStyle(
-                          color: isOffline
-                              ? colors.warningColor
-                              : colors.subtitleColor,
-                          fontSize: statusFontSize ??
-                              (isLargeScreen ? AppFontSize.small : AppFontSize.extraSmall),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-
-                    // Accessories (optional)
-                    if (accessories != null) ...[
-                      SizedBox(height: AppSpacings.pSm),
-                      accessories!,
-                    ],
-                  ],
-                ),
-              ),
-
-              // Selection indicator
-              if (isSelected && showSelectionIndicator)
-                Positioned(
-                  top: AppSpacings.scale(4),
-                  right: AppSpacings.scale(4),
-                  child: Icon(
-                    MdiIcons.checkCircle,
-                    size: AppSpacings.scale(14),
-                    color: isActive
-                        ? colors.accentColor
-                        : (Theme.of(context).brightness == Brightness.dark
-                            ? AppColorsDark.success
-                            : AppColorsLight.success),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
+    final colors = tileColors(
+      Theme.of(context),
+      activeColor: activeColor,
+      iconAccentColor: iconAccentColor,
+      isActive: isActive,
+      isOffline: isOffline,
+      isSelected: isSelected,
     );
-  }
-
-  // ============================================================================
-  // HORIZONTAL LAYOUT (icon left, text right)
-  // ============================================================================
-
-  Widget _buildHorizontalTile(BuildContext context) {
-    final colors = _getTileColors(context);
+    final isExpanded =
+        (sizeClass ?? _screenService.sizeClass) == ScreenSizeClass.expanded;
+    final tile = layout == TileLayout.vertical
+        ? _buildVerticalTile(context, colors, isExpanded)
+        : _buildHorizontalTile(context, colors, isExpanded);
 
     return GestureDetector(
       onTap: onTileTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: contentPadding ??
-            EdgeInsets.symmetric(
-              horizontal: AppSpacings.pSm,
-              vertical: AppSpacings.pSm,
-            ),
         decoration: BoxDecoration(
-          color: colors.tileBgColor,
+          color: colors.background,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
-            color: colors.outerBorderColor,
-            width: colors.borderWidth,
-          ),
-          boxShadow: (isActive && showGlow && !isOffline)
-              ? [
-                  BoxShadow(
-                    color: colors.accentColorLight5.withValues(alpha: 0.35),
-                    blurRadius: AppSpacings.scale(6),
-                    spreadRadius: AppSpacings.scale(1),
-                  ),
-                ]
-              : [],
+          border: Border.all(color: colors.border, width: AppSpacings.scale(1)),
         ),
-        child: Row(
-          spacing: AppSpacings.pMd,
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
           children: [
-            // Icon
-            _buildIconButton(
-              context,
-              colors,
-              AppSpacings.scale(32),
-              AppSpacings.scale(18),
-            ),
-
-            // Text content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      color: colors.textColor,
-                      fontSize: nameFontSize ?? AppFontSize.small,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                  if (status != null)
-                    Text(
-                      status!,
-                      style: TextStyle(
-                        color: isOffline
-                            ? colors.warningColor
-                            : colors.subtitleColor,
-                        fontSize: statusFontSize ?? AppFontSize.extraSmall,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                ],
-              ),
-            ),
-
-            // Accessories for horizontal
-            if (accessories != null)
-              Padding(
-                padding: EdgeInsets.only(left: AppSpacings.pSm),
-                child: accessories!,
-              ),
-
-            // Selection indicator for horizontal
-            if (isSelected && showSelectionIndicator)
-              Padding(
-                padding: EdgeInsets.only(left: AppSpacings.pSm),
+            tile,
+            if (isOffline && showWarningBadge)
+              Positioned(
+                top: AppSpacings.pSm,
+                right: AppSpacings.pSm,
                 child: Icon(
-                  MdiIcons.checkCircle,
-                  size: AppSpacings.scale(16),
-                  color: isActive
-                      ? colors.accentColor
-                      : (Theme.of(context).brightness == Brightness.dark
-                          ? AppColorsDark.success
-                          : AppColorsLight.success),
+                  MdiIcons.alert,
+                  size: AppSpacings.scale(badgeSize),
+                  color: colors.badge,
                 ),
               ),
           ],
@@ -350,49 +168,179 @@ class UniversalTile extends StatelessWidget {
   }
 
   // ============================================================================
+  // VERTICAL LAYOUT (icon top, text bottom)
+  // ============================================================================
+
+  Widget _buildVerticalTile(
+    BuildContext context,
+    UniversalTileColors colors,
+    bool isExpanded,
+  ) {
+    return Stack(
+      children: [
+        Padding(
+          padding:
+              contentPadding ??
+              EdgeInsets.symmetric(
+                horizontal: AppSpacings.pMd,
+                vertical: AppSpacings.pSm,
+              ),
+          child: Column(
+            children: [
+              // Icon - takes available space
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+                  child: Center(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final iconSize = constraints.maxHeight;
+                        return _buildIconButton(
+                          context,
+                          colors,
+                          iconSize,
+                          iconSize * 0.6,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              _buildName(colors, isExpanded, TextAlign.center),
+              if (status != null)
+                _buildStatus(colors, isExpanded, TextAlign.center),
+              if (accessories != null) ...[
+                SizedBox(height: AppSpacings.pSm),
+                accessories!,
+              ],
+            ],
+          ),
+        ),
+        if (isSelected && showSelectionIndicator)
+          Positioned(
+            top: AppSpacings.pSm,
+            left: AppSpacings.pSm,
+            child: Icon(
+              MdiIcons.checkCircle,
+              size: AppSpacings.scale(14),
+              color: colors.selection,
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ============================================================================
+  // HORIZONTAL LAYOUT (icon left, text right)
+  // ============================================================================
+
+  Widget _buildHorizontalTile(
+    BuildContext context,
+    UniversalTileColors colors,
+    bool isExpanded,
+  ) {
+    return Padding(
+      padding:
+          contentPadding ??
+          EdgeInsets.symmetric(
+            horizontal: AppSpacings.pSm,
+            vertical: AppSpacings.pSm,
+          ),
+      child: Row(
+        spacing: AppSpacings.pMd,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildIconButton(
+            context,
+            colors,
+            AppSpacings.scale(horizontalIconTile),
+            AppSpacings.scale(horizontalIconSize),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: AppSpacings.scale(1),
+              children: [
+                _buildName(colors, isExpanded, TextAlign.start),
+                if (status != null)
+                  _buildStatus(colors, isExpanded, TextAlign.start),
+              ],
+            ),
+          ),
+          if (accessories != null) accessories!,
+          if (isSelected && showSelectionIndicator)
+            Icon(
+              MdiIcons.checkCircle,
+              size: AppSpacings.scale(16),
+              color: colors.selection,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildName(
+    UniversalTileColors colors,
+    bool isExpanded,
+    TextAlign align,
+  ) => Text(
+    name,
+    style: TextStyle(
+      color: colors.text,
+      fontSize:
+          nameFontSize ?? (isExpanded ? AppFontSize.base : AppFontSize.small),
+      fontWeight: FontWeight.w500,
+    ),
+    overflow: TextOverflow.ellipsis,
+    maxLines: 1,
+    textAlign: align,
+  );
+
+  Widget _buildStatus(
+    UniversalTileColors colors,
+    bool isExpanded,
+    TextAlign align,
+  ) => Text(
+    status!,
+    style: TextStyle(
+      color: colors.status,
+      fontSize:
+          statusFontSize ??
+          (isExpanded ? AppFontSize.small : AppFontSize.extraSmall),
+    ),
+    overflow: TextOverflow.ellipsis,
+    maxLines: 1,
+    textAlign: align,
+  );
+
+  // ============================================================================
   // ICON BUTTON (shared between layouts)
   // ============================================================================
 
   Widget _buildIconButton(
     BuildContext context,
-    _TileColors colors,
+    UniversalTileColors colors,
     double containerSize,
     double iconSize,
   ) {
-    final iconWidget = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: containerSize,
-          height: containerSize,
-          decoration: BoxDecoration(
-            color: colors.iconBgColor,
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          ),
-          child: Icon(
-            (isActive && activeIcon != null) ? activeIcon : icon,
-            color: colors.iconColor,
-            size: iconSize,
-          ),
-        ),
-
-        // Warning badge for offline devices
-        if (isOffline && showWarningBadge)
-          Positioned(
-            right: -AppSpacings.scale(2),
-            bottom: -AppSpacings.scale(2),
-            child: Icon(
-              MdiIcons.alert,
-              size: AppSpacings.scale(14),
-              color: colors.warningColor,
-            ),
-          ),
-      ],
+    final iconWidget = Container(
+      width: containerSize,
+      height: containerSize,
+      decoration: BoxDecoration(
+        color: colors.iconBackground,
+        borderRadius: BorderRadius.circular(AppBorderRadius.inner),
+      ),
+      child: Icon(
+        (isActive && activeIcon != null) ? activeIcon : icon,
+        color: colors.icon,
+        size: iconSize,
+      ),
     );
 
-    // Wrap with GestureDetector if onIconTap is provided
     if (onIconTap != null) {
       return GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onIconTap,
         child: iconWidget,
       );
@@ -402,140 +350,92 @@ class UniversalTile extends StatelessWidget {
   }
 
   // ============================================================================
-  // COLOR CALCULATIONS
+  // COLORS
   // ============================================================================
 
-  _TileColors _getTileColors(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
-    final borderWidth = AppSpacings.scale(1);
-
-    // Resolve theme color family (no alpha modifiers)
-    final colorKey = activeColor ?? ThemeColors.primary;
-    final family = ThemeColorFamily.get(brightness, colorKey);
-    final accentColor = family.base;
-    final accentColorDark2 = family.dark2;
-    final accentColorLight5 = family.light5;
-    final accentColorLight9 = family.light9;
-
-    // Tile background
-    final Color tileBgColor;
-    if (isOffline) {
-      tileBgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-    } else if (isActive) {
-      tileBgColor = accentColorLight9;
-    } else {
-      tileBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-    }
-
-    // Border colors
-    final Color outerBorderColor;
-    final Color innerBorderColor;
+  /// The tile's colours for a state. [activeColor] `primary` (or null)
+  /// follows the panel accent; other keys use their family's base and soft.
+  static UniversalTileColors tileColors(
+    ThemeData theme, {
+    ThemeColors? activeColor,
+    ThemeColors? iconAccentColor,
+    bool isActive = false,
+    bool isOffline = false,
+    bool isSelected = false,
+  }) {
+    final neutrals = theme.neutrals;
+    final warning = theme.status(AppStatus.warning);
+    final tint = _tint(theme, activeColor);
+    final iconTint = iconAccentColor == null
+        ? null
+        : _tint(theme, iconAccentColor);
 
     if (isOffline) {
-      outerBorderColor =
-          isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-      innerBorderColor = tileBgColor;
-    } else if (isActive) {
-      outerBorderColor = isDark ? accentColorLight9 : accentColorLight5;
-      innerBorderColor = outerBorderColor;
-    } else {
-      outerBorderColor = (!isDark || showInactiveBorder)
-          ? (isDark ? AppBorderColorDark.light : AppBorderColorLight.light)
-          : tileBgColor;
-      innerBorderColor = tileBgColor;
+      return UniversalTileColors(
+        background: neutrals.surfaceCard,
+        border: isSelected ? tint.base : neutrals.borderLight,
+        iconBackground: neutrals.fillLight,
+        icon: neutrals.textDisabled,
+        text: neutrals.textPrimary,
+        status: warning.text,
+        badge: warning.text,
+        selection: tint.base,
+      );
     }
 
-    // Icon background
-    final Color iconBgColor;
-    if (isOffline) {
-      iconBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    } else if (iconAccentColor != null) {
-      iconBgColor = ThemeColorFamily.get(brightness, iconAccentColor!).light5;
-    } else if (isActive) {
-      iconBgColor = accentColorLight5;
-    } else {
-      iconBgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.light;
-    }
+    final tinted = isActive || isSelected;
 
-    // Icon color
-    final Color iconColor;
-    if (isOffline) {
-      iconColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
-    } else if (iconAccentColor != null) {
-      iconColor = ThemeColorFamily.get(brightness, iconAccentColor!).base;
-    } else if (isActive) {
-      iconColor = accentColor;
-    } else {
-      iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    }
-
-    // Text color
-    final Color textColor;
-    if (isOffline) {
-      textColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
-    } else if (isActive) {
-      textColor = accentColor;
-    } else {
-      textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    }
-
-    // Subtitle color
-    final Color subtitleColor;
-    if (isOffline) {
-      subtitleColor =
-          isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
-    } else if (isActive) {
-      subtitleColor = accentColorDark2;
-    } else {
-      subtitleColor =
-          isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    }
-
-    final warningColor =
-        isDark ? AppColorsDark.warning : AppColorsLight.warning;
-
-    return _TileColors(
-      tileBgColor: tileBgColor,
-      outerBorderColor: outerBorderColor,
-      innerBorderColor: innerBorderColor,
-      iconBgColor: iconBgColor,
-      iconColor: iconColor,
-      textColor: textColor,
-      subtitleColor: subtitleColor,
-      warningColor: warningColor,
-      accentColor: accentColor,
-      accentColorLight5: accentColorLight5,
-      borderWidth: borderWidth,
+    return UniversalTileColors(
+      background: tinted ? tint.soft : neutrals.surfaceCard,
+      border: isSelected
+          ? tint.base
+          : isActive
+          ? tint.soft
+          : neutrals.borderLight,
+      iconBackground: isActive
+          ? tint.soft
+          : iconTint?.soft ?? neutrals.fillLight,
+      icon: isActive ? tint.base : iconTint?.base ?? neutrals.textSecondary,
+      text: neutrals.textPrimary,
+      status: neutrals.textSecondary,
+      badge: warning.text,
+      selection: tint.base,
     );
+  }
+
+  static ({Color base, Color soft}) _tint(ThemeData theme, ThemeColors? key) {
+    if (key == null || key == ThemeColors.primary) {
+      final accent = theme.accent;
+
+      return (base: accent.text, soft: accent.soft);
+    }
+
+    final family = ThemeColorFamily.get(theme.brightness, key);
+
+    return (base: family.base, soft: family.soft);
   }
 }
 
-/// Internal class for holding computed tile colors.
-class _TileColors {
-  final Color tileBgColor;
-  final Color outerBorderColor;
-  final Color innerBorderColor;
-  final Color iconBgColor;
-  final Color iconColor;
-  final Color textColor;
-  final Color subtitleColor;
-  final Color warningColor;
-  final Color accentColor;
-  final Color accentColorLight5;
-  final double borderWidth;
+/// Computed tile colours for one state.
+@immutable
+class UniversalTileColors {
+  final Color background;
+  final Color border;
+  final Color iconBackground;
+  final Color icon;
+  final Color text;
+  final Color status;
+  final Color badge;
+  final Color selection;
 
-  const _TileColors({
-    required this.tileBgColor,
-    required this.outerBorderColor,
-    required this.innerBorderColor,
-    required this.iconBgColor,
-    required this.iconColor,
-    required this.textColor,
-    required this.subtitleColor,
-    required this.warningColor,
-    required this.accentColor,
-    required this.accentColorLight5,
-    required this.borderWidth,
+  const UniversalTileColors({
+    required this.background,
+    required this.border,
+    required this.iconBackground,
+    required this.icon,
+    required this.text,
+    required this.status,
+    required this.badge,
+    required this.selection,
   });
 }

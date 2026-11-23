@@ -502,6 +502,24 @@ abstract class AppLocalizations {
   /// **'Last seen {time}'**
   String device_offline_last_seen(String time);
 
+  /// Offline state line on tiles, heroes and device details (docs/display-ui-design-spec.md §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Offline · last seen {time}'**
+  String device_offline_line(String time);
+
+  /// Offline note on a device hero or detail: the controls do nothing until the device is back
+  ///
+  /// In en, this message translates to:
+  /// **'Controls are paused until the device is back'**
+  String get device_offline_paused;
+
+  /// Short offline note on Compact panels
+  ///
+  /// In en, this message translates to:
+  /// **'Controls paused'**
+  String get device_offline_paused_short;
+
   /// Message shown when devices are skipped due to being offline
   ///
   /// In en, this message translates to:

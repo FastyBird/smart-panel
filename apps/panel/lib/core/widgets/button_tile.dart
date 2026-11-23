@@ -1,13 +1,53 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-/// Container box for button tiles with on/off state styling
+/// Colours of a dashboard tile (docs/display-ui-design-spec.md §5): the
+/// shared tile colours, with a disabled look on `fill.light` for tiles that
+/// cannot act.
+UniversalTileColors _buttonTileColors(
+  ThemeData theme, {
+  required bool isOn,
+  required bool isDisabled,
+  bool isOffline = false,
+  ThemeColors? activeColor,
+}) {
+  if (isDisabled && !isOffline) {
+    final neutrals = theme.neutrals;
+
+    return UniversalTileColors(
+      background: neutrals.fillLight,
+      border: neutrals.borderLight,
+      iconBackground: neutrals.fillLight,
+      icon: neutrals.textDisabled,
+      text: neutrals.textDisabled,
+      status: neutrals.textDisabled,
+      badge: theme.status(AppStatus.warning).text,
+      selection: neutrals.textDisabled,
+    );
+  }
+
+  return UniversalTile.tileColors(
+    theme,
+    activeColor: activeColor,
+    isActive: isOn,
+    isOffline: isOffline,
+  );
+}
+
+/// Container box for button tiles: `surface.card` with a `border.light`
+/// outline, the soft tint of [activeColor] while on, radius 8, no shadow.
+/// Its padding follows the cell: 4 under 60 design px, 8 under 90, else 12.
 class ButtonTileBox extends StatelessWidget {
   final GestureTapCallback? onTap;
   final bool isOn;
   final bool isDisabled;
+  final bool isOffline;
+
+  /// The domain colour while on; `primary` (the default) is the accent.
+  final ThemeColors? activeColor;
   final Widget child;
 
   const ButtonTileBox({
@@ -15,72 +55,77 @@ class ButtonTileBox extends StatelessWidget {
     required this.onTap,
     required this.isOn,
     this.isDisabled = false,
+    this.isOffline = false,
+    this.activeColor,
     required this.child,
   });
 
+  /// Padding for a tile whose short side is [shortSide] design px.
+  static double paddingFor(double shortSide) =>
+      shortSide < 60 ? 4 : (shortSide < 90 ? 8 : 12);
+
   @override
   Widget build(BuildContext context) {
-    // Scale shadow values
-    final shadowBlur = AppSpacings.scale(4);
-    final shadowSpread = AppSpacings.scale(1);
-    final shadowOffsetY = AppSpacings.scale(2);
+    final colors = _buttonTileColors(
+      Theme.of(context),
+      isOn: isOn,
+      isDisabled: isDisabled,
+      isOffline: isOffline,
+      activeColor: activeColor,
+    );
 
-    return Container(
-      constraints: const BoxConstraints.expand(),
-      decoration: BoxDecoration(
-        color: isDisabled
-            ? (Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.infoLight5
-                : AppColorsDark.infoLight5)
-            : (isOn
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.primary
-                    : AppColorsDark.primaryLight9)
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppFillColorLight.blank
-                    : AppFillColorDark.light)),
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: isDisabled
-              ? (Theme.of(context).brightness == Brightness.light
-                  ? AppColorsLight.infoLight5
-                  : AppColorsDark.infoLight5)
-              : (isOn
-                  ? (Theme.of(context).brightness == Brightness.light
-                      ? AppColorsLight.primary
-                      : AppColorsDark.primaryLight5)
-                  : (Theme.of(context).brightness == Brightness.light
-                      ? AppBorderColorLight.light
-                      : AppFillColorDark.light)),
-          width: AppSpacings.scale(1),
-        ),
-        boxShadow: isOn
-            ? [
-                BoxShadow(
-                  color: AppShadowColor.light,
-                  blurRadius: shadowBlur,
-                  spreadRadius: shadowSpread,
-                  offset: Offset(0, shadowOffsetY),
-                )
-              ]
-            : [],
-      ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: isDisabled ? null : onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-            vertical: AppSpacings.pSm,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shortSide = AppSpacings.unscale(
+          constraints.biggest.shortestSide.isFinite
+              ? constraints.biggest.shortestSide
+              : AppSpacings.scale(90),
+        );
+
+        return Container(
+          constraints: const BoxConstraints.expand(),
+          decoration: BoxDecoration(
+            color: colors.background,
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
+            border: Border.all(
+              color: colors.border,
+              width: AppSpacings.scale(1),
+            ),
           ),
-          child: child,
-        ),
-      ),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: isDisabled ? null : onTap,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Padding(
+                    padding: EdgeInsets.all(
+                      AppSpacings.scale(paddingFor(shortSide)),
+                    ),
+                    child: child,
+                  ),
+                ),
+                if (isOffline)
+                  Positioned(
+                    top: AppSpacings.pSm,
+                    right: AppSpacings.pSm,
+                    child: Icon(
+                      MdiIcons.alert,
+                      size: AppSpacings.scale(UniversalTile.badgeSize),
+                      color: colors.badge,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-/// Title text widget for button tiles
+/// Title text widget for button tiles: 12/500 in `text.primary` (10 when
+/// [small]).
 class ButtonTileTitle extends StatelessWidget {
   final String title;
   final bool isOn;
@@ -99,35 +144,33 @@ class ButtonTileTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _buttonTileColors(
+      Theme.of(context),
+      isOn: isOn,
+      isDisabled: isDisabled,
+    );
+
     return Text(
       title,
       overflow: TextOverflow.ellipsis,
       maxLines: 1,
       style: TextStyle(
-        color: isDisabled
-            ? (Theme.of(context).brightness == Brightness.light
-                ? AppColors.white
-                : const Color.fromRGBO(255, 255, 255, 0.5))
-            : (isOn
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? AppColors.white
-                    : AppColorsDark.primary)
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.primary
-                    : AppTextColorDark.primary)),
+        color: colors.text,
         fontSize: small ? AppFontSize.extraSmall : AppFontSize.small,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w500,
       ),
     );
   }
 }
 
-/// Subtitle widget for button tiles (supports custom widget content)
+/// Subtitle widget for button tiles (supports custom widget content):
+/// 10 px in `text.secondary`, the warning colour while offline.
 class ButtonTileSubTitle extends StatelessWidget {
   final Widget? subTitle;
   final bool isOn;
   final bool isLoading;
   final bool isDisabled;
+  final bool isOffline;
 
   const ButtonTileSubTitle({
     super.key,
@@ -135,52 +178,40 @@ class ButtonTileSubTitle extends StatelessWidget {
     required this.isOn,
     this.isLoading = false,
     this.isDisabled = false,
+    this.isOffline = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
+    final colors = _buttonTileColors(
+      Theme.of(context),
+      isOn: isOn,
+      isDisabled: isDisabled,
+      isOffline: isOffline,
+    );
 
-    return DefaultTextStyle(
+    // Merge, so the theme's font family carries through.
+    return DefaultTextStyle.merge(
       style: TextStyle(
-        color: isDisabled
-            ? (Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.infoLight9
-                : AppColorsDark.infoLight9)
-            : (isOn
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.primaryLight9
-                    : AppColorsLight.primaryLight5)
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary)),
+        color: colors.status,
         overflow: TextOverflow.ellipsis,
         fontSize: AppFontSize.extraSmall,
       ),
-      child: Theme(
-        data: ThemeData(
-          iconTheme: IconThemeData(
-            size: AppFontSize.extraSmall,
-            color: isDisabled
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.infoLight9
-                    : AppColorsDark.infoLight9)
-                : (isOn
-                    ? (Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.primaryLight9
-                        : AppColorsLight.primaryLight5)
-                    : (Theme.of(context).brightness == Brightness.light
-                        ? AppTextColorLight.secondary
-                        : AppTextColorDark.secondary)),
-          ),
-        ),
+      child: IconTheme.merge(
+        data: IconThemeData(size: AppFontSize.extraSmall, color: colors.status),
         child: subTitle ?? Text(localizations.value_not_available),
       ),
     );
   }
 }
 
-/// Composite button tile widget with automatic layout based on dimensions
+/// Composite button tile widget with automatic layout based on dimensions:
+/// a 1 × 1 tile is the icon alone, a square tile stacks icon, name and state,
+/// a wide tile puts the icon beside them.
+///
+/// The icon toggles the device; the rest of the tile opens it. Offline the
+/// tile is one zone that opens the device.
 class ButtonTileWidget extends StatelessWidget {
   final GestureTapCallback? onTap;
   final GestureTapCallback? onIconTap;
@@ -190,6 +221,10 @@ class ButtonTileWidget extends StatelessWidget {
   final bool isOn;
   final bool isLoading;
   final bool isDisabled;
+  final bool isOffline;
+
+  /// The domain colour while on; `primary` (the default) is the accent.
+  final ThemeColors? activeColor;
   final int rowSpan;
   final int colSpan;
 
@@ -203,118 +238,100 @@ class ButtonTileWidget extends StatelessWidget {
     required this.isOn,
     this.isLoading = false,
     this.isDisabled = false,
+    this.isOffline = false,
+    this.activeColor,
     this.rowSpan = 1,
     this.colSpan = 1,
   });
 
   @override
   Widget build(BuildContext context) {
-    bool isSquare = rowSpan == colSpan;
-    bool isButton = rowSpan == 1 && colSpan == 1;
+    final isSquare = rowSpan == colSpan;
+    final isButton = rowSpan == 1 && colSpan == 1;
+
+    final iconWidget = ButtonTileIcon(
+      icon: icon,
+      onTap: isOffline ? null : onIconTap,
+      isOn: isOn,
+      isLoading: isLoading,
+      isDisabled: isDisabled,
+      isOffline: isOffline,
+      activeColor: activeColor,
+    );
+
+    final texts = [
+      ButtonTileTitle(
+        title: title,
+        isOn: isOn,
+        isLoading: isLoading,
+        isDisabled: isDisabled,
+      ),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ButtonTileSubTitle(
+          subTitle: subTitle,
+          isOn: isOn,
+          isLoading: isLoading,
+          isDisabled: isDisabled,
+          isOffline: isOffline,
+        ),
+      ),
+    ];
 
     return ButtonTileBox(
       onTap: onTap,
       isOn: isOn,
       isDisabled: isDisabled,
+      isOffline: isOffline,
+      activeColor: activeColor,
       child: isSquare
-          ? LayoutBuilder(builder: (context, constraints) {
-              List<Widget> parts = [];
-
-              parts.add(ButtonTileIcon(
-                icon: icon,
-                onTap: onIconTap,
-                isOn: isOn,
-                isLoading: isLoading,
-                isDisabled: isDisabled,
-              ));
-
-              if (!isButton) {
-                parts.add(
-                  Column(
-                    spacing: AppSpacings.pSm,
-                    children: [
-                      ButtonTileTitle(
-                        title: title,
-                        isOn: isOn,
-                        isLoading: isLoading,
-                        isDisabled: isDisabled,
-                      ),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: ButtonTileSubTitle(
-                          subTitle: subTitle,
-                          isOn: isOn,
-                          isLoading: isLoading,
-                          isDisabled: isDisabled,
-                        ),
-                      ),
-                    ],
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: AppSpacings.pSm,
+              children: [
+                iconWidget,
+                if (!isButton)
+                  Column(spacing: AppSpacings.scale(1), children: texts),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              spacing: AppSpacings.pMd,
+              children: [
+                iconWidget,
+                if (!isButton)
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: AppSpacings.scale(1),
+                      children: texts,
+                    ),
                   ),
-                );
-              }
-
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: parts,
-              );
-            })
-          : LayoutBuilder(builder: (context, constraints) {
-              List<Widget> parts = [];
-
-              parts.add(ButtonTileIcon(
-                icon: icon,
-                onTap: onIconTap,
-                isOn: isOn,
-                isLoading: isLoading,
-                isDisabled: isDisabled,
-              ));
-
-              if (!isButton) {
-                parts.add(AppSpacings.spacingMdHorizontal);
-                parts.add(Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: AppSpacings.pSm,
-                    children: [
-                      ButtonTileTitle(
-                        title: title,
-                        isOn: isOn,
-                        isLoading: isLoading,
-                        isDisabled: isDisabled,
-                      ),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: ButtonTileSubTitle(
-                          subTitle: subTitle,
-                          isOn: isOn,
-                          isLoading: isLoading,
-                          isDisabled: isDisabled,
-                        ),
-                      ),
-                    ],
-                  ),
-                ));
-              }
-
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: parts,
-              );
-            }),
+              ],
+            ),
     );
   }
 }
 
-/// Circular icon button for button tiles
+/// The tile's icon: the domain colour while on, `text.secondary` while off,
+/// `text.disabled` while disabled or offline. Its tap zone is never under
+/// 36 design px.
 class ButtonTileIcon extends StatelessWidget {
   final IconData? icon;
   final GestureTapCallback? onTap;
   final bool isOn;
   final bool isLoading;
   final bool isDisabled;
+  final bool isOffline;
+
+  /// The domain colour while on; `primary` (the default) is the accent.
+  final ThemeColors? activeColor;
+
+  /// Tap zone in design px; defaults to 40.
   final double? iconSize;
+
+  /// Tap zone in logical px, already scaled.
   final double? rawIconSize;
   final Color? iconColor;
   final bool showAlert;
@@ -328,6 +345,8 @@ class ButtonTileIcon extends StatelessWidget {
     required this.isOn,
     this.isLoading = false,
     this.isDisabled = false,
+    this.isOffline = false,
+    this.activeColor,
     this.iconSize,
     this.rawIconSize,
     this.iconColor,
@@ -336,123 +355,42 @@ class ButtonTileIcon extends StatelessWidget {
     this.alertColor,
   });
 
+  /// The smallest tap zone, in design px.
+  static const double minTapZone = 36;
+
   @override
   Widget build(BuildContext context) {
-    // Use rawIconSize if provided (already in pixels), otherwise scale iconSize
-    // Total size: icon (24) + border (4*2) + padding (4*2) = 40 scaled
-    final double iconSize = rawIconSize ??
-        AppSpacings.scale(this.iconSize ?? 40);
+    final theme = Theme.of(context);
+    final colors = _buttonTileColors(
+      theme,
+      isOn: isOn,
+      isDisabled: isDisabled,
+      isOffline: isOffline,
+      activeColor: activeColor,
+    );
+    final zone = rawIconSize ?? AppSpacings.scale(iconSize ?? 40);
+    final glyphSize = zone * 0.6;
+    final tapZone = zone < AppSpacings.scale(minTapZone)
+        ? AppSpacings.scale(minTapZone)
+        : zone;
+    final color = iconColor ?? colors.icon;
 
-    // Inner icon glyph size: 60% of container (24/40 ratio)
-    final double glyphSize = rawIconSize != null
-        ? iconSize * 0.6
-        : AppSpacings.scale(24);
-
-    final iconButton = SizedBox(
-      width: iconSize,
-      height: iconSize,
-      child: InkWell(
-        onTap: isDisabled ? null : onTap,
-        borderRadius: BorderRadius.circular(100),
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-          color: isDisabled
-              ? (Theme.of(context).brightness == Brightness.light
-                  ? AppColors.white
-                  : const Color.fromRGBO(255, 255, 255, 0.5))
-              : (isOn
-                  ? (Theme.of(context).brightness == Brightness.light
-                      ? AppColorsLight.primaryLight5
-                      : AppColorsDark.primaryLight5)
-                  : (Theme.of(context).brightness == Brightness.light
-                      ? AppFillColorLight.light
-                      : AppFillColorDark.darker)),
-          border: Border.all(
-            color: isDisabled
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? AppColors.white
-                    : const Color.fromRGBO(255, 255, 255, 0.5))
-                : (isOn
-                    ? (Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.primaryLight5
-                        : AppColorsDark.primaryLight5)
-                    : (Theme.of(context).brightness == Brightness.light
-                        ? AppFillColorLight.light
-                        : AppFillColorDark.darker)),
-            width: AppSpacings.scale(4),
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDisabled
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? AppColors.white
-                    : const Color.fromRGBO(255, 255, 255, 0.5))
-                : (isOn
-                    ? (Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.primaryLight5
-                        : AppColorsDark.primaryLight5)
-                    : (Theme.of(context).brightness == Brightness.light
-                        ? AppFillColorLight.light
-                        : AppFillColorDark.darker)),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: SizedBox(
-              width: glyphSize,
-              height: glyphSize,
-              child: isLoading
-                  ? Theme(
-                      data: ThemeData(
-                        progressIndicatorTheme: ProgressIndicatorThemeData(
-                          color: isDisabled
-                              ? (Theme.of(context).brightness ==
-                                      Brightness.light
-                                  ? AppColorsLight.infoLight5
-                                  : AppColorsDark.infoLight5)
-                              : (isOn
-                                  ? (Theme.of(context).brightness ==
-                                          Brightness.light
-                                      ? AppColorsLight.primary
-                                      : AppColorsDark.primary)
-                                  : (Theme.of(context).brightness ==
-                                          Brightness.light
-                                      ? AppTextColorLight.secondary
-                                      : AppTextColorDark.secondary)),
-                          linearTrackColor: AppColors.blank,
-                        ),
-                      ),
-                      child: CircularProgressIndicator(
-                        strokeWidth: AppSpacings.scale(2),
-                      ),
-                    )
-                  : FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Icon(
-                        icon,
-                        size: glyphSize,
-                        color: iconColor ??
-                            (isDisabled
-                                ? (Theme.of(context).brightness ==
-                                        Brightness.light
-                                    ? AppColorsLight.infoLight5
-                                    : AppColorsDark.infoLight5)
-                                : (isOn
-                                    ? (Theme.of(context).brightness ==
-                                            Brightness.light
-                                        ? AppColorsLight.primary
-                                        : AppColorsDark.primary)
-                                    : (Theme.of(context).brightness ==
-                                            Brightness.light
-                                        ? AppTextColorLight.secondary
-                                        : AppTextColorDark.secondary))),
-                      ),
-                    ),
+    final glyph = isLoading
+        ? SizedBox.square(
+            dimension: glyphSize,
+            child: CircularProgressIndicator(
+              strokeWidth: AppSpacings.scale(2),
+              color: color,
             ),
-          ),
-        ),
-      ),
+          )
+        : Icon(icon, size: glyphSize, color: color);
+
+    final iconButton = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: isDisabled ? null : onTap,
+      child: SizedBox.square(
+        dimension: tapZone,
+        child: Center(child: glyph),
       ),
     );
 
@@ -460,33 +398,17 @@ class ButtonTileIcon extends StatelessWidget {
       return iconButton;
     }
 
-    // Wrap with Stack to add alert badge
-    final defaultAlertColor = Theme.of(context).brightness == Brightness.light
-        ? AppColorsLight.warning
-        : AppColorsDark.warning;
-
-    // Scale alert badge positioning and padding
-    final alertOffset = AppSpacings.scale(-2);
-    final alertPadding = AppSpacings.scale(2);
-
     return Stack(
       clipBehavior: Clip.none,
       children: [
         iconButton,
         Positioned(
-          right: alertOffset,
-          bottom: alertOffset,
-          child: Container(
-            padding: EdgeInsets.all(alertPadding),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              alertIcon ?? MdiIcons.alert,
-              size: AppFontSize.extraSmall,
-              color: alertColor ?? defaultAlertColor,
-            ),
+          right: 0,
+          bottom: 0,
+          child: Icon(
+            alertIcon ?? MdiIcons.alert,
+            size: AppSpacings.scale(UniversalTile.badgeSize),
+            color: alertColor ?? theme.status(AppStatus.warning).text,
           ),
         ),
       ],

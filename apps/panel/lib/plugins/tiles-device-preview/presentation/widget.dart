@@ -89,6 +89,7 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
         }),
         icon: _getIcon(tile, device),
         isOn: device.isOn ?? false,
+        isOffline: !device.isOnline,
       );
     });
   }
