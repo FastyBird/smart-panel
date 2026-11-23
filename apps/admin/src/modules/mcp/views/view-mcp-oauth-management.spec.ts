@@ -42,7 +42,7 @@ const grant: IMcpOAuthGrant = {
 	createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }) }));
 const editDrawerLayout = {
 	name: 'EditDrawerLayout',
 	props: { open: Boolean, beforeClose: Function, routeless: Boolean },
@@ -176,6 +176,14 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		for (const tab of wrapper.findAllComponents({ name: 'McpOAuthTab' })) {
 			expect(tab.findComponent({ name: 'ElTable' }).exists()).toBe(true);
 		}
+	});
+
+	it('gives the phone grant rows the scopes and the expiry, like the table', () => {
+		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as { grantRows: { caption: string }[] };
+
+		expect(vm.grantRows[0].caption).toContain('mcpModule.oauthManagement.scope.mcp:read');
+		expect(vm.grantRows[0].caption).toContain('·');
 	});
 
 	it('keeps Revoke all in the header menu, as a destructive item', () => {

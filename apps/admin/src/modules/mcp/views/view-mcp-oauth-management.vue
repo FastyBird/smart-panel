@@ -1131,7 +1131,7 @@ const clientStatusOptions = [
 	{ value: 'disabled', label: 'mcpModule.oauthManagement.status.disabled' },
 ];
 
-// The phone rows: a title, one caption line and the status, with the same actions as the tables
+// The phone rows: a title, one caption line with what the table columns show, the status, and the same actions
 const clientRows = computed<McpOAuthRow[]>(() =>
 	clientsQuery.items.value.map((client) => ({
 		id: client.id,
@@ -1148,13 +1148,17 @@ const grantRows = computed<McpOAuthRow[]>(() =>
 	grantsQuery.items.value.map((grant) => ({
 		id: grant.id,
 		title: grant.clientName,
-		caption: formatDate(grant.expiresAt),
+		caption: `${scopesLabel(grant.approvedScopes)} · ${formatDate(grant.expiresAt)}`,
 		status: { status: GRANT_STATUS_TAGS[grantStatus(grant).key], label: t(`mcpModule.oauthManagement.status.${grantStatus(grant).key}`) },
 	}))
 );
 
 const accessTokenRows = computed<McpOAuthRow[]>(() =>
-	accessTokensQuery.items.value.map((token) => ({ id: token.id, title: token.clientName, caption: formatDate(token.expiresAt) }))
+	accessTokensQuery.items.value.map((token) => ({
+		id: token.id,
+		title: token.clientName,
+		caption: `${scopesLabel(token.scopes)} · ${formatDate(token.expiresAt)}`,
+	}))
 );
 
 const refreshFamilyRows = computed<McpOAuthRow[]>(() =>
