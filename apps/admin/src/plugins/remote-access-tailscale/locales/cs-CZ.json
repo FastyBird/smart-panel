@@ -89,8 +89,6 @@
 		"signOutFailed": "Odhlášení z Tailscale se nezdařilo",
 		"preferencesReset": "Nastavení Tailscale bylo obnoveno",
 		"preferencesResetFailed": "Obnovení nastavení Tailscale se nezdařilo",
-		"urlCopied": "Adresa URL byla zkopírována do schránky",
-		"copyFailed": "Zkopírování adresy URL do schránky se nezdařilo",
 		"commandCopied": "Příkaz byl zkopírován do schránky",
 		"commandCopyFailed": "Zkopírování příkazu do schránky se nezdařilo",
 		"config": {
@@ -155,7 +153,6 @@
 			"getSignInLink": "Získat přihlašovací odkaz",
 			"signIn": "Přihlásit se",
 			"saveAndContinue": "Uložit a pokračovat",
-			"skip": "Přeskočit",
 			"close": "Zavřít",
 			"copy": "Kopírovat",
 			"recheck": "Zkontrolovat znovu",

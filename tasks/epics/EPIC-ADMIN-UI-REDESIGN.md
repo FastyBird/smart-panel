@@ -83,7 +83,7 @@ dark, and updates all six locales.
 | AR-11 | #1668 | 3 | `refactor(admin): move device plugin forms onto the slot contract` | AR-6, AR-10 | merged in #1741 and #1742 |
 | AR-12 | #1669 | 3 | `refactor(admin): move the device wizards onto the wizard shell` | AR-4, AR-5, AR-9 | merged in #1739 |
 | AR-13 | #1670 | 3 | `refactor(admin): move automations onto the list and editor templates` | AR-3, AR-5, AR-8 | merged in #1744 and #1745 |
-| AR-14 | #1671 | 3 | `refactor(admin): move remote access onto the settings and catalogue templates` | AR-3, AR-4, AR-5, AR-6, AR-8 | in review (part 1: page and provider cards) |
+| AR-14 | #1671 | 3 | `refactor(admin): move remote access onto the settings and catalogue templates` | AR-3, AR-4, AR-5, AR-6, AR-8 | part 1 merged in #1746; part 2 (setup wizards) in review |
 | AR-15 | #1672 | 3 | `refactor(admin): move MCP clients onto the page templates` | AR-3, AR-4, AR-5, AR-8 | open |
 | AR-16 | #1673 | 3 | `feat(admin): turn notifications into a two-pane inbox` | AR-3, AR-5, AR-8 | open |
 | AR-17 | #1674 | 4 | `refactor(admin): move spaces onto the page templates` | AR-9, AR-10 | open |

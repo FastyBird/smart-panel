@@ -2,245 +2,218 @@
 	<el-dialog
 		:model-value="visible"
 		:title="t('remoteAccessCloudflareTunnelPlugin.wizard.title')"
-		width="560px"
+		:fullscreen="isPhone"
+		:class="isPhone ? 'flex! flex-col' : undefined"
+		:body-class="isPhone ? 'flex-1 min-h-0 overflow-y-auto' : undefined"
+		width="min(760px, calc(100vw - 32px))"
 		:close-on-click-modal="false"
 		@update:model-value="onDialogUpdate"
 	>
-		<el-steps
-			:active="stepIndex"
-			finish-status="success"
-			align-center
-			class="mb-6"
+		<!-- Spec section 7: provider setup runs in wizard-shell. The flow moves forward on its own (an install job
+			completing, a saved config), so it never goes back to a completed step -->
+		<!-- On phone the dialog fills the screen: its body scrolls a tall step, and the shell's min-h-full keeps the
+			footer at the bottom of a short one -->
+		<wizard-shell
+			:steps="shellSteps"
+			:current="currentStep"
+			:next-label="nextLabel"
+			:next-visible="nextVisible"
+			:can-continue="canContinue"
+			:busy="isBusy"
+			:cancellable="currentStep !== 'done'"
+			:backable="false"
+			:navigable="false"
+			@next="onNext"
+			@cancel="close"
 		>
-			<el-step
-				v-for="step in steps"
-				:key="step"
-				:title="t(`remoteAccessCloudflareTunnelPlugin.wizard.steps.${step}`)"
-			/>
-		</el-steps>
+			<div class="flex flex-col gap-4 p-4 tp:p-5">
+				<!-- Install -->
+				<template v-if="currentStep === 'install'">
+					<el-alert
+						type="info"
+						:title="t('remoteAccessCloudflareTunnelPlugin.wizard.installDescription')"
+						:closable="false"
+						show-icon
+					/>
 
-		<div class="min-h-[220px]">
-			<!-- Install -->
-			<template v-if="currentStep === 'install'">
-				<el-alert
-					type="info"
-					:title="t('remoteAccessCloudflareTunnelPlugin.wizard.installDescription')"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
-				<ul
-					v-if="requirements.length > 0"
-					class="flex flex-col gap-1 mb-4"
-				>
-					<li
-						v-for="requirement in requirements"
-						:key="requirement.code"
-						class="flex items-center gap-2 text-sm"
+					<ul
+						v-if="requirements.length > 0"
+						class="flex flex-col gap-1 m-0 p-0 list-none"
 					>
-						<el-icon :class="requirement.satisfied ? 'text-green-500' : 'text-muted'">
-							<icon :icon="requirement.satisfied ? 'mdi:check-circle' : 'mdi:circle-outline'" />
+						<li
+							v-for="requirement in requirements"
+							:key="requirement.code"
+							class="flex items-center gap-2 text-body"
+						>
+							<el-icon>
+								<icon
+									:icon="requirement.satisfied ? 'mdi:check-circle' : 'mdi:circle-outline'"
+									:class="requirement.satisfied ? 'text-success' : 'text-muted'"
+								/>
+							</el-icon>
+							<span>{{ requirement.message }}</span>
+						</li>
+					</ul>
+
+					<div
+						v-if="effectiveProgress && effectiveProgress.state === 'running'"
+						class="flex items-center gap-2 text-body"
+					>
+						<el-icon class="is-loading">
+							<icon icon="mdi:loading" />
 						</el-icon>
-						<span>{{ requirement.message }}</span>
-					</li>
-				</ul>
+						<span>{{ effectiveProgress.message || effectiveProgress.step || t('remoteAccessCloudflareTunnelPlugin.wizard.settingUp') }}</span>
+					</div>
 
-				<div
-					v-if="effectiveProgress && effectiveProgress.state === 'running'"
-					class="flex items-center gap-2 text-sm mb-4"
-				>
-					<el-icon class="is-loading">
-						<icon icon="mdi:loading" />
-					</el-icon>
-					<span>{{ effectiveProgress.message || effectiveProgress.step || t('remoteAccessCloudflareTunnelPlugin.wizard.settingUp') }}</span>
-				</div>
+					<el-alert
+						v-if="effectiveProgress && (effectiveProgress.state === 'failed' || effectiveProgress.state === 'timeout')"
+						type="error"
+						:title="effectiveProgress.message || t('remoteAccessCloudflareTunnelPlugin.wizard.setupFailed')"
+						:closable="false"
+					/>
 
-				<el-alert
-					v-if="effectiveProgress && (effectiveProgress.state === 'failed' || effectiveProgress.state === 'timeout')"
-					type="error"
-					:title="effectiveProgress.message || t('remoteAccessCloudflareTunnelPlugin.wizard.setupFailed')"
-					:closable="false"
-					class="mb-4!"
-				/>
+					<el-alert
+						v-if="installErrorHintKey"
+						type="warning"
+						:title="t(installErrorHintKey)"
+						:closable="false"
+						show-icon
+					/>
 
-				<el-alert
-					v-if="installErrorHintKey"
-					type="warning"
-					:title="t(installErrorHintKey)"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
-				<!-- D12: privileged setup is available - offer the automated button, plus a manual fallback for anyone who prefers doing it by hand. -->
-				<template v-if="!privilegedSetupUnavailable">
-					<el-button
-						type="primary"
-						:loading="isInstalling || effectiveProgress?.state === 'running'"
-						@click="onInstall"
-					>
-						{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.startSetup') }}
-					</el-button>
-
-					<el-collapse
-						v-if="remedyPlan.commands.length > 0 || remedyPlan.notes.length > 0"
-						class="mt-4"
-					>
+					<!-- D12: privileged setup is available - Next starts it; the manual fallback stays one click away -->
+					<el-collapse v-if="!privilegedSetupUnavailable && (remedyPlan.commands.length > 0 || remedyPlan.notes.length > 0)">
 						<el-collapse-item
 							:title="t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.runItYourself')"
 							name="manual"
 						>
-							<div
-								v-if="remedyPlan.commands.length > 0"
-								class="flex items-start gap-2"
-							>
-								<pre class="font-mono text-xs bg-fill rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
-								<el-button
-									size="small"
-									@click="onCopyRemedyCommands"
+							<div class="flex flex-col gap-3">
+								<div
+									v-if="remedyPlan.commands.length > 0"
+									class="flex items-start gap-2"
 								>
-									{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.copy') }}
-								</el-button>
+									<pre class="flex-1 m-0 px-2 py-1 rounded bg-fill text-mono whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
+									<el-button
+										size="small"
+										@click="onCopyRemedyCommands"
+									>
+										{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.copy') }}
+									</el-button>
+								</div>
+								<p
+									v-for="(note, index) in remedyPlan.notes"
+									:key="index"
+									class="m-0 text-body"
+								>
+									{{ note }}
+								</p>
+								<div>
+									<el-button
+										:loading="isRechecking"
+										:disabled="isInstallRunning"
+										@click="onRecheck"
+									>
+										{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.recheck') }}
+									</el-button>
+								</div>
 							</div>
-							<p
-								v-for="(note, index) in remedyPlan.notes"
-								:key="index"
-								class="text-sm"
+						</el-collapse-item>
+					</el-collapse>
+
+					<!-- D12: privileged setup is unavailable - show why, plus the manual remedy for every unsatisfied requirement -->
+					<template v-else-if="privilegedSetupUnavailable">
+						<el-alert
+							type="warning"
+							:title="privilegedSetupReason || t('remoteAccessCloudflareTunnelPlugin.wizard.setupUnavailable')"
+							:closable="false"
+							show-icon
+						/>
+
+						<div
+							v-if="remedyPlan.commands.length > 0"
+							class="flex items-start gap-2"
+						>
+							<pre class="flex-1 m-0 px-2 py-1 rounded bg-fill text-mono whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
+							<el-button
+								size="small"
+								@click="onCopyRemedyCommands"
 							>
-								{{ note }}
-							</p>
+								{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.copy') }}
+							</el-button>
+						</div>
+						<p
+							v-for="(note, index) in remedyPlan.notes"
+							:key="index"
+							class="m-0 text-body"
+						>
+							{{ note }}
+						</p>
+
+						<div>
 							<el-button
 								:loading="isRechecking"
-								:disabled="isInstalling || effectiveProgress?.state === 'running'"
+								:disabled="isInstallRunning"
 								@click="onRecheck"
 							>
 								{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.recheck') }}
 							</el-button>
-						</el-collapse-item>
-					</el-collapse>
+						</div>
+					</template>
 				</template>
 
-				<!-- D12: privileged setup is unavailable - show why, plus the manual remedy for every unsatisfied requirement. -->
-				<template v-else>
+				<!-- Token and hostname -->
+				<template v-else-if="currentStep === 'config'">
 					<el-alert
-						type="warning"
-						:title="privilegedSetupReason || t('remoteAccessCloudflareTunnelPlugin.wizard.setupUnavailable')"
+						type="info"
+						:title="t('remoteAccessCloudflareTunnelPlugin.wizard.configDescription')"
 						:closable="false"
 						show-icon
-						class="mb-4!"
+					/>
+
+					<cloudflare-tunnel-config-form
+						v-if="configPlugin"
+						v-model:remote-form-submit="configFormSubmit"
+						v-model:remote-form-result="configFormResult"
+						:config="configPlugin"
+					/>
+				</template>
+
+				<!-- Done -->
+				<template v-else-if="currentStep === 'done'">
+					<el-alert
+						type="success"
+						:title="t('remoteAccessCloudflareTunnelPlugin.wizard.doneDescription')"
+						:closable="false"
+						show-icon
 					/>
 
 					<div
-						v-if="remedyPlan.commands.length > 0"
-						class="flex items-start gap-2 mb-4"
+						v-if="publicUrl"
+						class="flex flex-col items-center gap-3"
 					>
-						<pre class="font-mono text-xs bg-fill rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
-						<el-button
-							size="small"
-							@click="onCopyRemedyCommands"
-						>
-							{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.copy') }}
-						</el-button>
+						<img
+							v-if="qr"
+							:src="qr"
+							:alt="t('remoteAccessCloudflareTunnelPlugin.wizard.qrAlt')"
+							width="180"
+							height="180"
+						/>
+
+						<copy-field
+							:value="publicUrl"
+							class="w-full"
+							data-test-id="cloudflare-tunnel-wizard-url"
+						/>
 					</div>
-					<p
-						v-for="(note, index) in remedyPlan.notes"
-						:key="index"
-						class="text-sm mb-4"
-					>
-						{{ note }}
-					</p>
 
-					<el-button
-						:loading="isRechecking"
-						:disabled="isInstalling || effectiveProgress?.state === 'running'"
-						@click="onRecheck"
-					>
-						{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.recheck') }}
-					</el-button>
-				</template>
-			</template>
-
-			<!-- Token and hostname -->
-			<template v-else-if="currentStep === 'config'">
-				<el-alert
-					type="info"
-					:title="t('remoteAccessCloudflareTunnelPlugin.wizard.configDescription')"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
-				<cloudflare-tunnel-config-form
-					v-if="configPlugin"
-					v-model:remote-form-submit="configFormSubmit"
-					v-model:remote-form-result="configFormResult"
-					:config="configPlugin"
-				/>
-
-				<div class="flex justify-end gap-2 mt-4">
-					<el-button
-						type="primary"
-						:loading="configFormResult === FormResult.WORKING"
-						@click="onSaveConfig"
-					>
-						{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.saveAndContinue') }}
-					</el-button>
-				</div>
-			</template>
-
-			<!-- Done -->
-			<template v-else-if="currentStep === 'done'">
-				<el-alert
-					type="success"
-					:title="t('remoteAccessCloudflareTunnelPlugin.wizard.doneDescription')"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
-				<div
-					v-if="publicUrl"
-					class="flex flex-col items-center gap-3 mb-4"
-				>
-					<img
-						v-if="qr"
-						:src="qr"
-						:alt="t('remoteAccessCloudflareTunnelPlugin.wizard.qrAlt')"
-						width="180"
-						height="180"
+					<el-alert
+						type="warning"
+						:title="t('remoteAccessCloudflareTunnelPlugin.wizard.accessRecommendation')"
+						:closable="false"
+						show-icon
 					/>
-
-					<div class="flex items-center gap-2 w-full">
-						<span class="font-mono text-sm flex-1 break-all">{{ publicUrl }}</span>
-						<el-button
-							size="small"
-							:aria-label="t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.copy')"
-							@click="copyUrl(publicUrl)"
-						>
-							<icon icon="mdi:content-copy" />
-						</el-button>
-					</div>
-				</div>
-
-				<el-alert
-					type="warning"
-					:title="t('remoteAccessCloudflareTunnelPlugin.wizard.accessRecommendation')"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
-				<div class="flex justify-end">
-					<el-button
-						type="primary"
-						@click="close"
-					>
-						{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.close') }}
-					</el-button>
-				</div>
-			</template>
-		</div>
+				</template>
+			</div>
+		</wizard-shell>
 	</el-dialog>
 </template>
 
@@ -248,12 +221,12 @@
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElDialog, ElIcon, ElStep, ElSteps } from 'element-plus';
+import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElDialog, ElIcon } from 'element-plus';
 import QRCode from 'qrcode';
 
 import { Icon } from '@iconify/vue';
 
-import { useClipboard, useFlashMessage } from '../../../common';
+import { CopyField, WizardShell, type WizardShellStep, useClipboard, useFlashMessage, useSizeClass } from '../../../common';
 import { FormResult, type FormResultType, useConfigPlugin } from '../../../modules/config';
 import { useCloudflareTunnelSetup, useCloudflareTunnelStatus } from '../composables';
 import { REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME } from '../remote-access-cloudflare-tunnel.constants';
@@ -278,12 +251,15 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 const { copy } = useClipboard();
+const { isPhone } = useSizeClass();
 
 const steps: CloudflareTunnelWizardStep[] = ['install', 'config', 'done'];
 
 const currentStep = ref<CloudflareTunnelWizardStep>(props.initialStep);
 
-const stepIndex = computed<number>((): number => steps.indexOf(currentStep.value));
+const shellSteps = computed<WizardShellStep[]>(() =>
+	steps.map((step) => ({ id: step, label: t(`remoteAccessCloudflareTunnelPlugin.wizard.steps.${step}`) }))
+);
 
 const goToStep = (step: CloudflareTunnelWizardStep): void => {
 	currentStep.value = step;
@@ -392,18 +368,60 @@ const onSaveConfig = (): void => {
 	configFormSubmit.value = true;
 };
 
-const copyUrl = async (url: string): Promise<void> => {
-	const copied = await copy(url);
-
-	if (copied) {
-		flashMessage.success(t('remoteAccessCloudflareTunnelPlugin.messages.urlCopied'));
-	} else {
-		flashMessage.error(t('remoteAccessCloudflareTunnelPlugin.messages.copyFailed'));
-	}
-};
-
 const close = (): void => {
 	emit('update:visible', false);
+};
+
+// The footer's Next is each step's own action: start the install job, save the config, close
+const nextLabel = computed<string>(() => {
+	switch (currentStep.value) {
+		case 'install':
+			return t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.startSetup');
+		case 'config':
+			return t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.saveAndContinue');
+		default:
+			return t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.close');
+	}
+});
+
+// Without privileged setup there is nothing to start: the step offers the manual commands and Re-check instead
+const nextVisible = computed<boolean>(() => currentStep.value !== 'install' || !privilegedSetupUnavailable.value);
+
+const canContinue = computed<boolean>(() => {
+	switch (currentStep.value) {
+		case 'install':
+			return !isRechecking.value;
+		case 'config':
+			return configPlugin.value !== null;
+		default:
+			return true;
+	}
+});
+
+const isBusy = computed<boolean>(() => {
+	switch (currentStep.value) {
+		case 'install':
+			return isInstallRunning.value;
+		case 'config':
+			return configFormResult.value === FormResult.WORKING;
+		default:
+			return false;
+	}
+});
+
+const onNext = (): void => {
+	if (isBusy.value || !canContinue.value || !nextVisible.value) return;
+
+	switch (currentStep.value) {
+		case 'install':
+			void onInstall();
+			break;
+		case 'config':
+			onSaveConfig();
+			break;
+		default:
+			close();
+	}
 };
 
 const onDialogUpdate = (value: boolean): void => {

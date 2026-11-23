@@ -2,354 +2,314 @@
 	<el-dialog
 		:model-value="visible"
 		:title="t('remoteAccessTailscalePlugin.wizard.title')"
-		width="560px"
+		:fullscreen="isPhone"
+		:class="isPhone ? 'flex! flex-col' : undefined"
+		:body-class="isPhone ? 'flex-1 min-h-0 overflow-y-auto' : undefined"
+		width="min(760px, calc(100vw - 32px))"
 		:close-on-click-modal="false"
 		@update:model-value="onDialogUpdate"
 	>
-		<el-steps
-			:active="stepIndex"
-			finish-status="success"
-			align-center
-			class="mb-6"
+		<!-- Spec section 7: provider setup runs in wizard-shell. The flow moves forward on its own (a setup job
+			completing, an approved sign-in), so it never goes back to a completed step; Options can be skipped -->
+		<!-- On phone the dialog fills the screen: its body scrolls a tall step, and the shell's min-h-full keeps the
+			footer at the bottom of a short one -->
+		<wizard-shell
+			:steps="shellSteps"
+			:current="currentStep"
+			:next-label="nextLabel"
+			:next-visible="nextVisible"
+			:can-continue="canContinue"
+			:busy="isBusy"
+			:skippable="currentStep === 'options'"
+			:cancellable="currentStep !== 'done'"
+			:backable="false"
+			:navigable="false"
+			@next="onNext"
+			@skip="goToStep('done')"
+			@cancel="close"
 		>
-			<el-step
-				v-for="step in steps"
-				:key="step"
-				:title="t(`remoteAccessTailscalePlugin.wizard.steps.${step}`)"
-			/>
-		</el-steps>
-
-		<div class="min-h-[220px]">
-			<ul
-				v-if="visible && setupStages.length > 0"
-				class="flex flex-col gap-1 mb-4"
-				:aria-label="t('remoteAccessTailscalePlugin.wizard.setupProgress.title')"
-				aria-live="polite"
-			>
-				<li
-					v-for="stage in setupStages"
-					:key="stage.step"
-					:data-setup-step="stage.step"
-					:data-setup-state="stage.state"
-					class="flex items-center gap-2 text-sm"
-				>
-					<el-icon :class="stage.state === 'complete' ? 'text-green-500' : stage.state === 'running' ? 'is-loading' : 'text-muted'">
-						<icon :icon="setupStageIcons[stage.state]" />
-					</el-icon>
-					<span>{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.steps.${stage.step}`) }}</span>
-					<span class="text-xs text-secondary">{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.states.${stage.state}`) }}</span>
-				</li>
-			</ul>
-			<!-- Set up -->
-			<template v-if="currentStep === 'setup'">
-				<el-alert
-					type="info"
-					:title="t('remoteAccessTailscalePlugin.wizard.setupDescription')"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
+			<div class="flex flex-col gap-4 p-4 tp:p-5">
 				<ul
-					v-if="requirements.length > 0"
-					class="flex flex-col gap-1 mb-4"
+					v-if="visible && setupStages.length > 0"
+					class="flex flex-col gap-1 m-0 p-0 list-none"
+					:aria-label="t('remoteAccessTailscalePlugin.wizard.setupProgress.title')"
+					aria-live="polite"
 				>
 					<li
-						v-for="requirement in requirements"
-						:key="requirement.code"
-						class="flex items-center gap-2 text-sm"
+						v-for="stage in setupStages"
+						:key="stage.step"
+						:data-setup-step="stage.step"
+						:data-setup-state="stage.state"
+						class="flex items-center gap-2 text-body"
 					>
-						<el-icon :class="requirement.satisfied ? 'text-green-500' : 'text-muted'">
-							<icon :icon="requirement.satisfied ? 'mdi:check-circle' : 'mdi:circle-outline'" />
+						<el-icon :class="{ 'is-loading': stage.state === 'running' }">
+							<icon
+								:icon="setupStageIcons[stage.state]"
+								:class="stage.state === 'complete' ? 'text-success' : stage.state === 'running' ? undefined : 'text-muted'"
+							/>
 						</el-icon>
-						<span>{{ requirement.message }}</span>
+						<span>{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.steps.${stage.step}`) }}</span>
+						<span class="text-caption">{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.states.${stage.state}`) }}</span>
 					</li>
 				</ul>
 
-				<div
-					v-if="effectiveProgress && effectiveProgress.state === 'running'"
-					class="flex items-center gap-2 text-sm mb-4"
-				>
-					<el-icon class="is-loading">
-						<icon icon="mdi:loading" />
-					</el-icon>
-					<span>{{ effectiveProgress.message || effectiveProgress.step || t('remoteAccessTailscalePlugin.wizard.settingUp') }}</span>
-				</div>
+				<!-- Set up -->
+				<template v-if="currentStep === 'setup'">
+					<el-alert
+						type="info"
+						:title="t('remoteAccessTailscalePlugin.wizard.setupDescription')"
+						:closable="false"
+						show-icon
+					/>
 
-				<el-alert
-					v-if="effectiveProgress && (effectiveProgress.state === 'failed' || effectiveProgress.state === 'timeout')"
-					type="error"
-					:title="effectiveProgress.message || t('remoteAccessTailscalePlugin.wizard.setupFailed')"
-					:closable="false"
-					class="mb-4!"
-				/>
-
-				<el-alert
-					v-if="installErrorHintKey"
-					type="warning"
-					:title="t(installErrorHintKey)"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
-				<!-- D12: privileged setup is available - offer the automated button, plus a manual fallback for anyone who prefers doing it by hand. -->
-				<template v-if="!privilegedSetupUnavailable">
-					<el-button
-						type="primary"
-						:loading="isInstalling || effectiveProgress?.state === 'running'"
-						@click="onInstall"
+					<ul
+						v-if="requirements.length > 0"
+						class="flex flex-col gap-1 m-0 p-0 list-none"
 					>
-						{{ t('remoteAccessTailscalePlugin.wizard.buttons.startSetup') }}
-					</el-button>
+						<li
+							v-for="requirement in requirements"
+							:key="requirement.code"
+							class="flex items-center gap-2 text-body"
+						>
+							<el-icon>
+								<icon
+									:icon="requirement.satisfied ? 'mdi:check-circle' : 'mdi:circle-outline'"
+									:class="requirement.satisfied ? 'text-success' : 'text-muted'"
+								/>
+							</el-icon>
+							<span>{{ requirement.message }}</span>
+						</li>
+					</ul>
 
-					<el-collapse
-						v-if="remedyPlan.commands.length > 0 || remedyPlan.notes.length > 0"
-						class="mt-4"
+					<div
+						v-if="effectiveProgress && effectiveProgress.state === 'running'"
+						class="flex items-center gap-2 text-body"
 					>
+						<el-icon class="is-loading">
+							<icon icon="mdi:loading" />
+						</el-icon>
+						<span>{{ effectiveProgress.message || effectiveProgress.step || t('remoteAccessTailscalePlugin.wizard.settingUp') }}</span>
+					</div>
+
+					<el-alert
+						v-if="effectiveProgress && (effectiveProgress.state === 'failed' || effectiveProgress.state === 'timeout')"
+						type="error"
+						:title="effectiveProgress.message || t('remoteAccessTailscalePlugin.wizard.setupFailed')"
+						:closable="false"
+					/>
+
+					<el-alert
+						v-if="installErrorHintKey"
+						type="warning"
+						:title="t(installErrorHintKey)"
+						:closable="false"
+						show-icon
+					/>
+
+					<!-- D12: privileged setup is available - Next starts it; the manual fallback stays one click away -->
+					<el-collapse v-if="!privilegedSetupUnavailable && (remedyPlan.commands.length > 0 || remedyPlan.notes.length > 0)">
 						<el-collapse-item
 							:title="t('remoteAccessTailscalePlugin.wizard.buttons.runItYourself')"
 							name="manual"
 						>
-							<div
-								v-if="remedyPlan.commands.length > 0"
-								class="flex items-start gap-2"
-							>
-								<pre class="font-mono text-xs bg-fill rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
-								<el-button
-									size="small"
-									@click="onCopyRemedyCommands"
+							<div class="flex flex-col gap-3">
+								<div
+									v-if="remedyPlan.commands.length > 0"
+									class="flex items-start gap-2"
 								>
-									{{ t('remoteAccessTailscalePlugin.wizard.buttons.copy') }}
-								</el-button>
+									<pre class="flex-1 m-0 px-2 py-1 rounded bg-fill text-mono whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
+									<el-button
+										size="small"
+										@click="onCopyRemedyCommands"
+									>
+										{{ t('remoteAccessTailscalePlugin.wizard.buttons.copy') }}
+									</el-button>
+								</div>
+								<p
+									v-for="(note, index) in remedyPlan.notes"
+									:key="index"
+									class="m-0 text-body"
+								>
+									{{ note }}
+								</p>
 							</div>
-							<p
-								v-for="(note, index) in remedyPlan.notes"
-								:key="index"
-								class="text-sm"
-							>
-								{{ note }}
-							</p>
 						</el-collapse-item>
 					</el-collapse>
+
+					<!-- D12: privileged setup is unavailable - show why, plus the manual remedy for every unsatisfied requirement -->
+					<template v-else-if="privilegedSetupUnavailable">
+						<el-alert
+							type="warning"
+							:title="privilegedSetupReason || t('remoteAccessTailscalePlugin.wizard.setupUnavailable')"
+							:closable="false"
+							show-icon
+						/>
+
+						<div
+							v-if="remedyPlan.commands.length > 0"
+							class="flex items-start gap-2"
+						>
+							<pre class="flex-1 m-0 px-2 py-1 rounded bg-fill text-mono whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
+							<el-button
+								size="small"
+								@click="onCopyRemedyCommands"
+							>
+								{{ t('remoteAccessTailscalePlugin.wizard.buttons.copy') }}
+							</el-button>
+						</div>
+						<p
+							v-for="(note, index) in remedyPlan.notes"
+							:key="index"
+							class="m-0 text-body"
+						>
+							{{ note }}
+						</p>
+
+						<div>
+							<el-button
+								:loading="isRechecking"
+								@click="onRecheck"
+							>
+								{{ t('remoteAccessTailscalePlugin.wizard.buttons.recheck') }}
+							</el-button>
+						</div>
+					</template>
 				</template>
 
-				<!-- D12: privileged setup is unavailable - show why, plus the manual remedy for every unsatisfied requirement. -->
-				<template v-else>
+				<!-- Sign in: Next asks for the link, or signs in with the auth key on the Advanced tab -->
+				<template v-else-if="currentStep === 'signin'">
 					<el-alert
+						v-if="loginErrorHintKey"
 						type="warning"
-						:title="privilegedSetupReason || t('remoteAccessTailscalePlugin.wizard.setupUnavailable')"
+						:title="t(loginErrorHintKey)"
 						:closable="false"
 						show-icon
-						class="mb-4!"
 					/>
 
-					<div
-						v-if="remedyPlan.commands.length > 0"
-						class="flex items-start gap-2 mb-4"
-					>
-						<pre class="font-mono text-xs bg-fill rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
-						<el-button
-							size="small"
-							@click="onCopyRemedyCommands"
+					<el-tabs v-model="signInTab">
+						<el-tab-pane
+							:label="t('remoteAccessTailscalePlugin.wizard.tabs.interactive')"
+							name="interactive"
 						>
-							{{ t('remoteAccessTailscalePlugin.wizard.buttons.copy') }}
-						</el-button>
-					</div>
-					<p
-						v-for="(note, index) in remedyPlan.notes"
-						:key="index"
-						class="text-sm mb-4"
-					>
-						{{ note }}
-					</p>
-
-					<el-button
-						:loading="isRechecking"
-						@click="onRecheck"
-					>
-						{{ t('remoteAccessTailscalePlugin.wizard.buttons.recheck') }}
-					</el-button>
-				</template>
-			</template>
-
-			<!-- Sign in -->
-			<template v-else-if="currentStep === 'signin'">
-				<el-alert
-					v-if="loginErrorHintKey"
-					type="warning"
-					:title="t(loginErrorHintKey)"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
-				<el-tabs v-model="signInTab">
-					<el-tab-pane
-						:label="t('remoteAccessTailscalePlugin.wizard.tabs.interactive')"
-						name="interactive"
-					>
-						<el-alert
-							type="info"
-							:title="t('remoteAccessTailscalePlugin.wizard.signInDescription')"
-							:closable="false"
-							show-icon
-							class="mb-4!"
-						/>
-
-						<div
-							v-if="authUrl"
-							class="flex flex-col items-center gap-3"
-						>
-							<img
-								v-if="qr"
-								:src="qr"
-								:alt="t('remoteAccessTailscalePlugin.wizard.qrAlt')"
-								width="180"
-								height="180"
-							/>
-
-							<a
-								:href="authUrl"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="text-sm font-mono break-all text-center"
-							>
-								{{ authUrl }}
-							</a>
-
-							<div class="flex items-center gap-2 text-sm text-secondary">
-								<el-icon
-									v-if="isPolling"
-									class="is-loading"
-								>
-									<icon icon="mdi:loading" />
-								</el-icon>
-								<span>{{ t('remoteAccessTailscalePlugin.wizard.waitingForApproval') }}</span>
-							</div>
-						</div>
-
-						<div
-							v-else-if="isPolling"
-							class="flex items-center gap-2 text-sm text-secondary"
-						>
-							<el-icon class="is-loading">
-								<icon icon="mdi:loading" />
-							</el-icon>
-							<span>{{ t('remoteAccessTailscalePlugin.wizard.waitingForLink') }}</span>
-						</div>
-
-						<el-button
-							v-else
-							type="primary"
-							:loading="isLoggingIn"
-							:disabled="isLoggingIn || !canLogin"
-							@click="onInteractiveLogin"
-						>
-							{{ t('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink') }}
-						</el-button>
-					</el-tab-pane>
-
-					<el-tab-pane
-						:label="t('remoteAccessTailscalePlugin.wizard.tabs.advanced')"
-						name="advanced"
-					>
-						<el-alert
-							type="info"
-							:title="t('remoteAccessTailscalePlugin.wizard.advancedDescription')"
-							:closable="false"
-							show-icon
-							class="mb-4!"
-						/>
-
-						<el-form label-position="top">
-							<el-form-item :label="t('remoteAccessTailscalePlugin.wizard.fields.authKey.title')">
-								<el-input
-									v-model="authKey"
-									:placeholder="t('remoteAccessTailscalePlugin.wizard.fields.authKey.placeholder')"
-									type="password"
-									show-password
-									name="authKey"
+							<div class="flex flex-col gap-4">
+								<el-alert
+									type="info"
+									:title="t('remoteAccessTailscalePlugin.wizard.signInDescription')"
+									:closable="false"
+									show-icon
 								/>
-							</el-form-item>
-						</el-form>
 
-						<el-button
-							type="primary"
-							:loading="isLoggingIn"
-							:disabled="!authKey || isLoggingIn || !canLogin"
-							@click="onKeyedLogin"
+								<div
+									v-if="authUrl"
+									class="flex flex-col items-center gap-3"
+								>
+									<img
+										v-if="qr"
+										:src="qr"
+										:alt="t('remoteAccessTailscalePlugin.wizard.qrAlt')"
+										width="180"
+										height="180"
+									/>
+
+									<a
+										:href="authUrl"
+										target="_blank"
+										rel="noopener noreferrer"
+										class="text-mono text-primary break-all text-center"
+									>
+										{{ authUrl }}
+									</a>
+
+									<div class="flex items-center gap-2 text-help">
+										<el-icon
+											v-if="isPolling"
+											class="is-loading"
+										>
+											<icon icon="mdi:loading" />
+										</el-icon>
+										<span>{{ t('remoteAccessTailscalePlugin.wizard.waitingForApproval') }}</span>
+									</div>
+								</div>
+
+								<div
+									v-else-if="isPolling"
+									class="flex items-center gap-2 text-help"
+								>
+									<el-icon class="is-loading">
+										<icon icon="mdi:loading" />
+									</el-icon>
+									<span>{{ t('remoteAccessTailscalePlugin.wizard.waitingForLink') }}</span>
+								</div>
+							</div>
+						</el-tab-pane>
+
+						<el-tab-pane
+							:label="t('remoteAccessTailscalePlugin.wizard.tabs.advanced')"
+							name="advanced"
 						>
-							{{ t('remoteAccessTailscalePlugin.wizard.buttons.signIn') }}
-						</el-button>
-					</el-tab-pane>
-				</el-tabs>
-			</template>
+							<div class="flex flex-col gap-4">
+								<el-alert
+									type="info"
+									:title="t('remoteAccessTailscalePlugin.wizard.advancedDescription')"
+									:closable="false"
+									show-icon
+								/>
 
-			<!-- Options -->
-			<template v-else-if="currentStep === 'options'">
-				<tailscale-config-form
-					v-if="configPlugin"
-					v-model:remote-form-submit="optionsFormSubmit"
-					v-model:remote-form-result="optionsFormResult"
-					:config="configPlugin"
-				/>
+								<el-form
+									label-position="top"
+									@submit.prevent="onNext"
+								>
+									<el-form-item :label="t('remoteAccessTailscalePlugin.wizard.fields.authKey.title')">
+										<secret-input
+											v-model="authKey"
+											:placeholder="t('remoteAccessTailscalePlugin.wizard.fields.authKey.placeholder')"
+											name="authKey"
+										/>
+									</el-form-item>
+								</el-form>
+							</div>
+						</el-tab-pane>
+					</el-tabs>
+				</template>
 
-				<div class="flex justify-end gap-2 mt-4">
-					<el-button @click="goToStep('done')">
-						{{ t('remoteAccessTailscalePlugin.wizard.buttons.skip') }}
-					</el-button>
-					<el-button
-						type="primary"
-						:loading="optionsFormResult === FormResult.WORKING"
-						@click="onSaveOptions"
+				<!-- Options -->
+				<template v-else-if="currentStep === 'options'">
+					<tailscale-config-form
+						v-if="configPlugin"
+						v-model:remote-form-submit="optionsFormSubmit"
+						v-model:remote-form-result="optionsFormResult"
+						:config="configPlugin"
+					/>
+				</template>
+
+				<!-- Done -->
+				<template v-else-if="currentStep === 'done'">
+					<el-alert
+						type="success"
+						:title="t('remoteAccessTailscalePlugin.wizard.doneDescription')"
+						:closable="false"
+						show-icon
+					/>
+
+					<ul
+						v-if="endpoints.length > 0"
+						class="flex flex-col gap-3 m-0 p-0 list-none"
 					>
-						{{ t('remoteAccessTailscalePlugin.wizard.buttons.saveAndContinue') }}
-					</el-button>
-				</div>
-			</template>
-
-			<!-- Done -->
-			<template v-else-if="currentStep === 'done'">
-				<el-alert
-					type="success"
-					:title="t('remoteAccessTailscalePlugin.wizard.doneDescription')"
-					:closable="false"
-					show-icon
-					class="mb-4!"
-				/>
-
-				<ul
-					v-if="endpoints.length > 0"
-					class="flex flex-col gap-2 mb-4"
-				>
-					<li
-						v-for="endpoint in endpoints"
-						:key="endpoint.url"
-						class="flex items-center gap-2 text-sm"
-					>
-						<span class="font-medium">{{ endpoint.label }}</span>
-						<span class="font-mono flex-1 break-all">{{ endpoint.url }}</span>
-						<el-button
-							size="small"
-							:aria-label="t('remoteAccessTailscalePlugin.wizard.buttons.copy')"
-							@click="copyUrl(endpoint.url)"
+						<li
+							v-for="endpoint in endpoints"
+							:key="endpoint.url"
+							class="flex flex-col gap-1"
 						>
-							<icon icon="mdi:content-copy" />
-						</el-button>
-					</li>
-				</ul>
-
-				<div class="flex justify-end">
-					<el-button
-						type="primary"
-						@click="close"
-					>
-						{{ t('remoteAccessTailscalePlugin.wizard.buttons.close') }}
-					</el-button>
-				</div>
-			</template>
-		</div>
+							<span class="text-label">{{ endpoint.label }}</span>
+							<copy-field
+								:value="endpoint.url"
+								data-test-id="tailscale-wizard-url"
+							/>
+						</li>
+					</ul>
+				</template>
+			</div>
+		</wizard-shell>
 	</el-dialog>
 </template>
 
@@ -357,25 +317,11 @@
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElAlert,
-	ElButton,
-	ElCollapse,
-	ElCollapseItem,
-	ElDialog,
-	ElForm,
-	ElFormItem,
-	ElIcon,
-	ElInput,
-	ElStep,
-	ElSteps,
-	ElTabPane,
-	ElTabs,
-} from 'element-plus';
+import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElDialog, ElForm, ElFormItem, ElIcon, ElTabPane, ElTabs } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useClipboard, useFlashMessage } from '../../../common';
+import { CopyField, SecretInput, WizardShell, type WizardShellStep, useClipboard, useFlashMessage, useSizeClass } from '../../../common';
 import { FormResult, type FormResultType, useConfigPlugin } from '../../../modules/config';
 import { RemoteAccessTailscalePluginControlAction } from '../../../openapi.constants';
 import { useTailscaleLogin, useTailscaleSetup, useTailscaleStatus } from '../composables';
@@ -402,12 +348,15 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 const { copy } = useClipboard();
+const { isPhone } = useSizeClass();
 
 const steps: TailscaleWizardStep[] = ['setup', 'signin', 'options', 'done'];
 
 const currentStep = ref<TailscaleWizardStep>(props.initialStep);
 
-const stepIndex = computed<number>((): number => steps.indexOf(currentStep.value));
+const shellSteps = computed<WizardShellStep[]>(() =>
+	steps.map((step) => ({ id: step, label: t(`remoteAccessTailscalePlugin.wizard.steps.${step}`) }))
+);
 
 const goToStep = (step: TailscaleWizardStep): void => {
 	currentStep.value = step;
@@ -614,18 +563,80 @@ const onSaveOptions = (): void => {
 	optionsFormSubmit.value = true;
 };
 
-const copyUrl = async (url: string): Promise<void> => {
-	const copied = await copy(url);
-
-	if (copied) {
-		flashMessage.success(t('remoteAccessTailscalePlugin.messages.urlCopied'));
-	} else {
-		flashMessage.error(t('remoteAccessTailscalePlugin.messages.copyFailed'));
-	}
-};
-
 const close = (): void => {
 	emit('update:visible', false);
+};
+
+// The footer's Next is each step's own action: start the setup job, ask for the sign-in link or sign in with the
+// auth key, save the options, close
+const nextLabel = computed<string>(() => {
+	switch (currentStep.value) {
+		case 'setup':
+			return t('remoteAccessTailscalePlugin.wizard.buttons.startSetup');
+		case 'signin':
+			return signInTab.value === 'advanced'
+				? t('remoteAccessTailscalePlugin.wizard.buttons.signIn')
+				: t('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+		case 'options':
+			return t('remoteAccessTailscalePlugin.wizard.buttons.saveAndContinue');
+		default:
+			return t('remoteAccessTailscalePlugin.wizard.buttons.close');
+	}
+});
+
+// Hidden without privileged setup (the step offers the manual commands and Re-check instead) and while a sign-in link
+// is on its way or waiting for approval
+const nextVisible = computed<boolean>(() => {
+	switch (currentStep.value) {
+		case 'setup':
+			return !privilegedSetupUnavailable.value;
+		case 'signin':
+			return signInTab.value === 'advanced' || (!authUrl.value && !isPolling.value);
+		default:
+			return true;
+	}
+});
+
+const canContinue = computed<boolean>(() => {
+	switch (currentStep.value) {
+		case 'signin':
+			return canLogin.value && (signInTab.value !== 'advanced' || authKey.value !== '');
+		case 'options':
+			return configPlugin.value !== null;
+		default:
+			return true;
+	}
+});
+
+const isBusy = computed<boolean>(() => {
+	switch (currentStep.value) {
+		case 'setup':
+			return isInstalling.value || effectiveProgress.value?.state === 'running';
+		case 'signin':
+			return isLoggingIn.value;
+		case 'options':
+			return optionsFormResult.value === FormResult.WORKING;
+		default:
+			return false;
+	}
+});
+
+const onNext = (): void => {
+	if (isBusy.value || !canContinue.value || !nextVisible.value) return;
+
+	switch (currentStep.value) {
+		case 'setup':
+			void onInstall();
+			break;
+		case 'signin':
+			void (signInTab.value === 'advanced' ? onKeyedLogin() : onInteractiveLogin());
+			break;
+		case 'options':
+			onSaveOptions();
+			break;
+		default:
+			close();
+	}
 };
 
 const onDialogUpdate = (value: boolean): void => {

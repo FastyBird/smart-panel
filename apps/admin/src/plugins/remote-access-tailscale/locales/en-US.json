@@ -89,8 +89,6 @@
 		"signOutFailed": "Failed to sign out of Tailscale",
 		"preferencesReset": "Tailscale preferences have been reset",
 		"preferencesResetFailed": "Failed to reset Tailscale preferences",
-		"urlCopied": "URL has been copied to the clipboard",
-		"copyFailed": "Failed to copy the URL to the clipboard",
 		"commandCopied": "Command has been copied to the clipboard",
 		"commandCopyFailed": "Failed to copy the command to the clipboard",
 		"config": {
@@ -155,7 +153,6 @@
 			"getSignInLink": "Get sign-in link",
 			"signIn": "Sign in",
 			"saveAndContinue": "Save and continue",
-			"skip": "Skip",
 			"close": "Close",
 			"copy": "Copy",
 			"recheck": "Re-check",

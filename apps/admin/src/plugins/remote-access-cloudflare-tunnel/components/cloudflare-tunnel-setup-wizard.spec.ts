@@ -45,6 +45,15 @@ vi.mock('vue-i18n', async () => {
 vi.mock('../../../common', () => ({
 	useFlashMessage: () => ({ success: fns.flashSuccess, error: fns.flashError }),
 	useClipboard: () => ({ copy: fns.copy }),
+	useSizeClass: () => ({ isPhone: { value: false } }),
+	WizardShell: {
+		name: 'WizardShell',
+		props: ['steps', 'current', 'nextLabel', 'nextVisible', 'canContinue', 'busy', 'skippable', 'cancellable', 'backable', 'navigable'],
+		emits: ['next', 'skip', 'cancel', 'back', 'step'],
+		template: '<div><slot /></div>',
+	},
+	CopyField: { name: 'CopyField', props: ['value'], template: '<span />' },
+	SecretInput: { name: 'SecretInput', props: ['modelValue', 'placeholder', 'name'], emits: ['update:modelValue'], template: '<input />' },
 }));
 
 vi.mock('../../../modules/config', async () => {
@@ -90,12 +99,20 @@ const mountWizard = (initialStep: 'install' | 'config' | 'done' = 'install') =>
 			renderStubDefaultSlot: true,
 			stubs: {
 				ElDialog: { name: 'ElDialog', template: '<div><slot /></div>' },
-				ElSteps: { name: 'ElSteps', props: ['active'], template: '<div><slot /></div>' },
 			},
 		},
 	});
 
-const stepsProp = (wrapper: ReturnType<typeof mountWizard>): number => wrapper.findComponent({ name: 'ElSteps' }).props('active') as number;
+const shell = (wrapper: ReturnType<typeof mountWizard>) => wrapper.findComponent({ name: 'WizardShell' });
+
+const stepsProp = (wrapper: ReturnType<typeof mountWizard>): number =>
+	['install', 'config', 'done'].indexOf(shell(wrapper).props('current') as string);
+
+// The footer's Next runs each step's own action
+const clickNext = async (wrapper: ReturnType<typeof mountWizard>): Promise<void> => {
+	shell(wrapper).vm.$emit('next');
+	await flushPromises();
+};
 
 const findHintAlert = (wrapper: ReturnType<typeof mountWizard>, title: string) =>
 	wrapper.findAllComponents({ name: 'ElAlert' }).find((alert) => alert.props('title') === title);
@@ -157,7 +174,8 @@ describe('CloudflareTunnelSetupWizard', () => {
 		const wrapper = mountWizard('install');
 
 		expect(stepsProp(wrapper)).toBe(0);
-		expect(wrapper.text()).toContain('remoteAccessCloudflareTunnelPlugin.wizard.buttons.startSetup');
+		expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessCloudflareTunnelPlugin.wizard.buttons.startSetup');
+		expect(shell(wrapper).props('nextVisible')).toBe(true);
 	});
 
 	it('opens directly on the config step when the card already knows install is done (the "Configure" action)', async () => {
@@ -307,7 +325,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 		await wrapper.setProps({ visible: false });
 		privilegedSetup.value = { available: true, reason: null };
 		await wrapper.setProps({ visible: true });
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		expect(fns.install).not.toHaveBeenCalled();
 		expect(stepsProp(wrapper)).toBe(0);
@@ -394,7 +412,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 
 		fns.fetchStatus.mockClear();
 
-		await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+		await shell(wrapper).vm.$emit('next');
 		await flushPromises();
 
 		expect(fns.install).toHaveBeenCalled();
@@ -406,7 +424,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 			fns.install.mockRejectedValue(new RemoteAccessCloudflareTunnelApiException('Cloudflare Tunnel setup is unavailable on this platform.', 422));
 			const wrapper = mountWizard('install');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('Cloudflare Tunnel setup is unavailable on this platform.');
@@ -416,7 +434,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 			fns.install.mockRejectedValue(new RemoteAccessCloudflareTunnelApiException('Internal error detail', 500));
 			const wrapper = mountWizard('install');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessCloudflareTunnelPlugin.messages.setupFailed');
@@ -426,7 +444,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 			fns.install.mockRejectedValue(new Error('network blip'));
 			const wrapper = mountWizard('install');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessCloudflareTunnelPlugin.messages.setupFailed');
@@ -448,24 +466,23 @@ describe('CloudflareTunnelSetupWizard', () => {
 		const wrapper = mountWizard('done');
 		await flushPromises();
 
-		expect(wrapper.text()).toContain('https://panel.example.com');
+		expect(wrapper.findComponent({ name: 'CopyField' }).props('value')).toBe('https://panel.example.com');
 		// The ElAlert title is a prop, not slot content - it never reaches wrapper.text() even with
 		// renderStubDefaultSlot (same note as the Tailscale wizard's own error-hint alerts).
 		expect(findHintAlert(wrapper, 'remoteAccessCloudflareTunnelPlugin.wizard.accessRecommendation')).toBeTruthy();
 		expect(wrapper.find('img').attributes('src')).toBe('data:image/png;base64,QR');
 	});
 
-	it('copies the public URL to the clipboard via the shared composable and shows a success toast', async () => {
-		status.value = { state: 'connected', endpoints: [{ url: 'https://panel.example.com', label: 'Cloudflare Tunnel', https: true }] };
+	it('closes from the done step', async () => {
 		const wrapper = mountWizard('done');
 		await flushPromises();
 
-		// The 'done' step renders the URL's own copy button before Close - emit click on the first button.
-		await wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
-		await flushPromises();
+		expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessCloudflareTunnelPlugin.wizard.buttons.close');
+		expect(shell(wrapper).props('cancellable')).toBe(false);
 
-		expect(fns.copy).toHaveBeenCalledWith('https://panel.example.com');
-		expect(fns.flashSuccess).toHaveBeenCalledWith('remoteAccessCloudflareTunnelPlugin.messages.urlCopied');
+		await clickNext(wrapper);
+
+		expect(wrapper.emitted('update:visible')).toEqual([[false]]);
 	});
 
 	it('resets back to the initial step every time it reopens', async () => {
@@ -506,7 +523,8 @@ describe('CloudflareTunnelSetupWizard', () => {
 			];
 			const wrapper = mountWizard('install');
 
-			expect(wrapper.text()).toContain('remoteAccessCloudflareTunnelPlugin.wizard.buttons.startSetup');
+			expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessCloudflareTunnelPlugin.wizard.buttons.startSetup');
+			expect(shell(wrapper).props('nextVisible')).toBe(true);
 			expect(wrapper.findComponent({ name: 'ElCollapse' }).exists()).toBe(true);
 			expect(wrapper.text()).toContain('sudo apt-get install -y cloudflared');
 		});
@@ -523,7 +541,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 			];
 			const wrapper = mountWizard('install');
 
-			expect(wrapper.text()).not.toContain('remoteAccessCloudflareTunnelPlugin.wizard.buttons.startSetup');
+			expect(shell(wrapper).props('nextVisible')).toBe(false);
 			const reasonAlert = wrapper
 				.findAllComponents({ name: 'ElAlert' })
 				.find((alert) => alert.props('title') === 'Privileged jobs are currently unavailable on this installation.');
@@ -604,7 +622,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 			fns.install.mockRejectedValue(error);
 			const wrapper = mountWizard('install');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(findHintAlert(wrapper, 'remoteAccessCloudflareTunnelPlugin.errors.privilegedWorkerUnavailable')).toBeTruthy();
@@ -620,7 +638,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 			fns.install.mockRejectedValue(error);
 			const wrapper = mountWizard('install');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(findHintAlert(wrapper, 'remoteAccessCloudflareTunnelPlugin.errors.platformUnsupported')).toBeTruthy();
@@ -631,7 +649,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 			fns.install.mockRejectedValue(error);
 			const wrapper = mountWizard('install');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 			expect(findHintAlert(wrapper, 'remoteAccessCloudflareTunnelPlugin.errors.platformUnsupported')).toBeTruthy();
 

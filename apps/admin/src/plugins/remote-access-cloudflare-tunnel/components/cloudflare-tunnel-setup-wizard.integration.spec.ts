@@ -40,14 +40,14 @@ const mountWizard = () => {
 			renderStubDefaultSlot: true,
 			stubs: {
 				ElDialog: { template: '<div><slot /></div>' },
-				ElSteps: { name: 'ElSteps', props: ['active'], template: '<div><slot /></div>' },
 			},
 		},
 	});
 	wrappers.push(wrapper);
 	return wrapper;
 };
-const activeStep = (wrapper: ReturnType<typeof mountWizard>) => wrapper.findComponent({ name: 'ElSteps' }).props('active');
+const shell = (wrapper: ReturnType<typeof mountWizard>) => wrapper.findComponent({ name: 'WizardShell' });
+const activeStep = (wrapper: ReturnType<typeof mountWizard>) => ['install', 'config', 'done'].indexOf(shell(wrapper).props('current') as string);
 const job = (jobId: string, state: string) => ({ job_id: jobId, state, step: null, message: null, updated_at: '2026-10-04T10:00:00Z' });
 const installedRequirements = () =>
 	['platform-supported', 'binary-installed', 'version-supported']
@@ -108,7 +108,7 @@ describe('CloudflareTunnel setup wizard with actual store and composables', () =
 		await flushPromises();
 		fns.get.mockClear();
 		snapshot.setup = job('job-new', 'running');
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		expect(fns.get).toHaveBeenCalledTimes(1);
 		expect(activeStep(wrapper)).toBe(0);
@@ -123,12 +123,12 @@ describe('CloudflareTunnel setup wizard with actual store and composables', () =
 		snapshot.setup = job('job-old', 'failed');
 		const wrapper = mountWizard();
 		await flushPromises();
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		store.onEvent({ event: 'RemoteAccessModule.Setup.Progress', data: { type, job: 'job-old', state: 'complete' } });
 		await flushPromises();
 		expect(activeStep(wrapper)).toBe(0);
-		expect(wrapper.findAllComponents({ name: 'ElButton' })[0]!.props('loading')).toBe(true);
+		expect(shell(wrapper).props('busy')).toBe(true);
 		complete();
 		await vi.advanceTimersByTimeAsync(3_000);
 		await flushPromises();
@@ -139,7 +139,7 @@ describe('CloudflareTunnel setup wizard with actual store and composables', () =
 		const wrapper = mountWizard();
 		await flushPromises();
 		fns.get.mockRejectedValueOnce(new Error('temporarily offline'));
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		expect(fns.flashError).not.toHaveBeenCalled();
 		complete();
@@ -166,12 +166,12 @@ describe('CloudflareTunnel setup wizard with actual store and composables', () =
 	it.each(['failed', 'timeout'])('settles the setup spinner on %s', async (state) => {
 		const wrapper = mountWizard();
 		await flushPromises();
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		snapshot.setup = job('job-new', state);
 		await vi.advanceTimersByTimeAsync(3_000);
 		await flushPromises();
 		expect(activeStep(wrapper)).toBe(0);
-		expect(wrapper.findAllComponents({ name: 'ElButton' })[0]!.props('loading')).toBe(false);
+		expect(shell(wrapper).props('busy')).toBe(false);
 	});
 });

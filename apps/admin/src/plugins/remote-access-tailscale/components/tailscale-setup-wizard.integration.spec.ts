@@ -39,14 +39,15 @@ const mountWizard = (initialStep: 'setup' | 'signin' = 'setup') => {
 			renderStubDefaultSlot: true,
 			stubs: {
 				ElDialog: { template: '<div><slot /></div>' },
-				ElSteps: { name: 'ElSteps', props: ['active'], template: '<div><slot /></div>' },
 			},
 		},
 	});
 	wrappers.push(wrapper);
 	return wrapper;
 };
-const activeStep = (wrapper: ReturnType<typeof mountWizard>) => wrapper.findComponent({ name: 'ElSteps' }).props('active');
+const shell = (wrapper: ReturnType<typeof mountWizard>) => wrapper.findComponent({ name: 'WizardShell' });
+const activeStep = (wrapper: ReturnType<typeof mountWizard>) =>
+	['setup', 'signin', 'options', 'done'].indexOf(shell(wrapper).props('current') as string);
 const job = (jobId: string, state: string) => ({ job_id: jobId, state, step: null, message: null, updated_at: '2026-10-04T10:00:00Z' });
 const complete = () => {
 	snapshot.setup = job('job-new', 'complete');
@@ -142,8 +143,9 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		expect(wrapper.find('a').exists()).toBe(false);
 		expect(wrapper.find('img').exists()).toBe(false);
 		expect(wrapper.text()).not.toContain('wizard.waitingForLink');
-		const button = wrapper.findAllComponents({ name: 'ElButton' }).find((entry) => entry.text().includes('wizard.buttons.getSignInLink'))!;
-		expect(button.props('disabled')).toBe(false);
+		expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+		expect(shell(wrapper).props('nextVisible')).toBe(true);
+		expect(shell(wrapper).props('canContinue')).toBe(true);
 		const reads = fns.get.mock.calls.length;
 		await vi.advanceTimersByTimeAsync(6_000);
 		expect(fns.get).toHaveBeenCalledTimes(reads);
@@ -152,7 +154,7 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 			data: { data: { state: 'pending-auth', auth_url: 'https://login.tailscale.com/a/new' } },
 			response: { status: 200 },
 		});
-		button.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		expect(fns.post).toHaveBeenCalledTimes(1);
 		expect(wrapper.find('a').attributes('href')).toBe('https://login.tailscale.com/a/new');
@@ -163,9 +165,7 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		fns.post.mockResolvedValue({ data: { data: { state: 'pending-auth' } }, response: { status: 200 } });
 		const wrapper = mountWizard('signin');
 		await flushPromises();
-		const signInButton = () =>
-			wrapper.findAllComponents({ name: 'ElButton' }).find((entry) => entry.text().includes('wizard.buttons.getSignInLink'))!;
-		signInButton().vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		// The pre-login store snapshot also lacks an operation. It must not cancel the
 		// just-started attempt before the composable obtains a post-login status read.
@@ -173,12 +173,13 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		await vi.advanceTimersByTimeAsync(3_000);
 		await flushPromises();
 		expect(wrapper.text()).not.toContain('wizard.waitingForLink');
-		expect(signInButton().props('disabled')).toBe(false);
+		expect(shell(wrapper).props('nextVisible')).toBe(true);
+		expect(shell(wrapper).props('canContinue')).toBe(true);
 		expect(fns.flashError).not.toHaveBeenCalled();
 		const reads = fns.get.mock.calls.length;
 		await vi.advanceTimersByTimeAsync(6_000);
 		expect(fns.get).toHaveBeenCalledTimes(reads);
-		signInButton().vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		expect(fns.post).toHaveBeenCalledTimes(2);
 	});
@@ -201,7 +202,7 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		fns.post.mockResolvedValue({ data: { data: { state: 'pending-auth' } }, response: { status: 200 } });
 		const wrapper = mountWizard('signin');
 		await flushPromises();
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		expect(wrapper.text()).toContain('wizard.waitingForLink');
 		snapshot.control = { enabled: true, service_state: 'started', authentication: 'required', operation: 'login', available_actions: ['disconnect'] };
@@ -226,9 +227,10 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 			fns.post.mockResolvedValue({ data: { data: { state } }, response: { status: 200 } });
 			const wrapper = mountWizard('signin');
 			await flushPromises();
-			wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'synthetic-invalid-key');
+			wrapper.findComponent({ name: 'ElTabs' }).vm.$emit('update:modelValue', 'advanced');
+			wrapper.findComponent({ name: 'SecretInput' }).vm.$emit('update:model-value', 'synthetic-invalid-key');
 			await flushPromises();
-			wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
+			shell(wrapper).vm.$emit('next');
 			await flushPromises();
 			if (state === 'pending-auth') (snapshot.control as Record<string, unknown>).operation = 'login';
 			await vi.advanceTimersByTimeAsync(10 * 60 * 1000 - 3_000);
@@ -237,7 +239,7 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 			await vi.advanceTimersByTimeAsync(3_000);
 			expect(activeStep(wrapper)).toBe(1);
 			expect(fns.flashError).toHaveBeenCalledExactlyOnceWith('remoteAccessTailscalePlugin.messages.loginTimedOut');
-			expect(wrapper.findComponent({ name: 'ElInput' }).props('modelValue')).toBe('');
+			expect(wrapper.findComponent({ name: 'SecretInput' }).props('modelValue')).toBe('');
 			await vi.advanceTimersByTimeAsync(6_000);
 			expect(fns.flashError).toHaveBeenCalledTimes(1);
 
@@ -249,9 +251,9 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 				await flushPromises();
 			}
 			fns.flashError.mockClear();
-			wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'synthetic-retry-key');
+			wrapper.findComponent({ name: 'SecretInput' }).vm.$emit('update:model-value', 'synthetic-retry-key');
 			await flushPromises();
-			wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
+			shell(wrapper).vm.$emit('next');
 			await flushPromises();
 			await vi.advanceTimersByTimeAsync(3_000);
 			expect(fns.flashError).not.toHaveBeenCalled();
@@ -369,7 +371,7 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		await flushPromises();
 		fns.get.mockClear();
 		snapshot.setup = job('job-new', 'running');
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		expect(fns.get).toHaveBeenCalledTimes(1);
 		expect(activeStep(wrapper)).toBe(0);
@@ -384,12 +386,12 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		snapshot.setup = job('job-old', 'failed');
 		const wrapper = mountWizard();
 		await flushPromises();
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		store.onEvent({ event: 'RemoteAccessModule.Setup.Progress', data: { type, job: 'job-old', state: 'complete' } });
 		await flushPromises();
 		expect(activeStep(wrapper)).toBe(0);
-		expect(wrapper.findAllComponents({ name: 'ElButton' })[0]!.props('loading')).toBe(true);
+		expect(shell(wrapper).props('busy')).toBe(true);
 		complete();
 		await vi.advanceTimersByTimeAsync(3_000);
 		await flushPromises();
@@ -400,7 +402,7 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		const wrapper = mountWizard();
 		await flushPromises();
 		fns.get.mockRejectedValueOnce(new Error('temporarily offline'));
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		expect(fns.flashError).not.toHaveBeenCalled();
 		complete();
@@ -427,13 +429,13 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 	it.each(['failed', 'timeout'])('settles the setup spinner on %s', async (state) => {
 		const wrapper = mountWizard();
 		await flushPromises();
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await flushPromises();
 		snapshot.setup = job('job-new', state);
 		await vi.advanceTimersByTimeAsync(3_000);
 		await flushPromises();
 		expect(activeStep(wrapper)).toBe(0);
-		expect(wrapper.findAllComponents({ name: 'ElButton' })[0]!.props('loading')).toBe(false);
+		expect(shell(wrapper).props('busy')).toBe(false);
 	});
 	it('adopts an authenticated manual installation and proceeds to options', async () => {
 		complete();

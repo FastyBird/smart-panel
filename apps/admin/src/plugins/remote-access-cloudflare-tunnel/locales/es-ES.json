@@ -53,8 +53,6 @@
 		"setupFailed": "No se pudo iniciar el trabajo de configuración de Cloudflare Tunnel",
 		"tunnelRemoved": "Se ha eliminado el Cloudflare Tunnel",
 		"tunnelRemoveFailed": "No se pudo eliminar el Cloudflare Tunnel",
-		"urlCopied": "La URL se ha copiado al portapapeles",
-		"copyFailed": "No se pudo copiar la URL al portapapeles",
 		"commandCopied": "El comando se ha copiado al portapapeles",
 		"commandCopyFailed": "No se pudo copiar el comando al portapapeles",
 		"config": {

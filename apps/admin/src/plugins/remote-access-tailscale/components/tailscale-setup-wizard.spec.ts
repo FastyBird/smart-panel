@@ -61,6 +61,15 @@ vi.mock('vue-i18n', async () => {
 vi.mock('../../../common', () => ({
 	useFlashMessage: () => ({ success: fns.flashSuccess, error: fns.flashError }),
 	useClipboard: () => ({ copy: fns.copy }),
+	useSizeClass: () => ({ isPhone: { value: false } }),
+	WizardShell: {
+		name: 'WizardShell',
+		props: ['steps', 'current', 'nextLabel', 'nextVisible', 'canContinue', 'busy', 'skippable', 'cancellable', 'backable', 'navigable'],
+		emits: ['next', 'skip', 'cancel', 'back', 'step'],
+		template: '<div><slot /></div>',
+	},
+	CopyField: { name: 'CopyField', props: ['value'], template: '<span />' },
+	SecretInput: { name: 'SecretInput', props: ['modelValue', 'placeholder', 'name'], emits: ['update:modelValue'], template: '<input />' },
 }));
 
 vi.mock('../../../modules/config', async () => {
@@ -116,12 +125,20 @@ const mountWizard = (initialStep: 'setup' | 'signin' | 'options' | 'done' = 'set
 			renderStubDefaultSlot: true,
 			stubs: {
 				ElDialog: { name: 'ElDialog', template: '<div><slot /></div>' },
-				ElSteps: { name: 'ElSteps', props: ['active'], template: '<div><slot /></div>' },
 			},
 		},
 	});
 
-const stepsProp = (wrapper: ReturnType<typeof mountWizard>): number => wrapper.findComponent({ name: 'ElSteps' }).props('active') as number;
+const shell = (wrapper: ReturnType<typeof mountWizard>) => wrapper.findComponent({ name: 'WizardShell' });
+
+const stepsProp = (wrapper: ReturnType<typeof mountWizard>): number =>
+	['setup', 'signin', 'options', 'done'].indexOf(shell(wrapper).props('current') as string);
+
+// The footer's Next runs each step's own action
+const clickNext = async (wrapper: ReturnType<typeof mountWizard>): Promise<void> => {
+	shell(wrapper).vm.$emit('next');
+	await flushPromises();
+};
 
 // The error-code hint alert's text is an ElAlert `title` prop, not slot content - it never reaches
 // `wrapper.text()` even with `renderStubDefaultSlot: true` (mirrors the existing "install job
@@ -260,14 +277,16 @@ describe('TailscaleSetupWizard', () => {
 		const wrapper = mountWizard('setup');
 
 		expect(stepsProp(wrapper)).toBe(0);
-		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.startSetup');
+		expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessTailscalePlugin.wizard.buttons.startSetup');
+		expect(shell(wrapper).props('nextVisible')).toBe(true);
 	});
 
 	it('opens directly on sign-in when the card already knows setup is done', () => {
 		const wrapper = mountWizard('signin');
 
 		expect(stepsProp(wrapper)).toBe(1);
-		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+		expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+		expect(shell(wrapper).props('nextVisible')).toBe(true);
 	});
 
 	it('shows a waiting state until the polled status delivers the sign-in link', async () => {
@@ -279,7 +298,7 @@ describe('TailscaleSetupWizard', () => {
 		await nextTick();
 
 		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.waitingForLink');
-		expect(wrapper.text()).not.toContain('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+		expect(shell(wrapper).props('nextVisible')).toBe(false);
 
 		// The link and the QR code come from separate CLI output blocks, so status can deliver them one at a time.
 		status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123' };
@@ -367,7 +386,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(new RemoteAccessTailscaleApiException('A Tailscale setup job is already running.', 409));
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('A Tailscale setup job is already running.');
@@ -377,7 +396,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(new RemoteAccessTailscaleApiException('Tailscale setup is unavailable on this platform.', 422));
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('Tailscale setup is unavailable on this platform.');
@@ -387,7 +406,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(new RemoteAccessTailscaleApiException('Internal error detail', 500));
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.setupFailed');
@@ -397,7 +416,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(new Error('network blip'));
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.setupFailed');
@@ -434,7 +453,8 @@ describe('TailscaleSetupWizard', () => {
 
 			expect(fns.flashError).toHaveBeenCalledWith('Tailscale needs to sign in again.');
 			expect(wrapper.text()).not.toContain('https://login.tailscale.com/a/abc123');
-			expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+			expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+			expect(shell(wrapper).props('nextVisible')).toBe(true);
 		});
 
 		it('falls back to a translated generic message when the status carries none', async () => {
@@ -488,7 +508,7 @@ describe('TailscaleSetupWizard', () => {
 				})
 		);
 		const wrapper = mountWizard('signin');
-		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await wrapper.setProps({ visible: false });
 		await wrapper.setProps({ visible: true });
 		resolveLogin({ state: 'pending-auth', authUrl: 'https://login.tailscale.com/a/stale', qr: 'stale-qr' });
@@ -505,9 +525,11 @@ describe('TailscaleSetupWizard', () => {
 				return { state: resultState };
 			});
 			const wrapper = mountWizard('signin');
-			wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'synthetic-invalid-key');
+			wrapper.findComponent({ name: 'ElTabs' }).vm.$emit('update:modelValue', 'advanced');
+			wrapper.findComponent({ name: 'SecretInput' }).vm.$emit('update:model-value', 'synthetic-invalid-key');
 			await nextTick();
-			wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
+			expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessTailscalePlugin.wizard.buttons.signIn');
+			shell(wrapper).vm.$emit('next');
 			await flushPromises();
 			return wrapper;
 		};
@@ -518,7 +540,7 @@ describe('TailscaleSetupWizard', () => {
 				const wrapper = await submitKey(state);
 				expect(fns.login).toHaveBeenCalledWith('synthetic-invalid-key');
 				expect(stepsProp(wrapper)).toBe(1);
-				expect(wrapper.findComponent({ name: 'ElInput' }).props('modelValue')).toBe('');
+				expect(wrapper.findComponent({ name: 'SecretInput' }).props('modelValue')).toBe('');
 				expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.loginFailed');
 				wrapper.unmount();
 			}
@@ -579,14 +601,15 @@ describe('TailscaleSetupWizard', () => {
 				})
 		);
 		const wrapper = mountWizard('signin');
-		wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'private-key');
+		wrapper.findComponent({ name: 'ElTabs' }).vm.$emit('update:modelValue', 'advanced');
+		wrapper.findComponent({ name: 'SecretInput' }).vm.$emit('update:model-value', 'private-key');
 		await nextTick();
-		wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
+		shell(wrapper).vm.$emit('next');
 		await wrapper.setProps({ visible: false });
 		resolveLogin({ state: 'connected' });
 		await flushPromises();
 		expect(fns.login).toHaveBeenCalledWith('private-key');
-		expect(wrapper.findComponent({ name: 'ElInput' }).props('modelValue')).toBe('');
+		expect(wrapper.findComponent({ name: 'SecretInput' }).props('modelValue')).toBe('');
 		expect(stepsProp(wrapper)).toBe(1);
 	});
 
@@ -595,7 +618,7 @@ describe('TailscaleSetupWizard', () => {
 		(control) => {
 			status.value = control ? { state: 'disconnected', endpoints: [], control } : null;
 			const wrapper = mountWizard('signin');
-			expect(wrapper.findAllComponents({ name: 'ElButton' })[0]!.props('disabled')).toBe(true);
+			expect(shell(wrapper).props('canContinue')).toBe(false);
 		}
 	);
 
@@ -606,10 +629,8 @@ describe('TailscaleSetupWizard', () => {
 			control: { enabled: true, authentication: 'required', operation: 'stopping', availableActions: [] },
 		};
 		const wrapper = mountWizard('signin');
-		const button = wrapper.findAllComponents({ name: 'ElButton' })[0]!;
-		expect(button.props('disabled')).toBe(true);
-		button.vm.$emit('click');
-		await flushPromises();
+		expect(shell(wrapper).props('canContinue')).toBe(false);
+		await clickNext(wrapper);
 		expect(fns.login).not.toHaveBeenCalled();
 	});
 
@@ -618,7 +639,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.login.mockRejectedValue(new RemoteAccessTailscaleApiException('A Tailscale sign-in is already in progress.', 409));
 			const wrapper = mountWizard('signin');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('A Tailscale sign-in is already in progress.');
@@ -628,7 +649,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.login.mockRejectedValue(new RemoteAccessTailscaleApiException('Internal error detail', 500));
 			const wrapper = mountWizard('signin');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.loginFailed');
@@ -660,11 +681,10 @@ describe('TailscaleSetupWizard', () => {
 	it('the skip button on options moves straight to done without waiting on the form', async () => {
 		const wrapper = mountWizard('options');
 
-		// The options step renders exactly two buttons, in order: Skip, then Save and continue.
-		// Auto-stubbed ElButton children under shallowMount do not forward a native click into the
-		// `@click` component-event listener, so the click is simulated the same way
-		// mcp-token-dialog.spec.ts does: emitting the event directly on the found stub instance.
-		await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+		expect(shell(wrapper).props('skippable')).toBe(true);
+
+		shell(wrapper).vm.$emit('skip');
+		await nextTick();
 
 		expect(stepsProp(wrapper)).toBe(3);
 	});
@@ -673,32 +693,19 @@ describe('TailscaleSetupWizard', () => {
 		status.value = { state: 'connected', endpoints: [{ url: 'https://panel.example.ts.net', label: 'Tailscale (HTTPS)' }] };
 		const wrapper = mountWizard('done');
 
-		expect(wrapper.text()).toContain('https://panel.example.ts.net');
+		expect(wrapper.findComponent({ name: 'CopyField' }).props('value')).toBe('https://panel.example.ts.net');
+		expect(wrapper.text()).toContain('Tailscale (HTTPS)');
 	});
 
-	it('copies an endpoint URL to the clipboard via the shared composable and shows a success toast', async () => {
-		status.value = { state: 'connected', endpoints: [{ url: 'https://panel.example.ts.net', label: 'Tailscale (HTTPS)' }] };
+	it('closes from the done step', async () => {
 		const wrapper = mountWizard('done');
 
-		// The 'done' step renders exactly two buttons, in order: the endpoint's copy button, then Close.
-		await wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
-		await flushPromises();
+		expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessTailscalePlugin.wizard.buttons.close');
+		expect(shell(wrapper).props('cancellable')).toBe(false);
 
-		expect(fns.copy).toHaveBeenCalledWith('https://panel.example.ts.net');
-		expect(fns.flashSuccess).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.urlCopied');
-		expect(fns.flashError).not.toHaveBeenCalled();
-	});
+		await clickNext(wrapper);
 
-	it('shows an error toast only when the clipboard copy actually fails', async () => {
-		fns.copy.mockResolvedValue(false);
-		status.value = { state: 'connected', endpoints: [{ url: 'https://panel.example.ts.net', label: 'Tailscale (HTTPS)' }] };
-		const wrapper = mountWizard('done');
-
-		await wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
-		await flushPromises();
-
-		expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.copyFailed');
-		expect(fns.flashSuccess).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:visible')).toEqual([[false]]);
 	});
 
 	it('resets back to the initial step and clears the sign-in link every time it reopens', async () => {
@@ -752,7 +759,8 @@ describe('TailscaleSetupWizard', () => {
 			];
 			const wrapper = mountWizard('setup');
 
-			expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.startSetup');
+			expect(shell(wrapper).props('nextLabel')).toBe('remoteAccessTailscalePlugin.wizard.buttons.startSetup');
+			expect(shell(wrapper).props('nextVisible')).toBe(true);
 			expect(wrapper.findComponent({ name: 'ElCollapse' }).exists()).toBe(true);
 			expect(wrapper.text()).toContain('sudo systemctl enable --now tailscaled');
 		});
@@ -773,7 +781,7 @@ describe('TailscaleSetupWizard', () => {
 			];
 			const wrapper = mountWizard('setup');
 
-			expect(wrapper.text()).not.toContain('remoteAccessTailscalePlugin.wizard.buttons.startSetup');
+			expect(shell(wrapper).props('nextVisible')).toBe(false);
 			const reasonAlert = wrapper
 				.findAllComponents({ name: 'ElAlert' })
 				.find((alert) => alert.props('title') === 'Privileged jobs are currently unavailable on this installation.');
@@ -866,7 +874,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(error);
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.operatorNotGranted')).toBeTruthy();
@@ -877,7 +885,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(error);
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.privilegedWorkerUnavailable')).toBeTruthy();
@@ -888,7 +896,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(error);
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.platformUnsupported')).toBeTruthy();
@@ -898,7 +906,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(new RemoteAccessTailscaleApiException('Internal error detail', 500));
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(findAnyHintAlert(wrapper)).toBeUndefined();
@@ -909,7 +917,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.login.mockRejectedValue(error);
 			const wrapper = mountWizard('signin');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 
 			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.notSignedIn')).toBeTruthy();
@@ -920,7 +928,7 @@ describe('TailscaleSetupWizard', () => {
 			fns.install.mockRejectedValue(error);
 			const wrapper = mountWizard('setup');
 
-			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await shell(wrapper).vm.$emit('next');
 			await flushPromises();
 			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.daemonNotActive')).toBeTruthy();
 

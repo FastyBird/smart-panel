@@ -53,8 +53,6 @@
 		"setupFailed": "Der Cloudflare Tunnel-Einrichtungsjob konnte nicht gestartet werden",
 		"tunnelRemoved": "Der Cloudflare Tunnel wurde entfernt",
 		"tunnelRemoveFailed": "Entfernen des Cloudflare Tunnel fehlgeschlagen",
-		"urlCopied": "Die URL wurde in die Zwischenablage kopiert",
-		"copyFailed": "Kopieren der URL in die Zwischenablage fehlgeschlagen",
 		"commandCopied": "Der Befehl wurde in die Zwischenablage kopiert",
 		"commandCopyFailed": "Kopieren des Befehls in die Zwischenablage fehlgeschlagen",
 		"config": {
