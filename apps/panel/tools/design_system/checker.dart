@@ -45,6 +45,16 @@ const Set<String> stockWidgets = {
   'AlertDialog',
 };
 
+/// The named constructors of [stockWidgets] (Flutter 3.41.5). Other calls on
+/// these classes, such as `ListTile.divideTiles(…)` or
+/// `AppBar.preferredHeightFor(…)`, are static helpers that build none of them.
+const Map<String, Set<String>> stockWidgetNamedConstructors = {
+  'SwitchListTile': {'adaptive'},
+  'FilterChip': {'elevated'},
+  'ActionChip': {'elevated'},
+  'AlertDialog': {'adaptive'},
+};
+
 /// One place that breaks the design system.
 class Finding {
   const Finding({
@@ -278,9 +288,20 @@ class _Visitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitInstanceCreationExpression(InstanceCreationExpression node) {
-    final type = node.constructorName.type.name.lexeme;
+    final namedType = node.constructorName.type;
+    final prefix = namedType.importPrefix?.name.lexeme;
+    var type = namedType.name.lexeme;
+    var constructor = node.constructorName.name?.name;
 
-    if (type == 'Color' && node.constructorName.name == null) {
+    // Without resolution, `const SwitchListTile.adaptive()` reads as the type
+    // `adaptive` behind a prefix `SwitchListTile`. A prefix the file does not
+    // import is the class.
+    if (constructor == null && prefix != null && !importPrefixes.contains(prefix)) {
+      constructor = type;
+      type = prefix;
+    }
+
+    if (type == 'Color' && constructor == null) {
       _checkColour(node, node.argumentList);
     }
 
@@ -334,7 +355,7 @@ class _Visitor extends RecursiveAstVisitor<void> {
     }
 
     if ((isConstructor && stockWidgets.contains(name)) ||
-        stockWidgets.contains(namedConstructorOf)) {
+        (stockWidgetNamedConstructors[namedConstructorOf]?.contains(name) ?? false)) {
       _report(node, DesignRule.stockWidget);
     }
 
@@ -431,6 +452,13 @@ class _Visitor extends RecursiveAstVisitor<void> {
       ExtensionDeclaration(:final members) ||
       ExtensionTypeDeclaration(:final members) =>
         inMembers(members),
+      // The file's own functions, variables and types: `Color(…)` calls a
+      // top-level `Color` declared here, not the dart:ui class.
+      CompilationUnit(:final declarations) => declarations.any((declaration) => switch (declaration) {
+            NamedCompilationUnitMember(:final name) => named(name),
+            TopLevelVariableDeclaration(:final variables) => inVariables(variables),
+            _ => false,
+          }),
       _ => false,
     };
   }

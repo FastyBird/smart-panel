@@ -89,7 +89,46 @@ final d = TextStyle(height: 1.2, letterSpacing: 0.5);
     });
 
     test('reports named constructors', () {
-      expect(_rules('final w = SwitchListTile.adaptive(value: true);'), ['stock-widget']);
+      for (final entry in stockWidgetNamedConstructors.entries) {
+        for (final constructor in entry.value) {
+          final call = '${entry.key}.$constructor';
+
+          expect(_rules('final w = $call(value: true);'), ['stock-widget'], reason: call);
+          expect(_rules('final w = const $call(value: true);'), ['stock-widget'], reason: 'const $call');
+        }
+      }
+    });
+
+    test('ignores static helpers on the stock widget classes', () {
+      expect(
+        _rules('''
+import 'package:flutter/material.dart' as material;
+
+final a = ListTile.divideTiles(context: context, tiles: children);
+final b = AppBar.preferredHeightFor(context, size);
+final c = material.ListTile.divideTiles(context: context, tiles: children);
+final d = material.AppBar.preferredHeightFor(context, size);
+'''),
+        isEmpty,
+      );
+    });
+
+    test('ignores calls to the file\'s own top-level declarations', () {
+      expect(
+        _rules('''
+int Color(int value) => value;
+final AppBar = factory;
+class ListTile { static ListTile adaptive() => ListTile(); }
+
+void f() {
+  Color(0xFF112233);
+  AppBar();
+  ListTile();
+  ListTile.adaptive();
+}
+'''),
+        isEmpty,
+      );
     });
 
     test('reports constructors called through an import prefix', () {
