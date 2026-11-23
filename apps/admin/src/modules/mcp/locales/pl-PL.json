@@ -14,7 +14,6 @@
     "done": "Gotowe",
     "addOrigin": "Dodaj źródło",
     "removeOrigin": "Usuń źródło",
-    "copyEndpoint": "Kopiuj endpoint",
     "resetFilters": "Resetuj filtry",
     "add": "Dodaj",
     "close": "Zamknij",
@@ -163,8 +162,6 @@
   "messages": {
     "configSaved": "Konfiguracja MCP została zapisana.",
     "configSaveFailed": "Nie udało się zapisać konfiguracji MCP.",
-    "endpointCopied": "Endpoint MCP został skopiowany.",
-    "copyFailed": "Nie udało się skopiować wartości.",
     "capabilitiesOutsideCeiling": "Uprawnienia klienta muszą mieścić się w limicie uprawnień modułu.",
     "loadFailed": "Nie udało się wczytać klientów MCP.",
     "created": "Klient MCP został utworzony.",
@@ -196,8 +193,7 @@
       "status": "Status",
       "scopes": "Zakresy",
       "expires": "Wygasa",
-      "activeTokens": "Aktywne tokeny",
-      "actions": "Akcje"
+      "activeTokens": "Aktywne tokeny"
     },
     "empty": {
       "clients": "Nie zarejestrowano jeszcze żadnych klientów OAuth.",
@@ -259,7 +255,8 @@
     },
     "clientFormSubtitle": "Podaj identyfikatory URI przekierowania i limit uprawnień klienta.",
     "grantFormSubtitle": "Zawęź uprawnienia, które już posiada to nadanie.",
-    "searchPlaceholder": "Szukaj według nazwy klienta"
+    "searchPlaceholder": "Szukaj według nazwy klienta",
+    "removeRedirect": "Usuń URI przekierowania"
   },
   "headings": {
     "discard": "Odrzuć zmiany"

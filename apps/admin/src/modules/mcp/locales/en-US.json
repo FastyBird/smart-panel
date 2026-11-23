@@ -14,7 +14,6 @@
 		"done": "Done",
 		"addOrigin": "Add origin",
 		"removeOrigin": "Remove origin",
-		"copyEndpoint": "Copy endpoint",
 		"resetFilters": "Reset filters",
 		"add": "Add",
 		"close": "Close",
@@ -176,8 +175,7 @@
 			"status": "Status",
 			"scopes": "Scopes",
 			"expires": "Expires",
-			"activeTokens": "Active tokens",
-			"actions": "Actions"
+			"activeTokens": "Active tokens"
 		},
 		"empty": {
 			"clients": "No OAuth clients have been pre-registered.",
@@ -239,13 +237,12 @@
 		},
 		"clientFormSubtitle": "Register the redirect URIs and the scope ceiling for this client.",
 		"grantFormSubtitle": "Narrow the scopes this grant already holds.",
-		"searchPlaceholder": "Search by client name"
+		"searchPlaceholder": "Search by client name",
+		"removeRedirect": "Remove redirect URI"
 	},
 	"messages": {
 		"configSaved": "MCP configuration saved.",
 		"configSaveFailed": "MCP configuration could not be saved.",
-		"endpointCopied": "MCP endpoint copied.",
-		"copyFailed": "The value could not be copied.",
 		"capabilitiesOutsideCeiling": "Client capabilities must stay within the module capability ceiling.",
 		"loadFailed": "MCP clients could not be loaded.",
 		"created": "MCP client created.",

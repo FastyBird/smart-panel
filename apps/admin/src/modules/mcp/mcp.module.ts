@@ -12,7 +12,7 @@ import { configModulesStoreKey } from '../config/store/keys';
 import { McpConfigForm } from './components/components';
 import { locales } from './locales';
 import { MCP_MODULE_NAME } from './mcp.constants';
-import { ModuleRoutes } from './router';
+import { ModuleRoutes, ModuleStandaloneRoutes } from './router';
 import oauthEnabledGuard from './router/guards/oauth-enabled.guard';
 import { McpConfigEditFormSchema } from './schemas/config.schemas';
 import { McpConfigSchema, McpConfigUpdateReqSchema } from './store/config.store.schemas';
@@ -68,5 +68,9 @@ export default {
 				options.router.addRoute(AppRouteNames.ROOT, route);
 			});
 		}
+
+		ModuleStandaloneRoutes.forEach((route: RouteRecordRaw): void => {
+			options.router.addRoute(route);
+		});
 	},
 };

@@ -9,9 +9,10 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('../../../common', () => ({
-	IconWithChild: {
-		name: 'IconWithChild',
-		template: '<div><slot name="primary" /><slot name="secondary" /></div>',
+	StateView: {
+		name: 'StateView',
+		props: ['kind', 'title', 'icon'],
+		template: '<div>{{ title }}<slot name="action" /></div>',
 	},
 }));
 
@@ -20,9 +21,7 @@ const mountEmpty = (props: Record<string, unknown>) =>
 		props: { icon: 'mdi:key-chain', loading: false, emptyLabel: 'nothing.here', ...props },
 		global: {
 			stubs: {
-				ElResult: { name: 'ElResult', template: '<div><slot name="icon" /><slot name="title" /><slot name="extra" /></div>' },
 				ElButton: { name: 'ElButton', template: '<button><slot name="icon" /><slot /></button>' },
-				ElText: { name: 'ElText', template: '<span><slot /></span>' },
 			},
 		},
 	});

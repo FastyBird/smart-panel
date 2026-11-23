@@ -14,7 +14,6 @@
 		"done": "Fertig",
 		"addOrigin": "Origin hinzufügen",
 		"removeOrigin": "Origin entfernen",
-		"copyEndpoint": "Endpunkt kopieren",
 		"resetFilters": "Filter zurücksetzen",
 		"add": "Hinzufügen",
 		"close": "Schließen",
@@ -163,8 +162,6 @@
 	"messages": {
 		"configSaved": "MCP-Konfiguration wurde gespeichert.",
 		"configSaveFailed": "MCP-Konfiguration konnte nicht gespeichert werden.",
-		"endpointCopied": "MCP-Endpunkt wurde kopiert.",
-		"copyFailed": "Der Wert konnte nicht kopiert werden.",
 		"capabilitiesOutsideCeiling": "Client-Berechtigungen müssen innerhalb der Berechtigungsgrenze des Moduls liegen.",
 		"loadFailed": "MCP-Clients konnten nicht geladen werden.",
 		"created": "MCP-Client wurde erstellt.",
@@ -196,8 +193,7 @@
 			"status": "Status",
 			"scopes": "Bereiche",
 			"expires": "Läuft ab",
-			"activeTokens": "Aktive Token",
-			"actions": "Aktionen"
+			"activeTokens": "Aktive Token"
 		},
 		"empty": {
 			"clients": "Es wurden keine OAuth-Clients vorab registriert.",
@@ -259,7 +255,8 @@
 		},
 		"clientFormSubtitle": "Legen Sie Redirect-URIs und die Berechtigungsobergrenze fest.",
 		"grantFormSubtitle": "Schränken Sie die bereits erteilten Berechtigungen ein.",
-		"searchPlaceholder": "Nach Client-Namen suchen"
+		"searchPlaceholder": "Nach Client-Namen suchen",
+		"removeRedirect": "Redirect-URI entfernen"
 	},
 	"headings": {
 		"discard": "Änderungen verwerfen"

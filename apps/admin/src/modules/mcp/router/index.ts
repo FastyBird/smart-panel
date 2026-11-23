@@ -40,8 +40,15 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			moduleFlag: 'oauthEnabled',
 		},
 	},
+];
+
+/**
+ * Template 10, standalone: the OAuth consent screen is seen by someone coming from another app, so it stands on its own
+ * page without the sidebar and the header. Added at the top level of the router, not under the app shell
+ */
+export const ModuleStandaloneRoutes: RouteRecordRaw[] = [
 	{
-		path: 'mcp-oauth-consent',
+		path: '/mcp-oauth-consent',
 		name: RouteNames.OAUTH_CONSENT,
 		component: () => import('../views/view-mcp-oauth-consent.vue'),
 		meta: {
