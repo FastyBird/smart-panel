@@ -387,6 +387,22 @@ describe('ViewNotifications', () => {
 			expect(wrapper.find('[data-test-id="mark-all-notifications-read"]').attributes('disabled')).toBeDefined();
 		});
 
+		it('disables the phone app bar action the same way', async () => {
+			const wrapper = await mountAndClearInitialFetch();
+			const [action] = wrapper.findComponent({ name: 'ViewHeader' }).props('actions') as { disabled?: boolean }[];
+
+			expect(action.disabled).toBe(true);
+		});
+
+		it('enables the phone app bar action once something is unread', async () => {
+			mocks.unreadCount = 1;
+
+			const wrapper = await mountAndClearInitialFetch();
+			const [action] = wrapper.findComponent({ name: 'ViewHeader' }).props('actions') as { disabled?: boolean }[];
+
+			expect(action.disabled).toBe(false);
+		});
+
 		it('marks everything read from the header', async () => {
 			mocks.markEverythingRead.mockResolvedValue(true);
 			mocks.unreadCount = 2;

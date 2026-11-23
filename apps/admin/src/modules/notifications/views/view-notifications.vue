@@ -6,7 +6,14 @@
 		:title="t('notificationsModule.headings.notifications.list')"
 		:subtitle="t('notificationsModule.subHeadings.notifications.list')"
 		icon="mdi:bell-outline"
-		:actions="[{ icon: 'mdi:email-open-multiple-outline', label: t('notificationsModule.buttons.markAllRead.title'), handler: onMarkAllRead }]"
+		:actions="[
+			{
+				icon: 'mdi:email-open-multiple-outline',
+				label: t('notificationsModule.buttons.markAllRead.title'),
+				handler: onMarkAllRead,
+				disabled: unreadCount === 0,
+			},
+		]"
 	>
 		<template #actions>
 			<el-button
