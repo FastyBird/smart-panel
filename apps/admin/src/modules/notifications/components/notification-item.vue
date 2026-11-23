@@ -103,9 +103,9 @@ import { useI18n } from 'vue-i18n';
 import { ElBadge, ElButton, ElText, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
-import { formatTimeAgo } from '@vueuse/core';
 
 import { NotificationsModuleNotificationActionOperation, NotificationsModuleNotificationActionType } from '../../../openapi.constants';
+import { formatRelativeTime } from '../notifications.utils';
 import type { INotification, INotificationAction } from '../store/notifications.store.schemas';
 
 import NotificationSeverityDot from './notification-severity-dot.vue';
@@ -133,7 +133,7 @@ const emit = defineEmits<{
 	(e: 'dismiss', notification: INotification): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const primaryAction = computed<INotificationAction | undefined>((): INotificationAction | undefined =>
 	props.notification.actions.find((action) => action.primary)
@@ -162,7 +162,7 @@ const actionIcon = computed<string>((): string => {
 	}
 });
 
-const relativeTime = computed<string>((): string => formatTimeAgo(props.notification.createdAt));
+const relativeTime = computed<string>((): string => formatRelativeTime(props.notification.createdAt, locale.value));
 </script>
 
 <style scoped>

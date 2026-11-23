@@ -32,6 +32,8 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	'src/plugins/remote-access-*',
 	// AR-15: the MCP clients, OAuth management and consent screens, and the MCP config form
 	'src/modules/mcp',
+	// AR-16: the notifications inbox, the bell and the notifications config form
+	'src/modules/notifications',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

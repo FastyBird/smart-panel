@@ -84,8 +84,8 @@ dark, and updates all six locales.
 | AR-12 | #1669 | 3 | `refactor(admin): move the device wizards onto the wizard shell` | AR-4, AR-5, AR-9 | merged in #1739 |
 | AR-13 | #1670 | 3 | `refactor(admin): move automations onto the list and editor templates` | AR-3, AR-5, AR-8 | merged in #1744 and #1745 |
 | AR-14 | #1671 | 3 | `refactor(admin): move remote access onto the settings and catalogue templates` | AR-3, AR-4, AR-5, AR-6, AR-8 | merged in #1746 and #1747 |
-| AR-15 | #1672 | 3 | `refactor(admin): move MCP clients onto the page templates` | AR-3, AR-4, AR-5, AR-8 | part 1 merged in #1748; part 2 (OAuth, consent, config form) in review |
-| AR-16 | #1673 | 3 | `feat(admin): turn notifications into a two-pane inbox` | AR-3, AR-5, AR-8 | open |
+| AR-15 | #1672 | 3 | `refactor(admin): move MCP clients onto the page templates` | AR-3, AR-4, AR-5, AR-8 | merged in #1748 and #1749 |
+| AR-16 | #1673 | 3 | `feat(admin): turn notifications into a two-pane inbox` | AR-3, AR-5, AR-8 | in review |
 | AR-17 | #1674 | 4 | `refactor(admin): move spaces onto the page templates` | AR-9, AR-10 | open |
 | AR-18 | #1675 | 4 | `refactor(admin): move scenes onto the page templates` | AR-9, AR-10 | open |
 | AR-19 | #1676 | 4 | `refactor(admin): move displays onto the page templates` | AR-9, AR-10 | open |

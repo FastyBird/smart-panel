@@ -511,7 +511,7 @@ Protect epic, built on this epic's components.
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :construction: In Progress |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
 
-**Next up:** AR-16 (notifications), once AR-15 part 2 (MCP OAuth management, the consent screen and the config form) merges.
+**Next up:** phase 4, starting with AR-17 (spaces), once AR-16 (the notifications inbox) merges and closes phase 3.
 
 ---
 

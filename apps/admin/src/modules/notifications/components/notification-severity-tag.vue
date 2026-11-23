@@ -1,19 +1,15 @@
 <template>
-	<el-tag
-		:type="tagType"
-		:effect="effect"
-		size="small"
-	>
-		{{ label }}
-	</el-tag>
+	<!-- Spec section 2: info, warning and danger tags; critical is the only filled one -->
+	<status-tag
+		:status="SEVERITY_STATUS[props.severity]"
+		:label="t(`notificationsModule.severity.${props.severity}`)"
+	/>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElTag } from 'element-plus';
-
+import { StatusTag, type StatusTagStatus } from '../../../common';
 import { NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
 
 defineOptions({
@@ -26,22 +22,10 @@ const props = defineProps<{
 
 const { t } = useI18n();
 
-const tagType = computed<'info' | 'warning' | 'danger'>((): 'info' | 'warning' | 'danger' => {
-	switch (props.severity) {
-		case NotificationsModuleNotificationSeverity.warning:
-			return 'warning';
-		case NotificationsModuleNotificationSeverity.error:
-		case NotificationsModuleNotificationSeverity.critical:
-			return 'danger';
-		default:
-			return 'info';
-	}
-});
-
-// Critical stands out even among the two danger-tagged severities.
-const effect = computed<'light' | 'dark'>((): 'light' | 'dark' =>
-	props.severity === NotificationsModuleNotificationSeverity.critical ? 'dark' : 'light'
-);
-
-const label = computed<string>((): string => t(`notificationsModule.severity.${props.severity}`));
+const SEVERITY_STATUS: Record<NotificationsModuleNotificationSeverity, StatusTagStatus> = {
+	[NotificationsModuleNotificationSeverity.info]: 'info',
+	[NotificationsModuleNotificationSeverity.warning]: 'warn',
+	[NotificationsModuleNotificationSeverity.error]: 'danger',
+	[NotificationsModuleNotificationSeverity.critical]: 'critical',
+};
 </script>

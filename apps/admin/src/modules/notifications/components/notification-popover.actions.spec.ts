@@ -18,7 +18,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('vue-i18n', () => ({
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 const mockExecute = vi.fn();
@@ -31,7 +31,7 @@ vi.mock('../composables/composables', () => ({
 	}),
 	useNotificationsActions: () => ({
 		markRead: vi.fn(),
-		markAllRead: vi.fn(),
+		markEverythingRead: vi.fn(),
 		dismiss: vi.fn(),
 	}),
 	useNotificationAction: () => ({

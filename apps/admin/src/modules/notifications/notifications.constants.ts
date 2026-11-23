@@ -14,6 +14,7 @@ export enum EventType {
 
 export enum RouteNames {
 	NOTIFICATIONS = 'notifications_module-notifications',
+	NOTIFICATION = 'notifications_module-notification',
 }
 
 /**

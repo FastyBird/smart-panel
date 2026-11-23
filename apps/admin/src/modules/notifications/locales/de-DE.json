@@ -34,8 +34,7 @@
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Systemzustände und Ereignisse, die Ihre Aufmerksamkeit erfordern",
-			"adjustFilters": "Anzeigefilter anpassen"
+			"list": "Systemzustände und Ereignisse, die Ihre Aufmerksamkeit erfordern"
 		}
 	},
 	"texts": {
@@ -49,7 +48,9 @@
 			"confirmBulkRemove": "{count} Benachrichtigungen entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
 			"loading": "Benachrichtigungen werden geladen...",
 			"noNotifications": "Es gibt noch keine Benachrichtigungen",
-			"noFilteredNotifications": "Keine Benachrichtigungen gefunden, die den aktiven Filterkriterien entsprechen"
+			"noFilteredNotifications": "Keine Benachrichtigungen gefunden, die den aktiven Filterkriterien entsprechen",
+			"selectOne": "Wählen Sie eine Benachrichtigung aus, um sie zu lesen",
+			"notFound": "Diese Benachrichtigung gibt es nicht mehr"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" möchte \"{label}\" ausführen. Diese Aktion ist möglicherweise gefährlich - fortfahren?",
@@ -160,28 +161,6 @@
 			}
 		}
 	},
-	"table": {
-		"columns": {
-			"severity": {
-				"title": "Schweregrad"
-			},
-			"title": {
-				"title": "Titel"
-			},
-			"source": {
-				"title": "Quelle"
-			},
-			"occurrences": {
-				"title": "Anzahl"
-			},
-			"time": {
-				"title": "Zeit"
-			},
-			"actions": {
-				"title": "Aktionen"
-			}
-		}
-	},
 	"buttons": {
 		"yes": {
 			"title": "Ja"
@@ -210,14 +189,20 @@
 		"close": {
 			"title": "Schließen"
 		},
-		"detail": {
-			"title": "Details"
-		},
 		"resetFilters": {
 			"title": "Filter zurücksetzen"
 		},
 		"reset": {
 			"title": "Zurücksetzen"
+		},
+		"more": {
+			"title": "Mehr"
+		},
+		"backToList": {
+			"title": "Zurück zu den Benachrichtigungen"
 		}
+	},
+	"aria": {
+		"select": "{title} auswählen"
 	}
 }

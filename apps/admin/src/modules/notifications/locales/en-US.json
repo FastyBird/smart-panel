@@ -43,7 +43,9 @@
 			"confirmBulkRemove": "Remove {count} notifications? This cannot be undone.",
 			"loading": "Loading notifications...",
 			"noNotifications": "There are no notifications yet",
-			"noFilteredNotifications": "No notifications found matching the active filter criteria"
+			"noFilteredNotifications": "No notifications found matching the active filter criteria",
+			"selectOne": "Select a notification to read it",
+			"notFound": "This notification no longer exists"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" wants to run \"{label}\". This action is potentially dangerous - continue?",
@@ -95,10 +97,10 @@
 			"title": "View all"
 		},
 		"markRead": {
-			"title": "Mark read"
+			"title": "Mark as read"
 		},
 		"markUnread": {
-			"title": "Mark unread"
+			"title": "Mark as unread"
 		},
 		"loadMore": {
 			"title": "Load more"
@@ -106,20 +108,22 @@
 		"close": {
 			"title": "Close"
 		},
-		"detail": {
-			"title": "Detail"
-		},
 		"resetFilters": {
 			"title": "Reset filters"
 		},
 		"reset": {
 			"title": "Reset"
+		},
+		"more": {
+			"title": "More"
+		},
+		"backToList": {
+			"title": "Back to notifications"
 		}
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "System conditions and events that need your attention",
-			"adjustFilters": "Adjust display filters"
+			"list": "System conditions and events that need your attention"
 		}
 	},
 	"fields": {
@@ -198,26 +202,7 @@
 			}
 		}
 	},
-	"table": {
-		"columns": {
-			"severity": {
-				"title": "Severity"
-			},
-			"title": {
-				"title": "Title"
-			},
-			"source": {
-				"title": "Source"
-			},
-			"occurrences": {
-				"title": "Count"
-			},
-			"time": {
-				"title": "Time"
-			},
-			"actions": {
-				"title": "Actions"
-			}
-		}
+	"aria": {
+		"select": "Select {title}"
 	}
 }

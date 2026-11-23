@@ -27,7 +27,7 @@ vi.mock('vue-router', async () => {
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 const mockActive = ref<INotification[]>([]);
@@ -38,7 +38,7 @@ const mockExecute = vi.fn();
 
 vi.mock('../composables/composables', () => ({
 	useNotifications: () => ({ active: mockActive }),
-	useNotificationsActions: () => ({ markRead: mockMarkRead, markAllRead: mockMarkAllRead, dismiss: mockDismiss }),
+	useNotificationsActions: () => ({ markRead: mockMarkRead, markEverythingRead: mockMarkAllRead, dismiss: mockDismiss }),
 	useNotificationAction: () => ({ execute: mockExecute, isExecuting: ref(false) }),
 }));
 
@@ -157,7 +157,7 @@ describe('NotificationPopover', () => {
 			expect(markAllButton.props('disabled')).toBe(true);
 		});
 
-		it('marks every unread active notification as read, ignoring ones already read', async () => {
+		it('marks every unread active notification as read through the store action', async () => {
 			mockActive.value = [
 				makeNotification({ id: 'n1', readAt: null }),
 				makeNotification({ id: 'n2', readAt: new Date('2026-01-01T00:00:00.000Z') }),
@@ -171,7 +171,19 @@ describe('NotificationPopover', () => {
 
 			await markAllButton.trigger('click');
 
-			expect(mockMarkAllRead).toHaveBeenCalledWith(['n1', 'n3']);
+			expect(mockMarkAllRead).toHaveBeenCalledOnce();
+		});
+
+		it('opens the notification in the inbox detail and marks it read', async () => {
+			mockActive.value = [makeNotification({ id: 'n1' })];
+
+			wrapper = mountPopover();
+
+			await wrapper.findComponent({ name: 'NotificationItem' }).vm.$emit('click', mockActive.value[0]);
+
+			expect(mockMarkRead).toHaveBeenCalledWith('n1', true);
+			expect(wrapper.emitted('close')).toBeTruthy();
+			expect(mockPush).toHaveBeenCalledWith({ name: RouteNames.NOTIFICATION, params: { id: 'n1' } });
 		});
 
 		it('routes to the notifications page and closes the popover on "view all"', async () => {

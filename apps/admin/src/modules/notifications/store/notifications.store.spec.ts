@@ -581,6 +581,84 @@ describe('Notifications Store', () => {
 		});
 	});
 
+	describe('markAllRead() / markRead() unread', () => {
+		const bulkResponse = (succeeded: string[], failed: { id: string; reason: string }[] = []) => ({
+			data: { data: { succeeded, failed } },
+			error: undefined,
+			response: { status: 200, ok: true },
+		});
+
+		it('marks every active unread row as read in one bulk update, and nothing else', async () => {
+			const unreadActive = notificationFixture();
+			const secondUnread = notificationFixture();
+			const readActive = notificationFixture({ read_at: '2026-09-02T12:00:00.000Z' });
+			const unreadDismissed = notificationFixture({ dismissed_at: '2026-09-02T12:00:00.000Z' });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([unreadActive, secondUnread, readActive, unreadDismissed]));
+
+			await store.fetch();
+
+			mockBackendClient.POST.mockResolvedValueOnce(bulkResponse([unreadActive.id, secondUnread.id]));
+
+			const result = await store.markAllRead();
+
+			expect(mockBackendClient.POST).toHaveBeenCalledOnce();
+			expect(mockBackendClient.POST.mock.calls[0][0]).toContain('notifications/bulk-update');
+			expect(mockBackendClient.POST.mock.calls[0][1]).toEqual({
+				body: { data: { ids: [unreadActive.id, secondUnread.id], read: true, dismissed: undefined } },
+			});
+			expect(result.succeeded).toEqual([unreadActive.id, secondUnread.id]);
+			expect(store.unreadCount()).toBe(0);
+			expect(store.findById(unreadActive.id)?.readAt).toBeInstanceOf(Date);
+			// The dismissed row is not part of the inbox the bell counts, so it stays unread
+			expect(store.findById(unreadDismissed.id)?.readAt).toBeNull();
+		});
+
+		it('leaves a row the backend refused unread', async () => {
+			const accepted = notificationFixture();
+			const refused = notificationFixture();
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([accepted, refused]));
+
+			await store.fetch();
+
+			mockBackendClient.POST.mockResolvedValueOnce(bulkResponse([accepted.id], [{ id: refused.id, reason: 'Not found' }]));
+
+			const result = await store.markAllRead();
+
+			expect(result.failed).toEqual([{ id: refused.id, reason: 'Not found' }]);
+			expect(store.unreadCount()).toBe(1);
+			expect(store.findById(refused.id)?.readAt).toBeNull();
+		});
+
+		it('sends nothing when every active row is already read', async () => {
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([notificationFixture({ read_at: '2026-09-02T12:00:00.000Z' })]));
+
+			await store.fetch();
+
+			const result = await store.markAllRead();
+
+			expect(mockBackendClient.POST).not.toHaveBeenCalled();
+			expect(result).toEqual({ succeeded: [], failed: [] });
+		});
+
+		it('marks a read row unread again on the single update endpoint', async () => {
+			const read = notificationFixture({ read_at: '2026-09-02T12:00:00.000Z' });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([read]));
+
+			await store.fetch();
+
+			mockBackendClient.PATCH.mockResolvedValueOnce(rowResponse({ ...read, read_at: null }));
+
+			await store.markRead({ id: read.id, read: false });
+
+			expect(mockBackendClient.PATCH.mock.calls[0][1]).toEqual({ params: { path: { id: read.id } }, body: { data: { read: false } } });
+			expect(store.findById(read.id)?.readAt).toBeNull();
+			expect(store.unreadCount()).toBe(1);
+		});
+	});
+
 	describe('unreadCount / highestActiveSeverity', () => {
 		it('counts only active, unread rows', async () => {
 			const unreadActive = notificationFixture({ read_at: null, dismissed_at: null, resolved_at: null });
