@@ -3,246 +3,229 @@
 		:title="t('mcpModule.oauthManagement.title')"
 		:subtitle="t('mcpModule.oauthManagement.subtitle')"
 		icon="mdi:shield-key-outline"
+		:actions="[
+			{ icon: 'mdi:plus', label: t('mcpModule.actions.add'), handler: openCreate },
+			{ icon: 'mdi:shield-remove-outline', label: t('mcpModule.oauthManagement.revokeAll'), handler: confirmGlobalRevoke },
+		]"
 	>
 		<template #actions>
-			<el-button
-				type="danger"
-				plain
-				data-test-id="revoke-all-mcp-oauth"
-				@click="confirmGlobalRevoke"
-			>
-				<template #icon>
-					<icon icon="mdi:shield-remove-outline" />
-				</template>
+			<div class="flex items-center gap-2">
+				<!-- Revoking everything is destructive, so it sits in the menu; Add is the one primary, rightmost -->
+				<el-tooltip
+					:content="t('mcpModule.actions.more')"
+					placement="top"
+				>
+					<el-dropdown
+						trigger="click"
+						placement="bottom-end"
+						@command="confirmGlobalRevoke"
+					>
+						<el-button
+							:aria-label="t('mcpModule.actions.more')"
+							plain
+							data-test-id="mcp-oauth-more"
+						>
+							<template #icon>
+								<icon icon="mdi:dots-horizontal" />
+							</template>
+						</el-button>
 
-				{{ t('mcpModule.oauthManagement.revokeAll') }}
-			</el-button>
-			<el-button
-				type="primary"
-				plain
-				class="ml-2!"
-				data-test-id="create-mcp-oauth-client"
-				@click="openCreate"
-			>
-				<template #icon>
-					<icon icon="mdi:plus" />
-				</template>
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item
+									command="revokeAll"
+									class="text-danger!"
+									data-test-id="revoke-all-mcp-oauth"
+								>
+									{{ t('mcpModule.oauthManagement.revokeAll') }}
+								</el-dropdown-item>
+							</el-dropdown-menu>
+						</template>
+					</el-dropdown>
+				</el-tooltip>
 
-				{{ t('mcpModule.actions.add') }}
-			</el-button>
+				<el-button
+					type="primary"
+					plain
+					data-test-id="create-mcp-oauth-client"
+					@click="openCreate"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+
+					{{ t('mcpModule.actions.add') }}
+				</el-button>
+			</div>
 		</template>
 	</view-header>
 
-	<div class="mcp-oauth-page">
-		<el-alert
-			type="info"
-			:title="t('mcpModule.oauthManagement.securityTitle')"
-			:description="t('mcpModule.oauthManagement.securityDescription')"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-tabs
-			v-model="activeTab"
-			class="grow-1 overflow-hidden flex-1"
+	<div class="page-pad flex flex-col flex-1 min-h-0 box-border">
+		<!-- Template 4: the client and grant forms open next to the list. They have no route of their own, so on phone
+		     they take a full-width drawer -->
+		<edit-drawer-layout
+			:open="formOpen"
+			:before-close="onCloseForm"
+			routeless
+			@close="onCloseForm()"
 		>
-			<el-tab-pane
-				name="clients"
-				:label="t('mcpModule.oauthManagement.tabs.clients')"
-				class="h-full overflow-hidden flex flex-col gap-2"
-			>
-				<el-card
-					shadow="never"
-					class="px-1 py-2 shrink-0"
-					body-class="p-0!"
-				>
-					<McpOAuthTabFilter
-						v-model:filters="clientsQuery.filters.value"
-						:filters-active="clientsQuery.filtersActive.value"
-						:search-placeholder="t('mcpModule.oauthManagement.searchPlaceholder')"
-						:status-options="clientStatusOptions"
-						test-id="mcp-oauth-clients"
-						@reset-filters="clientsQuery.resetFilter"
+			<div class="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto">
+				<p class="flex items-start gap-2 m-0 text-help">
+					<icon
+						icon="mdi:shield-lock-outline"
+						width="16"
+						height="16"
+						class="shrink-0 mt-[3px]"
+						aria-hidden="true"
 					/>
-				</el-card>
+					<span>
+						<span class="text-label">{{ t('mcpModule.oauthManagement.securityTitle') }}.</span>
+						{{ t('mcpModule.oauthManagement.securityDescription') }}
+					</span>
+				</p>
 
-				<el-card
-					shadow="never"
-					body-class="p-0!"
-				>
-					<el-table
-						v-loading="loading"
-						:data="clientsQuery.items.value"
-						:default-sort="sortDescriptor(clientsQuery)"
-						row-key="id"
-						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(clientsQuery, change)"
-					>
-						<el-table-column type="expand">
-							<template #default="scope">
-								<div class="mcp-oauth-details">
-									<div>
-										<strong>{{ t('mcpModule.oauthManagement.clientId') }}:</strong>
-										{{ scope.row.clientIdentifier }}
-									</div>
-									<div>
-										<strong>{{ t('mcpModule.oauthManagement.redirectUris') }}:</strong>
-									</div>
-									<ul>
-										<li
-											v-for="redirectUri in scope.row.redirectUris"
-											:key="redirectUri"
-										>
-											{{ redirectUri }}
-										</li>
-									</ul>
-								</div>
-							</template>
-						</el-table-column>
-						<el-table-column
-							prop="name"
-							sortable="custom"
-							:sort-orders="['ascending', 'descending']"
-							:label="t('mcpModule.oauthManagement.columns.client')"
-							min-width="180"
-						/>
-						<el-table-column
-							:label="t('mcpModule.oauthManagement.columns.status')"
-							width="120"
+				<el-tabs v-model="activeTab">
+					<el-tab-pane name="clients">
+						<template #label>
+							<span class="inline-flex items-center gap-2">
+								<icon icon="mdi:application-cog-outline" />
+								{{ t('mcpModule.oauthManagement.tabs.clients') }}
+							</span>
+						</template>
+
+						<mcp-oauth-tab
+							v-model:filters="clientsQuery.filters.value"
+							:status-options="clientStatusOptions"
+							test-id="mcp-oauth-clients"
+							@reset-filters="clientsQuery.resetFilter"
 						>
-							<template #default="scope">
-								<el-tag :type="scope.row.enabled ? 'success' : 'warning'">
-									{{ t(`mcpModule.oauthManagement.status.${scope.row.enabled ? 'active' : 'disabled'}`) }}
-								</el-tag>
-							</template>
-						</el-table-column>
-						<el-table-column
-							:label="t('mcpModule.oauthManagement.columns.scopes')"
-							min-width="250"
-						>
-							<template #default="scope"><scope-tags :scopes="scope.row.maximumScopes" /></template>
-						</el-table-column>
-						<el-table-column
-							fixed="right"
-							:label="t('mcpModule.oauthManagement.columns.actions')"
-							width="190"
-						>
-							<template #default="scope">
-								<el-button
-									size="small"
-									@click="openEdit(scope.row)"
-								>
-									{{ t('mcpModule.actions.edit') }}
-								</el-button>
-								<el-button
-									size="small"
-									type="danger"
-									plain
-									:disabled="!scope.row.enabled"
-									@click="confirmClientRevoke(scope.row)"
-								>
-									{{ t('mcpModule.actions.revoke') }}
-								</el-button>
-							</template>
-						</el-table-column>
-						<template #empty>
-							<mcp-table-empty
-								icon="mdi:application-cog"
+							<mcp-oauth-row-list
+								v-if="isPhone"
+								:rows="clientRows"
+								icon="mdi:application-cog-outline"
 								:loading="loading"
 								:failed="error !== null"
 								:filters-active="clientsQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.clients"
 								@retry="onRetry"
 								@reset-filters="clientsQuery.resetFilter"
-							/>
+							>
+								<template #actions="{ index }">
+									<mcp-oauth-row-actions
+										:name="clientsQuery.items.value[index].name"
+										:revoke-disabled="!clientsQuery.items.value[index].enabled"
+										editable
+										@edit="openEdit(clientsQuery.items.value[index])"
+										@revoke="confirmClientRevoke(clientsQuery.items.value[index])"
+									/>
+								</template>
+							</mcp-oauth-row-list>
+
+							<el-table
+								v-else
+								v-loading="loading && clientsQuery.items.value.length > 0"
+								:data="clientsQuery.items.value"
+								:default-sort="sortDescriptor(clientsQuery)"
+								row-key="id"
+								@sort-change="(change: { prop: string; order: string | null }) => onSortChange(clientsQuery, change)"
+							>
+								<el-table-column type="expand">
+									<template #default="scope">
+										<div class="flex flex-col gap-3 py-2 px-8">
+											<copy-field
+												:value="scope.row.clientIdentifier"
+												:label="t('mcpModule.oauthManagement.clientId')"
+											/>
+											<div class="flex flex-col gap-1">
+												<span class="text-label">{{ t('mcpModule.oauthManagement.redirectUris') }}</span>
+												<span
+													v-for="redirectUri in scope.row.redirectUris"
+													:key="redirectUri"
+													class="text-mono break-all"
+												>
+													{{ redirectUri }}
+												</span>
+											</div>
+										</div>
+									</template>
+								</el-table-column>
+								<el-table-column
+									prop="name"
+									sortable="custom"
+									:sort-orders="['ascending', 'descending']"
+									:label="t('mcpModule.oauthManagement.columns.client')"
+									min-width="180"
+								>
+									<template #default="scope">
+										<span class="text-card-title">{{ scope.row.name }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('mcpModule.oauthManagement.columns.status')"
+									width="130"
+								>
+									<template #default="scope">
+										<status-tag
+											:status="scope.row.enabled ? 'ok' : 'warn'"
+											:label="t(`mcpModule.oauthManagement.status.${scope.row.enabled ? 'active' : 'disabled'}`)"
+										/>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('mcpModule.oauthManagement.columns.scopes')"
+									min-width="220"
+								>
+									<template #default="scope">
+										<span class="text-body">{{ scopesLabel(scope.row.maximumScopes) }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									fixed="right"
+									width="96"
+									align="right"
+								>
+									<template #default="scope">
+										<mcp-oauth-row-actions
+											:name="scope.row.name"
+											:revoke-disabled="!scope.row.enabled"
+											editable
+											@edit="openEdit(scope.row)"
+											@revoke="confirmClientRevoke(scope.row)"
+										/>
+									</template>
+								</el-table-column>
+								<template #empty>
+									<mcp-table-empty
+										icon="mdi:application-cog-outline"
+										:loading="loading"
+										:failed="error !== null"
+										:filters-active="clientsQuery.filtersActive.value"
+										empty-label="mcpModule.oauthManagement.empty.clients"
+										@retry="onRetry"
+										@reset-filters="clientsQuery.resetFilter"
+									/>
+								</template>
+							</el-table>
+						</mcp-oauth-tab>
+					</el-tab-pane>
+
+					<el-tab-pane name="grants">
+						<template #label>
+							<span class="inline-flex items-center gap-2">
+								<icon icon="mdi:key-chain" />
+								{{ t('mcpModule.oauthManagement.tabs.grants') }}
+							</span>
 						</template>
-					</el-table>
-				</el-card>
-			</el-tab-pane>
 
-			<el-tab-pane
-				name="grants"
-				:label="t('mcpModule.oauthManagement.tabs.grants')"
-				class="h-full overflow-hidden flex flex-col gap-2"
-			>
-				<el-card
-					shadow="never"
-					class="px-1 py-2 shrink-0"
-					body-class="p-0!"
-				>
-					<McpOAuthTabFilter
-						v-model:filters="grantsQuery.filters.value"
-						:filters-active="grantsQuery.filtersActive.value"
-						:search-placeholder="t('mcpModule.oauthManagement.searchPlaceholder')"
-						:status-options="grantStatusOptions"
-						test-id="mcp-oauth-grants"
-						@reset-filters="grantsQuery.resetFilter"
-					/>
-				</el-card>
-
-				<el-card
-					shadow="never"
-					body-class="p-0!"
-				>
-					<el-table
-						v-loading="loading"
-						:data="grantsQuery.items.value"
-						:default-sort="sortDescriptor(grantsQuery)"
-						row-key="id"
-						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(grantsQuery, change)"
-					>
-						<el-table-column
-							prop="clientName"
-							sortable="custom"
-							:sort-orders="['ascending', 'descending']"
-							:label="t('mcpModule.oauthManagement.columns.client')"
-							min-width="170"
-						/>
-						<el-table-column
-							:label="t('mcpModule.oauthManagement.columns.status')"
-							width="120"
+						<mcp-oauth-tab
+							v-model:filters="grantsQuery.filters.value"
+							:status-options="grantStatusOptions"
+							test-id="mcp-oauth-grants"
+							@reset-filters="grantsQuery.resetFilter"
 						>
-							<template #default="scope">
-								<el-tag :type="grantStatus(scope.row).type">{{ t(`mcpModule.oauthManagement.status.${grantStatus(scope.row).key}`) }}</el-tag>
-							</template>
-						</el-table-column>
-						<el-table-column
-							:label="t('mcpModule.oauthManagement.columns.scopes')"
-							min-width="250"
-						>
-							<template #default="scope"><scope-tags :scopes="scope.row.approvedScopes" /></template>
-						</el-table-column>
-						<el-table-column
-							:label="t('mcpModule.oauthManagement.columns.expires')"
-							width="190"
-						>
-							<template #default="scope">{{ formatDate(scope.row.expiresAt) }}</template>
-						</el-table-column>
-						<el-table-column
-							fixed="right"
-							:label="t('mcpModule.oauthManagement.columns.actions')"
-							width="190"
-						>
-							<template #default="scope">
-								<el-button
-									size="small"
-									:disabled="!canEditGrant(scope.row)"
-									@click="openGrantEdit(scope.row)"
-								>
-									{{ t('mcpModule.actions.edit') }}
-								</el-button>
-								<el-button
-									size="small"
-									type="danger"
-									plain
-									:disabled="!canRevokeGrant(scope.row)"
-									@click="confirmGrantRevoke(scope.row)"
-								>
-									{{ t('mcpModule.actions.revoke') }}
-								</el-button>
-							</template>
-						</el-table-column>
-						<template #empty>
-							<mcp-table-empty
+							<mcp-oauth-row-list
+								v-if="isPhone"
+								:rows="grantRows"
 								icon="mdi:key-chain"
 								:loading="loading"
 								:failed="error !== null"
@@ -250,162 +233,208 @@
 								empty-label="mcpModule.oauthManagement.empty.grants"
 								@retry="onRetry"
 								@reset-filters="grantsQuery.resetFilter"
-							/>
-						</template>
-					</el-table>
-				</el-card>
-			</el-tab-pane>
+							>
+								<template #actions="{ index }">
+									<mcp-oauth-row-actions
+										:name="grantsQuery.items.value[index].clientName"
+										:edit-disabled="!canEditGrant(grantsQuery.items.value[index])"
+										:revoke-disabled="!canRevokeGrant(grantsQuery.items.value[index])"
+										editable
+										@edit="openGrantEdit(grantsQuery.items.value[index])"
+										@revoke="confirmGrantRevoke(grantsQuery.items.value[index])"
+									/>
+								</template>
+							</mcp-oauth-row-list>
 
-			<el-tab-pane
-				name="accessTokens"
-				:label="t('mcpModule.oauthManagement.tabs.accessTokens')"
-				class="h-full overflow-hidden flex flex-col gap-2"
-			>
-				<el-card
-					shadow="never"
-					class="px-1 py-2 shrink-0"
-					body-class="p-0!"
-				>
-					<McpOAuthTabFilter
-						v-model:filters="accessTokensQuery.filters.value"
-						:filters-active="accessTokensQuery.filtersActive.value"
-						:search-placeholder="t('mcpModule.oauthManagement.searchPlaceholder')"
-						:status-options="tokenStatusOptions"
-						test-id="mcp-oauth-accessTokens"
-						@reset-filters="accessTokensQuery.resetFilter"
-					/>
-				</el-card>
-
-				<el-card
-					shadow="never"
-					body-class="p-0!"
-				>
-					<el-table
-						v-loading="loading"
-						:data="accessTokensQuery.items.value"
-						:default-sort="sortDescriptor(accessTokensQuery)"
-						row-key="id"
-						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(accessTokensQuery, change)"
-					>
-						<el-table-column
-							prop="clientName"
-							sortable="custom"
-							:sort-orders="['ascending', 'descending']"
-							:label="t('mcpModule.oauthManagement.columns.client')"
-							min-width="170"
-						/>
-						<el-table-column
-							:label="t('mcpModule.oauthManagement.columns.scopes')"
-							min-width="250"
-						>
-							<template #default="scope"><scope-tags :scopes="scope.row.scopes" /></template>
-						</el-table-column>
-						<el-table-column
-							:label="t('mcpModule.oauthManagement.columns.expires')"
-							width="190"
-						>
-							<template #default="scope">{{ formatDate(scope.row.expiresAt) }}</template>
-						</el-table-column>
-						<el-table-column
-							fixed="right"
-							:label="t('mcpModule.oauthManagement.columns.actions')"
-							width="120"
-						>
-							<template #default="scope">
-								<el-button
-									size="small"
-									type="danger"
-									plain
-									@click="confirmAccessTokenRevoke(scope.row)"
+							<el-table
+								v-else
+								v-loading="loading && grantsQuery.items.value.length > 0"
+								:data="grantsQuery.items.value"
+								:default-sort="sortDescriptor(grantsQuery)"
+								row-key="id"
+								@sort-change="(change: { prop: string; order: string | null }) => onSortChange(grantsQuery, change)"
+							>
+								<el-table-column
+									prop="clientName"
+									sortable="custom"
+									:sort-orders="['ascending', 'descending']"
+									:label="t('mcpModule.oauthManagement.columns.client')"
+									min-width="170"
 								>
-									{{ t('mcpModule.actions.revoke') }}
-								</el-button>
-							</template>
-						</el-table-column>
-						<template #empty>
-							<mcp-table-empty
-								icon="mdi:key"
+									<template #default="scope">
+										<span class="text-card-title">{{ scope.row.clientName }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('mcpModule.oauthManagement.columns.status')"
+									width="130"
+								>
+									<template #default="scope">
+										<status-tag
+											:status="GRANT_STATUS_TAGS[grantStatus(scope.row).key]"
+											:label="t(`mcpModule.oauthManagement.status.${grantStatus(scope.row).key}`)"
+										/>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('mcpModule.oauthManagement.columns.scopes')"
+									min-width="220"
+								>
+									<template #default="scope">
+										<span class="text-body">{{ scopesLabel(scope.row.approvedScopes) }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('mcpModule.oauthManagement.columns.expires')"
+									width="190"
+								>
+									<template #default="scope">
+										<span class="text-body">{{ formatDate(scope.row.expiresAt) }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									fixed="right"
+									width="96"
+									align="right"
+								>
+									<template #default="scope">
+										<mcp-oauth-row-actions
+											:name="scope.row.clientName"
+											:edit-disabled="!canEditGrant(scope.row)"
+											:revoke-disabled="!canRevokeGrant(scope.row)"
+											editable
+											@edit="openGrantEdit(scope.row)"
+											@revoke="confirmGrantRevoke(scope.row)"
+										/>
+									</template>
+								</el-table-column>
+								<template #empty>
+									<mcp-table-empty
+										icon="mdi:key-chain"
+										:loading="loading"
+										:failed="error !== null"
+										:filters-active="grantsQuery.filtersActive.value"
+										empty-label="mcpModule.oauthManagement.empty.grants"
+										@retry="onRetry"
+										@reset-filters="grantsQuery.resetFilter"
+									/>
+								</template>
+							</el-table>
+						</mcp-oauth-tab>
+					</el-tab-pane>
+
+					<el-tab-pane name="accessTokens">
+						<template #label>
+							<span class="inline-flex items-center gap-2">
+								<icon icon="mdi:key-outline" />
+								{{ t('mcpModule.oauthManagement.tabs.accessTokens') }}
+							</span>
+						</template>
+
+						<mcp-oauth-tab
+							v-model:filters="accessTokensQuery.filters.value"
+							:status-options="tokenStatusOptions"
+							test-id="mcp-oauth-accessTokens"
+							@reset-filters="accessTokensQuery.resetFilter"
+						>
+							<mcp-oauth-row-list
+								v-if="isPhone"
+								:rows="accessTokenRows"
+								icon="mdi:key-outline"
 								:loading="loading"
 								:failed="error !== null"
 								:filters-active="accessTokensQuery.filtersActive.value"
 								empty-label="mcpModule.oauthManagement.empty.accessTokens"
 								@retry="onRetry"
 								@reset-filters="accessTokensQuery.resetFilter"
-							/>
-						</template>
-					</el-table>
-				</el-card>
-			</el-tab-pane>
+							>
+								<template #actions="{ index }">
+									<mcp-oauth-row-actions
+										:name="accessTokensQuery.items.value[index].clientName"
+										@revoke="confirmAccessTokenRevoke(accessTokensQuery.items.value[index])"
+									/>
+								</template>
+							</mcp-oauth-row-list>
 
-			<el-tab-pane
-				name="refreshFamilies"
-				:label="t('mcpModule.oauthManagement.tabs.refreshFamilies')"
-				class="h-full overflow-hidden flex flex-col gap-2"
-			>
-				<el-card
-					shadow="never"
-					class="px-1 py-2 shrink-0"
-					body-class="p-0!"
-				>
-					<McpOAuthTabFilter
-						v-model:filters="refreshFamiliesQuery.filters.value"
-						:filters-active="refreshFamiliesQuery.filtersActive.value"
-						:search-placeholder="t('mcpModule.oauthManagement.searchPlaceholder')"
-						:status-options="[]"
-						test-id="mcp-oauth-refreshFamilies"
-						@reset-filters="refreshFamiliesQuery.resetFilter"
-					/>
-				</el-card>
-
-				<el-card
-					shadow="never"
-					body-class="p-0!"
-				>
-					<el-table
-						v-loading="loading"
-						:data="refreshFamiliesQuery.items.value"
-						:default-sort="sortDescriptor(refreshFamiliesQuery)"
-						row-key="id"
-						@sort-change="(change: { prop: string; order: string | null }) => onSortChange(refreshFamiliesQuery, change)"
-					>
-						<el-table-column
-							prop="clientName"
-							sortable="custom"
-							:sort-orders="['ascending', 'descending']"
-							:label="t('mcpModule.oauthManagement.columns.client')"
-							min-width="180"
-						/>
-						<el-table-column
-							prop="activeTokenCount"
-							sortable="custom"
-							:sort-orders="['ascending', 'descending']"
-							:label="t('mcpModule.oauthManagement.columns.activeTokens')"
-							width="140"
-						/>
-						<el-table-column
-							:label="t('mcpModule.oauthManagement.columns.expires')"
-							width="190"
-						>
-							<template #default="scope">{{ formatDate(scope.row.expiresAt) }}</template>
-						</el-table-column>
-						<el-table-column
-							fixed="right"
-							:label="t('mcpModule.oauthManagement.columns.actions')"
-							width="120"
-						>
-							<template #default="scope">
-								<el-button
-									size="small"
-									type="danger"
-									plain
-									@click="confirmRefreshFamilyRevoke(scope.row)"
+							<el-table
+								v-else
+								v-loading="loading && accessTokensQuery.items.value.length > 0"
+								:data="accessTokensQuery.items.value"
+								:default-sort="sortDescriptor(accessTokensQuery)"
+								row-key="id"
+								@sort-change="(change: { prop: string; order: string | null }) => onSortChange(accessTokensQuery, change)"
+							>
+								<el-table-column
+									prop="clientName"
+									sortable="custom"
+									:sort-orders="['ascending', 'descending']"
+									:label="t('mcpModule.oauthManagement.columns.client')"
+									min-width="170"
 								>
-									{{ t('mcpModule.actions.revoke') }}
-								</el-button>
-							</template>
-						</el-table-column>
-						<template #empty>
-							<mcp-table-empty
+									<template #default="scope">
+										<span class="text-card-title">{{ scope.row.clientName }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('mcpModule.oauthManagement.columns.scopes')"
+									min-width="220"
+								>
+									<template #default="scope">
+										<span class="text-body">{{ scopesLabel(scope.row.scopes) }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('mcpModule.oauthManagement.columns.expires')"
+									width="190"
+								>
+									<template #default="scope">
+										<span class="text-body">{{ formatDate(scope.row.expiresAt) }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									fixed="right"
+									width="64"
+									align="right"
+								>
+									<template #default="scope">
+										<mcp-oauth-row-actions
+											:name="scope.row.clientName"
+											@revoke="confirmAccessTokenRevoke(scope.row)"
+										/>
+									</template>
+								</el-table-column>
+								<template #empty>
+									<mcp-table-empty
+										icon="mdi:key-outline"
+										:loading="loading"
+										:failed="error !== null"
+										:filters-active="accessTokensQuery.filtersActive.value"
+										empty-label="mcpModule.oauthManagement.empty.accessTokens"
+										@retry="onRetry"
+										@reset-filters="accessTokensQuery.resetFilter"
+									/>
+								</template>
+							</el-table>
+						</mcp-oauth-tab>
+					</el-tab-pane>
+
+					<el-tab-pane name="refreshFamilies">
+						<template #label>
+							<span class="inline-flex items-center gap-2">
+								<icon icon="mdi:key-link" />
+								{{ t('mcpModule.oauthManagement.tabs.refreshFamilies') }}
+							</span>
+						</template>
+
+						<mcp-oauth-tab
+							v-model:filters="refreshFamiliesQuery.filters.value"
+							:status-options="[]"
+							test-id="mcp-oauth-refreshFamilies"
+							@reset-filters="refreshFamiliesQuery.resetFilter"
+						>
+							<mcp-oauth-row-list
+								v-if="isPhone"
+								:rows="refreshFamilyRows"
 								icon="mdi:key-link"
 								:loading="loading"
 								:failed="error !== null"
@@ -413,218 +442,256 @@
 								empty-label="mcpModule.oauthManagement.empty.refreshFamilies"
 								@retry="onRetry"
 								@reset-filters="refreshFamiliesQuery.resetFilter"
-							/>
-						</template>
-					</el-table>
-				</el-card>
-			</el-tab-pane>
-		</el-tabs>
-	</div>
-
-	<el-drawer
-		v-model="showClientDialog"
-		:show-close="false"
-		:with-header="false"
-		:size="isLGDevice ? '40%' : '100%'"
-		:before-close="onCloseClientForm"
-		data-test-id="mcp-oauth-client-form-drawer"
-		@closed="resetClientForm"
-	>
-		<app-bar-scope @close="onCloseClientForm()">
-			<view-header
-				:title="editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient')"
-				:subtitle="t('mcpModule.oauthManagement.clientFormSubtitle')"
-				icon="mdi:shield-key-outline"
-			/>
-
-			<el-scrollbar class="grow-1 p-2 md:px-4">
-				<el-form
-					ref="clientFormEl"
-					:model="clientForm"
-					:rules="clientRules"
-					label-position="top"
-				>
-					<el-form-item
-						:label="t('mcpModule.oauthManagement.name')"
-						prop="name"
-					>
-						<el-input
-							v-model="clientForm.name"
-							maxlength="100"
-						/>
-					</el-form-item>
-					<el-form-item
-						:label="t('mcpModule.oauthManagement.redirectUris')"
-						prop="redirectUris"
-					>
-						<div class="redirect-list">
-							<div
-								v-for="(_redirectUri, index) in clientForm.redirectUris"
-								:key="index"
-								class="redirect-row"
 							>
-								<el-input v-model="clientForm.redirectUris[index]" />
-								<el-button
-									:aria-label="t('mcpModule.actions.removeOrigin')"
-									:disabled="clientForm.redirectUris.length === 1"
-									@click="clientForm.redirectUris.splice(index, 1)"
+								<template #actions="{ index }">
+									<mcp-oauth-row-actions
+										:name="refreshFamiliesQuery.items.value[index].clientName"
+										@revoke="confirmRefreshFamilyRevoke(refreshFamiliesQuery.items.value[index])"
+									/>
+								</template>
+							</mcp-oauth-row-list>
+
+							<el-table
+								v-else
+								v-loading="loading && refreshFamiliesQuery.items.value.length > 0"
+								:data="refreshFamiliesQuery.items.value"
+								:default-sort="sortDescriptor(refreshFamiliesQuery)"
+								row-key="id"
+								@sort-change="(change: { prop: string; order: string | null }) => onSortChange(refreshFamiliesQuery, change)"
+							>
+								<el-table-column
+									prop="clientName"
+									sortable="custom"
+									:sort-orders="['ascending', 'descending']"
+									:label="t('mcpModule.oauthManagement.columns.client')"
+									min-width="180"
 								>
-									<icon icon="mdi:delete-outline" />
-								</el-button>
-							</div>
-							<el-button @click="clientForm.redirectUris.push('')">
-								<icon icon="mdi:plus" />
-								{{ t('mcpModule.oauthManagement.addRedirect') }}
-							</el-button>
-						</div>
-					</el-form-item>
-					<el-form-item
-						:label="t('mcpModule.oauthManagement.columns.scopes')"
-						prop="maximumScopes"
-					>
-						<el-checkbox-group v-model="clientForm.maximumScopes">
-							<el-checkbox
-								v-for="scope in scopeOptions"
-								:key="scope"
-								:value="scope"
-							>
-								{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
-							</el-checkbox>
-						</el-checkbox-group>
-					</el-form-item>
-					<el-alert
-						v-if="clientHasPhysicalScope"
-						type="warning"
-						:description="t('mcpModule.oauthManagement.physicalWarning')"
-						:closable="false"
-						show-icon
-					/>
-				</el-form>
-			</el-scrollbar>
-
-			<div
-				class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-				style="background-color: var(--el-drawer-bg-color)"
-			>
-				<div class="p-2">
-					<el-button
-						link
-						class="mr-2"
-						data-test-id="cancel-mcp-oauth-client-form"
-						@click="() => onCloseClientForm()"
-					>
-						{{ clientFormChanged ? t('mcpModule.actions.discard') : t('mcpModule.actions.close') }}
-					</el-button>
-
-					<el-button
-						type="primary"
-						:loading="saving"
-						:disabled="saving || !clientFormChanged"
-						data-test-id="save-mcp-oauth-client-form"
-						@click="saveClient"
-					>
-						{{ t('mcpModule.actions.save') }}
-					</el-button>
-				</div>
+									<template #default="scope">
+										<span class="text-card-title">{{ scope.row.clientName }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									prop="activeTokenCount"
+									sortable="custom"
+									:sort-orders="['ascending', 'descending']"
+									:label="t('mcpModule.oauthManagement.columns.activeTokens')"
+									width="150"
+								>
+									<template #default="scope">
+										<span class="text-body">{{ scope.row.activeTokenCount }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									:label="t('mcpModule.oauthManagement.columns.expires')"
+									width="190"
+								>
+									<template #default="scope">
+										<span class="text-body">{{ formatDate(scope.row.expiresAt) }}</span>
+									</template>
+								</el-table-column>
+								<el-table-column
+									fixed="right"
+									width="64"
+									align="right"
+								>
+									<template #default="scope">
+										<mcp-oauth-row-actions
+											:name="scope.row.clientName"
+											@revoke="confirmRefreshFamilyRevoke(scope.row)"
+										/>
+									</template>
+								</el-table-column>
+								<template #empty>
+									<mcp-table-empty
+										icon="mdi:key-link"
+										:loading="loading"
+										:failed="error !== null"
+										:filters-active="refreshFamiliesQuery.filtersActive.value"
+										empty-label="mcpModule.oauthManagement.empty.refreshFamilies"
+										@retry="onRetry"
+										@reset-filters="refreshFamiliesQuery.resetFilter"
+									/>
+								</template>
+							</el-table>
+						</mcp-oauth-tab>
+					</el-tab-pane>
+				</el-tabs>
 			</div>
-		</app-bar-scope>
-	</el-drawer>
 
-	<el-drawer
-		v-model="showGrantDialog"
-		:show-close="false"
-		:with-header="false"
-		:size="isLGDevice ? '40%' : '100%'"
-		:before-close="onCloseGrantForm"
-		data-test-id="mcp-oauth-grant-form-drawer"
-		@closed="resetGrantForm"
-	>
-		<app-bar-scope @close="onCloseGrantForm()">
-			<view-header
-				:title="t('mcpModule.oauthManagement.editGrant')"
-				:subtitle="t('mcpModule.oauthManagement.grantFormSubtitle')"
-				icon="mdi:shield-key-outline"
-			/>
+			<template #form>
+				<template v-if="showClientDialog">
+					<view-header
+						:title="editingClient ? t('mcpModule.oauthManagement.editClient') : t('mcpModule.oauthManagement.createClient')"
+						:subtitle="t('mcpModule.oauthManagement.clientFormSubtitle')"
+						:icon="editingClient ? 'mdi:pencil' : 'mdi:plus'"
+					/>
 
-			<el-scrollbar class="grow-1 p-2 md:px-4">
-				<el-form
-					ref="grantFormEl"
-					:model="grantForm"
-					:rules="grantRules"
-					label-position="top"
-				>
-					<el-form-item
-						:label="t('mcpModule.oauthManagement.columns.scopes')"
-						prop="approvedScopes"
-					>
-						<el-checkbox-group v-model="grantForm.approvedScopes">
-							<el-checkbox
-								v-for="scope in grantScopeOptions"
-								:key="scope"
-								:value="scope"
-								:disabled="scope === McpOAuthScope.OFFLINE_ACCESS"
+					<el-scrollbar class="grow-1 p-2 tp:px-4">
+						<el-form
+							ref="clientFormEl"
+							:model="clientForm"
+							:rules="clientRules"
+							label-position="top"
+							data-test-id="mcp-oauth-client-form"
+						>
+							<copy-field
+								v-if="editingClient"
+								:value="editingClient.clientIdentifier"
+								:label="t('mcpModule.oauthManagement.clientId')"
+								class="mb-[18px]"
+								data-test-id="mcp-oauth-client-id"
+							/>
+							<el-form-item
+								:label="t('mcpModule.oauthManagement.name')"
+								prop="name"
 							>
-								{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
-							</el-checkbox>
-						</el-checkbox-group>
-					</el-form-item>
-					<el-alert
-						v-if="grantHasPhysicalScope"
-						type="warning"
-						:description="t('mcpModule.oauthManagement.physicalWarning')"
-						:closable="false"
-						show-icon
-					/>
-					<el-alert
-						type="info"
-						:description="t('mcpModule.oauthManagement.grantReductionNotice')"
-						:closable="false"
-						show-icon
-					/>
-				</el-form>
-			</el-scrollbar>
+								<el-input
+									v-model="clientForm.name"
+									maxlength="100"
+								/>
+							</el-form-item>
+							<el-form-item
+								:label="t('mcpModule.oauthManagement.redirectUris')"
+								prop="redirectUris"
+							>
+								<div class="flex flex-col gap-2 w-full">
+									<div
+										v-for="(_redirectUri, index) in clientForm.redirectUris"
+										:key="index"
+										class="flex items-center gap-2"
+									>
+										<el-input v-model="clientForm.redirectUris[index]" />
+										<el-tooltip
+											:content="t('mcpModule.oauthManagement.removeRedirect')"
+											placement="top"
+										>
+											<el-button
+												:aria-label="t('mcpModule.oauthManagement.removeRedirect')"
+												:disabled="clientForm.redirectUris.length === 1"
+												text
+												circle
+												@click="clientForm.redirectUris.splice(index, 1)"
+											>
+												<template #icon>
+													<icon icon="mdi:delete-outline" />
+												</template>
+											</el-button>
+										</el-tooltip>
+									</div>
+									<div>
+										<el-button @click="clientForm.redirectUris.push('')">
+											<template #icon>
+												<icon icon="mdi:plus" />
+											</template>
+											{{ t('mcpModule.oauthManagement.addRedirect') }}
+										</el-button>
+									</div>
+								</div>
+							</el-form-item>
+							<el-form-item
+								:label="t('mcpModule.oauthManagement.columns.scopes')"
+								prop="maximumScopes"
+							>
+								<el-checkbox-group v-model="clientForm.maximumScopes">
+									<el-checkbox
+										v-for="scope in scopeOptions"
+										:key="scope"
+										:value="scope"
+									>
+										{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
+									</el-checkbox>
+								</el-checkbox-group>
+							</el-form-item>
+							<el-alert
+								v-if="clientHasPhysicalScope"
+								type="warning"
+								:description="t('mcpModule.oauthManagement.physicalWarning')"
+								:closable="false"
+								show-icon
+							/>
+						</el-form>
+					</el-scrollbar>
 
-			<div
-				class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-				style="background-color: var(--el-drawer-bg-color)"
-			>
-				<div class="p-2">
-					<el-button
-						link
-						class="mr-2"
-						data-test-id="cancel-mcp-oauth-grant-form"
-						@click="() => onCloseGrantForm()"
-					>
-						{{ grantFormChanged ? t('mcpModule.actions.discard') : t('mcpModule.actions.close') }}
-					</el-button>
+					<form-footer
+						:dirty="clientFormChanged"
+						:saving="saving"
+						:can-save="clientFormChanged && !saving"
+						@save="saveClient"
+						@discard="onCloseForm()"
+						@close="onCloseForm()"
+					/>
+				</template>
 
-					<el-button
-						type="primary"
-						:loading="saving"
-						:disabled="saving || !grantFormChanged"
-						data-test-id="save-mcp-oauth-grant-form"
-						@click="saveGrant"
-					>
-						{{ t('mcpModule.actions.save') }}
-					</el-button>
-				</div>
-			</div>
-		</app-bar-scope>
-	</el-drawer>
+				<template v-else-if="showGrantDialog">
+					<view-header
+						:title="t('mcpModule.oauthManagement.editGrant')"
+						:subtitle="t('mcpModule.oauthManagement.grantFormSubtitle')"
+						icon="mdi:pencil"
+					/>
+
+					<el-scrollbar class="grow-1 p-2 tp:px-4">
+						<el-form
+							ref="grantFormEl"
+							:model="grantForm"
+							:rules="grantRules"
+							label-position="top"
+							data-test-id="mcp-oauth-grant-form"
+						>
+							<el-form-item
+								:label="t('mcpModule.oauthManagement.columns.scopes')"
+								prop="approvedScopes"
+							>
+								<div class="flex flex-col gap-1 w-full">
+									<el-checkbox-group v-model="grantForm.approvedScopes">
+										<el-checkbox
+											v-for="scope in grantScopeOptions"
+											:key="scope"
+											:value="scope"
+											:disabled="scope === McpOAuthScope.OFFLINE_ACCESS"
+										>
+											{{ t(`mcpModule.oauthManagement.scope.${scope}`) }}
+										</el-checkbox>
+									</el-checkbox-group>
+									<span class="text-help">{{ t('mcpModule.oauthManagement.grantReductionNotice') }}</span>
+								</div>
+							</el-form-item>
+							<el-alert
+								v-if="grantHasPhysicalScope"
+								type="warning"
+								:description="t('mcpModule.oauthManagement.physicalWarning')"
+								:closable="false"
+								show-icon
+							/>
+						</el-form>
+					</el-scrollbar>
+
+					<form-footer
+						:dirty="grantFormChanged"
+						:saving="saving"
+						:can-save="grantFormChanged && !saving"
+						@save="saveGrant"
+						@discard="onCloseForm()"
+						@close="onCloseForm()"
+					/>
+				</template>
+			</template>
+		</edit-drawer-layout>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { type Ref, computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue';
+import { type Ref, computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
 import {
 	ElAlert,
 	ElButton,
-	ElCard,
 	ElCheckbox,
 	ElCheckboxGroup,
-	ElDrawer,
+	ElDropdown,
+	ElDropdownItem,
+	ElDropdownMenu,
 	ElForm,
 	ElFormItem,
 	ElInput,
@@ -634,7 +701,7 @@ import {
 	ElTable,
 	ElTableColumn,
 	ElTabs,
-	ElTag,
+	ElTooltip,
 	type FormInstance,
 	type FormRules,
 	vLoading,
@@ -643,8 +710,21 @@ import { isEqual } from 'lodash';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
-import McpOAuthTabFilter from '../components/mcp-oauth-tab-filter.vue';
+import {
+	CopyField,
+	EditDrawerLayout,
+	FormFooter,
+	StatusTag,
+	type StatusTagStatus,
+	ViewHeader,
+	provideEditDrawer,
+	useFlashMessage,
+	useSizeClass,
+} from '../../../common';
+import McpOauthRowActions from '../components/mcp-oauth-row-actions.vue';
+import type { McpOAuthRow } from '../components/mcp-oauth-row-list.types';
+import McpOauthRowList from '../components/mcp-oauth-row-list.vue';
+import McpOauthTab from '../components/mcp-oauth-tab.vue';
 import McpTableEmpty from '../components/mcp-table-empty.vue';
 import { useMcpOAuthManagement } from '../composables/useMcpOAuthManagement';
 import { useMcpOAuthTabQuery } from '../composables/useMcpOAuthTabQuery';
@@ -653,9 +733,9 @@ import type { IMcpOAuthAccessToken, IMcpOAuthClient, IMcpOAuthGrant, IMcpOAuthRe
 
 defineOptions({ name: 'ViewMcpOAuthManagement' });
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const flashMessage = useFlashMessage();
-const { isLGDevice } = useBreakpoints();
+const { isPhone } = useSizeClass();
 const {
 	clients,
 	grants,
@@ -719,16 +799,8 @@ const grantRules = reactive<FormRules>({
 	approvedScopes: [{ type: 'array', min: 1, required: true, message: t('mcpModule.oauthManagement.grantScopesRequired'), trigger: 'change' }],
 });
 
-const ScopeTags = defineComponent({
-	name: 'ScopeTags',
-	props: { scopes: { type: Array as () => McpOAuthScope[], required: true } },
-	setup: (props) => () =>
-		h(
-			'div',
-			{ class: 'scope-tags' },
-			props.scopes.map((scope) => h(ElTag, { key: scope, type: 'info', size: 'small' }, () => t(`mcpModule.oauthManagement.scope.${scope}`)))
-		),
-});
+// Scopes read as one line of text, like the capabilities on the clients page
+const scopesLabel = (scopes: McpOAuthScope[]): string => scopes.map((scope) => t(`mcpModule.oauthManagement.scope.${scope}`)).join(', ');
 
 type ClientSnapshot = { name: string; redirectUris: string[]; maximumScopes: McpOAuthScope[] };
 
@@ -753,39 +825,79 @@ const resetClientForm = (): void => {
 	initialClientForm.value = snapshotClientForm();
 };
 
+const formOpen = computed<boolean>((): boolean => showClientDialog.value || showGrantDialog.value);
+
+// The forms keep the layout they opened in, so a window crossing a size class does not remount them
+provideEditDrawer((): boolean => formOpen.value);
+
+// Resolves true when the open form may be replaced or closed: nothing was edited, or the user agreed to discard
+const confirmDiscard = async (): Promise<boolean> => {
+	const changed = (showClientDialog.value && clientFormChanged.value) || (showGrantDialog.value && grantFormChanged.value);
+
+	if (!changed) {
+		return true;
+	}
+
+	try {
+		await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
+			confirmButtonText: t('mcpModule.actions.yes'),
+			cancelButtonText: t('mcpModule.actions.no'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
+};
+
 /**
- * Shared by the footer action, the close button in the drawer's bar and the
- * drawer's own `before-close`, so no route out of the form skips the check.
- * `done` arrives only from `before-close`; withholding it keeps the drawer open.
+ * Shared by the footer, the close button in the form's bar and the drawer's own `before-close`, so no route out of
+ * the form skips the check. `done` arrives only from `before-close`; withholding it keeps the drawer open.
  */
-const onCloseClientForm = async (done?: () => void): Promise<void> => {
-	if (clientFormChanged.value) {
-		try {
-			await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
-				confirmButtonText: t('mcpModule.actions.yes'),
-				cancelButtonText: t('mcpModule.actions.no'),
-				type: 'warning',
-			});
-		} catch {
-			return;
-		}
+const onCloseForm = async (done?: () => void): Promise<void> => {
+	if (!(await confirmDiscard())) {
+		return;
 	}
 
 	showClientDialog.value = false;
+	showGrantDialog.value = false;
 
 	done?.();
 };
 
-const openCreate = (): void => {
+// On wide screens the form docks beside the list without a scrim, so the list stays usable while a form is open.
+// Opening another form replaces the open one, so it runs the same guard as closing it; and a save on its way closes the
+// form when it ends, which would close the one opened in its place, so nothing opens until it is done
+const mayReplaceForm = async (): Promise<boolean> => {
+	if (saving.value) {
+		return false;
+	}
+
+	return !formOpen.value || (await confirmDiscard());
+};
+
+const openCreate = async (): Promise<void> => {
+	if (!(await mayReplaceForm())) {
+		return;
+	}
+
+	showGrantDialog.value = false;
 	resetClientForm();
 	showClientDialog.value = true;
 };
 
-const openEdit = (client: IMcpOAuthClient): void => {
+const openEdit = async (client: IMcpOAuthClient): Promise<void> => {
+	if (!(await mayReplaceForm())) {
+		return;
+	}
+
+	showGrantDialog.value = false;
 	editingClient.value = client;
 	clientForm.name = client.name;
 	clientForm.redirectUris = [...client.redirectUris];
 	clientForm.maximumScopes = [...client.maximumScopes];
+	clientFormEl.value?.clearValidate();
 	initialClientForm.value = snapshotClientForm();
 	showClientDialog.value = true;
 };
@@ -794,36 +906,16 @@ const initialGrantForm = ref<McpOAuthScope[]>([...grantForm.approvedScopes]);
 
 const grantFormChanged = computed<boolean>((): boolean => !isEqual([...grantForm.approvedScopes], initialGrantForm.value));
 
-const resetGrantForm = (): void => {
-	editingGrant.value = null;
-	grantScopeOptions.value = [];
-	grantForm.approvedScopes = [McpOAuthScope.READ];
-	grantFormEl.value?.clearValidate();
-	initialGrantForm.value = [...grantForm.approvedScopes];
-};
-
-const onCloseGrantForm = async (done?: () => void): Promise<void> => {
-	if (grantFormChanged.value) {
-		try {
-			await ElMessageBox.confirm(t('mcpModule.confirm.discard'), t('mcpModule.headings.discard'), {
-				confirmButtonText: t('mcpModule.actions.yes'),
-				cancelButtonText: t('mcpModule.actions.no'),
-				type: 'warning',
-			});
-		} catch {
-			return;
-		}
+const openGrantEdit = async (grant: IMcpOAuthGrant): Promise<void> => {
+	if (!(await mayReplaceForm())) {
+		return;
 	}
 
-	showGrantDialog.value = false;
-
-	done?.();
-};
-
-const openGrantEdit = (grant: IMcpOAuthGrant): void => {
+	showClientDialog.value = false;
 	editingGrant.value = grant;
 	grantScopeOptions.value = [...grant.approvedScopes];
 	grantForm.approvedScopes = [...grant.approvedScopes];
+	grantFormEl.value?.clearValidate();
 	initialGrantForm.value = [...grantForm.approvedScopes];
 	showGrantDialog.value = true;
 };
@@ -914,6 +1006,15 @@ const confirmRefreshFamilyRevoke = (family: IMcpOAuthRefreshFamily): Promise<voi
 const confirmGlobalRevoke = (): Promise<void> =>
 	confirmRevoke(t('mcpModule.oauthManagement.confirm.all'), () => revokeAll(), 'mcpModule.oauthManagement.messages.allRevoked');
 
+type GrantStatusKey = 'active' | 'expired' | 'inactive' | 'revoked';
+
+const GRANT_STATUS_TAGS: Record<GrantStatusKey, StatusTagStatus> = {
+	active: 'ok',
+	inactive: 'warn',
+	expired: 'danger',
+	revoked: 'danger',
+};
+
 const grantStatus = (grant: IMcpOAuthGrant): { key: 'active' | 'expired' | 'inactive' | 'revoked'; type: 'success' | 'danger' | 'warning' } => {
 	if (grant.revokedAt) return { key: 'revoked', type: 'danger' };
 	if (new Date(grant.expiresAt).getTime() <= Date.now()) return { key: 'expired', type: 'danger' };
@@ -957,7 +1058,9 @@ const onSortChange = (
 	query.sortDir.value = order === null ? null : order === 'descending' ? 'desc' : 'asc';
 };
 
-const formatDate = (value: string): string => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+// In the language of the application
+const formatDate = (value: string): string =>
+	new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 const clientsQuery = useMcpOAuthTabQuery<IMcpOAuthClient>({
 	key: 'clients',
 	items: clients,
@@ -1028,48 +1131,39 @@ const clientStatusOptions = [
 	{ value: 'disabled', label: 'mcpModule.oauthManagement.status.disabled' },
 ];
 
+// The phone rows: a title, one caption line and the status, with the same actions as the tables
+const clientRows = computed<McpOAuthRow[]>(() =>
+	clientsQuery.items.value.map((client) => ({
+		id: client.id,
+		title: client.name,
+		caption: scopesLabel(client.maximumScopes),
+		status: {
+			status: client.enabled ? 'ok' : 'warn',
+			label: t(`mcpModule.oauthManagement.status.${client.enabled ? 'active' : 'disabled'}`),
+		},
+	}))
+);
+
+const grantRows = computed<McpOAuthRow[]>(() =>
+	grantsQuery.items.value.map((grant) => ({
+		id: grant.id,
+		title: grant.clientName,
+		caption: formatDate(grant.expiresAt),
+		status: { status: GRANT_STATUS_TAGS[grantStatus(grant).key], label: t(`mcpModule.oauthManagement.status.${grantStatus(grant).key}`) },
+	}))
+);
+
+const accessTokenRows = computed<McpOAuthRow[]>(() =>
+	accessTokensQuery.items.value.map((token) => ({ id: token.id, title: token.clientName, caption: formatDate(token.expiresAt) }))
+);
+
+const refreshFamilyRows = computed<McpOAuthRow[]>(() =>
+	refreshFamiliesQuery.items.value.map((family) => ({
+		id: family.id,
+		title: family.clientName,
+		caption: `${t('mcpModule.oauthManagement.columns.activeTokens')}: ${family.activeTokenCount} · ${formatDate(family.expiresAt)}`,
+	}))
+);
+
 onMounted(() => void fetchAll().catch(() => undefined));
 </script>
-
-<style scoped>
-.mcp-oauth-page {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: 16px;
-	margin: 16px;
-	min-width: 0;
-}
-
-.mcp-oauth-details {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	padding: 8px 32px;
-	word-break: break-all;
-}
-
-.redirect-list {
-	display: flex;
-	width: 100%;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.redirect-row {
-	display: flex;
-	gap: 8px;
-}
-
-:deep(.scope-tags) {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 4px;
-}
-
-@media (max-width: 767px) {
-	.mcp-oauth-page {
-		margin: 8px;
-	}
-}
-</style>

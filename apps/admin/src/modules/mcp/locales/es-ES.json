@@ -14,7 +14,6 @@
     "done": "Listo",
     "addOrigin": "Añadir origen",
     "removeOrigin": "Eliminar origen",
-    "copyEndpoint": "Copiar endpoint",
     "resetFilters": "Restablecer filtros",
     "add": "Añadir",
     "close": "Cerrar",
@@ -163,8 +162,6 @@
   "messages": {
     "configSaved": "La configuración de MCP se ha guardado.",
     "configSaveFailed": "No se pudo guardar la configuración de MCP.",
-    "endpointCopied": "Endpoint MCP copiado.",
-    "copyFailed": "No se pudo copiar el valor.",
     "capabilitiesOutsideCeiling": "Las capacidades del cliente deben respetar el límite de capacidades del módulo.",
     "loadFailed": "No se pudieron cargar los clientes MCP.",
     "created": "Cliente MCP creado.",
@@ -196,8 +193,7 @@
       "status": "Estado",
       "scopes": "Ámbitos",
       "expires": "Caduca",
-      "activeTokens": "Tokens activos",
-      "actions": "Acciones"
+      "activeTokens": "Tokens activos"
     },
     "empty": {
       "clients": "No se han preregistrado clientes OAuth.",
@@ -259,7 +255,8 @@
     },
     "clientFormSubtitle": "Registre las URI de redirección y el límite de permisos del cliente.",
     "grantFormSubtitle": "Reduzca los permisos que ya tiene esta concesión.",
-    "searchPlaceholder": "Buscar por nombre de cliente"
+    "searchPlaceholder": "Buscar por nombre de cliente",
+    "removeRedirect": "Quitar URI de redirección"
   },
   "headings": {
     "discard": "Descartar cambios"

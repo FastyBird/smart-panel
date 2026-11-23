@@ -22,7 +22,7 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('../../../common', () => ({
-	useFlashMessage: () => ({ success: vi.fn(), error: vi.fn() }),
+	CopyField: { name: 'CopyField', props: ['value', 'label'], template: '<div />' },
 }));
 
 vi.mock('../../config', async () => {

@@ -26,25 +26,15 @@
 			/>
 		</el-form-item>
 
-		<el-form-item :label="t('mcpModule.config.endpoint.title')">
-			<el-input
-				:model-value="endpointUrl"
-				readonly
-				name="endpoint"
-			>
-				<template #append>
-					<el-button
-						:aria-label="t('mcpModule.actions.copyEndpoint')"
-						@click="copyEndpoint"
-					>
-						<icon icon="mdi:content-copy" />
-					</el-button>
-				</template>
-			</el-input>
-			<div class="text-sm text-gray-500 mt-1">
-				{{ t('mcpModule.config.endpoint.description') }}
-			</div>
-		</el-form-item>
+		<!-- Spec section 4: the endpoint URL in copy-field -->
+		<div class="flex flex-col gap-1 mb-[18px]">
+			<copy-field
+				:value="endpointUrl"
+				:label="t('mcpModule.config.endpoint.title')"
+				data-test-id="mcp-config-endpoint"
+			/>
+			<span class="text-help">{{ t('mcpModule.config.endpoint.description') }}</span>
+		</div>
 
 		<el-divider />
 
@@ -76,7 +66,7 @@
 				<icon icon="mdi:cloud-lock-outline" />
 				{{ t('mcpModule.config.oauth.useRemoteAccessUrl') }}
 			</el-button>
-			<div class="text-sm text-gray-500 mt-1">
+			<div class="text-help mt-1">
 				{{ t('mcpModule.config.oauth.publicBaseUrlDescription') }}
 			</div>
 		</el-form-item>
@@ -91,7 +81,7 @@
 				name="oauthEnabled"
 				:disabled="!model.enabled"
 			/>
-			<div class="w-full text-sm text-gray-500 mt-1">
+			<div class="w-full text-help mt-1">
 				{{ t('mcpModule.config.oauth.enabledDescription') }}
 			</div>
 		</el-form-item>
@@ -114,7 +104,7 @@
 					>
 						{{ t(`mcpModule.capabilities.${capability}.title`) }}
 					</el-checkbox>
-					<div class="text-sm text-gray-500 ml-6">
+					<div class="text-help ml-6">
 						{{ t(`mcpModule.capabilities.${capability}.description`) }}
 					</div>
 				</div>
@@ -147,14 +137,21 @@
 						:placeholder="t('mcpModule.config.allowedOrigins.placeholder')"
 						:name="`allowedOrigin-${index}`"
 					/>
-					<el-button
-						type="danger"
-						plain
-						:aria-label="t('mcpModule.actions.removeOrigin')"
-						@click="removeOrigin(index)"
+					<el-tooltip
+						:content="t('mcpModule.actions.removeOrigin')"
+						placement="top"
 					>
-						<icon icon="mdi:delete-outline" />
-					</el-button>
+						<el-button
+							:aria-label="t('mcpModule.actions.removeOrigin')"
+							text
+							circle
+							@click="removeOrigin(index)"
+						>
+							<template #icon>
+								<icon icon="mdi:delete-outline" />
+							</template>
+						</el-button>
+					</el-tooltip>
 				</div>
 				<el-button
 					plain
@@ -165,7 +162,7 @@
 					{{ t('mcpModule.actions.addOrigin') }}
 				</el-button>
 			</div>
-			<div class="text-sm text-gray-500 mt-1">
+			<div class="text-help mt-1">
 				{{ t('mcpModule.config.allowedOrigins.description') }}
 			</div>
 		</el-form-item>
@@ -176,11 +173,23 @@
 import { computed, onMounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElDivider, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElCheckbox,
+	ElCheckboxGroup,
+	ElDivider,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElSwitch,
+	ElTooltip,
+	type FormRules,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useFlashMessage } from '../../../common';
+import { CopyField } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { useRemoteAccessUrls } from '../../remote-access';
 import { McpCapability } from '../mcp.constants';
@@ -207,7 +216,6 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const flashMessage = useFlashMessage();
 const endpointUrl = resolveMcpEndpoint(window.location);
 const capabilityOptions = Object.values(McpCapability);
 
@@ -248,15 +256,6 @@ const addOrigin = (): void => {
 
 const removeOrigin = (index: number): void => {
 	model.allowedOrigins.splice(index, 1);
-};
-
-const copyEndpoint = async (): Promise<void> => {
-	try {
-		await navigator.clipboard.writeText(endpointUrl);
-		flashMessage.success(t('mcpModule.messages.endpointCopied'));
-	} catch {
-		flashMessage.error(t('mcpModule.messages.copyFailed'));
-	}
 };
 
 // Offers the remote-access module's primary external URL as a one-click suggestion for the OAuth

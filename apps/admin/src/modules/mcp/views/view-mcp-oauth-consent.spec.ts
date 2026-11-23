@@ -31,7 +31,7 @@ vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('vue-meta', () => ({ useMeta: vi.fn() }));
 vi.mock('vue-router', () => ({ useRoute: () => ({ query: { interaction: 'interaction-id' } }) }));
 vi.mock('../../../common', () => ({
-	ViewHeader: { name: 'ViewHeader', template: '<header />' },
+	StateView: { name: 'StateView', props: ['kind', 'title', 'icon'], template: '<div>{{ title }}</div>' },
 }));
 vi.mock('../composables/useMcpOAuthInteraction', () => ({
 	useMcpOAuthInteraction: () => ({
@@ -70,7 +70,7 @@ describe('ViewMcpOAuthConsent', () => {
 					},
 					ElCheckbox: { template: '<label><slot /></label>' },
 					ElInputNumber: true,
-					ElButton: { template: '<button><slot /></button>' },
+					ElButton: { props: ['size'], template: '<button :size="size"><slot /></button>' },
 				},
 				directives: { loading: {} },
 			},
@@ -86,5 +86,11 @@ describe('ViewMcpOAuthConsent', () => {
 		expect(wrapper.text()).toContain('mcpModule.oauthConsent.offlineAccess');
 		expect(mocks.load).toHaveBeenCalledWith('interaction-id');
 		expect(wrapper.findComponent({ name: 'ElCheckboxGroup' }).props('modelValue')).toEqual([McpOAuthScope.READ, McpOAuthScope.OFFLINE_ACCESS]);
+
+		// Template 10: a standalone card with the brand mark and large buttons, no app header
+		expect(wrapper.find('[data-test-id="mcp-oauth-consent"]').exists()).toBe(true);
+		expect(wrapper.find('h1').text()).toBe('mcpModule.oauthConsent.title');
+		expect(wrapper.find('[data-test-id="mcp-oauth-consent-approve"]').attributes('size')).toBe('large');
+		expect(wrapper.find('[data-test-id="mcp-oauth-consent-deny"]').attributes('size')).toBe('large');
 	});
 });

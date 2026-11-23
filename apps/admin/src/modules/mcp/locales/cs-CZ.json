@@ -14,7 +14,6 @@
     "done": "Hotovo",
     "addOrigin": "Přidat zdroj",
     "removeOrigin": "Odebrat zdroj",
-    "copyEndpoint": "Kopírovat koncový bod",
     "resetFilters": "Zrušit filtry",
     "add": "Přidat",
     "close": "Zavřít",
@@ -163,8 +162,6 @@
   "messages": {
     "configSaved": "Konfigurace MCP byla uložena.",
     "configSaveFailed": "Konfiguraci MCP se nepodařilo uložit.",
-    "endpointCopied": "Koncový bod MCP byl zkopírován.",
-    "copyFailed": "Hodnotu se nepodařilo zkopírovat.",
     "capabilitiesOutsideCeiling": "Oprávnění klienta musí zůstat v rámci limitu oprávnění modulu.",
     "loadFailed": "Klienty MCP se nepodařilo načíst.",
     "created": "Klient MCP byl vytvořen.",
@@ -196,8 +193,7 @@
       "status": "Stav",
       "scopes": "Rozsahy",
       "expires": "Vyprší",
-      "activeTokens": "Aktivní tokeny",
-      "actions": "Akce"
+      "activeTokens": "Aktivní tokeny"
     },
     "empty": {
       "clients": "Nebyl předem zaregistrován žádný OAuth klient.",
@@ -259,7 +255,8 @@
     },
     "clientFormSubtitle": "Zadejte přesměrovací URI a strop oprávnění pro tohoto klienta.",
     "grantFormSubtitle": "Zužte oprávnění, která toto udělení již má.",
-    "searchPlaceholder": "Hledat podle názvu klienta"
+    "searchPlaceholder": "Hledat podle názvu klienta",
+    "removeRedirect": "Odebrat URI přesměrování"
   },
   "headings": {
     "discard": "Zahodit změny"

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { MCP_MODULE_NAME, RouteNames } from '../mcp.constants';
 
-import { ModuleRoutes } from './index';
+import { ModuleRoutes, ModuleStandaloneRoutes } from './index';
 
 describe('MCP routes', () => {
 	it('restricts client management to owners and administrators', () => {
@@ -35,10 +35,14 @@ describe('MCP routes', () => {
 		expect(route?.meta?.moduleFlag).toBe('oauthEnabled');
 	});
 
-	it('registers consent as a hidden owner/admin route', () => {
-		const route = ModuleRoutes.find(({ name }) => name === RouteNames.OAUTH_CONSENT);
+	it('registers consent as a standalone owner/admin route, outside the app shell', () => {
+		// Template 10: the screen someone coming from another app sees has no sidebar or header
+		expect(ModuleRoutes.find(({ name }) => name === RouteNames.OAUTH_CONSENT)).toBeUndefined();
 
-		expect(route?.path).toBe('mcp-oauth-consent');
+		const route = ModuleStandaloneRoutes.find(({ name }) => name === RouteNames.OAUTH_CONSENT);
+
+		// The authorization server redirects to this exact path, so it must not move
+		expect(route?.path).toBe('/mcp-oauth-consent');
 		expect(route?.meta?.menu).toBeUndefined();
 		expect(route?.meta?.guards).toEqual({
 			authenticated: true,

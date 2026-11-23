@@ -30,6 +30,8 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	// AR-14: remote access and its provider plugins
 	'src/modules/remote-access',
 	'src/plugins/remote-access-*',
+	// AR-15: the MCP clients, OAuth management and consent screens, and the MCP config form
+	'src/modules/mcp',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

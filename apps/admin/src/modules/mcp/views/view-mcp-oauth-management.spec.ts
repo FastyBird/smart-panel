@@ -43,11 +43,25 @@ const grant: IMcpOAuthGrant = {
 };
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+const editDrawerLayout = {
+	name: 'EditDrawerLayout',
+	props: { open: Boolean, beforeClose: Function, routeless: Boolean },
+	template: '<div><slot /><aside><slot name="form" /></aside></div>',
+};
+
 vi.mock('../../../common', () => ({
-	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon'], template: '<header><slot name="actions" /></header>' },
+	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon', 'actions'], template: '<header><slot name="actions" /></header>' },
+	CopyField: { name: 'CopyField', props: ['value', 'label'], template: '<div />' },
+	EditDrawerLayout: {
+		name: 'EditDrawerLayout',
+		props: { open: Boolean, beforeClose: Function, routeless: Boolean },
+		template: '<div><slot /><aside><slot name="form" /></aside></div>',
+	},
+	FormFooter: { name: 'FormFooter', props: ['dirty', 'saving', 'canSave'], template: '<footer />' },
+	StatusTag: { name: 'StatusTag', props: ['status', 'label'], template: '<span />' },
+	provideEditDrawer: () => ({}),
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
-	useBreakpoints: () => ({ isLGDevice: ref(true), isMDDevice: ref(true) }),
-	AppBarScope: { name: 'AppBarScope', template: '<div><slot /></div>' },
+	useSizeClass: () => ({ isPhone: ref(false) }),
 	useListQuery: () => ({
 		filters: ref({ search: undefined, status: 'all' }),
 		sort: ref([{ by: 'name', dir: 'asc' }]),
@@ -77,7 +91,7 @@ vi.mock('../composables/useMcpOAuthManagement', () => ({
 }));
 
 const formStubs = {
-	ElDrawer: { name: 'ElDrawer', props: ['beforeClose'], template: '<aside><slot /></aside>' },
+	EditDrawerLayout: editDrawerLayout,
 	ElScrollbar: { name: 'ElScrollbar', template: '<div><slot /></div>' },
 	ElText: { name: 'ElText', template: '<span><slot /></span>' },
 	ElButton: {
@@ -93,12 +107,15 @@ const formStubs = {
 	ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>' },
 	ElTabs: { name: 'ElTabs', template: '<div><slot /></div>' },
 	ElTabPane: { name: 'ElTabPane', template: '<div><slot /></div>' },
-	ElCard: { name: 'ElCard', template: '<section><slot /></section>' },
 	ElTable: { name: 'ElTable', props: ['defaultSort'], template: '<table><slot /><slot name="empty" /></table>' },
 	ElTableColumn: { name: 'ElTableColumn', template: '<td></td>' },
-	McpOAuthTabFilter: { name: 'McpOAuthTabFilter', props: ['statusOptions', 'filters', 'filtersActive'], template: '<div />' },
-	AppBarScope: { name: 'AppBarScope', template: '<div><slot /></div>' },
-	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon'], template: '<header><slot name="actions" /></header>' },
+	ElTooltip: { name: 'ElTooltip', template: '<div><slot /></div>' },
+	ElDropdown: { name: 'ElDropdown', emits: ['command'], template: '<div><slot /><slot name="dropdown" /></div>' },
+	ElDropdownMenu: { name: 'ElDropdownMenu', template: '<ul><slot /></ul>' },
+	ElDropdownItem: { name: 'ElDropdownItem', props: ['command'], template: '<li><slot /></li>' },
+	// Keyed by the name the view imports it under: `<mcp-oauth-tab>` resolves to `McpOauthTab`
+	McpOauthTab: { name: 'McpOAuthTab', props: ['statusOptions', 'filters', 'testId'], template: '<section><slot /></section>' },
+	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon', 'actions'], template: '<header><slot name="actions" /></header>' },
 };
 
 const mountForms = () => shallowMount(ViewMcpOAuthManagement, { global: { stubs: formStubs } });
@@ -142,7 +159,7 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 	it('gives every tab its own search and filter bar', () => {
 		const wrapper = mountForms();
 
-		const bars = wrapper.findAllComponents({ name: 'McpOAuthTabFilter' });
+		const bars = wrapper.findAllComponents({ name: 'McpOAuthTab' });
 
 		expect(bars).toHaveLength(4);
 
@@ -153,12 +170,20 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		expect(withStatus).toHaveLength(3);
 	});
 
-	it('puts the filter bar in its own card, separate from the table', () => {
+	it('builds every tab as one template 1 card holding its filter bar and table', () => {
 		const wrapper = mountForms();
 
-		// The other modules separate the two: filters in a slim card above, the
-		// table in its own below.
-		expect(wrapper.findAllComponents({ name: 'ElCard' }).length).toBeGreaterThanOrEqual(8);
+		for (const tab of wrapper.findAllComponents({ name: 'McpOAuthTab' })) {
+			expect(tab.findComponent({ name: 'ElTable' }).exists()).toBe(true);
+		}
+	});
+
+	it('keeps Revoke all in the header menu, as a destructive item', () => {
+		const wrapper = mountForms();
+		const item = wrapper.find('[data-test-id="revoke-all-mcp-oauth"]');
+
+		expect(item.exists()).toBe(true);
+		expect(item.classes()).toContain('text-danger!');
 	});
 
 	it('tells each table which column it is sorted by', () => {
@@ -212,16 +237,27 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		expect(create?.text()).toContain('mcpModule.actions.add');
 	});
 
-	it('gives both drawer headings a title and a subtitle row', () => {
+	it('opens one form at a time in the edit drawer, each with a title and a subtitle', async () => {
 		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as { openCreate: () => Promise<void>; openGrantEdit: (value: IMcpOAuthGrant) => Promise<void> };
+		const layout = wrapper.findComponent({ name: 'EditDrawerLayout' });
 
-		// After the page header: the client drawer's header, then the grant drawer's
-		const headings = wrapper.findAllComponents({ name: 'ViewHeader' }).slice(1);
+		expect(layout.props('routeless')).toBe(true);
+		expect(layout.props('open')).toBe(false);
 
-		expect(headings.map((heading) => [heading.props('title'), heading.props('subtitle')])).toEqual([
-			['mcpModule.oauthManagement.createClient', 'mcpModule.oauthManagement.clientFormSubtitle'],
-			['mcpModule.oauthManagement.editGrant', 'mcpModule.oauthManagement.grantFormSubtitle'],
-		]);
+		await vm.openCreate();
+		await nextTick();
+
+		expect(layout.props('open')).toBe(true);
+		expect(wrapper.findAllComponents({ name: 'ViewHeader' })[1].props('title')).toBe('mcpModule.oauthManagement.createClient');
+		expect(wrapper.findAllComponents({ name: 'ViewHeader' })[1].props('subtitle')).toBe('mcpModule.oauthManagement.clientFormSubtitle');
+
+		await vm.openGrantEdit(grant);
+		await nextTick();
+
+		expect(wrapper.findAllComponents({ name: 'ViewHeader' })).toHaveLength(2);
+		expect(wrapper.findAllComponents({ name: 'ViewHeader' })[1].props('title')).toBe('mcpModule.oauthManagement.editGrant');
+		expect(wrapper.findAllComponents({ name: 'ViewHeader' })[1].props('subtitle')).toBe('mcpModule.oauthManagement.grantFormSubtitle');
 	});
 
 	it.each([
@@ -231,22 +267,21 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		const wrapper = mountForms();
 		const vm = wrapper.vm as unknown as Record<string, unknown>;
 
-		(vm[opener] as (value?: unknown) => void)(grant);
+		await (vm[opener] as (value?: unknown) => Promise<void>)(grant);
 		await nextTick();
 
 		expect(vm[changedKey]).toBe(false);
 	});
 
-	it('guards the client drawer close event', async () => {
+	it('guards the drawer close event', async () => {
 		const wrapper = mountForms();
-		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string } };
+		const vm = wrapper.vm as unknown as { openCreate: () => Promise<void>; clientForm: { name: string } };
 
-		vm.openCreate();
+		await vm.openCreate();
 		vm.clientForm.name = 'Something';
 		await nextTick();
 
-		const drawer = wrapper.findComponent({ name: 'ElDrawer' });
-		const beforeClose = drawer.props('beforeClose') as (done: () => void) => Promise<void>;
+		const beforeClose = wrapper.findComponent({ name: 'EditDrawerLayout' }).props('beforeClose') as (done: () => void) => Promise<void>;
 		const done = vi.fn();
 
 		await beforeClose(done);
@@ -256,19 +291,49 @@ describe('ViewMcpOAuthManagement form conventions', () => {
 		expect(done).toHaveBeenCalledOnce();
 	});
 
-	it('offers close on an untouched client form and discard once it changed', async () => {
-		const wrapper = mountForms();
-		const vm = wrapper.vm as unknown as { openCreate: () => void; clientForm: { name: string } };
+	it('asks before the grant form replaces a changed client form, and keeps the edits when dismissed', async () => {
+		(ElMessageBox.confirm as Mock).mockRejectedValueOnce('cancel');
 
-		vm.openCreate();
+		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as {
+			openCreate: () => Promise<void>;
+			openGrantEdit: (value: IMcpOAuthGrant) => Promise<void>;
+			clientForm: { name: string };
+			showClientDialog: boolean;
+			showGrantDialog: boolean;
+		};
+
+		await vm.openCreate();
+		vm.clientForm.name = 'Unsaved';
 		await nextTick();
 
-		expect(wrapper.find('[data-test-id="cancel-mcp-oauth-client-form"]').text()).toContain('mcpModule.actions.close');
+		// The docked form leaves the tables usable, so a row's Edit lands here while the form is open
+		await vm.openGrantEdit(grant);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		expect(vm.showClientDialog).toBe(true);
+		expect(vm.showGrantDialog).toBe(false);
+		expect(vm.clientForm.name).toBe('Unsaved');
+	});
+
+	it('offers close on an untouched client form and discard once it changed', async () => {
+		const wrapper = mountForms();
+		const vm = wrapper.vm as unknown as { openCreate: () => Promise<void>; clientForm: { name: string } };
+
+		await vm.openCreate();
+		await nextTick();
+
+		const footer = wrapper.findComponent({ name: 'FormFooter' });
+
+		expect(footer.props('dirty')).toBe(false);
+		expect(footer.props('canSave')).toBe(false);
 
 		vm.clientForm.name = 'Something';
 		await nextTick();
 
-		expect(wrapper.find('[data-test-id="cancel-mcp-oauth-client-form"]').text()).toContain('mcpModule.actions.discard');
+		expect(footer.props('dirty')).toBe(true);
+		expect(footer.props('canSave')).toBe(true);
 	});
 });
 
@@ -322,12 +387,10 @@ describe('ViewMcpOAuthManagement', () => {
 		expect(vm.canRevokeGrant({ ...grant, active: false, expiresAt: '2020-01-01T00:00:00.000Z' })).toBe(false);
 	});
 
-	it('hosts the client and grant forms in drawers rather than dialogs', () => {
+	it('hosts the client and grant forms in the template 4 edit drawer, without a route of their own', () => {
 		const wrapper = shallowMount(ViewMcpOAuthManagement);
 
-		// Matches the rest of the admin, which edits records in a drawer.
-		expect(wrapper.find('[data-test-id="mcp-oauth-client-form-drawer"]').exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="mcp-oauth-grant-form-drawer"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'EditDrawerLayout' }).props('routeless')).toBe(true);
 	});
 
 	it('allows scope editing only while the grant is active', () => {
