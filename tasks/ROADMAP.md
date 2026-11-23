@@ -511,7 +511,7 @@ Protect epic, built on this epic's components.
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :construction: In Progress |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :clipboard: Planned |
 
-**Next up:** AR-14 part 2, the Cloudflare Tunnel and Tailscale setup wizards on `wizard-shell`; then AR-15 (MCP) and AR-16 (notifications).
+**Next up:** AR-15 (MCP) and AR-16 (notifications), once AR-14 part 2 (the setup wizards on `wizard-shell`) merges.
 
 ---
 

@@ -53,8 +53,6 @@
 		"setupFailed": "Failed to start the Cloudflare Tunnel setup job",
 		"tunnelRemoved": "The Cloudflare Tunnel has been removed",
 		"tunnelRemoveFailed": "Failed to remove the Cloudflare Tunnel",
-		"urlCopied": "URL has been copied to the clipboard",
-		"copyFailed": "Failed to copy the URL to the clipboard",
 		"commandCopied": "Command has been copied to the clipboard",
 		"commandCopyFailed": "Failed to copy the command to the clipboard",
 		"config": {

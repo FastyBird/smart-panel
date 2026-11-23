@@ -53,8 +53,6 @@
 		"setupFailed": "Nie udało się uruchomić zadania konfiguracji Cloudflare Tunnel",
 		"tunnelRemoved": "Cloudflare Tunnel został usunięty",
 		"tunnelRemoveFailed": "Nie udało się usunąć Cloudflare Tunnel",
-		"urlCopied": "Adres URL został skopiowany do schowka",
-		"copyFailed": "Nie udało się skopiować adresu URL do schowka",
 		"commandCopied": "Polecenie zostało skopiowane do schowka",
 		"commandCopyFailed": "Nie udało się skopiować polecenia do schowka",
 		"config": {

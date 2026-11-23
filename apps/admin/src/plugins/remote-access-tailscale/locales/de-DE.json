@@ -89,8 +89,6 @@
 		"signOutFailed": "Abmeldung von Tailscale fehlgeschlagen",
 		"preferencesReset": "Die Tailscale-Einstellungen wurden zurückgesetzt",
 		"preferencesResetFailed": "Zurücksetzen der Tailscale-Einstellungen fehlgeschlagen",
-		"urlCopied": "URL wurde in die Zwischenablage kopiert",
-		"copyFailed": "Kopieren der URL in die Zwischenablage fehlgeschlagen",
 		"commandCopied": "Der Befehl wurde in die Zwischenablage kopiert",
 		"commandCopyFailed": "Kopieren des Befehls in die Zwischenablage fehlgeschlagen",
 		"config": {
@@ -155,7 +153,6 @@
 			"getSignInLink": "Anmeldelink anfordern",
 			"signIn": "Anmelden",
 			"saveAndContinue": "Speichern und fortfahren",
-			"skip": "Überspringen",
 			"close": "Schließen",
 			"copy": "Kopieren",
 			"recheck": "Erneut prüfen",

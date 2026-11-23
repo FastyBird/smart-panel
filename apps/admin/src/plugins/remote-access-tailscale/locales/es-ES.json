@@ -89,8 +89,6 @@
 		"signOutFailed": "No se pudo cerrar la sesión de Tailscale",
 		"preferencesReset": "Las preferencias de Tailscale se han restablecido",
 		"preferencesResetFailed": "No se pudieron restablecer las preferencias de Tailscale",
-		"urlCopied": "La URL se ha copiado al portapapeles",
-		"copyFailed": "No se pudo copiar la URL al portapapeles",
 		"commandCopied": "El comando se ha copiado al portapapeles",
 		"commandCopyFailed": "No se pudo copiar el comando al portapapeles",
 		"config": {
@@ -155,7 +153,6 @@
 			"getSignInLink": "Obtener enlace de inicio de sesión",
 			"signIn": "Iniciar sesión",
 			"saveAndContinue": "Guardar y continuar",
-			"skip": "Omitir",
 			"close": "Cerrar",
 			"copy": "Copiar",
 			"recheck": "Volver a comprobar",

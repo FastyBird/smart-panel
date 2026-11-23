@@ -53,8 +53,6 @@
 		"setupFailed": "Nepodarilo sa spustiť úlohu nastavenia Cloudflare Tunnel",
 		"tunnelRemoved": "Cloudflare Tunnel bol odstránený",
 		"tunnelRemoveFailed": "Odstránenie Cloudflare Tunnel zlyhalo",
-		"urlCopied": "Adresa URL bola skopírovaná do schránky",
-		"copyFailed": "Skopírovanie adresy URL do schránky zlyhalo",
 		"commandCopied": "Príkaz bol skopírovaný do schránky",
 		"commandCopyFailed": "Skopírovanie príkazu do schránky zlyhalo",
 		"config": {
