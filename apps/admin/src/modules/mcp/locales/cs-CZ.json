@@ -21,7 +21,8 @@
     "discard": "Zahodit",
     "yes": "Ano",
     "no": "Ne",
-    "retry": "Zkusit znovu"
+    "retry": "Zkusit znovu",
+    "more": "Další"
   },
   "capabilities": {
     "read": {
@@ -82,8 +83,7 @@
       "status": "Stav",
       "capabilities": "Oprávnění",
       "expires": "Platnost do",
-      "lastUsed": "Naposledy použito",
-      "actions": "Akce"
+      "lastUsed": "Naposledy použito"
     },
     "empty": "Dosud nebyli vytvořeni žádní klienti MCP.",
     "none": "Žádné",
@@ -92,7 +92,11 @@
     "loading": "Načítání MCP klientů…",
     "noFilteredResults": "Žádný MCP klient neodpovídá zvoleným filtrům.",
     "searchPlaceholder": "Hledat podle názvu nebo popisu",
-    "filterAll": "Vše"
+    "filterAll": "Vše",
+    "enabledFilter": {
+      "enabled": "Povoleno",
+      "disabled": "Zakázáno"
+    }
   },
   "clientForm": {
     "createTitle": "Vytvořit klienta MCP",
@@ -115,8 +119,7 @@
     "title": "Nyní zkopírujte přihlašovací údaje MCP",
     "warningTitle": "Zobrazí se pouze jednou",
     "warningDescription": "Uložte přihlašovací údaje klienta {name} do bezpečného správce hesel. Po zavření tohoto dialogu je již nelze načíst.",
-    "copy": "Kopírovat přihlašovací údaje",
-    "copied": "Zkopírováno"
+    "label": "Přihlašovací údaje"
   },
   "status": {
     "active": "Aktivní",
@@ -129,7 +132,9 @@
     "delete": "Smazat klienta {name}? Jeho přihlašovací údaje budou odvolány a záznam klienta nebude možné obnovit.",
     "bulkRevoke": "Odvolat pověření pro {count} vybraných klientů?",
     "bulkDelete": "Smazat {count} vybraných klientů?",
-    "discard": "Zahodit neuložené změny?"
+    "discard": "Zahodit neuložené změny?",
+    "bulkRevokeButton": "Odvolat {count} klientů",
+    "bulkDeleteButton": "Smazat {count} klientů"
   },
   "oauthConsent": {
     "title": "Povolit přístup MCP",
@@ -258,5 +263,9 @@
   },
   "headings": {
     "discard": "Zahodit změny"
+  },
+  "aria": {
+    "edit": "Upravit {name}",
+    "more": "Další akce pro {name}"
   }
 }

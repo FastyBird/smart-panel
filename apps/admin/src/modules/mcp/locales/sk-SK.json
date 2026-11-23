@@ -21,7 +21,8 @@
     "discard": "Zahodiť",
     "yes": "Áno",
     "no": "Nie",
-    "retry": "Skúsiť znova"
+    "retry": "Skúsiť znova",
+    "more": "Viac"
   },
   "capabilities": {
     "read": {
@@ -82,8 +83,7 @@
       "status": "Stav",
       "capabilities": "Oprávnenia",
       "expires": "Platnosť do",
-      "lastUsed": "Naposledy použité",
-      "actions": "Akcie"
+      "lastUsed": "Naposledy použité"
     },
     "empty": "Zatiaľ neboli vytvorení žiadni klienti MCP.",
     "none": "Žiadne",
@@ -92,7 +92,11 @@
     "loading": "Načítavanie MCP klientov…",
     "noFilteredResults": "Žiadny MCP klient nezodpovedá zvoleným filtrom.",
     "searchPlaceholder": "Hľadať podľa názvu alebo popisu",
-    "filterAll": "Všetko"
+    "filterAll": "Všetko",
+    "enabledFilter": {
+      "enabled": "Povolené",
+      "disabled": "Zakázané"
+    }
   },
   "clientForm": {
     "createTitle": "Vytvoriť klienta MCP",
@@ -115,8 +119,7 @@
     "title": "Teraz skopírujte prihlasovacie údaje MCP",
     "warningTitle": "Zobrazia sa iba raz",
     "warningDescription": "Uložte prihlasovacie údaje klienta {name} do bezpečného správcu hesiel. Po zatvorení tohto dialógu ich už nemožno získať.",
-    "copy": "Kopírovať prihlasovacie údaje",
-    "copied": "Skopírované"
+    "label": "Prihlasovacie údaje"
   },
   "status": {
     "active": "Aktívny",
@@ -129,7 +132,9 @@
     "delete": "Odstrániť klienta {name}? Jeho prihlasovacie údaje budú odvolané a záznam klienta nebude možné obnoviť.",
     "bulkRevoke": "Odvolať poverenia pre {count} vybraných klientov?",
     "bulkDelete": "Odstrániť {count} vybraných klientov?",
-    "discard": "Zahodiť neuložené zmeny?"
+    "discard": "Zahodiť neuložené zmeny?",
+    "bulkRevokeButton": "Odvolať {count} klientov",
+    "bulkDeleteButton": "Odstrániť {count} klientov"
   },
   "oauthConsent": {
     "title": "Povoliť prístup MCP",
@@ -258,5 +263,9 @@
   },
   "headings": {
     "discard": "Zahodiť zmeny"
+  },
+  "aria": {
+    "edit": "Upraviť {name}",
+    "more": "Ďalšie akcie pre {name}"
   }
 }

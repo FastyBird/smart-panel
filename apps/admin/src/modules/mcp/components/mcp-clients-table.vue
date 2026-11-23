@@ -1,6 +1,7 @@
 <template>
 	<el-table
-		v-loading="props.loading"
+		ref="tableEl"
+		v-loading="props.loading && props.items.length > 0"
 		:element-loading-text="t('mcpModule.clients.loading')"
 		:data="props.items"
 		:default-sort="
@@ -18,96 +19,36 @@
 		@row-click="onRowClick"
 	>
 		<template #empty>
-			<div
-				v-if="props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:robot-outline" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:database-refresh" />
-							</template>
-						</icon-with-child>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="props.filtersActive"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:robot-outline" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-remove" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('mcpModule.clients.noFilteredResults') }}
-					</template>
-
-					<template #extra>
-						<el-button
-							plain
-							@click="emit('reset-filters')"
-						>
-							{{ t('mcpModule.actions.resetFilters') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:robot-outline" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('mcpModule.clients.empty') }}
-					</template>
-				</el-result>
-			</div>
+			<mcp-clients-empty
+				:loading="props.loading"
+				:load-failed="props.loadFailed"
+				:filters-active="props.filtersActive"
+				@reset-filters="emit('reset-filters')"
+				@retry="emit('retry')"
+			/>
 		</template>
 
 		<el-table-column
-			v-if="isMDDevice"
 			type="selection"
-			fixed
-			:width="30"
+			fixed="left"
+			:width="40"
 		/>
 
 		<el-table-column
-			:width="60"
+			:width="56"
 			align="center"
 		>
 			<template #default>
-				<el-avatar :size="32">
+				<span
+					class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-fill-light text-regular"
+					aria-hidden="true"
+				>
 					<icon
-						icon="mdi:robot-outline"
-						class="w[20px] h[20px]"
+						:icon="MCP_CLIENT_ICON"
+						width="20"
+						height="20"
 					/>
-				</el-avatar>
+				</span>
 			</template>
 		</el-table-column>
 
@@ -119,13 +60,10 @@
 			:min-width="200"
 		>
 			<template #default="scope">
-				<div class="font-600">{{ scope.row.name }}</div>
-				<el-text
-					size="small"
-					truncated
-				>
+				<span class="block text-card-title truncate">{{ scope.row.name }}</span>
+				<span class="block text-help truncate">
 					{{ scope.row.description || t('mcpModule.clients.noDescription') }}
-				</el-text>
+				</span>
 			</template>
 		</el-table-column>
 
@@ -137,32 +75,25 @@
 			:width="130"
 		>
 			<template #default="scope">
-				<el-tag :type="statusType(scope.row)">
-					{{ t(`mcpModule.status.${resolveMcpClientStatus(scope.row)}`) }}
-				</el-tag>
+				<status-tag
+					:status="MCP_CLIENT_STATUS_TAGS[resolveMcpClientStatus(scope.row)]"
+					:label="t(`mcpModule.status.${resolveMcpClientStatus(scope.row)}`)"
+					data-test-id="mcp-client-status"
+				/>
 			</template>
 		</el-table-column>
 
 		<el-table-column
 			:label="t('mcpModule.clients.columns.capabilities')"
-			:min-width="180"
+			:min-width="160"
 		>
 			<template #default="scope">
-				<div class="flex flex-wrap gap-1">
-					<el-tag
-						v-for="capability in scope.row.capabilities"
-						:key="capability"
-						type="info"
-					>
-						{{ t(`mcpModule.capabilities.${capability}.title`) }}
-					</el-tag>
-					<span v-if="scope.row.capabilities.length === 0">{{ t('mcpModule.clients.none') }}</span>
-				</div>
+				<span class="text-body">{{ capabilitiesLabel(scope.row) }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			v-if="isMDDevice"
+			v-if="!isTabletPortrait"
 			:label="t('mcpModule.clients.columns.expires')"
 			prop="expires"
 			sortable="custom"
@@ -170,12 +101,12 @@
 			:width="180"
 		>
 			<template #default="scope">
-				{{ formatNullableDate(scope.row.credentialExpiresAt) }}
+				<span class="text-body">{{ formatNullableDate(scope.row.credentialExpiresAt) }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			v-if="isMDDevice"
+			v-if="!isTabletPortrait"
 			:label="t('mcpModule.clients.columns.lastUsed')"
 			prop="lastUsed"
 			sortable="custom"
@@ -183,49 +114,53 @@
 			:width="180"
 		>
 			<template #default="scope">
-				{{ formatNullableDate(scope.row.lastUsedAt) }}
+				<span class="text-body">{{ formatNullableDate(scope.row.lastUsedAt) }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			:width="320"
+			:width="96"
 			align="right"
 			fixed="right"
 		>
 			<template #default="scope">
-				<div @click.stop>
-					<mcp-client-actions
-						:client="scope.row"
-						@edit="emit('edit', $event)"
-						@rotate="emit('rotate', $event)"
-						@revoke="emit('revoke', $event)"
-						@delete="emit('delete', $event)"
-					/>
-				</div>
+				<mcp-client-actions
+					:client="scope.row"
+					@edit="emit('edit', $event)"
+					@rotate="emit('rotate', $event)"
+					@revoke="emit('revoke', $event)"
+					@delete="emit('delete', $event)"
+				/>
 			</template>
 		</el-table-column>
 	</el-table>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElTable, ElTableColumn, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild, useBreakpoints } from '../../../common';
-import { resolveMcpClientStatus } from '../mcp.utils';
+import { StatusTag, useSizeClass } from '../../../common';
+import { MCP_CLIENT_ICON } from '../mcp.constants';
+import { MCP_CLIENT_STATUS_TAGS, resolveMcpClientStatus } from '../mcp.utils';
 import type { IMcpClient } from '../schemas/client.types';
 
 import McpClientActions from './mcp-client-actions.vue';
+import McpClientsEmpty from './mcp-clients-empty.vue';
 import type { IMcpClientsTableProps } from './mcp-clients-table.types';
 
 defineOptions({
 	name: 'McpClientsTable',
 });
 
-const props = defineProps<IMcpClientsTableProps>();
+const props = withDefaults(defineProps<IMcpClientsTableProps>(), {
+	loadFailed: false,
+	tableHeight: undefined,
+});
 
 const emit = defineEmits<{
 	(e: 'edit', client: IMcpClient): void;
@@ -233,29 +168,26 @@ const emit = defineEmits<{
 	(e: 'revoke', client: IMcpClient): void;
 	(e: 'delete', client: IMcpClient): void;
 	(e: 'reset-filters'): void;
+	(e: 'retry'): void;
 	(e: 'selected-changes', selected: IMcpClient[]): void;
 	(e: 'update:sort-by', by: IMcpClientsTableProps['sortBy']): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+const { isTabletPortrait } = useSizeClass();
 
-const statusType = (client: IMcpClient): 'success' | 'warning' | 'danger' => {
-	switch (resolveMcpClientStatus(client)) {
-		case 'revoked':
-		case 'expired':
-			return 'danger';
-		case 'disabled':
-			return 'warning';
-		default:
-			return 'success';
-	}
-};
+const tableEl = ref<InstanceType<typeof ElTable> | null>(null);
 
+const capabilitiesLabel = (client: IMcpClient): string =>
+	client.capabilities.length === 0
+		? t('mcpModule.clients.none')
+		: client.capabilities.map((capability) => t(`mcpModule.capabilities.${capability}.title`)).join(', ');
+
+// In the language of the application
 const formatNullableDate = (value: string | null): string =>
-	value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : t('mcpModule.clients.never');
+	value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : t('mcpModule.clients.never');
 
 const onSortData = ({ prop, order }: { prop: IMcpClientsTableProps['sortBy']; order: 'ascending' | 'descending' | null }): void => {
 	emit('update:sort-by', prop);
@@ -269,4 +201,11 @@ const onSelectionChange = (selected: IMcpClient[]): void => {
 const onRowClick = (row: IMcpClient): void => {
 	emit('edit', row);
 };
+
+// The filter bar's Clear selection
+const clearSelection = (): void => {
+	tableEl.value?.clearSelection();
+};
+
+defineExpose({ clearSelection });
 </script>

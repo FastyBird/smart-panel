@@ -42,9 +42,17 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('../../../common', () => ({
-	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon'], template: '<header><slot name="actions" /></header>' },
+	ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon', 'actions'], template: '<header><slot name="actions" /></header>' },
+	CopyField: { name: 'CopyField', props: ['value', 'label'], template: '<div />' },
+	// Renders the list and the form side by side, so both can be asserted on
+	EditDrawerLayout: {
+		name: 'EditDrawerLayout',
+		props: { open: Boolean, beforeClose: Function, routeless: Boolean },
+		template: '<div><slot /><aside><slot name="form" /></aside></div>',
+	},
+	FormFooter: { name: 'FormFooter', props: ['dirty', 'saving', 'canSave', 'saveLabel'], template: '<footer />' },
+	provideEditDrawer: () => ({}),
 	useFlashMessage: () => ({ success: mocks.flashSuccess, error: mocks.flashError }),
-	useBreakpoints: () => ({ isLGDevice: ref(true), isMDDevice: ref(true) }),
 	useListQuery: () => ({
 		filters: ref({ search: undefined, status: 'all', enabled: 'all', capabilities: [] }),
 		sort: ref([{ by: 'name', dir: 'asc' }]),
@@ -52,7 +60,6 @@ vi.mock('../../../common', () => ({
 		viewMode: ref('table'),
 		reset: vi.fn(),
 	}),
-	AppBarScope: { name: 'AppBarScope', template: '<div><slot /></div>' },
 }));
 
 vi.mock('../../config/composables/useConfigModule', () => ({
@@ -80,9 +87,6 @@ const mountView = () =>
 	shallowMount(ViewMcpClients, {
 		global: {
 			stubs: {
-				ElCard: { name: 'ElCard', template: '<section><slot name="header" /><slot /></section>' },
-				// Render the drawer body so its contents can be asserted on.
-				ElDrawer: { name: 'ElDrawer', props: ['beforeClose'], template: '<aside><slot /></aside>' },
 				ElScrollbar: { name: 'ElScrollbar', template: '<div><slot /></div>' },
 				// Rendered so button labels can be asserted on.
 				ElButton: {
@@ -93,7 +97,6 @@ const mountView = () =>
 					template: '<button :disabled="disabled"><slot name="icon" /><slot /></button>',
 				},
 				ElText: { name: 'ElText', template: '<span><slot /></span>' },
-				AppBarScope: { name: 'AppBarScope', template: '<div><slot /></div>' },
 				ElForm: {
 					name: 'ElForm',
 					template: '<form><slot /></form>',
@@ -103,9 +106,13 @@ const mountView = () =>
 					},
 				},
 				ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>' },
-				// shallowMount would otherwise auto-stub this away and drop the
-				// header actions rendered into its `extra` slot.
-				ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon'], template: '<header><slot name="actions" /></header>' },
+				// shallowMount would otherwise auto-stub these away and drop their slots
+				ViewHeader: { name: 'ViewHeader', props: ['title', 'subtitle', 'icon', 'actions'], template: '<header><slot name="actions" /></header>' },
+				EditDrawerLayout: {
+					name: 'EditDrawerLayout',
+					props: { open: Boolean, beforeClose: Function, routeless: Boolean },
+					template: '<div><slot /><aside><slot name="form" /></aside></div>',
+				},
 			},
 		},
 	});
@@ -140,22 +147,41 @@ describe('ViewMcpClients', () => {
 		expect(create?.props('plain')).toBe(true);
 	});
 
-	it('hosts the client form in a drawer rather than a dialog', () => {
+	it('hosts the client form in the template 4 edit drawer, without a route of its own', async () => {
 		const wrapper = mountView();
+		const layout = wrapper.findComponent({ name: 'EditDrawerLayout' });
 
-		// The admin edits records in a drawer (see the devices module); MCP was
-		// the only place presenting an add/edit form as a modal dialog.
-		expect(wrapper.find('[data-test-id="mcp-client-form-drawer"]').exists()).toBe(true);
+		expect(layout.props('routeless')).toBe(true);
+		expect(layout.props('open')).toBe(false);
+
+		(wrapper.vm as unknown as { openCreate: () => void }).openCreate();
+		await nextTick();
+
+		expect(layout.props('open')).toBe(true);
 	});
 
-	it('presents the capability ceiling hint as an alert', () => {
+	it('shows the endpoint in a copy field', () => {
+		const wrapper = mountView();
+		const field = wrapper.findAllComponents({ name: 'CopyField' }).find((candidate) => candidate.attributes('data-test-id') === 'mcp-endpoint-url');
+
+		expect(field?.props('value')).toBe(`${window.location.origin}/api/v1/modules/mcp`);
+		expect(field?.props('label')).toBe('mcpModule.config.endpoint.title');
+	});
+
+	it('gives the capability ceiling as help text under the checkboxes', () => {
 		const wrapper = mountView();
 
 		const hint = wrapper.find('[data-test-id="mcp-client-capability-ceiling-hint"]');
 
 		expect(hint.exists()).toBe(true);
-		// Guidance in this module is carried by el-alert, not loose grey text.
-		expect(hint.element.tagName.toLowerCase()).toContain('alert');
+		expect(hint.classes()).toContain('text-help');
+	});
+
+	it('offers search and add in the phone app bar', () => {
+		const wrapper = mountView();
+		const actions = wrapper.findAllComponents({ name: 'ViewHeader' })[0].props('actions') as { icon: string }[];
+
+		expect(actions.map((action) => action.icon)).toEqual(['mdi:magnify', 'mdi:plus']);
 	});
 
 	it('confirms once for a bulk revoke rather than per selected client', async () => {
@@ -167,6 +193,8 @@ describe('ViewMcpClients', () => {
 		await flushPromises();
 
 		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		// The confirm button repeats the verb and the object (spec section 4)
+		expect((ElMessageBox.confirm as Mock).mock.calls[0][2]).toMatchObject({ confirmButtonText: 'mcpModule.confirm.bulkRevokeButton' });
 		expect(mocks.revokeClient).toHaveBeenCalledTimes(2);
 	});
 
@@ -239,12 +267,17 @@ describe('ViewMcpClients', () => {
 		vm.openCreate();
 		await nextTick();
 
-		expect(wrapper.find('[data-test-id="cancel-mcp-client-form"]').text()).toContain('mcpModule.actions.close');
+		const footer = wrapper.findComponent({ name: 'FormFooter' });
+
+		expect(footer.props('dirty')).toBe(false);
+		expect(footer.props('canSave')).toBe(false);
+		expect(footer.props('saveLabel')).toBe('mcpModule.actions.create');
 
 		vm.clientForm.name = 'Something';
 		await nextTick();
 
-		expect(wrapper.find('[data-test-id="cancel-mcp-client-form"]').text()).toContain('mcpModule.actions.discard');
+		expect(footer.props('dirty')).toBe(true);
+		expect(footer.props('canSave')).toBe(true);
 	});
 
 	it('asks to confirm before discarding a changed form', async () => {
@@ -285,7 +318,7 @@ describe('ViewMcpClients', () => {
 		// Closing via the drawer itself — overlay click, escape, its own close
 		// button — must run the same guard as the footer action, otherwise the
 		// edits vanish without a word.
-		const drawer = wrapper.findComponent({ name: 'ElDrawer' });
+		const drawer = wrapper.findComponent({ name: 'EditDrawerLayout' });
 		const beforeClose = drawer.props('beforeClose') as (done: () => void) => Promise<void>;
 
 		expect(typeof beforeClose).toBe('function');
@@ -308,7 +341,7 @@ describe('ViewMcpClients', () => {
 		vm.clientForm.name = 'Something';
 		await nextTick();
 
-		const drawer = wrapper.findComponent({ name: 'ElDrawer' });
+		const drawer = wrapper.findComponent({ name: 'EditDrawerLayout' });
 		const beforeClose = drawer.props('beforeClose') as (done: () => void) => Promise<void>;
 
 		const done = vi.fn();
@@ -316,6 +349,88 @@ describe('ViewMcpClients', () => {
 		await flushPromises();
 
 		expect(done).not.toHaveBeenCalled();
+	});
+
+	it('asks before another client replaces a changed form, and keeps the edits when dismissed', async () => {
+		(ElMessageBox.confirm as Mock).mockRejectedValueOnce('cancel');
+
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as {
+			openCreate: () => Promise<void>;
+			openEdit: (client: IMcpClient) => Promise<void>;
+			clientForm: { name: string };
+			clientFormChanged: boolean;
+		};
+
+		await vm.openCreate();
+		vm.clientForm.name = 'Unsaved';
+		await nextTick();
+
+		// The docked form leaves the list usable, so a row click lands here while the form is open
+		wrapper.findComponent({ name: 'ListMcpClients' }).vm.$emit('edit', client);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledOnce();
+		expect(vm.clientForm.name).toBe('Unsaved');
+		expect(vm.clientFormChanged).toBe(true);
+
+		await vm.openEdit(client);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledTimes(2);
+		expect(vm.clientForm.name).toBe(client.name);
+		expect(vm.clientFormChanged).toBe(false);
+	});
+
+	it('keeps the form while its save is on the way', async () => {
+		let resolveCreate!: (value: unknown) => void;
+		mocks.createClient.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveCreate = resolve;
+				})
+		);
+
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as {
+			openCreate: () => Promise<void>;
+			openEdit: (client: IMcpClient) => Promise<void>;
+			saveClient: () => Promise<void>;
+			clientForm: { name: string };
+		};
+
+		await vm.openCreate();
+		vm.clientForm.name = 'New agent';
+		await nextTick();
+
+		const saving = vm.saveClient();
+		await flushPromises();
+
+		// The save ends by closing the form, so a form opened in its place would close with it
+		await vm.openEdit(client);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+		expect(vm.clientForm.name).toBe('New agent');
+
+		resolveCreate({ token: 'secret', client: { ...client, name: 'New agent' } });
+		await saving;
+	});
+
+	it('opens another client without asking when the form is untouched', async () => {
+		const wrapper = mountView();
+		const vm = wrapper.vm as unknown as {
+			openCreate: () => Promise<void>;
+			openEdit: (client: IMcpClient) => Promise<void>;
+			clientForm: { name: string };
+		};
+
+		await vm.openCreate();
+		await vm.openEdit(client);
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+		expect(vm.clientForm.name).toBe(client.name);
 	});
 
 	it('requires confirmation before revoking a credential', async () => {
