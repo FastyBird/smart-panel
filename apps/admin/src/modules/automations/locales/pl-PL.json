@@ -370,7 +370,9 @@
 				"unknownNodeTypeHint": "Typ bloku „{type}” nie jest już oferowany, najpewniej dlatego, że wtyczka, która go dostarczała, została usunięta lub wyłączona. Usuń blok albo przywróć wtyczkę.",
 				"separateFlows": "Ta automatyzacja zawiera kilka przebiegów, które nie są ze sobą połączone. W trybie „Uruchom ponownie” wyzwalacz jednego przebiegu zatrzymuje także pozostałe, dlatego niepowiązane przebiegi powinny być osobnymi automatyzacjami.",
 				"errorCount": "Błędy: {count}",
-				"warningCount": "Ostrzeżenia: {count}"
+				"warningCount": "Ostrzeżenia: {count}",
+				"noSteps": "Przepływ nie ma jeszcze kroków.",
+				"steps": "Kroki przepływu"
 			},
 			"buttons": {
 				"undo": {
@@ -384,6 +386,9 @@
 				},
 				"removeNode": {
 					"title": "Usuń blok"
+				},
+				"addBlock": {
+					"title": "Dodaj blok"
 				}
 			},
 			"form": {
@@ -853,6 +858,9 @@
 				},
 				"showNode": {
 					"title": "Pokaż {node}"
+				},
+				"loadMore": {
+					"title": "Pokaż {count} więcej"
 				}
 			},
 			"test": {

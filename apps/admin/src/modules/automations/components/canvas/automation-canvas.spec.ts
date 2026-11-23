@@ -54,6 +54,7 @@ const graph: IAutomationGraph = {
 interface ICanvasExposed {
 	getGraph: () => IAutomationGraph;
 	addNode: (type: string, position?: { x: number; y: number }) => string | null;
+	addNodeAt: (type: string, clientX: number, clientY: number) => string | null;
 	removeNode: (id: string) => void;
 	checkConnection: (candidate: { source: string; source_port: string; target: string; target_port: string }) => string | null;
 }
@@ -176,6 +177,35 @@ describe('AutomationCanvas', (): void => {
 		expect(fullCanvas.addNode('manual.start', { x: 500, y: 0 })).toBeNull();
 		expect(wrapper.emitted('reject')).toEqual([['limit']]);
 		expect(wrapper.emitted('update:graph')).toBeUndefined();
+	});
+
+	it('adds a node dragged out of the palette by touch only where it was let go over the canvas', async (): Promise<void> => {
+		const canvas = await createWrapper();
+
+		vi.spyOn(wrapper.element as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+			left: 100,
+			top: 100,
+			right: 600,
+			bottom: 500,
+			width: 500,
+			height: 400,
+			x: 100,
+			y: 100,
+			toJSON: () => ({}),
+		});
+
+		expect(canvas.addNodeAt('notification.send', 50, 50)).toBeNull();
+		expect(canvas.addNodeAt('notification.send', 300, 300)).toMatch(/^n_/);
+
+		// The inspector lies over the right 340px: a drop there does not add a node behind it
+		await wrapper.setProps({ coveredRight: 340 });
+
+		expect(canvas.addNodeAt('notification.send', 400, 300)).toBeNull();
+		expect(canvas.addNodeAt('notification.send', 200, 300)).toMatch(/^n_/);
+
+		await wrapper.setProps({ readonly: true });
+
+		expect(canvas.addNodeAt('notification.send', 300, 300)).toBeNull();
 	});
 
 	it('removes a node together with the edges attached to it', async (): Promise<void> => {

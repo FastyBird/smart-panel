@@ -310,10 +310,14 @@ A graph too large to round-trip through this format is reported as `graph_too_la
 
 ## Clients
 
-- **Admin** (`apps/admin/src/modules/automations/`): list with filters, add and edit forms, the flow editor (Vue Flow
-  wrapped in `components/canvas/automation-canvas.vue`, palette with tap-to-add, side configuration panel, undo and
-  redo as graph snapshots, read-only below phone width), Test, run history and live trace (watching the automation's
-  websocket room), templates, YAML import and export, and the **Suggested by Buddy** box.
+- **Admin** (`apps/admin/src/modules/automations/`): list with filters, add and edit forms in the edit drawer, the flow
+  editor on template 8 of `docs/admin-ui-design-spec.md` (Vue Flow wrapped in `components/canvas/automation-canvas.vue`;
+  a palette of 240 px, 208 px on tablet landscape, with tap-to-add and a 400 ms long press to drag a card out on touch;
+  the configuration panel 340 px beside the canvas, 360 px on wide; on tablet portrait the palette waits behind
+  **Add block** in a bottom sheet and the panel opens as a drawer over the canvas; on phone the flow is a read-only list
+  of steps, `automation-step-list.vue`; undo and redo as graph snapshots; a `domain-icon` on blocks whose devices share
+  a domain), Test, run history (ten runs at a time, Load more) and live trace (watching the automation's websocket
+  room), templates, YAML import and export, and the **Suggested by Buddy** box.
 - **Panel** (`apps/panel/lib/modules/automations/`): reads `GET /automations` with its display token, shows the
   automations of a space in the room overview with their status, and switches them with
   `PATCH /automations/:id/enabled` — the only change a display can make — following the optimistic UI pattern

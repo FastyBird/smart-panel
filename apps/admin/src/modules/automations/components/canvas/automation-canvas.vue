@@ -150,9 +150,11 @@ defineOptions({
 const props = withDefaults(defineProps<IAutomationCanvasProps>(), {
 	issues: () => [],
 	summaryComponent: undefined,
+	nodeDomain: undefined,
 	readonly: false,
 	initialView: 'fit',
 	run: null,
+	coveredRight: 0,
 });
 
 const emit = defineEmits<{
@@ -227,6 +229,7 @@ const cardOf = (data: IAutomationCanvasNodeData): IAutomationNodeCardProps => {
 		icon: nodeIcon(data.type, nodeType),
 		title: nodeTitle(data.type, nodeType),
 		summary: nodeSummary(data, nodeType),
+		domain: props.nodeDomain?.(data),
 		...(nodeType !== null && props.summaryComponent ? summaryOf(data, nodeType) : {}),
 	};
 };
@@ -255,7 +258,8 @@ const takenEdges = computed<Set<string> | null>((): Set<string> | null => (props
  * theme class on the document changes.
  */
 
-const readColor = (name: string, fallback: string): string => {
+// Without the variable (a document without the theme) the library draws in the text colour
+const readColor = (name: string, fallback = 'currentColor'): string => {
 	const value = getComputedStyle(container.value ?? document.documentElement)
 		.getPropertyValue(name)
 		.trim();
@@ -264,18 +268,18 @@ const readColor = (name: string, fallback: string): string => {
 };
 
 const readColors = (): IAutomationCanvasColors => ({
-	background: readColor('--el-border-color-darker', '#cdd0d6'),
+	background: readColor('--el-border-color-darker'),
 	edges: {
-		default: readColor('--el-text-color-secondary', '#909399'),
-		positive: readColor('--el-color-success', '#67c23a'),
-		negative: readColor('--el-color-danger', '#f56c6c'),
-		muted: readColor('--el-color-info', '#909399'),
+		default: readColor('--el-text-color-secondary'),
+		positive: readColor('--el-color-success'),
+		negative: readColor('--el-color-danger'),
+		muted: readColor('--el-color-info'),
 	},
 	issues: {
-		error: readColor('--el-color-danger', '#f56c6c'),
-		warning: readColor('--el-color-warning', '#e6a23c'),
+		error: readColor('--el-color-danger'),
+		warning: readColor('--el-color-warning'),
 	},
-	run: readColor('--el-color-primary', '#409eff'),
+	run: readColor('--el-color-primary'),
 });
 
 const colors = ref<IAutomationCanvasColors>(readColors());
@@ -684,10 +688,17 @@ const focusNode = (id: string): void => {
 	removeSelectedElements();
 	addSelectedNodes([node]);
 
-	void setCenter(node.position.x + (node.dimensions.width || 280) / 2, node.position.y + (node.dimensions.height || 56) / 2, {
-		zoom: Math.max(getViewport().zoom, 0.75),
-		duration: 200,
-	});
+	const zoom = Math.max(getViewport().zoom, 0.75);
+
+	// Centred in the part of the canvas that is not covered
+	void setCenter(
+		node.position.x + (node.dimensions.width || 280) / 2 + props.coveredRight / 2 / zoom,
+		node.position.y + (node.dimensions.height || 56) / 2,
+		{
+			zoom,
+			duration: 200,
+		}
+	);
 };
 
 /**
@@ -713,7 +724,10 @@ const revealNode = (id: string): void => {
 	let dx = 0;
 	let dy = 0;
 
-	if (right > rect.width - margin) dx = rect.width - margin - right;
+	// What lies over the right edge of the canvas takes its room, as a panel beside it does
+	const width = rect.width - props.coveredRight;
+
+	if (right > width - margin) dx = width - margin - right;
 	if (left + dx < margin) dx = margin - left;
 	if (bottom > rect.height - margin) dy = rect.height - margin - bottom;
 	if (top + dy < margin) dy = margin - top;
@@ -727,8 +741,28 @@ onMounted((): void => {
 	colors.value = readColors();
 });
 
+// A block dragged out of the palette by touch (a long press): added where the finger lifted, when that is over the
+// visible canvas. Returns the id of the new node, or null when it was dropped elsewhere (over what lies on the right
+// edge, too) or the canvas cannot be edited
+const addNodeAt = (type: string, clientX: number, clientY: number): string | null => {
+	const bounds = container.value?.getBoundingClientRect();
+
+	if (!bounds || props.readonly) {
+		return null;
+	}
+
+	const right = bounds.right - props.coveredRight;
+
+	if (clientX < bounds.left || clientX > right || clientY < bounds.top || clientY > bounds.bottom) {
+		return null;
+	}
+
+	return addNode(type, screenToFlowCoordinate({ x: clientX, y: clientY }));
+};
+
 defineExpose({
 	addNode,
+	addNodeAt,
 	removeNode,
 	removeSelected,
 	clearSelection,

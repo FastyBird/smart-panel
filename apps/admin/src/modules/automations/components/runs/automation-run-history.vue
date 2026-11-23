@@ -72,15 +72,12 @@
 						data-test-id="run-item"
 						@click="emit('select', item.run.id)"
 					>
-						<el-tag
-							:type="AUTOMATION_RUN_RECORD_STATUS_COLORS[item.run.status]"
-							size="small"
-							disable-transitions
+						<status-tag
+							:status="runStatusTag(item.run.status)"
+							:label="runStatusLabel(item.run.status)"
 							class="flex-none"
 							data-test-id="run-status"
-						>
-							{{ runStatusLabel(item.run.status) }}
-						</el-tag>
+						/>
 						<span
 							class="automation-run-history__trigger"
 							data-test-id="run-trigger"
@@ -103,18 +100,34 @@
 					</button>
 				</li>
 			</ul>
+
+			<!-- A chronological feed (spec section 5): the runs come in pages, newest first -->
+			<div
+				v-if="hiddenCount > 0"
+				class="flex justify-center py-1"
+			>
+				<el-button
+					link
+					type="primary"
+					data-test-id="runs-load-more"
+					@click="shown += RUNS_PAGE"
+				>
+					{{ t('automations.runs.buttons.loadMore.title', { count: Math.min(RUNS_PAGE, hiddenCount) }) }}
+				</el-button>
+			</div>
 		</el-scrollbar>
 	</section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElIcon, ElScrollbar, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { StatusTag, type StatusTagStatus } from '../../../../common';
 import { AUTOMATION_RUN_RECORD_STATUS_COLORS } from '../../automations.constants';
 import { useAutomationRunPresentation } from '../../composables/useAutomationRunPresentation';
 import type { IAutomationRun } from '../../store/runs.store.types';
@@ -146,8 +159,34 @@ const { t } = useI18n();
 
 const { runStatusLabel, dateText, durationText, nodeLabel } = useAutomationRunPresentation();
 
+// The first page of runs, and as many more as Load more was pressed for; a run picked elsewhere (the run laid over the
+// canvas) is always among them
+const RUNS_PAGE = 10;
+
+const shown = ref<number>(RUNS_PAGE);
+
+// Where the picked run is in the list: it moves when newer runs arrive, or turns up once the history is read
+watch(
+	(): number => (props.selectedRunId ? props.runs.findIndex((run) => run.id === props.selectedRunId) : -1),
+	(index: number): void => {
+		if (index >= shown.value) {
+			shown.value = Math.ceil((index + 1) / RUNS_PAGE) * RUNS_PAGE;
+		}
+	},
+	{ immediate: true }
+);
+
+const hiddenCount = computed<number>((): number => Math.max(0, props.runs.length - shown.value));
+
+// The status of a run as a status tag: a dot and its label
+const runStatusTag = (status: keyof typeof AUTOMATION_RUN_RECORD_STATUS_COLORS): StatusTagStatus => {
+	const color = AUTOMATION_RUN_RECORD_STATUS_COLORS[status];
+
+	return color === 'success' ? 'ok' : color === 'warning' ? 'warn' : (color ?? 'info');
+};
+
 const items = computed<IRunItem[]>((): IRunItem[] =>
-	props.runs.map((run): IRunItem => {
+	props.runs.slice(0, shown.value).map((run): IRunItem => {
 		const trigger = nodeLabel(run.triggerNodeId, props.graph, props.nodeTypes) ?? t('automations.runs.texts.unknownTrigger');
 
 		return {

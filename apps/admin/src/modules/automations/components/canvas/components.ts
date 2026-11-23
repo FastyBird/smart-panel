@@ -4,5 +4,6 @@ export { default as AutomationNodeCard } from './automation-node-card.vue';
 export { default as AutomationNodeGenericForm } from './automation-node-generic-form.vue';
 export { default as AutomationNodePanel } from './automation-node-panel.vue';
 export { default as AutomationPalette } from './automation-palette.vue';
+export { default as AutomationStepList } from './automation-step-list.vue';
 
 export * from './types';

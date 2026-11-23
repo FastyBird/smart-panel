@@ -370,7 +370,9 @@
 				"unknownNodeTypeHint": "Typ bloku „{type}“ už není nabízen, nejspíš proto, že byl odebrán nebo zakázán plugin, který jej poskytoval. Blok odeberte, nebo plugin vraťte.",
 				"separateFlows": "Tato automatizace obsahuje několik průběhů, které spolu nejsou propojeny. V režimu Restartovat spouštěč jednoho průběhu zastaví i ostatní, proto nesouvisející průběhy patří do samostatných automatizací.",
 				"errorCount": "Chyby: {count}",
-				"warningCount": "Varování: {count}"
+				"warningCount": "Varování: {count}",
+				"noSteps": "Tok zatím nemá žádné kroky.",
+				"steps": "Kroky toku"
 			},
 			"buttons": {
 				"undo": {
@@ -384,6 +386,9 @@
 				},
 				"removeNode": {
 					"title": "Odebrat blok"
+				},
+				"addBlock": {
+					"title": "Přidat blok"
 				}
 			},
 			"form": {
@@ -853,6 +858,9 @@
 				},
 				"showNode": {
 					"title": "Ukázat {node}"
+				},
+				"loadMore": {
+					"title": "Zobrazit dalších {count}"
 				}
 			},
 			"test": {

@@ -1,5 +1,6 @@
 import type { Component } from 'vue';
 
+import type { Domain } from '../../../../common/components/domain-icon.types';
 import type { AutomationNodeKind } from '../../automations.constants';
 import type { AutomationIssueSeverity } from '../../automations.graph';
 import type { AutomationRunNodeState } from '../../automations.trace';
@@ -20,6 +21,8 @@ export interface IAutomationNodeCardProps {
 	issue?: AutomationIssueSeverity;
 	// What the card did in the run laid over the canvas; null for a card the run did not reach
 	run?: IAutomationNodeCardRun | null;
+	// The domain of the devices the card works with, when they share one
+	domain?: Domain;
 }
 
 export interface IAutomationNodeCardRun {
