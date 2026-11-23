@@ -9,14 +9,12 @@
 			"edit": "Editar escena",
 			"delete": "Eliminar escena",
 			"discard": "Descartar cambios",
-			"adjustFilters": "Ajustar filtros",
 			"bulkRemove": "Eliminar escenas",
 			"bulkEnable": "Activar escenas",
 			"bulkDisable": "Desactivar escenas"
 		},
 		"subHeadings": {
-			"list": "Gestiona las escenas de un toque de tu hogar inteligente",
-			"adjustFilters": "Filtra escenas por varios criterios"
+			"list": "Gestiona las escenas de un toque de tu hogar inteligente"
 		},
 		"breadcrumbs": {
 			"scenes": "Escenas"
@@ -163,14 +161,20 @@
 			"close": {
 				"title": "Cerrar"
 			},
-			"discard": {
-				"title": "Descartar"
-			},
 			"backToList": {
 				"title": "Volver a la lista"
 			},
 			"resetFilters": {
 				"title": "Restablecer filtros"
+			},
+			"run": {
+				"title": "Ejecutar"
+			},
+			"edit": {
+				"title": "Editar"
+			},
+			"more": {
+				"title": "Más"
 			}
 		},
 		"messages": {
@@ -217,6 +221,10 @@
 			"security": "Seguridad",
 			"energy": "Energía",
 			"custom": "Personalizada"
+		},
+		"aria": {
+			"edit": "Editar {scene}",
+			"more": "Más acciones para {scene}"
 		}
 	}
 }

@@ -9,14 +9,12 @@
 			"edit": "Upraviť scénu",
 			"delete": "Odstrániť scénu",
 			"discard": "Zahodiť zmeny",
-			"adjustFilters": "Upraviť filtre",
 			"bulkRemove": "Odstrániť scény",
 			"bulkEnable": "Povoliť scény",
 			"bulkDisable": "Zakázať scény"
 		},
 		"subHeadings": {
-			"list": "Spravujte scény na jedno ťuknutie pre vašu inteligentnú domácnosť",
-			"adjustFilters": "Filtrovať scény podľa rôznych kritérií"
+			"list": "Spravujte scény na jedno ťuknutie pre vašu inteligentnú domácnosť"
 		},
 		"breadcrumbs": {
 			"scenes": "Scény"
@@ -163,14 +161,20 @@
 			"close": {
 				"title": "Zavrieť"
 			},
-			"discard": {
-				"title": "Zahodiť"
-			},
 			"backToList": {
 				"title": "Späť na zoznam"
 			},
 			"resetFilters": {
 				"title": "Resetovať filtre"
+			},
+			"run": {
+				"title": "Spustiť"
+			},
+			"edit": {
+				"title": "Upraviť"
+			},
+			"more": {
+				"title": "Viac"
 			}
 		},
 		"messages": {
@@ -217,6 +221,10 @@
 			"security": "Bezpečnosť",
 			"energy": "Energia",
 			"custom": "Vlastné"
+		},
+		"aria": {
+			"edit": "Upraviť {scene}",
+			"more": "Ďalšie akcie pre {scene}"
 		}
 	}
 }

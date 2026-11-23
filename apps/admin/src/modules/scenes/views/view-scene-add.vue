@@ -9,7 +9,7 @@
 	/>
 
 	<div class="flex flex-col overflow-hidden h-full">
-		<el-scrollbar class="grow-1 p-2 md:px-4">
+		<el-scrollbar class="grow-1 p-2 tp:px-4">
 			<scene-add-form
 				:id="sceneId"
 				:remote-form-submit="remoteFormSubmit"
@@ -20,29 +20,16 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('scenes.buttons.cancel.title') }}
-				</el-button>
-
-				<el-button
-					:loading="saving"
-					type="primary"
-					@click="remoteFormSubmit = true"
-				>
-					{{ t('scenes.buttons.save.title') }}
-				</el-button>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:saving="saving"
+			:can-save="!saving"
+			@save="remoteFormSubmit = true"
+			@discard="onClose"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -51,10 +38,10 @@ import { onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElButton, ElScrollbar } from 'element-plus';
+import { ElScrollbar } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 
-import { ViewHeader, useBreakpoints } from '../../../common';
+import { FormFooter, ViewHeader, useEditDrawer, useSizeClass } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
 import SceneAddForm from '../components/scenes/scene-add-form.vue';
 import { FormResult, type FormResultType, RouteNames } from '../scenes.constants';
@@ -79,7 +66,9 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const router = useRouter();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const { fetchSpaces, firstLoadFinished: spacesLoaded } = useSpaces();
 
@@ -103,7 +92,7 @@ const onFormResult = (result: FormResultType): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.SCENES });
 	} else {
 		router.push({ name: RouteNames.SCENES });

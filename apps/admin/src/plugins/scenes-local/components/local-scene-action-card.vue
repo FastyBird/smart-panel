@@ -79,24 +79,24 @@
 				{{ deviceName }}
 			</el-text>
 			<template v-if="showChannel">
-				<span class="text-gray-400 flex-shrink-0">›</span>
+				<span class="text-muted flex-shrink-0">›</span>
 				<el-text
 					class="flex-shrink-1 min-w-0"
-					:class="isChannelMissing ? 'text-danger' : 'text-gray-600'"
+					:class="isChannelMissing ? 'text-danger' : 'text-regular'"
 					truncated
 				>
 					{{ channelName }}
 				</el-text>
 			</template>
-			<span class="text-gray-400 flex-shrink-0">›</span>
+			<span class="text-muted flex-shrink-0">›</span>
 			<el-text
 				class="flex-shrink-1 min-w-0"
-				:class="isPropertyMissing ? 'text-danger' : 'text-gray-600'"
+				:class="isPropertyMissing ? 'text-danger' : 'text-regular'"
 				truncated
 			>
 				{{ propertyName }}
 			</el-text>
-			<span class="text-gray-400 flex-shrink-0 mx-1">→</span>
+			<span class="text-muted flex-shrink-0 mx-1">→</span>
 			<el-tag
 				size="small"
 				:type="valueTagType"

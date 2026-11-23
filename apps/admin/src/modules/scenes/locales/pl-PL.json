@@ -9,14 +9,12 @@
 			"edit": "Edytuj scenę",
 			"delete": "Usuń scenę",
 			"discard": "Odrzuć zmiany",
-			"adjustFilters": "Dostosuj filtry",
 			"bulkRemove": "Usuń sceny",
 			"bulkEnable": "Włącz sceny",
 			"bulkDisable": "Wyłącz sceny"
 		},
 		"subHeadings": {
-			"list": "Zarządzaj scenami uruchamianymi jednym dotknięciem w inteligentnym domu",
-			"adjustFilters": "Filtruj sceny według różnych kryteriów"
+			"list": "Zarządzaj scenami uruchamianymi jednym dotknięciem w inteligentnym domu"
 		},
 		"breadcrumbs": {
 			"scenes": "Sceny"
@@ -163,14 +161,20 @@
 			"close": {
 				"title": "Zamknij"
 			},
-			"discard": {
-				"title": "Odrzuć"
-			},
 			"backToList": {
 				"title": "Powrót do listy"
 			},
 			"resetFilters": {
 				"title": "Resetuj filtry"
+			},
+			"run": {
+				"title": "Uruchom"
+			},
+			"edit": {
+				"title": "Edytuj"
+			},
+			"more": {
+				"title": "Więcej"
 			}
 		},
 		"messages": {
@@ -217,6 +221,10 @@
 			"security": "Bezpieczeństwo",
 			"energy": "Energia",
 			"custom": "Niestandardowa"
+		},
+		"aria": {
+			"edit": "Edytuj {scene}",
+			"more": "Więcej akcji dla {scene}"
 		}
 	}
 }

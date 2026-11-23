@@ -9,14 +9,12 @@
 			"edit": "Edit scene",
 			"delete": "Delete scene",
 			"discard": "Discard changes",
-			"adjustFilters": "Adjust filters",
 			"bulkRemove": "Delete scenes",
 			"bulkEnable": "Enable scenes",
 			"bulkDisable": "Disable scenes"
 		},
 		"subHeadings": {
-			"list": "Manage one-tap scenes for your smart home",
-			"adjustFilters": "Filter scenes by various criteria"
+			"list": "Manage one-tap scenes for your smart home"
 		},
 		"breadcrumbs": {
 			"scenes": "Scenes"
@@ -163,14 +161,20 @@
 			"close": {
 				"title": "Close"
 			},
-			"discard": {
-				"title": "Discard"
-			},
 			"backToList": {
 				"title": "Back to list"
 			},
 			"resetFilters": {
 				"title": "Reset filters"
+			},
+			"run": {
+				"title": "Run"
+			},
+			"edit": {
+				"title": "Edit"
+			},
+			"more": {
+				"title": "More"
 			}
 		},
 		"messages": {
@@ -217,6 +221,10 @@
 			"security": "Security",
 			"energy": "Energy",
 			"custom": "Custom"
+		},
+		"aria": {
+			"edit": "Edit {scene}",
+			"more": "More actions for {scene}"
 		}
 	}
 }

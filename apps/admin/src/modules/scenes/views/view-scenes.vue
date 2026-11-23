@@ -2,81 +2,63 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isScenesListRoute || isLGDevice"
+		v-if="isScenesListRoute || inDrawer"
 		:title="t('scenes.headings.list')"
 		:subtitle="t('scenes.subHeadings.list')"
 		icon="mdi:play-box-multiple"
-		:actions="[{ icon: 'mdi:plus', label: t('scenes.buttons.add.title'), handler: onSceneCreate }]"
+		:actions="[
+			{ icon: 'mdi:magnify', label: t('scenes.fields.search.placeholder'), handler: onSearch },
+			{ icon: 'mdi:plus', label: t('scenes.buttons.add.title'), handler: onSceneCreate },
+		]"
 	>
 		<template #actions>
-			<div class="flex items-center">
-				<el-button
-					type="primary"
-					plain
-					class="ml-2!"
-					@click="onSceneCreate"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+			<el-button
+				type="primary"
+				plain
+				data-test-id="scenes-add"
+				@click="onSceneCreate"
+			>
+				<template #icon>
+					<icon icon="mdi:plus" />
+				</template>
 
-					{{ t('scenes.buttons.add.title') }}
-				</el-button>
-			</div>
+				{{ t('scenes.buttons.add.title') }}
+			</el-button>
 		</template>
 	</view-header>
 
 	<div
-		v-if="isScenesListRoute || isLGDevice"
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+		v-if="isScenesListRoute || inDrawer"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<list-scenes
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="scenesPaginated"
-			:all-items="scenes"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			:triggering="triggering"
-			@edit="onSceneEdit"
-			@remove="onSceneRemove"
-			@trigger="onSceneTrigger"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-			@bulk-action="onBulkAction"
-		/>
-	</div>
+		<!-- Template 4: add and edit open next to the list from tablet portrait up, as their own page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-scenes
+				ref="list"
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				:items="scenesPaginated"
+				:all-items="scenes"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				:triggering="triggering"
+				@edit="onSceneEdit"
+				@remove="onSceneRemove"
+				@trigger="onSceneTrigger"
+				@reset-filters="onResetFilters"
+				@bulk-action="onBulkAction"
+			/>
 
-	<router-view
-		v-else
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component :is="Component" />
-	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-scenes-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
-				/>
-
-				<view-error v-else>
+			<template #form>
+				<view-error>
 					<template #icon>
 						<icon icon="mdi:play-box-multiple" />
 					</template>
@@ -84,9 +66,11 @@
 						{{ t('scenes.messages.requestError') }}
 					</template>
 
+					<!-- Keyed by the scene: switching to another scene remounts the editor, so its save goes to the scene
+					     now shown and not to the one opened first -->
 					<suspense>
 						<router-view
-							:key="props.id"
+							:key="formKey"
 							v-slot="{ Component }"
 						>
 							<component
@@ -97,8 +81,16 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<router-view
+		v-else
+		:key="formKey"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 </template>
 
 <script setup lang="ts">
@@ -107,13 +99,13 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer, useFlashMessage } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
-import { ListScenes, ListScenesAdjust } from '../components/components';
+import { ListScenes } from '../components/components';
 import { useScenes, useScenesActions, useScenesDataSource } from '../composables/composables';
 import { RouteNames } from '../scenes.constants';
 import { ScenesException } from '../scenes.exceptions';
@@ -125,7 +117,7 @@ defineOptions({
 	name: 'ViewScenes',
 });
 
-const props = defineProps<IViewScenesProps>();
+defineProps<IViewScenesProps>();
 
 const route = useRoute();
 const router = useRouter();
@@ -136,8 +128,6 @@ const flashMessage = useFlashMessage();
 useMeta({
 	title: t('scenes.headings.list'),
 });
-
-const { isLGDevice } = useBreakpoints();
 
 const {
 	fetchScenes,
@@ -168,7 +158,8 @@ provide('spaces', allSpaces);
 const mounted = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
+
+const list = ref<InstanceType<typeof ListScenes> | null>(null);
 const triggering = ref<IScene['id'][]>([]);
 
 const remoteFormChanged = ref<boolean>(false);
@@ -176,6 +167,12 @@ const remoteFormChanged = ref<boolean>(false);
 const isScenesListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SCENES;
 });
+
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone
+const { inDrawer } = provideEditDrawer((): boolean => !isScenesListRoute.value);
+
+// One editor per scene (and one for Add): a new key remounts the routed form
+const formKey = computed<string>((): string => `${String(route.name)}:${typeof route.params?.id === 'string' ? route.params.id : ''}`);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -188,53 +185,47 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
-
-		done?.();
+const leaveForm = (): void => {
+	if (inDrawer.value) {
+		router.replace({ name: RouteNames.SCENES });
 	} else {
-		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('scenes.texts.confirmDiscard'), t('scenes.headings.discard'), {
-				confirmButtonText: t('scenes.buttons.yes.title'),
-				cancelButtonText: t('scenes.buttons.no.title'),
-				type: 'warning',
-			})
-				.then((): void => {
-					if (isLGDevice.value) {
-						router.replace({
-							name: RouteNames.SCENES,
-						});
-					} else {
-						router.push({
-							name: RouteNames.SCENES,
-						});
-					}
-
-					done?.();
-				})
-				.catch((): void => {
-					// Just ignore it
-				});
-		} else {
-			if (isLGDevice.value) {
-				router.replace({
-					name: RouteNames.SCENES,
-				});
-			} else {
-				router.push({
-					name: RouteNames.SCENES,
-				});
-			}
-
-			done?.();
-		}
+		router.push({ name: RouteNames.SCENES });
 	}
 };
 
-const onSceneEdit = (id: IScene['id']): void => {
-	if (isLGDevice.value) {
+const confirmDiscard = async (): Promise<boolean> => {
+	try {
+		await ElMessageBox.confirm(t('scenes.texts.confirmDiscard'), t('scenes.headings.discard'), {
+			confirmButtonText: t('scenes.buttons.yes.title'),
+			cancelButtonText: t('scenes.buttons.no.title'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+const onCloseDrawer = async (done?: () => void): Promise<void> => {
+	if (remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
+	}
+
+	leaveForm();
+
+	done?.();
+};
+
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => !showDrawer.value || !remoteFormChanged.value || confirmDiscard();
+
+const onSceneEdit = async (id: IScene['id']): Promise<void> => {
+	if ((route.name === RouteNames.SCENES_EDIT && route.params.id === id) || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.SCENES_EDIT,
 			params: {
@@ -298,8 +289,12 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onSceneCreate = (): void => {
-	if (isLGDevice.value) {
+const onSceneCreate = async (): Promise<void> => {
+	if (route.name === RouteNames.SCENES_ADD || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.SCENES_ADD,
 		});
@@ -310,9 +305,9 @@ const onSceneCreate = (): void => {
 	}
 };
 
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
+// The phone app bar's Search action
+const onSearch = (): void => {
+	list.value?.focusSearch();
 };
 
 const onBulkAction = (action: string, items: IScene[]): void => {
