@@ -296,16 +296,22 @@ class _Visitor extends RecursiveAstVisitor<void> {
     // Without resolution, `const SwitchListTile.adaptive()` reads as the type
     // `adaptive` behind a prefix `SwitchListTile`. A prefix the file does not
     // import is the class.
-    if (constructor == null && prefix != null && !importPrefixes.contains(prefix)) {
+    final isImported = prefix != null && importPrefixes.contains(prefix);
+
+    if (constructor == null && prefix != null && !isImported) {
       constructor = type;
       type = prefix;
     }
 
-    if (type == 'Color' && constructor == null) {
+    // An unprefixed type the file declares itself is not the Flutter one:
+    // `const Color(…)` may build a file-local `Color` class.
+    final isOwn = !isImported && _isShadowed(type, node);
+
+    if (!isOwn && type == 'Color' && constructor == null) {
       _checkColour(node, node.argumentList);
     }
 
-    if (stockWidgets.contains(type)) {
+    if (!isOwn && stockWidgets.contains(type)) {
       _report(node, DesignRule.stockWidget);
     }
 
@@ -407,6 +413,14 @@ class _Visitor extends RecursiveAstVisitor<void> {
           FieldDeclaration(:final fields) => inVariables(fields),
           _ => false,
         });
+    // A local is in scope in its whole block; using it earlier is an error.
+    bool inStatements(List<Statement> statements) => statements.any((statement) => switch (statement) {
+          VariableDeclarationStatement(:final variables) => inVariables(variables),
+          FunctionDeclarationStatement(:final functionDeclaration) => named(functionDeclaration.name),
+          PatternVariableDeclarationStatement(:final declaration) =>
+            _patternDeclares(declaration.pattern, name),
+          _ => false,
+        });
     // A for-in variable is in scope in the body only, not in the iterable.
     // A classic for variable is in scope in the whole loop; its own
     // initialiser cannot use it.
@@ -422,15 +436,7 @@ class _Visitor extends RecursiveAstVisitor<void> {
       FunctionExpression(:final parameters) => inParameters(parameters),
       MethodDeclaration(:final parameters) => inParameters(parameters),
       ConstructorDeclaration(:final parameters) => inParameters(parameters),
-      // A local is in scope in its whole block; using it earlier is an error.
-      Block(:final statements) => statements.any((statement) => switch (statement) {
-            VariableDeclarationStatement(:final variables) => inVariables(variables),
-            FunctionDeclarationStatement(:final functionDeclaration) =>
-              named(functionDeclaration.name),
-            PatternVariableDeclarationStatement(:final declaration) =>
-              _patternDeclares(declaration.pattern, name),
-            _ => false,
-          }),
+      Block(:final statements) => inStatements(statements),
       ForStatement(:final forLoopParts, :final body) => inLoop(forLoopParts, child == body),
       ForElement(:final forLoopParts, :final body) => inLoop(forLoopParts, child == body),
       CatchClause(:final exceptionParameter, :final stackTraceParameter) =>
@@ -443,9 +449,11 @@ class _Visitor extends RecursiveAstVisitor<void> {
         child == thenStatement && _patternDeclares(caseClause.guardedPattern.pattern, name),
       IfElement(:final caseClause?, :final thenElement) =>
         child == thenElement && _patternDeclares(caseClause.guardedPattern.pattern, name),
-      SwitchPatternCase(:final guardedPattern) ||
-      SwitchExpressionCase(:final guardedPattern) =>
-        _patternDeclares(guardedPattern.pattern, name),
+      // A case body declares locals without a block: `case 0: final ui = …;`.
+      SwitchPatternCase(:final guardedPattern, :final statements) =>
+        _patternDeclares(guardedPattern.pattern, name) || inStatements(statements),
+      SwitchMember(:final statements) => inStatements(statements),
+      SwitchExpressionCase(:final guardedPattern) => _patternDeclares(guardedPattern.pattern, name),
       ClassDeclaration(:final members) ||
       MixinDeclaration(:final members) ||
       EnumDeclaration(:final members) ||

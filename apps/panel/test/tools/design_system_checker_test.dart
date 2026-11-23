@@ -129,6 +129,42 @@ void f() {
 '''),
         isEmpty,
       );
+      expect(
+        _rules('''
+class Color { const Color(int value); }
+class AlertDialog { const AlertDialog.adaptive(); }
+
+const a = Color(0xFF112233);
+final b = new Color(0xFF112233);
+const c = AlertDialog.adaptive();
+final d = new AlertDialog();
+'''),
+        isEmpty,
+      );
+    });
+
+    test('ignores locals declared in a case body without braces', () {
+      expect(
+        _rules('''
+import 'dart:ui' as ui;
+
+void f(int x, dynamic palette) {
+  switch (x) {
+    case 0:
+      final ui = palette;
+      ui.Color(0xFF112233);
+    default:
+      int Color(int value) => value;
+      Color(0xFF112233);
+  }
+  switch (x) {
+    case 1:
+      ui.Color(0xFF112233);
+  }
+}
+'''),
+        ['hex-colour'],
+      );
     });
 
     test('reports constructors called through an import prefix', () {
