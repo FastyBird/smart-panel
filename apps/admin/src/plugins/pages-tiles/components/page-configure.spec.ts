@@ -414,4 +414,34 @@ describe('PageConfigure', () => {
 
 		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-draft');
 	});
+	it('gives a tile hidden when the editor opened its stored size when it is dragged onto the page', async () => {
+		tiles.value = [
+			...tiles.value,
+			{
+				id: 'tile-hidden',
+				type: 'tiles-time',
+				parent: { type: 'page', id: PAGE_ID },
+				row: 1,
+				col: 1,
+				rowSpan: 2,
+				colSpan: 2,
+				hidden: true,
+				draft: false,
+			},
+		];
+
+		await mountConfigure();
+
+		expect(hiddenItem('tile-hidden')?.gridstackNode).toMatchObject({ w: 1, h: 1 });
+
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		grid.addWidget({ id: 'tile-hidden', x: 0, y: 2, w: 1, h: 1 });
+		await nextTick();
+		await flushPromises();
+
+		expect(pageItem('tile-hidden')?.gridstackNode).toMatchObject({ x: 0, y: 2, w: 2, h: 2 });
+
+		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-hidden');
+	});
 });

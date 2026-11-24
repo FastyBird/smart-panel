@@ -480,13 +480,15 @@ const initializeGrids = (): void => {
 			pageTiles.add(tile.id);
 			removedTiles.delete(tile.id);
 
-			// Dragged back from the panel, where every tile is one size: it takes the size it had on the page again
-			const size = hiddenSizes.get(tile.id);
+			// Dragged back from the panel, where every tile is one size: it takes the size it had on the page again, the one
+			// remembered since it was hidden or, for a tile that was hidden when saved or when the editor opened, its stored one
+			const size = sizeOf(tile);
 			const itemEl = item.el;
+			const node = itemEl.gridstackNode;
 
 			hiddenSizes.delete(tile.id);
 
-			if (size) {
+			if (node && (node.w !== size.w || node.h !== size.h)) {
 				nextTick((): void => {
 					restoreSize(itemEl, size);
 					renderTileContent(itemEl, tile);
