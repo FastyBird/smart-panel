@@ -141,6 +141,20 @@ describe('ViewDisplay', () => {
 		expect(router.currentRoute.value.name).toBe(RouteNames.DISPLAY_TOKENS);
 	});
 
+	it('returns to Access tokens when the edit form leaves on its own', async () => {
+		const { wrapper, router } = await mountAt(`/display/${ID}/tokens`);
+
+		await wrapper.find('[data-test-id="display-edit"]').trigger('click');
+		await flushPromises();
+
+		// The form's own Save, Close and Discard go to the display's base route
+		await router.replace({ name: RouteNames.DISPLAY, params: { id: ID } });
+		await flushPromises();
+
+		expect(router.currentRoute.value.name).toBe(RouteNames.DISPLAY_TOKENS);
+		expect(wrapper.findComponent({ name: 'ElTabs' }).props('modelValue')).toBe('tokens');
+	});
+
 	it('asks before closing a changed form, and keeps it when the discard is declined', async () => {
 		const { wrapper, router } = await mountAt(`/display/${ID}/edit`);
 

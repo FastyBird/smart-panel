@@ -187,12 +187,27 @@ const showDrawer = computed<boolean>((): boolean => route.name === RouteNames.DI
 // Template 4: the edit form opens next to this page from tablet portrait up, as its own page on phone
 const { inDrawer } = provideEditDrawer((): boolean => showDrawer.value);
 
+const tabRoute = (tab: 'overview' | 'tokens') => ({
+	name: tab === 'tokens' ? RouteNames.DISPLAY_TOKENS : RouteNames.DISPLAY,
+	params: { id: props.id },
+});
+
 // The tab stays as it was while the edit form is open over it
 const activeTab = ref<'overview' | 'tokens'>(route.name === RouteNames.DISPLAY_TOKENS ? 'tokens' : 'overview');
 
 watch(
 	(): unknown => route.name,
-	(name: unknown): void => {
+	(name: unknown, previous: unknown): void => {
+		// The edit form leaves for the display's base route on save, Close and Discard, wherever it was opened from
+		// (drawer or phone page). Coming back from it keeps the tab that was open, and the route follows that tab
+		if (previous === RouteNames.DISPLAY_EDIT && name === RouteNames.DISPLAY && activeTab.value === 'tokens') {
+			remoteFormChanged.value = false;
+
+			router.replace(tabRoute('tokens'));
+
+			return;
+		}
+
 		if (name === RouteNames.DISPLAY) {
 			activeTab.value = 'overview';
 		} else if (name === RouteNames.DISPLAY_TOKENS) {
@@ -229,11 +244,6 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 		return items;
 	}
 );
-
-const tabRoute = (tab: 'overview' | 'tokens') => ({
-	name: tab === 'tokens' ? RouteNames.DISPLAY_TOKENS : RouteNames.DISPLAY,
-	params: { id: props.id },
-});
 
 const onTabChange = (tab: string | number): void => {
 	activeTab.value = tab === 'tokens' ? 'tokens' : 'overview';
