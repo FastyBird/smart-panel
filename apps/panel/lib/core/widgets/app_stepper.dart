@@ -130,7 +130,8 @@ class AppStepper extends StatelessWidget {
 
   /// How the value is written; defaults to a locale-aware number with as
   /// many decimals as [min], [step], [max] and [value] need (see
-  /// [decimalsOf]), so every value it can reach shows exactly.
+  /// [decimalsOf]), so every value it can reach shows exactly. The default
+  /// stops at six decimals; a finer step needs a [format].
   final String Function(double value)? format;
 
   /// Shown after the value in `text.secondary` ("°", " %").
@@ -158,7 +159,7 @@ class AppStepper extends StatelessWidget {
     return _maxDecimals;
   }
 
-  static const int _maxDecimals = 4;
+  static const int _maxDecimals = 6;
 
   String _format(double v) {
     if (format != null) return format!(v);

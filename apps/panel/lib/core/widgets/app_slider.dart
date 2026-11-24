@@ -74,8 +74,13 @@ class AppSliderMetrics {
 ///
 /// - [ControlState.pending]: the thumb's ring turns dashed `text.secondary`.
 /// - [ControlState.unconfirmed]: the ring is dashed in the warning colour.
-/// - [ControlState.disabled] (or no [onChanged]): the fill is
-///   `text.disabled`, the ring dashed `text.disabled`, and it does not move.
+/// - [ControlState.disabled], or no [onChanged] while [state] is idle: the
+///   fill is `text.disabled`, the ring dashed `text.disabled`, and it does
+///   not move. A pending or unconfirmed [state] keeps its ring without
+///   [onChanged].
+///
+/// A drag cut short by a disable stays dead: it does not resume when the
+/// slider is enabled again before the finger lifts.
 class AppSlider extends StatefulWidget {
   const AppSlider({
     super.key,
@@ -153,6 +158,19 @@ class _AppSliderState extends State<AppSlider> {
   bool _keyboard =
       FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
 
+  /// Bumped when the slider stops taking input; it keys the [Slider], so a
+  /// drag in progress is dropped with it and cannot resume on re-enable.
+  int _gesture = 0;
+
+  static bool _enabledOf(AppSlider slider) =>
+      slider.onChanged != null && slider.state != ControlState.disabled;
+
+  @override
+  void didUpdateWidget(AppSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_enabledOf(oldWidget) && !_enabledOf(widget)) _gesture++;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -196,7 +214,7 @@ class _AppSliderState extends State<AppSlider> {
             sizeClass ?? locator<ScreenService>().sizeClass,
           )
         : AppSliderMetrics.row;
-    final enabled = onChanged != null && state != ControlState.disabled;
+    final enabled = _enabledOf(widget);
     final effectiveState = enabled || state != ControlState.idle
         ? state
         : ControlState.disabled;
@@ -241,6 +259,7 @@ class _AppSliderState extends State<AppSlider> {
         showValueIndicator: ShowValueIndicator.never,
       ),
       child: Slider(
+        key: ValueKey(_gesture),
         value: value.clamp(0.0, 1.0),
         divisions: divisions,
         onChanged: enabled ? onChanged : null,
@@ -325,9 +344,16 @@ class AppSliderTrackShape extends SliderTrackShape {
     final canvas = context.canvas;
 
     if (gradient != null) {
+      // The stops follow the thumb's travel, so each colour sits under the
+      // thumb at its value; the rounded ends take the end colours.
+      final travel = getPreferredRect(
+        parentBox: parentBox,
+        offset: offset,
+        sliderTheme: sliderTheme,
+      );
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, radius),
-        Paint()..shader = LinearGradient(colors: gradient!).createShader(rect),
+        Paint()..shader = LinearGradient(colors: gradient!).createShader(travel),
       );
 
       return;

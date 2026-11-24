@@ -6,12 +6,14 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_stepper.dart';
 import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Display format for the dial value
@@ -120,8 +122,10 @@ class DialGeometry {
 /// - [ControlState.disabled] (or [enabled] false): everything is
 ///   `text.disabled` and nothing moves.
 ///
-/// Minus and plus move the thumb dragged last (the first by default); screen
-/// readers and the keyboard step it as a slider.
+/// Minus and plus move the thumb dragged or focused last (the first by
+/// default). Screen readers step each thumb as a slider. Each thumb also
+/// takes keyboard focus (Tab moves from heat to cool): the arrow keys step
+/// it, and a focus ring circles it.
 class CircularControlDial extends StatefulWidget {
   /// The current target value (the heat setpoint with two thumbs).
   final double value;
@@ -242,9 +246,24 @@ class _CircularControlDialState extends State<CircularControlDial> {
 
   Timer? _buttonDebounceTimer;
 
-  /// The minus or plus edit waiting on [_buttonDebounceTimer]: the thumb it
-  /// moved and the value it set.
-  ({int thumb, double value})? _pendingEdit;
+  /// The thumb a minus, plus or arrow-key edit moved, waiting on
+  /// [_buttonDebounceTimer]. The dial shows the edit, and the timer sends
+  /// what the dial shows.
+  int? _pendingThumb;
+
+  /// Keyboard focus, one node per thumb.
+  final List<FocusNode> _thumbFocus = [
+    FocusNode(debugLabel: 'Dial heat thumb'),
+    FocusNode(debugLabel: 'Dial cool thumb'),
+  ];
+
+  /// The thumb with keyboard focus.
+  int? _focusedThumb;
+
+  /// Whether focus is being moved with a keyboard; a touch-focused thumb
+  /// shows no ring.
+  bool _keyboard =
+      FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
 
   /// Debounce duration for minus and plus taps (ms)
   static const int _buttonDebounceDuration = 500;
@@ -261,6 +280,7 @@ class _CircularControlDialState extends State<CircularControlDial> {
     super.initState();
     _value = widget.value;
     _secondValue = widget.secondValue;
+    FocusManager.instance.addHighlightModeListener(_onHighlightMode);
     _gestures[_DialDragGestureRecognizer] =
         GestureRecognizerFactoryWithHandlers<_DialDragGestureRecognizer>(
       () => _DialDragGestureRecognizer(
@@ -284,7 +304,7 @@ class _CircularControlDialState extends State<CircularControlDial> {
     // Disabled: drop the edits in flight. A drag ends without reporting,
     // and the thumbs go back to the parent's values, so nothing unsent
     // stays on screen or becomes the base of the next step.
-    if (!_interactive && (_isDragging || _pendingEdit != null)) {
+    if (!_interactive && (_isDragging || _pendingThumb != null)) {
       _discardPendingEdit();
       _endDrag();
       _value = widget.value;
@@ -292,41 +312,42 @@ class _CircularControlDialState extends State<CircularControlDial> {
     }
 
     // One thumb became two or two became one: the drag was on the old
-    // dial, so it ends without reporting, an edit for a removed cool thumb
-    // is dropped, and the thumbs take the parent's values.
+    // dial, so it ends without reporting, and an edit for a removed cool
+    // thumb is dropped. The thumbs take the parent's values, except a heat
+    // edit still waiting, which stays on screen.
     final thumbsChanged =
         (oldWidget.secondValue == null) != (widget.secondValue == null);
     if (thumbsChanged) {
       _endDrag();
-      if (!_twoThumbs && _pendingEdit?.thumb == 1) _discardPendingEdit();
+      if (!_twoThumbs && _pendingThumb == 1) _discardPendingEdit();
       if (!_twoThumbs) _activeThumb = 0;
-      _value = widget.value;
+      if (_pendingThumb != 0) _value = widget.value;
       _secondValue = widget.secondValue;
     }
 
     // A new value from the parent replaces an edit still waiting for the
     // same thumb.
-    if (oldWidget.value != widget.value && _pendingEdit?.thumb == 0) {
+    if (oldWidget.value != widget.value && _pendingThumb == 0) {
       _discardPendingEdit();
     }
-    if (oldWidget.secondValue != widget.secondValue &&
-        _pendingEdit?.thumb == 1) {
+    if (oldWidget.secondValue != widget.secondValue && _pendingThumb == 1) {
       _discardPendingEdit();
     }
 
-    // Take the parent's values, except for the thumb under the finger.
-    final dragged = _isDragging ? _activeThumb : null;
-    if (oldWidget.value != widget.value && dragged != 0) {
+    // Take the parent's values, except for the thumb being edited: under
+    // the finger, or waiting to be sent.
+    final held = _isDragging ? _activeThumb : _pendingThumb;
+    if (oldWidget.value != widget.value && held != 0) {
       _value = widget.value;
     }
-    if (oldWidget.secondValue != widget.secondValue && dragged != 1) {
+    if (oldWidget.secondValue != widget.secondValue && held != 1) {
       _secondValue = widget.secondValue;
     }
 
-    // The dragged thumb stays on its side of the other one, which may just
-    // have moved.
-    if (_twoThumbs && dragged == 0) _value = math.min(_value, _secondValue!);
-    if (_twoThumbs && dragged == 1) {
+    // The edited thumb stays on its side of the other one, which may just
+    // have moved; a waiting edit then sends what the dial shows.
+    if (_twoThumbs && held == 0) _value = math.min(_value, _secondValue!);
+    if (_twoThumbs && held == 1) {
       _secondValue = math.max(_secondValue!, _value);
     }
   }
@@ -339,7 +360,16 @@ class _CircularControlDialState extends State<CircularControlDial> {
     }
     _buttonDebounceTimer?.cancel();
     _gestures.clear();
+    FocusManager.instance.removeHighlightModeListener(_onHighlightMode);
+    for (final node in _thumbFocus) {
+      node.dispose();
+    }
     super.dispose();
+  }
+
+  void _onHighlightMode(FocusHighlightMode mode) {
+    final keyboard = mode == FocusHighlightMode.traditional;
+    if (keyboard != _keyboard && mounted) setState(() => _keyboard = keyboard);
   }
 
   Offset get _center => Offset(
@@ -366,9 +396,9 @@ class _CircularControlDialState extends State<CircularControlDial> {
     return snapped.clamp(widget.minValue, widget.maxValue).toDouble();
   }
 
-  /// The value under [angle]. The ends of the arc and the gap at the foot
-  /// give the exact minimum and maximum, even off the step grid.
-  double _angleToValue(double angle) {
+  /// The unsnapped value under [angle]. The ends of the arc and the gap at
+  /// the foot give the minimum and maximum.
+  double _rawValueAt(double angle) {
     var fromStart = angle - DialGeometry.startAngle;
     while (fromStart < 0) {
       fromStart += 2 * math.pi;
@@ -387,8 +417,15 @@ class _CircularControlDialState extends State<CircularControlDial> {
     if (fromStart <= 0) return widget.minValue;
 
     final normalized = fromStart / DialGeometry.sweepAngle;
-    final raw =
-        widget.minValue + normalized * (widget.maxValue - widget.minValue);
+
+    return widget.minValue + normalized * (widget.maxValue - widget.minValue);
+  }
+
+  /// The value under [angle], on the step grid. The ends of the arc and the
+  /// gap at the foot give the exact minimum and maximum, even off the grid.
+  double _angleToValue(double angle) {
+    final raw = _rawValueAt(angle);
+    if (raw == widget.minValue || raw == widget.maxValue) return raw;
     final snapped = _snap(raw);
 
     // An off-grid maximum is reachable: it wins when it is nearer than the
@@ -412,31 +449,36 @@ class _CircularControlDialState extends State<CircularControlDial> {
     return math.atan2(delta.dy, delta.dx);
   }
 
-  /// With two thumbs, the drag moves the nearer one; on a tie the side of
-  /// the pointer decides. A minus or plus edit still waiting is sent first,
-  /// for the thumb it moved.
+  /// With two thumbs, the drag moves the thumb nearer the pointer, before
+  /// the value snaps to the step grid; midway, the side of the pointer
+  /// decides. An edit still waiting is sent first, for the thumb it moved.
   void _pickThumb(Offset localPosition) {
     _flushPendingEdit();
     _pickOnMove = false;
     if (!_twoThumbs) return;
-    final value = _angleToValue(_angleOf(localPosition));
-    final toHeat = (value - _value).abs();
-    final toCool = (value - _secondValue!).abs();
+    final angle = _angleOf(localPosition);
+    final raw = _rawValueAt(angle);
+    final toHeat = (raw - _value).abs();
+    final toCool = (raw - _secondValue!).abs();
     if (toHeat < toCool) {
       _activeThumb = 0;
     } else if (toCool < toHeat) {
       _activeThumb = 1;
-    } else if (value != _value) {
-      _activeThumb = value > _value ? 1 : 0;
     } else {
-      // Right on two coincident thumbs: wait for the first move.
-      _pickOnMove = true;
+      final value = _angleToValue(angle);
+      if (value != _value) {
+        _activeThumb = value > _value ? 1 : 0;
+      } else {
+        // Right on two coincident thumbs: wait for the first move.
+        _pickOnMove = true;
+      }
     }
   }
 
-  void _setActiveValue(double value) {
+  /// Sets [thumb]'s value, kept on its side of the other thumb.
+  void _setThumbValue(int thumb, double value) {
     setState(() {
-      if (_activeThumb == 1 && _twoThumbs) {
+      if (thumb == 1 && _twoThumbs) {
         _secondValue = math.max(value, _value);
       } else {
         _value = _twoThumbs ? math.min(value, _secondValue!) : value;
@@ -451,7 +493,9 @@ class _CircularControlDialState extends State<CircularControlDial> {
       _activeThumb = value > _value ? 1 : 0;
       _pickOnMove = false;
     }
-    _setActiveValue(value);
+    // The finger supersedes an edit still waiting for its thumb.
+    if (_pendingThumb == _activeThumb) _discardPendingEdit();
+    _setThumbValue(_activeThumb, value);
   }
 
   /// Reports [value] for [thumb]. Nothing is sent while the dial is
@@ -482,6 +526,9 @@ class _CircularControlDialState extends State<CircularControlDial> {
     if (!_isDragging) return;
     _endDrag();
     if (mounted) setState(() {});
+    // The release is the last edit of its thumb: an edit made during the
+    // drag (minus or plus with another finger) is not sent after it.
+    if (_pendingThumb == _activeThumb) _discardPendingEdit();
     _report(_activeThumb, _thumbValue(_activeThumb));
   }
 
@@ -540,15 +587,54 @@ class _CircularControlDialState extends State<CircularControlDial> {
   bool get _canLower => _canLowerThumb(_lowerThumb);
 
   /// Moves [thumb] one step up (1) or down (-1) and makes it the thumb
-  /// minus and plus move; reported once minus and plus are quiet.
+  /// minus and plus move (a drag keeps its own thumb); reported once minus
+  /// and plus are quiet.
   void _stepThumb(int thumb, int direction) {
     if (direction > 0 ? !_canRaiseThumb(thumb) : !_canLowerThumb(thumb)) {
       return;
     }
-    _activeThumb = thumb;
-    _setActiveValue(_stepped(thumb, direction));
+    if (!_isDragging) _activeThumb = thumb;
+    _setThumbValue(thumb, _stepped(thumb, direction));
     _scheduleEdit(thumb);
   }
+
+  /// The arrow keys step the focused [thumb]: up and right raise it, down
+  /// and left lower it.
+  KeyEventResult _handleKey(int thumb, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    final direction = key == LogicalKeyboardKey.arrowUp ||
+            key == LogicalKeyboardKey.arrowRight
+        ? 1
+        : key == LogicalKeyboardKey.arrowDown ||
+                key == LogicalKeyboardKey.arrowLeft
+            ? -1
+            : 0;
+    if (direction == 0 || !_interactive) return KeyEventResult.ignored;
+    _stepThumb(thumb, direction);
+
+    return KeyEventResult.handled;
+  }
+
+  /// Keyboard focus for [thumb]; a focused thumb becomes the one minus and
+  /// plus move.
+  Widget _thumbFocusable(int thumb, Widget child) => Focus(
+    focusNode: _thumbFocus[thumb],
+    canRequestFocus: _interactive,
+    skipTraversal: !_interactive,
+    onFocusChange: (focused) => setState(() {
+      if (focused) {
+        _focusedThumb = thumb;
+        if (!_isDragging) _activeThumb = thumb;
+      } else if (_focusedThumb == thumb) {
+        _focusedThumb = null;
+      }
+    }),
+    onKeyEvent: (_, event) => _handleKey(thumb, event),
+    child: child,
+  );
 
   void _increment() => _stepThumb(_raiseThumb, 1);
 
@@ -573,7 +659,7 @@ class _CircularControlDialState extends State<CircularControlDial> {
       decreasedValue: canLower ? _spoken(_stepped(thumb, -1)) : null,
       onIncrease: canRaise ? () => _stepThumb(thumb, 1) : null,
       onDecrease: canLower ? () => _stepThumb(thumb, -1) : null,
-      child: const SizedBox.expand(),
+      child: _thumbFocusable(thumb, const SizedBox.expand()),
     );
   }
 
@@ -581,34 +667,34 @@ class _CircularControlDialState extends State<CircularControlDial> {
   /// [_buttonDebounceDuration] ms. An edit waiting for the other thumb is
   /// sent first.
   void _scheduleEdit(int thumb) {
-    if (_pendingEdit != null && _pendingEdit!.thumb != thumb) {
+    if (_pendingThumb != null && _pendingThumb != thumb) {
       _flushPendingEdit();
     }
     _buttonDebounceTimer?.cancel();
-    _pendingEdit = (thumb: thumb, value: _thumbValue(thumb));
+    _pendingThumb = thumb;
     _buttonDebounceTimer = Timer(
       const Duration(milliseconds: _buttonDebounceDuration),
       _flushPendingEdit,
     );
   }
 
-  /// Sends the waiting minus or plus edit: the value it set, kept within
-  /// the thumb's current bounds. Does nothing when none is waiting.
+  /// Sends the waiting edit: the value the dial shows for its thumb, kept
+  /// within the thumb's bounds. Does nothing when none is waiting.
   void _flushPendingEdit() {
-    final edit = _pendingEdit;
+    final thumb = _pendingThumb;
     _discardPendingEdit();
-    if (edit == null || !mounted) return;
-    if (edit.thumb == 1 && !_twoThumbs) return;
+    if (thumb == null || !mounted) return;
+    if (thumb == 1 && !_twoThumbs) return;
     _report(
-      edit.thumb,
-      edit.value.clamp(_thumbMin(edit.thumb), _thumbMax(edit.thumb)).toDouble(),
+      thumb,
+      _thumbValue(thumb).clamp(_thumbMin(thumb), _thumbMax(thumb)).toDouble(),
     );
   }
 
   void _discardPendingEdit() {
     _buttonDebounceTimer?.cancel();
     _buttonDebounceTimer = null;
-    _pendingEdit = null;
+    _pendingThumb = null;
   }
 
   String _formatNumber(double value) {
@@ -719,24 +805,23 @@ class _CircularControlDialState extends State<CircularControlDial> {
             thumbFill: neutrals.surfaceCard,
             nowColor: neutrals.textPrimary,
             dashColor: dash,
+            focusedThumb: _keyboard && _interactive ? _focusedThumb : null,
+            focusRingWidth: AppSpacings.scale(AppSliderMetrics.focusRing),
+            focusGap: AppSpacings.scale(AppSliderMetrics.focusGap),
           ),
           child: Padding(
             padding: EdgeInsets.only(bottom: widget.size * 0.04),
-            child: ExcludeSemantics(
-              child: _DialCenter(
-                valueText: valueText,
-                unit: _unit,
-                numeralSize: numeralSize,
-                captionSize: captionSize,
-                numeralColor: off
-                    ? neutrals.textSecondary
-                    : neutrals.textPrimary,
-                currentText: currentText == null
-                    ? null
-                    : localizations.dial_now(currentText),
-                modeLabel: widget.modeLabel,
-                dotColor: mainColor,
-              ),
+            child: _DialCenter(
+              valueText: valueText,
+              unit: _unit,
+              numeralSize: numeralSize,
+              captionSize: captionSize,
+              numeralColor: off ? neutrals.textSecondary : neutrals.textPrimary,
+              currentText: currentText == null
+                  ? null
+                  : localizations.dial_now(currentText),
+              modeLabel: widget.modeLabel,
+              dotColor: mainColor,
             ),
           ),
         ),
@@ -806,6 +891,7 @@ class _CircularControlDialState extends State<CircularControlDial> {
 
     if (!_twoThumbs) {
       return Semantics(
+        container: true,
         slider: true,
         label: label,
         value: _spoken(_value),
@@ -814,7 +900,7 @@ class _CircularControlDialState extends State<CircularControlDial> {
         decreasedValue: _canLower ? _spoken(_stepped(0, -1)) : null,
         onIncrease: _canRaise ? _increment : null,
         onDecrease: _canLower ? _decrement : null,
-        child: dial,
+        child: _thumbFocusable(0, dial),
       );
     }
 
@@ -861,66 +947,76 @@ class _DialCenter extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       spacing: AppSpacings.scale(2),
       children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text.rich(
-            TextSpan(
-              text: valueText,
-              children: [
-                if (unit.isNotEmpty)
-                  TextSpan(
-                    text: unit,
-                    style: TextStyle(
-                      fontSize: unitSize,
-                      fontWeight: AppNumeralFont.value,
-                      color: neutrals.textSecondary,
+        // The slider announces the target; the reading and the mode are
+        // status lines of their own.
+        ExcludeSemantics(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text.rich(
+              TextSpan(
+                text: valueText,
+                children: [
+                  if (unit.isNotEmpty)
+                    TextSpan(
+                      text: unit,
+                      style: TextStyle(
+                        fontSize: unitSize,
+                        fontWeight: AppNumeralFont.value,
+                        color: neutrals.textSecondary,
+                      ),
                     ),
-                  ),
-              ],
-            ),
-            maxLines: 1,
-            style: TextStyle(
-              fontFamily: AppNumeralFont.family,
-              fontSize: numeralSize,
-              fontWeight: AppNumeralFont.display,
-              height: 0.9,
-              color: numeralColor,
-              fontFeatures: const [FontFeature.tabularFigures()],
+                ],
+              ),
+              maxLines: 1,
+              style: TextStyle(
+                fontFamily: AppNumeralFont.family,
+                fontSize: numeralSize,
+                fontWeight: AppNumeralFont.display,
+                height: 0.9,
+                color: numeralColor,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ),
         if (currentText != null)
-          Text(
-            currentText!,
-            maxLines: 1,
-            style: TextStyle(
-              fontSize: captionSize,
-              color: neutrals.textSecondary,
+          Semantics(
+            container: true,
+            child: Text(
+              currentText!,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: captionSize,
+                color: neutrals.textSecondary,
+              ),
             ),
           ),
         if (label != null)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: AppSpacings.pSm,
-            children: [
-              Container(
-                width: AppSpacings.scale(6),
-                height: AppSpacings.scale(6),
-                decoration: BoxDecoration(
-                  color: dotColor,
-                  shape: BoxShape.circle,
+          Semantics(
+            container: true,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
+              children: [
+                Container(
+                  width: AppSpacings.scale(6),
+                  height: AppSpacings.scale(6),
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              Text(
-                label,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: captionSize,
-                  fontWeight: FontWeight.w500,
-                  color: neutrals.textPrimary,
+                Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: captionSize,
+                    fontWeight: FontWeight.w500,
+                    color: neutrals.textPrimary,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
       ],
     );
@@ -939,6 +1035,9 @@ class _DialPainter extends CustomPainter {
     required this.thumbFill,
     required this.nowColor,
     required this.dashColor,
+    required this.focusedThumb,
+    required this.focusRingWidth,
+    required this.focusGap,
   });
 
   final double startValueAngle;
@@ -951,6 +1050,11 @@ class _DialPainter extends CustomPainter {
   final Color thumbFill;
   final Color nowColor;
   final Color? dashColor;
+
+  /// The thumb with keyboard focus, ringed in its colour; null rings none.
+  final int? focusedThumb;
+  final double focusRingWidth;
+  final double focusGap;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1003,6 +1107,16 @@ class _DialPainter extends CustomPainter {
       } else {
         canvas.drawCircle(position, thumbRadius, ring);
       }
+      if (i == focusedThumb) {
+        canvas.drawCircle(
+          position,
+          thumbRadius + ringWidth / 2 + focusGap + focusRingWidth / 2,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = focusRingWidth
+            ..color = thumbColors[i],
+        );
+      }
     }
   }
 
@@ -1015,6 +1129,9 @@ class _DialPainter extends CustomPainter {
       old.trackColor != trackColor ||
       old.dashColor != dashColor ||
       old.thumbFill != thumbFill ||
+      old.focusedThumb != focusedThumb ||
+      old.focusRingWidth != focusRingWidth ||
+      old.focusGap != focusGap ||
       old.thumbColors.length != thumbColors.length ||
       old.thumbAngles.length != thumbAngles.length ||
       !_listEquals(old.thumbAngles, thumbAngles) ||

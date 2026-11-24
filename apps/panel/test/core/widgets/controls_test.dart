@@ -372,6 +372,77 @@ void main() {
       expect(find.text('80 %'), findsOneWidget);
     });
 
+    testWidgets('a drag cut short by a disable does not resume on re-enable', (tester) async {
+      final reported = <double>[];
+      Widget card(ControlState state) => SizedBox(
+        width: 300,
+        child: CardSlider(label: 'Speed', value: 0.4, state: state, onChanged: reported.add),
+      );
+      await _pump(tester, card(ControlState.idle));
+
+      final gesture = await tester.startGesture(tester.getCenter(find.byType(Slider)));
+      await gesture.moveBy(const Offset(20, 0));
+      await tester.pump();
+      final before = reported.length;
+      expect(before, greaterThan(0));
+
+      // Disabled and enabled again with the finger still down: the old
+      // gesture's moves change nothing.
+      await _pump(tester, card(ControlState.disabled));
+      await _pump(tester, card(ControlState.idle));
+      await gesture.moveBy(const Offset(60, 0));
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+      expect(reported, hasLength(before));
+      expect(find.text('40 %'), findsOneWidget);
+
+      // A new drag works as usual.
+      final next = await tester.startGesture(tester.getCenter(find.byType(Slider)));
+      await next.moveBy(const Offset(30, 0));
+      await tester.pump();
+      await next.up();
+      await tester.pump();
+      expect(reported.length, greaterThan(before));
+    });
+
+    testWidgets('a gradient\'s colours sit under the thumb at their values', (tester) async {
+      final key = GlobalKey();
+      await _pump(
+        tester,
+        RepaintBoundary(
+          key: key,
+          child: SizedBox(
+            width: 300,
+            child: AppSlider(
+              value: 1,
+              trackGradient: const [Color(0xFF000000), Color(0xFFFFFFFF)],
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      final bytes = await tester.runAsync(() async {
+        final image = await boundary.toImage();
+        final data = await image.toByteData();
+        image.dispose();
+
+        return data!;
+      });
+      final width = boundary.size.width.round();
+      final y = (boundary.size.height / 2).floor();
+      int red(int x) => bytes!.getUint8((y * width + x) * 4);
+
+      // Where the thumb sits at 0 (a thumb radius in), the gradient starts:
+      // still the first colour.
+      final travelStart = AppSpacings.scale(AppSliderMetrics.row.thumb) ~/ 2;
+      expect(red(travelStart), lessThan(4));
+      // Halfway along the travel is halfway along the gradient.
+      expect(red(150), closeTo(128, 6));
+    });
+
     testWidgets('SliderWithSteps draws the one slider without step labels', (tester) async {
       await _pump(
         tester,
@@ -645,8 +716,9 @@ void main() {
       expect(AppStepper.decimalsOf(0.25), 2);
       expect(AppStepper.decimalsOf(0.01), 2);
       expect(AppStepper.decimalsOf(0.005), 3);
-      // A step with no short decimal form stops at four.
-      expect(AppStepper.decimalsOf(1 / 3), 4);
+      expect(AppStepper.decimalsOf(0.00001), 5);
+      // A step with no short decimal form stops at six.
+      expect(AppStepper.decimalsOf(1 / 3), 6);
     });
 
     testWidgets('a step under 0.1 keeps neighbouring values apart', (tester) async {
@@ -669,6 +741,28 @@ void main() {
       await tester.pump();
       expect(value, closeTo(0.22, 1e-9));
       expect(find.text('0.22'), findsOneWidget);
+    });
+
+    testWidgets('a step finer than 0.0001 still shows apart', (tester) async {
+      var value = 0.0;
+      await _pump(
+        tester,
+        StatefulBuilder(
+          builder: (context, setState) => AppStepper(
+            value: value,
+            min: 0,
+            max: 1,
+            step: 0.00001,
+            onChanged: (v) => setState(() => value = v),
+          ),
+        ),
+      );
+      expect(find.text('0.00000'), findsOneWidget);
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      expect(value, closeTo(0.00001, 1e-12));
+      expect(find.text('0.00001'), findsOneWidget);
     });
 
     testWidgets('a range offset from its step shows and announces exact values', (tester) async {
@@ -946,14 +1040,39 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(SingleChildScrollView), findsOneWidget);
-      for (final element in find.byType(Material).evaluate()) {
+      final segments = find.descendant(
+        of: find.byType(ModeSelector<String>),
+        matching: find.byType(Material),
+      );
+      expect(segments, findsNWidgets(6));
+      for (final element in segments.evaluate()) {
         final box = element.renderObject! as RenderBox;
-        if (box.size.height < 36) continue;
         expect(box.size.width, greaterThanOrEqualTo(36));
+        expect(box.size.height, greaterThanOrEqualTo(36));
       }
       // The selected segment is scrolled into view.
       final position = tester.state<ScrollableState>(find.byType(Scrollable)).position;
       expect(position.pixels, greaterThan(0));
+    });
+
+    testWidgets('a row too narrow to compress follows a new selection', (tester) async {
+      Widget selector(String selected) => SizedBox(
+        width: 150,
+        child: ModeSelector<String>(
+          modes: manyModes(),
+          selectedValue: selected,
+          showLabels: false,
+          onChanged: (_) {},
+        ),
+      );
+      double scrolled() => tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels;
+      await _pump(tester, selector('a'));
+      await tester.pumpAndSettle();
+      expect(scrolled(), 0);
+
+      await _pump(tester, selector('f'));
+      await tester.pumpAndSettle();
+      expect(scrolled(), greaterThan(0));
     });
 
     testWidgets('scrolls to the selection when scrolling turns on', (tester) async {
@@ -1290,6 +1409,7 @@ void main() {
       double min = 10,
       double max = 30,
       double step = 0.5,
+      bool showButtons = true,
     }) => CircularControlDial(
       value: value,
       secondValue: second,
@@ -1308,6 +1428,7 @@ void main() {
       sizeClass: sizeClass,
       onChanged: onChanged ?? (_) {},
       onSecondChanged: onSecondChanged,
+      showButtons: showButtons,
     );
 
     for (final sizeClass in _classes) {
@@ -1706,6 +1827,142 @@ void main() {
       expect(heat, isEmpty);
       expect(cool, isEmpty);
       handle.dispose();
+    });
+
+    Finder numeral(String text) =>
+        find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == text);
+
+    testWidgets('a heat edit still waiting stays on screen when the cool thumb goes or comes', (tester) async {
+      final heat = <double>[];
+      await _pump(tester, dial(value: 22, second: 26, onChanged: heat.add, onSecondChanged: (_) {}));
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      await _pump(tester, dial(value: 22, onChanged: heat.add));
+      expect(numeral('22.5°'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [22.5]);
+
+      // And the other way: a cool thumb added while a heat edit waits.
+      await _pump(tester, dial(value: 22.5, onChanged: heat.add));
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      await _pump(tester, dial(value: 22.5, second: 26, onChanged: heat.add, onSecondChanged: (_) {}));
+      expect(numeral('23–26°'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [22.5, 23]);
+    });
+
+    testWidgets('a heat edit still waiting stays under a cool setpoint the parent moves', (tester) async {
+      final heat = <double>[];
+      Widget at(double value, double cool) =>
+          dial(value: value, second: cool, step: 1, onChanged: heat.add, onSecondChanged: (_) {});
+      await _pump(tester, at(22, 26));
+
+      // Cool drops under the edit: heat follows it, and sends what it shows.
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      await _pump(tester, at(22, 22.5));
+      expect(numeral('22.5–22.5°'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [22.5]);
+
+      // Cool still above the edit: heat keeps it.
+      await _pump(tester, at(21, 26));
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      await _pump(tester, at(21, 24));
+      expect(numeral('22–24°'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [22.5, 22]);
+    });
+
+    testWidgets('two thumbs: a press takes the thumb nearer the pointer before snapping', (tester) async {
+      final heat = <double>[];
+      final cool = <double>[];
+      await _pump(
+        tester,
+        dial(value: 14.5, second: 15.75, step: 4, onChanged: heat.add, onSecondChanged: cool.add),
+      );
+
+      // Right on cool, which snaps to 14: nearer heat after snapping, but
+      // the press is on cool.
+      await tester.tapAt(onArc(tester, 15.75));
+      await tester.pump();
+      expect(heat, isEmpty);
+      expect(cool, hasLength(1));
+    });
+
+    testWidgets('a drag release is not followed by a minus or plus made during it', (tester) async {
+      final reported = <double>[];
+      await _pump(tester, dial(onChanged: reported.add));
+
+      final gesture = await tester.startGesture(onArc(tester, 22));
+      await gesture.moveTo(onArc(tester, 23));
+      await tester.pump();
+      // Another finger presses plus mid-drag.
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      await gesture.moveTo(onArc(tester, 25));
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, [25]);
+    });
+
+    testWidgets('screen readers hear the reading and the mode, and the target once', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, dial());
+
+      expect(find.bySemanticsLabel('Now 21.4°'), findsOneWidget);
+      expect(find.bySemanticsLabel('Heating'), findsOneWidget);
+      // The numeral is the slider's value, not a label of its own.
+      expect(find.bySemanticsLabel('22°'), findsNothing);
+      final node = tester.getSemantics(find.byType(CircularControlDial));
+      expect(node.label, 'Target temperature');
+      expect(node.value, '22°');
+      handle.dispose();
+    });
+
+    testWidgets('the keyboard steps the focused thumb, without minus and plus', (tester) async {
+      final reported = <double>[];
+      await _pump(tester, dial(onChanged: reported.add, showButtons: false));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, [22.5]);
+
+      // A disabled dial takes no focus.
+      await _pump(tester, dial(onChanged: reported.add, showButtons: false, enabled: false));
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, [22.5]);
+    });
+
+    testWidgets('two thumbs: Tab moves from heat to cool, and the arrows step each', (tester) async {
+      final heat = <double>[];
+      final cool = <double>[];
+      await _pump(
+        tester,
+        dial(value: 20, second: 26, onChanged: heat.add, onSecondChanged: cool.add, showButtons: false),
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [19.5]);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(cool, [26.5]);
+      expect(heat, [19.5]);
     });
 
     testWidgets('disabled or off: dimmed and does not move', (tester) async {

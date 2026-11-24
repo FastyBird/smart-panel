@@ -180,11 +180,15 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     if (widget.scrollable && _scrollController == null) {
       _scrollController = ScrollController();
     }
-    if (widget.scrollable &&
-        (!oldWidget.scrollable ||
+    // A row that scrolls, set to or too narrow to compress, follows a new
+    // selection; the layout scrolls when a row first turns too narrow.
+    final scrolls = widget.scrollable || _compressed;
+    if (scrolls &&
+        widget.selectedValue != null &&
+        ((widget.scrollable && !oldWidget.scrollable) ||
             widget.selectedValue != oldWidget.selectedValue ||
             widget.modes != oldWidget.modes)) {
-      _scheduleScrollToSelected();
+      WidgetsBinding.instance.addPostFrameCallback(_scrollToSelected);
     }
   }
 
