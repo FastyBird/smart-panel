@@ -264,9 +264,10 @@ Widget _modeChip(BuildContext context) {
     popupBuilder: (context, dismiss) => const SizedBox.shrink(),
   );
 
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
+  // A Wrap, so the popup drops under the chip on the narrow Compact canvas.
+  return Wrap(
     spacing: AppSpacings.pLg,
+    runSpacing: AppSpacings.pLg,
     children: [
       DeckModeChipButton(config: config, onTap: (_) {}, sizeClass: sizeClass),
       DeckModePopupFrame(

@@ -220,24 +220,26 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     );
   }
 
-  /// The corner icon of a segment: the caller's status icon, or the
-  /// pending / not confirmed icon on the selected segment.
+  /// The corner icon of a segment. On the selected segment the pending /
+  /// not confirmed icon comes first, so command feedback is never hidden;
+  /// otherwise the caller's status icon.
   (IconData, Color)? _statusIcon(ThemeData theme, ModeOption<T> mode) {
-    final own = widget.statusIcons?[mode.value];
-    if (own != null) return own;
-    if (mode.value != widget.selectedValue) return null;
+    if (mode.value == widget.selectedValue) {
+      final command = switch (widget.state) {
+        ControlState.pending => (
+          MdiIcons.refresh,
+          theme.neutrals.textSecondary,
+        ),
+        ControlState.unconfirmed => (
+          MdiIcons.alert,
+          theme.status(AppStatus.warning).text,
+        ),
+        _ => null,
+      };
+      if (command != null) return command;
+    }
 
-    return switch (widget.state) {
-      ControlState.pending => (
-        MdiIcons.refresh,
-        theme.neutrals.textSecondary,
-      ),
-      ControlState.unconfirmed => (
-        MdiIcons.alert,
-        theme.status(AppStatus.warning).text,
-      ),
-      _ => null,
-    };
+    return widget.statusIcons?[mode.value];
   }
 
   @override

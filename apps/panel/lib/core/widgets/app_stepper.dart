@@ -127,7 +127,7 @@ class AppStepper extends StatelessWidget {
   final ValueChanged<double>? onChanged;
 
   /// How the value is written; defaults to a locale-aware number with as
-  /// many decimals as [step] needs.
+  /// many decimals as [step] needs (see [decimalsFor]).
   final String Function(double value)? format;
 
   /// Shown after the value in `text.secondary` ("°", " %").
@@ -143,13 +143,26 @@ class AppStepper extends StatelessWidget {
 
   bool get _enabled => onChanged != null && state != ControlState.disabled;
 
-  String _format(double v) {
-    if (format != null) return format!(v);
-    if (step == step.roundToDouble()) {
-      return NumberUtils.formatInteger(v.round());
+  /// The decimals [step] needs, so 0.5 shows one and 0.25 or 0.01 two;
+  /// at most [_maxDecimals].
+  static int decimalsFor(double step) {
+    var scaled = step;
+    for (var decimals = 0; decimals < _maxDecimals; decimals++) {
+      if ((scaled - scaled.roundToDouble()).abs() < 1e-6) return decimals;
+      scaled *= 10;
     }
 
-    return NumberUtils.formatDecimal(v, decimalPlaces: 1);
+    return _maxDecimals;
+  }
+
+  static const int _maxDecimals = 4;
+
+  String _format(double v) {
+    if (format != null) return format!(v);
+    final decimals = decimalsFor(step);
+    if (decimals == 0) return NumberUtils.formatInteger(v.round());
+
+    return NumberUtils.formatDecimal(v, decimalPlaces: decimals);
   }
 
   double _snap(double v) =>

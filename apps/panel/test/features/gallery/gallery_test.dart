@@ -119,6 +119,40 @@ void main() {
     }
   });
 
+  testWidgets('the Controls entries fit the Compact portrait and square canvases', (tester) async {
+    await _pump(tester);
+    await _tap(tester, 'gallery-section-controls');
+    final section = gallerySections.firstWhere((section) => section.id == 'controls');
+
+    for (final (canvas, orientation) in [('compact', 'portrait'), ('square', 'landscape')]) {
+      await _tap(tester, 'gallery-canvas-$canvas');
+      await _tap(tester, 'gallery-orientation-$orientation');
+
+      // Step through the list directly: a drag would be caught by the dial.
+      final position = tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byKey(const ValueKey('gallery-section-view-controls')),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position;
+      position.jumpTo(0);
+      final seen = <String>{};
+      while (true) {
+        await tester.pumpAndSettle();
+        // A RenderFlex overflow would surface here.
+        expect(tester.takeException(), isNull, reason: 'at ${position.pixels} on $canvas $orientation');
+        seen.addAll(section.entries.map((entry) => entry.title).where((title) => find.text(title).evaluate().isNotEmpty));
+        if (position.pixels >= position.maxScrollExtent) break;
+        position.jumpTo((position.pixels + 100).clamp(0, position.maxScrollExtent).toDouble());
+      }
+      expect(seen, section.entries.map((entry) => entry.title).toSet(), reason: '$canvas $orientation');
+    }
+  });
+
   testWidgets('renders the reference canvas of each class and orientation', (tester) async {
     await _pump(tester);
 

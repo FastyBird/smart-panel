@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -12,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_slider.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_toggle.dart';
@@ -20,6 +23,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -597,6 +601,40 @@ void main() {
       expect(value, 29.5);
     });
 
+    test('shows as many decimals as the step needs', () {
+      expect(AppStepper.decimalsFor(1), 0);
+      expect(AppStepper.decimalsFor(5), 0);
+      expect(AppStepper.decimalsFor(0.5), 1);
+      expect(AppStepper.decimalsFor(0.1), 1);
+      expect(AppStepper.decimalsFor(0.25), 2);
+      expect(AppStepper.decimalsFor(0.01), 2);
+      expect(AppStepper.decimalsFor(0.005), 3);
+      // A step with no short decimal form stops at four.
+      expect(AppStepper.decimalsFor(1 / 3), 4);
+    });
+
+    testWidgets('a step under 0.1 keeps neighbouring values apart', (tester) async {
+      var value = 0.21;
+      await _pump(
+        tester,
+        StatefulBuilder(
+          builder: (context, setState) => AppStepper(
+            value: value,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            onChanged: (v) => setState(() => value = v),
+          ),
+        ),
+      );
+      expect(find.text('0.21'), findsOneWidget);
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      expect(value, closeTo(0.22, 1e-9));
+      expect(find.text('0.22'), findsOneWidget);
+    });
+
     testWidgets('pending, not confirmed and disabled values', (tester) async {
       final theme = _theme(Brightness.light);
 
@@ -817,6 +855,58 @@ void main() {
     });
   });
 
+  group('IntentModeSelector command feedback', () {
+    for (final (state, icon) in [
+      (ControlState.pending, MdiIcons.refresh),
+      (ControlState.unconfirmed, MdiIcons.alert),
+    ]) {
+      testWidgets('${state.name} shows over the intent icon of the selected mode', (tester) async {
+        await _pump(
+          tester,
+          SizedBox(
+            width: 400,
+            child: IntentModeSelector<String>(
+              modes: _modes(),
+              activeValue: 'heat',
+              lastIntentValue: 'off',
+              state: state,
+              onChanged: (_) {},
+            ),
+          ),
+        );
+
+        expect(
+          find.descendant(
+            of: find.ancestor(of: find.text('Heat'), matching: find.byType(Material)).first,
+            matching: find.byIcon(icon),
+          ),
+          findsOneWidget,
+        );
+        expect(find.byIcon(MdiIcons.check), findsNothing);
+        // Other modes keep their intent icons.
+        expect(find.byIcon(MdiIcons.history), findsOneWidget);
+      });
+    }
+
+    testWidgets('idle keeps the intent icon of the selected mode', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: IntentModeSelector<String>(
+            modes: _modes(),
+            matchedValue: 'cool',
+            onChanged: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.byIcon(MdiIcons.approximatelyEqual), findsOneWidget);
+      expect(find.byIcon(MdiIcons.refresh), findsNothing);
+      expect(find.byIcon(MdiIcons.alert), findsNothing);
+    });
+  });
+
   group('Mode chip and popup', () {
     BottomNavModeConfig config({String? title = 'Lights mode'}) => BottomNavModeConfig(
       icon: MdiIcons.sofaOutline,
@@ -915,6 +1005,44 @@ void main() {
         });
       }
     }
+
+    testWidgets('in a narrow header a long label ellipsizes within half the row', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: PageHeader(
+            title: 'Living room',
+            sizeClass: ScreenSizeClass.regular,
+            landscapeAction: DeckModeChipButton(
+              config: BottomNavModeConfig(
+                icon: MdiIcons.sofaOutline,
+                label: 'Relax with a very long translated mode name',
+                title: 'Lights mode',
+                color: ThemeColors.lights,
+                popupBuilder: (context, dismiss) => const SizedBox.shrink(),
+              ),
+              onTap: (_) {},
+              sizeClass: ScreenSizeClass.regular,
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      final header = tester.getRect(find.byType(PageHeader));
+      final chip = tester.getRect(find.byType(DeckModeChipButton));
+      expect(chip.right, lessThanOrEqualTo(header.right));
+      // The row is the header less its 8 px padding on each side.
+      expect(chip.width, lessThanOrEqualTo((400 - 16) * PageHeaderMetrics.landscapeActionShare));
+      final label = tester.renderObject<RenderParagraph>(
+        find.text('Lights mode: Relax with a very long translated mode name'),
+      );
+      expect(label.didExceedMaxLines, isTrue);
+      // The title keeps the rest.
+      expect(find.text('Living room'), findsOneWidget);
+      expect(tester.getRect(find.text('Living room')).left, greaterThanOrEqualTo(header.left));
+    });
 
     testWidgets('without a title the chip shows the mode alone', (tester) async {
       await _pump(
@@ -1041,6 +1169,44 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       expect(heat, [19.5]);
       expect(cool, isEmpty);
+    });
+
+    testWidgets('a pending minus or plus change is sent for its own thumb when the other is picked', (tester) async {
+      final heat = <double>[];
+      final cool = <double>[];
+      await _pump(
+        tester,
+        dial(value: 20, second: 24, onChanged: heat.add, onSecondChanged: cool.add),
+      );
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      expect(heat, isEmpty);
+
+      // Within the debounce, tap the track at the cool thumb.
+      final origin = tester.getTopLeft(find.byType(CircularControlDial));
+      const size = 240.0;
+      final angle = DialGeometry.startAngle + (24 - 10) / (30 - 10) * DialGeometry.sweepAngle;
+      final onCool = origin +
+          Offset(
+            size * DialGeometry.centerX + size * DialGeometry.radius * math.cos(angle),
+            size * DialGeometry.centerY + size * DialGeometry.radius * math.sin(angle),
+          );
+      await tester.tapAt(onCool);
+      await tester.pump();
+      expect(heat, [20.5]);
+      expect(cool, [24]);
+
+      // The debounce does not fire again for the other thumb.
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [20.5]);
+      expect(cool, [24]);
+
+      // Minus and plus now move the cool thumb, and report it.
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [20.5]);
+      expect(cool, [24, 24.5]);
     });
 
     testWidgets('disabled or off: dimmed and does not move', (tester) async {

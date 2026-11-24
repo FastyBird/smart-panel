@@ -234,6 +234,10 @@ class _CircularControlDialState extends State<CircularControlDial> {
   int _activeThumb = 0;
   Timer? _buttonDebounceTimer;
 
+  /// The thumb a minus or plus change waiting on [_buttonDebounceTimer]
+  /// belongs to.
+  int? _pendingButtonThumb;
+
   /// Debounce duration for minus and plus taps (ms)
   static const int _buttonDebounceDuration = 500;
 
@@ -349,8 +353,10 @@ class _CircularControlDialState extends State<CircularControlDial> {
     return math.atan2(delta.dy, delta.dx);
   }
 
-  /// With two thumbs, the drag moves the nearer one.
+  /// With two thumbs, the drag moves the nearer one. A minus or plus change
+  /// still waiting to be reported is sent first, for the thumb it moved.
   void _pickThumb(Offset localPosition) {
+    _flushButtonChange();
     if (!_twoThumbs) return;
     final value = _angleToValue(_angleOf(localPosition));
     if (value == null) return;
@@ -373,8 +379,9 @@ class _CircularControlDialState extends State<CircularControlDial> {
     if (value != null) _setActiveValue(value);
   }
 
-  void _report() {
-    if (_activeThumb == 1 && _twoThumbs) {
+  /// Reports [thumb]'s value, the active thumb's by default.
+  void _report([int? thumb]) {
+    if ((thumb ?? _activeThumb) == 1 && _twoThumbs) {
       widget.onSecondChanged?.call(_secondValue!);
     } else {
       widget.onChanged?.call(_value);
@@ -436,13 +443,23 @@ class _CircularControlDialState extends State<CircularControlDial> {
   /// Reports the value once minus and plus have been quiet for
   /// [_buttonDebounceDuration] ms.
   void _scheduleButtonCallback() {
+    if (_pendingButtonThumb != _activeThumb) _flushButtonChange();
     _buttonDebounceTimer?.cancel();
+    _pendingButtonThumb = _activeThumb;
     _buttonDebounceTimer = Timer(
       const Duration(milliseconds: _buttonDebounceDuration),
-      () {
-        if (mounted) _report();
-      },
+      _flushButtonChange,
     );
+  }
+
+  /// Reports a minus or plus change still waiting on the debounce, for the
+  /// thumb it moved; does nothing when none is waiting.
+  void _flushButtonChange() {
+    final thumb = _pendingButtonThumb;
+    _buttonDebounceTimer?.cancel();
+    _buttonDebounceTimer = null;
+    _pendingButtonThumb = null;
+    if (thumb != null && mounted) _report(thumb);
   }
 
   String _formatNumber(double value) {
