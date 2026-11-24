@@ -511,7 +511,7 @@ Protect epic, built on this epic's components.
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :white_check_mark: Done |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :construction: In Progress |
 
-**Next up:** AR-20 (pages and tiles), once AR-19 part 2 (the display detail, access tokens and the lint switch) merges.
+**Next up:** AR-20 part 2 (the page and tile detail with their data sources), once part 1 (the pages list and page add and edit) merges.
 
 ---
 

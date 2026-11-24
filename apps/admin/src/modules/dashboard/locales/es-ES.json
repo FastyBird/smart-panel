@@ -63,7 +63,6 @@
 			"remove": "¿Eliminar página?",
 			"bulkRemove": "¿Eliminar páginas?",
 			"selectPlugin": "Se requiere plugin de página",
-			"adjustFilters": "Filtrar páginas",
 			"addDataSource": "Añadir fuente de datos de página",
 			"editDataSource": "Editar fuente de datos de página"
 		},
@@ -94,7 +93,6 @@
 			"add": "Añadir nueva página del panel inteligente",
 			"edit": "Editar página del panel inteligente",
 			"detail": "Gestionar página del panel inteligente",
-			"adjustFilters": "Ajustar filtros de visualización",
 			"addDataSource": "Añadir nueva fuente de datos de página del panel inteligente",
 			"editDataSource": "Editar fuente de datos de página del panel inteligente"
 		},
@@ -168,7 +166,8 @@
 			"confirmBulkRemove": "¿Estás seguro de que deseas eliminar {count} páginas? Esto no se puede revertir.",
 			"selectPlugin": "Para crear una nueva página, por favor selecciona un plugin compatible de la lista. Los plugins proporcionan las opciones de configuración necesarias para tipos de página específicos.",
 			"noPlugins": "Aún no se han configurado plugins de página.",
-			"noDisplays": "Aún no se han emparejado pantallas."
+			"noDisplays": "Aún no se han emparejado pantallas.",
+			"noPagesHint": "Añada una página para elegir lo que muestran las pantallas de pared."
 		},
 		"tiles": {
 			"noTiles": "No tienes ningún mosaico configurado",
@@ -350,6 +349,9 @@
 			},
 			"displays": {
 				"title": "Filtrar por pantalla de página"
+			},
+			"type": {
+				"title": "Tipo"
 			}
 		},
 		"tiles": {
@@ -408,6 +410,18 @@
 		},
 		"addDataSource": {
 			"title": "Añadir fuente de datos"
+		},
+		"more": {
+			"title": "Más acciones"
+		},
+		"keepEditing": {
+			"title": "Seguir editando"
+		}
+	},
+	"aria": {
+		"pages": {
+			"edit": "Editar {page}",
+			"more": "Más acciones para {page}"
 		}
 	}
 }

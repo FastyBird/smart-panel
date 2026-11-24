@@ -71,7 +71,7 @@
 			/>
 			<el-text
 				size="small"
-				class="block mt-1 text-gray-500"
+				class="block mt-1 text-secondary"
 			>
 				{{ t('dashboardModule.fields.pages.displays.description') }}
 			</el-text>

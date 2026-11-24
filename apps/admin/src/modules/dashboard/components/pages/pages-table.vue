@@ -1,6 +1,7 @@
 <template>
 	<el-table
-		v-loading="props.loading"
+		ref="tableEl"
+		v-loading="props.loading && props.items.length > 0"
 		:element-loading-text="t('dashboardModule.texts.pages.loadingPages')"
 		:data="props.items"
 		:default-sort="
@@ -18,92 +19,21 @@
 		@row-click="onRowClick"
 	>
 		<template #empty>
-			<div
-				v-if="props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:view-dashboard" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:database-refresh" />
-							</template>
-						</icon-with-child>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="noResults && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:view-dashboard" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('dashboardModule.texts.pages.noPages') }}
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="props.filtersActive && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:view-dashboard" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-multiple" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('dashboardModule.texts.pages.noFilteredPages') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="emit('reset-filters')"
-						>
-							<template #icon>
-								<icon icon="mdi:filter-off" />
-							</template>
-
-							{{ t('dashboardModule.buttons.resetFilters.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
+			<pages-empty
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				@reset-filters="emit('reset-filters')"
+			/>
 		</template>
 
 		<el-table-column
-			v-if="isMDDevice"
 			type="selection"
-			:width="30"
+			fixed="left"
+			:width="40"
 		/>
 
 		<el-table-column
-			:width="60"
+			:width="56"
 			align="center"
 		>
 			<template #default="scope">
@@ -117,10 +47,9 @@
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
 			:min-width="200"
-			class-name="py-0!"
 		>
 			<template #default="scope">
-				{{ scope.row.title }}
+				<span class="block text-card-title truncate">{{ scope.row.title }}</span>
 			</template>
 		</el-table-column>
 
@@ -129,30 +58,21 @@
 			prop="type"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="200"
+			:width="180"
 		>
 			<template #default="scope">
-				<pages-table-column-plugin
-					:page="scope.row"
-					:filters="innerFilters"
-					@filter-by="(value: string, add: boolean) => onFilterBy('type', value, add)"
-				/>
+				<pages-table-column-plugin :page="scope.row" />
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('dashboardModule.table.pages.columns.display.title')"
 			prop="display"
-			sortable="custom"
-			:sort-orders="['ascending', 'descending']"
-			:width="150"
+			:width="200"
 		>
 			<template #default="scope">
-				<table-column-display
-					:row="scope.row"
-					:filters="innerFilters"
-					@filter-by="(value: string, add: boolean) => onFilterBy('display', value, add)"
-				/>
+				<table-column-display :row="scope.row" />
 			</template>
 		</el-table-column>
 
@@ -162,46 +82,48 @@
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
 			align="center"
-			:width="120"
+			:width="90"
 		>
 			<template #default="scope">
-				{{ scope.row.order }}
+				<span class="text-body">{{ scope.row.order }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			:width="300"
+			:width="isTabletPortrait ? 96 : 210"
 			align="right"
+			fixed="right"
 		>
 			<template #default="scope">
-				<div @click.stop>
-					<pages-table-column-actions
-						:page="scope.row"
-						@detail="(id: IPage['id']) => emit('detail', id)"
-						@edit="(id: IPage['id']) => emit('edit', id)"
-						@remove="(id: IPage['id']) => emit('remove', id)"
-					/>
-				</div>
+				<pages-row-actions
+					:page="scope.row"
+					:compact="isTabletPortrait"
+					@configure="(to: string | RouteLocationRaw) => emit('configure', to)"
+					@detail="(id: IPage['id']) => emit('detail', id)"
+					@edit="(id: IPage['id']) => emit('edit', id)"
+					@remove="(id: IPage['id']) => emit('remove', id)"
+				/>
 			</template>
 		</el-table-column>
 	</el-table>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { RouteLocationRaw } from 'vue-router';
 
-import { ElButton, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
+import { ElTable, ElTableColumn, vLoading } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { IconWithChild, useBreakpoints } from '../../../../common';
+import { useSizeClass } from '../../../../common';
 import { TableColumnDisplay } from '../../../displays';
 import type { IPagesFilter } from '../../composables/types';
 import type { IPage } from '../../store/pages.store.types';
 
-import PagesTableColumnActions from './pages-table-column-actions.vue';
+import PagesEmpty from './pages-empty.vue';
+import PagesRowActions from './pages-row-actions.vue';
 import PagesTableColumnIcon from './pages-table-column-icon.vue';
 import PagesTableColumnPlugin from './pages-table-column-plugin.vue';
 import type { IPagesTableProps } from './pages-table.types';
@@ -213,6 +135,7 @@ defineOptions({
 const props = defineProps<IPagesTableProps>();
 
 const emit = defineEmits<{
+	(e: 'configure', to: string | RouteLocationRaw): void;
 	(e: 'detail', id: IPage['id']): void;
 	(e: 'edit', id: IPage['id']): void;
 	(e: 'remove', id: IPage['id']): void;
@@ -225,14 +148,17 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+// Tablet portrait keeps the title, type and order; the displays a page shows on are on its detail page
+const { isTabletPortrait } = useSizeClass();
 
-const noResults = computed<boolean>((): boolean => props.totalRows === 0);
+const tableEl = ref<InstanceType<typeof ElTable> | null>(null);
 
-const innerFilters = useVModel(props, 'filters', emit);
+const tableHeight = computed<number>((): number => props.tableHeight ?? 400);
+
+useVModel(props, 'filters', emit);
 
 const onSortData = ({ prop, order }: { prop: 'title' | 'type' | 'order'; order: 'ascending' | 'descending' | null }): void => {
-	emit('update:sort-by', prop);
+	emit('update:sort-by', order === null ? undefined : prop);
 	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
 };
 
@@ -244,31 +170,10 @@ const onRowClick = (row: IPage): void => {
 	emit('detail', row.id);
 };
 
-const onFilterBy = (column: string, data: string, add?: boolean): void => {
-	if (column === 'type') {
-		if (data === null) {
-			return;
-		}
-
-		let filteredTypes = innerFilters.value.types;
-
-		if (add === true) {
-			filteredTypes.push(data);
-		} else {
-			filteredTypes = innerFilters.value.types.filter((item) => item !== data);
-		}
-
-		innerFilters.value.types = Array.from(new Set(filteredTypes));
-	} else if (column === 'display') {
-		let filteredDisplays = innerFilters.value.displays;
-
-		if (add === true) {
-			filteredDisplays.push(data);
-		} else {
-			filteredDisplays = innerFilters.value.displays.filter((item) => item !== data);
-		}
-
-		innerFilters.value.displays = Array.from(new Set(filteredDisplays));
-	}
+// The filter bar's Clear selection
+const clearSelection = (): void => {
+	tableEl.value?.clearSelection();
 };
+
+defineExpose({ clearSelection });
 </script>

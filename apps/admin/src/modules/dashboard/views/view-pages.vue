@@ -2,80 +2,64 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isPagesListRoute || isLGDevice"
+		v-if="isPagesListRoute || inDrawer"
 		:title="t('dashboardModule.headings.pages.list')"
 		:subtitle="t('dashboardModule.subHeadings.pages.list')"
 		icon="mdi:view-dashboard"
-		:actions="[{ icon: 'mdi:plus', label: t('dashboardModule.buttons.add.title'), handler: onPageCreate }]"
+		:actions="[
+			{ icon: 'mdi:magnify', label: t('dashboardModule.fields.pages.search.placeholder'), handler: onSearch },
+			{ icon: 'mdi:plus', label: t('dashboardModule.buttons.add.title'), handler: onPageCreate },
+		]"
 	>
 		<template #actions>
-			<div class="flex items-center">
-				<el-button
-					type="primary"
-					plain
-					class="ml-2!"
-					@click="onPageCreate"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+			<el-button
+				type="primary"
+				plain
+				data-test-id="pages-add"
+				@click="onPageCreate"
+			>
+				<template #icon>
+					<icon icon="mdi:plus" />
+				</template>
 
-					{{ t('dashboardModule.buttons.add.title') }}
-				</el-button>
-			</div>
+				{{ t('dashboardModule.buttons.add.title') }}
+			</el-button>
 		</template>
 	</view-header>
 
 	<div
-		v-if="isPagesListRoute || isLGDevice"
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+		v-if="isPagesListRoute || inDrawer"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<list-pages
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="pagesPaginated"
-			:all-items="pages"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			@detail="onPageDetail"
-			@edit="onPageEdit"
-			@remove="onPageRemove"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-			@bulk-action="onBulkAction"
-		/>
-	</div>
+		<!-- Template 4: add and edit open next to the list from tablet portrait up, as their own page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-pages
+				ref="list"
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				:items="pagesPaginated"
+				:all-items="pages"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				@configure="onPageConfigure"
+				@detail="onPageDetail"
+				@edit="onPageEdit"
+				@remove="onPageRemove"
+				@reset-filters="onResetFilters"
+				@bulk-action="onBulkAction"
+			/>
 
-	<router-view
-		v-else
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component :is="Component" />
-	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-pages-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
-				/>
-
-				<view-error v-else>
+			<template #form>
+				<!-- Keyed like the editor: an error caught in one page's form does not stay over the next one -->
+				<view-error :key="formKey">
 					<template #icon>
 						<icon icon="mdi:view-dashboard" />
 					</template>
@@ -83,9 +67,11 @@
 						{{ t('dashboardModule.messages.misc.requestError') }}
 					</template>
 
+					<!-- Keyed by the page: switching to another page remounts the editor, so its save goes to the page now
+					     shown and not to the one opened first -->
 					<suspense>
 						<router-view
-							:key="props.id"
+							:key="formKey"
 							v-slot="{ Component }"
 						>
 							<component
@@ -96,23 +82,31 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<router-view
+		v-else
+		:key="formKey"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer } from '../../../common';
 import { useDisplays } from '../../displays';
-import { ListPages, ListPagesAdjust } from '../components/components';
+import { ListPages } from '../components/components';
 import { usePagesActions, usePagesDataSource } from '../composables/composables';
 import { RouteNames } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
@@ -124,7 +118,7 @@ defineOptions({
 	name: 'ViewPages',
 });
 
-const props = defineProps<IViewPagesProps>();
+defineProps<IViewPagesProps>();
 
 const route = useRoute();
 const router = useRouter();
@@ -134,22 +128,32 @@ useMeta({
 	title: t('dashboardModule.meta.pages.list.title'),
 });
 
-const { isLGDevice } = useBreakpoints();
-
 const { fetchPages, pages, pagesPaginated, totalRows, filters, filtersActive, sortBy, sortDir, paginateSize, paginatePage, areLoading, resetFilter } =
 	usePagesDataSource();
 const pageActions = usePagesActions();
 const { fetchDisplays } = useDisplays();
 
-const mounted = ref<boolean>(false);
-
-const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
+const list = ref<InstanceType<typeof ListPages> | null>(null);
 
 const remoteFormChanged = ref<boolean>(false);
 
-const isPagesListRoute = computed<boolean>((): boolean => {
-	return route.name === RouteNames.PAGES;
+const isPagesListRoute = computed<boolean>((): boolean => route.name === RouteNames.PAGES);
+
+const isFormRoute = (): boolean =>
+	route.matched.find((matched) => matched.name === RouteNames.PAGES_ADD || matched.name === RouteNames.PAGES_EDIT) !== undefined;
+
+const showDrawer = ref<boolean>(isFormRoute());
+
+// Template 4: forms open next to this page from tablet portrait up, as their own page on phone
+const { inDrawer } = provideEditDrawer((): boolean => !isPagesListRoute.value);
+
+// One editor per page (and one for Add): a new key remounts the routed form
+const formKey = computed<string>((): string => `${String(route.name)}:${typeof route.params?.id === 'string' ? route.params.id : ''}`);
+
+// The changed flag belongs to the editor that is open. Any route change that replaces or closes it clears the flag
+// before the next editor mounts, so that one starts clean. A declined discard leaves the route, and the flag, as it was
+watch(formKey, (): void => {
+	remoteFormChanged.value = false;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -163,76 +167,71 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
-
-		done?.();
+const navigate = (to: { name: string; params?: Record<string, string> }): void => {
+	if (inDrawer.value) {
+		router.replace(to);
 	} else {
-		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
-				confirmButtonText: t('dashboardModule.buttons.yes.title'),
-				cancelButtonText: t('dashboardModule.buttons.no.title'),
-				type: 'warning',
-			})
-				.then((): void => {
-					if (isLGDevice.value) {
-						router.replace({
-							name: RouteNames.PAGES,
-						});
-					} else {
-						router.push({
-							name: RouteNames.PAGES,
-						});
-					}
-
-					done?.();
-				})
-				.catch((): void => {
-					// Just ignore it
-				});
-		} else {
-			if (isLGDevice.value) {
-				router.replace({
-					name: RouteNames.PAGES,
-				});
-			} else {
-				router.push({
-					name: RouteNames.PAGES,
-				});
-			}
-
-			done?.();
-		}
+		router.push(to);
 	}
 };
 
-const onPageDetail = (id: IPage['id']): void => {
-	router.push({
-		name: RouteNames.PAGE,
-		params: {
-			id,
-		},
-	});
+const confirmDiscard = async (): Promise<boolean> => {
+	try {
+		await ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
+			confirmButtonText: t('dashboardModule.buttons.discard.title'),
+			cancelButtonText: t('dashboardModule.buttons.keepEditing.title'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
 };
 
-const onPageEdit = (id: IPage['id']): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.PAGES_EDIT,
-			params: {
-				id,
-			},
-		});
-	} else {
-		router.push({
-			name: RouteNames.PAGES_EDIT,
-			params: {
-				id,
-			},
-		});
+const onCloseDrawer = async (done?: () => void): Promise<void> => {
+	if (remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
 	}
+
+	navigate({ name: RouteNames.PAGES });
+
+	done?.();
+};
+
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => !showDrawer.value || !remoteFormChanged.value || confirmDiscard();
+
+const onPageDetail = async (id: IPage['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
+	router.push({ name: RouteNames.PAGE, params: { id } });
+};
+
+const onPageConfigure = async (to: string | RouteLocationRaw): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
+	router.push(to);
+};
+
+const onPageEdit = async (id: IPage['id']): Promise<void> => {
+	if ((route.name === RouteNames.PAGES_EDIT && route.params.id === id) || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	navigate({ name: RouteNames.PAGES_EDIT, params: { id } });
+};
+
+const onPageCreate = async (): Promise<void> => {
+	if (route.name === RouteNames.PAGES_ADD || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	navigate({ name: RouteNames.PAGES_ADD });
 };
 
 const onPageRemove = (id: IPage['id']): void => {
@@ -240,10 +239,8 @@ const onPageRemove = (id: IPage['id']): void => {
 };
 
 const onBulkAction = (action: string, items: IPage[]): void => {
-	switch (action) {
-		case 'delete':
-			pageActions.bulkRemove(items);
-			break;
+	if (action === 'delete') {
+		pageActions.bulkRemove(items);
 	}
 };
 
@@ -251,21 +248,9 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onPageCreate = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.PAGES_ADD,
-		});
-	} else {
-		router.push({
-			name: RouteNames.PAGES_ADD,
-		});
-	}
-};
-
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
+// The phone app bar's Search action
+const onSearch = (): void => {
+	list.value?.focusSearch();
 };
 
 onBeforeMount((): void => {
@@ -280,18 +265,12 @@ onBeforeMount((): void => {
 
 		throw new DashboardException('Something went wrong', err);
 	});
-
-	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.PAGES_ADD || matched.name === RouteNames.PAGES_EDIT) !== undefined;
-});
-
-onMounted((): void => {
-	mounted.value = true;
 });
 
 watch(
 	(): string => route.path,
 	(): void => {
-		showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.PAGES_ADD || matched.name === RouteNames.PAGES_EDIT) !== undefined;
+		showDrawer.value = isFormRoute();
 	}
 );
 </script>

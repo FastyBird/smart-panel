@@ -63,7 +63,6 @@
 			"remove": "Seite entfernen?",
 			"bulkRemove": "Seiten entfernen?",
 			"selectPlugin": "Seiten-Plugin erforderlich",
-			"adjustFilters": "Seiten filtern",
 			"addDataSource": "Seitendatenquelle hinzufügen",
 			"editDataSource": "Seitendatenquelle bearbeiten"
 		},
@@ -94,7 +93,6 @@
 			"add": "Neue Smart Panel Seite hinzufügen",
 			"edit": "Smart Panel Seite bearbeiten",
 			"detail": "Smart Panel Seite verwalten",
-			"adjustFilters": "Anzeigefilter anpassen",
 			"addDataSource": "Neue Smart Panel Seitendatenquelle hinzufügen",
 			"editDataSource": "Smart Panel Seitendatenquelle bearbeiten"
 		},
@@ -168,7 +166,8 @@
 			"confirmBulkRemove": "Sind Sie sicher, dass Sie {count} Seiten entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
 			"selectPlugin": "Um eine neue Seite zu erstellen, wählen Sie bitte ein kompatibles Plugin aus der Liste. Plugins bieten die notwendigen Konfigurationsoptionen für bestimmte Seitentypen.",
 			"noPlugins": "Es wurden noch keine Seiten-Plugins konfiguriert.",
-			"noDisplays": "Es wurden noch keine Displays gekoppelt."
+			"noDisplays": "Es wurden noch keine Displays gekoppelt.",
+			"noPagesHint": "Fügen Sie eine Seite hinzu, um festzulegen, was die Wanddisplays zeigen."
 		},
 		"tiles": {
 			"noTiles": "Sie haben noch keine Kacheln konfiguriert",
@@ -350,6 +349,9 @@
 			},
 			"displays": {
 				"title": "Nach Seiten-Display filtern"
+			},
+			"type": {
+				"title": "Typ"
 			}
 		},
 		"tiles": {
@@ -408,6 +410,18 @@
 		},
 		"addDataSource": {
 			"title": "Datenquelle hinzufügen"
+		},
+		"more": {
+			"title": "Weitere Aktionen"
+		},
+		"keepEditing": {
+			"title": "Weiter bearbeiten"
+		}
+	},
+	"aria": {
+		"pages": {
+			"edit": "{page} bearbeiten",
+			"more": "Weitere Aktionen für {page}"
 		}
 	}
 }
