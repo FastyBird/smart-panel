@@ -5082,4 +5082,72 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get native_thermostat_request_state => 'Stav požadavku';
+
+  @override
+  String get state_loading => 'Načítání';
+
+  @override
+  String get state_not_configured_hint => 'Nastavte to v administraci.';
+
+  @override
+  String get outcome_setting => 'Nastavuje se';
+
+  @override
+  String get outcome_sent => 'Odesláno';
+
+  @override
+  String get outcome_completed => 'Dokončeno';
+
+  @override
+  String get outcome_partial => 'Částečně';
+
+  @override
+  String get outcome_failed => 'Selhalo';
+
+  @override
+  String get outcome_refused => 'Odmítnuto';
+
+  @override
+  String get outcome_superseded => 'Nahrazeno novějším požadavkem';
+
+  @override
+  String get outcome_not_confirmed => 'Nepotvrzeno';
+
+  @override
+  String get outcome_timed_out => 'Vypršel čas';
+
+  @override
+  String get outcome_refresh_before_retry => 'před opakováním obnovte';
+
+  @override
+  String get outcome_conflict => 'Změněno jinde';
+
+  @override
+  String get outcome_mixed => 'Smíšené';
+
+  @override
+  String get outcome_no_data => 'Žádná data';
+
+  @override
+  String get outcome_not_reporting => 'Nehlásí se';
+
+  @override
+  String outcome_last_update(String age) {
+    return 'Poslední aktualizace před $age';
+  }
+
+  @override
+  String get outcome_no_devices => 'Žádná zařízení';
+
+  @override
+  String get outcome_not_supported => 'Nepodporováno';
+
+  @override
+  String outcome_show_details(String label) {
+    return '$label. Zobrazit podrobnosti';
+  }
+
+  @override
+  String get outcome_details_note =>
+      'Výsledky odeslaných příkazů, ne to, co zařízení dělají právě teď.';
 }

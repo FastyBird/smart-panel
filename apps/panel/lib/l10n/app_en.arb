@@ -366,7 +366,6 @@
   "@control_state_unconfirmed": {
     "description": "Screen-reader state of a control whose command was never confirmed"
   },
-
   "devices_offline_skipped": "{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}",
   "@devices_offline_skipped": {
     "description": "Message shown when devices are skipped due to being offline",
@@ -5211,5 +5210,101 @@
   "native_thermostat_increase": "Increase target",
   "native_thermostat_draft": "Enter target (°C)",
   "native_thermostat_apply": "Apply target",
-  "native_thermostat_request_state": "Request state"
+  "native_thermostat_request_state": "Request state",
+  "state_loading": "Loading",
+  "@state_loading": {
+    "description": "Screen readers hear this while a page or hero loads (docs/display-ui-design-spec.md §7)"
+  },
+  "state_not_configured_hint": "Set it up in the admin app.",
+  "@state_not_configured_hint": {
+    "description": "Default line of the not-configured state template; points to the admin (spec §7)"
+  },
+  "outcome_setting": "Setting",
+  "@outcome_setting": {
+    "description": "Outcome indicator: sending, pending or accepted (spec §7)"
+  },
+  "outcome_sent": "Sent",
+  "@outcome_sent": {
+    "description": "Outcome label: the command was sent and is waiting for the device (spec §7)"
+  },
+  "outcome_completed": "Completed",
+  "@outcome_completed": {
+    "description": "Outcome indicator: confirmed or completed (spec §7)"
+  },
+  "outcome_partial": "Partial",
+  "@outcome_partial": {
+    "description": "Outcome indicator: some parts did not complete (spec §7)"
+  },
+  "outcome_failed": "Failed",
+  "@outcome_failed": {
+    "description": "Outcome indicator: failed (spec §7)"
+  },
+  "outcome_refused": "Refused",
+  "@outcome_refused": {
+    "description": "Outcome label: the device refused the command (spec §7)"
+  },
+  "outcome_superseded": "Replaced by a newer request",
+  "@outcome_superseded": {
+    "description": "Outcome indicator: interrupted or superseded by a newer request (spec §7)"
+  },
+  "outcome_not_confirmed": "Not confirmed",
+  "@outcome_not_confirmed": {
+    "description": "Outcome indicator: timed out, unconfirmed or unknown (spec §7)"
+  },
+  "outcome_timed_out": "Timed out",
+  "@outcome_timed_out": {
+    "description": "Outcome label: the confirmation timed out (spec §7)"
+  },
+  "outcome_refresh_before_retry": "refresh before retrying",
+  "@outcome_refresh_before_retry": {
+    "description": "Outcome hint after an unknown outcome, the second part of a line: \"Timed out · refresh before retrying\" (spec §7)"
+  },
+  "outcome_conflict": "Changed elsewhere",
+  "@outcome_conflict": {
+    "description": "Outcome indicator: the value was changed from somewhere else (spec §7)"
+  },
+  "outcome_mixed": "Mixed",
+  "@outcome_mixed": {
+    "description": "Outcome indicator: members report different values (spec §7)"
+  },
+  "outcome_no_data": "No data",
+  "@outcome_no_data": {
+    "description": "Outcome indicator: unavailable or stale (spec §7)"
+  },
+  "outcome_not_reporting": "Not reporting",
+  "@outcome_not_reporting": {
+    "description": "Outcome label: the source stopped reporting (spec §7)"
+  },
+  "outcome_last_update": "Last update {age} ago",
+  "@outcome_last_update": {
+    "description": "Outcome label: when the data last arrived (spec §7)",
+    "placeholders": {
+      "age": {
+        "type": "String",
+        "example": "12 min"
+      }
+    }
+  },
+  "outcome_no_devices": "No devices",
+  "@outcome_no_devices": {
+    "description": "Details sheet row status: the part has no devices (spec §8)"
+  },
+  "outcome_not_supported": "Not supported",
+  "@outcome_not_supported": {
+    "description": "Details sheet row status: the part does not support the command (spec §8)"
+  },
+  "outcome_show_details": "{label}. Show details",
+  "@outcome_show_details": {
+    "description": "Screen reader label of a tappable outcome indicator",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Partial"
+      }
+    }
+  },
+  "outcome_details_note": "Results of the commands sent, not what the devices are doing now.",
+  "@outcome_details_note": {
+    "description": "Note under the rows of the outcome details sheet (spec §8)"
+  }
 }

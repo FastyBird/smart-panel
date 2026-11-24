@@ -5096,4 +5096,73 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get native_thermostat_request_state => 'Anfragestatus';
+
+  @override
+  String get state_loading => 'Wird geladen';
+
+  @override
+  String get state_not_configured_hint => 'In der Admin-App einrichten.';
+
+  @override
+  String get outcome_setting => 'Wird eingestellt';
+
+  @override
+  String get outcome_sent => 'Gesendet';
+
+  @override
+  String get outcome_completed => 'Abgeschlossen';
+
+  @override
+  String get outcome_partial => 'Teilweise';
+
+  @override
+  String get outcome_failed => 'Fehlgeschlagen';
+
+  @override
+  String get outcome_refused => 'Abgelehnt';
+
+  @override
+  String get outcome_superseded => 'Durch eine neuere Anfrage ersetzt';
+
+  @override
+  String get outcome_not_confirmed => 'Nicht bestätigt';
+
+  @override
+  String get outcome_timed_out => 'Zeitüberschreitung';
+
+  @override
+  String get outcome_refresh_before_retry =>
+      'vor dem Wiederholen aktualisieren';
+
+  @override
+  String get outcome_conflict => 'Anderswo geändert';
+
+  @override
+  String get outcome_mixed => 'Gemischt';
+
+  @override
+  String get outcome_no_data => 'Keine Daten';
+
+  @override
+  String get outcome_not_reporting => 'Meldet sich nicht';
+
+  @override
+  String outcome_last_update(String age) {
+    return 'Letzte Aktualisierung vor $age';
+  }
+
+  @override
+  String get outcome_no_devices => 'Keine Geräte';
+
+  @override
+  String get outcome_not_supported => 'Nicht unterstützt';
+
+  @override
+  String outcome_show_details(String label) {
+    return '$label. Details anzeigen';
+  }
+
+  @override
+  String get outcome_details_note =>
+      'Ergebnisse der gesendeten Befehle, nicht der aktuelle Zustand der Geräte.';
 }

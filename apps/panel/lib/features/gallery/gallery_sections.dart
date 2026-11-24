@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/features/gallery/entries/card_entries.dart
 import 'package:fastybird_smart_panel/features/gallery/entries/control_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/header_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/list_entries.dart';
+import 'package:fastybird_smart_panel/features/gallery/entries/state_entries.dart';
 import 'package:flutter/widgets.dart';
 
 /// One component sample in the gallery.
@@ -78,6 +79,7 @@ const List<GallerySection> gallerySections = [
     task: 'DR-9',
     issue: 1719,
     title: 'State templates, skeletons and the outcome indicator',
+    entries: stateEntries,
   ),
   GallerySection(
     id: 'navigation',

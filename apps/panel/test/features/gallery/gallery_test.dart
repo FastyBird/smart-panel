@@ -86,7 +86,7 @@ void main() {
     // Sections fill as their tasks land.
     expect(
       gallerySections.where((section) => section.entries.isNotEmpty).map((section) => section.task),
-      ['DR-5', 'DR-6', 'DR-7', 'DR-8'],
+      ['DR-5', 'DR-6', 'DR-7', 'DR-8', 'DR-9'],
     );
   });
 
@@ -120,7 +120,7 @@ void main() {
     }
   });
 
-  for (final id in ['controls', 'lists']) {
+  for (final id in ['controls', 'lists', 'states']) {
   testWidgets('the $id entries fit the Compact portrait and square canvases', (tester) async {
     await _pump(tester);
     await _tap(tester, 'gallery-section-$id');
