@@ -140,7 +140,7 @@ void main() {
       expect(tabs.scrollableTabs, hasLength(1));
       final moreTab = tabs.scrollableTabs.last;
       expect(moreTab.isMore, true);
-      expect(moreTab.label, localizations.deck_nav_more);
+      expect(moreTab.label, localizations.deck_all_pages);
       expect(moreTab.pageIndex, -1);
       expect(moreTab.badgeCount, 1);
       expect(moreTab.isMoreActive, false);

@@ -1,8 +1,10 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/deck_nav_tab_data.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/plugins/pages-cards/views/view.dart';
@@ -18,145 +20,328 @@ IconData _defaultPageIcon(DashboardPageItem item) {
   return MdiIcons.viewDashboard;
 }
 
-/// Shows a bottom sheet listing all navigable pages (domains + dashboard pages).
+/// The "All pages" grid's sizes (design canvas, "Navigation layers").
+class AllPagesMetrics {
+  AllPagesMetrics._();
+
+  /// A page tile: 46 on the square, 52 on Compact, 64 on Regular, 76 on
+  /// Expanded.
+  static double tileHeightFor(
+    ScreenSizeClass sizeClass, {
+    bool square = false,
+  }) {
+    if (square) return 46;
+
+    return switch (sizeClass) {
+      ScreenSizeClass.compact => 52,
+      ScreenSizeClass.regular => 64,
+      ScreenSizeClass.expanded => 76,
+    };
+  }
+
+  /// The narrowest a tile gets before the grid drops a column: 50 on the
+  /// square, 62 / 84 / 110.
+  static double tileMinWidthFor(
+    ScreenSizeClass sizeClass, {
+    bool square = false,
+  }) {
+    if (square) return 50;
+
+    return switch (sizeClass) {
+      ScreenSizeClass.compact => 62,
+      ScreenSizeClass.regular => 84,
+      ScreenSizeClass.expanded => 110,
+    };
+  }
+
+  /// Never fewer columns than this.
+  static const int minColumns = 3;
+
+  static const double gap = 4;
+
+  /// The icon: 18 / 20 / 24.
+  static double iconFor(ScreenSizeClass sizeClass) => switch (sizeClass) {
+    ScreenSizeClass.compact => 18,
+    ScreenSizeClass.regular => 20,
+    ScreenSizeClass.expanded => 24,
+  };
+
+  static const double iconGap = 3;
+
+  /// The label: 10 on Compact, 12 otherwise.
+  static double labelFor(ScreenSizeClass sizeClass) =>
+      sizeClass == ScreenSizeClass.compact ? 10 : 12;
+
+  /// The lock badge slot, 4 in from the tile's top right.
+  static const double lockInset = 4;
+}
+
+/// The page entries of "All pages": every deck item, in deck order.
+List<DeckNavTabData> buildAllPagesEntries(
+  List<DeckItem> items,
+  AppLocalizations localizations,
+) {
+  final entries = <DeckNavTabData>[];
+
+  for (final (i, item) in items.indexed) {
+    final (String label, IconData icon) = switch (item) {
+      SystemViewItem() => (localizations.system_view_master, MdiIcons.home),
+      DomainViewItem() => (item.domainType.label, item.domainType.icon),
+      SecurityViewItem() => (item.title, MdiIcons.shieldHome),
+      EnergyViewItem() => (item.title, MdiIcons.flashOutline),
+      DashboardPageItem() => (
+        item.title,
+        item.pageView.icon ?? _defaultPageIcon(item),
+      ),
+    };
+
+    entries.add(DeckNavTabData(icon: icon, label: label, pageIndex: i));
+  }
+
+  return entries;
+}
+
+/// Shows "All pages" (spec §5, §6): a bottom sheet in both orientations with
+/// a grid of every page and Settings at the end.
 ///
-/// Tapping an item navigates to that page index and closes the sheet.
-void showMoreSheet(
+/// Tapping a page closes the sheet and calls [onNavigateToIndex]; tapping
+/// Settings closes it and calls [onOpenSettings], which also shows the entry.
+Future<void> showMoreSheet(
   BuildContext context, {
   required int currentIndex,
   required ValueChanged<int> onNavigateToIndex,
+  VoidCallback? onOpenSettings,
 }) {
-  showBottomSheetDialog(
+  final localizations = AppLocalizations.of(context)!;
+  final screen = locator<ScreenService>();
+  final entries = buildAllPagesEntries(
+    context.read<DeckService>().items,
+    localizations,
+  );
+
+  return showBottomSheetDialog(
     context,
-    title: AppLocalizations.of(context)!.deck_all_pages,
-    scrollable: false,
-    content: _DeckMoreContent(
-      currentIndex: currentIndex,
-      onNavigateToIndex: onNavigateToIndex,
+    title: localizations.deck_all_pages,
+    content: Builder(
+      // Inside the sheet, so a tap closes the sheet's own route.
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.scale(
+            SheetMetrics.paddingFor(screen.sizeClass),
+          ),
+        ),
+        child: DeckAllPagesGrid(
+          entries: entries,
+          currentIndex: currentIndex,
+          onSelect: (index) {
+            Navigator.of(sheetContext).pop();
+            onNavigateToIndex(index);
+          },
+          onOpenSettings: onOpenSettings == null
+              ? null
+              : () {
+                  Navigator.of(sheetContext).pop();
+                  onOpenSettings();
+                },
+          sizeClass: screen.sizeClass,
+          square: screen.isSquare,
+        ),
+      ),
     ),
   );
 }
 
-class _DeckMoreContent extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onNavigateToIndex;
-
-  const _DeckMoreContent({
+/// The "All pages" grid (design canvas, "Navigation layers"): one tile per
+/// page with its icon and name, at least three columns, the current page in
+/// the accent's tint with an accent outline, and Settings as the last tile.
+///
+/// Each tile has the lock badge slot at its top right (screen protection
+/// epic); an entry's `lockBadge` fills it.
+class DeckAllPagesGrid extends StatelessWidget {
+  const DeckAllPagesGrid({
+    super.key,
+    required this.entries,
     required this.currentIndex,
-    required this.onNavigateToIndex,
+    required this.onSelect,
+    this.onOpenSettings,
+    this.settingsLockBadge,
+    this.sizeClass,
+    this.square = false,
   });
+
+  final List<DeckNavTabData> entries;
+  final int currentIndex;
+  final ValueChanged<int> onSelect;
+
+  /// Adds the Settings tile.
+  final VoidCallback? onOpenSettings;
+
+  /// The Settings tile's lock badge slot.
+  final Widget? settingsLockBadge;
+
+  /// The class to size for; defaults to the screen's.
+  final ScreenSizeClass? sizeClass;
+
+  /// Whether the canvas is the square.
+  final bool square;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-    final deckService = context.read<DeckService>();
-    final items = deckService.items;
+    final localizations = AppLocalizations.of(context)!;
+    final resolvedClass = sizeClass ?? locator<ScreenService>().sizeClass;
+    final gap = AppSpacings.scale(AllPagesMetrics.gap);
 
-    if (items.isEmpty) return const SizedBox.shrink();
+    final tiles = <Widget>[
+      for (final entry in entries)
+        _PageTile(
+          entry: entry,
+          active: entry.pageIndex == currentIndex,
+          onTap: () => onSelect(entry.pageIndex),
+          sizeClass: resolvedClass,
+          square: square,
+        ),
+      if (onOpenSettings != null)
+        _PageTile(
+          entry: DeckNavTabData(
+            icon: MdiIcons.cogOutline,
+            label: localizations.deck_settings,
+            pageIndex: -1,
+            lockBadge: settingsLockBadge,
+          ),
+          active: false,
+          onTap: onOpenSettings!,
+          sizeClass: resolvedClass,
+          square: square,
+        ),
+    ];
 
-    return VerticalScrollWithGradient(
-      itemCount: 1,
-      shrinkWrap: true,
-      backgroundColor: bgColor,
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-        vertical: AppSpacings.pMd,
-      ),
-      itemBuilder: (context, index) => LayoutBuilder(
-        builder: (context, constraints) {
-          final spacing = AppSpacings.pMd;
-          final minItemWidth = AppSpacings.scale(80);
-          final cols =
-              ((constraints.maxWidth + spacing) / (minItemWidth + spacing))
-                  .floor()
-                  .clamp(1, items.length);
-          final itemWidth =
-              (constraints.maxWidth - (cols - 1) * spacing) / cols;
+    if (tiles.isEmpty) return const SizedBox.shrink();
 
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            children: [
-              for (int i = 0; i < items.length; i++)
-                SizedBox(
-                  width: itemWidth,
-                  child: _buildItem(context, items[i], i),
-                ),
-            ],
-          );
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final minWidth = AppSpacings.scale(
+          AllPagesMetrics.tileMinWidthFor(resolvedClass, square: square),
+        );
+        final columns = constraints.hasBoundedWidth
+            ? ((constraints.maxWidth + gap) / (minWidth + gap)).floor().clamp(
+                AllPagesMetrics.minColumns,
+                1 << 20,
+              )
+            : AllPagesMetrics.minColumns;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: gap,
+          children: [
+            for (var start = 0; start < tiles.length; start += columns)
+              Row(
+                spacing: gap,
+                children: [
+                  for (var i = start; i < start + columns; i++)
+                    Expanded(
+                      child: i < tiles.length ? tiles[i] : const SizedBox(),
+                    ),
+                ],
+              ),
+          ],
+        );
+      },
     );
   }
+}
 
-  Widget _buildItem(BuildContext context, DeckItem item, int index) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isActive = currentIndex == index;
-    final activeColor = Theme.of(context).accent.text;
+/// One page in "All pages".
+class _PageTile extends StatelessWidget {
+  const _PageTile({
+    required this.entry,
+    required this.active,
+    required this.onTap,
+    required this.sizeClass,
+    required this.square,
+  });
 
-    final String label;
-    final IconData icon;
+  final DeckNavTabData entry;
+  final bool active;
+  final VoidCallback onTap;
+  final ScreenSizeClass sizeClass;
+  final bool square;
 
-    if (item is SystemViewItem) {
-      label = AppLocalizations.of(context)!.system_view_master;
-      icon = MdiIcons.home;
-    } else if (item is DomainViewItem) {
-      label = item.domainType.label;
-      icon = item.domainType.icon;
-    } else if (item is SecurityViewItem) {
-      label = item.title;
-      icon = MdiIcons.shieldHome;
-    } else if (item is EnergyViewItem) {
-      label = item.title;
-      icon = MdiIcons.flashOutline;
-    } else if (item is DashboardPageItem) {
-      label = item.title;
-      icon = item.pageView.icon ?? _defaultPageIcon(item);
-    } else {
-      return const SizedBox.shrink();
-    }
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final neutrals = theme.neutrals;
+    final accent = theme.accent;
+    final radius = BorderRadius.circular(AppBorderRadius.base);
+    final foreground = active ? accent.text : neutrals.textPrimary;
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).pop();
-        onNavigateToIndex(index);
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacings.pMd,
-          horizontal: AppSpacings.pSm,
+    return Semantics(
+      container: true,
+      button: true,
+      selected: active,
+      label: entry.label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Material(
+        color: active ? accent.soft : neutrals.fillLight,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: BorderSide(
+            color: active ? accent.text : AppColors.blank,
+            width: AppSpacings.scale(1),
+          ),
         ),
-        decoration: BoxDecoration(
-          color: isActive
-              ? Theme.of(context).accent.soft
-              : (isDark ? AppFillColorDark.lighter : AppFillColorLight.light),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isActive
-              ? Border.all(color: activeColor.withValues(alpha: 0.3), width: AppSpacings.scale(1))
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          spacing: AppSpacings.pSm,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? activeColor : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
-              size: AppSpacings.scale(24),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: SizedBox(
+            height: AppSpacings.scale(
+              AllPagesMetrics.tileHeightFor(sizeClass, square: square),
             ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: AppFontSize.extraSmall,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                color: isActive ? activeColor : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacings.scale(2),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: AppSpacings.scale(AllPagesMetrics.iconGap),
+                    children: [
+                      Icon(
+                        entry.icon,
+                        size: AppSpacings.scale(
+                          AllPagesMetrics.iconFor(sizeClass),
+                        ),
+                        color: foreground,
+                      ),
+                      Flexible(
+                        child: Text(
+                          entry.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: foreground,
+                            fontSize: AppSpacings.scale(
+                              AllPagesMetrics.labelFor(sizeClass),
+                            ),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (entry.lockBadge != null)
+                  PositionedDirectional(
+                    end: AppSpacings.scale(AllPagesMetrics.lockInset),
+                    top: AppSpacings.scale(AllPagesMetrics.lockInset),
+                    child: entry.lockBadge!,
+                  ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

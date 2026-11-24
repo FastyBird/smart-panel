@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/features/gallery/entries/card_entries.dart
 import 'package:fastybird_smart_panel/features/gallery/entries/control_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/header_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/list_entries.dart';
+import 'package:fastybird_smart_panel/features/gallery/entries/navigation_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/state_entries.dart';
 import 'package:flutter/widgets.dart';
 
@@ -86,5 +87,6 @@ const List<GallerySection> gallerySections = [
     task: 'DR-10',
     issue: 1720,
     title: 'Deck bar and dock',
+    entries: navigationEntries,
   ),
 ];

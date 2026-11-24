@@ -3,33 +3,97 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_nav_tab_data.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_nav_tab.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
-/// Vertical floating dock for landscape mode navigation.
-///
-/// Layout: vertical glass container with Home, domain tabs, and More.
-/// Mirrors [DeckBottomNavBar] API but renders vertically as a floating side dock.
-class DeckSideDock extends StatefulWidget {
+/// The deck dock in landscape, fed from the [DeckService]. See [DeckDock]
+/// for the layout.
+class DeckSideDock extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onNavigateToIndex;
   final VoidCallback? onMoreTapped;
+
+  /// Opens Settings from the gear at the foot of the dock.
+  final VoidCallback? onSettingsTapped;
 
   const DeckSideDock({
     super.key,
     required this.currentIndex,
     required this.onNavigateToIndex,
     this.onMoreTapped,
+    this.onSettingsTapped,
   });
 
   @override
-  State<DeckSideDock> createState() => _DeckSideDockState();
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final deckService = context.watch<DeckService>();
+
+    final tabs = buildDeckNavTabs(
+      items: deckService.items,
+      currentIndex: currentIndex,
+      localizations: localizations,
+    );
+
+    return DeckDock(
+      homeTab: tabs.homeTab,
+      tabs: tabs.scrollableTabs,
+      currentIndex: currentIndex,
+      onNavigateToIndex: onNavigateToIndex,
+      onMoreTapped: onMoreTapped,
+      onSettingsTapped: onSettingsTapped,
+      sizeClass: locator<ScreenService>().sizeClass,
+    );
+  }
 }
 
-class _DeckSideDockState extends State<DeckSideDock> {
+/// The deck dock (spec §4): 44 / 56 / 84 wide on the card surface with a
+/// hairline and radius 12, inset from the page edges by the page padding.
+///
+/// Top to bottom: Home, a divider, the page tabs (they scroll and keep the
+/// current one in view), "All pages" with its count, a divider and the
+/// Settings gear at the foot.
+///
+/// The current page's tab takes the accent's tint and colour. Expanded docks
+/// show a label under every icon; Compact and Regular show icons only.
+class DeckDock extends StatefulWidget {
+  const DeckDock({
+    super.key,
+    this.homeTab,
+    required this.tabs,
+    required this.currentIndex,
+    required this.onNavigateToIndex,
+    this.onMoreTapped,
+    this.onSettingsTapped,
+    this.sizeClass,
+  });
+
+  final DeckNavTabData? homeTab;
+
+  /// The page tabs, and "All pages" when one has `isMore`.
+  final List<DeckNavTabData> tabs;
+
+  final int currentIndex;
+  final ValueChanged<int> onNavigateToIndex;
+  final VoidCallback? onMoreTapped;
+
+  /// Shows the gear.
+  final VoidCallback? onSettingsTapped;
+
+  /// The class to size for; defaults to the screen's.
+  final ScreenSizeClass? sizeClass;
+
+  @override
+  State<DeckDock> createState() => _DeckDockState();
+}
+
+class _DeckDockState extends State<DeckDock> {
   final GlobalKey _selectedKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
+  bool _scrollScheduled = false;
 
   @override
   void initState() {
@@ -38,7 +102,7 @@ class _DeckSideDockState extends State<DeckSideDock> {
   }
 
   @override
-  void didUpdateWidget(DeckSideDock oldWidget) {
+  void didUpdateWidget(DeckDock oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.currentIndex != oldWidget.currentIndex) {
       _scheduleScrollToSelected();
@@ -52,263 +116,112 @@ class _DeckSideDockState extends State<DeckSideDock> {
   }
 
   void _scheduleScrollToSelected() {
-    WidgetsBinding.instance.addPostFrameCallback(_scrollToSelected);
-  }
-
-  void _scrollToSelected(_) {
-    final ctx = _selectedKey.currentContext;
-    if (ctx == null || !mounted) return;
-
-    Scrollable.ensureVisible(
-      ctx,
-      alignment: 0.5,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    if (_scrollScheduled) return;
+    _scrollScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollScheduled = false;
+      if (!mounted) return;
+      scrollDeckTabIntoView(_selectedKey, _scrollController);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final deckService = context.watch<DeckService>();
-    final screenService = locator<ScreenService>();
-    final showLabels = screenService.isLargeScreen;
-
+    final neutrals = Theme.of(context).neutrals;
     final localizations = AppLocalizations.of(context)!;
-
-    final tabs = buildDeckNavTabs(
-      items: deckService.items,
-      currentIndex: widget.currentIndex,
-      localizations: localizations,
+    final sizeClass = widget.sizeClass ?? locator<ScreenService>().sizeClass;
+    final showLabels = sizeClass == ScreenSizeClass.expanded;
+    final extent = AppSpacings.scale(
+      DeckNavMetrics.tabFor(sizeClass, landscape: true),
     );
-    final homeTab = tabs.homeTab;
-    final scrollableTabs = tabs.scrollableTabs;
+    final iconSize = AppSpacings.scale(DeckNavMetrics.iconFor(sizeClass));
+    final gap = AppSpacings.scale(DeckNavMetrics.gap);
+    final inset = AppSpacings.scale(DeckNavMetrics.dockInsetFor(sizeClass));
 
-    final dockWidth = AppSpacings.scale(showLabels ? 90 : 65);
+    final pageTabs = widget.tabs.where((tab) => !tab.isMore).toList();
+    final moreTab = widget.tabs.where((tab) => tab.isMore).firstOrNull;
 
-    // Glass background colors
-    final bgColor = isDark
-        ? AppBgColorDark.overlay.withValues(alpha: 0.85)
-        : AppBgColorLight.overlay.withValues(alpha: 0.9);
-    final borderColor =
-        isDark ? AppBorderColorDark.lighter : AppBorderColorLight.light;
-    final dividerColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+    Widget tab(DeckNavTabData data, {bool scrolls = true}) {
+      final active = data.pageIndex == widget.currentIndex;
+      final Widget child = DeckNavTab(
+        icon: data.icon,
+        label: data.label,
+        extent: extent,
+        iconSize: iconSize,
+        active: active,
+        showLabel: showLabels,
+        vertical: true,
+        lockBadge: data.lockBadge,
+        onTap: () => widget.onNavigateToIndex(data.pageIndex),
+      );
 
-    final columnBgColor =
-        isDark ? AppBgColorDark.page : AppBgColorLight.page;
+      return active && scrolls
+          ? KeyedSubtree(key: _selectedKey, child: child)
+          : child;
+    }
 
-    return Container(
-      width: dockWidth,
-      color: columnBgColor,
+    return ColoredBox(
+      color: neutrals.surfacePage,
       child: Padding(
-        padding: EdgeInsets.only(
-          top: AppSpacings.pLg,
-          bottom: AppSpacings.pLg,
-          left: AppSpacings.pMd,
-          right: AppSpacings.pMd,
+        // The page's own padding keeps the gap to its content.
+        padding: EdgeInsetsDirectional.only(
+          start: inset,
+          top: inset,
+          bottom: inset,
         ),
-        child: Center(
-          child: Container(
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-              border: Border.all(
-                color: borderColor,
-                width: AppSpacings.scale(1),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppShadowColor.light,
-                  blurRadius: AppSpacings.scale(8),
-                  offset: Offset(AppSpacings.scale(2), 0),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Home tab
-                  if (homeTab != null)
-                    _DockTab(
-                      icon: homeTab.icon,
-                      label: homeTab.label,
-                      isActive: widget.currentIndex == homeTab.pageIndex,
-                      showLabel: showLabels,
-                      onTap: () =>
-                          widget.onNavigateToIndex(homeTab.pageIndex),
-                    ),
-                  if (homeTab != null && scrollableTabs.isNotEmpty)
-                    _buildDivider(dividerColor),
-                  // Scrollable domain tabs
-                  if (scrollableTabs.isNotEmpty)
-                    Flexible(
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: scrollableTabs.map((tab) {
-                            final bool isActive;
-                            if (tab.isMore) {
-                              isActive = tab.isMoreActive;
-                            } else {
-                              isActive = tab.pageIndex == widget.currentIndex;
-                            }
-
-                            Widget tabWidget = _DockTab(
-                              icon: tab.icon,
-                              label: tab.label,
-                              isActive: isActive,
-                              showLabel: showLabels,
-                              badgeCount: tab.badgeCount,
-                              onTap: tab.isMore
-                                  ? widget.onMoreTapped
-                                  : () => widget
-                                      .onNavigateToIndex(tab.pageIndex),
-                            );
-
-                            if (isActive) {
-                              tabWidget = KeyedSubtree(
-                                  key: _selectedKey, child: tabWidget);
-                            }
-
-                            return tabWidget;
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDivider(Color color) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        vertical: AppSpacings.pXs,
-        horizontal: AppSpacings.pMd,
-      ),
-      child: Container(
-        height: AppSpacings.scale(1),
-        color: color,
-      ),
-    );
-  }
-}
-
-/// A single dock tab: icon (+ optional label) with active pill highlight.
-class _DockTab extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final bool showLabel;
-  final VoidCallback? onTap;
-  final int badgeCount;
-
-  static const Duration _animDuration = Duration(milliseconds: 250);
-  static const Curve _animCurve = Curves.easeInOut;
-
-  const _DockTab({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.showLabel,
-    this.onTap,
-    this.badgeCount = 0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // The active tab follows the panel accent.
-    final accentColor = Theme.of(context).accent.text;
-    final Color inactiveColor = isDark
-        ? AppTextColorDark.placeholder
-        : AppTextColorLight.placeholder;
-    final Color iconColor = isActive ? accentColor : inactiveColor;
-
-    final double iconSize = AppSpacings.scale(22);
-    final double pillRadius = AppBorderRadius.base;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedSize(
-        duration: _animDuration,
-        curve: _animCurve,
         child: Container(
-          width: double.infinity,
-          margin: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pSm,
-            vertical: AppSpacings.scale(2),
-          ),
-          padding: EdgeInsets.symmetric(
-            vertical: AppSpacings.pSm,
+          width: AppSpacings.scale(DeckNavMetrics.dockWidthFor(sizeClass)),
+          padding: EdgeInsets.all(
+            AppSpacings.scale(DeckNavMetrics.dockPadding),
           ),
           decoration: BoxDecoration(
-            color: isActive
-                ? Theme.of(context).accent.soft
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(pillRadius),
+            color: neutrals.surfaceCard,
+            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            border: Border.all(
+              color: neutrals.borderLight,
+              width: AppSpacings.scale(1),
+            ),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: gap,
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(icon, color: iconColor, size: iconSize),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -AppSpacings.scale(8),
-                      top: -AppSpacings.scale(4),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacings.scale(4),
-                          vertical: AppSpacings.scale(1),
-                        ),
-                        decoration: BoxDecoration(
-                          // White count: the fill, not the (light in dark) text shade.
-                          color: Theme.of(context).accent.fill,
-                          borderRadius:
-                              BorderRadius.circular(AppSpacings.scale(8)),
-                        ),
-                        constraints: BoxConstraints(
-                          minWidth: AppSpacings.scale(14),
-                          minHeight: AppSpacings.scale(14),
-                        ),
-                        child: Text(
-                          '$badgeCount',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: AppSpacings.scale(9),
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              if (showLabel) ...[
-                SizedBox(height: AppSpacings.scale(2)),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraExtraSmall,
-                    fontWeight: FontWeight.w500,
-                    color: isActive ? accentColor : inactiveColor,
+              if (widget.homeTab != null) tab(widget.homeTab!, scrolls: false),
+              if (widget.homeTab != null && pageTabs.isNotEmpty)
+                const _DockDivider(),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: Column(
+                    spacing: gap,
+                    children: [for (final data in pageTabs) tab(data)],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (moreTab != null)
+                DeckNavTab(
+                  icon: moreTab.icon,
+                  label: moreTab.label,
+                  extent: extent,
+                  iconSize: iconSize,
+                  active: moreTab.isMoreActive,
+                  showLabel: showLabels,
+                  vertical: true,
+                  tone: DeckNavTabTone.filled,
+                  badgeCount: moreTab.badgeCount,
+                  lockBadge: moreTab.lockBadge,
+                  onTap: widget.onMoreTapped,
+                ),
+              if (widget.onSettingsTapped != null) ...[
+                const _DockDivider(),
+                DeckNavTab(
+                  icon: MdiIcons.cogOutline,
+                  label: localizations.deck_settings,
+                  extent: AppSpacings.scale(
+                    DeckNavMetrics.settingsFor(sizeClass),
+                  ),
+                  iconSize: iconSize,
+                  vertical: true,
+                  onTap: widget.onSettingsTapped,
                 ),
               ],
             ],
@@ -319,3 +232,19 @@ class _DockTab extends StatelessWidget {
   }
 }
 
+/// The dock's divider: a hairline 8 in from each side.
+class _DockDivider extends StatelessWidget {
+  const _DockDivider();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.symmetric(
+      horizontal: AppSpacings.scale(DeckNavMetrics.dockDividerInset),
+      vertical: AppSpacings.scale(DeckNavMetrics.dockDividerMargin),
+    ),
+    child: Container(
+      height: AppSpacings.scale(1),
+      color: Theme.of(context).neutrals.borderLight,
+    ),
+  );
+}

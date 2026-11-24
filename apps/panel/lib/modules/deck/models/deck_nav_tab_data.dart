@@ -16,6 +16,10 @@ class DeckNavTabData {
   final bool isMoreActive;
   final int badgeCount;
 
+  /// The lock badge slot, filled by the screen protection epic; empty until
+  /// then.
+  final Widget? lockBadge;
+
   const DeckNavTabData({
     required this.icon,
     required this.label,
@@ -23,6 +27,7 @@ class DeckNavTabData {
     this.isMore = false,
     this.isMoreActive = false,
     this.badgeCount = 0,
+    this.lockBadge,
   });
 }
 
@@ -82,7 +87,7 @@ DeckNavTabs buildDeckNavTabs({
         currentIndex < items.length && items[currentIndex] is DashboardPageItem;
     scrollableTabs.add(DeckNavTabData(
       icon: MdiIcons.dotsHorizontal,
-      label: localizations.deck_nav_more,
+      label: localizations.deck_all_pages,
       pageIndex: -1,
       isMore: true,
       isMoreActive: isDashboardActive,

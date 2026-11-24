@@ -3121,8 +3121,20 @@ abstract class AppLocalizations {
   /// Title for the more sheet listing all navigable pages
   ///
   /// In en, this message translates to:
-  /// **'All Pages'**
+  /// **'All pages'**
   String get deck_all_pages;
+
+  /// The Settings entry in the deck: the gear in the dock or bar and the tile in All pages
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get deck_settings;
+
+  /// What screen readers hear on the pull handle at the top edge of the deck
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get deck_open_settings;
 
   /// Title for entry system view in deck navigation
   ///

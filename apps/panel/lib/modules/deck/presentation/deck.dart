@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -46,6 +47,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
   bool _initialized = false;
   bool _swipeBlocked = false;
   bool _isCrossfading = false;
+  bool _openingSettings = false;
   /// Preserves the PageView element when it is re-parented between
   /// Column (portrait) and Row (landscape) on orientation change.
   final _pageViewKey = GlobalKey();
@@ -171,6 +173,26 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     }
   }
 
+  /// Opens Settings from the gear, "All pages" or the pull handle (spec §6).
+  /// A second tap while it opens does nothing.
+  Future<void> _openSettings() async {
+    if (_openingSettings) return;
+    _openingSettings = true;
+
+    try {
+      await Navigator.of(context).pushNamed(AppRouteNames.settings);
+    } finally {
+      _openingSettings = false;
+    }
+  }
+
+  void _showAllPages(BuildContext context) => showMoreSheet(
+    context,
+    currentIndex: _currentIndex,
+    onNavigateToIndex: _navigateToIndex,
+    onOpenSettings: _openSettings,
+  );
+
   void _fireDeckPageActivatedEvent(DeckService deckService, int index) {
     final items = deckService.items;
     if (index >= 0 && index < items.length) {
@@ -295,11 +317,8 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                         DeckBottomNavBar(
                           currentIndex: _currentIndex,
                           onNavigateToIndex: _navigateToIndex,
-                          onMoreTapped: () => showMoreSheet(
-                            context,
-                            currentIndex: _currentIndex,
-                            onNavigateToIndex: _navigateToIndex,
-                          ),
+                          onMoreTapped: () => _showAllPages(context),
+                          onSettingsTapped: _openSettings,
                           onModeTapped: () {
                             final notifier = context.read<BottomNavModeNotifier>();
                             if (notifier.hasConfig) {
@@ -316,17 +335,28 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                         DeckSideDock(
                           currentIndex: _currentIndex,
                           onNavigateToIndex: _navigateToIndex,
-                          onMoreTapped: () => showMoreSheet(
-                            context,
-                            currentIndex: _currentIndex,
-                            onNavigateToIndex: _navigateToIndex,
-                          ),
+                          onMoreTapped: () => _showAllPages(context),
+                          onSettingsTapped: _openSettings,
                         ),
                         Expanded(child: pageView),
                       ],
                     );
                   }
                 },
+              ),
+
+              // The pull handle at the top edge opens Settings; a swipe down
+              // anywhere still does too.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: DeckPullHandle(
+                    label: AppLocalizations.of(context)!.deck_open_settings,
+                    onTap: _openSettings,
+                  ),
+                ),
               ),
 
               // Suggestion toast notification
@@ -359,7 +389,13 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                 right: AppSpacings.pLg,
                 // Position above the bottom nav bar in portrait mode
                 bottom: MediaQuery.orientationOf(context) == Orientation.portrait
-                    ? AppSpacings.scale(52) + AppSpacings.pMd
+                    ? AppSpacings.scale(
+                          DeckNavMetrics.barHeightFor(
+                            locator<ScreenService>().sizeClass,
+                            square: locator<ScreenService>().isSquare,
+                          ),
+                        ) +
+                        AppSpacings.pMd
                     : AppSpacings.pLg,
                 child: _BuddyFab(
                   onTap: () {

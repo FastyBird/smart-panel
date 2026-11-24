@@ -1772,6 +1772,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get deck_all_pages => 'Všechny stránky';
 
   @override
+  String get deck_settings => 'Nastavení';
+
+  @override
+  String get deck_open_settings => 'Otevřít nastavení';
+
+  @override
   String get system_view_entry => 'Vstup';
 
   @override

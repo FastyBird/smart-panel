@@ -4,25 +4,23 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_nav_tab_data.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_nav_tab.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
-/// Bottom navigation bar for portrait mode.
-///
-/// Layout: [ Home (icon-only, fixed) | divider | scrollable domain tabs | divider | Mode button ]
-///
-/// - Home is pinned on the left, always icon-only.
-/// - Domain and More tabs live in a horizontally scrollable area that
-///   auto-scrolls to centre the active tab.
-/// - The active tab expands to show icon + label (on medium+ screens).
-/// - A mode button appears on the right when a domain view registers its config.
-class DeckBottomNavBar extends StatefulWidget {
+/// The deck bar in portrait, fed from the [DeckService] and the
+/// [BottomNavModeNotifier]. See [DeckBar] for the layout.
+class DeckBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onNavigateToIndex;
   final VoidCallback? onMoreTapped;
   final VoidCallback? onModeTapped;
+
+  /// Opens Settings from the gear at the end of the bar.
+  final VoidCallback? onSettingsTapped;
 
   const DeckBottomNavBar({
     super.key,
@@ -30,13 +28,90 @@ class DeckBottomNavBar extends StatefulWidget {
     required this.onNavigateToIndex,
     this.onMoreTapped,
     this.onModeTapped,
+    this.onSettingsTapped,
   });
 
   @override
-  State<DeckBottomNavBar> createState() => _DeckBottomNavBarState();
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final deckService = context.watch<DeckService>();
+    final modeNotifier = context.watch<BottomNavModeNotifier>();
+    final screen = locator<ScreenService>();
+
+    final tabs = buildDeckNavTabs(
+      items: deckService.items,
+      currentIndex: currentIndex,
+      localizations: localizations,
+    );
+
+    return DeckBar(
+      homeTab: tabs.homeTab,
+      tabs: tabs.scrollableTabs,
+      currentIndex: currentIndex,
+      onNavigateToIndex: onNavigateToIndex,
+      onMoreTapped: onMoreTapped,
+      mode: modeNotifier.config,
+      onModeTapped: onModeTapped,
+      onSettingsTapped: onSettingsTapped,
+      sizeClass: screen.sizeClass,
+      square: screen.isSquare,
+    );
+  }
 }
 
-class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
+/// The deck bar (spec §4): 44 / 52 / 56 high (40 on the square) on the card
+/// surface with a hairline on top.
+///
+/// `[ Home | divider | page tabs (scroll) | All pages | mode | Settings ]`
+///
+/// - The current page's tab takes the accent's tint and colour, and shows its
+///   label on Regular and Expanded.
+/// - The page tabs scroll sideways and keep the current one in view.
+/// - "All pages" (the tab with `isMore`) stays at the end with its count.
+/// - The mode button shows while a domain view registers one.
+/// - The gear at the end opens Settings.
+class DeckBar extends StatefulWidget {
+  const DeckBar({
+    super.key,
+    this.homeTab,
+    required this.tabs,
+    required this.currentIndex,
+    required this.onNavigateToIndex,
+    this.onMoreTapped,
+    this.mode,
+    this.onModeTapped,
+    this.onSettingsTapped,
+    this.sizeClass,
+    this.square = false,
+  });
+
+  final DeckNavTabData? homeTab;
+
+  /// The page tabs, and "All pages" when one has `isMore`.
+  final List<DeckNavTabData> tabs;
+
+  final int currentIndex;
+  final ValueChanged<int> onNavigateToIndex;
+  final VoidCallback? onMoreTapped;
+
+  /// The current domain's mode button.
+  final BottomNavModeConfig? mode;
+  final VoidCallback? onModeTapped;
+
+  /// Shows the gear.
+  final VoidCallback? onSettingsTapped;
+
+  /// The class to size for; defaults to the screen's.
+  final ScreenSizeClass? sizeClass;
+
+  /// Whether the canvas is the square (a 40 high bar, 36 tabs).
+  final bool square;
+
+  @override
+  State<DeckBar> createState() => _DeckBarState();
+}
+
+class _DeckBarState extends State<DeckBar> {
   final GlobalKey _selectedKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
   bool _lastHadMode = false;
@@ -45,13 +120,20 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
   @override
   void initState() {
     super.initState();
+    _lastHadMode = widget.mode != null;
     _scheduleScrollToSelected();
   }
 
   @override
-  void didUpdateWidget(DeckBottomNavBar oldWidget) {
+  void didUpdateWidget(DeckBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.currentIndex != oldWidget.currentIndex) {
+
+    // The mode button changes the width the tabs scroll in.
+    final hasMode = widget.mode != null;
+
+    if (widget.currentIndex != oldWidget.currentIndex ||
+        hasMode != _lastHadMode) {
+      _lastHadMode = hasMode;
       _scheduleScrollToSelected();
     }
   }
@@ -70,274 +152,163 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
 
   void _scrollToSelected(_) {
     _scrollScheduled = false;
-    final ctx = _selectedKey.currentContext;
-    if (ctx == null || !mounted) return;
-
-    Scrollable.ensureVisible(
-      ctx,
-      alignment: 0.5,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    if (!mounted) return;
+    scrollDeckTabIntoView(_selectedKey, _scrollController);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final neutrals = theme.neutrals;
     final localizations = AppLocalizations.of(context)!;
-    final deckService = context.watch<DeckService>();
-    final modeNotifier = context.watch<BottomNavModeNotifier>();
+    final sizeClass = widget.sizeClass ?? locator<ScreenService>().sizeClass;
+    final showLabels = sizeClass != ScreenSizeClass.compact;
+    final extent = AppSpacings.scale(
+      DeckNavMetrics.tabFor(sizeClass, landscape: false, square: widget.square),
+    );
+    final iconSize = AppSpacings.scale(DeckNavMetrics.iconFor(sizeClass));
+    final gap = AppSpacings.scale(DeckNavMetrics.gap);
 
-    // Re-center active tab when mode button appears/disappears,
-    // since it changes the available width of the scrollable area.
-    final hasMode = modeNotifier.hasConfig;
-    if (hasMode != _lastHadMode) {
-      _lastHadMode = hasMode;
-      _scheduleScrollToSelected();
+    final pageTabs = widget.tabs.where((tab) => !tab.isMore).toList();
+    final moreTab = widget.tabs.where((tab) => tab.isMore).firstOrNull;
+    final mode = widget.mode;
+
+    Widget tab(DeckNavTabData data, {bool scrolls = true}) {
+      final active = data.pageIndex == widget.currentIndex;
+      final Widget child = DeckNavTab(
+        icon: data.icon,
+        label: data.label,
+        extent: extent,
+        iconSize: iconSize,
+        active: active,
+        showLabel: active && showLabels,
+        lockBadge: data.lockBadge,
+        onTap: () => widget.onNavigateToIndex(data.pageIndex),
+      );
+
+      return active && scrolls
+          ? KeyedSubtree(key: _selectedKey, child: child)
+          : child;
     }
 
-    final showLabels = !locator<ScreenService>().isSmallScreen;
-
-    final tabs = buildDeckNavTabs(
-      items: deckService.items,
-      currentIndex: widget.currentIndex,
-      localizations: localizations,
-    );
-    final homeTab = tabs.homeTab;
-    final scrollableTabs = tabs.scrollableTabs;
-
-    final dividerColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-
     return Container(
-      height: AppSpacings.scale(52),
+      height: AppSpacings.scale(
+        DeckNavMetrics.barHeightFor(sizeClass, square: widget.square),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.scale(DeckNavMetrics.barPaddingFor(sizeClass)),
+      ),
       decoration: BoxDecoration(
-        color: isDark ? AppBgColorDark.base : AppBgColorLight.base,
+        color: neutrals.surfaceCard,
         border: Border(
           top: BorderSide(
-            color: dividerColor,
+            color: neutrals.borderLight,
             width: AppSpacings.scale(1),
           ),
         ),
       ),
-      child: Row(
-        children: [
-          // Fixed Home tab (icon-only).
-          if (homeTab != null) ...[
-            SizedBox(
-              width: AppSpacings.scale(56),
-              child: _NavTab(
-                icon: homeTab.icon,
-                label: homeTab.label,
-                isActive: widget.currentIndex == homeTab.pageIndex,
-                isExpanded: false,
-                onTap: () => widget.onNavigateToIndex(homeTab.pageIndex),
-              ),
-            ),
-            _buildDivider(dividerColor),
-          ],
-          // Scrollable domain + more tabs.
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: scrollableTabs.map((tab) {
-                  final bool isActive;
-                  if (tab.isMore) {
-                    isActive = tab.isMoreActive;
-                  } else {
-                    isActive = tab.pageIndex == widget.currentIndex;
-                  }
-
-                  Widget tabWidget = _NavTab(
-                    icon: tab.icon,
-                    label: tab.label,
-                    isActive: isActive,
-                    isExpanded: isActive && showLabels && !tab.isMore,
-                    badgeCount: tab.badgeCount,
-                    onTap: tab.isMore
-                        ? widget.onMoreTapped
-                        : () => widget.onNavigateToIndex(tab.pageIndex),
-                  );
-
-                  if (isActive) {
-                    tabWidget =
-                        KeyedSubtree(key: _selectedKey, child: tabWidget);
-                  }
-
-                  return tabWidget;
-                }).toList(),
-              ),
-            ),
-          ),
-          // Mode button.
-          if (modeNotifier.hasConfig) ...[
-            _buildDivider(dividerColor),
-            _ModeButton(
-              config: modeNotifier.config!,
-              onTap: widget.onModeTapped,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDivider(Color color) {
-    return Container(
-      width: AppSpacings.scale(1),
-      height: AppSpacings.scale(36),
-      color: color,
-    );
-  }
-}
-
-/// A single tab that shows icon-only when collapsed, icon + label when expanded.
-///
-/// Uses [AnimatedSize] so the pill smoothly grows/shrinks when [isExpanded]
-/// changes — no manual text measurement needed.
-class _NavTab extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final bool isExpanded;
-  final VoidCallback? onTap;
-  final int badgeCount;
-
-  static const Duration _animDuration = Duration(milliseconds: 250);
-  static const Curve _animCurve = Curves.easeInOut;
-
-  const _NavTab({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.isExpanded,
-    this.onTap,
-    this.badgeCount = 0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // The active tab follows the panel accent.
-    final accentColor = Theme.of(context).accent.text;
-    final Color inactiveColor = isDark
-        ? AppTextColorDark.placeholder
-        : AppTextColorLight.placeholder;
-    final Color iconColor = isActive ? accentColor : inactiveColor;
-
-    final double iconSize = AppSpacings.scale(24);
-    final double pillHeight = AppSpacings.scale(36);
-    final double pillRadius = AppBorderRadius.base;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Center(
-        child: AnimatedSize(
-          duration: _animDuration,
-          curve: _animCurve,
-          child: Container(
-            constraints: BoxConstraints(minWidth: AppSpacings.scale(40)),
-            height: pillHeight,
-            margin: EdgeInsets.symmetric(horizontal: AppSpacings.scale(4)),
-            padding: EdgeInsets.symmetric(horizontal: AppSpacings.scale(8)),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? Theme.of(context).accent.soft
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(pillRadius),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Icon(icon, color: iconColor, size: iconSize),
-                    if (badgeCount > 0)
-                      Positioned(
-                        right: -AppSpacings.scale(8),
-                        top: -AppSpacings.scale(4),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacings.scale(4),
-                            vertical: AppSpacings.scale(1),
-                          ),
-                          decoration: BoxDecoration(
-                            // White count: the fill, not the (light in dark) text shade.
-                            color: Theme.of(context).accent.fill,
-                            borderRadius:
-                                BorderRadius.circular(AppSpacings.scale(8)),
-                          ),
-                          constraints: BoxConstraints(
-                            minWidth: AppSpacings.scale(14),
-                            minHeight: AppSpacings.scale(14),
-                          ),
-                          child: Text(
-                            '$badgeCount',
-                            style: TextStyle(
-                              color: Theme.of(context).accent.onFill,
-                              fontSize: AppSpacings.scale(9),
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          spacing: gap,
+          children: [
+            if (widget.homeTab != null) tab(widget.homeTab!, scrolls: false),
+            if (widget.homeTab != null && pageTabs.isNotEmpty)
+              const _BarDivider(),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  spacing: gap,
+                  children: [for (final data in pageTabs) tab(data)],
                 ),
-                if (isExpanded)
-                  Padding(
-                    padding: EdgeInsets.only(left: AppSpacings.scale(6)),
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: AppFontSize.small,
-                        fontWeight: FontWeight.w500,
-                        color: accentColor,
-                      ),
-                      maxLines: 1,
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
+            if (moreTab != null)
+              DeckNavTab(
+                icon: moreTab.icon,
+                label: moreTab.label,
+                extent: extent,
+                iconSize: iconSize,
+                active: moreTab.isMoreActive,
+                tone: DeckNavTabTone.filled,
+                badgeCount: moreTab.badgeCount,
+                lockBadge: moreTab.lockBadge,
+                onTap: widget.onMoreTapped,
+              ),
+            if (mode != null)
+              DeckNavTab(
+                icon: mode.icon,
+                label: mode.title == null
+                    ? mode.label
+                    : '${mode.title}: ${mode.label}',
+                extent: extent,
+                iconSize: iconSize,
+                iconColor: ThemeColorFamily.get(
+                  theme.brightness,
+                  mode.color,
+                ).base,
+                onTap: widget.onModeTapped,
+              ),
+            if (widget.onSettingsTapped != null &&
+                _gearFits(
+                  constraints.maxWidth,
+                  extent: extent,
+                  gap: gap,
+                  hasHome: widget.homeTab != null,
+                  hasPageTabs: pageTabs.isNotEmpty,
+                  trailing: (moreTab != null ? 1 : 0) + (mode != null ? 1 : 0),
+                ))
+              DeckNavTab(
+                icon: MdiIcons.cogOutline,
+                label: localizations.deck_settings,
+                extent: extent,
+                iconSize: iconSize,
+                onTap: widget.onSettingsTapped,
+              ),
+          ],
         ),
       ),
     );
+  }
+
+  /// Whether the gear leaves the page tabs room for at least one tab. On the
+  /// narrowest bars (208 wide with a mode button) it gives way, so the
+  /// current page stays in view; Settings stays in "All pages" and on the
+  /// pull handle.
+  bool _gearFits(
+    double width, {
+    required double extent,
+    required double gap,
+    required bool hasHome,
+    required bool hasPageTabs,
+    required int trailing,
+  }) {
+    if (!hasPageTabs || !width.isFinite) return true;
+
+    final divider =
+        AppSpacings.scale(1 + 2 * DeckNavMetrics.barDividerMargin) + gap;
+    final fixed =
+        (hasHome ? extent + gap + divider : 0) +
+        (trailing + 1) * (extent + gap);
+
+    return width - fixed >= extent;
   }
 }
 
-/// Mode button shown on the right side of the bottom nav bar.
-class _ModeButton extends StatelessWidget {
-  final BottomNavModeConfig config;
-  final VoidCallback? onTap;
-
-  const _ModeButton({required this.config, this.onTap});
+/// The bar's divider after Home: 1 × 20 in `border.light`.
+class _BarDivider extends StatelessWidget {
+  const _BarDivider();
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      config.color,
-    );
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-        child: Icon(
-          config.icon,
-          color: colorFamily.base,
-          size: AppSpacings.scale(22),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.symmetric(
+      horizontal: AppSpacings.scale(DeckNavMetrics.barDividerMargin),
+    ),
+    child: Container(
+      width: AppSpacings.scale(1),
+      height: AppSpacings.scale(DeckNavMetrics.barDividerLength),
+      color: Theme.of(context).neutrals.borderLight,
+    ),
+  );
 }

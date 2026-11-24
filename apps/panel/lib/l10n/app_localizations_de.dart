@@ -1774,6 +1774,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deck_all_pages => 'Alle Seiten';
 
   @override
+  String get deck_settings => 'Einstellungen';
+
+  @override
+  String get deck_open_settings => 'Einstellungen öffnen';
+
+  @override
   String get system_view_entry => 'Eingang';
 
   @override
