@@ -12,6 +12,9 @@ import ViewPages from './view-pages.vue';
 
 const confirm = vi.fn();
 
+// Each mount of the error boundary, so a test can tell it starts over for another editor
+const viewErrorMounts = vi.hoisted((): number[] => []);
+
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string) => key }),
 }));
@@ -32,7 +35,7 @@ vi.mock('@iconify/vue', () => ({
 vi.mock('../../../common', () => ({
 	AppBreadcrumbs: { name: 'AppBreadcrumbs', template: '<div />' },
 	ViewHeader: { name: 'ViewHeader', props: ['actions'], template: '<div><slot name="actions" /></div>' },
-	ViewError: { name: 'ViewError', template: '<div><slot /></div>' },
+	ViewError: { name: 'ViewError', setup: () => viewErrorMounts.push(1), template: '<div><slot /></div>' },
 	EditDrawerLayout: { name: 'EditDrawerLayout', template: '<div><slot /><slot name="form" /></div>' },
 	provideEditDrawer: () => ({ inDrawer: computed<boolean>(() => true) }),
 }));
@@ -112,6 +115,7 @@ enableAutoUnmount(afterEach);
 describe('ViewPages', () => {
 	beforeEach(() => {
 		mountedWith.length = 0;
+		viewErrorMounts.length = 0;
 		confirm.mockReset();
 	});
 
@@ -147,6 +151,17 @@ describe('ViewPages', () => {
 
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGES_EDIT);
 		expect(router.currentRoute.value.params.id).toBe('page-a');
+	});
+
+	it('gives each editor a fresh error boundary', async () => {
+		const { wrapper } = await mountAt('/pages/page-a');
+
+		expect(viewErrorMounts).toHaveLength(1);
+
+		wrapper.findComponent({ name: 'ListPages' }).vm.$emit('edit', 'page-b');
+		await flushPromises();
+
+		expect(viewErrorMounts).toHaveLength(2);
 	});
 
 	it('asks before Configure leaves a changed form', async () => {

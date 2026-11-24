@@ -58,7 +58,8 @@
 			/>
 
 			<template #form>
-				<view-error>
+				<!-- Keyed like the editor: an error caught in one page's form does not stay over the next one -->
+				<view-error :key="formKey">
 					<template #icon>
 						<icon icon="mdi:view-dashboard" />
 					</template>
