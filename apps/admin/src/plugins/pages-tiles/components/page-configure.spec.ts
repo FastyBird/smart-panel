@@ -11,6 +11,7 @@ const edit = vi.fn();
 const save = vi.fn();
 const removeDirectly = vi.fn();
 const fetchTiles = vi.fn();
+const storeLookup = { missing: new Set<string>() };
 
 const PAGE_ID = 'page-1';
 
@@ -32,7 +33,7 @@ vi.mock('../../../modules/dashboard', () => ({
 	FormResult: { NONE: 'none', WORKING: 'working', ERROR: 'error', OK: 'ok' },
 	useTiles: () => ({ tiles, fetchTiles }),
 	useTilesActions: () => ({
-		findById: (_parent: string, id: string) => tiles.value.find((tile) => tile.id === id) ?? null,
+		findById: (_parent: string, id: string) => (storeLookup.missing.has(id) ? null : (tiles.value.find((tile) => tile.id === id) ?? null)),
 		edit,
 		save,
 		removeDirectly,
@@ -74,6 +75,7 @@ describe('PageConfigure', () => {
 		save.mockReset();
 		removeDirectly.mockReset().mockResolvedValue(true);
 		fetchTiles.mockReset().mockResolvedValue(undefined);
+		storeLookup.missing.clear();
 	});
 
 	it('puts the tiles on the page where they are saved', async () => {
@@ -283,5 +285,64 @@ describe('PageConfigure', () => {
 		expect(removeDirectly).toHaveBeenCalledTimes(3);
 		expect(removeDirectly).toHaveBeenLastCalledWith({ id: 'tile-a', parent: { type: 'page', id: PAGE_ID } });
 		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
+	});
+	it('settles a failed removal the store no longer holds only from a fresh read of the tiles', async () => {
+		// The tiles store's rule: the tile leaves the store before its DELETE, and a tile it does not hold counts as removed
+		const backend = new Set(tiles.value.map((tile) => tile.id));
+		let deleteFails = true;
+
+		removeDirectly.mockImplementation(async ({ id }: { id: string }) => {
+			if (storeLookup.missing.has(id)) {
+				return true;
+			}
+
+			storeLookup.missing.add(id);
+
+			if (deleteFails) {
+				throw new Error('failed');
+			}
+
+			backend.delete(id);
+
+			return true;
+		});
+
+		// The reads after the failure fail too, so the store keeps no record of tile-a
+		fetchTiles.mockRejectedValue(new Error('offline'));
+
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { removeTile: (id: string) => void };
+		const save = async (): Promise<void> => {
+			await wrapper.setProps({ remotePageSubmit: false });
+			await wrapper.setProps({ remotePageSubmit: true });
+			await flushPromises();
+		};
+
+		exposed.removeTile('tile-a');
+
+		await save();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+		expect(storeLookup.missing.has('tile-a')).toBe(true);
+		expect(backend.has('tile-a')).toBe(true);
+
+		// A retry while the read still fails settles nothing: no success, the removal stays pending
+		await save();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+		expect(backend.has('tile-a')).toBe(true);
+
+		// The read works again and brings the tile back to the store: the retry deletes it for real
+		deleteFails = false;
+		fetchTiles.mockImplementation(async () => {
+			if (backend.has('tile-a')) {
+				storeLookup.missing.delete('tile-a');
+			}
+		});
+
+		await save();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
+		expect(backend.has('tile-a')).toBe(false);
 	});
 });

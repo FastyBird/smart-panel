@@ -121,6 +121,9 @@ const pageTiles = new Set<ITile['id']>();
 const draftTiles = new Set<ITile['id']>();
 // Tiles taken off both grids, deleted when the page is saved; each leaves the set once its own request succeeds
 const removedTiles = new Set<ITile['id']>();
+// Removals whose request failed. The store drops a tile before its DELETE, so after a failure it may not hold a tile the
+// backend still has, and it treats a missing tile as removed; such a removal is checked against the backend first
+const failedRemovals = new Set<ITile['id']>();
 // The size a tile had on the page before it was hidden, kept until it is shown or the page is saved
 const hiddenSizes = new Map<ITile['id'], { w: number; h: number }>();
 
@@ -710,11 +713,34 @@ const saveLayout = async (): Promise<void> => {
 		}
 	}
 
+	// A failed removal the store no longer holds is only settled from a fresh read of the page's tiles: still there, it is
+	// sent again; gone, the earlier request did delete it. When the read fails, the save fails and the removal stays pending
+	const unknown = [...removedTiles].filter((id) => failedRemovals.has(id) && !findTileById('page', id));
+
+	if (unknown.length > 0) {
+		await fetchTiles();
+
+		for (const id of unknown) {
+			if (!findTileById('page', id)) {
+				removedTiles.delete(id);
+				failedRemovals.delete(id);
+			}
+		}
+	}
+
 	for (const id of [...removedTiles]) {
 		removals.push(
-			removeTileDirectly({ id, parent: { type: 'page', id: props.page.id } }).then((): void => {
-				removedTiles.delete(id);
-			})
+			removeTileDirectly({ id, parent: { type: 'page', id: props.page.id } }).then(
+				(): void => {
+					removedTiles.delete(id);
+					failedRemovals.delete(id);
+				},
+				(error: unknown): never => {
+					failedRemovals.add(id);
+
+					throw error;
+				}
+			)
 		);
 	}
 
@@ -723,8 +749,8 @@ const saveLayout = async (): Promise<void> => {
 	const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
 
 	if (failed) {
-		// A failed delete can leave the store without the tile while the backend still has it, and the store then
-		// treats a retry as done; reload the tiles so the retry sends it again. Tiles still pending removal stay off the grids
+		// Best effort: reload the tiles now, so the store holds again what a failed delete took out of it. If this read fails
+		// too, the next save reads them first. Tiles still pending removal stay off the grids
 		if ((await Promise.allSettled(removals)).some((result) => result.status === 'rejected')) {
 			await fetchTiles().catch((): void => undefined);
 		}
@@ -832,6 +858,7 @@ watch(
 
 		// The view asks before a display with another grid replaces unsaved changes; the rebuilt grids start from the store
 		removedTiles.clear();
+		failedRemovals.clear();
 		revision++;
 		pageChanged.value = false;
 
