@@ -37,6 +37,20 @@ strict:
   - lib/features/settings/presentation/widgets/settings_toggle.dart
   - lib/modules/deck/presentation/widgets/deck_mode_chip.dart
   - lib/modules/deck/presentation/widgets/deck_mode_popup.dart
+  # DR-8: list rows, section labels, sheets, drawers, dialogs, toasts and banners.
+  - lib/core/widgets/list_row.dart
+  - lib/core/widgets/section_heading.dart
+  - lib/core/widgets/bottom_sheet_dialog.dart
+  - lib/core/widgets/right_drawer.dart
+  - lib/core/widgets/app_dialog.dart
+  - lib/core/widgets/toast.dart
+  - lib/core/widgets/alert_banner.dart
+  - lib/modules/deck/presentation/widgets/deck_item_sheet.dart
+  - lib/modules/deck/presentation/widgets/deck_item_drawer.dart
+  - lib/features/settings/presentation/widgets/settings_tile.dart
+  - lib/features/settings/presentation/widgets/settings_card.dart
+  - lib/features/settings/presentation/widgets/settings_card_surface.dart
+  - lib/features/settings/presentation/widgets/settings_selection_dialog.dart
 
 # Generated code is never checked.
 exclude:

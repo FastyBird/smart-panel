@@ -1,36 +1,107 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Simple section title with icon and text.
+/// The section label's sizes (design canvas, "Settings" and the mode popup).
+class SectionLabelMetrics {
+  SectionLabelMetrics._();
+
+  /// Letter spacing, 0.06 em of the 10 px label.
+  static const double letterSpacing = 0.6;
+
+  static const double paddingTop = 4;
+  static const double paddingSide = 2;
+
+  /// An icon beside a coloured label.
+  static const double icon = 12;
+}
+
+/// The one section label (docs/display-ui-design-spec.md §5): 10/700,
+/// uppercase, 0.06 em apart, in `text.secondary`, with an optional trailing
+/// action. Screen readers hear it as a heading.
 ///
-/// Used for labeling sections within scrollable content.
-/// No borders, just icon + text in a row with optional trailing action.
+/// A [color] other than the default is a status or domain colour, so the
+/// label then shows its [icon] beside it (spec §2: a colour never stands
+/// alone).
+class SectionLabel extends StatelessWidget {
+  const SectionLabel({
+    super.key,
+    required this.label,
+    this.icon,
+    this.color,
+    this.trailing,
+  });
+
+  final String label;
+
+  /// Shown only with a [color].
+  final IconData? icon;
+
+  final Color? color;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = color ?? Theme.of(context).neutrals.textSecondary;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        top: AppSpacings.scale(SectionLabelMetrics.paddingTop),
+        left: AppSpacings.scale(SectionLabelMetrics.paddingSide),
+        right: AppSpacings.scale(SectionLabelMetrics.paddingSide),
+      ),
+      child: Row(
+        spacing: AppSpacings.pSm,
+        children: [
+          if (color != null && icon != null)
+            Icon(
+              icon,
+              color: effectiveColor,
+              size: AppSpacings.scale(SectionLabelMetrics.icon),
+            ),
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text(
+                label.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: effectiveColor,
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: AppSpacings.scale(
+                    SectionLabelMetrics.letterSpacing,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (trailing != null) trailing!,
+        ],
+      ),
+    );
+  }
+}
+
+/// A section label with an icon parameter; draws the one [SectionLabel].
 ///
-/// Example:
+/// The icon shows only with a [color] (see [SectionLabel]).
+///
 /// ```dart
-/// SectionTitle(
-///   title: 'Sensors',
-///   icon: MdiIcons.eyeSettings,
-/// )
-///
-/// // With trailing action:
 /// SectionTitle(
 ///   title: 'Other Lights',
 ///   icon: MdiIcons.lightbulbOutline,
-///   trailing: SectionTitleButton(
-///     label: 'All Off',
-///     onTap: () => toggleAllLights(),
-///   ),
+///   trailing: SectionTitleButton(label: 'All Off', onTap: toggleAll),
 /// )
 /// ```
 class SectionTitle extends StatelessWidget {
   /// The title text to display
   final String title;
 
-  /// Icon displayed before the title
+  /// Shown beside a coloured title.
   final IconData icon;
 
-  /// Optional color override for icon and text
+  /// A status or domain colour for the title and its icon.
   final Color? color;
 
   /// Optional trailing widget (e.g., action button)
@@ -45,53 +116,16 @@ class SectionTitle extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveColor = color ?? (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
-
-    return Column(
-      children: [
-        Row(
-          spacing: AppSpacings.pMd,
-          children: [
-            AppSpacings.spacingXxsHorizontal,
-            Icon(
-              icon,
-              color: effectiveColor,
-              size: AppFontSize.small,
-            ),
-            Expanded(
-              child: Text(
-                title.toUpperCase(),
-                style: TextStyle(
-                  color: effectiveColor,
-                  fontSize: AppFontSize.small,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            if (trailing != null) trailing!,
-          ],
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => SectionLabel(
+    label: title,
+    icon: icon,
+    color: color,
+    trailing: trailing,
+  );
 }
 
-/// Action button for use in SectionTitle trailing slot.
-///
-/// Uses filled button neutral theme. Styled as a small button with optional
-/// icon and text.
-///
-/// Example:
-/// ```dart
-/// SectionTitleButton(
-///   label: 'All Off',
-///   icon: MdiIcons.power,
-///   onTap: () => toggleAllLights(),
-/// )
-/// ```
+/// A small action beside a section label: 36 high (the touch floor),
+/// `fill.light` with a `border.light` outline and radius 6, a 12/500 label.
 class SectionTitleButton extends StatelessWidget {
   /// Button label text
   final String label;
@@ -99,7 +133,7 @@ class SectionTitleButton extends StatelessWidget {
   /// Optional leading icon
   final IconData? icon;
 
-  /// Callback when button is tapped
+  /// Callback when button is tapped; null disables the button.
   final VoidCallback? onTap;
 
   const SectionTitleButton({
@@ -111,88 +145,77 @@ class SectionTitleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final neutralTheme = isDark
-        ? AppFilledButtonsDarkThemes.neutral
-        : AppFilledButtonsLightThemes.neutral;
-    return Theme(
-      data: Theme.of(context).copyWith(filledButtonTheme: neutralTheme),
-      child: icon != null
-          ? FilledButton.icon(
-              onPressed: onTap,
-              icon: Icon(
-                icon,
-                size: AppFontSize.extraSmall,
-                color: isDark
-                    ? AppFilledButtonsDarkThemes.neutralForegroundColor
-                    : AppFilledButtonsLightThemes.neutralForegroundColor,
-              ),
-              label: Text(
-                label,
-                style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pMd,
-                  vertical: AppSpacings.pSm,
-                ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            )
-          : FilledButton(
-              onPressed: onTap,
-              style: FilledButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pMd,
-                  vertical: AppSpacings.pSm,
-                ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w500,
-                ),
+    final neutrals = Theme.of(context).neutrals;
+    final enabled = onTap != null;
+    final foreground = enabled ? neutrals.textPrimary : neutrals.textDisabled;
+    final radius = BorderRadius.circular(AppBorderRadius.inner);
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: Material(
+        color: neutrals.fillLight,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: BorderSide(
+            color: neutrals.borderLight,
+            width: AppSpacings.scale(1),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: AppSpacings.scale(36),
+              minWidth: AppSpacings.scale(36),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: AppSpacings.pSm,
+                children: [
+                  if (icon != null)
+                    Icon(icon, size: AppSpacings.scale(14), color: foreground),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: AppFontSize.small,
+                      fontWeight: FontWeight.w500,
+                      color: foreground,
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
+        ),
+      ),
     );
   }
 }
 
-/// Section header with borders and optional count badge.
-///
-/// Used for panel headers, typically at the top of a column/panel.
-/// Has fixed height, bottom border (optional top border), and optional count badge.
-///
-/// Example:
-/// ```dart
-/// SectionHeader(
-///   title: 'Climate Devices',
-///   icon: MdiIcons.devices,
-///   count: 5,
-///   showTopBorder: false,
-/// )
-/// ```
+/// A column header: the section label with an optional count badge, 36
+/// high. The borders and tinted background are gone; [showTopBorder] is
+/// kept so callers compile and draws nothing.
 class SectionHeader extends StatelessWidget {
   /// The title text to display
   final String title;
 
-  /// Icon displayed before the title
+  /// Shown beside a coloured title.
   final IconData icon;
 
-  /// Whether to show the top border (default: true)
+  /// No longer draws anything.
   final bool showTopBorder;
 
   /// Optional count to display in a badge
   final int? count;
 
-  /// Optional accent color for the header (affects icon, text, border, and background)
+  /// A status or domain colour for the title and its icon.
   final Color? accentColor;
 
   const SectionHeader({
@@ -206,69 +229,36 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = accentColor ??
-        (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker);
-    final iconColor = accentColor ??
-        (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
-    final textColor = accentColor ??
-        (isDark ? AppTextColorDark.primary : AppTextColorLight.primary);
-    final badgeBgColor = accentColor?.withValues(alpha: 0.2) ??
-        (isDark ? AppFillColorDark.light : AppFillColorLight.light);
-    final badgeTextColor = accentColor ??
-        (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
+    final neutrals = Theme.of(context).neutrals;
 
     return Container(
-      height: AppSpacings.scale(36),
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pLg,
-      ),
-      decoration: BoxDecoration(
-        color: accentColor?.withValues(alpha: 0.1),
-        border: Border(
-          top: showTopBorder
-              ? BorderSide(color: borderColor, width: AppSpacings.scale(1))
-              : BorderSide.none,
-          bottom: BorderSide(color: borderColor, width: AppSpacings.scale(1)),
-        ),
-      ),
-      child: Row(
-        spacing: AppSpacings.pMd,
-        children: [
-          Icon(
-            icon,
-            color: iconColor,
-            size: AppFontSize.small,
-          ),
-          Text(
-            title,
-            style: TextStyle(
-              color: textColor,
-              fontSize: AppFontSize.small,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          if (count != null)
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacings.pSm,
-                vertical: AppSpacings.scale(2),
-              ),
-              decoration: BoxDecoration(
-                color: badgeBgColor,
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  color: badgeTextColor,
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w600,
+      constraints: BoxConstraints(minHeight: AppSpacings.scale(36)),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+      alignment: AlignmentDirectional.centerStart,
+      child: SectionLabel(
+        label: title,
+        icon: icon,
+        color: accentColor,
+        trailing: count == null
+            ? null
+            : Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pSm,
+                  vertical: AppSpacings.scale(2),
+                ),
+                decoration: BoxDecoration(
+                  color: neutrals.fillBase,
+                  borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    color: neutrals.textSecondary,
+                    fontSize: AppFontSize.extraSmall,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
-          const Spacer(),
-        ],
       ),
     );
   }

@@ -1,16 +1,15 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card_surface.dart';
+import 'package:fastybird_smart_panel/core/widgets/list_row.dart';
 import 'package:flutter/material.dart';
 
-/// Settings card with icon badge, label, description, trailing widget,
-/// and optional bottom content. Supports danger styling.
+/// A settings row: the one list row ([AppListRow]) with the label, the
+/// description as its subtitle and one trailing control.
 ///
-/// Layout:
-/// ```
-/// [Icon] [Title         ] [Trailing]
-///        [Description   ]
-/// [Bottom - full width              ]
-/// ```
+/// [bottom] adds full-width content under the row (a slider) inside the same
+/// card. [isDanger] gives the title and outline the danger colour.
+///
+/// The icon parameters are kept so callers compile; settings rows draw no
+/// icon (design canvas, "Settings").
 class SettingsCard extends StatelessWidget {
 	final IconData icon;
 	final Color iconColor;
@@ -37,112 +36,47 @@ class SettingsCard extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final surface = SettingsCardSurface.of(context);
+		final theme = Theme.of(context);
+		final neutrals = theme.neutrals;
 
-		final dangerBorderColor = isDark
-				? AppColorsDark.danger
-				: AppColorsLight.danger;
-		final dangerBorderLight = dangerBorderColor.withValues(alpha: 0.18);
-		final dangerTextColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+		final row = AppListRow(
+			title: label,
+			subtitle: description,
+			trailing: trailing,
+			danger: isDanger,
+			surface: bottom == null,
+		);
 
-		final radius = BorderRadius.circular(AppBorderRadius.base);
-
-		return Opacity(
-			opacity: opacity,
-			child: Stack(
-				children: [
-					Container(
-						padding: EdgeInsets.all(AppSpacings.pLg),
+		final card = bottom == null
+				? row
+				: Container(
 						decoration: BoxDecoration(
-							color: surface.surfaceColor,
+							color: neutrals.surfaceCard,
 							border: Border.all(
-								color: isDanger ? dangerBorderLight : surface.borderColor,
+								color: isDanger
+										? theme.status(AppStatus.danger).border
+										: neutrals.borderLight,
+								width: AppSpacings.scale(1),
 							),
-							borderRadius: radius,
-							boxShadow: surface.shadow,
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
 						child: Column(
 							mainAxisSize: MainAxisSize.min,
-							crossAxisAlignment: CrossAxisAlignment.start,
+							crossAxisAlignment: CrossAxisAlignment.stretch,
 							children: [
-								Row(
-									children: [
-										// Icon badge
-										Container(
-											width: AppSpacings.scale(36),
-											height: AppSpacings.scale(36),
-											decoration: BoxDecoration(
-												color: iconBgColor,
-												borderRadius: BorderRadius.circular(AppBorderRadius.base),
-											),
-											child: Icon(icon, size: AppFontSize.large, color: iconColor),
-										),
-										SizedBox(width: AppSpacings.pMd),
-										// Title + description
-										Expanded(
-											child: Column(
-												crossAxisAlignment: CrossAxisAlignment.start,
-												children: [
-													Text(
-														label,
-														style: TextStyle(
-															fontSize: AppFontSize.small,
-															fontWeight: FontWeight.w600,
-															color: isDanger ? dangerTextColor : surface.textColor,
-														),
-													),
-													if (description != null)
-														Padding(
-															padding: EdgeInsets.only(top: AppSpacings.pXxs),
-															child: Text(
-																description!,
-																style: TextStyle(
-																	fontSize: AppFontSize.extraSmall,
-																	color: surface.secondaryTextColor,
-																	height: 1.3,
-																),
-															),
-														),
-												],
-											),
-										),
-										if (trailing != null) ...[
-											SizedBox(width: AppSpacings.pMd),
-											ConstrainedBox(
-												constraints: BoxConstraints(
-													maxWidth: AppSpacings.scale(120),
-												),
-												child: trailing!,
-											),
-										],
-									],
+								row,
+								Padding(
+									padding: EdgeInsets.only(
+										left: AppSpacings.scale(AppListRowMetrics.paddingStart),
+										right: AppSpacings.scale(AppListRowMetrics.paddingStart),
+										bottom: AppSpacings.pMd,
+									),
+									child: bottom!,
 								),
-								if (bottom != null) ...[
-									SizedBox(height: AppSpacings.pMd),
-									bottom!,
-								],
 							],
 						),
-					),
-					if (isDanger)
-						Positioned(
-							left: 0,
-							top: 0,
-							bottom: 0,
-							child: Container(
-								width: AppSpacings.scale(3),
-								decoration: BoxDecoration(
-									color: dangerTextColor,
-									borderRadius: BorderRadius.only(
-										topLeft: Radius.circular(AppBorderRadius.base),
-										bottomLeft: Radius.circular(AppBorderRadius.base),
-									),
-								),
-							),
-						),
-				],
-			),
-		);
+					);
+
+		return Opacity(opacity: opacity, child: card);
 	}
 }

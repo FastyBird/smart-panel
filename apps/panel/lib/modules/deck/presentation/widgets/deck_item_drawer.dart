@@ -1,6 +1,10 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:flutter/material.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -38,6 +42,7 @@ class DeckItemDrawer {
   static void showItemDrawer(
     BuildContext context, {
     required String title,
+    String? subtitle,
     IconData? icon,
     Widget? titleWidget,
     required int itemCount,
@@ -49,6 +54,7 @@ class DeckItemDrawer {
     showRightDrawer(
       context,
       title: titleWidget != null ? null : title,
+      subtitle: subtitle,
       titleWidget: titleWidget,
       titleIcon: icon,
       scrollable: false,
@@ -72,6 +78,7 @@ class DeckItemDrawer {
   static void showItemDrawerWithUpdates(
     BuildContext context, {
     required String title,
+    String? subtitle,
     IconData? icon,
     Widget? titleWidget,
     required Listenable rebuildWhen,
@@ -85,6 +92,7 @@ class DeckItemDrawer {
     showRightDrawer(
       context,
       title: titleWidget != null ? null : title,
+      subtitle: subtitle,
       titleWidget: titleWidget,
       titleIcon: icon,
       scrollable: false,
@@ -125,23 +133,21 @@ class _Content extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
     final scrollWidget = VerticalScrollWithGradient(
       itemCount: itemCount,
-      separatorHeight: AppSpacings.pSm,
-      backgroundColor: bgColor,
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-        vertical: AppSpacings.pMd,
-      ),
+      separatorHeight: AppSpacings.scale(DeckItemListMetrics.gap),
+      backgroundColor: Theme.of(context).neutrals.surfaceRaised,
+      // The drawer pads its parts; the list lines up with the header.
+      padding: EdgeInsets.zero,
       itemBuilder: itemBuilder,
     );
 
     if (bottomSection == null) return scrollWidget;
 
     return Column(
+      spacing: AppSpacings.scale(
+        SheetMetrics.gapFor(locator<ScreenService>().sizeClass),
+      ),
       children: [
         Expanded(child: scrollWidget),
         bottomSection!,

@@ -883,6 +883,48 @@ class AppControlColors {
 
   static Color switchOff(Brightness brightness) =>
       brightness == Brightness.dark ? switchOffDark : switchOffLight;
+
+  /// The grab handle of a bottom sheet (design canvas, overlays).
+  static const Color handleLight = Color(0xFFC3C8D0);
+  static const Color handleDark = Color(0xFF44474E);
+
+  static Color handle(Brightness brightness) =>
+      brightness == Brightness.dark ? handleDark : handleLight;
+}
+
+/// The scrim behind sheets, drawers and dialogs (design canvas, overlays).
+class AppScrim {
+  AppScrim._();
+
+  static const Color color = Color.fromRGBO(8, 9, 10, 0.55);
+}
+
+/// The one soft shadow under sheets, drawers, popups and toasts
+/// (docs/display-ui-design-spec.md §3): in light only. Dark steps up the
+/// surface instead, so it has none.
+class AppRaisedShadow {
+  AppRaisedShadow._();
+
+  static const Color color = Color.fromRGBO(0, 0, 0, 0.16);
+
+  /// The shadow for [brightness], falling away from the edge [offset]
+  /// points to (design px, scaled here), or null in dark.
+  static List<BoxShadow>? of(
+    Brightness brightness, {
+    Offset offset = const Offset(0, 4),
+    double blur = 20,
+  }) => brightness == Brightness.dark
+      ? null
+      : [
+          BoxShadow(
+            color: color,
+            blurRadius: AppSpacings.scale(blur),
+            offset: Offset(
+              AppSpacings.scale(offset.dx),
+              AppSpacings.scale(offset.dy),
+            ),
+          ),
+        ];
 }
 
 /// The eight accents a panel can take (docs/display-ui-design-spec.md §2).

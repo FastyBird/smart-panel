@@ -1,29 +1,81 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-/// Toast type determines the color and default icon
+/// Toast type determines the icon and its status colour.
 enum ToastType { success, info, warning, error }
 
-/// A pill-style toast that appears at the top of the screen.
+/// The toast's sizes (design canvas, "Navigation and overlays").
+class ToastMetrics {
+  ToastMetrics._();
+
+  static const double height = 36;
+  static const double paddingStart = 10;
+  static const double paddingEnd = 12;
+  static const double gap = 6;
+  static const double icon = 16;
+
+  /// Up to two lines, so a message is never cut short.
+  static const int maxLines = 2;
+
+  /// The portrait bar the toast sits above (spec §4): 44 / 52 / 56, 40 on a
+  /// square panel.
+  static double barHeightFor(ScreenSizeClass sizeClass, {bool square = false}) {
+    if (square) return 40;
+
+    return switch (sizeClass) {
+      ScreenSizeClass.compact => 44,
+      ScreenSizeClass.regular => 52,
+      ScreenSizeClass.expanded => 56,
+    };
+  }
+
+  /// The page padding (spec §4): 6 / 8 / 12.
+  static double pagePaddingFor(ScreenSizeClass sizeClass) => switch (sizeClass) {
+    ScreenSizeClass.compact => 6,
+    ScreenSizeClass.regular => 8,
+    ScreenSizeClass.expanded => 12,
+  };
+
+  /// The toast's distance from the bottom: two page paddings, above the bar
+  /// in portrait.
+  static double bottomFor(
+    ScreenSizeClass sizeClass, {
+    required bool portrait,
+    bool square = false,
+  }) =>
+      (portrait ? barHeightFor(sizeClass, square: square) : 0) +
+      2 * pagePaddingFor(sizeClass);
+}
+
+/// The status a [ToastType] shows.
+AppStatus toastStatus(ToastType type) => switch (type) {
+  ToastType.success => AppStatus.ok,
+  ToastType.info => AppStatus.info,
+  ToastType.warning => AppStatus.warning,
+  ToastType.error => AppStatus.danger,
+};
+
+/// The toast (docs/display-ui-design-spec.md §5, §7): an inverted pill at the
+/// foot of the screen, above the portrait bar. `text.primary` of the theme
+/// is its background, so it stands out in both themes; the icon takes the
+/// status colour that reads on it (the other theme's status text), with the
+/// message beside it and an optional action.
 ///
-/// Features:
-/// - Slides in from top with fade animation
-/// - Dismisses on tap (no close icon)
-/// - Auto-dismisses after duration
-/// - Pill/rounded style matching the app design
+/// - Slides up and fades in; dismisses on tap or after its duration.
+/// - Screen readers hear the message as it appears.
 class Toast {
   static OverlayEntry? _currentToast;
   static Timer? _dismissTimer;
 
-  /// Shows a toast message at the top of the screen.
+  /// Shows a toast message at the foot of the screen.
   ///
-  /// The toast will auto-dismiss after [duration] or when tapped.
+  /// The toast will auto-dismiss after [duration] or when tapped. With
+  /// [actionLabel] and [onAction], an action ("Retry") ends the pill.
   static void show(
     BuildContext context, {
     required String message,
@@ -31,26 +83,26 @@ class Toast {
     IconData? icon,
     Duration duration = const Duration(seconds: 3),
     OverlayState? overlay,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     // Dismiss any existing toast
     dismiss();
 
     final overlayState = overlay ?? Overlay.of(context);
-    final screenService = locator<ScreenService>();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brightness = Theme.of(context).brightness;
 
     late OverlayEntry entry;
     entry = OverlayEntry(
-      builder: (context) => _ToastWidget(
+      builder: (context) => ToastView(
         message: message,
         type: type,
         icon: icon,
         duration: duration,
-        isDark: isDark,
-        screenService: screenService,
-        onDismiss: () {
-          dismiss();
-        },
+        brightness: brightness,
+        actionLabel: actionLabel,
+        onAction: onAction,
+        onDismiss: dismiss,
       ),
     );
 
@@ -132,30 +184,47 @@ class Toast {
       );
 }
 
-class _ToastWidget extends StatefulWidget {
+/// A toast in its place at the foot of the screen; [Toast.show] inserts it.
+/// Public so the gallery and tests can show one.
+class ToastView extends StatefulWidget {
+  const ToastView({
+    super.key,
+    required this.message,
+    required this.type,
+    required this.brightness,
+    required this.onDismiss,
+    this.icon,
+    this.duration = const Duration(seconds: 3),
+    this.actionLabel,
+    this.onAction,
+    this.sizeClass,
+    this.portrait,
+    this.animate = true,
+  });
+
   final String message;
   final ToastType type;
   final IconData? icon;
   final Duration duration;
-  final bool isDark;
-  final ScreenService screenService;
+  final Brightness brightness;
+  final String? actionLabel;
+  final VoidCallback? onAction;
   final VoidCallback onDismiss;
 
-  const _ToastWidget({
-    required this.message,
-    required this.type,
-    required this.duration,
-    required this.isDark,
-    required this.screenService,
-    required this.onDismiss,
-    this.icon,
-  });
+  /// The class and orientation to place the toast for; default to the
+  /// screen's.
+  final ScreenSizeClass? sizeClass;
+  final bool? portrait;
+
+  /// False shows the toast at once and never dismisses it on a timer (the
+  /// gallery).
+  final bool animate;
 
   @override
-  State<_ToastWidget> createState() => _ToastWidgetState();
+  State<ToastView> createState() => _ToastViewState();
 }
 
-class _ToastWidgetState extends State<_ToastWidget>
+class _ToastViewState extends State<ToastView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
@@ -169,23 +238,21 @@ class _ToastWidgetState extends State<_ToastWidget>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 200),
+      value: widget.animate ? 0 : 1,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1),
+      begin: const Offset(0, 1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-    // Start entry animation
-    _controller.forward();
-
-    // Schedule auto-dismiss
-    _autoDismissTimer = Timer(widget.duration, _dismiss);
+    if (widget.animate) {
+      _controller.forward();
+      _autoDismissTimer = Timer(widget.duration, _dismiss);
+    }
   }
 
   void _dismiss() {
@@ -207,107 +274,142 @@ class _ToastWidgetState extends State<_ToastWidget>
     super.dispose();
   }
 
-  Color _getBackgroundColor() {
-    switch (widget.type) {
-      case ToastType.success:
-        return widget.isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9;
-      case ToastType.info:
-        return widget.isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
-      case ToastType.warning:
-        return widget.isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
-      case ToastType.error:
-        return widget.isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
-    }
-  }
-
-  Color _getTextColor() {
-    switch (widget.type) {
-      case ToastType.success:
-        return widget.isDark ? AppColorsDark.success : AppColorsLight.success;
-      case ToastType.info:
-        return widget.isDark ? AppColorsDark.info : AppColorsLight.info;
-      case ToastType.warning:
-        return widget.isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case ToastType.error:
-        return widget.isDark ? AppColorsDark.error : AppColorsLight.error;
-    }
-  }
-
-  IconData _getDefaultIcon() {
-    switch (widget.type) {
-      case ToastType.success:
-        return MdiIcons.checkCircle;
-      case ToastType.info:
-        return MdiIcons.informationOutline;
-      case ToastType.warning:
-        return MdiIcons.alertOutline;
-      case ToastType.error:
-        return MdiIcons.alertCircle;
-    }
-  }
+  IconData get _defaultIcon => switch (widget.type) {
+    ToastType.success => MdiIcons.checkCircle,
+    ToastType.info => MdiIcons.informationOutline,
+    ToastType.warning => MdiIcons.alertOutline,
+    ToastType.error => MdiIcons.alertCircle,
+  };
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = _getBackgroundColor();
-    final iconToUse = widget.icon ?? _getDefaultIcon();
+    final screen = locator<ScreenService>();
+    final sizeClass = widget.sizeClass ?? screen.sizeClass;
+    final portrait = widget.portrait ?? screen.isPortrait;
+    final dark = widget.brightness == Brightness.dark;
+    final other = dark ? Brightness.light : Brightness.dark;
+
+    // Inverted: the theme's primary text is the pill, and the icon takes the
+    // status colour made for the other theme's surfaces.
+    final background = AppNeutralPalette.of(widget.brightness).textPrimary;
+    final foreground = dark
+        ? AppNeutralPalette.light.textPrimary
+        : AppColors.white;
+    final iconColor = AppStatusPalette.of(
+      other,
+      toastStatus(widget.type),
+    ).text;
+    // The action is the accent made for the pill: the dark accent's text on
+    // the dark pill, its fill on the light one.
+    final darkAccent = AppAccents.palette(Brightness.dark);
+    final actionColor = dark ? darkAccent.fill : darkAccent.text;
+
+    final pagePadding = AppSpacings.scale(
+      ToastMetrics.pagePaddingFor(sizeClass),
+    );
+    final height = AppSpacings.scale(ToastMetrics.height);
+    final hasAction = widget.actionLabel != null && widget.onAction != null;
+
+    final pill = Container(
+      constraints: BoxConstraints(minHeight: height),
+      padding: EdgeInsetsDirectional.only(
+        start: AppSpacings.scale(ToastMetrics.paddingStart),
+        end: hasAction ? 0 : AppSpacings.scale(ToastMetrics.paddingEnd),
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(height / 2),
+        boxShadow: AppRaisedShadow.of(
+          widget.brightness,
+          offset: const Offset(0, 4),
+          blur: 14,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.scale(ToastMetrics.gap),
+        children: [
+          Icon(
+            widget.icon ?? _defaultIcon,
+            color: iconColor,
+            size: AppSpacings.scale(ToastMetrics.icon),
+          ),
+          Flexible(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+              child: Text(
+                widget.message,
+                maxLines: ToastMetrics.maxLines,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: AppFontSize.small,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          if (hasAction)
+            Semantics(
+              button: true,
+              child: InkWell(
+                onTap: () {
+                  widget.onAction!();
+                  _dismiss();
+                },
+                borderRadius: BorderRadius.circular(height / 2),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: height,
+                    minWidth: height,
+                  ),
+                  child: Padding(
+                    padding: EdgeInsetsDirectional.only(
+                      start: AppSpacings.pMd,
+                      end: AppSpacings.scale(ToastMetrics.paddingEnd),
+                    ),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Text(
+                        widget.actionLabel!,
+                        style: TextStyle(
+                          color: actionColor,
+                          fontSize: AppFontSize.small,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
 
     return Positioned(
-      top: AppSpacings.pLg,
-      left: 0,
-      right: 0,
+      left: pagePadding,
+      right: pagePadding,
+      bottom: AppSpacings.scale(
+        ToastMetrics.bottomFor(
+          sizeClass,
+          portrait: portrait,
+          square: screen.isSquare,
+        ),
+      ),
       child: SafeArea(
+        top: false,
         child: Center(
           child: SlideTransition(
             position: _slideAnimation,
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: Material(
-                type: MaterialType.transparency,
-                child: GestureDetector(
-                  onTap: _dismiss,
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: widget.screenService.screenWidth * 0.85,
-                    ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pLg,
-                      vertical: AppSpacings.pMd + AppSpacings.pSm,
-                    ),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(AppBorderRadius.round),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppShadowColor.medium,
-                          blurRadius: widget.screenService.scale(10),
-                          offset: Offset(0, widget.screenService.scale(2)),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          iconToUse,
-                          color: _getTextColor(),
-                          size: widget.screenService.scale(18),
-                        ),
-                        AppSpacings.spacingMdHorizontal,
-                        Flexible(
-                          child: Text(
-                            widget.message,
-                            style: TextStyle(
-                              color: _getTextColor(),
-                              fontSize: AppFontSize.base,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              child: Semantics(
+                liveRegion: true,
+                container: true,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: GestureDetector(onTap: _dismiss, child: pill),
                 ),
               ),
             ),

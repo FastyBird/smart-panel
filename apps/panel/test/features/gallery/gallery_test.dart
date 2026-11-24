@@ -85,7 +85,7 @@ void main() {
     // Sections fill as their tasks land.
     expect(
       gallerySections.where((section) => section.entries.isNotEmpty).map((section) => section.task),
-      ['DR-5', 'DR-6', 'DR-7'],
+      ['DR-5', 'DR-6', 'DR-7', 'DR-8'],
     );
   });
 
@@ -119,10 +119,11 @@ void main() {
     }
   });
 
-  testWidgets('the Controls entries fit the Compact portrait and square canvases', (tester) async {
+  for (final id in ['controls', 'lists']) {
+  testWidgets('the $id entries fit the Compact portrait and square canvases', (tester) async {
     await _pump(tester);
-    await _tap(tester, 'gallery-section-controls');
-    final section = gallerySections.firstWhere((section) => section.id == 'controls');
+    await _tap(tester, 'gallery-section-$id');
+    final section = gallerySections.firstWhere((section) => section.id == id);
 
     for (final (canvas, orientation) in [('compact', 'portrait'), ('square', 'landscape')]) {
       await _tap(tester, 'gallery-canvas-$canvas');
@@ -133,7 +134,7 @@ void main() {
           .state<ScrollableState>(
             find
                 .descendant(
-                  of: find.byKey(const ValueKey('gallery-section-view-controls')),
+                  of: find.byKey(ValueKey('gallery-section-view-$id')),
                   matching: find.byType(Scrollable),
                 )
                 .first,
@@ -152,6 +153,7 @@ void main() {
       expect(seen, section.entries.map((entry) => entry.title).toSet(), reason: '$canvas $orientation');
     }
   });
+  }
 
   testWidgets('renders the reference canvas of each class and orientation', (tester) async {
     await _pump(tester);
