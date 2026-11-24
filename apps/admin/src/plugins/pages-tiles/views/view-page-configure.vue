@@ -346,8 +346,11 @@ const formKeyOf = (location: RouteLocationNormalized): string => {
 const formKey = computed<string>((): string => formKeyOf(route));
 
 // Phone reads the page as a list. A window that narrows past 720 px with unsaved layout changes keeps the editor, as
-// the grids hold the only copy of those changes
-const phoneList = computed<boolean>((): boolean => isPhone.value && !remotePageChanged.value);
+// the grids hold the only copy of those changes; so does a page with draft tiles (added from a form, never saved), which
+// the list leaves out and only the editor can save
+const hasDrafts = computed<boolean>((): boolean => tiles.value.some((tile) => tile.draft));
+
+const phoneList = computed<boolean>((): boolean => isPhone.value && !remotePageChanged.value && !hasDrafts.value);
 
 // Tablet portrait, and a phone-width window still holding unsaved changes: palette and inspector over the canvas
 const compactEditor = computed<boolean>((): boolean => isTabletPortrait.value || isPhone.value);

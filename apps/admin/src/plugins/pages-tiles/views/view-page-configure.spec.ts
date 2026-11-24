@@ -20,6 +20,9 @@ const removeTile = vi.fn();
 const isPhone = ref<boolean>(false);
 const isTabletPortrait = ref<boolean>(false);
 
+const TILE = { id: '00000000-0000-4000-8000-00000000b002', type: 'tile-time', row: 1, col: 2, rowSpan: 1, colSpan: 2, hidden: false, draft: false };
+const pageTiles = ref<(typeof TILE)[]>([TILE]);
+
 const PAGE_ID = '00000000-0000-4000-8000-00000000b001';
 const TILE_ID = '00000000-0000-4000-8000-00000000b002';
 
@@ -61,7 +64,7 @@ vi.mock('../../../modules/dashboard', () => ({
 	RouteNames: { PAGES: 'dashboard_module-pages', TILE: 'dashboard_module-tile' },
 	FormResult: { NONE: 'none', WORKING: 'working', ERROR: 'error', OK: 'ok' },
 	useTiles: () => ({
-		tiles: ref([{ id: TILE_ID, type: 'tile-time', row: 1, col: 2, rowSpan: 1, colSpan: 2, hidden: false, draft: false }]),
+		tiles: pageTiles,
 		fetchTiles: vi.fn().mockResolvedValue(undefined),
 		areLoading: ref(false),
 	}),
@@ -156,6 +159,7 @@ describe('ViewPageConfigure', () => {
 	beforeEach(() => {
 		isPhone.value = false;
 		isTabletPortrait.value = false;
+		pageTiles.value = [TILE];
 
 		for (const mock of [confirm, success, error, hideTile, showTile, removeTile]) {
 			mock.mockReset();
@@ -414,6 +418,23 @@ describe('ViewPageConfigure', () => {
 
 		expect(confirm).not.toHaveBeenCalled();
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE);
+	});
+
+	it('keeps the editor on phone width while the page has draft tiles the list cannot show', async () => {
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure/tile/add`);
+
+		isPhone.value = true;
+
+		// The Add form saved a draft and reported itself clean
+		pageTiles.value = [TILE, { ...TILE, id: 'tile-draft', draft: true }];
+		wrapper.findComponent({ name: 'RoutedForm' }).vm.$emit('update:remote-form-changed', false);
+		await flushPromises();
+
+		await router.push({ name: RouteNames.PAGE, params: { id: PAGE_ID } });
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="tiles-editor"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'TilesPageList' }).exists()).toBe(false);
 	});
 
 	it('keeps the palette behind Add tile and the data sources behind a button on tablet portrait', async () => {
