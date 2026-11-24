@@ -63,7 +63,6 @@
 			"remove": "Odstrániť stránku?",
 			"bulkRemove": "Odstrániť stránky?",
 			"selectPlugin": "Vyžaduje sa plugin stránky",
-			"adjustFilters": "Filtrovať stránky",
 			"addDataSource": "Pridať zdroj dát stránky",
 			"editDataSource": "Upraviť zdroj dát stránky"
 		},
@@ -94,7 +93,6 @@
 			"add": "Pridať novú stránku smart panelu",
 			"edit": "Upraviť stránku smart panelu",
 			"detail": "Spravovať stránku smart panelu",
-			"adjustFilters": "Upraviť filtre zobrazenia",
 			"addDataSource": "Pridať nový zdroj dát stránky smart panelu",
 			"editDataSource": "Upraviť zdroj dát stránky smart panelu"
 		},
@@ -168,7 +166,8 @@
 			"confirmBulkRemove": "Naozaj chcete odstrániť {count} stránok? Toto sa nedá vrátiť.",
 			"selectPlugin": "Na vytvorenie novej stránky vyberte kompatibilný plugin zo zoznamu. Pluginy poskytujú potrebné konfiguračné možnosti pre konkrétne typy stránok.",
 			"noPlugins": "Zatiaľ neboli nakonfigurované žiadne pluginy stránok.",
-			"noDisplays": "Zatiaľ neboli spárované žiadne displeje."
+			"noDisplays": "Zatiaľ neboli spárované žiadne displeje.",
+			"noPagesHint": "Pridajte stránku a vyberte, čo nástenné displeje zobrazia."
 		},
 		"tiles": {
 			"noTiles": "Nemáte nakonfigurovanú žiadnu dlaždicu",
@@ -350,6 +349,9 @@
 			},
 			"displays": {
 				"title": "Filtrovať podľa displeja stránky"
+			},
+			"type": {
+				"title": "Typ"
 			}
 		},
 		"tiles": {
@@ -408,6 +410,18 @@
 		},
 		"addDataSource": {
 			"title": "Pridať zdroj dát"
+		},
+		"more": {
+			"title": "Ďalšie akcie"
+		},
+		"keepEditing": {
+			"title": "Pokračovať v úpravách"
+		}
+	},
+	"aria": {
+		"pages": {
+			"edit": "Upraviť {page}",
+			"more": "Ďalšie akcie pre {page}"
 		}
 	}
 }

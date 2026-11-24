@@ -1,10 +1,5 @@
 <template>
-	<view-header
-		:title="t('dashboardModule.headings.pages.adjustFilters')"
-		:subtitle="t('dashboardModule.subHeadings.pages.adjustFilters')"
-		icon="mdi:filter"
-	/>
-
+	<!-- The filters drawer of the list's filter bar: its heading and Reset are the bar's -->
 	<div
 		:class="[ns.b()]"
 		class="flex flex-col h-full w-full overflow-hidden"
@@ -76,19 +71,6 @@
 				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
-
-		<div class="px-5 py-2 text-center">
-			<el-button
-				:disabled="!props.filtersActive"
-				@click="emit('reset-filters')"
-			>
-				<template #icon>
-					<icon icon="mdi:filter-remove" />
-				</template>
-
-				{{ t('dashboardModule.buttons.reset.title') }}
-			</el-button>
-		</div>
 	</div>
 </template>
 
@@ -96,12 +78,10 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText, useNamespace } from 'element-plus';
+import { ElAlert, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText, useNamespace } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { ViewHeader } from '../../../../common';
 import { useDisplays } from '../../../displays';
 import { type IPagesFilter } from '../../composables/types';
 import { usePagesPlugins } from '../../composables/usePagesPlugins';
@@ -116,7 +96,6 @@ const props = defineProps<IListPagesAdjustProps>();
 
 const emit = defineEmits<{
 	(e: 'update:filters', filters: IPagesFilter): void;
-	(e: 'reset-filters'): void;
 }>();
 
 const ns = useNamespace('list-pages-adjust');

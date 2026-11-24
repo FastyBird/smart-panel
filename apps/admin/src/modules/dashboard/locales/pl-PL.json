@@ -63,7 +63,6 @@
       "remove": "Usunąć stronę?",
       "bulkRemove": "Usunąć strony?",
       "selectPlugin": "Wymagana wtyczka strony",
-      "adjustFilters": "Filtruj strony",
       "addDataSource": "Dodaj źródło danych strony",
       "editDataSource": "Edytuj źródło danych strony"
     },
@@ -94,7 +93,6 @@
       "add": "Dodaj nową stronę smart panelu",
       "edit": "Edytuj stronę smart panelu",
       "detail": "Zarządzaj stroną smart panelu",
-      "adjustFilters": "Dostosuj filtry wyświetlania",
       "addDataSource": "Dodaj nowe źródło danych strony smart panelu",
       "editDataSource": "Edytuj źródło danych strony smart panelu"
     },
@@ -168,7 +166,8 @@
       "confirmBulkRemove": "Czy na pewno chcesz usunąć {count} stron? Tej operacji nie można cofnąć.",
       "selectPlugin": "Aby utworzyć nową stronę, wybierz kompatybilną wtyczkę z listy. Wtyczki zapewniają niezbędne opcje konfiguracji dla określonych typów stron.",
       "noPlugins": "Nie skonfigurowano jeszcze żadnych wtyczek stron.",
-      "noDisplays": "Nie sparowano jeszcze żadnych wyświetlaczy."
+      "noDisplays": "Nie sparowano jeszcze żadnych wyświetlaczy.",
+      "noPagesHint": "Dodaj stronę, aby wybrać, co pokazują wyświetlacze ścienne."
     },
     "tiles": {
       "noTiles": "Nie masz skonfigurowanych żadnych kafelków",
@@ -350,6 +349,9 @@
       },
       "displays": {
         "title": "Filtruj według wyświetlacza strony"
+      },
+      "type": {
+        "title": "Typ"
       }
     },
     "tiles": {
@@ -408,6 +410,18 @@
     },
     "addDataSource": {
       "title": "Dodaj źródło danych"
+    },
+    "more": {
+      "title": "Więcej akcji"
+    },
+    "keepEditing": {
+      "title": "Kontynuuj edycję"
+    }
+  },
+  "aria": {
+    "pages": {
+      "edit": "Edytuj {page}",
+      "more": "Więcej akcji dla {page}"
     }
   }
 }

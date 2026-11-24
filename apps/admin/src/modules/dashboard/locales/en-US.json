@@ -63,7 +63,6 @@
       "remove": "Remove page?",
       "bulkRemove": "Remove pages?",
       "selectPlugin": "Page plugin required",
-      "adjustFilters": "Filter pages",
       "addDataSource": "Add page data source",
       "editDataSource": "Edit page data source"
     },
@@ -94,7 +93,6 @@
       "add": "Add new smart panel page",
       "edit": "Edit smart panel page",
       "detail": "Manage smart panel page",
-      "adjustFilters": "Adjust display filters",
       "addDataSource": "Add new smart panel page data source",
       "editDataSource": "Edit smart panel page data source"
     },
@@ -168,7 +166,8 @@
       "confirmBulkRemove": "Are you sure you want to remove {count} pages? This cannot be reversed.",
       "selectPlugin": "To create a new page, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific page types.",
       "noPlugins": "No page plugins have been configured yet.",
-      "noDisplays": "No displays have been paired yet."
+      "noDisplays": "No displays have been paired yet.",
+      "noPagesHint": "Add a page to choose what the wall displays show."
     },
     "tiles": {
       "noTiles": "You don't have configured any tile",
@@ -350,6 +349,9 @@
       },
       "displays": {
         "title": "Filter by page display"
+      },
+      "type": {
+        "title": "Type"
       }
     },
     "tiles": {
@@ -408,6 +410,18 @@
     },
     "addDataSource": {
       "title": "Add data source"
+    },
+    "more": {
+      "title": "More actions"
+    },
+    "keepEditing": {
+      "title": "Keep editing"
+    }
+  },
+  "aria": {
+    "pages": {
+      "edit": "Edit {page}",
+      "more": "More actions for {page}"
     }
   }
 }
