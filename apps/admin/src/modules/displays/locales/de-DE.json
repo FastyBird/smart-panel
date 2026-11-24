@@ -6,15 +6,13 @@
 	"description": "Verwalten Sie Ihre Display-Geräte",
 	"headings": {
 		"list": "Anzeigen",
-		"adjustFilters": "Displays filtern",
 		"removeDisplay": "Display entfernen",
 		"removeBulkDisplays": "Displays entfernen",
 		"discard": "Änderungen verwerfen",
 		"aboutDisplayConfiguration": "Display-Konfiguration"
 	},
 	"subHeadings": {
-		"list": "Verbundene Display-Geräte verwalten",
-		"adjustFilters": "Filtereinstellungen anpassen"
+		"list": "Verbundene Display-Geräte verwalten"
 	},
 	"breadcrumbs": {
 		"displays": {
@@ -57,7 +55,9 @@
 		},
 		"tooltips": {
 			"speakerSupported": "Lautsprecher unterstützt",
-			"microphoneSupported": "Mikrofon unterstützt"
+			"microphoneSupported": "Mikrofon unterstützt",
+			"speakerUnsupported": "Kein Lautsprecher",
+			"microphoneUnsupported": "Kein Mikrofon"
 		}
 	},
 	"fields": {
@@ -274,7 +274,11 @@
 			}
 		},
 		"state": {
-			"title": "Status"
+			"title": "Status",
+			"values": {
+				"online": "Online",
+				"offline": "Offline"
+			}
 		},
 		"states": {
 			"title": "Status"
@@ -292,26 +296,15 @@
 		"noDisplays": "Noch keine Displays registriert",
 		"noFilteredDisplays": "Keine Displays entsprechen Ihren Filterkriterien",
 		"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
-		"aboutDisplayConfiguration": "Konfigurieren Sie den Bereitstellungsmodus und die Display-Registrierungseinstellungen. Der Bereitstellungsmodus bestimmt, wie Backend und Panel organisiert sind, während die Beitrittsdauer steuert, wie lange sich neue Displays im Netzwerk registrieren können."
+		"aboutDisplayConfiguration": "Konfigurieren Sie den Bereitstellungsmodus und die Display-Registrierungseinstellungen. Der Bereitstellungsmodus bestimmt, wie Backend und Panel organisiert sind, während die Beitrittsdauer steuert, wie lange sich neue Displays im Netzwerk registrieren können.",
+		"noDisplaysHint": "Schalten Sie „Beitritt erlauben“ ein und starten Sie dann die Smart-Panel-App auf dem Display, um es zu registrieren."
 	},
 	"buttons": {
 		"detail": {
 			"title": "Details"
 		},
-		"adjust": {
-			"title": "Filtern"
-		},
 		"resetFilters": {
 			"title": "Filter zurücksetzen"
-		},
-		"reset": {
-			"title": "Filter zurücksetzen"
-		},
-		"yes": {
-			"title": "Ja"
-		},
-		"no": {
-			"title": "Nein"
 		},
 		"save": {
 			"title": "Speichern"
@@ -331,6 +324,21 @@
 		},
 		"back": {
 			"title": "Zurück"
+		},
+		"edit": {
+			"title": "Bearbeiten"
+		},
+		"more": {
+			"title": "Weitere Aktionen"
+		},
+		"remove": {
+			"title": "Entfernen"
+		},
+		"keepEditing": {
+			"title": "Weiter bearbeiten"
+		},
+		"removeDisplays": {
+			"title": "{count} Display entfernen | {count} Displays entfernen"
 		}
 	},
 	"edit": {
@@ -454,5 +462,9 @@
 	"actions": {
 		"revokeToken": "Token widerrufen",
 		"manageTokens": "Token verwalten"
+	},
+	"aria": {
+		"edit": "{display} bearbeiten",
+		"more": "Weitere Aktionen für {display}"
 	}
 }

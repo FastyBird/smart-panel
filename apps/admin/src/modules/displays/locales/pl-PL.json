@@ -6,15 +6,13 @@
 	"description": "Zarządzaj urządzeniami wyświetlaczy",
 	"headings": {
 		"list": "Wyświetlacze",
-		"adjustFilters": "Filtruj wyświetlacze",
 		"removeDisplay": "Usuń wyświetlacz",
 		"removeBulkDisplays": "Usuń wyświetlacze",
 		"discard": "Odrzuć zmiany",
 		"aboutDisplayConfiguration": "Konfiguracja wyświetlacza"
 	},
 	"subHeadings": {
-		"list": "Zarządzaj podłączonymi urządzeniami wyświetlaczy",
-		"adjustFilters": "Dostosuj ustawienia filtrów"
+		"list": "Zarządzaj podłączonymi urządzeniami wyświetlaczy"
 	},
 	"breadcrumbs": {
 		"displays": {
@@ -57,7 +55,9 @@
 		},
 		"tooltips": {
 			"speakerSupported": "Obsługa głośnika",
-			"microphoneSupported": "Obsługa mikrofonu"
+			"microphoneSupported": "Obsługa mikrofonu",
+			"speakerUnsupported": "Brak głośnika",
+			"microphoneUnsupported": "Brak mikrofonu"
 		}
 	},
 	"fields": {
@@ -274,7 +274,11 @@
 			}
 		},
 		"state": {
-			"title": "Stan"
+			"title": "Stan",
+			"values": {
+				"online": "Online",
+				"offline": "Offline"
+			}
 		},
 		"states": {
 			"title": "Stan"
@@ -292,26 +296,15 @@
 		"noDisplays": "Nie zarejestrowano jeszcze żadnych wyświetlaczy",
 		"noFilteredDisplays": "Żadne wyświetlacze nie pasują do kryteriów filtra",
 		"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
-		"aboutDisplayConfiguration": "Skonfiguruj tryb wdrożenia i ustawienia rejestracji wyświetlaczy. Tryb wdrożenia określa, jak backend i panel są zorganizowane, a czas dołączania kontroluje, jak długo nowe wyświetlacze mogą się rejestrować w sieci."
+		"aboutDisplayConfiguration": "Skonfiguruj tryb wdrożenia i ustawienia rejestracji wyświetlaczy. Tryb wdrożenia określa, jak backend i panel są zorganizowane, a czas dołączania kontroluje, jak długo nowe wyświetlacze mogą się rejestrować w sieci.",
+		"noDisplaysHint": "Włącz zezwolenie na dołączanie, a następnie uruchom aplikację Smart Panel na wyświetlaczu, aby go zarejestrować."
 	},
 	"buttons": {
 		"detail": {
 			"title": "Szczegóły"
 		},
-		"adjust": {
-			"title": "Filtruj"
-		},
 		"resetFilters": {
 			"title": "Resetuj filtry"
-		},
-		"reset": {
-			"title": "Resetuj filtry"
-		},
-		"yes": {
-			"title": "Tak"
-		},
-		"no": {
-			"title": "Nie"
 		},
 		"save": {
 			"title": "Zapisz"
@@ -331,6 +324,21 @@
 		},
 		"back": {
 			"title": "Wróć"
+		},
+		"edit": {
+			"title": "Edytuj"
+		},
+		"more": {
+			"title": "Więcej akcji"
+		},
+		"remove": {
+			"title": "Usuń"
+		},
+		"keepEditing": {
+			"title": "Kontynuuj edycję"
+		},
+		"removeDisplays": {
+			"title": "Usuń {count} wyświetlacz | Usuń {count} wyświetlacze | Usuń {count} wyświetlaczy"
 		}
 	},
 	"edit": {
@@ -454,5 +462,9 @@
 	"actions": {
 		"revokeToken": "Unieważnij token",
 		"manageTokens": "Zarządzaj tokenami"
+	},
+	"aria": {
+		"edit": "Edytuj {display}",
+		"more": "Więcej akcji dla {display}"
 	}
 }

@@ -6,15 +6,13 @@
 	"description": "Správa vašich displejových zařízení",
 	"headings": {
 		"list": "Displeje",
-		"adjustFilters": "Filtrovat displeje",
 		"removeDisplay": "Odebrat displej",
 		"removeBulkDisplays": "Odebrat displeje",
 		"discard": "Zahodit změny",
 		"aboutDisplayConfiguration": "Konfigurace displeje"
 	},
 	"subHeadings": {
-		"list": "Správa připojených displejových zařízení",
-		"adjustFilters": "Upravit nastavení filtrů"
+		"list": "Správa připojených displejových zařízení"
 	},
 	"breadcrumbs": {
 		"displays": {
@@ -57,7 +55,9 @@
 		},
 		"tooltips": {
 			"speakerSupported": "Reproduktor podporován",
-			"microphoneSupported": "Mikrofon podporován"
+			"microphoneSupported": "Mikrofon podporován",
+			"speakerUnsupported": "Bez reproduktoru",
+			"microphoneUnsupported": "Bez mikrofonu"
 		}
 	},
 	"fields": {
@@ -274,7 +274,11 @@
 			}
 		},
 		"state": {
-			"title": "Stav"
+			"title": "Stav",
+			"values": {
+				"online": "Online",
+				"offline": "Offline"
+			}
 		},
 		"states": {
 			"title": "Stav"
@@ -292,26 +296,15 @@
 		"noDisplays": "Zatím nejsou registrovány žádné displeje",
 		"noFilteredDisplays": "Žádné displeje neodpovídají kritériím filtru",
 		"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
-		"aboutDisplayConfiguration": "Nakonfigurujte režim nasazení a nastavení registrace displejů. Režim nasazení určuje, jak je backend a panel organizován, zatímco doba povolení připojení řídí, jak dlouho se mohou nové displeje registrovat v síti."
+		"aboutDisplayConfiguration": "Nakonfigurujte režim nasazení a nastavení registrace displejů. Režim nasazení určuje, jak je backend a panel organizován, zatímco doba povolení připojení řídí, jak dlouho se mohou nové displeje registrovat v síti.",
+		"noDisplaysHint": "Zapněte povolení připojení a pak na displeji spusťte aplikaci Smart Panel, aby se zaregistroval."
 	},
 	"buttons": {
 		"detail": {
 			"title": "Detail"
 		},
-		"adjust": {
-			"title": "Filtr"
-		},
 		"resetFilters": {
 			"title": "Resetovat filtry"
-		},
-		"reset": {
-			"title": "Resetovat filtry"
-		},
-		"yes": {
-			"title": "Ano"
-		},
-		"no": {
-			"title": "Ne"
 		},
 		"save": {
 			"title": "Uložit"
@@ -331,6 +324,21 @@
 		},
 		"back": {
 			"title": "Zpět"
+		},
+		"edit": {
+			"title": "Upravit"
+		},
+		"more": {
+			"title": "Další akce"
+		},
+		"remove": {
+			"title": "Odebrat"
+		},
+		"keepEditing": {
+			"title": "Pokračovat v úpravách"
+		},
+		"removeDisplays": {
+			"title": "Odebrat {count} displej | Odebrat {count} displeje | Odebrat {count} displejů"
 		}
 	},
 	"edit": {
@@ -454,5 +462,9 @@
 	"actions": {
 		"revokeToken": "Odvolat token",
 		"manageTokens": "Spravovat tokeny"
+	},
+	"aria": {
+		"edit": "Upravit {display}",
+		"more": "Další akce pro {display}"
 	}
 }

@@ -53,7 +53,7 @@
 							:placeholder="t('displaysModule.fields.displays.spaceId.placeholder')"
 							filter="all"
 						/>
-						<div class="text-gray-500 text-sm mt-1">
+						<div class="text-secondary text-sm mt-1">
 							{{ t('displaysModule.fields.displays.spaceId.description') }}
 						</div>
 					</el-form-item>
@@ -90,7 +90,7 @@
 								:label="t('displaysModule.fields.displays.homeMode.options.explicit')"
 							/>
 						</el-select>
-						<div class="text-gray-500 text-sm mt-1">
+						<div class="text-secondary text-sm mt-1">
 							{{ t('displaysModule.fields.displays.homeMode.description') }}
 						</div>
 					</el-form-item>
@@ -113,7 +113,7 @@
 								:label="page.title"
 							/>
 						</el-select>
-						<div class="text-gray-500 text-sm mt-1">
+						<div class="text-secondary text-sm mt-1">
 							{{ t('displaysModule.fields.displays.homePageId.description') }}
 						</div>
 					</el-form-item>
@@ -246,7 +246,7 @@
 								:label="location.name"
 							/>
 						</el-select>
-						<div class="text-gray-500 text-sm mt-1">
+						<div class="text-secondary text-sm mt-1">
 							{{ t('displaysModule.fields.displays.weatherLocationId.description') }}
 						</div>
 					</el-form-item>
@@ -488,7 +488,7 @@
 								name="unitSize"
 								class="w-full"
 							/>
-							<span class="text-gray-500 text-xs ml-1">{{ t('displaysModule.fields.displays.unitSize.unit') }}</span>
+							<span class="text-secondary text-xs ml-1">{{ t('displaysModule.fields.displays.unitSize.unit') }}</span>
 						</el-form-item>
 
 						<el-form-item

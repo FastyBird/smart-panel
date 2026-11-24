@@ -11,7 +11,7 @@
 	</template>
 	<span
 		v-else
-		class="text-gray-400"
+		class="text-muted"
 	>
 		{{ t('dashboardModule.table.pages.columns.display.all') }}
 	</span>

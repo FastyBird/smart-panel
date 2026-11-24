@@ -6,15 +6,13 @@
 	"description": "Gestiona tus dispositivos de pantalla",
 	"headings": {
 		"list": "Pantallas",
-		"adjustFilters": "Filtrar pantallas",
 		"removeDisplay": "Eliminar pantalla",
 		"removeBulkDisplays": "Eliminar pantallas",
 		"discard": "Descartar cambios",
 		"aboutDisplayConfiguration": "Configuración de pantalla"
 	},
 	"subHeadings": {
-		"list": "Gestiona tus dispositivos de pantalla conectados",
-		"adjustFilters": "Ajustar configuración de filtros"
+		"list": "Gestiona tus dispositivos de pantalla conectados"
 	},
 	"breadcrumbs": {
 		"displays": {
@@ -57,7 +55,9 @@
 		},
 		"tooltips": {
 			"speakerSupported": "Altavoz compatible",
-			"microphoneSupported": "Micrófono compatible"
+			"microphoneSupported": "Micrófono compatible",
+			"speakerUnsupported": "Sin altavoz",
+			"microphoneUnsupported": "Sin micrófono"
 		}
 	},
 	"fields": {
@@ -274,7 +274,11 @@
 			}
 		},
 		"state": {
-			"title": "Estado"
+			"title": "Estado",
+			"values": {
+				"online": "En línea",
+				"offline": "Sin conexión"
+			}
 		},
 		"states": {
 			"title": "Estado"
@@ -292,26 +296,15 @@
 		"noDisplays": "Aún no hay pantallas registradas",
 		"noFilteredDisplays": "Ninguna pantalla coincide con los criterios de filtro",
 		"confirmDiscard": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?",
-		"aboutDisplayConfiguration": "Configura el modo de despliegue y los ajustes de registro de pantallas. El modo de despliegue determina cómo se organizan el backend y el panel, mientras que la duración del permiso de unión controla cuánto tiempo las nuevas pantallas pueden registrarse en la red."
+		"aboutDisplayConfiguration": "Configura el modo de despliegue y los ajustes de registro de pantallas. El modo de despliegue determina cómo se organizan el backend y el panel, mientras que la duración del permiso de unión controla cuánto tiempo las nuevas pantallas pueden registrarse en la red.",
+		"noDisplaysHint": "Active «Permitir unión» y luego inicie la aplicación Smart Panel en la pantalla para registrarla."
 	},
 	"buttons": {
 		"detail": {
 			"title": "Detalle"
 		},
-		"adjust": {
-			"title": "Filtrar"
-		},
 		"resetFilters": {
 			"title": "Restablecer filtros"
-		},
-		"reset": {
-			"title": "Restablecer filtros"
-		},
-		"yes": {
-			"title": "Sí"
-		},
-		"no": {
-			"title": "No"
 		},
 		"save": {
 			"title": "Guardar"
@@ -331,6 +324,21 @@
 		},
 		"back": {
 			"title": "Volver"
+		},
+		"edit": {
+			"title": "Editar"
+		},
+		"more": {
+			"title": "Más acciones"
+		},
+		"remove": {
+			"title": "Eliminar"
+		},
+		"keepEditing": {
+			"title": "Seguir editando"
+		},
+		"removeDisplays": {
+			"title": "Eliminar {count} pantalla | Eliminar {count} pantallas"
 		}
 	},
 	"edit": {
@@ -454,5 +462,9 @@
 	"actions": {
 		"revokeToken": "Revocar token",
 		"manageTokens": "Gestionar tokens"
+	},
+	"aria": {
+		"edit": "Editar {display}",
+		"more": "Más acciones para {display}"
 	}
 }

@@ -29,8 +29,8 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 				t('displaysModule.messages.confirmRemove', { name: display.name || display.macAddress }),
 				t('displaysModule.headings.removeDisplay'),
 				{
-					confirmButtonText: t('displaysModule.buttons.yes.title'),
-					cancelButtonText: t('displaysModule.buttons.no.title'),
+					confirmButtonText: t('displaysModule.headings.removeDisplay'),
+					cancelButtonText: t('displaysModule.buttons.cancel.title'),
 					type: 'warning',
 				}
 			);
@@ -53,8 +53,8 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 				t('displaysModule.messages.confirmBulkRemove', { count: displays.length }),
 				t('displaysModule.headings.removeBulkDisplays'),
 				{
-					confirmButtonText: t('displaysModule.buttons.yes.title'),
-					cancelButtonText: t('displaysModule.buttons.no.title'),
+					confirmButtonText: t('displaysModule.buttons.removeDisplays.title', { count: displays.length }, displays.length),
+					cancelButtonText: t('displaysModule.buttons.cancel.title'),
 					type: 'warning',
 				}
 			);

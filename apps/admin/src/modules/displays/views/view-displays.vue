@@ -2,18 +2,24 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isDisplaysListRoute || isLGDevice"
+		v-if="isDisplaysListRoute || inDrawer"
 		:title="t('displaysModule.headings.list')"
 		:subtitle="t('displaysModule.subHeadings.list')"
 		icon="mdi:monitor"
+		:actions="phoneActions"
 	>
 		<template #actions>
 			<el-button
 				v-if="permitJoinAvailable"
 				:loading="permitJoinActivating"
 				type="primary"
+				data-test-id="displays-permit-join"
 				@click="onPermitJoin"
 			>
+				<template #icon>
+					<icon :icon="permitJoinActive ? 'mdi:link-variant-off' : 'mdi:link-variant-plus'" />
+				</template>
+
 				<template v-if="permitJoinActive">
 					{{ t('displaysModule.buttons.permitJoin.disable', { time: permitJoinRemainingTimeFormatted }) }}
 				</template>
@@ -25,55 +31,36 @@
 	</view-header>
 
 	<div
-		v-if="isDisplaysListRoute || isLGDevice"
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+		v-if="isDisplaysListRoute || inDrawer"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<list-displays
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="displaysPaginated"
-			:all-items="displays"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			@detail="onDisplayDetail"
-			@edit="onDisplayEdit"
-			@remove="onDisplayRemove"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-			@bulk-action="onBulkAction"
-		/>
-	</div>
+		<!-- Template 4: edit opens next to the list from tablet portrait up, as its own page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-displays
+				ref="list"
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				:items="displaysPaginated"
+				:all-items="displays"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				@detail="onDisplayDetail"
+				@edit="onDisplayEdit"
+				@remove="onDisplayRemove"
+				@reset-filters="onResetFilters"
+				@bulk-action="onBulkAction"
+			/>
 
-	<router-view
-		v-else
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component :is="Component" />
-	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-displays-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
-				/>
-
-				<view-error v-else>
+			<template #form>
+				<view-error>
 					<template #icon>
 						<icon icon="mdi:monitor" />
 					</template>
@@ -81,9 +68,11 @@
 						{{ t('displaysModule.messages.loadError') }}
 					</template>
 
+					<!-- Keyed by the display: switching to another display remounts the editor, so its save goes to the
+					     display now shown and not to the one opened first -->
 					<suspense>
 						<router-view
-							:key="props.id"
+							:key="formKey"
 							v-slot="{ Component }"
 						>
 							<component
@@ -94,8 +83,16 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<router-view
+		v-else
+		:key="formKey"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 </template>
 
 <script setup lang="ts">
@@ -104,12 +101,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
-import { ListDisplays, ListDisplaysAdjust } from '../components/components';
+import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer, useFlashMessage } from '../../../common';
+import { ListDisplays } from '../components/components';
 import { useDisplaysActions, useDisplaysDataSource, usePermitJoin } from '../composables/composables';
 import { RouteNames } from '../displays.constants';
 import { DisplaysException } from '../displays.exceptions';
@@ -121,7 +118,7 @@ defineOptions({
 	name: 'ViewDisplays',
 });
 
-const props = defineProps<IViewDisplaysProps>();
+defineProps<IViewDisplaysProps>();
 
 const route = useRoute();
 const router = useRouter();
@@ -131,7 +128,6 @@ useMeta({
 	title: t('displaysModule.meta.displays.list.title'),
 });
 
-const { isLGDevice } = useBreakpoints();
 const flashMessage = useFlashMessage();
 
 const {
@@ -163,13 +159,42 @@ const {
 const mounted = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
+
+const list = ref<InstanceType<typeof ListDisplays> | null>(null);
 
 const remoteFormChanged = ref<boolean>(false);
 
 const isDisplaysListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DISPLAYS;
 });
+
+// Template 4: the edit form opens next to this page from tablet portrait up, as its own page on phone
+const { inDrawer } = provideEditDrawer((): boolean => !isDisplaysListRoute.value);
+
+// One editor per display: a new key remounts the routed form
+const formKey = computed<string>((): string => `${String(route.name)}:${typeof route.params?.id === 'string' ? route.params.id : ''}`);
+
+// The changed flag belongs to the editor that is open. Any route change that replaces or closes it clears the flag
+// before the next editor mounts, so that one starts clean. A declined discard leaves the route, and the flag, as it was
+watch(formKey, (): void => {
+	remoteFormChanged.value = false;
+});
+
+// The phone app bar: Search, and Permit join while the server offers it
+const phoneActions = computed<{ icon: string; label: string; handler: () => void }[]>(() => [
+	{ icon: 'mdi:magnify', label: t('displaysModule.fields.search.placeholder'), handler: onSearch },
+	...(permitJoinAvailable.value
+		? [
+				{
+					icon: permitJoinActive.value ? 'mdi:link-variant-off' : 'mdi:link-variant-plus',
+					label: permitJoinActive.value
+						? t('displaysModule.buttons.permitJoin.disable', { time: permitJoinRemainingTimeFormatted.value })
+						: t('displaysModule.buttons.permitJoin.title'),
+					handler: onPermitJoin,
+				},
+			]
+		: []),
+]);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -182,52 +207,46 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
-
-		done?.();
+const leaveForm = (): void => {
+	if (inDrawer.value) {
+		router.replace({ name: RouteNames.DISPLAYS });
 	} else {
-		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('displaysModule.texts.confirmDiscard'), t('displaysModule.headings.discard'), {
-				confirmButtonText: t('displaysModule.buttons.yes.title'),
-				cancelButtonText: t('displaysModule.buttons.no.title'),
-				type: 'warning',
-			})
-				.then((): void => {
-					if (isLGDevice.value) {
-						router.replace({
-							name: RouteNames.DISPLAYS,
-						});
-					} else {
-						router.push({
-							name: RouteNames.DISPLAYS,
-						});
-					}
-
-					done?.();
-				})
-				.catch((): void => {
-					// Just ignore it
-				});
-		} else {
-			if (isLGDevice.value) {
-				router.replace({
-					name: RouteNames.DISPLAYS,
-				});
-			} else {
-				router.push({
-					name: RouteNames.DISPLAYS,
-				});
-			}
-
-			done?.();
-		}
+		router.push({ name: RouteNames.DISPLAYS });
 	}
 };
 
-const onDisplayDetail = (id: IDisplay['id']): void => {
+const confirmDiscard = async (): Promise<boolean> => {
+	try {
+		await ElMessageBox.confirm(t('displaysModule.texts.confirmDiscard'), t('displaysModule.headings.discard'), {
+			confirmButtonText: t('displaysModule.buttons.discard.title'),
+			cancelButtonText: t('displaysModule.buttons.keepEditing.title'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+const onCloseDrawer = async (done?: () => void): Promise<void> => {
+	if (remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
+	}
+
+	leaveForm();
+
+	done?.();
+};
+
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => !showDrawer.value || !remoteFormChanged.value || confirmDiscard();
+
+const onDisplayDetail = async (id: IDisplay['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
 	router.push({
 		name: RouteNames.DISPLAY,
 		params: {
@@ -236,8 +255,12 @@ const onDisplayDetail = (id: IDisplay['id']): void => {
 	});
 };
 
-const onDisplayEdit = (id: IDisplay['id']): void => {
-	if (isLGDevice.value) {
+const onDisplayEdit = async (id: IDisplay['id']): Promise<void> => {
+	if ((route.name === RouteNames.DISPLAYS_EDIT && route.params.id === id) || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	if (inDrawer.value) {
 		router.replace({
 			name: RouteNames.DISPLAYS_EDIT,
 			params: {
@@ -270,9 +293,9 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
+// The phone app bar's Search action
+const onSearch = (): void => {
+	list.value?.focusSearch();
 };
 
 onBeforeMount((): void => {
