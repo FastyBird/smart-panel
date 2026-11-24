@@ -282,14 +282,13 @@ class _CircularControlDialState extends State<CircularControlDial> {
     super.didUpdateWidget(oldWidget);
 
     // Disabled: drop the edits in flight. A drag ends without reporting,
-    // and the thumbs go back to the parent's values.
-    if (!_interactive) {
+    // and the thumbs go back to the parent's values, so nothing unsent
+    // stays on screen or becomes the base of the next step.
+    if (!_interactive && (_isDragging || _pendingEdit != null)) {
       _discardPendingEdit();
-      if (_isDragging) {
-        _endDrag();
-        _value = widget.value;
-        _secondValue = widget.secondValue;
-      }
+      _endDrag();
+      _value = widget.value;
+      _secondValue = widget.secondValue;
     }
 
     // One thumb became two or two became one: the drag was on the old

@@ -1610,6 +1610,17 @@ void main() {
       await _pump(tester, dial(onChanged: reported.add, enabled: false));
       await tester.pump(const Duration(milliseconds: 600));
       expect(reported, isEmpty);
+
+      // Re-enabled with the parent still at 22: the dial shows 22 again, and
+      // the next plus starts from it.
+      await _pump(tester, dial(onChanged: reported.add));
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '22°'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, [22.5]);
     });
 
     testWidgets('a cool setpoint moved by the parent mid-drag still limits heat', (tester) async {
