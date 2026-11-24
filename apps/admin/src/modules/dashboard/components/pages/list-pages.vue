@@ -45,6 +45,7 @@
 				:items="props.items"
 				:loading="props.loading"
 				:filters-active="props.filtersActive"
+				@configure="(to: string | RouteLocationRaw) => emit('configure', to)"
 				@detail="(id: IPage['id']) => emit('detail', id)"
 				@edit="(id: IPage['id']) => emit('edit', id)"
 				@remove="(id: IPage['id']) => emit('remove', id)"
@@ -67,6 +68,7 @@
 				:loading="props.loading"
 				:filters-active="props.filtersActive"
 				:table-height="tableHeight"
+				@configure="(to: string | RouteLocationRaw) => emit('configure', to)"
 				@detail="(id: IPage['id']) => emit('detail', id)"
 				@edit="(id: IPage['id']) => emit('edit', id)"
 				@remove="(id: IPage['id']) => emit('remove', id)"
@@ -91,6 +93,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { ElButton, ElCard, ElPagination } from 'element-plus';
 
@@ -113,6 +116,7 @@ defineOptions({
 const props = defineProps<IListPagesProps>();
 
 const emit = defineEmits<{
+	(e: 'configure', to: string | RouteLocationRaw): void;
 	(e: 'detail', id: IPage['id']): void;
 	(e: 'edit', id: IPage['id']): void;
 	(e: 'remove', id: IPage['id']): void;

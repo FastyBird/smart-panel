@@ -8,15 +8,10 @@ import type { IPage } from '../../store/pages.store.types';
 
 import PagesRowActions from './pages-row-actions.vue';
 
-const push = vi.fn();
 const plugin = ref<{ routes?: { configure?: unknown } } | undefined>(undefined);
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string, params?: Record<string, string>) => (params ? `${key}:${Object.values(params).join(',')}` : key) }),
-}));
-
-vi.mock('vue-router', () => ({
-	useRouter: () => ({ push }),
 }));
 
 vi.mock('../../composables/usePagesPlugin', () => ({
@@ -35,7 +30,6 @@ const stubs = {
 describe('PagesRowActions', () => {
 	beforeEach(() => {
 		plugin.value = undefined;
-		push.mockReset();
 	});
 
 	it('offers Edit as an icon and Detail and Remove in the more menu', async () => {
@@ -61,7 +55,21 @@ describe('PagesRowActions', () => {
 
 		await wrapper.find('[data-test-id="configure-page"]').trigger('click');
 
+		// The host navigates, so it can ask about a changed form first
 		expect(wrapper.find('[data-test-id="configure-page"]').text()).toContain('dashboardModule.buttons.configure.title');
-		expect(push).toHaveBeenCalledWith('/page/p1/plugin');
+		expect(wrapper.emitted('configure')).toEqual([['/page/p1/plugin']]);
+	});
+
+	it('moves Configure into the more menu where the actions column is narrow', () => {
+		plugin.value = { routes: { configure: (id: string) => `/page/${id}/plugin` } };
+
+		const wrapper = mount(PagesRowActions, { props: { page, compact: true }, global: { stubs } });
+
+		expect(wrapper.find('[data-test-id="configure-page"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="configure-page-menu"]').exists()).toBe(true);
+
+		wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'configure');
+
+		expect(wrapper.emitted('configure')).toEqual([['/page/p1/plugin']]);
 	});
 });

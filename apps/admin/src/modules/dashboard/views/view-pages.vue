@@ -49,6 +49,7 @@
 				:total-rows="totalRows"
 				:loading="areLoading"
 				:filters-active="filtersActive"
+				@configure="onPageConfigure"
 				@detail="onPageDetail"
 				@edit="onPageEdit"
 				@remove="onPageRemove"
@@ -96,7 +97,7 @@
 import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElButton, ElMessageBox } from 'element-plus';
 
@@ -206,6 +207,14 @@ const onPageDetail = async (id: IPage['id']): Promise<void> => {
 	}
 
 	router.push({ name: RouteNames.PAGE, params: { id } });
+};
+
+const onPageConfigure = async (to: string | RouteLocationRaw): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
+	router.push(to);
 };
 
 const onPageEdit = async (id: IPage['id']): Promise<void> => {

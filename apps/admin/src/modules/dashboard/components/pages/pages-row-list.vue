@@ -35,6 +35,7 @@
 
 			<pages-row-actions
 				:page="page"
+				@configure="(to: string | RouteLocationRaw) => emit('configure', to)"
 				@detail="(id: IPage['id']) => emit('detail', id)"
 				@edit="(id: IPage['id']) => emit('edit', id)"
 				@remove="(id: IPage['id']) => emit('remove', id)"
@@ -44,6 +45,8 @@
 </template>
 
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router';
+
 import type { IPage } from '../../store/pages.store.types';
 
 import PagesEmpty from './pages-empty.vue';
@@ -62,6 +65,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+	(e: 'configure', to: string | RouteLocationRaw): void;
 	(e: 'detail', id: IPage['id']): void;
 	(e: 'edit', id: IPage['id']): void;
 	(e: 'remove', id: IPage['id']): void;

@@ -97,6 +97,8 @@
 			<template #default="scope">
 				<pages-row-actions
 					:page="scope.row"
+					:compact="isTabletPortrait"
+					@configure="(to: string | RouteLocationRaw) => emit('configure', to)"
 					@detail="(id: IPage['id']) => emit('detail', id)"
 					@edit="(id: IPage['id']) => emit('edit', id)"
 					@remove="(id: IPage['id']) => emit('remove', id)"
@@ -109,6 +111,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { ElTable, ElTableColumn, vLoading } from 'element-plus';
 
@@ -132,6 +135,7 @@ defineOptions({
 const props = defineProps<IPagesTableProps>();
 
 const emit = defineEmits<{
+	(e: 'configure', to: string | RouteLocationRaw): void;
 	(e: 'detail', id: IPage['id']): void;
 	(e: 'edit', id: IPage['id']): void;
 	(e: 'remove', id: IPage['id']): void;

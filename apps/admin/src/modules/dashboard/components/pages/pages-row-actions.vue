@@ -4,9 +4,9 @@
 		@click.stop
 	>
 		<!-- Spec section 4: Configure keeps its label, Edit is an icon, Remove (destructive) lives in the more menu; the
-		     row itself opens the detail -->
+		     row itself opens the detail. Where the actions column is narrow, Configure moves into the menu -->
 		<el-button
-			v-if="configureRoute"
+			v-if="configureRoute && !props.compact"
 			size="small"
 			plain
 			data-test-id="configure-page"
@@ -59,6 +59,13 @@
 				<template #dropdown>
 					<el-dropdown-menu>
 						<el-dropdown-item
+							v-if="configureRoute && props.compact"
+							command="configure"
+							data-test-id="configure-page-menu"
+						>
+							{{ t('dashboardModule.buttons.configure.title') }}
+						</el-dropdown-item>
+						<el-dropdown-item
 							command="detail"
 							data-test-id="detail-page"
 						>
@@ -82,7 +89,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import type { RouteLocationRaw } from 'vue-router';
 
 import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTooltip } from 'element-plus';
 
@@ -95,22 +102,23 @@ defineOptions({
 	name: 'PagesRowActions',
 });
 
-const props = defineProps<{ page: IPage }>();
+const props = withDefaults(defineProps<{ page: IPage; compact?: boolean }>(), { compact: false });
 
 const emit = defineEmits<{
+	(e: 'configure', to: string | RouteLocationRaw): void;
 	(e: 'detail', id: IPage['id']): void;
 	(e: 'edit', id: IPage['id']): void;
 	(e: 'remove', id: IPage['id']): void;
 }>();
 
 const { t } = useI18n();
-const router = useRouter();
 
 const { plugin } = usePagesPlugin({ type: props.page.type });
 
 // Page types with a layout to arrange (tiles, cards) open their configure screen
 const configureRoute = computed(() => plugin.value?.routes?.configure);
 
+// The host navigates, so a changed form open next to the list is asked about first
 const onConfigure = (): void => {
 	const to = configureRoute.value;
 
@@ -118,11 +126,13 @@ const onConfigure = (): void => {
 		return;
 	}
 
-	router.push(typeof to === 'function' ? to(props.page.id) : to);
+	emit('configure', typeof to === 'function' ? to(props.page.id) : to);
 };
 
-const onCommand = (command: 'detail' | 'remove'): void => {
-	if (command === 'detail') {
+const onCommand = (command: 'configure' | 'detail' | 'remove'): void => {
+	if (command === 'configure') {
+		onConfigure();
+	} else if (command === 'detail') {
 		emit('detail', props.page.id);
 	} else {
 		emit('remove', props.page.id);

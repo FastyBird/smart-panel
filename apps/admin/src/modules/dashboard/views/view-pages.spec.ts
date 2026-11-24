@@ -60,7 +60,7 @@ vi.mock('../composables/composables', () => ({
 }));
 
 vi.mock('../components/components', () => ({
-	ListPages: { name: 'ListPages', emits: ['edit', 'detail'], template: '<div />' },
+	ListPages: { name: 'ListPages', emits: ['edit', 'detail', 'configure'], template: '<div />' },
 }));
 
 // The routed form: records the dirty state it was mounted with, so a test can tell what the host handed it
@@ -91,6 +91,7 @@ const makeRouter = (): Router =>
 				],
 			},
 			{ path: '/page/:id', name: RouteNames.PAGE, component: { template: '<div />' } },
+			{ path: '/page/:id/plugin', name: RouteNames.PAGE_PLUGIN, component: { template: '<div />' } },
 		],
 	});
 
@@ -146,6 +147,26 @@ describe('ViewPages', () => {
 
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGES_EDIT);
 		expect(router.currentRoute.value.params.id).toBe('page-a');
+	});
+
+	it('asks before Configure leaves a changed form', async () => {
+		const { wrapper, router } = await mountAt('/pages/page-a');
+
+		wrapper.findComponent(RoutedForm).vm.$emit('update:remote-form-changed', true);
+		confirm.mockRejectedValue('cancel');
+
+		wrapper.findComponent({ name: 'ListPages' }).vm.$emit('configure', '/page/page-b/plugin');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGES_EDIT);
+
+		confirm.mockResolvedValue(true);
+
+		wrapper.findComponent({ name: 'ListPages' }).vm.$emit('configure', '/page/page-b/plugin');
+		await flushPromises();
+
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_PLUGIN);
 	});
 
 	it('opens Add clean after the editor left for the list on its own', async () => {
