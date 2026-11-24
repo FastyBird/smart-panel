@@ -17,7 +17,7 @@
 	>
 		<el-scrollbar
 			v-if="display !== null"
-			class="grow-1 p-2 md:px-4"
+			class="grow-1 p-2 tp:px-4"
 		>
 			<display-edit-form
 				v-model:remote-form-submit="remoteFormSubmit"
@@ -28,57 +28,17 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('displaysModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('displaysModule.buttons.close.title') }}
-				</el-button>
-
-				<div
-					:id="SUBMIT_FORM_SM"
-					class="order-2 inline-block [&>*:first-child:not(:only-child)]:hidden"
-				>
-					<el-button
-						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="isLoading || remoteFormResult !== FormResult.NONE || !remoteFormChanged"
-						type="primary"
-						@click="onSubmit"
-					>
-						<template
-							v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
-							#icon
-						>
-							<icon
-								v-if="remoteFormResult === FormResult.OK"
-								icon="mdi:check-circle"
-							/>
-							<icon
-								v-else-if="remoteFormResult === FormResult.ERROR"
-								icon="mdi:cross-circle"
-							/>
-						</template>
-						{{ t('displaysModule.buttons.save.title') }}
-					</el-button>
-				</div>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-if="display !== null"
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			:can-save="remoteFormChanged && remoteFormResult === FormResult.NONE"
+			@save="onSubmit"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -88,11 +48,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBreadcrumbs, SUBMIT_FORM_SM, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import { AppBreadcrumbs, FormFooter, ViewHeader, useEditDrawer, useFlashMessage, useSizeClass, useUuid } from '../../../common';
 import { usePages } from '../../dashboard/composables/composables';
 import { useSpaces } from '../../spaces/composables';
 import { useLocations as useWeatherLocations } from '../../weather/composables/composables';
@@ -122,7 +80,9 @@ const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 // Track if display was previously loaded to detect deletion
 const wasDisplayLoaded = ref<boolean>(false);
@@ -180,26 +140,25 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// Back to where the form opened from: the display's detail page or the list
+const leave = (): void => {
+	const to = isDetailRoute.value ? { name: RouteNames.DISPLAY, params: { id: props.id } } : { name: RouteNames.DISPLAYS };
+
+	if (inDrawer.value) {
+		router.replace(to);
+	} else {
+		router.push(to);
+	}
+};
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('displaysModule.texts.confirmDiscard'), t('displaysModule.headings.discard'), {
-		confirmButtonText: t('displaysModule.buttons.yes.title'),
-		cancelButtonText: t('displaysModule.buttons.no.title'),
+		confirmButtonText: t('displaysModule.buttons.discard.title'),
+		cancelButtonText: t('displaysModule.buttons.keepEditing.title'),
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isDetailRoute.value) {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.DISPLAY, params: { id: props.id } });
-				} else {
-					router.push({ name: RouteNames.DISPLAY, params: { id: props.id } });
-				}
-			} else {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.DISPLAYS });
-				} else {
-					router.push({ name: RouteNames.DISPLAYS });
-				}
-			}
+			leave();
 		})
 		.catch((): void => {
 			// Just ignore it
@@ -211,19 +170,7 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isDetailRoute.value) {
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.DISPLAY, params: { id: props.id } });
-		} else {
-			router.push({ name: RouteNames.DISPLAY, params: { id: props.id } });
-		}
-	} else {
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.DISPLAYS });
-		} else {
-			router.push({ name: RouteNames.DISPLAYS });
-		}
-	}
+	leave();
 };
 
 onBeforeMount(async (): Promise<void> => {
@@ -267,19 +214,7 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			if (isDetailRoute.value) {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.DISPLAY, params: { id: props.id } });
-				} else {
-					router.push({ name: RouteNames.DISPLAY, params: { id: props.id } });
-				}
-			} else {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.DISPLAYS });
-				} else {
-					router.push({ name: RouteNames.DISPLAYS });
-				}
-			}
+			leave();
 		}
 	}
 );
@@ -304,7 +239,7 @@ watch(
 			// Display was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('displaysModule.messages.deletedWhileEditing'), { duration: 0 });
 			// Redirect to displays list
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.DISPLAYS });
 			} else {
 				router.push({ name: RouteNames.DISPLAYS });

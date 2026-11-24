@@ -1,15 +1,17 @@
 <template>
-	<el-avatar :size="32">
+	<span
+		class="inline-flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-fill-light text-regular"
+		aria-hidden="true"
+	>
 		<icon
 			icon="mdi:monitor"
-			class="w[20px] h[20px]"
+			width="20"
+			height="20"
 		/>
-	</el-avatar>
+	</span>
 </template>
 
 <script setup lang="ts">
-import { ElAvatar } from 'element-plus';
-
 import { Icon } from '@iconify/vue';
 
 import type { IDisplaysTableColumnIconProps } from './displays-table-column-icon.types';

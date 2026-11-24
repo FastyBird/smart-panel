@@ -1,6 +1,7 @@
 <template>
 	<el-table
-		v-loading="props.loading"
+		ref="tableEl"
+		v-loading="props.loading && props.items.length > 0"
 		:element-loading-text="t('displaysModule.texts.loadingDisplays')"
 		:data="props.items"
 		:default-sort="
@@ -18,92 +19,21 @@
 		@row-click="onRowClick"
 	>
 		<template #empty>
-			<div
-				v-if="props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:monitor" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:database-refresh" />
-							</template>
-						</icon-with-child>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="noResults && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:monitor" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('displaysModule.texts.noDisplays') }}
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="props.filtersActive && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:monitor" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-multiple" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('displaysModule.texts.noFilteredDisplays') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="emit('reset-filters')"
-						>
-							<template #icon>
-								<icon icon="mdi:filter-off" />
-							</template>
-
-							{{ t('displaysModule.buttons.resetFilters.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
+			<displays-empty
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				@reset-filters="emit('reset-filters')"
+			/>
 		</template>
 
 		<el-table-column
-			v-if="isMDDevice"
 			type="selection"
-			:width="30"
+			fixed="left"
+			:width="40"
 		/>
 
 		<el-table-column
-			:width="60"
+			:width="56"
 			align="center"
 		>
 			<template #default="scope">
@@ -117,26 +47,20 @@
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
 			:min-width="200"
-			class-name="py-0!"
 		>
 			<template #default="scope">
-				<template v-if="scope.row.name">
-					<strong class="block">{{ scope.row.name }}</strong>
-					<el-text
-						size="small"
-						class="block leading-4"
-						truncated
-					>
-						{{ scope.row.macAddress }}
-					</el-text>
-				</template>
-				<template v-else>
+				<span class="block text-card-title truncate">{{ scope.row.name || scope.row.macAddress }}</span>
+				<span
+					v-if="scope.row.name"
+					class="block text-help font-mono truncate"
+				>
 					{{ scope.row.macAddress }}
-				</template>
+				</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('displaysModule.table.columns.version')"
 			prop="version"
 			sortable="custom"
@@ -144,7 +68,7 @@
 			:width="110"
 		>
 			<template #default="scope">
-				{{ scope.row.version }}
+				<span class="text-body">{{ scope.row.version }}</span>
 			</template>
 		</el-table-column>
 
@@ -153,68 +77,73 @@
 			prop="screenWidth"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="120"
+			:width="130"
 		>
 			<template #default="scope">
-				{{ scope.row.screenWidth }}x{{ scope.row.screenHeight }}
+				<span class="text-body">{{ scope.row.screenWidth }}×{{ scope.row.screenHeight }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('displaysModule.table.columns.layout')"
-			:width="80"
+			:width="90"
 		>
 			<template #default="scope">
-				{{ scope.row.cols }}x{{ scope.row.rows }}
+				<span class="text-body">{{ scope.row.cols }}×{{ scope.row.rows }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('displaysModule.table.columns.audio')"
-			:width="80"
-			align="center"
+			:width="90"
 		>
 			<template #default="scope">
-				<div class="flex items-center justify-center gap-2">
+				<span class="inline-flex items-center gap-2">
 					<el-tooltip
-						v-if="scope.row.audioOutputSupported"
-						:content="t('displaysModule.table.tooltips.speakerSupported')"
+						:content="
+							scope.row.audioOutputSupported
+								? t('displaysModule.table.tooltips.speakerSupported')
+								: t('displaysModule.table.tooltips.speakerUnsupported')
+						"
 						placement="top"
 					>
-						<el-icon
-							:size="18"
-							class="text-green-500"
-						>
-							<icon icon="mdi:volume-high" />
-						</el-icon>
+						<icon
+							:icon="scope.row.audioOutputSupported ? 'mdi:volume-high' : 'mdi:volume-off'"
+							:class="scope.row.audioOutputSupported ? 'text-success' : 'text-muted'"
+							:aria-label="
+								scope.row.audioOutputSupported
+									? t('displaysModule.table.tooltips.speakerSupported')
+									: t('displaysModule.table.tooltips.speakerUnsupported')
+							"
+							width="18"
+							height="18"
+							role="img"
+						/>
 					</el-tooltip>
-					<el-icon
-						v-else
-						:size="18"
-						class="text-gray-300"
-					>
-						<icon icon="mdi:volume-off" />
-					</el-icon>
 					<el-tooltip
-						v-if="scope.row.audioInputSupported"
-						:content="t('displaysModule.table.tooltips.microphoneSupported')"
+						:content="
+							scope.row.audioInputSupported
+								? t('displaysModule.table.tooltips.microphoneSupported')
+								: t('displaysModule.table.tooltips.microphoneUnsupported')
+						"
 						placement="top"
 					>
-						<el-icon
-							:size="18"
-							class="text-green-500"
-						>
-							<icon icon="mdi:microphone" />
-						</el-icon>
+						<icon
+							:icon="scope.row.audioInputSupported ? 'mdi:microphone' : 'mdi:microphone-off'"
+							:class="scope.row.audioInputSupported ? 'text-success' : 'text-muted'"
+							:aria-label="
+								scope.row.audioInputSupported
+									? t('displaysModule.table.tooltips.microphoneSupported')
+									: t('displaysModule.table.tooltips.microphoneUnsupported')
+							"
+							width="18"
+							height="18"
+							role="img"
+						/>
 					</el-tooltip>
-					<el-icon
-						v-else
-						:size="18"
-						class="text-gray-300"
-					>
-						<icon icon="mdi:microphone-off" />
-					</el-icon>
-				</div>
+				</span>
 			</template>
 		</el-table-column>
 
@@ -223,96 +152,78 @@
 			prop="status"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="130"
+			:width="140"
 		>
 			<template #default="scope">
-				<displays-table-column-state
-					:display="scope.row"
-					:filters="innerFilters"
-					@filter-by="(value: IDisplay['status'], add: boolean) => onFilterBy('state', value, add)"
+				<status-tag
+					:status="DISPLAY_STATUS_TAG[displayStatus(scope.row)]"
+					:label="t(`displaysModule.states.${displayStatus(scope.row)}`)"
 				/>
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('displaysModule.table.columns.currentIpAddress')"
 			prop="currentIpAddress"
-			sortable="custom"
-			:sort-orders="['ascending', 'descending']"
-			:width="130"
+			:width="140"
 		>
 			<template #default="scope">
-				<template v-if="scope.row.currentIpAddress">
-					{{ formatIpAddress(scope.row.currentIpAddress) }}
-				</template>
-				<template v-else>
+				<span
+					v-if="scope.row.currentIpAddress && isLocalAddress(scope.row.currentIpAddress)"
+					class="text-body"
+				>
+					{{ t('displaysModule.table.columns.local') }}
+				</span>
+				<span
+					v-else-if="scope.row.currentIpAddress"
+					class="text-body font-mono"
+				>
+					{{ scope.row.currentIpAddress }}
+				</span>
+				<span
+					v-else
+					class="text-help"
+				>
 					—
-				</template>
+				</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			:width="190"
+			:width="96"
 			align="right"
+			fixed="right"
 		>
 			<template #default="scope">
-				<div @click.stop>
-					<el-button
-						size="small"
-						plain
-						data-test-id="detail-display"
-						@click="emit('detail', scope.row.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:file-search-outline" />
-						</template>
-
-						{{ t('displaysModule.buttons.detail.title') }}
-					</el-button>
-					<el-button
-						size="small"
-						plain
-						class="ml-1!"
-						data-test-id="edit-display"
-						@click="emit('edit', scope.row.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:pencil" />
-						</template>
-					</el-button>
-					<el-button
-						size="small"
-						type="warning"
-						plain
-						class="ml-1!"
-						data-test-id="remove-display"
-						@click="emit('remove', scope.row.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:trash" />
-						</template>
-					</el-button>
-				</div>
+				<displays-row-actions
+					:display="scope.row"
+					@detail="(id: IDisplay['id']) => emit('detail', id)"
+					@edit="(id: IDisplay['id']) => emit('edit', id)"
+					@remove="(id: IDisplay['id']) => emit('remove', id)"
+				/>
 			</template>
 		</el-table-column>
 	</el-table>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElResult, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
+import { ElTable, ElTableColumn, ElTooltip, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { IconWithChild, useBreakpoints } from '../../../common';
-import DisplaysTableColumnIcon from './displays-table-column-icon.vue';
-import DisplaysTableColumnState from './displays-table-column-state.vue';
-import type { IDisplay } from '../store/displays.store.types';
+import { StatusTag, useSizeClass } from '../../../common';
 import type { IDisplaysFilter } from '../composables/types';
+import type { IDisplay } from '../store/displays.store.types';
 
+import DisplaysEmpty from './displays-empty.vue';
+import DisplaysRowActions from './displays-row-actions.vue';
+import { DISPLAY_STATUS_TAG, displayStatus, isLocalAddress } from './displays-status';
+import DisplaysTableColumnIcon from './displays-table-column-icon.vue';
 import type { IDisplaysTableProps } from './displays-table.types';
 
 defineOptions({
@@ -334,48 +245,18 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+// Tablet portrait keeps the name, resolution and state; the version, layout, audio and address stay on the detail page
+const { isTabletPortrait } = useSizeClass();
 
-const noResults = computed<boolean>((): boolean => props.totalRows === 0);
+const tableEl = ref<InstanceType<typeof ElTable> | null>(null);
 
 const tableHeight = computed<number>((): number => props.tableHeight ?? 400);
 
-const innerFilters = useVModel(props, 'filters', emit);
+useVModel(props, 'filters', emit);
 
-const formatIpAddress = (ipAddress: string): string => {
-	if (!ipAddress) {
-		return '—';
-	}
-	const normalized = ipAddress.toLowerCase().trim();
-	if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') {
-		return t('displaysModule.table.columns.local');
-	}
-	return ipAddress;
-};
-
-const onSortData = ({
-	prop,
-	order,
-}: {
-	prop: 'name' | 'version' | 'screenWidth' | 'status';
-	order: 'ascending' | 'descending' | null;
-}): void => {
-	emit('update:sort-by', prop);
+const onSortData = ({ prop, order }: { prop: 'name' | 'version' | 'screenWidth' | 'status'; order: 'ascending' | 'descending' | null }): void => {
+	emit('update:sort-by', order === null ? undefined : prop);
 	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
-};
-
-const onFilterBy = (column: string, data: IDisplay['status'], add?: boolean): void => {
-	if (column === 'state') {
-		let filteredStates = innerFilters.value.states;
-
-		if (add === true) {
-			filteredStates.push(data);
-		} else {
-			filteredStates = innerFilters.value.states.filter((item) => item !== data);
-		}
-
-		innerFilters.value.states = Array.from(new Set(filteredStates));
-	}
 };
 
 const onSelectionChange = (selected: IDisplay[]): void => {
@@ -385,4 +266,11 @@ const onSelectionChange = (selected: IDisplay[]): void => {
 const onRowClick = (row: IDisplay): void => {
 	emit('detail', row.id);
 };
+
+// The filter bar's Clear selection
+const clearSelection = (): void => {
+	tableEl.value?.clearSelection();
+};
+
+defineExpose({ clearSelection });
 </script>

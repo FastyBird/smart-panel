@@ -1,10 +1,5 @@
 <template>
-	<view-header
-		:title="t('displaysModule.headings.adjustFilters')"
-		:subtitle="t('displaysModule.subHeadings.adjustFilters')"
-		icon="mdi:filter"
-	/>
-
+	<!-- The filters drawer of the list's filter bar: its heading and Reset are the bar's -->
 	<div
 		:class="[ns.b()]"
 		class="flex flex-col h-full w-full overflow-hidden"
@@ -90,19 +85,6 @@
 				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
-
-		<div class="px-5 py-2 text-center">
-			<el-button
-				:disabled="!props.filtersActive"
-				@click="emit('reset-filters')"
-			>
-				<template #icon>
-					<icon icon="mdi:filter-remove" />
-				</template>
-
-				{{ t('displaysModule.buttons.reset.title') }}
-			</el-button>
-		</div>
 	</div>
 </template>
 
@@ -111,7 +93,6 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
-	ElButton,
 	ElCheckbox,
 	ElCheckboxGroup,
 	ElCollapse,
@@ -123,10 +104,8 @@ import {
 	useNamespace,
 } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { ViewHeader } from '../../../common';
 import type { IDisplaysFilter } from '../composables/types';
 
 import { type IListDisplaysAdjustProps } from './list-displays-adjust.types';
@@ -139,7 +118,6 @@ const props = defineProps<IListDisplaysAdjustProps>();
 
 const emit = defineEmits<{
 	(e: 'update:filters', filters: IDisplaysFilter): void;
-	(e: 'reset-filters'): void;
 }>();
 
 const ns = useNamespace('list-displays-adjust');

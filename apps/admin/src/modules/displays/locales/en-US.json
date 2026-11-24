@@ -6,15 +6,13 @@
 	"description": "Manage your display devices",
 	"headings": {
 		"list": "Displays",
-		"adjustFilters": "Filter displays",
 		"removeDisplay": "Remove display",
 		"removeBulkDisplays": "Remove displays",
 		"discard": "Discard changes",
 		"aboutDisplayConfiguration": "Display configuration"
 	},
 	"subHeadings": {
-		"list": "Manage your connected display devices",
-		"adjustFilters": "Adjust filter settings"
+		"list": "Manage your connected display devices"
 	},
 	"breadcrumbs": {
 		"displays": {
@@ -57,7 +55,9 @@
 		},
 		"tooltips": {
 			"speakerSupported": "Speaker supported",
-			"microphoneSupported": "Microphone supported"
+			"microphoneSupported": "Microphone supported",
+			"speakerUnsupported": "No speaker",
+			"microphoneUnsupported": "No microphone"
 		}
 	},
 	"fields": {
@@ -274,7 +274,11 @@
 			}
 		},
 		"state": {
-			"title": "State"
+			"title": "State",
+			"values": {
+				"online": "Online",
+				"offline": "Offline"
+			}
 		},
 		"states": {
 			"title": "State"
@@ -292,26 +296,15 @@
 		"noDisplays": "No displays registered yet",
 		"noFilteredDisplays": "No displays match your filter criteria",
 		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
-		"aboutDisplayConfiguration": "Configure the deployment mode and display registration settings. The deployment mode determines how the backend and panel are organized, while permit join duration controls how long new displays can register on the network."
+		"aboutDisplayConfiguration": "Configure the deployment mode and display registration settings. The deployment mode determines how the backend and panel are organized, while permit join duration controls how long new displays can register on the network.",
+		"noDisplaysHint": "Turn on Permit join, then start the Smart Panel app on the display to register it."
 	},
 	"buttons": {
 		"detail": {
 			"title": "Detail"
 		},
-		"adjust": {
-			"title": "Filter"
-		},
 		"resetFilters": {
 			"title": "Reset filters"
-		},
-		"reset": {
-			"title": "Reset filters"
-		},
-		"yes": {
-			"title": "Yes"
-		},
-		"no": {
-			"title": "No"
 		},
 		"save": {
 			"title": "Save"
@@ -331,6 +324,21 @@
 		},
 		"back": {
 			"title": "Go back"
+		},
+		"edit": {
+			"title": "Edit"
+		},
+		"more": {
+			"title": "More actions"
+		},
+		"remove": {
+			"title": "Remove"
+		},
+		"keepEditing": {
+			"title": "Keep editing"
+		},
+		"removeDisplays": {
+			"title": "Remove {count} display | Remove {count} displays"
 		}
 	},
 	"edit": {
@@ -454,5 +462,9 @@
 	"actions": {
 		"revokeToken": "Revoke token",
 		"manageTokens": "Manage tokens"
+	},
+	"aria": {
+		"edit": "Edit {display}",
+		"more": "More actions for {display}"
 	}
 }
