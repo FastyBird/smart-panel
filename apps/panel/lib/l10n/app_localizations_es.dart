@@ -269,6 +269,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dial_cool_setpoint => 'Consigna de refrigeración';
 
   @override
+  String get dial_target_temperature => 'Temperatura objetivo';
+
+  @override
+  String get dial_target_value => 'Valor objetivo';
+
+  @override
+  String get control_state_pending => 'Enviando';
+
+  @override
+  String get control_state_unconfirmed => 'Sin confirmar';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

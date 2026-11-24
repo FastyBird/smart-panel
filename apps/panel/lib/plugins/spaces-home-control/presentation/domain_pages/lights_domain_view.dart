@@ -2589,6 +2589,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           label: roleData.name,
           color: statusColor,
           iconSize: AppSpacings.scale(18),
+          semanticValue: valueText,
           labelBuilder: (isSelected, contentColor) {
             return Column(
               mainAxisSize: MainAxisSize.min,

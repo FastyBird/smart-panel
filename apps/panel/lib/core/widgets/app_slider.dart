@@ -29,6 +29,11 @@ class AppSliderMetrics {
   /// The thumb's dashed ring while pending, not confirmed or disabled.
   static const double dashedRing = 2;
 
+  /// The keyboard focus ring around the thumb: its width and its gap from
+  /// the thumb.
+  static const double focusRing = 2;
+  static const double focusGap = 2;
+
   /// A slider in a list row or a card: settings, device cards, sheets.
   static const AppSliderMetrics row = AppSliderMetrics(
     track: 10,
@@ -36,18 +41,20 @@ class AppSliderMetrics {
     height: 36,
   );
 
-  /// The hero card's slider, sized like its slot (HeroCardMetrics).
+  /// The hero card's slider. Track and thumb follow the canvas; the touch
+  /// height is 48 at every class, the spec §4 floor for a hero slider
+  /// (HeroCardMetrics gives it that slot).
   static AppSliderMetrics hero(ScreenSizeClass sizeClass) =>
       switch (sizeClass) {
         ScreenSizeClass.compact => const AppSliderMetrics(
           track: 12,
           thumb: 24,
-          height: 36,
+          height: 48,
         ),
         ScreenSizeClass.regular => const AppSliderMetrics(
           track: 14,
           thumb: 28,
-          height: 40,
+          height: 48,
         ),
         ScreenSizeClass.expanded => const AppSliderMetrics(
           track: 16,
@@ -61,14 +68,15 @@ class AppSliderMetrics {
 /// filled up to the thumb in the domain colour inside a domain view and the
 /// accent outside one, and a white thumb with a ring in the same colour.
 ///
-/// Tap or drag anywhere along it; arrow keys step it when focused. There are
-/// no step labels: presets sit beside the slider instead.
+/// Tap or drag anywhere along it; arrow keys step it when focused, and a
+/// keyboard focus ring then circles the thumb. There are no step labels:
+/// presets sit beside the slider instead.
 ///
 /// - [ControlState.pending]: the thumb's ring turns dashed `text.secondary`.
 /// - [ControlState.unconfirmed]: the ring is dashed in the warning colour.
 /// - [ControlState.disabled] (or no [onChanged]): the fill is
 ///   `text.disabled`, the ring dashed `text.disabled`, and it does not move.
-class AppSlider extends StatelessWidget {
+class AppSlider extends StatefulWidget {
   const AppSlider({
     super.key,
     required this.value,
@@ -132,10 +140,55 @@ class AppSlider extends StatelessWidget {
   /// How screen readers say the value; defaults to a percentage.
   final String Function(double value)? semanticFormatter;
 
-  bool get _enabled => onChanged != null && state != ControlState.disabled;
+  @override
+  State<AppSlider> createState() => _AppSliderState();
+}
+
+class _AppSliderState extends State<AppSlider> {
+  /// Whether the slider has focus.
+  bool _focused = false;
+
+  /// Whether focus is being moved with a keyboard; a touch-focused slider
+  /// shows no ring.
+  bool _keyboard =
+      FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+
+  @override
+  void initState() {
+    super.initState();
+    FocusManager.instance.addHighlightModeListener(_onHighlightMode);
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeHighlightModeListener(_onHighlightMode);
+    super.dispose();
+  }
+
+  void _onHighlightMode(FocusHighlightMode mode) {
+    final keyboard = mode == FocusHighlightMode.traditional;
+    if (keyboard != _keyboard && mounted) setState(() => _keyboard = keyboard);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final AppSlider(
+      :value,
+      :onChanged,
+      :onChangeStart,
+      :onChangeEnd,
+      :color,
+      :activeColor,
+      :trackGradient,
+      :thumbColor,
+      :ringColor,
+      :divisions,
+      :state,
+      :hero,
+      :sizeClass,
+      :semanticLabel,
+      :semanticFormatter,
+    ) = widget;
     final theme = Theme.of(context);
     final neutrals = theme.neutrals;
     final metrics = hero
@@ -143,7 +196,7 @@ class AppSlider extends StatelessWidget {
             sizeClass ?? locator<ScreenService>().sizeClass,
           )
         : AppSliderMetrics.row;
-    final enabled = _enabled;
+    final enabled = onChanged != null && state != ControlState.disabled;
     final effectiveState = enabled || state != ControlState.idle
         ? state
         : ControlState.disabled;
@@ -153,7 +206,7 @@ class AppSlider extends StatelessWidget {
         : activeColor ?? ControlTint.of(theme, color).fill;
     // A disabled slider drops its gradient for the plain disabled fill.
     final gradient =
-        enabled && trackGradient != null && trackGradient!.length >= 2
+        enabled && trackGradient != null && trackGradient.length >= 2
         ? trackGradient
         : null;
     final dash = controlDashColor(theme, effectiveState);
@@ -178,6 +231,9 @@ class AppSlider extends StatelessWidget {
             dash != null ? AppSliderMetrics.dashedRing : AppSliderMetrics.ring,
           ),
           dashed: dash != null,
+          focusRing: enabled && _focused && _keyboard ? fill : null,
+          focusRingWidth: AppSpacings.scale(AppSliderMetrics.focusRing),
+          focusGap: AppSpacings.scale(AppSliderMetrics.focusGap),
         ),
         overlayShape: SliderComponentShape.noOverlay,
         overlayColor: AppColors.blank,
@@ -197,7 +253,15 @@ class AppSlider extends StatelessWidget {
 
     return Semantics(
       label: semanticLabel,
-      child: SizedBox(height: AppSpacings.scale(metrics.height), child: slider),
+      child: Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: SizedBox(
+          height: AppSpacings.scale(metrics.height),
+          child: slider,
+        ),
+      ),
     );
   }
 }
@@ -289,7 +353,8 @@ class AppSliderTrackShape extends SliderTrackShape {
   }
 }
 
-/// [AppSlider]'s thumb: a disc with a solid or dashed ring.
+/// [AppSlider]'s thumb: a disc with a solid or dashed ring, and a focus ring
+/// around it while the keyboard has focus on the slider.
 class AppSliderThumbShape extends SliderComponentShape {
   const AppSliderThumbShape({
     required this.radius,
@@ -297,6 +362,9 @@ class AppSliderThumbShape extends SliderComponentShape {
     required this.ring,
     required this.ringWidth,
     required this.dashed,
+    this.focusRing,
+    this.focusRingWidth = 2,
+    this.focusGap = 2,
   });
 
   final double radius;
@@ -304,6 +372,11 @@ class AppSliderThumbShape extends SliderComponentShape {
   final Color ring;
   final double ringWidth;
   final bool dashed;
+
+  /// The focus ring's colour; null draws none.
+  final Color? focusRing;
+  final double focusRingWidth;
+  final double focusGap;
 
   @override
   Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
@@ -337,6 +410,17 @@ class AppSliderThumbShape extends SliderComponentShape {
       paintDashedCircle(canvas, center, ringRadius, ringPaint);
     } else {
       canvas.drawCircle(center, ringRadius, ringPaint);
+    }
+
+    if (focusRing != null) {
+      canvas.drawCircle(
+        center,
+        radius + focusGap + focusRingWidth / 2,
+        Paint()
+          ..color = focusRing!
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = focusRingWidth,
+      );
     }
   }
 }

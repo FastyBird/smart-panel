@@ -129,8 +129,8 @@ class AppStepper extends StatelessWidget {
   final ValueChanged<double>? onChanged;
 
   /// How the value is written; defaults to a locale-aware number with as
-  /// many decimals as [min] and [step] need (see [decimalsOf]), so every
-  /// value on the grid shows exactly.
+  /// many decimals as [min], [step], [max] and [value] need (see
+  /// [decimalsOf]), so every value it can reach shows exactly.
   final String Function(double value)? format;
 
   /// Shown after the value in `text.secondary` ("°", " %").
@@ -162,8 +162,9 @@ class AppStepper extends StatelessWidget {
 
   String _format(double v) {
     if (format != null) return format!(v);
-    // Values are min + k × step, so min and step together set the decimals.
-    final decimals = math.max(decimalsOf(step), decimalsOf(min));
+    // Values are min + k × step, or max where plus clamps, or an off-grid
+    // value the caller holds.
+    final decimals = [step, min, max, value].map(decimalsOf).reduce(math.max);
     if (decimals == 0) return NumberUtils.formatInteger(v.round());
 
     return NumberUtils.formatDecimal(v, decimalPlaces: decimals);
@@ -202,8 +203,12 @@ class AppStepper extends StatelessWidget {
     return Semantics(
       label: semanticLabel,
       value: '${_format(value)}${unit ?? ''}',
-      increasedValue: canRaise ? _format(_snap(value + step)) : null,
-      decreasedValue: canLower ? _format(_snap(value - step)) : null,
+      increasedValue: canRaise
+          ? '${_format(_snap(value + step))}${unit ?? ''}'
+          : null,
+      decreasedValue: canLower
+          ? '${_format(_snap(value - step))}${unit ?? ''}'
+          : null,
       onIncrease: canRaise ? raise : null,
       onDecrease: canLower ? lower : null,
       child: Row(

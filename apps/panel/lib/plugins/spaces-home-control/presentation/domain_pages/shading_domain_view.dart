@@ -1413,6 +1413,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           label: roleData.name,
           color: _getPositionThemeColor(position),
           iconSize: AppSpacings.scale(18),
+          semanticValue: valueText,
           labelBuilder: (isSelected, contentColor) {
             return Column(
               mainAxisSize: MainAxisSize.min,

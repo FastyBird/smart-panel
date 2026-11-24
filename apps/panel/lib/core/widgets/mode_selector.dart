@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -46,6 +47,10 @@ class ModeOption<T> {
   /// can adapt to selection state and theme.
   final Widget Function(bool isSelected, Color contentColor)? labelBuilder;
 
+  /// What screen readers hear after [label], for a [labelBuilder] that shows
+  /// more than the name ("50%", "Off").
+  final String? semanticValue;
+
   const ModeOption({
     required this.value,
     required this.icon,
@@ -53,6 +58,7 @@ class ModeOption<T> {
     this.color,
     this.iconSize,
     this.labelBuilder,
+    this.semanticValue,
   });
 }
 
@@ -64,10 +70,13 @@ class ModeOption<T> {
 ///
 /// Horizontal it is the segmented control (arm, range, theme, presets);
 /// vertical the same buttons stack. Labels hide on their own when a segment
-/// is narrower than [minButtonWidth].
+/// is narrower than [minButtonWidth]. A row too narrow for every segment to
+/// keep the 36 px touch floor scrolls sideways instead of compressing.
 ///
-/// - [ControlState.pending]: the selected segment shows the refresh icon.
-/// - [ControlState.unconfirmed]: it shows the warning alert icon.
+/// - [ControlState.pending]: the selected segment shows the refresh icon,
+///   and screen readers hear "Sending".
+/// - [ControlState.unconfirmed]: it shows the warning alert icon, and screen
+///   readers hear "Not confirmed".
 /// - [ControlState.disabled]: every segment is on `fill.light` in
 ///   `text.disabled` and nothing reacts.
 ///
@@ -139,6 +148,10 @@ class ModeSelector<T> extends StatefulWidget {
   static const double segmentHeight = 36;
   static const double gap = 4;
 
+  /// The narrowest a segment gets (spec §4, touch floor); below it the row
+  /// scrolls.
+  static const double minSegmentWidth = 36;
+
   @override
   State<ModeSelector<T>> createState() => _ModeSelectorState<T>();
 }
@@ -146,6 +159,9 @@ class ModeSelector<T> extends StatefulWidget {
 class _ModeSelectorState<T> extends State<ModeSelector<T>> {
   /// Key used to scroll to the selected item when scrollable and after first frame.
   final GlobalKey _selectedKey = GlobalKey();
+
+  /// Whether the last horizontal layout scrolled because it was too narrow.
+  bool _compressed = false;
 
   ScrollController? _scrollController;
 
@@ -165,7 +181,8 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       _scrollController = ScrollController();
     }
     if (widget.scrollable &&
-        (widget.selectedValue != oldWidget.selectedValue ||
+        (!oldWidget.scrollable ||
+            widget.selectedValue != oldWidget.selectedValue ||
             widget.modes != oldWidget.modes)) {
       _scheduleScrollToSelected();
     }
@@ -262,6 +279,17 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         final showLabels = !widget.showIcon
             ? true
             : (widget.showLabels ?? (widthPerButton >= widget.minButtonWidth));
+        // Too narrow for the touch floor: scroll rather than compress.
+        final compressed = !widget.scrollable &&
+            widthPerButton < AppSpacings.scale(ModeSelector.minSegmentWidth);
+        final scrolls = widget.scrollable || compressed;
+        if (compressed) {
+          _scrollController ??= ScrollController();
+          if (!_compressed) {
+            WidgetsBinding.instance.addPostFrameCallback(_scrollToSelected);
+          }
+        }
+        _compressed = compressed;
 
         final buttons = <Widget>[];
         for (var i = 0; i < count; i++) {
@@ -273,13 +301,13 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
             showIcon: widget.showIcon,
             showLabel: showLabels,
             iconOnTop: widget.iconPlacement == ModeSelectorIconPlacement.top,
-            shrinkWrap: widget.scrollable,
+            shrinkWrap: scrolls,
             statusIcon: _statusIcon(Theme.of(context), mode),
             state: widget.state,
             onTap: () => widget.onChanged(mode.value),
           );
 
-          if (widget.scrollable) {
+          if (scrolls) {
             button = ConstrainedBox(
               constraints: BoxConstraints(
                 minWidth: showLabels || !widget.showIcon
@@ -300,7 +328,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
 
         final row = Row(spacing: gap, children: buttons);
 
-        if (widget.scrollable) {
+        if (scrolls) {
           return SingleChildScrollView(
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -449,12 +477,27 @@ class _ModeSegment<T> extends StatelessWidget {
       side: BorderSide(color: outline, width: AppSpacings.scale(1)),
     );
 
+    // The segment's own value, then the command outcome on the selected one.
+    final localizations = AppLocalizations.of(context);
+    final outcome = !isSelected || localizations == null
+        ? null
+        : switch (state) {
+            ControlState.pending => localizations.control_state_pending,
+            ControlState.unconfirmed => localizations.control_state_unconfirmed,
+            _ => null,
+          };
+    final spokenValue = [
+      ?mode.semanticValue,
+      ?outcome,
+    ].join(', ');
+
     return Semantics(
       button: true,
       selected: isSelected,
       inMutuallyExclusiveGroup: true,
       enabled: !disabled,
       label: mode.label,
+      value: spokenValue.isEmpty ? null : spokenValue,
       onTap: disabled ? null : onTap,
       excludeSemantics: true,
       child: ConstrainedBox(
@@ -468,6 +511,7 @@ class _ModeSegment<T> extends StatelessWidget {
             onTap: disabled ? null : onTap,
             customBorder: shape,
             child: Stack(
+              alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: [
                 Padding(

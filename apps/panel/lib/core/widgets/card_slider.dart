@@ -135,16 +135,18 @@ class _CardSliderState extends State<CardSlider> {
   void didUpdateWidget(CardSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // A slider that stops taking input mid-drag never calls onChangeEnd
+    // (the slider passes null), so end the drag here; otherwise device
+    // values would be ignored from now on.
+    final interactive = widget.enabled &&
+        widget.onChanged != null &&
+        widget.state != ControlState.disabled;
+    if (!interactive) _isDragging = false;
+
     // Never overwrite display value while user is dragging
     if (_isDragging) return;
 
     if (oldWidget.enabled != widget.enabled) {
-      // If slider becomes disabled mid-drag, the onChangeEnd callback will
-      // never fire (SliderWithSteps passes null when disabled). Reset the
-      // flag so external updates are accepted again.
-      if (!widget.enabled && _isDragging) {
-        _isDragging = false;
-      }
       _enabledStateChangeTime = DateTime.now();
       _displayValue = widget.value.clamp(0.0, 1.0);
       return;

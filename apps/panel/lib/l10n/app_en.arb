@@ -350,6 +350,22 @@
   "@dial_cool_setpoint": {
     "description": "Screen-reader label of the cool (second) thumb on a two-setpoint thermostat dial"
   },
+  "dial_target_temperature": "Target temperature",
+  "@dial_target_temperature": {
+    "description": "Screen-reader label of a temperature dial when its screen gives none"
+  },
+  "dial_target_value": "Target value",
+  "@dial_target_value": {
+    "description": "Screen-reader label of a non-temperature dial when its screen gives none"
+  },
+  "control_state_pending": "Sending",
+  "@control_state_pending": {
+    "description": "Screen-reader state of a control whose command is still being sent"
+  },
+  "control_state_unconfirmed": "Not confirmed",
+  "@control_state_unconfirmed": {
+    "description": "Screen-reader state of a control whose command was never confirmed"
+  },
 
   "devices_offline_skipped": "{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}",
   "@devices_offline_skipped": {

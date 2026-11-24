@@ -22,6 +22,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -229,10 +230,10 @@ void main() {
       }
     }
 
-    testWidgets('hero sizes are 36 / 40 / 48 high with 24 / 28 / 32 thumbs', (tester) async {
+    testWidgets('hero sliders are 48 high (the touch floor) with 24 / 28 / 32 thumbs', (tester) async {
       expect(
         _classes.map((c) => AppSliderMetrics.hero(c).height),
-        [36, 40, 48],
+        [48, 48, 48],
       );
       expect(
         _classes.map((c) => AppSliderMetrics.hero(c).thumb),
@@ -334,6 +335,41 @@ void main() {
       await tester.pump();
 
       expect(value, closeTo(0.6, 0.001));
+    });
+
+    testWidgets('a keyboard-focused slider rings its thumb; touch shows no ring', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(width: 300, child: AppSlider(value: 0.5, onChanged: (_) {})),
+      );
+      expect(_thumb(tester).focusRing, isNull);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(_thumb(tester).focusRing, AppAccentPalette.of(AppAccent.blue, Brightness.light).fill);
+
+      // A touch puts focus highlighting away.
+      await tester.tap(find.byType(Slider));
+      await tester.pump();
+      expect(_thumb(tester).focusRing, isNull);
+    });
+
+    testWidgets('CardSlider follows the device again after a disable mid-drag', (tester) async {
+      Widget card(double value, ControlState state) => SizedBox(
+        width: 300,
+        child: CardSlider(label: 'Speed', value: value, state: state, onChanged: (_) {}),
+      );
+      await _pump(tester, card(0.4, ControlState.idle));
+
+      final gesture = await tester.startGesture(tester.getCenter(find.byType(Slider)));
+      await gesture.moveBy(const Offset(40, 0));
+      await tester.pump();
+      await _pump(tester, card(0.4, ControlState.disabled));
+      await gesture.up();
+      await tester.pump();
+
+      await _pump(tester, card(0.8, ControlState.idle));
+      expect(find.text('80 %'), findsOneWidget);
     });
 
     testWidgets('SliderWithSteps draws the one slider without step labels', (tester) async {
@@ -671,6 +707,40 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('a maximum off the step shows exactly once plus reaches it', (tester) async {
+      var value = 2.0;
+      await _pump(
+        tester,
+        StatefulBuilder(
+          builder: (context, setState) => AppStepper(
+            value: value,
+            min: 0,
+            max: 2.25,
+            onChanged: (v) => setState(() => value = v),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      expect(value, 2.25);
+      expect(find.text('2.25'), findsOneWidget);
+    });
+
+    testWidgets('the next and previous values carry the unit', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        AppStepper(value: 20, min: 10, max: 30, unit: '°', semanticLabel: 'Target', onChanged: (_) {}),
+      );
+
+      final node = tester.getSemantics(find.bySemanticsLabel(RegExp('^Target')));
+      expect(node.value, '20°');
+      expect(node.increasedValue, '21°');
+      expect(node.decreasedValue, '19°');
+      handle.dispose();
+    });
+
     testWidgets('pending, not confirmed and disabled values', (tester) async {
       final theme = _theme(Brightness.light);
 
@@ -852,6 +922,119 @@ void main() {
       expect(find.byIcon(MdiIcons.fire), findsOneWidget);
     });
 
+    List<ModeOption<String>> manyModes() => [
+      for (final (value, icon) in [
+        ('a', MdiIcons.numeric1),
+        ('b', MdiIcons.numeric2),
+        ('c', MdiIcons.numeric3),
+        ('d', MdiIcons.numeric4),
+        ('e', MdiIcons.numeric5),
+        ('f', MdiIcons.numeric6),
+      ])
+        ModeOption(value: value, icon: icon, label: value.toUpperCase()),
+    ];
+
+    testWidgets('a row too narrow for the touch floor scrolls instead of compressing', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 150,
+          child: ModeSelector<String>(modes: manyModes(), selectedValue: 'f', onChanged: (_) {}),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
+      for (final element in find.byType(Material).evaluate()) {
+        final box = element.renderObject! as RenderBox;
+        if (box.size.height < 36) continue;
+        expect(box.size.width, greaterThanOrEqualTo(36));
+      }
+      // The selected segment is scrolled into view.
+      final position = tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      expect(position.pixels, greaterThan(0));
+    });
+
+    testWidgets('scrolls to the selection when scrolling turns on', (tester) async {
+      Widget selector(bool scrollable) => SizedBox(
+        width: 300,
+        child: ModeSelector<String>(
+          modes: manyModes(),
+          selectedValue: 'f',
+          scrollable: scrollable,
+          showLabels: false,
+          onChanged: (_) {},
+        ),
+      );
+      await _pump(tester, selector(false));
+      await tester.pumpAndSettle();
+      await _pump(tester, selector(true));
+      await tester.pumpAndSettle();
+
+      final position = tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      expect(position.maxScrollExtent, greaterThan(0));
+      expect(position.pixels, greaterThan(0));
+    });
+
+    testWidgets('centres an icon in a wider scrolling segment', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 400,
+          child: ModeSelector<String>(
+            modes: _modes(),
+            selectedValue: 'heat',
+            scrollable: true,
+            showLabels: false,
+            onChanged: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final segment = tester.getRect(
+        find.ancestor(of: find.byIcon(MdiIcons.fire), matching: find.byType(Material)).first,
+      );
+      expect(segment.width, 48);
+      expect(tester.getCenter(find.byIcon(MdiIcons.fire)).dx, closeTo(segment.center.dx, 0.01));
+      expect(tester.getCenter(find.byIcon(MdiIcons.fire)).dy, closeTo(segment.center.dy, 0.01));
+    });
+
+    testWidgets('screen readers hear a segment\'s value and its command outcome', (tester) async {
+      final handle = tester.ensureSemantics();
+      Widget selector(ControlState state) => SizedBox(
+        width: 400,
+        child: ModeSelector<String>(
+          modes: [
+            ModeOption(
+              value: 'main',
+              icon: MdiIcons.lightbulb,
+              label: 'Main',
+              semanticValue: '50%',
+              labelBuilder: (isSelected, color) => const Text('Main 50%'),
+            ),
+            ModeOption(value: 'desk', icon: MdiIcons.deskLamp, label: 'Desk', semanticValue: 'Off'),
+          ],
+          selectedValue: 'main',
+          state: state,
+          onChanged: (_) {},
+        ),
+      );
+
+      await _pump(tester, selector(ControlState.idle));
+      expect(tester.getSemantics(find.bySemanticsLabel('Main')).value, '50%');
+      expect(tester.getSemantics(find.bySemanticsLabel('Desk')).value, 'Off');
+
+      await _pump(tester, selector(ControlState.pending));
+      expect(tester.getSemantics(find.bySemanticsLabel('Main')).value, '50%, Sending');
+      expect(tester.getSemantics(find.bySemanticsLabel('Desk')).value, 'Off');
+
+      await _pump(tester, selector(ControlState.unconfirmed));
+      expect(tester.getSemantics(find.bySemanticsLabel('Main')).value, '50%, Not confirmed');
+      handle.dispose();
+    });
+
     testWidgets('IntentModeSelector marks active, matched and last intent', (tester) async {
       await _pump(
         tester,
@@ -971,9 +1154,8 @@ void main() {
           );
           expect(material.color, lights.soft);
 
-          // Compact shows the mode alone; screen readers always hear the
-          // domain.
-          final shown = sizeClass == ScreenSizeClass.compact ? 'Relax' : 'Lights mode: Relax';
+          // Every class names the domain.
+          const shown = 'Lights mode: Relax';
           expect(find.text(shown), findsOneWidget);
           expect(tester.widget<Text>(find.text(shown)).style!.color, neutrals.textPrimary);
           expect(find.bySemanticsLabel('Lights mode: Relax'), findsOneWidget);
@@ -1105,13 +1287,16 @@ void main() {
       ControlState state = ControlState.idle,
       ScreenSizeClass sizeClass = ScreenSizeClass.regular,
       double size = 240,
+      double min = 10,
+      double max = 30,
+      double step = 0.5,
     }) => CircularControlDial(
       value: value,
       secondValue: second,
       currentValue: 21.4,
-      minValue: 10,
-      maxValue: 30,
-      step: 0.5,
+      minValue: min,
+      maxValue: max,
+      step: step,
       size: size,
       accentType: DialAccentColor.warning,
       modeLabel: 'Heating',
@@ -1288,14 +1473,227 @@ void main() {
       final heat = tester.getSemantics(find.bySemanticsLabel('Heating setpoint'));
       final cool = tester.getSemantics(find.bySemanticsLabel('Cooling setpoint'));
       expect(heat.increasedValue, isEmpty);
-      expect(heat.decreasedValue, '21.5');
+      expect(heat.decreasedValue, '21.5°');
       expect(cool.decreasedValue, isEmpty);
-      expect(cool.increasedValue, '22.5');
-      // Plus moves the heat thumb by default, and it is already at cool.
-      final plus = tester.widget<ControlRoundButton>(
-        find.ancestor(of: find.byIcon(MdiIcons.plus), matching: find.byType(ControlRoundButton)),
+      expect(cool.increasedValue, '22.5°');
+      handle.dispose();
+    });
+
+    testWidgets('two coincident thumbs: plus raises cool and minus lowers heat', (tester) async {
+      final heat = <double>[];
+      final cool = <double>[];
+      await _pump(
+        tester,
+        dial(value: 22, second: 22, onChanged: heat.add, onSecondChanged: cool.add),
       );
-      expect(plus.onTap, isNull);
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(cool, [22.5]);
+      expect(heat, isEmpty);
+
+      // A fresh dial: minus lowers heat.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await _pump(
+        tester,
+        dial(value: 22, second: 22, onChanged: heat.add, onSecondChanged: cool.add),
+      );
+      await tester.tap(find.byIcon(MdiIcons.minus));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [21.5]);
+    });
+
+    testWidgets('two coincident thumbs: dragging up from them moves cool', (tester) async {
+      final heat = <double>[];
+      final cool = <double>[];
+      await _pump(
+        tester,
+        dial(value: 22, second: 22, onChanged: heat.add, onSecondChanged: cool.add),
+      );
+
+      final origin = tester.getTopLeft(find.byType(CircularControlDial));
+      Offset at(double value) {
+        final angle = DialGeometry.startAngle + (value - 10) / (30 - 10) * DialGeometry.sweepAngle;
+        return origin +
+            Offset(
+              240 * DialGeometry.centerX + 240 * DialGeometry.radius * math.cos(angle),
+              240 * DialGeometry.centerY + 240 * DialGeometry.radius * math.sin(angle),
+            );
+      }
+
+      final gesture = await tester.startGesture(at(22));
+      for (final value in [22.5, 23.0, 24.0]) {
+        await gesture.moveTo(at(value));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pump();
+      expect(cool, [24]);
+      expect(heat, isEmpty);
+    });
+
+    /// The point on a 240 px dial's arc for [value], in global coordinates.
+    Offset onArc(WidgetTester tester, double value, {double min = 10, double max = 30}) {
+      final origin = tester.getTopLeft(find.byType(CircularControlDial));
+      final angle = DialGeometry.startAngle + (value - min) / (max - min) * DialGeometry.sweepAngle;
+
+      return origin +
+          Offset(
+            240 * DialGeometry.centerX + 240 * DialGeometry.radius * math.cos(angle),
+            240 * DialGeometry.centerY + 240 * DialGeometry.radius * math.sin(angle),
+          );
+    }
+
+    Semantics thumbSemantics(WidgetTester tester, String label) => tester.widget<Semantics>(
+      find.byWidgetPredicate((w) => w is Semantics && w.properties.label == label),
+    );
+
+    testWidgets('plus takes a tap where it overlaps the arc', (tester) async {
+      final reported = <double>[];
+      await _pump(tester, dial(onChanged: reported.add));
+
+      // Inside plus (48 px at the bottom-right corner) and inside the arc's
+      // hit band.
+      final origin = tester.getTopLeft(find.byType(CircularControlDial));
+      await tester.tapAt(origin + const Offset(200, 200));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, [22.5]);
+    });
+
+    testWidgets('the ends of the arc give the exact minimum and maximum', (tester) async {
+      final reported = <double>[];
+      await _pump(tester, dial(value: 20, min: 10, max: 30.25, step: 1, onChanged: reported.add));
+
+      await tester.tapAt(onArc(tester, 30.25, max: 30.25));
+      await tester.pump();
+      expect(reported.last, 30.25);
+
+      await tester.tapAt(onArc(tester, 10, max: 30.25));
+      await tester.pump();
+      expect(reported.last, 10);
+    });
+
+    testWidgets('plus and minus keep an off-grid value\'s offset', (tester) async {
+      final reported = <double>[];
+      await _pump(tester, dial(value: 30.25, min: 10, max: 40, step: 1, onChanged: reported.add));
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, [31.25]);
+    });
+
+    testWidgets('disabled mid-drag: the drag ends without reporting', (tester) async {
+      final reported = <double>[];
+      final swipe = <bool>[];
+      final subscription = locator<EventBus>().on<PageSwipeBlockEvent>().listen((e) => swipe.add(e.blocked));
+      addTearDown(subscription.cancel);
+      await _pump(tester, dial(onChanged: reported.add));
+
+      final gesture = await tester.startGesture(onArc(tester, 22));
+      await gesture.moveTo(onArc(tester, 24));
+      await tester.pump();
+      await _pump(tester, dial(onChanged: reported.add, state: ControlState.disabled));
+      await gesture.moveTo(onArc(tester, 26));
+      await gesture.up();
+      await tester.pump();
+
+      expect(reported, isEmpty);
+      expect(swipe, [true, false]);
+    });
+
+    testWidgets('disabled while minus or plus waits: nothing is sent', (tester) async {
+      final reported = <double>[];
+      await _pump(tester, dial(onChanged: reported.add));
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      await _pump(tester, dial(onChanged: reported.add, enabled: false));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(reported, isEmpty);
+    });
+
+    testWidgets('a cool setpoint moved by the parent mid-drag still limits heat', (tester) async {
+      final heat = <double>[];
+      await _pump(tester, dial(value: 22, second: 26, onChanged: heat.add, onSecondChanged: (_) {}));
+
+      final gesture = await tester.startGesture(onArc(tester, 22));
+      await gesture.moveTo(onArc(tester, 22.5));
+      await tester.pump();
+      await _pump(tester, dial(value: 22, second: 23, onChanged: heat.add, onSecondChanged: (_) {}));
+      await gesture.moveTo(onArc(tester, 25));
+      await tester.pump();
+      // The cool thumb shows the parent's value.
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '23–23°'),
+        findsOneWidget,
+      );
+      await gesture.up();
+      await tester.pump();
+      expect(heat, [23]);
+    });
+
+    testWidgets('a cool thumb added mid-drag ends the drag without a crash', (tester) async {
+      final heat = <double>[];
+      final swipe = <bool>[];
+      final subscription = locator<EventBus>().on<PageSwipeBlockEvent>().listen((e) => swipe.add(e.blocked));
+      addTearDown(subscription.cancel);
+      await _pump(tester, dial(value: 22, onChanged: heat.add));
+
+      final gesture = await tester.startGesture(onArc(tester, 22));
+      await gesture.moveTo(onArc(tester, 23));
+      await tester.pump();
+      await _pump(tester, dial(value: 22, second: 26, onChanged: heat.add, onSecondChanged: (_) {}));
+      expect(tester.takeException(), isNull);
+      await gesture.moveTo(onArc(tester, 24));
+      await gesture.up();
+      await tester.pump();
+      expect(heat, isEmpty);
+      expect(swipe, [true, false]);
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.textSpan?.toPlainText() == '22–26°'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a waiting edit is sent with the value it set', (tester) async {
+      final handle = tester.ensureSemantics();
+      final cool = <double>[];
+      await _pump(tester, dial(value: 20, second: 26, onSecondChanged: cool.add));
+
+      thumbSemantics(tester, 'Cooling setpoint').properties.onIncrease!();
+      await tester.pump();
+      // The parent moves heat meanwhile; the cool edit still sends 26.5.
+      await _pump(tester, dial(value: 21, second: 26, onSecondChanged: cool.add));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(cool, [26.5]);
+      handle.dispose();
+    });
+
+    testWidgets('a parent value for the same thumb replaces a waiting edit', (tester) async {
+      final handle = tester.ensureSemantics();
+      final cool = <double>[];
+      await _pump(tester, dial(value: 20, second: 26, onSecondChanged: cool.add));
+
+      thumbSemantics(tester, 'Cooling setpoint').properties.onIncrease!();
+      await tester.pump();
+      await _pump(tester, dial(value: 20, second: 27, onSecondChanged: cool.add));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(cool, isEmpty);
+      handle.dispose();
+    });
+
+    testWidgets('an edit for a removed cool thumb is dropped', (tester) async {
+      final handle = tester.ensureSemantics();
+      final heat = <double>[];
+      final cool = <double>[];
+      await _pump(tester, dial(value: 20, second: 26, onChanged: heat.add, onSecondChanged: cool.add));
+
+      thumbSemantics(tester, 'Cooling setpoint').properties.onIncrease!();
+      await tester.pump();
+      await _pump(tester, dial(value: 20, onChanged: heat.add));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, isEmpty);
+      expect(cool, isEmpty);
       handle.dispose();
     });
 
@@ -1323,7 +1721,10 @@ void main() {
 
       final node = tester.getSemantics(find.byType(CircularControlDial));
       expect(node.value, '22°');
-      expect(node.increasedValue, '22.5');
+      // The next value carries the unit, like the value.
+      expect(node.increasedValue, '22.5°');
+      // Without a label from the screen, it says what it sets.
+      expect(node.label, 'Target temperature');
       final semantics = tester.widget<Semantics>(
         find.descendant(of: find.byType(CircularControlDial), matching: find.byType(Semantics)).first,
       );

@@ -1,4 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
@@ -37,8 +36,9 @@ class DeckModeChip extends StatelessWidget {
 
 /// The chip itself, for a given [config].
 ///
-/// Outside Compact it reads "Lights mode: Relax"; on Compact it shows the
-/// mode alone and screen readers still hear the whole label.
+/// It reads "Lights mode: Relax" at every class (spec §5: the label always
+/// names the domain); a long label ellipsizes in the space its parent gives
+/// it.
 class DeckModeChipButton extends StatelessWidget {
   const DeckModeChipButton({
     super.key,
@@ -52,7 +52,8 @@ class DeckModeChipButton extends StatelessWidget {
   /// Receives the chip's own context, so the popup can anchor under it.
   final void Function(BuildContext chipContext) onTap;
 
-  /// The class to render at; defaults to the screen's.
+  /// The class to render at. The chip is the same at every class; kept so
+  /// callers and the gallery can pass it.
   final ScreenSizeClass? sizeClass;
 
   /// The full label: "Lights mode: Relax", or the mode alone without a
@@ -69,11 +70,7 @@ class DeckModeChipButton extends StatelessWidget {
     final theme = Theme.of(context);
     final neutrals = theme.neutrals;
     final soft = ControlTint.of(theme, config.color).soft;
-    final resolvedClass = sizeClass ?? locator<ScreenService>().sizeClass;
     final fullLabel = labelFor(AppLocalizations.of(context)!, config);
-    final shownLabel = resolvedClass == ScreenSizeClass.compact
-        ? config.label
-        : fullLabel;
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppBorderRadius.base),
       side: BorderSide(color: soft, width: AppSpacings.scale(1)),
@@ -103,7 +100,7 @@ class DeckModeChipButton extends StatelessWidget {
                 children: [
                   Flexible(
                     child: Text(
-                      shownLabel,
+                      fullLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

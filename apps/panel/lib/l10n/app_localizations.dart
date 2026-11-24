@@ -580,6 +580,30 @@ abstract class AppLocalizations {
   /// **'Cooling setpoint'**
   String get dial_cool_setpoint;
 
+  /// Screen-reader label of a temperature dial when its screen gives none
+  ///
+  /// In en, this message translates to:
+  /// **'Target temperature'**
+  String get dial_target_temperature;
+
+  /// Screen-reader label of a non-temperature dial when its screen gives none
+  ///
+  /// In en, this message translates to:
+  /// **'Target value'**
+  String get dial_target_value;
+
+  /// Screen-reader state of a control whose command is still being sent
+  ///
+  /// In en, this message translates to:
+  /// **'Sending'**
+  String get control_state_pending;
+
+  /// Screen-reader state of a control whose command was never confirmed
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed'**
+  String get control_state_unconfirmed;
+
   /// Message shown when devices are skipped due to being offline
   ///
   /// In en, this message translates to:

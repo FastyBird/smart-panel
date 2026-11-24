@@ -265,6 +265,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dial_cool_setpoint => 'Cooling setpoint';
 
   @override
+  String get dial_target_temperature => 'Target temperature';
+
+  @override
+  String get dial_target_value => 'Target value';
+
+  @override
+  String get control_state_pending => 'Sending';
+
+  @override
+  String get control_state_unconfirmed => 'Not confirmed';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

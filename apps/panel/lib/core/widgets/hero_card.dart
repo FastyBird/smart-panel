@@ -25,7 +25,7 @@ class HeroCardMetrics {
     padding: 8,
     gap: 4,
     badgeHeight: 36,
-    sliderHeight: 36,
+    sliderHeight: 48,
     buttonsHeight: 36,
     numeralMax: 88,
   );
@@ -35,7 +35,7 @@ class HeroCardMetrics {
     padding: 12,
     gap: 8,
     badgeHeight: 36,
-    sliderHeight: 40,
+    sliderHeight: 48,
     buttonsHeight: 44,
     numeralMax: 160,
   );
@@ -64,6 +64,9 @@ class HeroCardMetrics {
   final double padding;
   final double gap;
   final double badgeHeight;
+
+  /// The slider's slot: 48 at every class, the spec §4 touch floor for a
+  /// hero slider (the canvas draws 36 / 40 / 48).
   final double sliderHeight;
   final double buttonsHeight;
   final double numeralMax;
