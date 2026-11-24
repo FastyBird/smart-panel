@@ -68,7 +68,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			{
 				path: 'tokens',
 				name: RouteNames.DISPLAY_TOKENS,
-				component: () => import('../views/view-display-tokens.vue'),
+				// The Access tokens tab of the detail page; the detail draws it, this route only selects it
+				component: { render: () => null },
 				props: true,
 				meta: {
 					guards: {

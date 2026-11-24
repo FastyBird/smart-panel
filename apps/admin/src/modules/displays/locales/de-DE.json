@@ -32,9 +32,6 @@
 			},
 			"detail": {
 				"title": "Anzeige: {display}"
-			},
-			"tokens": {
-				"title": "Zugriffstoken: {display}"
 			}
 		}
 	},
@@ -375,16 +372,13 @@
 	"detail": {
 		"title": "Display-Details",
 		"info": {
-			"title": "Display-Informationen",
-			"macAddress": "MAC-Adresse",
 			"version": "Version",
 			"build": "Bauen",
 			"resolution": "Auflösung",
 			"pixelRatio": "Pixelverhältnis",
 			"gridSize": "Rastergröße",
 			"registeredFromIp": "Registrierte IP",
-			"currentIpAddress": "Aktuelle IP",
-			"status": "Verbindungsstatus"
+			"currentIpAddress": "Aktuelle IP"
 		},
 		"settings": {
 			"title": "Display-Einstellungen",
@@ -416,11 +410,23 @@
 		},
 		"tokens": {
 			"title": "Zugriffstoken",
-			"subtitle": "Token verwalten",
 			"description": "Verwalten Sie Zugriffstoken für dieses Display. Jedes Display sollte höchstens einen aktiven Token haben.",
 			"noTokens": "Keine aktiven Token",
 			"revokeConfirm": "Sind Sie sicher, dass Sie den Zugriffstoken widerrufen möchten? Das Display muss sich erneut registrieren.",
-			"revoked": "Token erfolgreich widerrufen"
+			"revoked": "Token erfolgreich widerrufen",
+			"loading": "Zugriffstoken werden geladen…",
+			"noTokensHint": "Das Display erhält bei der Registrierung ein Token. Nach dem Widerrufen muss es sich erneut registrieren.",
+			"status": {
+				"active": "Aktiv",
+				"revoked": "Widerrufen"
+			},
+			"fields": {
+				"id": "Token-ID",
+				"created": "Erstellt",
+				"expires": "Läuft ab"
+			},
+			"never": "Nie",
+			"revokeError": "Das Zugriffstoken konnte nicht widerrufen werden"
 		},
 		"spaceContext": {
 			"title": "Bereichskontext",
@@ -437,6 +443,14 @@
 			"initialViews": {
 				"spaceOverview": "Bereichsübersicht"
 			}
+		},
+		"tabs": {
+			"overview": "Übersicht",
+			"tokens": "Zugriffstoken"
+		},
+		"values": {
+			"enabled": "Aktiviert",
+			"disabled": "Deaktiviert"
 		}
 	},
 	"messages": {
@@ -460,8 +474,7 @@
 		}
 	},
 	"actions": {
-		"revokeToken": "Token widerrufen",
-		"manageTokens": "Token verwalten"
+		"revokeToken": "Token widerrufen"
 	},
 	"aria": {
 		"edit": "{display} bearbeiten",

@@ -32,9 +32,6 @@
 			},
 			"detail": {
 				"title": "Display: {display}"
-			},
-			"tokens": {
-				"title": "Access tokens: {display}"
 			}
 		}
 	},
@@ -375,16 +372,13 @@
 	"detail": {
 		"title": "Display detail",
 		"info": {
-			"title": "Display information",
-			"macAddress": "MAC address",
 			"version": "Version",
 			"build": "Build",
 			"resolution": "Resolution",
 			"pixelRatio": "Pixel ratio",
 			"gridSize": "Grid size",
 			"registeredFromIp": "Registered IP",
-			"currentIpAddress": "Current IP",
-			"status": "Connection state"
+			"currentIpAddress": "Current IP"
 		},
 		"settings": {
 			"title": "Display settings",
@@ -416,11 +410,23 @@
 		},
 		"tokens": {
 			"title": "Access tokens",
-			"subtitle": "Manage tokens",
 			"description": "Manage access tokens for this display. Each display should have at most one active token.",
 			"noTokens": "No active tokens",
 			"revokeConfirm": "Are you sure you want to revoke the access token? The display will need to re-register.",
-			"revoked": "Token revoked successfully"
+			"revoked": "Token revoked successfully",
+			"loading": "Loading access tokens…",
+			"noTokensHint": "The display gets a token when it registers. Revoking it makes the display register again.",
+			"status": {
+				"active": "Active",
+				"revoked": "Revoked"
+			},
+			"fields": {
+				"id": "Token ID",
+				"created": "Created",
+				"expires": "Expires"
+			},
+			"never": "Never",
+			"revokeError": "The access token could not be revoked"
 		},
 		"spaceContext": {
 			"title": "Space context",
@@ -437,6 +443,14 @@
 			"initialViews": {
 				"spaceOverview": "Space overview"
 			}
+		},
+		"tabs": {
+			"overview": "Overview",
+			"tokens": "Access tokens"
+		},
+		"values": {
+			"enabled": "Enabled",
+			"disabled": "Disabled"
 		}
 	},
 	"messages": {
@@ -460,8 +474,7 @@
 		}
 	},
 	"actions": {
-		"revokeToken": "Revoke token",
-		"manageTokens": "Manage tokens"
+		"revokeToken": "Revoke token"
 	},
 	"aria": {
 		"edit": "Edit {display}",

@@ -32,9 +32,6 @@
 			},
 			"detail": {
 				"title": "Displej: {display}"
-			},
-			"tokens": {
-				"title": "Přístupové tokeny: {display}"
 			}
 		}
 	},
@@ -375,16 +372,13 @@
 	"detail": {
 		"title": "Detail displeje",
 		"info": {
-			"title": "Informace o displeji",
-			"macAddress": "MAC adresa",
 			"version": "Verze",
 			"build": "Sestavení",
 			"resolution": "Rozlišení",
 			"pixelRatio": "Poměr pixelů",
 			"gridSize": "Velikost mřížky",
 			"registeredFromIp": "Registrační IP",
-			"currentIpAddress": "Aktuální IP",
-			"status": "Stav připojení"
+			"currentIpAddress": "Aktuální IP"
 		},
 		"settings": {
 			"title": "Nastavení displeje",
@@ -416,11 +410,23 @@
 		},
 		"tokens": {
 			"title": "Přístupové tokeny",
-			"subtitle": "Správa tokenů",
 			"description": "Správa přístupových tokenů pro tento displej. Každý displej by měl mít maximálně jeden aktivní token.",
 			"noTokens": "Žádné aktivní tokeny",
 			"revokeConfirm": "Opravdu chcete odvolat přístupový token? Displej se bude muset znovu zaregistrovat.",
-			"revoked": "Token byl úspěšně odvolán"
+			"revoked": "Token byl úspěšně odvolán",
+			"loading": "Načítání přístupových tokenů…",
+			"noTokensHint": "Displej dostane token při registraci. Po jeho odvolání se displej musí zaregistrovat znovu.",
+			"status": {
+				"active": "Aktivní",
+				"revoked": "Odvolaný"
+			},
+			"fields": {
+				"id": "ID tokenu",
+				"created": "Vytvořeno",
+				"expires": "Platnost do"
+			},
+			"never": "Nikdy",
+			"revokeError": "Přístupový token se nepodařilo odvolat"
 		},
 		"spaceContext": {
 			"title": "Kontext prostoru",
@@ -437,6 +443,14 @@
 			"initialViews": {
 				"spaceOverview": "Přehled prostoru"
 			}
+		},
+		"tabs": {
+			"overview": "Přehled",
+			"tokens": "Přístupové tokeny"
+		},
+		"values": {
+			"enabled": "Zapnuto",
+			"disabled": "Vypnuto"
 		}
 	},
 	"messages": {
@@ -460,8 +474,7 @@
 		}
 	},
 	"actions": {
-		"revokeToken": "Odvolat token",
-		"manageTokens": "Spravovat tokeny"
+		"revokeToken": "Odvolat token"
 	},
 	"aria": {
 		"edit": "Upravit {display}",

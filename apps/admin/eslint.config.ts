@@ -40,6 +40,8 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	// AR-18: the scenes list, add and edit, the action list and the local scenes plugin
 	'src/modules/scenes',
 	'src/plugins/scenes-local',
+	// AR-19: the displays list, detail, edit and access tokens
+	'src/modules/displays',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

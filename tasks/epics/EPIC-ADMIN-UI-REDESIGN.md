@@ -88,7 +88,7 @@ dark, and updates all six locales.
 | AR-16 | #1673 | 3 | `feat(admin): turn notifications into a two-pane inbox` | AR-3, AR-5, AR-8 | merged in #1751 |
 | AR-17 | #1674 | 4 | `refactor(admin): move spaces onto the page templates` | AR-9, AR-10 | merged in #1752, #1754 and #1755 |
 | AR-18 | #1675 | 4 | `refactor(admin): move scenes onto the page templates` | AR-9, AR-10 | done (#1757, #1758) |
-| AR-19 | #1676 | 4 | `refactor(admin): move displays onto the page templates` | AR-9, AR-10 | part 1 (list, edit drawer) in review; part 2 (detail, tokens, lint) next |
+| AR-19 | #1676 | 4 | `refactor(admin): move displays onto the page templates` | AR-9, AR-10 | part 1 merged in #1760; part 2 (detail, tokens, lint) in review |
 | AR-20 | #1677 | 4 | `refactor(admin): move pages and tiles onto the page templates` | AR-9, AR-10, AR-13 | open |
 | AR-21 | #1678 | 4 | `refactor(admin): move weather onto the page templates` | AR-9, AR-10 | open |
 | AR-22 | #1679 | 4 | `refactor(admin): rebuild the overview as a dashboard` | AR-3, AR-8 | open |

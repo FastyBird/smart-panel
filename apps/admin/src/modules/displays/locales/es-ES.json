@@ -32,9 +32,6 @@
 			},
 			"detail": {
 				"title": "Pantalla: {display}"
-			},
-			"tokens": {
-				"title": "Tokens de acceso: {display}"
 			}
 		}
 	},
@@ -375,16 +372,13 @@
 	"detail": {
 		"title": "Detalle de pantalla",
 		"info": {
-			"title": "Información de la pantalla",
-			"macAddress": "Dirección MAC",
 			"version": "Versión",
 			"build": "Compilación",
 			"resolution": "Resolución",
 			"pixelRatio": "Proporción de píxeles",
 			"gridSize": "Tamaño de cuadrícula",
 			"registeredFromIp": "IP de registro",
-			"currentIpAddress": "IP actual",
-			"status": "Estado de conexión"
+			"currentIpAddress": "IP actual"
 		},
 		"settings": {
 			"title": "Configuración de pantalla",
@@ -416,11 +410,23 @@
 		},
 		"tokens": {
 			"title": "Tokens de acceso",
-			"subtitle": "Gestionar tokens",
 			"description": "Gestiona los tokens de acceso para esta pantalla. Cada pantalla debe tener como máximo un token activo.",
 			"noTokens": "Sin tokens activos",
 			"revokeConfirm": "¿Estás seguro de que deseas revocar el token de acceso? La pantalla necesitará volver a registrarse.",
-			"revoked": "Token revocado correctamente"
+			"revoked": "Token revocado correctamente",
+			"loading": "Cargando tokens de acceso…",
+			"noTokensHint": "La pantalla recibe un token al registrarse. Al revocarlo, la pantalla tendrá que registrarse de nuevo.",
+			"status": {
+				"active": "Activo",
+				"revoked": "Revocado"
+			},
+			"fields": {
+				"id": "ID del token",
+				"created": "Creado",
+				"expires": "Caduca"
+			},
+			"never": "Nunca",
+			"revokeError": "No se pudo revocar el token de acceso"
 		},
 		"spaceContext": {
 			"title": "Contexto del espacio",
@@ -437,6 +443,14 @@
 			"initialViews": {
 				"spaceOverview": "Vista general del espacio"
 			}
+		},
+		"tabs": {
+			"overview": "Resumen",
+			"tokens": "Tokens de acceso"
+		},
+		"values": {
+			"enabled": "Activado",
+			"disabled": "Desactivado"
 		}
 	},
 	"messages": {
@@ -460,8 +474,7 @@
 		}
 	},
 	"actions": {
-		"revokeToken": "Revocar token",
-		"manageTokens": "Gestionar tokens"
+		"revokeToken": "Revocar token"
 	},
 	"aria": {
 		"edit": "Editar {display}",

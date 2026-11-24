@@ -2,275 +2,127 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isDisplayRoute || isLGDevice"
+		v-if="isDetailRoute || inDrawer"
 		:title="display?.name || display?.macAddress || t('displaysModule.detail.title')"
 		:subtitle="t('displaysModule.detail.title')"
 		icon="mdi:monitor"
-		@back="router.push({ name: RouteNames.DISPLAYS })"
+		:actions="display ? [{ icon: 'mdi:pencil', label: t('displaysModule.buttons.edit.title'), handler: onEdit }] : []"
+		@back="onBack"
 	>
 		<template #actions>
-			<div class="flex items-center">
+			<el-tooltip
+				v-if="display"
+				:content="t('displaysModule.buttons.edit.title')"
+				placement="top"
+			>
 				<el-button
+					:aria-label="t('displaysModule.aria.edit', { display: display.name || display.macAddress })"
 					plain
-					class="ml-2!"
+					data-test-id="display-edit"
 					@click="onEdit"
 				>
 					<template #icon>
 						<icon icon="mdi:pencil" />
 					</template>
 				</el-button>
-				<el-button
-					type="warning"
-					plain
-					class="ml-2!"
-					@click="onManageTokens"
-				>
-					<template #icon>
-						<icon icon="mdi:key" />
-					</template>
-					{{ t('displaysModule.actions.manageTokens') }}
-				</el-button>
-			</div>
+			</el-tooltip>
 		</template>
 	</view-header>
 
 	<div
-		v-if="isDisplayRoute || isLGDevice"
-		v-loading="isLoading"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-auto"
+		v-if="isDetailRoute || inDrawer"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<el-row v-if="display">
-			<!-- Display Information -->
-			<el-col
-				:xs="24"
-				:sm="12"
-				:md="8"
+		<!-- Template 4: edit opens next to the detail from tablet portrait up, as its own page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<!-- Template 3: the summary card, then the tabs; the page scrolls as one -->
+			<div
+				v-if="display"
+				class="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto"
 			>
-				<el-card
-					class="md:m-2 xs:my-1"
-					body-class="p-0!"
+				<display-summary :display="display" />
+
+				<el-tabs
+					:model-value="activeTab"
+					@tab-change="onTabChange"
 				>
-					<el-descriptions
-						:label-width="170"
-						:column="1"
-						border
-					>
-						<template #title>
-							<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-								<el-icon
-									class="mr-2"
-									size="28"
-								>
-									<icon icon="mdi:information" />
-								</el-icon>
-								{{ t('displaysModule.detail.info.title') }}
-							</div>
+					<el-tab-pane name="overview">
+						<template #label>
+							<span class="inline-flex items-center gap-2">
+								<icon icon="mdi:information-outline" />
+								{{ t('displaysModule.detail.tabs.overview') }}
+							</span>
 						</template>
 
-						<el-descriptions-item :label="t('displaysModule.detail.info.macAddress')">
-							<code>{{ display.macAddress }}</code>
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.info.version')">
-							{{ display.version }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.info.build')">
-							{{ display.build || '-' }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.info.resolution')">
-							{{ display.screenWidth }}x{{ display.screenHeight }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.info.pixelRatio')">
-							{{ display.pixelRatio }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.info.registeredFromIp')">
-							{{ formatIpAddress(display.registeredFromIp) }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.info.currentIpAddress')">
-							{{ formatIpAddress(display.currentIpAddress) }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.info.status')">
-							<el-tag
-								:type="
-									display.status === 'connected'
-										? 'success'
-										: display.status === 'disconnected'
-											? 'warning'
-											: display.status === 'lost'
-												? 'danger'
-												: 'info'
-								"
-							>
-								{{ t(`displaysModule.states.${display.status ?? 'unknown'}`) }}
-							</el-tag>
-						</el-descriptions-item>
-					</el-descriptions>
-				</el-card>
-			</el-col>
+						<display-overview :display="display" />
+					</el-tab-pane>
 
-			<!-- Display Settings -->
-			<el-col
-				:xs="24"
-				:sm="12"
-				:md="8"
+					<el-tab-pane
+						name="tokens"
+						lazy
+					>
+						<template #label>
+							<span class="inline-flex items-center gap-2">
+								<icon icon="mdi:key" />
+								{{ t('displaysModule.detail.tabs.tokens') }}
+							</span>
+						</template>
+
+						<display-tokens
+							:key="display.id"
+							:display="display"
+						/>
+					</el-tab-pane>
+				</el-tabs>
+			</div>
+
+			<state-view
+				v-else-if="isLoading"
+				kind="loading"
+				icon="mdi:monitor"
+				:title="t('displaysModule.texts.loadingDisplay')"
+			/>
+
+			<state-view
+				v-else
+				kind="not-found"
+				icon="mdi:monitor"
+				:title="t('displaysModule.messages.notFound')"
 			>
-				<el-card
-					class="md:m-2 xs:my-1"
-					body-class="p-0!"
-				>
-					<el-descriptions
-						:label-width="170"
-						:column="1"
-						border
+				<template #action>
+					<el-button
+						plain
+						@click="onBack"
 					>
-						<template #title>
-							<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-								<el-icon
-									class="mr-2"
-									size="28"
-								>
-									<icon icon="mdi:cog" />
-								</el-icon>
-								{{ t('displaysModule.detail.settings.title') }}
-							</div>
-						</template>
+						{{ t('displaysModule.buttons.back.title') }}
+					</el-button>
+				</template>
+			</state-view>
 
-						<el-descriptions-item :label="t('displaysModule.detail.settings.gridSize')">{{ display.cols }}x{{ display.rows }}</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.settings.darkMode')">
-							<el-tag :type="display.darkMode ? 'success' : 'info'">
-								{{ display.darkMode ? 'Enabled' : 'Disabled' }}
-							</el-tag>
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.settings.brightness')">{{ display.brightness }}%</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.settings.screenLockDuration')">
-							{{ formatScreenLockDuration(display.screenLockDuration) }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.settings.screenSaver')">
-							<el-tag :type="display.screenSaver ? 'success' : 'info'">
-								{{ display.screenSaver ? 'Enabled' : 'Disabled' }}
-							</el-tag>
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('displaysModule.detail.settings.screenPowerOff')">
-							<el-tag :type="display.screenPowerOff ? 'success' : 'info'">
-								{{ display.screenPowerOff ? 'Enabled' : 'Disabled' }}
-							</el-tag>
-						</el-descriptions-item>
-					</el-descriptions>
-				</el-card>
-			</el-col>
+			<template #form>
+				<view-error>
+					<template #icon>
+						<icon icon="mdi:monitor" />
+					</template>
+					<template #message>
+						{{ t('displaysModule.messages.loadError') }}
+					</template>
 
-			<!-- Peripherals - Only shown if any peripheral is supported -->
-			<el-col
-				v-if="display.audioOutputSupported || display.audioInputSupported"
-				:xs="24"
-				:sm="12"
-				:md="8"
-			>
-				<el-card
-					class="md:m-2 xs:my-1"
-					body-class="p-0!"
-				>
-					<el-descriptions
-						:label-width="170"
-						:column="1"
-						border
-					>
-						<template #title>
-							<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-								<el-icon
-									class="mr-2"
-									size="28"
-								>
-									<icon icon="mdi:usb" />
-								</el-icon>
-								{{ t('displaysModule.detail.peripherals.title') }}
-							</div>
-						</template>
-
-						<!-- Audio Output -->
-						<template v-if="display.audioOutputSupported">
-							<el-descriptions-item :label="t('displaysModule.detail.peripherals.audioOutput')">
-								<el-tag :type="display.speaker ? 'success' : 'info'">
-									{{ display.speaker ? 'Enabled' : 'Disabled' }}
-								</el-tag>
-							</el-descriptions-item>
-							<el-descriptions-item :label="t('displaysModule.detail.peripherals.audioOutputVolume')">
-								{{ display.speakerVolume }}%
-							</el-descriptions-item>
-						</template>
-
-						<!-- Audio Input -->
-						<template v-if="display.audioInputSupported">
-							<el-descriptions-item :label="t('displaysModule.detail.peripherals.audioInput')">
-								<el-tag :type="display.microphone ? 'success' : 'info'">
-									{{ display.microphone ? 'Enabled' : 'Disabled' }}
-								</el-tag>
-							</el-descriptions-item>
-							<el-descriptions-item :label="t('displaysModule.detail.peripherals.audioInputVolume')">
-								{{ display.microphoneVolume }}%
-							</el-descriptions-item>
-						</template>
-					</el-descriptions>
-				</el-card>
-			</el-col>
-
-			<!-- Space Context -->
-			<el-col
-				:xs="24"
-				:sm="12"
-				:md="8"
-			>
-				<el-card
-					class="md:m-2 xs:my-1"
-					body-class="p-0!"
-				>
-					<el-descriptions
-						:label-width="170"
-						:column="1"
-						border
-					>
-						<template #title>
-							<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-								<el-icon
-									class="mr-2"
-									size="28"
-								>
-									<icon icon="mdi:home-map-marker" />
-								</el-icon>
-								{{ t('displaysModule.detail.spaceContext.title') }}
-							</div>
-						</template>
-
-						<!-- Home Page Mode -->
-						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.homeMode')">
-							{{ t(`displaysModule.detail.spaceContext.homeModes.${display.homeMode}`) }}
-						</el-descriptions-item>
-
-						<!-- Assigned Space -->
-						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.assignedSpace')">
-							{{ assignedSpaceName || t('displaysModule.detail.spaceContext.notAssigned') }}
-						</el-descriptions-item>
-
-						<!-- Initial View -->
-						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.initialView')">
-							{{ initialViewLabel }}
-						</el-descriptions-item>
-					</el-descriptions>
-
-					<!-- Informational Hint -->
-					<div class="px-4 py-3 text-xs text-gray-400 border-t border-gray-100">
-						{{ t('displaysModule.detail.spaceContext.hint') }}
-					</div>
-				</el-card>
-			</el-col>
-		</el-row>
-
-		<entity-not-found
-			v-else-if="!isLoading"
-			icon="mdi:monitor"
-			:message="t('displaysModule.messages.notFound')"
-			:button-label="t('displaysModule.buttons.back.title')"
-			@back="router.push({ name: RouteNames.DISPLAYS })"
-		/>
+					<suspense>
+						<router-view v-slot="{ Component }">
+							<component
+								:is="Component"
+								v-model:remote-form-changed="remoteFormChanged"
+							/>
+						</router-view>
+					</suspense>
+				</view-error>
+			</template>
+		</edit-drawer-layout>
 	</div>
 
 	<router-view
@@ -279,25 +131,6 @@
 	>
 		<component :is="Component" />
 	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		size="40%"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<suspense>
-					<router-view v-slot="{ Component }">
-						<component :is="Component" />
-					</router-view>
-				</suspense>
-			</template>
-		</app-bar-scope>
-	</el-drawer>
 </template>
 
 <script setup lang="ts">
@@ -306,15 +139,18 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, ElIcon, ElRow, ElTag, vLoading } from 'element-plus';
+import { ElButton, ElMessageBox, ElTabPane, ElTabs, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, EntityNotFound, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, StateView, ViewError, ViewHeader, provideEditDrawer, useFlashMessage } from '../../../common';
 import { usePages } from '../../dashboard/composables/composables';
 import { useSpaces } from '../../spaces/composables';
+import DisplayOverview from '../components/display-overview.vue';
+import DisplaySummary from '../components/display-summary.vue';
+import DisplayTokens from '../components/display-tokens.vue';
 import { useDisplay } from '../composables/composables';
-import { RouteNames, SCREEN_LOCK_DURATION_OPTIONS } from '../displays.constants';
+import { RouteNames } from '../displays.constants';
 import type { IDisplay } from '../store/displays.store.types';
 
 import type { IViewDisplayProps } from './view-display.types';
@@ -328,66 +164,51 @@ const props = defineProps<IViewDisplayProps>();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+const { meta } = useMeta({});
 const flashMessage = useFlashMessage();
-
-const { isLGDevice } = useBreakpoints();
 
 const displayId = computed(() => props.id);
 const { display, isLoading } = useDisplay(displayId);
 
-// Space context data
-const { findById: findSpaceById, fetchSpaces, firstLoadFinished: spacesLoaded } = useSpaces();
-const { pages, fetchPages, loaded: pagesLoaded } = usePages();
-
-const assignedSpaceName = computed<string | null>(() => {
-	if (!display.value?.spaceId) return null;
-	const space = findSpaceById(display.value.spaceId);
-	return space?.name ?? null;
-});
-
-const initialViewLabel = computed<string>(() => {
-	if (!display.value) return '-';
-
-	// If explicit mode with a page selected
-	if (display.value.homeMode === 'explicit' && display.value.homePageId) {
-		const page = pages.value.find((p) => p.id === display.value?.homePageId);
-		return page?.title ?? t('displaysModule.detail.spaceContext.selectedPage');
-	}
-
-	// Auto_space mode — the panel opens the default view for the space's type.
-	return t('displaysModule.detail.spaceContext.initialViews.spaceOverview');
-});
+// The Overview tab names the assigned space and the home page
+const { fetchSpaces, firstLoadFinished: spacesLoaded } = useSpaces();
+const { fetchPages, loaded: pagesLoaded } = usePages();
 
 // Track if display was previously loaded to detect deletion
 const wasDisplayLoaded = ref<boolean>(false);
 
-const formatIpAddress = (ipAddress: string | null | undefined): string => {
-	if (!ipAddress) {
-		return '-';
+const remoteFormChanged = ref<boolean>(false);
+
+// The tabs are routes, so a link can open Access tokens straight away
+const isDetailRoute = computed<boolean>((): boolean => route.name === RouteNames.DISPLAY || route.name === RouteNames.DISPLAY_TOKENS);
+
+const showDrawer = computed<boolean>((): boolean => route.name === RouteNames.DISPLAY_EDIT);
+
+// Template 4: the edit form opens next to this page from tablet portrait up, as its own page on phone
+const { inDrawer } = provideEditDrawer((): boolean => showDrawer.value);
+
+// The tab stays as it was while the edit form is open over it
+const activeTab = ref<'overview' | 'tokens'>(route.name === RouteNames.DISPLAY_TOKENS ? 'tokens' : 'overview');
+
+watch(
+	(): unknown => route.name,
+	(name: unknown): void => {
+		if (name === RouteNames.DISPLAY) {
+			activeTab.value = 'overview';
+		} else if (name === RouteNames.DISPLAY_TOKENS) {
+			activeTab.value = 'tokens';
+		}
+
+		// The changed flag belongs to the open edit form; once it is gone, the next one starts clean
+		if (name !== RouteNames.DISPLAY_EDIT) {
+			remoteFormChanged.value = false;
+		}
 	}
-	const normalized = ipAddress.toLowerCase().trim();
-	if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') {
-		return t('displaysModule.table.columns.local');
-	}
-	return ipAddress;
-};
-
-const formatScreenLockDuration = (seconds: number): string => {
-	const match = SCREEN_LOCK_DURATION_OPTIONS.find((o) => o.value === seconds);
-	return match ? t(`displaysModule.fields.displays.screenLockDuration.options.${match.labelKey}`) : `${seconds}s`;
-};
-
-const { meta } = useMeta({});
-
-const showDrawer = ref<boolean>(false);
-
-const isDisplayRoute = computed<boolean>((): boolean => {
-	return route.name === RouteNames.DISPLAY;
-});
+);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
-		return [
+		const items = [
 			{
 				label: t('displaysModule.breadcrumbs.displays.list'),
 				route: router.resolve({ name: RouteNames.DISPLAYS }),
@@ -397,71 +218,91 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 				route: router.resolve({ name: RouteNames.DISPLAY, params: { id: props.id } }),
 			},
 		];
+
+		if (activeTab.value === 'tokens') {
+			items.push({
+				label: t('displaysModule.breadcrumbs.displays.tokens'),
+				route: router.resolve({ name: RouteNames.DISPLAY_TOKENS, params: { id: props.id } }),
+			});
+		}
+
+		return items;
 	}
 );
 
-const onCloseDrawer = (done?: () => void): void => {
-	router.replace({
-		name: RouteNames.DISPLAY,
-		params: { id: props.id },
-	});
+const tabRoute = (tab: 'overview' | 'tokens') => ({
+	name: tab === 'tokens' ? RouteNames.DISPLAY_TOKENS : RouteNames.DISPLAY,
+	params: { id: props.id },
+});
+
+const onTabChange = (tab: string | number): void => {
+	activeTab.value = tab === 'tokens' ? 'tokens' : 'overview';
+
+	// With the edit form open the route belongs to it; the tab follows when it closes
+	if (!showDrawer.value) {
+		router.replace(tabRoute(activeTab.value));
+	}
+};
+
+const confirmDiscard = async (): Promise<boolean> => {
+	try {
+		await ElMessageBox.confirm(t('displaysModule.texts.confirmDiscard'), t('displaysModule.headings.discard'), {
+			confirmButtonText: t('displaysModule.buttons.discard.title'),
+			cancelButtonText: t('displaysModule.buttons.keepEditing.title'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+const onCloseDrawer = async (done?: () => void): Promise<void> => {
+	if (remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
+	}
+
+	router.replace(tabRoute(activeTab.value));
 
 	done?.();
 };
 
 const onEdit = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.DISPLAY_EDIT,
-			params: { id: props.id },
-		});
+	if (showDrawer.value) {
+		return;
+	}
+
+	const to = { name: RouteNames.DISPLAY_EDIT, params: { id: props.id } };
+
+	if (inDrawer.value) {
+		router.replace(to);
 	} else {
-		router.push({
-			name: RouteNames.DISPLAY_EDIT,
-			params: { id: props.id },
-		});
+		router.push(to);
 	}
 };
 
-const onManageTokens = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.DISPLAY_TOKENS,
-			params: { id: props.id },
-		});
-	} else {
-		router.push({
-			name: RouteNames.DISPLAY_TOKENS,
-			params: { id: props.id },
-		});
+const onBack = async (): Promise<void> => {
+	if (showDrawer.value && remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
 	}
+
+	router.push({ name: RouteNames.DISPLAYS });
 };
 
-onBeforeMount(async (): Promise<void> => {
-	// Mark as loaded if display was successfully fetched
+onBeforeMount((): void => {
 	if (display.value !== null) {
 		wasDisplayLoaded.value = true;
 	}
 
-	showDrawer.value =
-		route.matched.find((matched) => matched.name === RouteNames.DISPLAY_EDIT || matched.name === RouteNames.DISPLAY_TOKENS) !== undefined;
-
-	// Fetch data for space context if not already loaded
 	if (!spacesLoaded.value) {
 		fetchSpaces();
 	}
+
 	if (!pagesLoaded.value) {
 		fetchPages();
 	}
 });
-
-watch(
-	(): string => route.path,
-	(): void => {
-		showDrawer.value =
-			route.matched.find((matched) => matched.name === RouteNames.DISPLAY_EDIT || matched.name === RouteNames.DISPLAY_TOKENS) !== undefined;
-	}
-);
 
 watch(
 	(): IDisplay | null => display.value,
@@ -470,17 +311,10 @@ watch(
 			wasDisplayLoaded.value = true;
 			meta.title = t('displaysModule.meta.displays.detail.title', { display: val.name || val.macAddress });
 		} else if (wasDisplayLoaded.value && !isLoading.value) {
-			// Display was previously loaded but is now null - it was deleted
+			// The display was deleted while it was open
 			flashMessage.warning(t('displaysModule.messages.deletedWhileEditing'), { duration: 0 });
-			// Redirect to displays list
-			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.DISPLAYS });
-			} else {
-				router.push({ name: RouteNames.DISPLAYS });
-			}
-		} else if (!isLoading.value && val === null && !wasDisplayLoaded.value) {
-			// Display was never loaded - initial load failed (but don't throw, just show error state)
-			// The template already handles this with v-else-if="!isLoading"
+
+			router.replace({ name: RouteNames.DISPLAYS });
 		}
 	},
 	{ immediate: true }
