@@ -32,11 +32,17 @@ class SettingsTileMetrics {
   /// Between the icon tile and the label, side by side.
   static const double rowGap = 8;
 
-  /// The height the stacked layout needs: the padding, the icon tile and a
-  /// label line with room to spare. A shorter tile lays the label beside the
-  /// icon (design canvas: a row tile below 64 px).
+  /// The height the stacked layout needs besides the label line: the
+  /// padding, the icon tile and a 4 px gap.
+  static double stackedChromeFor(ScreenSizeClass sizeClass) =>
+      2 * paddingFor(sizeClass) + chipFor(sizeClass) + 4;
+
+  /// The height the stacked layout needs at the default text scale: the
+  /// chrome and a label line with room to spare. A shorter tile lays the
+  /// label beside the icon (design canvas: a row tile below 64 px). Larger
+  /// text raises it by the label's measured line.
   static double stackedHeightFor(ScreenSizeClass sizeClass) =>
-      2 * paddingFor(sizeClass) + chipFor(sizeClass) + 1.5 * labelFor(sizeClass) + 4;
+      stackedChromeFor(sizeClass) + 1.5 * labelFor(sizeClass);
 }
 
 /// A tile on the settings home grid: `surface.card` with a `border.light`
@@ -96,12 +102,30 @@ class SettingsTile extends StatelessWidget {
 
     final content = LayoutBuilder(
       builder: (context, constraints) {
+        // The label's line as drawn, with the platform's text scale.
+        final painter = TextPainter(
+          text: TextSpan(
+            text: label,
+            style: DefaultTextStyle.of(context).style.merge(labelStyle),
+          ),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        );
+        final lineHeight = painter.preferredLineHeight;
+        painter.dispose();
+
+        final stackedHeight =
+            AppSpacings.scale(
+              SettingsTileMetrics.stackedChromeFor(resolvedClass),
+            ) +
+            math.max(
+              lineHeight,
+              AppSpacings.scale(1.5 * SettingsTileMetrics.labelFor(resolvedClass)),
+            );
         final stacked =
             !constraints.hasBoundedHeight ||
-            constraints.maxHeight >=
-                AppSpacings.scale(
-                  SettingsTileMetrics.stackedHeightFor(resolvedClass),
-                );
+            constraints.maxHeight >= stackedHeight;
 
         if (stacked) {
           return Padding(
@@ -111,11 +135,13 @@ class SettingsTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 chip(chipSize),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: labelStyle,
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: labelStyle,
+                  ),
                 ),
               ],
             ),
@@ -129,6 +155,9 @@ class SettingsTile extends StatelessWidget {
           0.0,
           math.min(padding, (constraints.maxHeight - rowChip) / 2),
         );
+        // Two lines when they fit, else one.
+        final lines =
+            constraints.maxHeight - 2 * vertical >= 2 * lineHeight ? 2 : 1;
 
         return Padding(
           padding: EdgeInsets.symmetric(
@@ -142,7 +171,7 @@ class SettingsTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  maxLines: 2,
+                  maxLines: lines,
                   overflow: TextOverflow.ellipsis,
                   style: labelStyle,
                 ),

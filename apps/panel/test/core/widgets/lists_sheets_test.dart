@@ -1299,6 +1299,34 @@ void main() {
       });
     }
 
+    testWidgets('with enlarged text a tile at the stacked threshold keeps its label inside', (tester) async {
+      final height = SettingsTileMetrics.stackedHeightFor(ScreenSizeClass.regular);
+      for (final scale in [1.0, 1.5, 2.0, 3.0]) {
+        await _pump(
+          tester,
+          MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: SizedBox(
+              width: 160,
+              height: height,
+              child: SettingsTile(
+                label: 'Display',
+                icon: MdiIcons.weatherSunny,
+                iconColor: AppColors.white,
+                iconBgColor: AppColors.white,
+                sizeClass: ScreenSizeClass.regular,
+              ),
+            ),
+          ),
+        );
+
+        expect(tester.takeException(), isNull, reason: 'at $scale');
+        final tile = tester.getRect(find.byType(SettingsTile));
+        final label = tester.getRect(find.text('Display'));
+        expect(label.top >= tile.top && label.bottom <= tile.bottom, isTrue, reason: 'at $scale');
+      }
+    });
+
     testWidgets('a tile too short to stack lays the label beside the icon', (tester) async {
       await _pump(
         tester,
