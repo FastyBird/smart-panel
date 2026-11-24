@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -21,6 +22,10 @@ class ToastMetrics {
 
   /// Up to two lines, so a message is never cut short.
   static const int maxLines = 2;
+
+  /// The share of the pill an action may take; a longer label ellipsizes, so
+  /// the message keeps the rest.
+  static const double actionShare = 0.4;
 
   /// The portrait bar the toast sits above (spec §4): 44 / 52 / 56, 40 on a
   /// square panel.
@@ -102,7 +107,10 @@ class Toast {
         brightness: brightness,
         actionLabel: actionLabel,
         onAction: onAction,
-        onDismiss: dismiss,
+        onDismiss: () {
+          // A replaced toast must not remove its successor.
+          if (identical(_currentToast, entry)) dismiss();
+        },
       ),
     );
 
@@ -255,6 +263,30 @@ class _ToastViewState extends State<ToastView>
     }
   }
 
+  @override
+  void didUpdateWidget(covariant ToastView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.animate == widget.animate || _isDismissing) return;
+
+    _autoDismissTimer?.cancel();
+    _autoDismissTimer = null;
+
+    if (widget.animate) {
+      _autoDismissTimer = Timer(widget.duration, _dismiss);
+    } else {
+      _controller.value = 1;
+    }
+  }
+
+  /// Runs the action once; a tap while the toast fades out does nothing.
+  void _runAction() {
+    if (_isDismissing) return;
+
+    widget.onAction!();
+    _dismiss();
+  }
+
   void _dismiss() {
     if (_isDismissing) return;
     _isDismissing = true;
@@ -310,7 +342,7 @@ class _ToastViewState extends State<ToastView>
     final height = AppSpacings.scale(ToastMetrics.height);
     final hasAction = widget.actionLabel != null && widget.onAction != null;
 
-    final pill = Container(
+    Widget pill(double maxWidth) => Container(
       constraints: BoxConstraints(minHeight: height),
       padding: EdgeInsetsDirectional.only(
         start: AppSpacings.scale(ToastMetrics.paddingStart),
@@ -353,15 +385,16 @@ class _ToastViewState extends State<ToastView>
             Semantics(
               button: true,
               child: InkWell(
-                onTap: () {
-                  widget.onAction!();
-                  _dismiss();
-                },
+                onTap: _runAction,
                 borderRadius: BorderRadius.circular(height / 2),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: height,
                     minWidth: height,
+                    maxWidth: math.max(
+                      height,
+                      maxWidth * ToastMetrics.actionShare,
+                    ),
                   ),
                   child: Padding(
                     padding: EdgeInsetsDirectional.only(
@@ -372,6 +405,8 @@ class _ToastViewState extends State<ToastView>
                       widthFactor: 1,
                       child: Text(
                         widget.actionLabel!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: actionColor,
                           fontSize: AppFontSize.small,
@@ -409,7 +444,13 @@ class _ToastViewState extends State<ToastView>
                 container: true,
                 child: Material(
                   type: MaterialType.transparency,
-                  child: GestureDetector(onTap: _dismiss, child: pill),
+                  child: GestureDetector(
+                    onTap: _dismiss,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) =>
+                          pill(constraints.maxWidth),
+                    ),
+                  ),
                 ),
               ),
             ),

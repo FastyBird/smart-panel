@@ -48,6 +48,10 @@ Widget _narrow(Widget child, {double width = 360}) => ConstrainedBox(
   child: child,
 );
 
+/// A sample whose close button would pop the route: shown, not usable, so a
+/// tap never closes the gallery.
+Widget _static(Widget child) => IgnorePointer(child: child);
+
 Widget _column(List<Widget> children) => Column(
   crossAxisAlignment: CrossAxisAlignment.stretch,
   spacing: AppSpacings.pMd,
@@ -224,23 +228,25 @@ Widget _sheet(BuildContext context) {
   final padding = AppSpacings.scale(SheetMetrics.paddingFor(sizeClass));
 
   return _narrow(
-    BottomSheetDialog(
-      title: 'Light roles',
-      subtitle: '3 roles · tap one to control it',
-      sizeClass: sizeClass,
-      content: Padding(
-        padding: EdgeInsets.symmetric(horizontal: padding),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: AppSpacings.scale(4),
-          children: _sheetRows(context, sizeClass),
-        ),
-      ),
-      bottomSection: AppDialogButton(
-        label: 'Sync all',
-        onTap: () {},
+    _static(
+      BottomSheetDialog(
+        title: 'Light roles',
+        subtitle: '3 roles · tap one to control it',
         sizeClass: sizeClass,
+        content: Padding(
+          padding: EdgeInsets.symmetric(horizontal: padding),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: AppSpacings.scale(4),
+            children: _sheetRows(context, sizeClass),
+          ),
+        ),
+        bottomSection: AppDialogButton(
+          label: 'Sync all',
+          onTap: () {},
+          sizeClass: sizeClass,
+        ),
       ),
     ),
     width: 420,
@@ -252,14 +258,16 @@ Widget _drawer(BuildContext context) {
 
   return SizedBox(
     height: AppSpacings.scale(260),
-    child: RightDrawer(
-      title: 'Light roles',
-      subtitle: '3 roles',
-      sizeClass: sizeClass,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.scale(4),
-        children: _sheetRows(context, sizeClass),
+    child: _static(
+      RightDrawer(
+        title: 'Light roles',
+        subtitle: '3 roles',
+        sizeClass: sizeClass,
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: AppSpacings.scale(4),
+          children: _sheetRows(context, sizeClass),
+        ),
       ),
     ),
   );
@@ -272,7 +280,11 @@ Widget _confirm(BuildContext context) {
     spacing: AppSpacings.scale(AppDialogMetrics.actionGap),
     children: [
       Expanded(
-        child: AppDialogButton(label: 'Cancel', onTap: () {}, sizeClass: sizeClass),
+        child: AppDialogButton(
+          label: 'Cancel',
+          onTap: () {},
+          sizeClass: sizeClass,
+        ),
       ),
       Expanded(
         child: AppDialogButton(
@@ -312,20 +324,22 @@ Widget _confirm(BuildContext context) {
 Widget _selection(BuildContext context) {
   final sizeClass = _class(context);
 
-  return AppDialog(
-    title: 'Screen lock delay',
-    showCloseButton: true,
-    sizeClass: sizeClass,
-    child: AppSelectionList<int>(
-      options: const [
-        SelectionOption(value: 0, label: 'Never'),
-        SelectionOption(value: 30, label: '30 seconds'),
-        SelectionOption(value: 60, label: '1 minute'),
-        SelectionOption(value: 300, label: '5 minutes'),
-      ],
-      currentValue: 300,
-      onSelected: (_) {},
+  return _static(
+    AppDialog(
+      title: 'Screen lock delay',
+      showCloseButton: true,
       sizeClass: sizeClass,
+      child: AppSelectionList<int>(
+        options: const [
+          SelectionOption(value: 0, label: 'Never'),
+          SelectionOption(value: 30, label: '30 seconds'),
+          SelectionOption(value: 60, label: '1 minute'),
+          SelectionOption(value: 300, label: '5 minutes'),
+        ],
+        currentValue: 300,
+        onSelected: (_) {},
+        sizeClass: sizeClass,
+      ),
     ),
   );
 }

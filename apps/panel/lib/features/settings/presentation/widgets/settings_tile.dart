@@ -80,9 +80,12 @@ class SettingsTile extends StatelessWidget {
       ),
     );
 
+    // One node, announced once, that a screen reader can activate too.
     return Semantics(
       button: true,
+      enabled: onTap != null,
       label: label,
+      onTap: onTap,
       excludeSemantics: true,
       child: Material(
         color: neutrals.surfaceCard,

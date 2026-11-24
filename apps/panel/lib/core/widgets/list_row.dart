@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -26,8 +28,8 @@ class AppListRowMetrics {
   static const double gap = 8;
   static const double icon = 16;
 
-  /// The share of the row a trailing control may take; the title keeps the
-  /// rest and ellipsizes.
+  /// The share a trailing control may take of the width the icon and the
+  /// gaps leave; the title keeps the rest and ellipsizes.
   static const double trailingShare = 0.6;
 }
 
@@ -38,7 +40,8 @@ class AppListRowMetrics {
 /// - The title is 14/500 (spec §3), the subtitle 10 in `text.secondary`.
 /// - [selected]: the accent's soft tint with an outline in the accent text.
 /// - [danger]: the title and outline take the danger colour.
-/// - [enabled] false: the title is `text.disabled` and a tap does nothing.
+/// - [enabled] false: the title is `text.disabled`, and neither the row nor
+///   its trailing control reacts.
 ///
 /// With [onTap] the whole row is one button. Set [surface] false to lay the
 /// row inside a card that draws its own surface.
@@ -133,28 +136,55 @@ class AppListRow extends StatelessWidget {
       ],
     );
 
+    final gap = AppSpacings.scale(AppListRowMetrics.gap);
+    final iconSize = AppSpacings.scale(AppListRowMetrics.icon);
+    final leading = icon == null
+        ? null
+        : Icon(icon, size: iconSize, color: iconColor);
+
+    // A disabled row disables its control too: no taps, focus or semantic
+    // actions.
+    final control = trailing == null
+        ? null
+        : IgnorePointer(
+            ignoring: !enabled,
+            child: ExcludeFocus(excluding: !enabled, child: trailing!),
+          );
+
     final row = LayoutBuilder(
-      builder: (context, constraints) => Row(
-        spacing: AppSpacings.scale(AppListRowMetrics.gap),
-        children: [
-          if (icon != null)
-            Icon(
-              icon,
-              size: AppSpacings.scale(AppListRowMetrics.icon),
-              color: iconColor,
-            ),
-          Expanded(child: text),
-          if (trailing != null)
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: constraints.hasBoundedWidth
-                    ? constraints.maxWidth * AppListRowMetrics.trailingShare
-                    : double.infinity,
+      builder: (context, constraints) {
+        // Without a width to share (a horizontal scroll), the row takes its
+        // natural width.
+        if (!constraints.hasBoundedWidth) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: gap,
+            children: [?leading, text, ?control],
+          );
+        }
+
+        // The control's share is of the width the icon and the gaps leave,
+        // so the title always keeps the rest.
+        final fixed =
+            (leading == null ? 0.0 : iconSize + gap) +
+            (control == null ? 0.0 : gap);
+        final shared = math.max(0.0, constraints.maxWidth - fixed);
+
+        return Row(
+          spacing: gap,
+          children: [
+            ?leading,
+            Expanded(child: text),
+            if (control != null)
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: shared * AppListRowMetrics.trailingShare,
+                ),
+                child: control,
               ),
-              child: trailing!,
-            ),
-        ],
-      ),
+          ],
+        );
+      },
     );
 
     final content = ConstrainedBox(

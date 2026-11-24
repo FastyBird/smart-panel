@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_dialog.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/list_row.dart';
 import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
@@ -16,6 +17,7 @@ import 'package:fastybird_smart_panel/features/settings/presentation/widgets/set
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -133,22 +135,102 @@ void main() {
     }
 
     testWidgets('a subtitle is 10 in text.secondary and the row grows to hold it', (tester) async {
+      // The test font is as wide as it is high: 17 characters a line.
+      const text = 'Flip clock after the lock delay';
       await _pump(
         tester,
         const SizedBox(
-          width: 320,
+          width: 200,
+          child: AppListRow(title: 'Screen saver', subtitle: text, sizeClass: ScreenSizeClass.compact),
+        ),
+      );
+
+      final subtitle = tester.widget<Text>(find.text(text));
+      expect(subtitle.style!.fontSize, 10);
+      expect(subtitle.style!.color, AppNeutralPalette.light.textSecondary);
+
+      // The subtitle wraps to two lines, all shown, and the row grows past
+      // its 40 px minimum to hold the title and both lines.
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(text));
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(paragraph.size.height, greaterThan(20));
+      final row = tester.getRect(find.byType(AppListRow));
+      expect(row.height, greaterThan(40));
+      expect(row.contains(tester.getRect(find.text('Screen saver')).topLeft), isTrue);
+      expect(tester.getRect(find.text(text)).bottom, lessThanOrEqualTo(row.bottom));
+    });
+
+    testWidgets('without a bounded width (a horizontal scroll) the row takes its natural width', (tester) async {
+      for (final trailing in [null, const Text('5 min')]) {
+        await _pump(
+          tester,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: AppListRow(title: 'Screen saver', icon: MdiIcons.monitor, trailing: trailing),
+          ),
+        );
+
+        expect(tester.takeException(), isNull);
+        expect(tester.getSize(find.text('Screen saver')).width, greaterThan(0));
+      }
+    });
+
+    testWidgets('in a narrow row with an icon, the trailing cap leaves the title room', (tester) async {
+      // 65 px inside the padding: the icon and two gaps take 32 px, and the
+      // control may take 60 % of the 33 px left.
+      await _pump(
+        tester,
+        SizedBox(
+          width: 65 + AppListRowMetrics.paddingStart + AppListRowMetrics.paddingEndControl,
           child: AppListRow(
             title: 'Screen saver',
-            subtitle: 'Flip clock after the lock delay',
-            sizeClass: ScreenSizeClass.compact,
+            icon: MdiIcons.monitor,
+            trailing: const Text('Flip clock', maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ),
       );
 
-      final subtitle = tester.widget<Text>(find.text('Flip clock after the lock delay'));
-      expect(subtitle.style!.fontSize, 10);
-      expect(subtitle.style!.color, AppNeutralPalette.light.textSecondary);
-      expect(tester.getSize(find.byType(AppListRow)).height, greaterThanOrEqualTo(40));
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.text('Screen saver')).width, greaterThan(0));
+      expect(tester.getSize(find.text('Flip clock')).width, lessThanOrEqualTo(0.6 * 33 + 0.01));
+    });
+
+    testWidgets('a disabled row disables its trailing control: taps, focus and semantics', (tester) async {
+      final handle = tester.ensureSemantics();
+      var changes = 0;
+
+      Future<void> pumpRow({required bool enabled}) => _pump(
+        tester,
+        SizedBox(
+          width: 320,
+          child: AppListRow(
+            title: 'Wake word',
+            enabled: enabled,
+            trailing: AppSwitch(value: false, onChanged: (_) => changes++),
+          ),
+        ),
+      );
+
+      await pumpRow(enabled: false);
+      await tester.tap(find.byType(AppSwitch), warnIfMissed: false);
+      await tester.pump();
+      expect(changes, 0);
+      expect(
+        tester.getSemantics(find.byType(AppSwitch)).getSemanticsData().hasAction(SemanticsAction.tap),
+        isFalse,
+      );
+      expect(
+        tester.widget<ExcludeFocus>(
+          find.ancestor(of: find.byType(AppSwitch), matching: find.byType(ExcludeFocus)).first,
+        ).excluding,
+        isTrue,
+      );
+
+      await pumpRow(enabled: true);
+      await tester.tap(find.byType(AppSwitch));
+      await tester.pump();
+      expect(changes, 1);
+      handle.dispose();
     });
 
     for (final brightness in _brightnesses) {
@@ -285,6 +367,37 @@ void main() {
       expect(find.byIcon(MdiIcons.devices), findsNothing);
     });
 
+    testWidgets('a long action ellipsizes and leaves the heading room', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 200,
+          child: SectionLabel(
+            label: 'Lights',
+            trailing: SectionTitleButton(
+              label: 'Turn off every light in this room right now',
+              icon: MdiIcons.power,
+              onTap: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.text('LIGHTS')).width, greaterThan(50));
+      expect(tester.getSize(find.byType(SectionTitleButton)).width, lessThanOrEqualTo(100));
+
+      // A short action keeps its natural width, also with no width to share.
+      await _pump(
+        tester,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SectionTitleButton(label: 'All off', onTap: () {}),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('a section action is at least 36 high', (tester) async {
       var taps = 0;
       await _pump(
@@ -401,6 +514,65 @@ void main() {
       expect(find.text('Main'), findsNothing);
     });
 
+    testWidgets('a custom title keeps the subtitle under it', (tester) async {
+      await _pump(
+        tester,
+        const SizedBox(
+          width: 400,
+          child: BottomSheetDialog(
+            titleWidget: Text('Lights'),
+            subtitle: '2 devices',
+            content: Text('Main'),
+          ),
+        ),
+      );
+
+      expect(find.text('Lights'), findsOneWidget);
+      expect(find.text('2 devices'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('2 devices')).dy, greaterThan(tester.getTopLeft(find.text('Lights')).dy));
+    });
+
+    testWidgets('a screen reader can activate Close: it pops the route, or runs the override', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showBottomSheetDialog(context, title: 'Light roles', content: const Text('Main')),
+            child: const Text('open'),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSemantics(find.byType(SheetCloseButton)),
+        matchesSemantics(label: 'Close', isButton: true, hasTapAction: true),
+      );
+      tester.semantics.tap(find.semantics.byLabel('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('Main'), findsNothing);
+
+      var closed = 0;
+      await _pump(tester, SheetCloseButton(onTap: () => closed++));
+      tester.semantics.tap(find.semantics.byLabel('Close'));
+      expect(closed, 1);
+      handle.dispose();
+    });
+
+    testWidgets('the close button builds without the app localizations', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: _theme(Brightness.light),
+          home: const Scaffold(body: SheetCloseButton()),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getSemantics(find.byType(SheetCloseButton)).label, 'Close');
+    });
+
     testWidgets('a drawer opens from the right and closes', (tester) async {
       await _pump(
         tester,
@@ -502,6 +674,31 @@ void main() {
         });
       }
     }
+
+    testWidgets('a routed dialog keeps its Compact width, below the Material 280 px floor', (tester) async {
+      await _pump(
+        tester,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showAppDialog<void>(
+              context: context,
+              builder: (_) => const AppDialog(
+                title: 'Restart this panel?',
+                sizeClass: ScreenSizeClass.compact,
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSize(find.byType(AppDialog)).width,
+        AppDialogMetrics.widthFor(ScreenSizeClass.compact),
+      );
+    });
 
     testWidgets('confirm returns true, cancel and dismiss false', (tester) async {
       final results = <bool>[];
@@ -647,9 +844,10 @@ void main() {
       );
 
       double top(String text) => tester.getTopLeft(find.text(text)).dy;
-      expect(top('EUROPE'), lessThan(top('Prague')));
-      expect(top('Berlin'), lessThan(top('AMERICA')));
-      expect(top('AMERICA'), lessThan(top('New York')));
+      final order = ['EUROPE', 'Prague', 'Berlin', 'AMERICA', 'New York'];
+      for (var i = 1; i < order.length; i++) {
+        expect(top(order[i - 1]), lessThan(top(order[i])), reason: '${order[i - 1]} above ${order[i]}');
+      }
     });
   });
 
@@ -779,6 +977,138 @@ void main() {
     });
   });
 
+  group('Toast review', () {
+    Widget view({
+      required VoidCallback onDismiss,
+      bool animate = true,
+      String? actionLabel,
+      VoidCallback? onAction,
+      Duration duration = const Duration(seconds: 1),
+    }) => SizedBox(
+      width: 208,
+      height: 200,
+      child: Stack(
+        children: [
+          ToastView(
+            message: 'Floor lamp did not respond',
+            type: ToastType.error,
+            brightness: Brightness.light,
+            sizeClass: ScreenSizeClass.compact,
+            portrait: false,
+            animate: animate,
+            duration: duration,
+            actionLabel: actionLabel,
+            onAction: onAction,
+            onDismiss: onDismiss,
+          ),
+        ],
+      ),
+    );
+
+    testWidgets('the action runs once, even tapped again while the toast fades out', (tester) async {
+      var retried = 0;
+      await _pump(
+        tester,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Toast.show(
+              context,
+              message: 'Floor lamp did not respond',
+              type: ToastType.error,
+              actionLabel: 'Retry',
+              onAction: () => retried++,
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Retry'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Retry'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(retried, 1);
+
+      Toast.dismiss();
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('a long action ellipsizes on a Compact panel and the message keeps room', (tester) async {
+      await _pump(
+        tester,
+        view(
+          animate: false,
+          actionLabel: 'Retry downloading the latest configuration from the server',
+          onAction: () {},
+          onDismiss: () {},
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.text('Floor lamp did not respond')).width, greaterThan(40));
+      final action = find.ancestor(
+        of: find.text('Retry downloading the latest configuration from the server'),
+        matching: find.byType(InkWell),
+      );
+      expect(tester.getSize(action).height, greaterThanOrEqualTo(36));
+    });
+
+    testWidgets('the auto-dismiss timer follows animate', (tester) async {
+      var dismissed = 0;
+      await _pump(tester, view(onDismiss: () => dismissed++));
+      // Turned off before the timer: it never dismisses.
+      await _pump(tester, view(animate: false, onDismiss: () => dismissed++));
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(dismissed, 0);
+      expect(find.text('Floor lamp did not respond'), findsOneWidget);
+
+      // Turned on: the timer starts.
+      await _pump(tester, view(onDismiss: () => dismissed++));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(dismissed, 1);
+    });
+
+    testWidgets("a replaced toast's late dismissal leaves its successor", (tester) async {
+      await _pump(
+        tester,
+        Builder(
+          builder: (context) => Column(
+            children: [
+              TextButton(
+                onPressed: () => Toast.show(context, message: 'First', type: ToastType.info),
+                child: const Text('a'),
+              ),
+              TextButton(
+                onPressed: () => Toast.show(context, message: 'Second', type: ToastType.info),
+                child: const Text('b'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('a'));
+      await tester.pumpAndSettle();
+      final first = tester.widget<ToastView>(find.byType(ToastView)).onDismiss;
+
+      await tester.tap(find.text('b'));
+      await tester.pumpAndSettle();
+      expect(find.text('Second'), findsOneWidget);
+
+      // The first toast's exit completes after the second took its place.
+      first();
+      await tester.pump();
+      expect(find.text('Second'), findsOneWidget);
+
+      Toast.dismiss();
+      await tester.pump(const Duration(seconds: 5));
+    });
+  });
+
   group('AlertBanner', () {
     for (final sizeClass in _classes) {
       for (final brightness in _brightnesses) {
@@ -836,6 +1166,46 @@ void main() {
     });
   });
 
+  group('AlertBanner review', () {
+    testWidgets('a title too long for one line leaves the body its own line', (tester) async {
+      await _pump(
+        tester,
+        const SizedBox(
+          width: 220,
+          child: AlertBanner(
+            title: 'Low battery\nHallway motion sensor by the front door\n',
+            text: 'Replace it',
+            color: ThemeColors.warning,
+            sizeClass: ScreenSizeClass.compact,
+          ),
+        ),
+      );
+
+      final title = tester.renderObject<RenderParagraph>(
+        find.text('Low battery Hallway motion sensor by the front door'),
+      );
+      expect(title.didExceedMaxLines, isTrue);
+      final body = tester.renderObject<RenderParagraph>(find.text('Replace it'));
+      expect(body.didExceedMaxLines, isFalse);
+      expect(
+        tester.getRect(find.text('Replace it')).bottom,
+        lessThanOrEqualTo(tester.getRect(find.byType(AlertBanner)).bottom),
+      );
+    });
+
+    testWidgets('a title that fits stays inline, its line breaks folded', (tester) async {
+      await _pump(
+        tester,
+        const SizedBox(
+          width: 480,
+          child: AlertBanner(title: 'Low battery\nHallway', text: 'Replace it', color: ThemeColors.warning),
+        ),
+      );
+
+      expect(find.text('Low battery Hallway  Replace it'), findsOneWidget);
+    });
+  });
+
   group('Settings tile and row', () {
     for (final sizeClass in _classes) {
       for (final brightness in _brightnesses) {
@@ -872,6 +1242,41 @@ void main() {
         });
       }
     }
+
+    testWidgets('a screen reader can open a tile; without onTap it is disabled', (tester) async {
+      final handle = tester.ensureSemantics();
+      var taps = 0;
+
+      Future<void> pumpTile(VoidCallback? onTap) => _pump(
+        tester,
+        SizedBox(
+          width: 160,
+          height: 110,
+          child: SettingsTile(
+            label: 'Display',
+            icon: MdiIcons.weatherSunny,
+            iconColor: AppColors.white,
+            iconBgColor: AppColors.white,
+            onTap: onTap,
+          ),
+        ),
+      );
+
+      await pumpTile(() => taps++);
+      expect(
+        tester.getSemantics(find.byType(SettingsTile)),
+        matchesSemantics(label: 'Display', isButton: true, hasEnabledState: true, isEnabled: true, hasTapAction: true),
+      );
+      tester.semantics.tap(find.semantics.byLabel('Display'));
+      expect(taps, 1);
+
+      await pumpTile(null);
+      expect(
+        tester.getSemantics(find.byType(SettingsTile)),
+        matchesSemantics(label: 'Display', isButton: true, hasEnabledState: true),
+      );
+      handle.dispose();
+    });
 
     testWidgets('SettingsCard is the list row; with a bottom it shares one card', (tester) async {
       await _pump(

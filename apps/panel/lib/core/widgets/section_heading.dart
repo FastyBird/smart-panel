@@ -13,6 +13,10 @@ class SectionLabelMetrics {
 
   /// An icon beside a coloured label.
   static const double icon = 12;
+
+  /// The share of the row a trailing action may take; a longer label
+  /// ellipsizes, so the heading keeps the rest.
+  static const double trailingShare = 0.5;
 }
 
 /// The one section label (docs/display-ui-design-spec.md §5): 10/700,
@@ -43,42 +47,59 @@ class SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveColor = color ?? Theme.of(context).neutrals.textSecondary;
 
+    Widget row({double? trailingMax}) => Row(
+      spacing: AppSpacings.pSm,
+      children: [
+        if (color != null && icon != null)
+          Icon(
+            icon,
+            color: effectiveColor,
+            size: AppSpacings.scale(SectionLabelMetrics.icon),
+          ),
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(
+              label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: effectiveColor,
+                fontSize: AppFontSize.extraSmall,
+                fontWeight: FontWeight.w700,
+                letterSpacing: AppSpacings.scale(
+                  SectionLabelMetrics.letterSpacing,
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (trailing != null)
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: trailingMax ?? double.infinity,
+            ),
+            child: trailing!,
+          ),
+      ],
+    );
+
     return Padding(
       padding: EdgeInsets.only(
         top: AppSpacings.scale(SectionLabelMetrics.paddingTop),
         left: AppSpacings.scale(SectionLabelMetrics.paddingSide),
         right: AppSpacings.scale(SectionLabelMetrics.paddingSide),
       ),
-      child: Row(
-        spacing: AppSpacings.pSm,
-        children: [
-          if (color != null && icon != null)
-            Icon(
-              icon,
-              color: effectiveColor,
-              size: AppSpacings.scale(SectionLabelMetrics.icon),
-            ),
-          Expanded(
-            child: Semantics(
-              header: true,
-              child: Text(
-                label.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: effectiveColor,
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: AppSpacings.scale(
-                    SectionLabelMetrics.letterSpacing,
-                  ),
-                ),
+      // Only an action needs the width, to cap its share.
+      child: trailing == null
+          ? row()
+          : LayoutBuilder(
+              builder: (context, constraints) => row(
+                trailingMax: constraints.hasBoundedWidth
+                    ? constraints.maxWidth * SectionLabelMetrics.trailingShare
+                    : null,
               ),
             ),
-          ),
-          if (trailing != null) trailing!,
-        ],
-      ),
     );
   }
 }
@@ -173,23 +194,39 @@ class SectionTitleButton extends StatelessWidget {
             ),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: AppSpacings.pSm,
-                children: [
-                  if (icon != null)
-                    Icon(icon, size: AppSpacings.scale(14), color: foreground),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: AppFontSize.small,
-                      fontWeight: FontWeight.w500,
-                      color: foreground,
-                    ),
+              // One text with the icon inline: natural width when there is
+              // room, ellipsized when its slot is capped.
+              child: Center(
+                widthFactor: 1,
+                heightFactor: 1,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      if (icon != null)
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(
+                            padding: EdgeInsetsDirectional.only(
+                              end: AppSpacings.pSm,
+                            ),
+                            child: Icon(
+                              icon,
+                              size: AppSpacings.scale(14),
+                              color: foreground,
+                            ),
+                          ),
+                        ),
+                      TextSpan(text: label),
+                    ],
                   ),
-                ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: AppFontSize.small,
+                    fontWeight: FontWeight.w500,
+                    color: foreground,
+                  ),
+                ),
               ),
             ),
           ),

@@ -299,6 +299,8 @@ Future<T?> showAppDialog<T>({
       shadowColor: AppColors.blank,
       elevation: 0,
       insetPadding: EdgeInsets.all(2 * pagePadding),
+      // No 280 px floor: the dialog sizes itself for the class.
+      constraints: const BoxConstraints(),
       child: Builder(builder: builder),
     ),
   );

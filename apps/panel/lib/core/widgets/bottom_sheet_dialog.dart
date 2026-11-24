@@ -282,7 +282,9 @@ class SheetHeader extends StatelessWidget {
     final resolvedClass = sizeClass ?? locator<ScreenService>().sizeClass;
     final hasSubtitle = subtitle != null && subtitle!.isNotEmpty;
 
-    final heading =
+    // A custom title replaces the text title only; the subtitle shows under
+    // either.
+    final titleContent =
         titleWidget ??
         Row(
           spacing: AppSpacings.pMd,
@@ -294,41 +296,44 @@ class SheetHeader extends StatelessWidget {
                 size: AppSpacings.scale(SheetMetrics.titleIcon),
               ),
             Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: AppSpacings.scale(1),
-                children: [
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      title ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: neutrals.textPrimary,
-                        fontSize: AppSpacings.scale(
-                          SheetMetrics.titleFor(resolvedClass),
-                        ),
-                        fontWeight: FontWeight.w500,
-                      ),
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: neutrals.textPrimary,
+                    fontSize: AppSpacings.scale(
+                      SheetMetrics.titleFor(resolvedClass),
                     ),
+                    fontWeight: FontWeight.w500,
                   ),
-                  if (hasSubtitle)
-                    Text(
-                      subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: neutrals.textSecondary,
-                        fontSize: AppFontSize.extraSmall,
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
           ],
         );
+
+    final heading = !hasSubtitle
+        ? titleContent
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.scale(1),
+            children: [
+              titleContent,
+              Text(
+                subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: neutrals.textSecondary,
+                  fontSize: AppFontSize.extraSmall,
+                ),
+              ),
+            ],
+          );
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -359,21 +364,27 @@ class SheetCloseButton extends StatelessWidget {
     final radius = BorderRadius.circular(AppBorderRadius.base);
     final size = AppSpacings.scale(SheetMetrics.closeButton);
 
+    final handler =
+        onTap ??
+        () {
+          HapticFeedback.lightImpact();
+          Navigator.of(context).pop();
+        };
+
+    // One node, announced once, that a screen reader can activate too.
     return Semantics(
       button: true,
-      label: AppLocalizations.of(context)!.button_close,
+      label:
+          AppLocalizations.of(context)?.button_close ??
+          MaterialLocalizations.of(context).closeButtonTooltip,
+      onTap: handler,
       excludeSemantics: true,
       child: Material(
         color: neutrals.fillBase,
         borderRadius: radius,
         child: InkWell(
           borderRadius: radius,
-          onTap:
-              onTap ??
-              () {
-                HapticFeedback.lightImpact();
-                Navigator.of(context).pop();
-              },
+          onTap: handler,
           child: SizedBox.square(
             dimension: size,
             child: Icon(

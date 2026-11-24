@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery_scope.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery_sections.dart';
@@ -154,6 +155,54 @@ void main() {
     }
   });
   }
+
+  testWidgets("a sample's close button never closes the gallery", (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    // The gallery is pushed over a home page, as on the panel.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ComponentGalleryScreen()),
+            ),
+            child: const Text('home'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('home'));
+    await tester.pumpAndSettle();
+    await _tap(tester, 'gallery-section-lists');
+
+    final scrollable = find
+        .descendant(of: find.byKey(const ValueKey('gallery-section-view-lists')), matching: find.byType(Scrollable))
+        .first;
+    for (final title in ['Bottom sheet', 'Right drawer', 'Selection dialog']) {
+      await tester.scrollUntilVisible(find.text(title), 100, scrollable: scrollable);
+      await tester.pumpAndSettle();
+      // Tap where each close button is drawn: a sample may not take it.
+      final close = find.byType(SheetCloseButton);
+      expect(close, findsWidgets, reason: title);
+      for (final center in [for (var i = 0; i < close.evaluate().length; i++) tester.getCenter(close.at(i))]) {
+        await tester.tapAt(center);
+        await tester.pumpAndSettle();
+      }
+      expect(find.byType(ComponentGalleryScreen), findsOneWidget, reason: title);
+    }
+  });
 
   testWidgets('renders the reference canvas of each class and orientation', (tester) async {
     await _pump(tester);

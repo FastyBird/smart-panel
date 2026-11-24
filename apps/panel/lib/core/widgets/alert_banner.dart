@@ -87,29 +87,73 @@ class AlertBanner extends StatelessWidget {
     final fontSize = AppSpacings.scale(
       AlertBannerMetrics.textFor(resolvedClass),
     );
-    final hasTitle = title != null && title!.isNotEmpty;
+    // A title is one line: line breaks fold into spaces.
+    final titleText = (title ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    final hasTitle = titleText.isNotEmpty;
     const foreground = AppColors.white;
+    final style = TextStyle(
+      color: foreground,
+      fontSize: fontSize,
+      fontWeight: FontWeight.w500,
+      height: 1.25,
+    );
+    const titleWeight = TextStyle(fontWeight: FontWeight.w700);
 
-    final message = Text.rich(
+    // The title leads the body on the same lines. A title too long for one
+    // line takes the first line alone, ellipsized, and the body the second,
+    // so the body always shows.
+    Widget inline() => Text.rich(
       TextSpan(
         children: [
-          if (hasTitle)
-            TextSpan(
-              text: '${title!}  ',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+          if (hasTitle) TextSpan(text: '$titleText  ', style: titleWeight),
           TextSpan(text: text),
         ],
       ),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: foreground,
-        fontSize: fontSize,
-        fontWeight: FontWeight.w500,
-        height: 1.25,
-      ),
+      style: style,
     );
+
+    final Widget message = !hasTitle
+        ? inline()
+        : LayoutBuilder(
+            builder: (context, constraints) {
+              final painter = TextPainter(
+                text: TextSpan(
+                  text: titleText,
+                  style: DefaultTextStyle.of(
+                    context,
+                  ).style.merge(style).merge(titleWeight),
+                ),
+                maxLines: 1,
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout(maxWidth: constraints.maxWidth);
+              final titleFits = !painter.didExceedMaxLines;
+              painter.dispose();
+
+              if (titleFits) return inline();
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titleText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: style.merge(titleWeight),
+                  ),
+                  Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: style,
+                  ),
+                ],
+              );
+            },
+          );
 
     return Semantics(
       container: true,
