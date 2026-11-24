@@ -263,6 +263,12 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
+  String get dial_heat_setpoint => 'Temperatura grzania';
+
+  @override
+  String get dial_cool_setpoint => 'Temperatura chłodzenia';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

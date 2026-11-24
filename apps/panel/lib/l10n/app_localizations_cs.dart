@@ -262,6 +262,12 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get dial_heat_setpoint => 'Teplota topení';
+
+  @override
+  String get dial_cool_setpoint => 'Teplota chlazení';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

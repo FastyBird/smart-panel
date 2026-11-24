@@ -568,6 +568,18 @@ abstract class AppLocalizations {
   /// **'Now {value}'**
   String dial_now(String value);
 
+  /// Screen-reader label of the heat (first) thumb on a two-setpoint thermostat dial
+  ///
+  /// In en, this message translates to:
+  /// **'Heating setpoint'**
+  String get dial_heat_setpoint;
+
+  /// Screen-reader label of the cool (second) thumb on a two-setpoint thermostat dial
+  ///
+  /// In en, this message translates to:
+  /// **'Cooling setpoint'**
+  String get dial_cool_setpoint;
+
   /// Message shown when devices are skipped due to being offline
   ///
   /// In en, this message translates to:

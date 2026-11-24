@@ -342,6 +342,14 @@
       }
     }
   },
+  "dial_heat_setpoint": "Heating setpoint",
+  "@dial_heat_setpoint": {
+    "description": "Screen-reader label of the heat (first) thumb on a two-setpoint thermostat dial"
+  },
+  "dial_cool_setpoint": "Cooling setpoint",
+  "@dial_cool_setpoint": {
+    "description": "Screen-reader label of the cool (second) thumb on a two-setpoint thermostat dial"
+  },
 
   "devices_offline_skipped": "{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}",
   "@devices_offline_skipped": {

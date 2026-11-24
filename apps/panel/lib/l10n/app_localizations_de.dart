@@ -261,6 +261,12 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get dial_heat_setpoint => 'Heiz-Sollwert';
+
+  @override
+  String get dial_cool_setpoint => 'Kühl-Sollwert';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

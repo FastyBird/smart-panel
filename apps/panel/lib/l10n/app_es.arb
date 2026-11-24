@@ -77,6 +77,8 @@
   "mode_title_shading": "Modo de sombreado",
   "mode_title_energy": "Rango de energía",
   "dial_now": "Ahora {value}",
+  "dial_heat_setpoint": "Consigna de calefacción",
+  "dial_cool_setpoint": "Consigna de refrigeración",
   "devices_offline_skipped": "{count, plural, =1{Se omitió 1 dispositivo sin conexión} other{Se omitieron {count} dispositivos sin conexión}}",
   "all_devices_offline": "Todos los dispositivos están sin conexión",
   "time_ago_just_now": "ahora mismo",

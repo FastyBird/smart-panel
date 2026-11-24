@@ -77,6 +77,8 @@
   "mode_title_shading": "Tryb zacienienia",
   "mode_title_energy": "Zakres energii",
   "dial_now": "Teraz {value}",
+  "dial_heat_setpoint": "Temperatura grzania",
+  "dial_cool_setpoint": "Temperatura chłodzenia",
   "devices_offline_skipped": "{count, plural, =1{Pominięto 1 urządzenie offline} few{Pominięto {count} urządzenia offline} many{Pominięto {count} urządzeń offline} other{Pominięto {count} urządzeń offline}}",
   "all_devices_offline": "Wszystkie urządzenia są offline",
   "time_ago_just_now": "właśnie teraz",

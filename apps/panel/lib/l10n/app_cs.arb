@@ -73,6 +73,8 @@
   "mode_title_shading": "Režim stínění",
   "mode_title_energy": "Rozsah energie",
   "dial_now": "Nyní {value}",
+  "dial_heat_setpoint": "Teplota topení",
+  "dial_cool_setpoint": "Teplota chlazení",
   "devices_offline_skipped": "{count, plural, =1{Přeskočeno 1 offline zařízení} few{Přeskočena {count} offline zařízení} other{Přeskočeno {count} offline zařízení}}",
   "all_devices_offline": "Všechna zařízení jsou offline",
   "time_ago_just_now": "právě teď",

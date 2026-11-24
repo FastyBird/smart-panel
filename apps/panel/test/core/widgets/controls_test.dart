@@ -601,16 +601,16 @@ void main() {
       expect(value, 29.5);
     });
 
-    test('shows as many decimals as the step needs', () {
-      expect(AppStepper.decimalsFor(1), 0);
-      expect(AppStepper.decimalsFor(5), 0);
-      expect(AppStepper.decimalsFor(0.5), 1);
-      expect(AppStepper.decimalsFor(0.1), 1);
-      expect(AppStepper.decimalsFor(0.25), 2);
-      expect(AppStepper.decimalsFor(0.01), 2);
-      expect(AppStepper.decimalsFor(0.005), 3);
+    test('counts the decimals a step or minimum needs', () {
+      expect(AppStepper.decimalsOf(1), 0);
+      expect(AppStepper.decimalsOf(5), 0);
+      expect(AppStepper.decimalsOf(0.5), 1);
+      expect(AppStepper.decimalsOf(0.1), 1);
+      expect(AppStepper.decimalsOf(0.25), 2);
+      expect(AppStepper.decimalsOf(0.01), 2);
+      expect(AppStepper.decimalsOf(0.005), 3);
       // A step with no short decimal form stops at four.
-      expect(AppStepper.decimalsFor(1 / 3), 4);
+      expect(AppStepper.decimalsOf(1 / 3), 4);
     });
 
     testWidgets('a step under 0.1 keeps neighbouring values apart', (tester) async {
@@ -633,6 +633,42 @@ void main() {
       await tester.pump();
       expect(value, closeTo(0.22, 1e-9));
       expect(find.text('0.22'), findsOneWidget);
+    });
+
+    testWidgets('a range offset from its step shows and announces exact values', (tester) async {
+      final handle = tester.ensureSemantics();
+      var value = 0.25;
+      await _pump(
+        tester,
+        StatefulBuilder(
+          builder: (context, setState) => AppStepper(
+            value: value,
+            min: 0.25,
+            max: 2.25,
+            step: 0.5,
+            semanticLabel: 'Offset',
+            onChanged: (v) => setState(() => value = v),
+          ),
+        ),
+      );
+      expect(find.text('0.25'), findsOneWidget);
+
+      await tester.tap(find.byIcon(MdiIcons.plus));
+      await tester.pump();
+      expect(value, 0.75);
+      expect(find.text('0.75'), findsOneWidget);
+      final node = tester.getSemantics(find.bySemanticsLabel(RegExp('^Offset')));
+      expect(node.value, '0.75');
+      expect(node.increasedValue, '1.25');
+      expect(node.decreasedValue, '0.25');
+
+      // A whole step on a half offset keeps the half.
+      await _pump(
+        tester,
+        AppStepper(value: 1.5, min: 0.5, max: 5.5, onChanged: (_) {}),
+      );
+      expect(find.text('1.5'), findsOneWidget);
+      handle.dispose();
     });
 
     testWidgets('pending, not confirmed and disabled values', (tester) async {
@@ -1207,6 +1243,60 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       expect(heat, [20.5]);
       expect(cool, [24, 24.5]);
+    });
+
+    testWidgets('two thumbs: each setpoint is its own slider for screen readers', (tester) async {
+      final handle = tester.ensureSemantics();
+      final heat = <double>[];
+      final cool = <double>[];
+      await _pump(
+        tester,
+        dial(value: 20, second: 24, onChanged: heat.add, onSecondChanged: cool.add),
+      );
+
+      Semantics thumb(String label) => tester.widget<Semantics>(
+        find.byWidgetPredicate((w) => w is Semantics && w.properties.label == label),
+      );
+
+      final heatNode = tester.getSemantics(find.bySemanticsLabel('Heating setpoint'));
+      final coolNode = tester.getSemantics(find.bySemanticsLabel('Cooling setpoint'));
+      expect(heatNode.value, '20°');
+      expect(coolNode.value, '24°');
+      expect(heatNode.id, isNot(coolNode.id));
+      expect(thumb('Heating setpoint').properties.slider, isTrue);
+      expect(thumb('Cooling setpoint').properties.slider, isTrue);
+
+      // Raise the cool setpoint without touching the dial.
+      thumb('Cooling setpoint').properties.onIncrease!();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(cool, [24.5]);
+      expect(heat, isEmpty);
+      expect(tester.getSemantics(find.bySemanticsLabel('Cooling setpoint')).value, '24.5°');
+
+      // Then the heat setpoint; the cool change is not sent again.
+      thumb('Heating setpoint').properties.onDecrease!();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(heat, [19.5]);
+      expect(cool, [24.5]);
+      handle.dispose();
+    });
+
+    testWidgets('two thumbs: heat stops at cool and cool at heat', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, dial(value: 22, second: 22, onSecondChanged: (_) {}));
+
+      final heat = tester.getSemantics(find.bySemanticsLabel('Heating setpoint'));
+      final cool = tester.getSemantics(find.bySemanticsLabel('Cooling setpoint'));
+      expect(heat.increasedValue, isEmpty);
+      expect(heat.decreasedValue, '21.5');
+      expect(cool.decreasedValue, isEmpty);
+      expect(cool.increasedValue, '22.5');
+      // Plus moves the heat thumb by default, and it is already at cool.
+      final plus = tester.widget<ControlRoundButton>(
+        find.ancestor(of: find.byIcon(MdiIcons.plus), matching: find.byType(ControlRoundButton)),
+      );
+      expect(plus.onTap, isNull);
+      handle.dispose();
     });
 
     testWidgets('disabled or off: dimmed and does not move', (tester) async {
