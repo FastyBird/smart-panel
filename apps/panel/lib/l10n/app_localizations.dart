@@ -9153,6 +9153,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Request state'**
   String get native_thermostat_request_state;
+
+  /// Screen readers hear this while a page or hero loads (docs/display-ui-design-spec.md §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get state_loading;
+
+  /// Default line of the not-configured state template; points to the admin (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Set it up in the admin app.'**
+  String get state_not_configured_hint;
+
+  /// Outcome indicator: sending, pending or accepted (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Setting'**
+  String get outcome_setting;
+
+  /// Outcome label: the command was sent and is waiting for the device (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get outcome_sent;
+
+  /// Outcome indicator: confirmed or completed (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get outcome_completed;
+
+  /// Outcome indicator: some parts did not complete (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Partial'**
+  String get outcome_partial;
+
+  /// Outcome indicator: failed (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get outcome_failed;
+
+  /// Outcome label: the device refused the command (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Refused'**
+  String get outcome_refused;
+
+  /// Outcome indicator: interrupted or superseded by a newer request (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Replaced by a newer request'**
+  String get outcome_superseded;
+
+  /// Outcome indicator: timed out, unconfirmed or unknown (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed'**
+  String get outcome_not_confirmed;
+
+  /// Outcome label: the confirmation timed out (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Timed out'**
+  String get outcome_timed_out;
+
+  /// Outcome hint after an unknown outcome, the second part of a line: "Timed out · refresh before retrying" (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'refresh before retrying'**
+  String get outcome_refresh_before_retry;
+
+  /// Outcome indicator: the value was changed from somewhere else (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Changed elsewhere'**
+  String get outcome_conflict;
+
+  /// Outcome indicator: members report different values (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed'**
+  String get outcome_mixed;
+
+  /// Outcome indicator: unavailable or stale (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'No data'**
+  String get outcome_no_data;
+
+  /// Outcome label: the source stopped reporting (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Not reporting'**
+  String get outcome_not_reporting;
+
+  /// Outcome label: when the data last arrived (spec §7)
+  ///
+  /// In en, this message translates to:
+  /// **'Last update {age} ago'**
+  String outcome_last_update(String age);
+
+  /// Details sheet row status: the part has no devices (spec §8)
+  ///
+  /// In en, this message translates to:
+  /// **'No devices'**
+  String get outcome_no_devices;
+
+  /// Details sheet row status: the part does not support the command (spec §8)
+  ///
+  /// In en, this message translates to:
+  /// **'Not supported'**
+  String get outcome_not_supported;
+
+  /// Screen reader label of a tappable outcome indicator
+  ///
+  /// In en, this message translates to:
+  /// **'{label}. Show details'**
+  String outcome_show_details(String label);
+
+  /// Note under the rows of the outcome details sheet (spec §8)
+  ///
+  /// In en, this message translates to:
+  /// **'Results of the commands sent, not what the devices are doing now.'**
+  String get outcome_details_note;
 }
 
 class _AppLocalizationsDelegate

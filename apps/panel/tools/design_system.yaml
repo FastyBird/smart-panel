@@ -51,6 +51,11 @@ strict:
   - lib/features/settings/presentation/widgets/settings_card.dart
   - lib/features/settings/presentation/widgets/settings_card_surface.dart
   - lib/features/settings/presentation/widgets/settings_selection_dialog.dart
+  # DR-9: state templates, loading skeletons and the outcome indicator.
+  - lib/core/widgets/skeleton.dart
+  - lib/core/widgets/outcome_indicator.dart
+  - lib/core/widgets/outcome_details_sheet.dart
+  - lib/modules/deck/presentation/widgets/domain_state_view.dart
 
 # Generated code is never checked.
 exclude:

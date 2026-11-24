@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
+import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery_scope.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery_sections.dart';
@@ -86,7 +87,7 @@ void main() {
     // Sections fill as their tasks land.
     expect(
       gallerySections.where((section) => section.entries.isNotEmpty).map((section) => section.task),
-      ['DR-5', 'DR-6', 'DR-7', 'DR-8'],
+      ['DR-5', 'DR-6', 'DR-7', 'DR-8', 'DR-9'],
     );
   });
 
@@ -120,7 +121,7 @@ void main() {
     }
   });
 
-  for (final id in ['controls', 'lists']) {
+  for (final id in ['controls', 'lists', 'states']) {
   testWidgets('the $id entries fit the Compact portrait and square canvases', (tester) async {
     await _pump(tester);
     await _tap(tester, 'gallery-section-$id');
@@ -319,6 +320,46 @@ void main() {
 
     expect(MediaQuery.sizeOf(host), const Size(1280, 800));
     expect(MediaQuery.orientationOf(host), Orientation.landscape);
+  });
+
+  testWidgets('the outcome details open for the selected canvas, not the host screen', (tester) async {
+    // The host is landscape and Regular.
+    await _pump(tester);
+    await _tap(tester, 'gallery-section-states');
+
+    for (final (canvas, orientation, landscape, sizeClass) in [
+      ('compact', 'portrait', false, ScreenSizeClass.compact),
+      ('expanded', 'landscape', true, ScreenSizeClass.expanded),
+    ]) {
+      await _tap(tester, 'gallery-canvas-$canvas');
+      await _tap(tester, 'gallery-orientation-$orientation');
+
+      final partial = find.textContaining('1 light did not answer');
+      await tester.scrollUntilVisible(
+        partial,
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const ValueKey('gallery-section-view-states')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(partial);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BottomSheetDialog), landscape ? findsNothing : findsOneWidget, reason: canvas);
+      expect(find.byType(RightDrawer), landscape ? findsOneWidget : findsNothing, reason: canvas);
+      final layerClass = landscape
+          ? tester.widget<RightDrawer>(find.byType(RightDrawer)).sizeClass
+          : tester.widget<BottomSheetDialog>(find.byType(BottomSheetDialog)).sizeClass;
+      expect(layerClass, sizeClass, reason: canvas);
+
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+      expect(find.text('Room mode: Relax'), findsNothing, reason: canvas);
+    }
   });
 
   test('the theme for an accent matches the panel theme in that accent', () {
