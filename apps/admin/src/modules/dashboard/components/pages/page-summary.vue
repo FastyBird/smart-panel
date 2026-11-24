@@ -30,14 +30,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElCard } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { KvGrid, type KvGridItem } from '../../../../common';
+import { KvGrid, type KvGridItem, useLogger } from '../../../../common';
 import { useDisplays } from '../../../displays';
 import { usePageIcon } from '../../composables/composables';
 import { usePagesPlugin } from '../../composables/usePagesPlugin';
@@ -53,7 +53,19 @@ const { t } = useI18n();
 
 const { icon: pageIcon } = usePageIcon({ id: props.page.id });
 const { plugin } = usePagesPlugin({ type: props.page.type });
-const { displays } = useDisplays();
+const { displays, isLoaded: displaysLoaded, fetchDisplays } = useDisplays();
+const logger = useLogger();
+
+// Opening a page directly leaves the displays store empty, so load it to show names instead of IDs
+onBeforeMount((): void => {
+	if (displaysLoaded.value) {
+		return;
+	}
+
+	fetchDisplays().catch((error: unknown): void => {
+		logger.warn('Failed to load displays for the page summary', error);
+	});
+});
 
 // No displays chosen means the page shows on all of them
 const displaysLabel = computed<string>((): string => {
