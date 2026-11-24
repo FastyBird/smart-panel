@@ -31,11 +31,6 @@
 			"addDataSource": "Přidat zdroj dat stránky",
 			"editDataSource": "Upravit zdroj dat stránky"
 		},
-		"configure": {
-			"draft": "Koncept",
-			"display": "Displej",
-			"quickAddTile": "Rychle přidat dlaždici"
-		},
 		"misc": {
 			"discard": "Zahodit změny?",
 			"tip": "Tip"
@@ -87,21 +82,6 @@
 		},
 		"update": {
 			"title": "Aktualizovat"
-		},
-		"yes": {
-			"title": "Ano"
-		},
-		"no": {
-			"title": "Ne"
-		},
-		"manageElements": {
-			"title": "Spravovat prvky"
-		},
-		"addPageTile": {
-			"title": "Přidat dlaždici stránky"
-		},
-		"addPageDataSource": {
-			"title": "Přidat zdroj dat stránky"
 		}
 	},
 	"fields": {
@@ -116,6 +96,61 @@
 		"tileSize": {
 			"title": "Velikost dlaždice",
 			"placeholder": "Velikost dlaždice"
+		}
+	},
+	"editor": {
+		"palette": {
+			"title": "Přidat dlaždici",
+			"description": "Nové dlaždice čekají ve skrytých dlaždicích, dokud je nepřetáhnete na stránku.",
+			"empty": "Není zapnutý žádný typ dlaždice. Zapněte plugin dlaždic v rozšířeních."
+		},
+		"hidden": {
+			"title": "Skryté dlaždice",
+			"description": "Na displeji se nezobrazují. Přetáhněte dlaždici na stránku, aby se zobrazila.",
+			"empty": "Přetáhněte sem dlaždici, kterou chcete skrýt"
+		},
+		"inspector": {
+			"onPage": "Na stránce",
+			"hidden": "Skrytá",
+			"position": "Umístění",
+			"positionValue": "Řádek {row}, sloupec {col}",
+			"notPlaced": "Neumístěná",
+			"size": "Velikost v buňkách",
+			"sizeValue": "{cols} × {rows}",
+			"saveHint": "Přesunutí, skrytí a odebrání se projeví po uložení stránky.",
+			"nothingSelected": "Vyberte dlaždici a uvidíte, kde je a co s ní můžete dělat."
+		},
+		"buttons": {
+			"addTile": "Přidat dlaždici",
+			"dataSources": "Zdroje dat",
+			"edit": "Upravit",
+			"detail": "Detail",
+			"hide": "Skrýt",
+			"show": "Zobrazit na stránce",
+			"remove": "Odebrat"
+		},
+		"texts": {
+			"unsaved": "Neuložené změny",
+			"loadingDisplays": "Načítání displejů…",
+			"noDisplay": "Není displej, pro který stránku rozvrhnout",
+			"noDisplayHint": "Mřížka se řídí displejem, který stránku zobrazuje. Spárujte displej nebo ho vyberte v nastavení stránky."
+		},
+		"display": {
+			"title": "Displej",
+			"grid": "Mřížka {cols} × {rows}"
+		},
+		"messages": {
+			"saved": "Rozvržení stránky uloženo.",
+			"saveFailed": "Rozvržení stránky se nepodařilo uložit. Zkuste to znovu.",
+			"noRoom": "Na stránce není volné místo. Uvolněte ho, nebo dlaždici přetáhněte, kam ji chcete."
+		},
+		"phone": {
+			"readOnly": "Dlaždice se rozmisťují na tabletu nebo počítači. Klepnutím na dlaždici otevřete její detail.",
+			"noTiles": "Na této stránce zatím nejsou dlaždice.",
+			"noHiddenTiles": "Žádné skryté dlaždice."
+		},
+		"aria": {
+			"closeInspector": "Zavřít inspektor"
 		}
 	}
 }

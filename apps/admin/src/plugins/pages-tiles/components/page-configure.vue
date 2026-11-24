@@ -1,449 +1,286 @@
 <template>
-	<div class="h-full box-border overflow-hidden p-2">
-		<el-row
-			:gutter="10"
-			justify="center"
-			class="h-full"
+	<!-- Template 8: the canvas, the page as the display draws it, and the bottom panel with the hidden tiles -->
+	<div class="page-configure flex flex-col flex-1 min-h-0 min-w-0">
+		<div
+			ref="canvasArea"
+			class="page-configure__canvas flex flex-1 min-h-0 items-center justify-center p-4 box-border overflow-hidden"
 		>
-			<el-col
-				:span="10"
-				class="h-full overflow-hidden p-2"
+			<display-surface
+				:dark="props.dark"
+				:style="frameStyle"
+				class="page-configure__frame shrink-0"
+				data-test-id="page-configure-canvas"
 			>
-				<el-card
-					body-class="p-0! flex flex-col overflow-hidden h-full"
-					:class="[ns.b(), 'mx-auto h-full overflow-hidden']"
-					:style="props.gridCardStyle"
-				>
-					<div :class="[ns.e('header'), 'flex items-center px-2 flex-shrink-0 min-h-9 py-1 b-b b-b-solid gap-1.5']">
-						<div class="flex items-center gap-1 min-w-0 max-w-48">
-							<el-icon
-								:size="14"
-								class="flex-shrink-0"
-								color="var(--el-text-color-regular)"
-							>
-								<icon :icon="formatIcon(props.page.icon, 'mdi:view-dashboard')" />
-							</el-icon>
-							<el-text
-								size="small"
-								class="truncate"
-							>
-								{{ props.page.title }}
-							</el-text>
-						</div>
-						<div class="flex items-center gap-1 flex-1 min-w-0 flex-wrap justify-end">
-							<el-tag
-								v-for="ds in visibleDataSources"
-								:key="ds.id"
-								size="small"
-								closable
-								:class="ns.e('data-source-tag')"
-								@close="onRemoveDataSource(ds.id)"
-							>
-								<span
-									class="inline-flex items-center gap-0.5"
-									@click="emit('editPageDataSource', ds.id)"
-								>
-									<el-icon :size="12">
-										<icon :icon="getDataSourceIcon(ds) || 'mdi:database'" />
-									</el-icon>
-									<span class="truncate">{{ getDataSourceLabel(ds) }}</span>
-								</span>
-							</el-tag>
-							<el-popover
-								v-if="hiddenDataSources.length > 0"
-								:width="280"
-								trigger="click"
-								placement="bottom"
-							>
-								<template #reference>
-									<el-tag
-										size="small"
-										type="info"
-										class="cursor-pointer flex-shrink-0"
-									>
-										+{{ hiddenDataSources.length }}
-									</el-tag>
-								</template>
-								<div class="flex flex-col gap-1">
-									<div
-										v-for="ds in hiddenDataSources"
-										:key="ds.id"
-										:class="[ns.e('overflow-item'), 'flex items-center gap-1 py-1 px-1 rounded']"
-									>
-										<div
-											class="flex items-center gap-1 min-w-0 flex-1 cursor-pointer"
-											@click="emit('editPageDataSource', ds.id)"
-										>
-											<el-icon
-												:size="14"
-												color="var(--el-text-color-regular)"
-											>
-												<icon :icon="getDataSourceIcon(ds) || 'mdi:database'" />
-											</el-icon>
-											<el-text
-												size="small"
-												class="truncate"
-											>
-												{{ getDataSourceLabel(ds) }}
-											</el-text>
-										</div>
-										<div class="flex items-center flex-shrink-0 gap-0.5">
-											<el-button
-												size="small"
-												text
-												circle
-												@click="emit('editPageDataSource', ds.id)"
-											>
-												<template #icon>
-													<icon
-														icon="mdi:pencil"
-														:width="14"
-													/>
-												</template>
-											</el-button>
-											<el-button
-												size="small"
-												text
-												type="danger"
-												circle
-												@click="onRemoveDataSource(ds.id)"
-											>
-												<template #icon>
-													<icon
-														icon="mdi:trash-can-outline"
-														:width="14"
-													/>
-												</template>
-											</el-button>
-										</div>
-									</div>
-								</div>
-							</el-popover>
-						</div>
-						<el-button
-							size="small"
-							plain
-							class="flex-shrink-0"
-							@click="emit('addPageDataSource')"
-						>
-							<template #icon>
-								<icon icon="mdi:plus" />
-							</template>
-						</el-button>
-					</div>
+				<div
+					ref="pageGridContainer"
+					class="w-full h-full"
+				/>
+			</display-surface>
+		</div>
 
-					<div
-						ref="pageGridContainer"
-						class="flex-1 min-h-0 p-1"
-					/>
-				</el-card>
-			</el-col>
+		<section
+			class="page-configure__hidden flex flex-col shrink-0"
+			:aria-label="t('pagesTilesPlugin.editor.hidden.title')"
+			data-test-id="page-configure-hidden"
+		>
+			<div class="flex flex-wrap items-baseline gap-x-2 px-4 pt-2">
+				<span class="text-label">{{ t('pagesTilesPlugin.editor.hidden.title') }}</span>
+				<span class="text-help">{{ t('pagesTilesPlugin.editor.hidden.description') }}</span>
+			</div>
 
-			<el-col
-				:span="10"
-				class="h-full overflow-hidden p-2"
-			>
-				<el-card
-					body-class="p-0! flex flex-col overflow-hidden h-full"
-					:class="[ns.b(), 'mx-auto h-full overflow-hidden']"
-					:style="props.gridCardStyle"
+			<div class="flex justify-center px-4 pt-2 pb-3 overflow-y-auto page-configure__hidden-body">
+				<display-surface
+					:dark="props.dark"
+					:style="{ width: frameStyle.width }"
+					class="page-configure__frame relative shrink-0"
 				>
-					<div :class="[ns.e('header'), 'flex items-center justify-between px-2 flex-shrink-0 h-9 min-h-9 b-b b-b-solid']">
-						<div class="flex items-center gap-1 min-w-0">
-							<el-icon
-								:size="14"
-								color="var(--el-text-color-regular)"
-							>
-								<icon icon="mdi:pencil-ruler" />
-							</el-icon>
-							<el-text
-								size="small"
-								class="truncate"
-							>
-								{{ t('pagesTilesPlugin.headings.configure.draft') }}
-							</el-text>
-						</div>
-					</div>
 					<div
 						ref="draftGridContainer"
-						class="flex-1 min-h-0 overflow-hidden p-1"
+						class="w-full"
 					/>
-				</el-card>
-			</el-col>
 
-			<el-col
-				:span="4"
-				class="p-2"
-			>
-				<div class="flex flex-col gap-2">
-					<el-card
-						v-if="props.displays.length > 0"
-						body-class="p-2!"
+					<span
+						v-if="hiddenCount === 0"
+						class="page-configure__hidden-empty display-text-caption"
 					>
-						<template #header>
-							{{ t('pagesTilesPlugin.headings.configure.display') }}
-						</template>
-
-						<el-select
-							v-if="props.displays.length > 1"
-							:model-value="props.selectedDisplay?.id"
-							size="small"
-							class="w-full"
-							@change="(val: string) => emit('selectDisplay', val)"
-						>
-							<el-option
-								v-for="d in props.displays"
-								:key="d.id"
-								:value="d.id"
-								:label="d.name || d.macAddress"
-							>
-								<div class="flex items-center justify-between w-full">
-									<span>{{ d.name || d.macAddress }}</span>
-									<el-text
-										v-if="d.screenWidth && d.screenHeight"
-										type="info"
-										size="small"
-									>
-										{{ d.screenWidth }}x{{ d.screenHeight }}
-									</el-text>
-								</div>
-							</el-option>
-						</el-select>
-
-						<div
-							v-else-if="props.selectedDisplay"
-							class="flex flex-col"
-						>
-							<el-text size="small">
-								{{ props.selectedDisplay.name || props.selectedDisplay.macAddress }}
-							</el-text>
-							<el-text
-								v-if="props.selectedDisplay.screenWidth && props.selectedDisplay.screenHeight"
-								type="info"
-								size="small"
-							>
-								{{ props.selectedDisplay.screenWidth }}x{{ props.selectedDisplay.screenHeight }}
-								&middot;
-								{{ props.gridLayout?.cols ?? '?' }}x{{ props.gridLayout?.rows ?? '?' }}
-							</el-text>
-						</div>
-					</el-card>
-
-					<el-card
-						v-if="enabledTileOptions.length"
-						body-class="p-2!"
-					>
-						<template #header>
-							{{ t('pagesTilesPlugin.headings.configure.quickAddTile') }}
-						</template>
-
-						<div class="flex flex-col gap-2">
-							<el-button
-								v-for="opt in enabledTileOptions"
-								:key="opt.value"
-								size="small"
-								class="w-full ml-0!"
-								@click="emit('addTileOfType', opt.value)"
-							>
-								<template #icon>
-									<icon icon="mdi:plus" />
-								</template>
-								{{ opt.label }}
-							</el-button>
-						</div>
-					</el-card>
-				</div>
-			</el-col>
-		</el-row>
+						{{ t('pagesTilesPlugin.editor.hidden.empty') }}
+					</span>
+				</display-surface>
+			</div>
+		</section>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
+import { computed, getCurrentInstance, h, nextTick, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElCol, ElIcon, ElOption, ElPopover, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
-import { GridStack, type GridStackWidget } from 'gridstack';
+import { type GridItemHTMLElement, GridStack, type GridStackNode } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
-import { Icon } from '@iconify/vue';
+import { useFlashMessage } from '../../../common';
+import { DisplaySurface, FormResult, type FormResultType, type ITile, useTiles, useTilesActions, useTilesPlugins } from '../../../modules/dashboard';
 
-import {
-	DashboardException,
-	FormResult,
-	type FormResultType,
-	type IDataSource,
-	type ITile,
-	useDataSources,
-	useDataSourcesActions,
-	useDataSourcesPlugins,
-	useTiles,
-	useTilesActions,
-	useTilesPlugins,
-} from '../../../modules/dashboard';
-
-import type { IPageConfigureProps } from './page-configure.types';
+import type { IPageConfigureExpose, IPageConfigureProps, IPageConfigureTilePlace } from './page-configure.types';
 import TilePreview from './tile-preview.vue';
 
 defineOptions({
 	name: 'PageConfigure',
 });
 
-const { t } = useI18n();
-
-const ns = useNamespace('page-configure');
-
 const props = withDefaults(defineProps<IPageConfigureProps>(), {
+	dark: false,
+	selectedTileId: null,
+	remotePageSubmit: false,
 	remotePageResult: FormResult.NONE,
 	remotePageChanged: false,
 });
 
 const emit = defineEmits<{
-	(e: 'selectDisplay', displayId: string): void;
-	(e: 'addPageDataSource'): void;
-	(e: 'editPageDataSource', id: IDataSource['id']): void;
-	(e: 'addTileOfType', type: string): void;
-	(e: 'editTile', id: ITile['id']): void;
-	(e: 'tileDetail', id: ITile['id']): void;
+	(e: 'select', place: IPageConfigureTilePlace | null): void;
+	(e: 'edit', id: ITile['id']): void;
 	(e: 'update:remote-page-submit', remotePageSubmit: boolean): void;
 	(e: 'update:remote-page-result', remotePageResult: FormResultType): void;
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
 
-const { options: tileOptions } = useTilesPlugins();
+const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
-const enabledTileOptions = computed(() => tileOptions.value.filter((opt) => !opt.disabled));
-const { tiles, fetchTiles, areLoading: loadingTiles } = useTiles({ parent: 'page', parentId: props.page.id });
+const { getElement } = useTilesPlugins();
+
+// The editor view loads the tiles; this reads them from the store
+const { tiles } = useTiles({ parent: 'page', parentId: props.page.id });
 const {
 	findById: findTileById,
 	edit: editTile,
 	save: saveTile,
-	removeDirectly: removeTile,
+	removeDirectly: removeTileDirectly,
 } = useTilesActions({ parent: 'page', parentId: props.page.id });
 
-const { dataSources: pageDataSources, fetchDataSources: fetchPageDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
-const { remove: removeDataSource } = useDataSourcesActions({ parent: 'page', parentId: props.page.id });
-const { getElement: getDataSourceElement } = useDataSourcesPlugins();
-
-const MAX_VISIBLE_DATA_SOURCES = 3;
-
-const nonDraftDataSources = computed<IDataSource[]>(() => pageDataSources.value.filter((ds) => !ds.draft));
-const visibleDataSources = computed<IDataSource[]>(() => nonDraftDataSources.value.slice(0, MAX_VISIBLE_DATA_SOURCES));
-const hiddenDataSources = computed<IDataSource[]>(() => nonDraftDataSources.value.slice(MAX_VISIBLE_DATA_SOURCES));
-
-const getDataSourceIcon = (ds: IDataSource): string | null => {
-	const record = ds as Record<string, unknown>;
-
-	return typeof record.icon === 'string' && record.icon ? record.icon : null;
-};
-
-const formatIcon = (icon: string | null, fallback: string): string => {
-	if (!icon) return fallback;
-
-	return icon.includes(':') ? icon : `mdi:${icon}`;
-};
-
-const getDataSourceLabel = (ds: IDataSource): string => {
-	const element = getDataSourceElement(ds.type);
-
-	return element?.name?.trim() ? element.name : ds.type;
-};
-
-const onRemoveDataSource = (id: IDataSource['id']): void => {
-	removeDataSource(id);
-};
-
-// Capture the app context so VNodes created via h() for GridStack cells
-// inherit the provide/inject chain (plugins manager, stores manager, etc.)
+// Capture the app context so VNodes created via h() for GridStack cells inherit the provide/inject chain (plugins
+// manager, stores manager, etc.)
 const appContext = getCurrentInstance()?.appContext ?? null;
 
+const HIDDEN_TILE_WIDTH = 2;
+const GRID_MARGIN = 4;
+// The bottom panel keeps a low row, whatever size the page cells grow to
+const HIDDEN_CELL_MAX = 72;
+
 let pageGrid: GridStack | undefined;
-
 let draftGrid: GridStack | undefined;
+let resizeObserver: ResizeObserver | undefined;
+let resizeFrame: number | undefined;
 
+const canvasArea = ref<HTMLElement | null>(null);
 const pageGridContainer = ref<HTMLElement | null>(null);
-
 const draftGridContainer = ref<HTMLElement | null>(null);
 
 const pageTiles = new Set<ITile['id']>();
-
 const draftTiles = new Set<ITile['id']>();
-
 const removedTiles = new Set<ITile['id']>();
 
+// The tiles in the bottom panel, for its empty line (the sets above are not reactive)
+const hiddenCount = ref<number>(0);
+
+// One square cell, sized so the whole page fits the canvas
+const cellSize = ref<number>(0);
+
 const initialized = ref<boolean>(false);
-
 const suppressMarkChanged = ref<boolean>(false);
-
 const pageChanged = ref<boolean>(false);
 
-let changeTimeout: ReturnType<typeof setTimeout>;
-
+let changeTimeout: ReturnType<typeof setTimeout> | undefined;
 let initTimeout: ReturnType<typeof setTimeout> | undefined;
 
-const onTileRemove = (id: ITile['id']): void => {
-	const el = document.querySelector(`.grid-stack-item[gs-id="${id}"]`);
+const frameStyle = computed<{ width: string; height: string }>((): { width: string; height: string } => {
+	const cols = props.gridLayout?.cols ?? 0;
+	const rows = props.gridLayout?.rows ?? 0;
 
-	if (pageGrid?.getGridItems().some((item) => item.gridstackNode?.id === id)) {
-		pageGrid.removeWidget(el as HTMLElement);
-	} else if (draftGrid?.getGridItems().some((item) => item.gridstackNode?.id === id)) {
-		draftGrid.removeWidget(el as HTMLElement);
+	return {
+		width: `${cols * cellSize.value}px`,
+		height: `${rows * cellSize.value}px`,
+	};
+});
+
+const tileName = (tile: ITile): string => {
+	const element = getElement(tile.type);
+
+	return element?.name?.trim() ? element.name : tile.type;
+};
+
+const gridItemOf = (grid: GridStack | undefined, id: ITile['id']): GridItemHTMLElement | undefined => {
+	return grid?.getGridItems().find((item) => item.gridstackNode?.id === id);
+};
+
+const placeOf = (id: ITile['id']): IPageConfigureTilePlace | null => {
+	const onPage = gridItemOf(pageGrid, id)?.gridstackNode;
+
+	if (onPage) {
+		return { id, hidden: false, row: (onPage.y ?? 0) + 1, col: (onPage.x ?? 0) + 1, rowSpan: onPage.h ?? 1, colSpan: onPage.w ?? 1 };
+	}
+
+	const hidden = gridItemOf(draftGrid, id)?.gridstackNode;
+	const tile = tiles.value.find((item) => item.id === id);
+
+	if (hidden && tile) {
+		return { id, hidden: true, row: tile.row, col: tile.col, rowSpan: tile.rowSpan, colSpan: tile.colSpan };
+	}
+
+	return null;
+};
+
+// The inspector follows the selected tile as it is moved, resized, hidden or shown
+const reportSelection = (): void => {
+	if (props.selectedTileId) {
+		emit('select', placeOf(props.selectedTileId));
 	}
 };
 
-const updateSquareCells = (): void => {
-	// Reset maxHeight on both cards so we measure unconstrained column height
-	const pageCard = pageGridContainer.value?.closest(`.${ns.b()}`) as HTMLElement | null;
-	const draftCard = draftGridContainer.value?.closest(`.${ns.b()}`) as HTMLElement | null;
-
-	if (pageCard) pageCard.style.maxHeight = '';
-	if (draftCard) draftCard.style.maxHeight = '';
-
-	if (pageGridContainer.value && pageGrid) {
-		const width = pageGridContainer.value.clientWidth;
-		const cols = pageGrid.getColumn();
-		const rows = props.gridLayout?.rows ?? 12;
-		const sizeByWidth = width / cols;
-
-		const availableHeight = pageGridContainer.value.clientHeight;
-		const sizeByHeight = rows > 0 ? availableHeight / rows : sizeByWidth;
-
-		const size = Math.min(sizeByWidth, sizeByHeight);
-
-		pageGrid.cellHeight(size);
-
-		// Cap card to actual content so there's no white space on large screens
-		if (pageCard) {
-			const headerEl = pageCard.querySelector(`.${ns.e('header')}`) as HTMLElement | null;
-			const headerH = headerEl?.offsetHeight ?? 0;
-			const cs = getComputedStyle(pageGridContainer.value);
-			const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-			pageCard.style.maxHeight = `${headerH + rows * size + padY + 2}px`;
+const markSelection = (): void => {
+	for (const grid of [pageGrid, draftGrid]) {
+		for (const item of grid?.getGridItems() ?? []) {
+			item.classList.toggle('is-selected', item.gridstackNode?.id === props.selectedTileId);
 		}
 	}
+};
 
-	if (draftGridContainer.value && draftGrid) {
-		const width = draftGridContainer.value.clientWidth;
-		const cols = draftGrid.getColumn();
-		const draftRows = props.gridLayout?.rows ?? 12;
-		const sizeByWidth = width / cols;
-
-		const availableHeight = draftGridContainer.value.clientHeight;
-		const sizeByHeight = draftRows > 0 ? availableHeight / draftRows : sizeByWidth;
-
-		const size = Math.min(sizeByWidth, sizeByHeight);
-
-		draftGrid.cellHeight(size);
-
-		// Cap card to actual content
-		if (draftCard) {
-			const draftHeaderEl = draftCard.querySelector(`.${ns.e('header')}`) as HTMLElement | null;
-			const draftHeaderH = draftHeaderEl?.offsetHeight ?? 0;
-			const cs = getComputedStyle(draftGridContainer.value);
-			const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-			draftCard.style.maxHeight = `${draftHeaderH + draftRows * size + padY + 2}px`;
-		}
+const markChanged = (): void => {
+	if (!initialized.value || suppressMarkChanged.value) {
+		return;
 	}
+
+	clearTimeout(changeTimeout);
+
+	changeTimeout = setTimeout((): void => {
+		pageChanged.value = true;
+	}, 50);
+};
+
+const updateHiddenCount = (): void => {
+	hiddenCount.value = draftTiles.size;
+};
+
+const updateCellSize = (): void => {
+	const area = canvasArea.value;
+
+	if (!area || !props.gridLayout) {
+		return;
+	}
+
+	const style = getComputedStyle(area);
+	const width = area.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+	const height = area.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+
+	const size = Math.max(8, Math.floor(Math.min(width / props.gridLayout.cols, height / props.gridLayout.rows)));
+
+	if (size === cellSize.value) {
+		return;
+	}
+
+	cellSize.value = size;
+
+	pageGrid?.cellHeight(size);
+	draftGrid?.cellHeight(Math.min(size, HIDDEN_CELL_MAX));
+};
+
+const onCanvasResize = (): void => {
+	if (resizeFrame !== undefined) {
+		cancelAnimationFrame(resizeFrame);
+	}
+
+	resizeFrame = requestAnimationFrame((): void => {
+		resizeFrame = undefined;
+
+		updateCellSize();
+	});
+};
+
+// The cell is a button: a click or Enter selects the tile, a double click opens its form
+const wireGridItem = (itemEl: HTMLElement, tile: ITile): void => {
+	itemEl.setAttribute('tabindex', '0');
+	itemEl.setAttribute('role', 'button');
+	itemEl.setAttribute('aria-label', tileName(tile));
+
+	if (itemEl.dataset.wired === 'true') {
+		return;
+	}
+
+	itemEl.dataset.wired = 'true';
+
+	itemEl.addEventListener('click', (): void => {
+		emit('select', placeOf(tile.id));
+	});
+
+	itemEl.addEventListener('dblclick', (): void => {
+		emit('edit', tile.id);
+	});
+
+	itemEl.addEventListener('keydown', (event: KeyboardEvent): void => {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+
+			emit('select', placeOf(tile.id));
+		}
+	});
+};
+
+const renderTileContent = (itemEl: HTMLElement, tile: ITile): void => {
+	const content = itemEl.querySelector('.grid-stack-item-content');
+
+	if (!content) {
+		return;
+	}
+
+	const vnode = h(TilePreview, { tile });
+
+	if (appContext) {
+		vnode.appContext = appContext;
+	}
+
+	render(vnode, content as HTMLElement);
+
+	wireGridItem(itemEl, tile);
 };
 
 const unmountGridComponents = (grid: GridStack): void => {
@@ -473,252 +310,151 @@ const destroyGrids = (): void => {
 
 	pageTiles.clear();
 	draftTiles.clear();
+
+	updateHiddenCount();
 };
 
-const renderTileContent = (itemElContent: Element, tile: ITile): void => {
-	const vnode = h(TilePreview, {
-		tile,
-		onDetail: (id: ITile['id']): void => {
-			emit('tileDetail', id);
-		},
-		onEdit: (id: ITile['id']): void => {
-			emit('editTile', id);
-		},
-		onRemove: (id: ITile['id']): void => {
-			onTileRemove(id);
-		},
-	});
+const onItemsRemoved = (items: GridStackNode[], own: Set<ITile['id']>, other: Set<ITile['id']>): void => {
+	for (const item of items) {
+		const content = item.el?.querySelector('.grid-stack-item-content');
 
-	if (appContext) {
-		vnode.appContext = appContext;
+		if (content) {
+			render(null, content as HTMLElement);
+		}
+
+		if (item.id) {
+			own.delete(item.id);
+
+			// A tile that left both grids is removed when the page is saved
+			if (!other.has(item.id) && !suppressMarkChanged.value) {
+				removedTiles.add(item.id);
+			}
+
+			markChanged();
+		}
 	}
 
-	render(vnode, itemElContent as HTMLElement);
+	updateHiddenCount();
 };
 
 const initializeGrids = (): void => {
-	if (props.gridLayout === null) {
-		suppressMarkChanged.value = true;
-		destroyGrids();
+	// Suppress all event side effects (markChanged, removedTiles) during programmatic teardown and re-population
+	suppressMarkChanged.value = true;
+
+	destroyGrids();
+
+	if (props.gridLayout === null || !pageGridContainer.value || !draftGridContainer.value) {
 		suppressMarkChanged.value = false;
 
 		return;
 	}
 
-	// Suppress all event side effects (markChanged, removedTiles) during
-	// programmatic teardown and re-population of grids
-	suppressMarkChanged.value = true;
+	cellSize.value = 0;
 
-	destroyGrids();
+	updateCellSize();
 
 	pageGrid = GridStack.init(
 		{
 			column: props.gridLayout.cols,
 			row: props.gridLayout.rows,
-			cellHeight: 'auto',
-			margin: 4,
+			cellHeight: cellSize.value,
+			margin: GRID_MARGIN,
 			float: true,
 			acceptWidgets: true,
 		},
-		pageGridContainer.value!
+		pageGridContainer.value
 	);
 
 	draftGrid = GridStack.init(
 		{
 			column: props.gridLayout.cols,
-			minRow: props.gridLayout.rows,
-			cellHeight: 'auto',
-			margin: 4,
-			float: true,
+			minRow: 1,
+			cellHeight: Math.min(cellSize.value, HIDDEN_CELL_MAX),
+			margin: GRID_MARGIN,
+			float: false,
 			acceptWidgets: true,
 		},
-		draftGridContainer.value!
+		draftGridContainer.value
 	);
 
-	const insert = [{ h: 1, w: 1, content: 'new item' }];
-	GridStack.setupDragIn('.newWidget', undefined, insert);
-
-	pageGrid.on('dragstop', (_event, el): void => {
-		const n = el.gridstackNode;
-
-		const id = n?.id;
-
-		const x = n?.x;
-		const y = n?.y;
-
-		if (!id) return;
-
-		const tile = tiles.value.find((tile) => tile.id === id);
-
-		if (!tile) return;
-
-		if (tile.row - 1 !== y || tile.col - 1 !== x) {
-			markChanged();
-		}
+	pageGrid.on('dragstop resizestop', (): void => {
+		markChanged();
+		reportSelection();
 	});
 
-	pageGrid.on('resizestop', (_event, el): void => {
-		const n = el.gridstackNode;
-
-		const id = n?.id;
-
-		const w = n?.w;
-		const h = n?.h;
-
-		if (!id) return;
-
-		const tile = tiles.value.find((tile) => tile.id === id);
-
-		if (!tile) return;
-
-		if (tile.rowSpan !== h || tile.colSpan !== w) {
-			markChanged();
-		}
+	draftGrid.on('dragstop', (): void => {
+		reportSelection();
 	});
 
-	pageGrid.on('added', function (_event, items) {
+	pageGrid.on('added', (_event, items): void => {
 		markChanged();
 
 		for (const item of items) {
-			const itemEl = item.el;
+			const tile = tiles.value.find((tile) => tile.id === item.id);
 
-			if (!itemEl) {
-				return;
+			if (!item.el || !tile) {
+				continue;
 			}
 
-			const itemElContent = itemEl.querySelector('.grid-stack-item-content');
-
-			if (!itemElContent) {
-				return;
-			}
-
-			const itemId = item.id;
-
-			const tile = tiles.value.find((tile) => tile.id === itemId);
-
-			if (!tile) {
-				return;
-			}
-
-			renderTileContent(itemElContent, tile);
+			renderTileContent(item.el, tile);
 
 			pageTiles.add(tile.id);
-
-			pageTiles.forEach((item) => {
-				if (removedTiles.has(item)) {
-					removedTiles.delete(item);
-				}
-			});
+			removedTiles.delete(tile.id);
 		}
+
+		markSelection();
+		reportSelection();
 	});
 
-	pageGrid.on('removed', function (_event, items) {
-		for (const item of items) {
-			const itemEl = item.el;
-
-			const itemElContent = itemEl?.querySelector('.grid-stack-item-content');
-
-			if (!itemElContent) {
-				return;
-			}
-
-			render(null, itemElContent as HTMLElement);
-
-			if (item.id) {
-				pageTiles.delete(item.id);
-
-				if (!draftTiles.has(item.id) && !suppressMarkChanged.value) {
-					removedTiles.add(item.id);
-				}
-
-				markChanged();
-			}
-		}
+	pageGrid.on('removed', (_event, items): void => {
+		onItemsRemoved(items, pageTiles, draftTiles);
 	});
 
-	draftGrid.on('added', function (_event, items) {
+	draftGrid.on('added', (_event, items): void => {
 		markChanged();
 
 		for (const item of items) {
-			const itemEl = item.el;
+			const tile = tiles.value.find((tile) => tile.id === item.id);
 
-			if (!itemEl) {
-				return;
+			if (!item.el || !tile) {
+				continue;
 			}
 
-			const itemElContent = itemEl.querySelector('.grid-stack-item-content');
-
-			if (!itemElContent) {
-				return;
-			}
-
-			const itemId = item.id;
-
-			const tile = tiles.value.find((tile) => tile.id === itemId);
-
-			if (!tile) {
-				return;
-			}
-
-			draftGrid?.update(itemEl, { w: 2, h: 1 });
+			// Hidden tiles line up in the panel at one size, whatever size they have on the page
+			draftGrid?.update(item.el, { w: HIDDEN_TILE_WIDTH, h: 1 });
 
 			draftTiles.add(tile.id);
+			removedTiles.delete(tile.id);
 
-			draftTiles.forEach((item) => {
-				if (removedTiles.has(item)) {
-					removedTiles.delete(item);
-				}
-			});
-
-			draftGrid?.compact();
-
-			nextTick(() => {
-				renderTileContent(itemElContent, tile);
-			});
-		}
-	});
-
-	draftGrid.on('removed', function (_event, items) {
-		for (const item of items) {
 			const itemEl = item.el;
 
-			const itemElContent = itemEl?.querySelector('.grid-stack-item-content');
-
-			if (!itemElContent) {
-				return;
-			}
-
-			render(null, itemElContent as HTMLElement);
-
-			if (item.id) {
-				draftTiles.delete(item.id);
-
-				if (!pageTiles.has(item.id) && !suppressMarkChanged.value) {
-					removedTiles.add(item.id);
-				}
-
-				markChanged();
-			}
-
-			draftGrid?.compact();
+			nextTick((): void => {
+				renderTileContent(itemEl, tile);
+				markSelection();
+			});
 		}
+
+		draftGrid?.compact();
+
+		updateHiddenCount();
+		reportSelection();
 	});
 
-	updateSquareCells();
+	draftGrid.on('removed', (_event, items): void => {
+		onItemsRemoved(items, draftTiles, pageTiles);
+
+		draftGrid?.compact();
+	});
 
 	addTilesToGrids();
+
 	suppressMarkChanged.value = false;
 };
 
 const addTilesToGrids = (): void => {
 	for (const tile of tiles.value) {
-		// Skip tiles the user already dragged to trash
-		if (removedTiles.has(tile.id)) {
-			continue;
-		}
-
-		// Skip tiles already tracked in either grid
-		if (pageTiles.has(tile.id) || draftTiles.has(tile.id)) {
+		// Skip tiles removed in this session, and tiles already in a grid
+		if (removedTiles.has(tile.id) || pageTiles.has(tile.id) || draftTiles.has(tile.id)) {
 			continue;
 		}
 
@@ -726,69 +462,146 @@ const addTilesToGrids = (): void => {
 		const fitsVertically = tile.row + tile.rowSpan - 1 <= (props.gridLayout?.rows ?? 0);
 
 		if (fitsHorizontally && fitsVertically && !tile.hidden && !tile.draft) {
-			pageGrid?.addWidget({
-				id: tile.id,
-				x: tile.col - 1,
-				y: tile.row - 1,
-				w: tile.colSpan,
-				h: tile.rowSpan,
-			});
+			pageGrid?.addWidget({ id: tile.id, x: tile.col - 1, y: tile.row - 1, w: tile.colSpan, h: tile.rowSpan });
 		} else {
-			draftGrid?.addWidget({
-				id: tile.id,
-				x: 0,
-				y: 2,
-				w: 1,
-				h: 1,
-			});
+			draftGrid?.addWidget({ id: tile.id, w: HIDDEN_TILE_WIDTH, h: 1 });
 		}
 	}
 
 	draftGrid?.compact();
 };
 
-const markChanged = () => {
-	if (!initialized.value || suppressMarkChanged.value) {
+const hideTile = (id: ITile['id']): void => {
+	const itemEl = gridItemOf(pageGrid, id);
+
+	if (!itemEl || !draftGrid) {
 		return;
 	}
 
-	clearTimeout(changeTimeout);
+	// Into the panel first, so leaving the page does not count as a removal
+	draftGrid.addWidget({ id, w: HIDDEN_TILE_WIDTH, h: 1 });
+	pageGrid?.removeWidget(itemEl);
 
-	changeTimeout = setTimeout(() => {
-		pageChanged.value = true;
-	}, 50);
+	reportSelection();
 };
 
-onBeforeMount((): void => {
-	if (!loadingTiles.value) {
-		fetchTiles().catch((error: unknown): void => {
-			const err = error as Error;
+const showTile = (id: ITile['id']): boolean => {
+	const itemEl = gridItemOf(draftGrid, id);
+	const tile = tiles.value.find((item) => item.id === id);
 
-			throw new DashboardException('Something went wrong', err);
-		});
+	if (!itemEl || !tile || !pageGrid) {
+		return false;
 	}
 
-	fetchPageDataSources().catch((error: unknown): void => {
-		const err = error as Error;
+	// Its own size when it fits, otherwise one cell; never on top of another tile
+	const fitsGrid = tile.colSpan <= (props.gridLayout?.cols ?? 0) && tile.rowSpan <= (props.gridLayout?.rows ?? 0);
+	const sizes = fitsGrid
+		? [
+				{ w: tile.colSpan, h: tile.rowSpan },
+				{ w: 1, h: 1 },
+			]
+		: [{ w: 1, h: 1 }];
+	const size = sizes.find((candidate) => pageGrid?.willItFit({ ...candidate, autoPosition: true }));
 
-		throw new DashboardException('Something went wrong', err);
-	});
-});
+	if (!size) {
+		flashMessage.warning(t('pagesTilesPlugin.editor.messages.noRoom'));
+
+		return false;
+	}
+
+	pageGrid.addWidget({ id, ...size, autoPosition: true });
+	draftGrid?.removeWidget(itemEl);
+
+	reportSelection();
+
+	return true;
+};
+
+const removeTile = (id: ITile['id']): void => {
+	const onPage = gridItemOf(pageGrid, id);
+
+	if (onPage) {
+		pageGrid?.removeWidget(onPage);
+	} else {
+		const hidden = gridItemOf(draftGrid, id);
+
+		if (hidden) {
+			draftGrid?.removeWidget(hidden);
+		}
+	}
+
+	if (props.selectedTileId === id) {
+		emit('select', null);
+	}
+};
+
+const saveLayout = async (): Promise<void> => {
+	const updates: Promise<void>[] = [];
+
+	const persist = async (id: ITile['id'], data: Record<string, unknown>): Promise<void> => {
+		const tile = findTileById('page', id);
+
+		if (!tile) {
+			return;
+		}
+
+		const edited = await editTile({ id: tile.id, parent: tile.parent, data: { type: tile.type, ...data } });
+
+		if (edited.draft) {
+			await saveTile({ id: edited.id, parent: edited.parent });
+		}
+	};
+
+	for (const item of pageGrid?.getGridItems() ?? []) {
+		const node = item.gridstackNode;
+
+		if (node?.id) {
+			updates.push(persist(node.id, { row: (node.y ?? 0) + 1, col: (node.x ?? 0) + 1, rowSpan: node.h || 1, colSpan: node.w || 1, hidden: false }));
+		}
+	}
+
+	for (const item of draftGrid?.getGridItems() ?? []) {
+		const node = item.gridstackNode;
+
+		if (node?.id) {
+			updates.push(persist(node.id, { hidden: true }));
+		}
+	}
+
+	for (const id of removedTiles) {
+		const tile = findTileById('page', id);
+
+		if (tile) {
+			updates.push(removeTileDirectly({ id, parent: tile.parent }).then((): void => undefined));
+		}
+	}
+
+	await Promise.all(updates);
+
+	removedTiles.clear();
+};
 
 onMounted((): void => {
-	nextTick(() => {
+	nextTick((): void => {
 		initializeGrids();
 	});
 
-	window.addEventListener('resize', updateSquareCells);
+	if (typeof ResizeObserver !== 'undefined' && canvasArea.value) {
+		resizeObserver = new ResizeObserver(onCanvasResize);
+		resizeObserver.observe(canvasArea.value);
+	}
 
-	initTimeout = setTimeout(() => {
+	initTimeout = setTimeout((): void => {
 		initialized.value = true;
 	}, 500);
 });
 
 onBeforeUnmount((): void => {
-	window.removeEventListener('resize', updateSquareCells);
+	resizeObserver?.disconnect();
+
+	if (resizeFrame !== undefined) {
+		cancelAnimationFrame(resizeFrame);
+	}
 
 	clearTimeout(changeTimeout);
 	clearTimeout(initTimeout);
@@ -808,82 +621,30 @@ watch(
 );
 
 watch(
+	(): ITile['id'] | null => props.selectedTileId,
+	(): void => {
+		markSelection();
+	}
+);
+
+watch(
 	(): boolean => props.remotePageSubmit,
 	async (val: boolean): Promise<void> => {
-		if (val) {
-			emit('update:remote-page-submit', false);
-			emit('update:remote-page-result', FormResult.WORKING);
+		if (!val) {
+			return;
+		}
 
-			pageGrid?.save(false, false, async (gridItem: GridStackWidget): Promise<void> => {
-				if (!gridItem.id) {
-					return;
-				}
+		emit('update:remote-page-submit', false);
+		emit('update:remote-page-result', FormResult.WORKING);
 
-				let tile = findTileById('page', gridItem.id);
-
-				if (tile) {
-					tile = await editTile({
-						id: tile.id,
-						parent: tile.parent,
-						data: {
-							type: tile.type,
-							row: gridItem.y! + 1,
-							col: gridItem.x! + 1,
-							rowSpan: gridItem.h || 1,
-							colSpan: gridItem.w || 1,
-							hidden: false,
-						},
-					});
-
-					if (tile.draft) {
-						await saveTile({
-							id: tile.id,
-							parent: tile.parent,
-						});
-					}
-				}
-			});
-
-			draftGrid?.save(false, false, async (gridItem: GridStackWidget): Promise<void> => {
-				if (!gridItem.id) {
-					return;
-				}
-
-				let tile = findTileById('page', gridItem.id);
-
-				if (tile) {
-					tile = await editTile({
-						id: tile.id,
-						parent: tile.parent,
-						data: {
-							type: tile.type,
-							hidden: true,
-						},
-					});
-
-					if (tile.draft) {
-						await saveTile({
-							id: tile.id,
-							parent: tile.parent,
-						});
-					}
-				}
-			});
-
-			for (const tileId of removedTiles) {
-				const tile = findTileById('page', tileId);
-
-				if (tile) {
-					await removeTile({
-						id: tileId,
-						parent: tile.parent,
-					});
-				}
-			}
-
-			emit('update:remote-page-result', FormResult.OK);
+		try {
+			await saveLayout();
 
 			pageChanged.value = false;
+
+			emit('update:remote-page-result', FormResult.OK);
+		} catch {
+			emit('update:remote-page-result', FormResult.ERROR);
 		}
 	}
 );
@@ -895,7 +656,7 @@ watch(
 	}
 );
 
-// Re-initialize grids when grid layout (rows/cols) changes
+// A new grid size rebuilds both grids
 watch(
 	(): { rows: number; cols: number } | null => props.gridLayout,
 	(newVal, oldVal): void => {
@@ -903,33 +664,65 @@ watch(
 			return;
 		}
 
-		nextTick(() => {
+		nextTick((): void => {
 			initializeGrids();
 		});
 	}
 );
 
-// Recalculate cell sizes when card style changes (e.g. different aspect ratio)
-watch(
-	(): Record<string, string> => props.gridCardStyle,
-	(): void => {
-		nextTick(() => {
-			updateSquareCells();
-		});
-	}
-);
-
-// Recalculate cell sizes when data sources change (header height may change)
-watch(
-	(): number => nonDraftDataSources.value.length,
-	(): void => {
-		nextTick(() => {
-			updateSquareCells();
-		});
-	}
-);
+defineExpose<IPageConfigureExpose>({
+	hideTile,
+	showTile,
+	removeTile,
+});
 </script>
 
-<style rel="stylesheet/scss" lang="scss">
-@use 'page-configure.scss';
+<style scoped lang="scss">
+.page-configure {
+	&__canvas {
+		background-color: var(--el-fill-color-lighter);
+	}
+
+	// The display's screen: its page surface, framed like a device
+	&__frame {
+		border: 1px solid var(--el-border-color);
+		border-radius: var(--el-border-radius-base);
+	}
+
+	&__hidden {
+		border-top: 1px solid var(--el-border-color);
+		background-color: var(--el-bg-color);
+	}
+
+	&__hidden-body {
+		max-height: 30vh;
+	}
+
+	&__hidden-empty {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		pointer-events: none;
+	}
+
+	:deep(.grid-stack-item) {
+		outline: none;
+		cursor: pointer;
+
+		> .grid-stack-item-content {
+			display: flex;
+			flex-direction: column;
+			border-radius: 6px;
+		}
+
+		// Admin spec §7: the host draws the selection ring, 2 px in the admin's primary colour
+		&.is-selected > .grid-stack-item-content,
+		&:focus-visible > .grid-stack-item-content {
+			outline: 2px solid var(--el-color-primary);
+			outline-offset: 1px;
+		}
+	}
+}
 </style>

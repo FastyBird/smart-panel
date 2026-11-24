@@ -5,22 +5,19 @@
 			:key="day.label"
 			class="flex flex-col items-center min-w-0"
 		>
-			<el-text
-				size="small"
-				type="info"
-				class="truncate"
-			>
+			<span class="display-text-caption truncate">
 				{{ day.label }}
-			</el-text>
-			<el-icon
-				:size="18"
-				:color="day.color"
-			>
-				<icon :icon="day.icon" />
-			</el-icon>
-			<el-text size="small">
+			</span>
+			<icon
+				:icon="day.icon"
+				width="18"
+				height="18"
+				:class="day.iconClass"
+				aria-hidden="true"
+			/>
+			<span class="display-text-body">
 				{{ day.temp }}
-			</el-text>
+			</span>
 		</div>
 	</div>
 </template>
@@ -28,8 +25,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-
-import { ElIcon, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -44,9 +39,9 @@ defineProps<ITilePreviewProps>();
 const { t } = useI18n();
 
 const forecastDays = computed(() => [
-	{ label: t('tilesWeatherPlugin.preview.forecast.mon'), icon: 'mdi:weather-sunny', color: 'var(--el-color-warning)', temp: '22°' },
-	{ label: t('tilesWeatherPlugin.preview.forecast.tue'), icon: 'mdi:weather-partly-cloudy', color: 'var(--el-color-info)', temp: '19°' },
-	{ label: t('tilesWeatherPlugin.preview.forecast.wed'), icon: 'mdi:weather-rainy', color: 'var(--el-color-primary)', temp: '16°' },
-	{ label: t('tilesWeatherPlugin.preview.forecast.thu'), icon: 'mdi:weather-sunny', color: 'var(--el-color-warning)', temp: '21°' },
+	{ label: t('tilesWeatherPlugin.preview.forecast.mon'), icon: 'mdi:weather-sunny', iconClass: 'display-icon-warning', temp: '22°' },
+	{ label: t('tilesWeatherPlugin.preview.forecast.tue'), icon: 'mdi:weather-partly-cloudy', iconClass: 'display-icon', temp: '19°' },
+	{ label: t('tilesWeatherPlugin.preview.forecast.wed'), icon: 'mdi:weather-rainy', iconClass: 'display-icon-accent', temp: '16°' },
+	{ label: t('tilesWeatherPlugin.preview.forecast.thu'), icon: 'mdi:weather-sunny', iconClass: 'display-icon-warning', temp: '21°' },
 ]);
 </script>

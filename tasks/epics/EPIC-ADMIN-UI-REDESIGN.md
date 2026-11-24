@@ -89,7 +89,7 @@ dark, and updates all six locales.
 | AR-17 | #1674 | 4 | `refactor(admin): move spaces onto the page templates` | AR-9, AR-10 | merged in #1752, #1754 and #1755 |
 | AR-18 | #1675 | 4 | `refactor(admin): move scenes onto the page templates` | AR-9, AR-10 | done (#1757, #1758) |
 | AR-19 | #1676 | 4 | `refactor(admin): move displays onto the page templates` | AR-9, AR-10 | done (#1760, #1761) |
-| AR-20 | #1677 | 4 | `refactor(admin): move pages and tiles onto the page templates` | AR-9, AR-10, AR-13 | part 1 merged in #1762; part 2 (page and tile detail, data sources) in review; then configure, plugin frames and lint |
+| AR-20 | #1677 | 4 | `refactor(admin): move pages and tiles onto the page templates` | AR-9, AR-10, AR-13 | parts 1 and 2 merged in #1762 and #1763; part 3 (Tiles page configure, tile previews in the display tokens) in review; then plugin frames and lint |
 | AR-21 | #1678 | 4 | `refactor(admin): move weather onto the page templates` | AR-9, AR-10 | open |
 | AR-22 | #1679 | 4 | `refactor(admin): rebuild the overview as a dashboard` | AR-3, AR-8 | open |
 | AR-23 | #1680 | 4 | `refactor(admin): move buddy onto the two-pane and wizard templates` | AR-5, AR-8 | open |

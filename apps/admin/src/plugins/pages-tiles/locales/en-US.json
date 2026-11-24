@@ -31,11 +31,6 @@
       "addDataSource": "Add page data source",
       "editDataSource": "Edit page data source"
     },
-    "configure": {
-      "draft": "Draft",
-      "display": "Display",
-      "quickAddTile": "Quick add tile"
-    },
     "misc": {
       "discard": "Discard changes?",
       "tip": "Tip"
@@ -87,21 +82,6 @@
     },
     "update": {
       "title": "Update"
-    },
-    "yes": {
-      "title": "Yes"
-    },
-    "no": {
-      "title": "No"
-    },
-    "manageElements": {
-      "title": "Manage elements"
-    },
-    "addPageTile": {
-      "title": "Add page tile"
-    },
-    "addPageDataSource": {
-      "title": "Add page data source"
     }
   },
   "fields": {
@@ -116,6 +96,61 @@
     "tileSize": {
       "title": "Tile size",
       "placeholder": "Tile size"
+    }
+  },
+  "editor": {
+    "palette": {
+      "title": "Add a tile",
+      "description": "New tiles wait in Hidden tiles until you drag them onto the page.",
+      "empty": "No tile types are enabled. Turn on a tile plugin in Extensions."
+    },
+    "hidden": {
+      "title": "Hidden tiles",
+      "description": "Not shown on the display. Drag a tile onto the page to show it.",
+      "empty": "Drag a tile here to hide it"
+    },
+    "inspector": {
+      "onPage": "On the page",
+      "hidden": "Hidden",
+      "position": "Position",
+      "positionValue": "Row {row}, column {col}",
+      "notPlaced": "Not placed",
+      "size": "Size in cells",
+      "sizeValue": "{cols} × {rows}",
+      "saveHint": "Moves, hides and removals take effect when you save the page.",
+      "nothingSelected": "Select a tile to see where it sits and what you can do with it."
+    },
+    "buttons": {
+      "addTile": "Add tile",
+      "dataSources": "Data sources",
+      "edit": "Edit",
+      "detail": "Detail",
+      "hide": "Hide",
+      "show": "Show on page",
+      "remove": "Remove"
+    },
+    "texts": {
+      "unsaved": "Unsaved changes",
+      "loadingDisplays": "Loading displays…",
+      "noDisplay": "No display to lay out the page for",
+      "noDisplayHint": "The grid comes from the display that shows this page. Pair a display, or choose one in the page settings."
+    },
+    "display": {
+      "title": "Display",
+      "grid": "{cols} × {rows} grid"
+    },
+    "messages": {
+      "saved": "Page layout saved.",
+      "saveFailed": "The page layout could not be saved. Try again.",
+      "noRoom": "There is no free spot on the page. Make room, or drag the tile where you want it."
+    },
+    "phone": {
+      "readOnly": "Tiles are arranged on a tablet or a computer. Tap a tile to see its detail.",
+      "noTiles": "No tiles on this page yet.",
+      "noHiddenTiles": "No hidden tiles."
+    },
+    "aria": {
+      "closeInspector": "Close the inspector"
     }
   }
 }

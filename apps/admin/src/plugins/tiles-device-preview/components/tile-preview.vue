@@ -1,34 +1,29 @@
 <template>
-	<div class="flex h-full w-full p-2 gap-2 overflow-hidden" :class="layoutClass">
-		<div
-			class="flex items-center justify-center rounded-full shrink-0"
+	<div
+		class="flex h-full w-full p-2 gap-2 overflow-hidden"
+		:class="layoutClass"
+	>
+		<span
+			class="display-icon-tile"
 			:class="iconContainerClass"
-			:style="{ backgroundColor: 'var(--el-color-primary-light-9)' }"
 		>
-			<el-icon
-				:size="iconSize"
-				color="var(--el-color-primary)"
-			>
-				<icon :icon="deviceIcon" />
-			</el-icon>
-		</div>
+			<icon
+				:icon="deviceIcon"
+				:width="iconSize"
+				:height="iconSize"
+				aria-hidden="true"
+			/>
+		</span>
 		<div
 			v-if="!isButton"
 			class="flex flex-col justify-center min-w-0"
 		>
-			<el-text
-				size="small"
-				class="font-bold truncate"
-			>
+			<span class="display-text-body truncate">
 				{{ deviceName }}
-			</el-text>
-			<el-text
-				type="info"
-				size="small"
-				class="truncate"
-			>
+			</span>
+			<span class="display-text-caption truncate">
 				{{ deviceStatus }}
-			</el-text>
+			</span>
 		</div>
 	</div>
 </template>
@@ -36,8 +31,6 @@
 <script setup lang="ts">
 import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
-
-import { ElIcon, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

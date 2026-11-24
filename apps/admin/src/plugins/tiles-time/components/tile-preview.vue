@@ -1,25 +1,19 @@
 <template>
 	<div class="flex flex-col items-start justify-center h-full w-full p-2 overflow-hidden">
-		<el-text
-			class="font-mono font-bold leading-none"
-			style="font-size: clamp(14px, 2.5vw, 28px)"
+		<span
+			class="display-text-value"
+			:style="{ fontSize: props.tile.rowSpan >= 2 ? '28px' : '18px' }"
 		>
 			{{ currentTime }}
-		</el-text>
-		<el-text
-			class="font-mono mt-1"
-			type="info"
-			size="small"
-		>
+		</span>
+		<span class="display-text-caption mt-1">
 			{{ currentDate }}
-		</el-text>
+		</span>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-
-import { ElText } from 'element-plus';
 
 import type { ITilePreviewProps } from './tile-preview.types';
 
@@ -27,7 +21,7 @@ defineOptions({
 	name: 'TimeTilePreview',
 });
 
-defineProps<ITilePreviewProps>();
+const props = defineProps<ITilePreviewProps>();
 
 const currentTime = ref<string>('');
 const currentDate = ref<string>('');
