@@ -34,6 +34,7 @@ export * from './types';
 export * from './bulk-actions-toolbar.types';
 export * from './copy-field.types';
 export * from './domain-icon.types';
+export * from './domain-icon.utils';
 export * from './edit-drawer-layout.types';
 export * from './form-footer.types';
 export * from './kv-grid.types';

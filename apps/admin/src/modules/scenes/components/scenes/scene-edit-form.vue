@@ -138,85 +138,15 @@
 				</template>
 
 				<div class="px-2">
-					<!-- Empty State -->
-					<div v-if="model.actions.length === 0" class="empty-actions-state">
-						<el-icon :size="48" class="text-muted mb-3">
-							<icon icon="mdi:playlist-plus" />
-						</el-icon>
-						<div class="text-regular font-medium mb-1">
-							{{ t('scenes.edit.sections.actions.emptyTitle') }}
-						</div>
-						<div class="text-muted text-sm mb-4">
-							{{ t('scenes.edit.sections.actions.emptyDescription') }}
-						</div>
-					</div>
-
-					<!-- Action Cards -->
-					<el-card
-						v-for="(action, index) in model.actions"
-						:key="action.id || index"
-						class="action-card mb-3"
-						header-class="p-2!"
-						body-class="p-2!"
-						shadow="never"
-					>
-						<template #header>
-							<div class="flex justify-between items-center">
-								<span class="text-sm font-medium">{{ getPluginLabel(action.type) }}</span>
-								<div class="flex gap-1">
-									<el-button size="small" plain @click="onEditAction(index)">
-										<template #icon>
-											<icon icon="mdi:pencil" />
-										</template>
-									</el-button>
-									<el-button type="warning" size="small" plain @click="onRemoveAction(index)">
-										<template #icon>
-											<icon icon="mdi:trash" />
-										</template>
-									</el-button>
-								</div>
-							</div>
-						</template>
-						<component
-							:is="getActionCardComponent(action.type)"
-							:action="action"
-						/>
-					</el-card>
-
-					<!-- Add Action Dropdown -->
-					<el-dropdown trigger="click" class="w-full" @command="onPluginSelected">
-						<el-button type="primary" plain class="w-full">
-							<template #icon>
-								<icon icon="mdi:plus" />
-							</template>
-							{{ t('scenes.form.addAction') }}
-							<el-icon class="el-icon--right">
-								<icon icon="mdi:chevron-down" />
-							</el-icon>
-						</el-button>
-						<template #dropdown>
-							<el-dropdown-menu>
-								<el-dropdown-item
-									v-for="option in actionPluginOptions"
-									:key="option.value"
-									:command="option.value"
-									:disabled="option.disabled"
-								>
-									<div class="flex items-center gap-2">
-										<el-icon :size="18">
-											<icon icon="mdi:cog" />
-										</el-icon>
-										<span>{{ option.label }}</span>
-									</div>
-								</el-dropdown-item>
-							</el-dropdown-menu>
-						</template>
-					</el-dropdown>
-
-					<!-- Helper Text -->
-					<div class="text-muted text-xs mt-2 text-center">
-						{{ t('scenes.edit.sections.actions.helperText') }}
-					</div>
+					<scene-actions-list
+						:actions="model.actions"
+						:options="actionPluginOptions"
+						:card-for="getActionCardComponent"
+						:label-for="getPluginLabel"
+						@add="onPluginSelected"
+						@edit="onEditAction"
+						@remove="onRemoveAction"
+					/>
 				</div>
 			</el-collapse-item>
 		</el-collapse>
@@ -227,6 +157,7 @@
 		v-model="showActionForm"
 		:title="t('scenes.form.addAction')"
 		width="500px"
+		:fullscreen="isPhone"
 		:close-on-click-modal="false"
 		@close="onActionFormCancel"
 	>
@@ -245,7 +176,7 @@
 				{{ t('scenes.buttons.close.title') }}
 			</el-button>
 			<el-button type="primary" @click="actionFormSubmit = true">
-				{{ t('scenes.buttons.add.title') }}
+				{{ t('scenes.form.addAction') }}
 			</el-button>
 		</template>
 	</el-dialog>
@@ -255,6 +186,7 @@
 		v-model="showEditActionForm"
 		:title="t('scenes.form.editAction')"
 		width="500px"
+		:fullscreen="isPhone"
 		:close-on-click-modal="false"
 		@close="onEditActionFormCancel"
 	>
@@ -285,13 +217,9 @@ import { useI18n } from 'vue-i18n';
 import {
 	ElAlert,
 	ElButton,
-	ElCard,
 	ElCollapse,
 	ElCollapseItem,
 	ElDialog,
-	ElDropdown,
-	ElDropdownItem,
-	ElDropdownMenu,
 	ElForm,
 	ElFormItem,
 	ElIcon,
@@ -306,10 +234,11 @@ import {
 import { Icon } from '@iconify/vue';
 import { v4 as uuid } from 'uuid';
 
-import { IconPicker, useFlashMessage } from '../../../../common';
+import { IconPicker, useFlashMessage, useSizeClass } from '../../../../common';
 import { useSceneEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../scenes.constants';
 import type { ISceneActionAddForm, ISceneEditForm } from '../../schemas/scenes.types';
+import SceneActionsList from '../actions/scene-actions-list.vue';
 
 import type { ISceneEditFormProps } from './scene-edit-form.types';
 
@@ -358,6 +287,9 @@ const {
 
 // Collapse state - both sections open by default
 const activeCollapses = ref<string[]>(['general', 'actions']);
+
+// A 500 px dialog does not fit a phone: the action forms take the whole screen there
+const { isPhone } = useSizeClass();
 
 // Action add form state
 const selectedPluginType = ref<string | null>(null);
@@ -515,13 +447,3 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
-.empty-actions-state {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	padding: 24px 16px;
-	text-align: center;
-}
-</style>

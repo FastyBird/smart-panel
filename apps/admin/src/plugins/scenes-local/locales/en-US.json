@@ -4,14 +4,8 @@
 		"description": "Execute scenes locally by controlling device properties"
 	},
 	"actionCard": {
-		"device": "Device",
-		"channel": "Channel",
-		"property": "Property",
-		"value": "Value",
-		"unknownDevice": "Unknown device",
-		"unknownChannel": "Unknown channel",
-		"unknownProperty": "Unknown property",
-		"missingResource": "This action references a deleted device, channel, or property"
+		"on": "On",
+		"off": "Off"
 	},
 	"fields": {
 		"device": {

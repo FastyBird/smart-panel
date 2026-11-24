@@ -4,14 +4,8 @@
 		"description": "Wykonuj sceny lokalnie, sterując właściwościami urządzeń"
 	},
 	"actionCard": {
-		"device": "Urządzenie",
-		"channel": "Kanał",
-		"property": "Właściwość",
-		"value": "Wartość",
-		"unknownDevice": "Nieznane urządzenie",
-		"unknownChannel": "Nieznany kanał",
-		"unknownProperty": "Nieznana właściwość",
-		"missingResource": "Ta akcja odwołuje się do usuniętego urządzenia, kanału lub właściwości"
+		"on": "Wł.",
+		"off": "Wył."
 	},
 	"fields": {
 		"device": {

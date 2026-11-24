@@ -4,14 +4,8 @@
 		"description": "Provádějte scény lokálně ovládáním vlastností zařízení"
 	},
 	"actionCard": {
-		"device": "Zařízení",
-		"channel": "Kanál",
-		"property": "Vlastnost",
-		"value": "Hodnota",
-		"unknownDevice": "Neznámé zařízení",
-		"unknownChannel": "Neznámý kanál",
-		"unknownProperty": "Neznámá vlastnost",
-		"missingResource": "Tato akce odkazuje na smazané zařízení, kanál nebo vlastnost"
+		"on": "Zapnuto",
+		"off": "Vypnuto"
 	},
 	"fields": {
 		"device": {

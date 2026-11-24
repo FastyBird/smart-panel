@@ -224,7 +224,15 @@
 		},
 		"aria": {
 			"edit": "Editar {scene}",
-			"more": "Más acciones para {scene}"
+			"more": "Más acciones para {scene}",
+			"editAction": "Editar {action}",
+			"moreAction": "Más acciones para {action}"
+		},
+		"actions": {
+			"missing": "Dispositivo o propiedad eliminados",
+			"unknownDevice": "Dispositivo desconocido",
+			"unknownChannel": "Canal desconocido",
+			"unknownProperty": "Propiedad desconocida"
 		}
 	}
 }

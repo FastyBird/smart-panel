@@ -4,14 +4,8 @@
 		"description": "Ejecutar escenas localmente controlando las propiedades de los dispositivos"
 	},
 	"actionCard": {
-		"device": "Dispositivo",
-		"channel": "Canal",
-		"property": "Propiedad",
-		"value": "Valor",
-		"unknownDevice": "Dispositivo desconocido",
-		"unknownChannel": "Canal desconocido",
-		"unknownProperty": "Propiedad desconocida",
-		"missingResource": "Esta acci\u00f3n hace referencia a un dispositivo, canal o propiedad eliminado"
+		"on": "Encendido",
+		"off": "Apagado"
 	},
 	"fields": {
 		"device": {

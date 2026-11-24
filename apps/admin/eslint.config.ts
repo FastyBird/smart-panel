@@ -37,6 +37,9 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	// AR-17: the spaces list, add, edit and configure screens, the wizard and the space plugins
 	'src/modules/spaces',
 	'src/plugins/spaces-*',
+	// AR-18: the scenes list, add and edit, the action list and the local scenes plugin
+	'src/modules/scenes',
+	'src/plugins/scenes-local',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */
