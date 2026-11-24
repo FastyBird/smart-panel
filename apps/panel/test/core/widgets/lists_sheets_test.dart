@@ -1243,6 +1243,85 @@ void main() {
       }
     }
 
+    // The settings home grid (general_settings.dart): three columns at 1.8 in
+    // landscape and on square panels, two at 1.3 in portrait, in an
+    // IntrinsicHeight row with pMd padding and gaps.
+    for (final (name, width, landscape, sizeClass) in [
+      ('a Regular square panel', 400.0, true, ScreenSizeClass.regular),
+      ('a Compact square panel', 240.0, true, ScreenSizeClass.compact),
+      ('a Regular landscape panel', 800.0, true, ScreenSizeClass.regular),
+      ('a Regular portrait panel', 480.0, false, ScreenSizeClass.regular),
+      ('an Expanded landscape panel', 1280.0, true, ScreenSizeClass.expanded),
+      ('an Expanded square panel', 720.0, true, ScreenSizeClass.expanded),
+    ]) {
+      testWidgets('the settings grid fits its tiles on $name', (tester) async {
+        final columns = landscape ? 3 : 2;
+        await _pump(
+          tester,
+          SizedBox(
+            width: width,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+              child: IntrinsicHeight(
+                child: Row(
+                  spacing: AppSpacings.pMd,
+                  children: [
+                    for (var i = 0; i < columns; i++)
+                      Expanded(
+                        child: AspectRatio(
+                          aspectRatio: landscape ? 1.8 : 1.3,
+                          child: SettingsTile(
+                            label: 'Maintenance',
+                            icon: MdiIcons.wrenchOutline,
+                            iconColor: AppColors.white,
+                            iconBgColor: AppColors.white,
+                            sizeClass: sizeClass,
+                            onTap: () {},
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // A RenderFlex overflow would surface here.
+        expect(tester.takeException(), isNull);
+        final tile = tester.getRect(find.byType(SettingsTile).first);
+        final label = tester.getRect(find.text('Maintenance').first);
+        final icon = tester.getRect(find.byIcon(MdiIcons.wrenchOutline).first);
+        for (final part in [label, icon]) {
+          expect(tile.contains(part.topLeft) && part.bottom <= tile.bottom && part.right <= tile.right, isTrue);
+        }
+        expect(label.width, greaterThan(0));
+      });
+    }
+
+    testWidgets('a tile too short to stack lays the label beside the icon', (tester) async {
+      await _pump(
+        tester,
+        SizedBox(
+          width: 160,
+          height: 60,
+          child: SettingsTile(
+            label: 'Display',
+            icon: MdiIcons.weatherSunny,
+            iconColor: AppColors.white,
+            iconBgColor: AppColors.white,
+            sizeClass: ScreenSizeClass.regular,
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      final icon = tester.getRect(find.byIcon(MdiIcons.weatherSunny));
+      final label = tester.getRect(find.text('Display'));
+      expect(label.left, greaterThan(icon.right));
+      expect((label.center.dy - icon.center.dy).abs(), lessThan(1));
+    });
+
     testWidgets('a screen reader can open a tile; without onTap it is disabled', (tester) async {
       final handle = tester.ensureSemantics();
       var taps = 0;

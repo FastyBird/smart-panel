@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -26,12 +28,22 @@ class SettingsTileMetrics {
   /// The label: 12, 16 on Expanded.
   static double labelFor(ScreenSizeClass sizeClass) =>
       sizeClass == ScreenSizeClass.expanded ? 16 : 12;
+
+  /// Between the icon tile and the label, side by side.
+  static const double rowGap = 8;
+
+  /// The height the stacked layout needs: the padding, the icon tile and a
+  /// label line with room to spare. A shorter tile lays the label beside the
+  /// icon (design canvas: a row tile below 64 px).
+  static double stackedHeightFor(ScreenSizeClass sizeClass) =>
+      2 * paddingFor(sizeClass) + chipFor(sizeClass) + 1.5 * labelFor(sizeClass) + 4;
 }
 
 /// A tile on the settings home grid: `surface.card` with a `border.light`
 /// outline and radius 8, an icon tile on [iconBgColor] and the label at
-/// 12/500 (16 on Expanded): the icon at the top, the label at the foot. The
-/// settings grid keeps tiles tall enough for both (64 px and up).
+/// 12/500 (16 on Expanded): the icon at the top, the label at the foot. A
+/// tile too short for that ([SettingsTileMetrics.stackedHeightFor]) lays the
+/// label beside the icon, up to two lines.
 class SettingsTile extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -59,25 +71,86 @@ class SettingsTile extends StatelessWidget {
     final radius = BorderRadius.circular(AppBorderRadius.base);
     final chipSize = AppSpacings.scale(SettingsTileMetrics.chipFor(resolvedClass));
 
-    final chip = Container(
-      width: chipSize,
-      height: chipSize,
+    final padding = AppSpacings.scale(
+      SettingsTileMetrics.paddingFor(resolvedClass),
+    );
+    final labelStyle = TextStyle(
+      fontSize: AppSpacings.scale(SettingsTileMetrics.labelFor(resolvedClass)),
+      fontWeight: FontWeight.w500,
+      color: neutrals.textPrimary,
+    );
+
+    Widget chip(double size) => Container(
+      width: size,
+      height: size,
       decoration: BoxDecoration(color: iconBgColor, borderRadius: radius),
       child: Icon(
         icon,
-        size: AppSpacings.scale(SettingsTileMetrics.iconFor(resolvedClass)),
+        size: math.min(
+          size,
+          AppSpacings.scale(SettingsTileMetrics.iconFor(resolvedClass)),
+        ),
         color: iconColor,
       ),
     );
-    final text = Text(
-      label,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        fontSize: AppSpacings.scale(SettingsTileMetrics.labelFor(resolvedClass)),
-        fontWeight: FontWeight.w500,
-        color: neutrals.textPrimary,
-      ),
+
+    final content = LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked =
+            !constraints.hasBoundedHeight ||
+            constraints.maxHeight >=
+                AppSpacings.scale(
+                  SettingsTileMetrics.stackedHeightFor(resolvedClass),
+                );
+
+        if (stacked) {
+          return Padding(
+            padding: EdgeInsets.all(padding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                chip(chipSize),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: labelStyle,
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Side by side: the icon tile shrinks to a very short tile, and the
+        // padding gives way before it does.
+        final rowChip = math.min(chipSize, constraints.maxHeight);
+        final vertical = math.max(
+          0.0,
+          math.min(padding, (constraints.maxHeight - rowChip) / 2),
+        );
+
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: padding,
+            vertical: vertical,
+          ),
+          child: Row(
+            spacing: AppSpacings.scale(SettingsTileMetrics.rowGap),
+            children: [
+              chip(rowChip),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: labelStyle,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
 
     // One node, announced once, that a screen reader can activate too.
@@ -100,16 +173,7 @@ class SettingsTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: radius,
-          child: Padding(
-            padding: EdgeInsets.all(
-              AppSpacings.scale(SettingsTileMetrics.paddingFor(resolvedClass)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [chip, text],
-            ),
-          ),
+          child: content,
         ),
       ),
     );
