@@ -148,4 +148,68 @@ describe('PageConfigure', () => {
 		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
 		expect(removeDirectly).not.toHaveBeenCalled();
 	});
+	it('gives a hidden tile dragged back onto the page the size it had there, where it fits', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		// What a drop from the panel does: the tile arrives at the panel's size
+		grid.addWidget({ id: 'tile-a', x: 0, y: 2, w: 2, h: 1 });
+		await nextTick();
+		await flushPromises();
+
+		expect(pageItem('tile-a')?.gridstackNode).toMatchObject({ x: 0, y: 2, w: 2, h: 2 });
+	});
+
+	it('keeps the dropped size when the saved one would cover another tile', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		grid.addWidget({ id: 'tile-c-blocker', x: 0, y: 3, w: 1, h: 1 });
+		grid.addWidget({ id: 'tile-a', x: 0, y: 2, w: 2, h: 1 });
+		await nextTick();
+		await flushPromises();
+
+		expect(pageItem('tile-a')?.gridstackNode).toMatchObject({ x: 0, y: 2, w: 2, h: 1 });
+	});
+
+	it('keeps the grids locked until every request of a failed save has settled', async () => {
+		const pending: (() => void)[] = [];
+
+		edit.mockImplementation(({ id }: { id: string }) =>
+			id === 'tile-a'
+				? Promise.reject(new Error('failed'))
+				: new Promise((resolve) => {
+						pending.push(() => resolve(tiles.value.find((tile) => tile.id === id)));
+					})
+		);
+
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['working']);
+
+		exposed.hideTile('tile-a');
+		expect(pageItem('tile-a')).toBeDefined();
+
+		pending.forEach((resolve) => resolve());
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		expect(pageItem('tile-a')).toBeUndefined();
+	});
 });

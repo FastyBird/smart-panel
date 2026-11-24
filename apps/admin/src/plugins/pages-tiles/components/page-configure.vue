@@ -415,7 +415,19 @@ const initializeGrids = (): void => {
 
 			pageTiles.add(tile.id);
 			removedTiles.delete(tile.id);
+
+			// Dragged back from the panel, where every tile is one size: it takes the size it had on the page again
+			const size = hiddenSizes.get(tile.id);
+			const itemEl = item.el;
+
 			hiddenSizes.delete(tile.id);
+
+			if (size) {
+				nextTick((): void => {
+					restoreSize(itemEl, size);
+					reportSelection();
+				});
+			}
 		}
 
 		markSelection();
@@ -494,6 +506,35 @@ const addTilesToGrids = (): void => {
 	}
 
 	draftGrid?.compact();
+};
+
+// Only where it fits the grid and covers no other tile; otherwise it keeps the size it was dropped at
+const restoreSize = (itemEl: GridItemHTMLElement, size: { w: number; h: number }): void => {
+	const node = itemEl.gridstackNode;
+
+	if (!node || !pageGrid || !props.gridLayout || (node.w === size.w && node.h === size.h)) {
+		return;
+	}
+
+	const x = node.x ?? 0;
+	const y = node.y ?? 0;
+
+	if (x + size.w > props.gridLayout.cols || y + size.h > props.gridLayout.rows) {
+		return;
+	}
+
+	const covers = pageGrid.engine.nodes.some(
+		(other) =>
+			other !== node &&
+			x < (other.x ?? 0) + (other.w ?? 1) &&
+			x + size.w > (other.x ?? 0) &&
+			y < (other.y ?? 0) + (other.h ?? 1) &&
+			y + size.h > (other.y ?? 0)
+	);
+
+	if (!covers) {
+		pageGrid.update(itemEl, { w: size.w, h: size.h });
+	}
 };
 
 const hideTile = (id: ITile['id']): void => {
@@ -605,7 +646,13 @@ const saveLayout = async (): Promise<ITile['id'][]> => {
 		}
 	}
 
-	await Promise.all(updates);
+	// Every request settles before the grids unlock, so a retry never overlaps one still running
+	const results = await Promise.allSettled(updates);
+	const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+
+	if (failed) {
+		throw failed.reason;
+	}
 
 	return removed;
 };
