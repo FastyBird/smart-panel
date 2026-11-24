@@ -139,6 +139,8 @@ class HeroSkeleton extends StatelessWidget {
                         (showBadge ? badge + gap : 0))
                     .clamp(0.0, buttons)
               : buttons;
+          // Too short for any: the buttons go, with their gap.
+          final showButtons = buttonsHeight > 0;
           final numeral = constraints.hasBoundedHeight
               ? const Expanded(child: _NumeralBlock())
               : SizedBox(height: numeralMin, child: const _NumeralBlock());
@@ -158,7 +160,7 @@ class HeroSkeleton extends StatelessWidget {
               numeral,
               if (showSlider)
                 SkeletonBlock(height: slider, radius: AppBorderRadius.pill),
-              SkeletonBlock(height: buttonsHeight),
+              if (showButtons) SkeletonBlock(height: buttonsHeight),
             ],
           );
         },

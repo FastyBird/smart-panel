@@ -57,6 +57,9 @@ Future<T?> showRightDrawer<T>(
 
   /// Whether tapping the barrier dismisses the drawer.
   bool barrierDismissible = true,
+
+  /// The class to size the drawer for; defaults to the screen's.
+  ScreenSizeClass? sizeClass,
 }) {
   return showGeneralDialog<T>(
     context: context,
@@ -75,6 +78,7 @@ Future<T?> showRightDrawer<T>(
         footerSection: footerSection,
         width: width,
         scrollable: scrollable,
+        sizeClass: sizeClass,
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {

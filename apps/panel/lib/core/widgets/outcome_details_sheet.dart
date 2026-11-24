@@ -216,6 +216,9 @@ class OutcomeDetailsList extends StatelessWidget {
 /// landscape. [title] names the request ("Room mode: Relax"), [subtitle] when
 /// and how it went ("Sent 21:30 · 1 part did not complete"). An optional
 /// [actionLabel] ("Retry Relax") closes the layer and calls [onAction].
+///
+/// [landscape] and [sizeClass] default to the screen's. The returned future
+/// completes when the layer closes, in either orientation.
 Future<void> showOutcomeDetailsSheet(
   BuildContext context, {
   required String title,
@@ -225,9 +228,10 @@ Future<void> showOutcomeDetailsSheet(
   String? actionLabel,
   VoidCallback? onAction,
   bool? landscape,
+  ScreenSizeClass? sizeClass,
 }) async {
   final screen = locator<ScreenService>();
-  final sizeClass = screen.sizeClass;
+  final resolvedClass = sizeClass ?? screen.sizeClass;
   final isLandscape = landscape ?? screen.isLandscape;
 
   // Built inside the layer, so it closes the layer's own route.
@@ -237,7 +241,7 @@ Future<void> showOutcomeDetailsSheet(
           builder: (layerContext) => AppDialogButton(
             label: actionLabel,
             primary: true,
-            sizeClass: sizeClass,
+            sizeClass: resolvedClass,
             onTap: () {
               Navigator.of(layerContext).pop();
               onAction();
@@ -245,7 +249,11 @@ Future<void> showOutcomeDetailsSheet(
           ),
         );
 
-  final list = OutcomeDetailsList(rows: rows, note: note, sizeClass: sizeClass);
+  final list = OutcomeDetailsList(
+    rows: rows,
+    note: note,
+    sizeClass: resolvedClass,
+  );
 
   if (isLandscape) {
     await showRightDrawer<void>(
@@ -254,21 +262,23 @@ Future<void> showOutcomeDetailsSheet(
       subtitle: subtitle,
       content: list,
       footerSection: action,
+      sizeClass: resolvedClass,
     );
 
     return;
   }
 
-  showBottomSheetDialog(
+  await showBottomSheetDialog(
     context,
     title: title,
     subtitle: subtitle,
     content: Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.scale(SheetMetrics.paddingFor(sizeClass)),
+        horizontal: AppSpacings.scale(SheetMetrics.paddingFor(resolvedClass)),
       ),
       child: list,
     ),
     bottomSection: action,
+    sizeClass: resolvedClass,
   );
 }

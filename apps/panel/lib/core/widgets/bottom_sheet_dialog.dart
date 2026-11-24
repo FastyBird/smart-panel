@@ -66,7 +66,9 @@ class SheetMetrics {
 ///   bottomSection: FilledButton(onPressed: () => ..., child: Text('Done')),
 /// );
 /// ```
-void showBottomSheetDialog(
+///
+/// The returned future completes when the sheet closes.
+Future<void> showBottomSheetDialog(
   BuildContext context, {
   /// Optional title. Shown in the header when [titleWidget] is null.
   /// Header is shown when [title] is non-null or [titleWidget] is non-null.
@@ -96,10 +98,12 @@ void showBottomSheetDialog(
   /// When true, content is wrapped in [SingleChildScrollView]. Set to false when
   /// content uses [Expanded] or has its own scroll (e.g. charts).
   bool scrollable = true,
+  /// The class to size the sheet for; defaults to the screen's.
+  ScreenSizeClass? sizeClass,
 }) {
   final hasHeader = title != null || titleWidget != null;
   final effectiveShowHandle = showHandle ?? hasHeader;
-  showModalBottomSheet<void>(
+  return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: isScrollControlled,
     backgroundColor: AppColors.blank,
@@ -117,6 +121,7 @@ void showBottomSheetDialog(
       maxHeightFactor: maxHeightFactor,
       contentPadding: contentPadding,
       scrollable: scrollable,
+      sizeClass: sizeClass,
     ),
   );
 }

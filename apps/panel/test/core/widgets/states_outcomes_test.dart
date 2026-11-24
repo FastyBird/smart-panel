@@ -153,6 +153,25 @@ void main() {
       expect(_blocks(tester, find.byType(HeroSkeleton)).length, lessThan(4));
     });
 
+    for (final sizeClass in _classes) {
+      testWidgets('a very short hero at ${sizeClass.name} drops the buttons and their gap', (tester) async {
+        final padding = HeroCardMetrics.of(sizeClass).padding;
+        // Down to just above the card's own padding.
+        for (final height in [60.0, 40.0, 30.0, 2 * padding + 4]) {
+          await _pump(
+            tester,
+            SizedBox(width: 220, height: height, child: HeroSkeleton(sizeClass: sizeClass)),
+          );
+
+          expect(tester.takeException(), isNull, reason: 'at $height');
+          final card = tester.getRect(find.byType(HeroSkeleton));
+          for (final block in _blocks(tester, find.byType(HeroSkeleton))) {
+            expect(block.bottom, lessThanOrEqualTo(card.bottom + 0.01), reason: 'at $height');
+          }
+        }
+      });
+    }
+
     testWidgets('a hero without a height limit takes its natural height', (tester) async {
       await _pump(
         tester,
@@ -510,6 +529,37 @@ void main() {
     });
   });
 
+  group('Outcome pill and text size', () {
+    for (final scale in [1.0, 1.5, 2.5]) {
+      testWidgets('a pill fits its label at text scale $scale', (tester) async {
+        await _pump(
+          tester,
+          MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: OutcomeIndicator(
+              outcome: AppOutcome.notConfirmed,
+              onDetails: () {},
+              sizeClass: ScreenSizeClass.regular,
+            ),
+          ),
+        );
+
+        expect(tester.takeException(), isNull);
+        final pill = find.descendant(
+          of: find.byType(OutcomeIndicator),
+          matching: find.byWidgetPredicate((widget) => widget is Container && widget.decoration != null),
+        );
+        final pillRect = tester.getRect(pill);
+        final label = tester.getRect(find.byType(RichText).first);
+        expect(pillRect.height, greaterThanOrEqualTo(OutcomeMetrics.pillHeight));
+        expect(label.top, greaterThanOrEqualTo(pillRect.top), reason: 'at $scale');
+        expect(label.bottom, lessThanOrEqualTo(pillRect.bottom), reason: 'at $scale');
+        if (scale == 1.0) expect(pillRect.height, OutcomeMetrics.pillHeight);
+        if (scale == 2.5) expect(pillRect.height, greaterThan(OutcomeMetrics.pillHeight));
+      });
+    }
+  });
+
   group('Outcome details', () {
     List<OutcomeDetailRow> rows() => const [
       OutcomeDetailRow(icon: Icons.lightbulb_outline, label: 'Lights', outcome: AppOutcome.completed),
@@ -604,6 +654,74 @@ void main() {
         expect(retried, 1);
         expect(find.text('Room mode: Relax'), findsNothing);
         expect(find.text('open'), findsOneWidget);
+      }
+    });
+
+    testWidgets('the future completes when the layer closes, in both orientations', (tester) async {
+      for (final landscape in [false, true]) {
+        Future<void>? shown;
+        await _pump(
+          tester,
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => shown = showOutcomeDetailsSheet(
+                context,
+                title: 'Room mode: Relax',
+                rows: rows(),
+                landscape: landscape,
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        );
+
+        var done = false;
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+        shown!.then((_) => done = true);
+        await tester.pump();
+        expect(find.text('Room mode: Relax'), findsOneWidget);
+        expect(done, isFalse, reason: landscape ? 'landscape' : 'portrait');
+
+        // The scrim, top left: outside both the sheet and the drawer.
+        await tester.tapAt(const Offset(4, 4));
+        await tester.pumpAndSettle();
+        expect(find.text('Room mode: Relax'), findsNothing);
+        expect(done, isTrue, reason: landscape ? 'landscape' : 'portrait');
+      }
+    });
+
+    testWidgets('the layer sizes for the class it is given', (tester) async {
+      for (final landscape in [false, true]) {
+        await _pump(
+          tester,
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showOutcomeDetailsSheet(
+                context,
+                title: 'Room mode: Relax',
+                rows: rows(),
+                landscape: landscape,
+                sizeClass: ScreenSizeClass.compact,
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+        final layerClass = landscape
+            ? tester.widget<RightDrawer>(find.byType(RightDrawer)).sizeClass
+            : tester.widget<BottomSheetDialog>(find.byType(BottomSheetDialog)).sizeClass;
+        expect(layerClass, ScreenSizeClass.compact);
+        expect(
+          tester.widget<OutcomeDetailsList>(find.byType(OutcomeDetailsList)).sizeClass,
+          ScreenSizeClass.compact,
+        );
+
+        await tester.tapAt(const Offset(4, 4));
+        await tester.pumpAndSettle();
       }
     });
   });

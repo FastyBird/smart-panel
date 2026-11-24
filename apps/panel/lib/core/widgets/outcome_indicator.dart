@@ -57,9 +57,10 @@ class OutcomeMetrics {
   static const double icon = 12;
   static const double gap = 4;
 
-  /// The warning pill.
+  /// The warning pill: 24 high, and taller with a larger text size.
   static const double pillHeight = 24;
   static const double pillPadding = 8;
+  static const double pillVerticalPadding = 2;
 
   /// A tappable pill's touch zone (spec §4).
   static const double touch = 36;
@@ -253,9 +254,12 @@ class OutcomeIndicator extends StatelessWidget {
 
     Widget indicator = style.isPill
         ? Container(
-            height: AppSpacings.scale(OutcomeMetrics.pillHeight),
+            constraints: BoxConstraints(
+              minHeight: AppSpacings.scale(OutcomeMetrics.pillHeight),
+            ),
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacings.scale(OutcomeMetrics.pillPadding),
+              vertical: AppSpacings.scale(OutcomeMetrics.pillVerticalPadding),
             ),
             decoration: BoxDecoration(
               color: style.soft,
@@ -266,7 +270,7 @@ class OutcomeIndicator extends StatelessWidget {
               ),
             ),
             // Shrinks to the label; a Container alignment would stretch.
-            child: Center(widthFactor: 1, child: line),
+            child: Center(widthFactor: 1, heightFactor: 1, child: line),
           )
         : line;
 

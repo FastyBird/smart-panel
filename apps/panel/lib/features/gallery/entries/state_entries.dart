@@ -154,7 +154,8 @@ List<OutcomeDetailRow> _rows(BuildContext context) {
 }
 
 Widget _outcomes(BuildContext context) {
-  final sizeClass = _class(context);
+  final scope = GalleryScope.of(context);
+  final sizeClass = scope.sizeClass;
   final localizations = AppLocalizations.of(context)!;
 
   final samples = <Widget>[
@@ -181,6 +182,9 @@ Widget _outcomes(BuildContext context) {
         rows: _rows(context),
         actionLabel: 'Retry Relax',
         onAction: () {},
+        // The selected canvas, not the host screen.
+        landscape: scope.orientation == Orientation.landscape,
+        sizeClass: sizeClass,
       ),
       sizeClass: sizeClass,
     ),
