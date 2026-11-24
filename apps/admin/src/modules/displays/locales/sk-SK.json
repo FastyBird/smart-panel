@@ -32,9 +32,6 @@
 			},
 			"detail": {
 				"title": "Displej: {display}"
-			},
-			"tokens": {
-				"title": "Prístupové tokeny: {display}"
 			}
 		}
 	},
@@ -375,16 +372,13 @@
 	"detail": {
 		"title": "Detail displeja",
 		"info": {
-			"title": "Informácie o displeji",
-			"macAddress": "MAC adresa",
 			"version": "Verzia",
 			"build": "Zostavenie",
 			"resolution": "Rozlíšenie",
 			"pixelRatio": "Pomer pixelov",
 			"gridSize": "Veľkosť mriežky",
 			"registeredFromIp": "Registrovaná IP",
-			"currentIpAddress": "Aktuálna IP",
-			"status": "Stav pripojenia"
+			"currentIpAddress": "Aktuálna IP"
 		},
 		"settings": {
 			"title": "Nastavenia displeja",
@@ -416,11 +410,23 @@
 		},
 		"tokens": {
 			"title": "Prístupové tokeny",
-			"subtitle": "Spravovať tokeny",
 			"description": "Spravujte prístupové tokeny pre tento displej. Každý displej by mal mať maximálne jeden aktívny token.",
 			"noTokens": "Žiadne aktívne tokeny",
 			"revokeConfirm": "Naozaj chcete odobrať prístupový token? Displej sa bude musieť znovu zaregistrovať.",
-			"revoked": "Token bol úspešne odobratý"
+			"revoked": "Token bol úspešne odobratý",
+			"loading": "Načítavajú sa prístupové tokeny…",
+			"noTokensHint": "Displej dostane token pri registrácii. Po jeho odobratí sa displej musí zaregistrovať znova.",
+			"status": {
+				"active": "Aktívny",
+				"revoked": "Odobratý"
+			},
+			"fields": {
+				"id": "ID tokenu",
+				"created": "Vytvorené",
+				"expires": "Platnosť do"
+			},
+			"never": "Nikdy",
+			"revokeError": "Prístupový token sa nepodarilo odobrať"
 		},
 		"spaceContext": {
 			"title": "Kontext priestoru",
@@ -437,6 +443,14 @@
 			"initialViews": {
 				"spaceOverview": "Prehľad priestoru"
 			}
+		},
+		"tabs": {
+			"overview": "Prehľad",
+			"tokens": "Prístupové tokeny"
+		},
+		"values": {
+			"enabled": "Zapnuté",
+			"disabled": "Vypnuté"
 		}
 	},
 	"messages": {
@@ -460,8 +474,7 @@
 		}
 	},
 	"actions": {
-		"revokeToken": "Odobrať token",
-		"manageTokens": "Spravovať tokeny"
+		"revokeToken": "Odobrať token"
 	},
 	"aria": {
 		"edit": "Upraviť {display}",

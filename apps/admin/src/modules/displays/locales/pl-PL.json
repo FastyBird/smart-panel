@@ -32,9 +32,6 @@
 			},
 			"detail": {
 				"title": "Wyświetlacz: {display}"
-			},
-			"tokens": {
-				"title": "Tokeny dostępu: {display}"
 			}
 		}
 	},
@@ -375,16 +372,13 @@
 	"detail": {
 		"title": "Szczegóły wyświetlacza",
 		"info": {
-			"title": "Informacje o wyświetlaczu",
-			"macAddress": "Adres MAC",
 			"version": "Wersja",
 			"build": "Kompilacja",
 			"resolution": "Rozdzielczość",
 			"pixelRatio": "Współczynnik pikseli",
 			"gridSize": "Rozmiar siatki",
 			"registeredFromIp": "IP rejestracji",
-			"currentIpAddress": "Bieżący IP",
-			"status": "Stan połączenia"
+			"currentIpAddress": "Bieżący IP"
 		},
 		"settings": {
 			"title": "Ustawienia wyświetlacza",
@@ -416,11 +410,23 @@
 		},
 		"tokens": {
 			"title": "Tokeny dostępu",
-			"subtitle": "Zarządzaj tokenami",
 			"description": "Zarządzaj tokenami dostępu tego wyświetlacza. Każdy wyświetlacz powinien mieć najwyżej jeden aktywny token.",
 			"noTokens": "Brak aktywnych tokenów",
 			"revokeConfirm": "Czy na pewno chcesz unieważnić token dostępu? Wyświetlacz będzie musiał się ponownie zarejestrować.",
-			"revoked": "Token pomyślnie unieważniony"
+			"revoked": "Token pomyślnie unieważniony",
+			"loading": "Wczytywanie tokenów dostępu…",
+			"noTokensHint": "Wyświetlacz otrzymuje token podczas rejestracji. Po jego unieważnieniu wyświetlacz musi zarejestrować się ponownie.",
+			"status": {
+				"active": "Aktywny",
+				"revoked": "Unieważniony"
+			},
+			"fields": {
+				"id": "ID tokenu",
+				"created": "Utworzono",
+				"expires": "Wygasa"
+			},
+			"never": "Nigdy",
+			"revokeError": "Nie udało się unieważnić tokenu dostępu"
 		},
 		"spaceContext": {
 			"title": "Kontekst przestrzeni",
@@ -437,6 +443,14 @@
 			"initialViews": {
 				"spaceOverview": "Przegląd przestrzeni"
 			}
+		},
+		"tabs": {
+			"overview": "Przegląd",
+			"tokens": "Tokeny dostępu"
+		},
+		"values": {
+			"enabled": "Włączone",
+			"disabled": "Wyłączone"
 		}
 	},
 	"messages": {
@@ -460,8 +474,7 @@
 		}
 	},
 	"actions": {
-		"revokeToken": "Unieważnij token",
-		"manageTokens": "Zarządzaj tokenami"
+		"revokeToken": "Unieważnij token"
 	},
 	"aria": {
 		"edit": "Edytuj {display}",
