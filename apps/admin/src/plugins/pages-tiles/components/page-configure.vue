@@ -185,6 +185,8 @@ const placeOf = (id: ITile['id']): IPageConfigureTilePlace | null => {
 
 // The inspector follows the selected tile as it is moved, resized, hidden or shown
 const reportSelection = (): void => {
+	labelGridItems();
+
 	if (props.selectedTileId) {
 		emit('select', placeOf(props.selectedTileId));
 	}
@@ -256,19 +258,36 @@ const onCanvasResize = (): void => {
 };
 
 // The cell is a button: a click or Enter selects the tile, a double click opens its form
+// The tile type and where it sits, on the page or in the panel, so two tiles of one type read apart
+const labelOf = (itemEl: GridItemHTMLElement, tile: ITile): string => {
+	const node = itemEl.gridstackNode;
+
+	if (!node) {
+		return tileName(tile);
+	}
+
+	const where = t('pagesTilesPlugin.editor.inspector.positionValue', { row: (node.y ?? 0) + 1, col: (node.x ?? 0) + 1 });
+
+	return node.grid === draftGrid ? `${tileName(tile)}, ${t('pagesTilesPlugin.editor.inspector.hidden')}, ${where}` : `${tileName(tile)}, ${where}`;
+};
+
+// Tiles move when others are dragged, hidden or removed, so every name is refreshed after each change
+const labelGridItems = (): void => {
+	for (const grid of [pageGrid, draftGrid]) {
+		for (const itemEl of grid?.getGridItems() ?? []) {
+			const tile = tiles.value.find((item) => item.id === itemEl.gridstackNode?.id);
+
+			if (tile) {
+				itemEl.setAttribute('aria-label', labelOf(itemEl, tile));
+			}
+		}
+	}
+};
+
 const wireGridItem = (itemEl: GridItemHTMLElement, tile: ITile): void => {
-	const place = placeOf(tile.id);
-
-	// The tile type and where it sits, so two tiles of one type read apart
-	const where = place
-		? place.hidden
-			? t('pagesTilesPlugin.editor.inspector.hidden')
-			: t('pagesTilesPlugin.editor.inspector.positionValue', { row: place.row, col: place.col })
-		: '';
-
 	itemEl.setAttribute('tabindex', '0');
 	itemEl.setAttribute('role', 'button');
-	itemEl.setAttribute('aria-label', where ? `${tileName(tile)}, ${where}` : tileName(tile));
+	itemEl.setAttribute('aria-label', labelOf(itemEl, tile));
 
 	if (itemEl.dataset.wired === 'true') {
 		return;
@@ -488,6 +507,7 @@ const initializeGrids = (): void => {
 		}
 
 		onItemsRemoved(items, pageTiles, draftTiles);
+		labelGridItems();
 	});
 
 	draftGrid.on('added', (_event, items): void => {
@@ -524,6 +544,7 @@ const initializeGrids = (): void => {
 		onItemsRemoved(items, draftTiles, pageTiles);
 
 		draftGrid?.compact();
+		labelGridItems();
 	});
 
 	addTilesToGrids();

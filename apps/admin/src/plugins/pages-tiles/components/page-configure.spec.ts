@@ -20,7 +20,7 @@ const tiles = ref([
 ]);
 
 vi.mock('vue-i18n', () => ({
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string, params?: Record<string, unknown>) => (params ? `${key}:${JSON.stringify(params)}` : key) }),
 }));
 
 vi.mock('../../../common', () => ({
@@ -228,10 +228,26 @@ describe('PageConfigure', () => {
 
 	it('names each tile by its type and place, and draws the preview at the size its cell has', async () => {
 		const wrapper = await mountConfigure();
-		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void; showTile: (id: string) => boolean };
 		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
 
-		expect(pageItem('tile-b')?.getAttribute('aria-label')).toBe('Clock, pagesTilesPlugin.editor.inspector.positionValue');
+		expect(pageItem('tile-b')?.getAttribute('aria-label')).toBe('Clock, pagesTilesPlugin.editor.inspector.positionValue:{"row":1,"col":4}');
+
+		// Two hidden tiles of one type read apart by their place in the panel
+		exposed.hideTile('tile-b');
+		await flushPromises();
+
+		const hiddenB = hiddenItem('tile-b')?.getAttribute('aria-label');
+
+		expect(hiddenB).toContain('pagesTilesPlugin.editor.inspector.hidden');
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		expect(hiddenItem('tile-a')?.getAttribute('aria-label')).not.toBe(hiddenItem('tile-b')?.getAttribute('aria-label'));
+
+		exposed.showTile('tile-b');
+		await flushPromises();
 
 		exposed.hideTile('tile-a');
 		await flushPromises();
