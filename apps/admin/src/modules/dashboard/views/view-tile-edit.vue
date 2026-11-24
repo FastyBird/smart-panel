@@ -17,7 +17,7 @@
 	>
 		<el-scrollbar
 			v-if="tile !== null"
-			class="grow-1 p-2 md:px-4"
+			class="grow-1 p-2 tp:px-4"
 		>
 			<component
 				:is="element?.components?.tileEditForm"
@@ -41,57 +41,17 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('dashboardModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('dashboardModule.buttons.close.title') }}
-				</el-button>
-
-				<div
-					:id="SUBMIT_FORM_SM"
-					class="order-2 inline-block [&>*:first-child:not(:only-child)]:hidden"
-				>
-					<el-button
-						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="remoteFormResult !== FormResult.NONE || !remoteFormChanged"
-						type="primary"
-						@click="onSubmit"
-					>
-						<template
-							v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
-							#icon
-						>
-							<icon
-								v-if="remoteFormResult === FormResult.OK"
-								icon="mdi:check-circle"
-							/>
-							<icon
-								v-else-if="remoteFormResult === FormResult.ERROR"
-								icon="mdi:cross-circle"
-							/>
-						</template>
-						{{ t('dashboardModule.buttons.save.title') }}
-					</el-button>
-				</div>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-if="tile !== null"
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			:can-save="remoteFormChanged && remoteFormResult === FormResult.NONE"
+			@save="onSubmit"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -101,18 +61,17 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
+import { ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
 import {
 	AppBreadcrumbs,
+	FormFooter,
 	type IPlugin,
 	type IPluginElement,
-	SUBMIT_FORM_SM,
 	ViewHeader,
-	useBreakpoints,
+	useEditDrawer,
 	useFlashMessage,
+	useSizeClass,
 	useUuid,
 } from '../../../common';
 import TileEditForm from '../components/tiles/tile-edit-form.vue';
@@ -146,7 +105,9 @@ useMeta({
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const { tile, isLoading, fetchTile } = useTile({ id: props.id });
 
@@ -201,12 +162,12 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
-		confirmButtonText: t('dashboardModule.buttons.yes.title'),
-		cancelButtonText: t('dashboardModule.buttons.no.title'),
+		confirmButtonText: t('dashboardModule.buttons.discard.title'),
+		cancelButtonText: t('dashboardModule.buttons.keepEditing.title'),
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.TILE, params: { id: props.id } });
 			} else {
 				router.push({ name: RouteNames.TILE, params: { id: props.id } });
@@ -222,7 +183,7 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.TILE, params: { id: props.id } });
 	} else {
 		router.push({ name: RouteNames.TILE, params: { id: props.id } });
@@ -259,7 +220,7 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.TILE, params: { id: props.id } });
 			} else {
 				router.push({ name: RouteNames.TILE, params: { id: props.id } });
@@ -292,14 +253,14 @@ watch(
 			flashMessage.warning(t('dashboardModule.messages.tiles.deletedWhileEditing'), { duration: 0 });
 			// Redirect to parent page if available, otherwise to pages list
 			if (parentPageId.value) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.PAGE, params: { id: parentPageId.value } });
 				} else {
 					router.push({ name: RouteNames.PAGE, params: { id: parentPageId.value } });
 				}
 			} else {
 				// Fallback to pages list if parent not available
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.PAGES });
 				} else {
 					router.push({ name: RouteNames.PAGES });

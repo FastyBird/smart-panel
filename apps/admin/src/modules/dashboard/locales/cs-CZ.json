@@ -80,8 +80,7 @@
       "add": "Přidat zdroj dat",
       "edit": "Upravit zdroj dat",
       "remove": "Odebrat zdroj dat?",
-      "selectPlugin": "Vyžadován plugin zdroje dat",
-      "adjustFilters": "Filtrovat zdroje dat"
+      "selectPlugin": "Vyžadován plugin zdroje dat"
     },
     "misc": {
       "discard": "Zahodit změny?"
@@ -107,8 +106,7 @@
     "dataSources": {
       "add": "Přidat nový zdroj dat Smart panelu",
       "edit": "Upravit zdroj dat Smart panelu",
-      "detail": "Správa zdroje dat Smart panelu",
-      "adjustFilters": "Upravit filtry zobrazení"
+      "detail": "Správa zdroje dat Smart panelu"
     }
   },
   "messages": {
@@ -189,15 +187,18 @@
     },
     "dataSources": {
       "noDataSources": "Nemáte nakonfigurovaný žádný zdroj dat",
-      "noFilteredDataSources": "Nebyly nalezeny žádné zdroje dat odpovídající aktivním kritériím filtru",
       "loadingDataSources": "Načítání zdrojů dat...",
       "loadingDataSource": "Načítání zdroje dat...",
       "confirmRemove": "Opravdu chcete odebrat zdroj dat? Tuto akci nelze vrátit zpět.",
       "selectPlugin": "Pro vytvoření nového zdroje dat vyberte prosím kompatibilní plugin ze seznamu. Pluginy poskytují potřebné konfigurační možnosti pro konkrétní typy zdrojů dat.",
-      "noPlugins": "Zatím nebyly nakonfigurovány žádné pluginy zdrojů dat."
+      "noPlugins": "Zatím nebyly nakonfigurovány žádné pluginy zdrojů dat.",
+      "description": "Odkud pocházejí zde zobrazené hodnoty.",
+      "noDataSourcesHint": "Přidejte zdroj dat a zobrazte hodnotu ze zařízení nebo počasí."
     },
     "misc": {
-      "confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?"
+      "confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
+      "yes": "Ano",
+      "no": "Ne"
     }
   },
   "fields": {
@@ -278,9 +279,6 @@
       }
     },
     "dataSources": {
-      "search": {
-        "placeholder": "Hledat zdroje dat..."
-      },
       "plugin": {
         "title": "Plugin zdroje dat",
         "placeholder": "Vyberte plugin zdroje dat"
@@ -422,6 +420,13 @@
     "pages": {
       "edit": "Upravit {page}",
       "more": "Další akce pro {page}"
+    },
+    "dataSources": {
+      "edit": "Upravit zdroj dat",
+      "more": "Další akce pro zdroj dat"
+    },
+    "tiles": {
+      "edit": "Upravit dlaždici"
     }
   }
 }
