@@ -119,6 +119,11 @@ const draftGridContainer = ref<HTMLElement | null>(null);
 const pageTiles = new Set<ITile['id']>();
 const draftTiles = new Set<ITile['id']>();
 const removedTiles = new Set<ITile['id']>();
+// The size a tile had on the page before it was hidden, kept until it is shown or the page is saved
+const hiddenSizes = new Map<ITile['id'], { w: number; h: number }>();
+
+// Counts the layout changes, so a save only settles the changes it sent
+let revision = 0;
 
 // The tiles in the bottom panel, for its empty line (the sets above are not reactive)
 const hiddenCount = ref<number>(0);
@@ -129,6 +134,8 @@ const cellSize = ref<number>(0);
 const initialized = ref<boolean>(false);
 const suppressMarkChanged = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
+// While the layout is being saved the grids are locked, so nothing changes under the request
+const saving = ref<boolean>(false);
 
 let changeTimeout: ReturnType<typeof setTimeout> | undefined;
 let initTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -153,6 +160,9 @@ const gridItemOf = (grid: GridStack | undefined, id: ITile['id']): GridItemHTMLE
 	return grid?.getGridItems().find((item) => item.gridstackNode?.id === id);
 };
 
+// A hidden tile keeps the size it had on the page, saved or not
+const sizeOf = (tile: ITile): { w: number; h: number } => hiddenSizes.get(tile.id) ?? { w: tile.colSpan, h: tile.rowSpan };
+
 const placeOf = (id: ITile['id']): IPageConfigureTilePlace | null => {
 	const onPage = gridItemOf(pageGrid, id)?.gridstackNode;
 
@@ -164,7 +174,9 @@ const placeOf = (id: ITile['id']): IPageConfigureTilePlace | null => {
 	const tile = tiles.value.find((item) => item.id === id);
 
 	if (hidden && tile) {
-		return { id, hidden: true, row: tile.row, col: tile.col, rowSpan: tile.rowSpan, colSpan: tile.colSpan };
+		const size = sizeOf(tile);
+
+		return { id, hidden: true, row: tile.row, col: tile.col, rowSpan: size.h, colSpan: size.w };
 	}
 
 	return null;
@@ -189,6 +201,8 @@ const markChanged = (): void => {
 	if (!initialized.value || suppressMarkChanged.value) {
 		return;
 	}
+
+	revision++;
 
 	clearTimeout(changeTimeout);
 
@@ -310,6 +324,7 @@ const destroyGrids = (): void => {
 
 	pageTiles.clear();
 	draftTiles.clear();
+	hiddenSizes.clear();
 
 	updateHiddenCount();
 };
@@ -400,6 +415,7 @@ const initializeGrids = (): void => {
 
 			pageTiles.add(tile.id);
 			removedTiles.delete(tile.id);
+			hiddenSizes.delete(tile.id);
 		}
 
 		markSelection();
@@ -407,6 +423,15 @@ const initializeGrids = (): void => {
 	});
 
 	pageGrid.on('removed', (_event, items): void => {
+		// Hidden by hand or dragged to the panel: remember the size it had, resized or not
+		if (!suppressMarkChanged.value) {
+			for (const item of items) {
+				if (item.id) {
+					hiddenSizes.set(item.id, { w: item.w ?? 1, h: item.h ?? 1 });
+				}
+			}
+		}
+
 		onItemsRemoved(items, pageTiles, draftTiles);
 	});
 
@@ -474,7 +499,7 @@ const addTilesToGrids = (): void => {
 const hideTile = (id: ITile['id']): void => {
 	const itemEl = gridItemOf(pageGrid, id);
 
-	if (!itemEl || !draftGrid) {
+	if (saving.value || !itemEl || !draftGrid) {
 		return;
 	}
 
@@ -489,18 +514,14 @@ const showTile = (id: ITile['id']): boolean => {
 	const itemEl = gridItemOf(draftGrid, id);
 	const tile = tiles.value.find((item) => item.id === id);
 
-	if (!itemEl || !tile || !pageGrid) {
+	if (saving.value || !itemEl || !tile || !pageGrid) {
 		return false;
 	}
 
-	// Its own size when it fits, otherwise one cell; never on top of another tile
-	const fitsGrid = tile.colSpan <= (props.gridLayout?.cols ?? 0) && tile.rowSpan <= (props.gridLayout?.rows ?? 0);
-	const sizes = fitsGrid
-		? [
-				{ w: tile.colSpan, h: tile.rowSpan },
-				{ w: 1, h: 1 },
-			]
-		: [{ w: 1, h: 1 }];
+	// The size it had on the page when it fits, otherwise one cell; never on top of another tile
+	const own = sizeOf(tile);
+	const fitsGrid = own.w <= (props.gridLayout?.cols ?? 0) && own.h <= (props.gridLayout?.rows ?? 0);
+	const sizes = fitsGrid ? [own, { w: 1, h: 1 }] : [{ w: 1, h: 1 }];
 	const size = sizes.find((candidate) => pageGrid?.willItFit({ ...candidate, autoPosition: true }));
 
 	if (!size) {
@@ -518,6 +539,10 @@ const showTile = (id: ITile['id']): boolean => {
 };
 
 const removeTile = (id: ITile['id']): void => {
+	if (saving.value) {
+		return;
+	}
+
 	const onPage = gridItemOf(pageGrid, id);
 
 	if (onPage) {
@@ -535,8 +560,10 @@ const removeTile = (id: ITile['id']): void => {
 	}
 };
 
-const saveLayout = async (): Promise<void> => {
+// Sends the layout as it is now; returns the removals it sent, so only those are settled
+const saveLayout = async (): Promise<ITile['id'][]> => {
 	const updates: Promise<void>[] = [];
+	const removed = [...removedTiles];
 
 	const persist = async (id: ITile['id'], data: Record<string, unknown>): Promise<void> => {
 		const tile = findTileById('page', id);
@@ -564,11 +591,13 @@ const saveLayout = async (): Promise<void> => {
 		const node = item.gridstackNode;
 
 		if (node?.id) {
-			updates.push(persist(node.id, { hidden: true }));
+			const size = hiddenSizes.get(node.id);
+
+			updates.push(persist(node.id, size ? { hidden: true, rowSpan: size.h, colSpan: size.w } : { hidden: true }));
 		}
 	}
 
-	for (const id of removedTiles) {
+	for (const id of removed) {
 		const tile = findTileById('page', id);
 
 		if (tile) {
@@ -578,7 +607,12 @@ const saveLayout = async (): Promise<void> => {
 
 	await Promise.all(updates);
 
-	removedTiles.clear();
+	return removed;
+};
+
+const lockGrids = (locked: boolean): void => {
+	pageGrid?.setStatic(locked);
+	draftGrid?.setStatic(locked);
 };
 
 onMounted((): void => {
@@ -614,7 +648,8 @@ watch(
 	(val: ITile[]): void => {
 		addTilesToGrids();
 
-		if (val.some((tile) => tile.draft)) {
+		// Saving turns drafts into tiles; that is not a change. A tile added while saving reaches a grid and counts there
+		if (!saving.value && val.some((tile) => tile.draft)) {
 			markChanged();
 		}
 	}
@@ -637,14 +672,33 @@ watch(
 		emit('update:remote-page-submit', false);
 		emit('update:remote-page-result', FormResult.WORKING);
 
-		try {
-			await saveLayout();
+		const sentRevision = revision;
 
-			pageChanged.value = false;
+		saving.value = true;
+		lockGrids(true);
+
+		try {
+			const removed = await saveLayout();
+
+			for (const id of removed) {
+				removedTiles.delete(id);
+			}
+
+			hiddenSizes.clear();
+
+			// A change that came in while saving (a tile added from a form) is still to be saved
+			if (revision === sentRevision) {
+				clearTimeout(changeTimeout);
+
+				pageChanged.value = false;
+			}
 
 			emit('update:remote-page-result', FormResult.OK);
 		} catch {
 			emit('update:remote-page-result', FormResult.ERROR);
+		} finally {
+			saving.value = false;
+			lockGrids(false);
 		}
 	}
 );

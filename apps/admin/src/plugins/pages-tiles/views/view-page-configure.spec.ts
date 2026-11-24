@@ -91,7 +91,7 @@ vi.mock('../components/page-configure.vue', () => ({
 }));
 
 vi.mock('../components/tiles-inspector.vue', () => ({
-	default: { name: 'TilesInspector', props: ['place', 'tile'], template: '<div />' },
+	default: { name: 'TilesInspector', props: ['place', 'tile', 'disabled'], template: '<div />' },
 }));
 
 vi.mock('../components/tiles-page-list.vue', () => ({
@@ -287,6 +287,45 @@ describe('ViewPageConfigure', () => {
 		await flushPromises();
 
 		expect(router.currentRoute.value.name).toBe('dashboard_module-tile');
+	});
+
+	it('keeps the editor on phone width while the layout has unsaved changes, and asks before a form replaces it', async () => {
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('update:remote-page-changed', true);
+		await flushPromises();
+
+		isPhone.value = true;
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="tiles-editor"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'TilesPageList' }).exists()).toBe(false);
+
+		confirm.mockRejectedValueOnce(new Error('cancel'));
+
+		wrapper.findComponent({ name: 'TilesPalette' }).vm.$emit('add', 'tile-time');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE);
+
+		confirm.mockResolvedValueOnce(true);
+
+		wrapper.findComponent({ name: 'TilesPalette' }).vm.$emit('add', 'tile-time');
+		await flushPromises();
+
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_ADD_TILE);
+	});
+
+	it('locks the inspector actions while the layout is being saved', async () => {
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+		const configure = wrapper.findComponent({ name: 'PageConfigure' });
+
+		configure.vm.$emit('select', PLACE);
+		configure.vm.$emit('update:remote-page-result', 'working');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'TilesInspector' }).props('disabled')).toBe(true);
 	});
 
 	it('keeps the palette behind Add tile and the data sources behind a button on tablet portrait', async () => {

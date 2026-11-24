@@ -9,7 +9,7 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('element-plus', () => ({
-	ElButton: { name: 'ElButton', template: '<button v-bind="$attrs"><slot /></button>' },
+	ElButton: { name: 'ElButton', props: ['disabled'], template: '<button v-bind="$attrs" :disabled="disabled || undefined"><slot /></button>' },
 	ElTooltip: { name: 'ElTooltip', template: '<div><slot /></div>' },
 }));
 
@@ -68,6 +68,22 @@ describe('TilesInspector', () => {
 		await wrapper.find('[data-test-id="tiles-inspector-show"]').trigger('click');
 
 		expect(wrapper.emitted('show')).toEqual([['tile-1']]);
+	});
+
+	it('disables hide, show and remove while the layout is being saved', () => {
+		const wrapper = mount(TilesInspector, {
+			props: {
+				place: { id: 'tile-1', hidden: false, row: 1, col: 1, rowSpan: 1, colSpan: 1 },
+				tile: TILE,
+				dataSources: [],
+				dataSourcesLoading: false,
+				disabled: true,
+			} as never,
+		});
+
+		expect(wrapper.find('[data-test-id="tiles-inspector-hide"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-test-id="tiles-inspector-remove"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-test-id="tiles-inspector-edit"]').attributes('disabled')).toBeUndefined();
 	});
 
 	it('shows the page data sources with nothing selected', () => {

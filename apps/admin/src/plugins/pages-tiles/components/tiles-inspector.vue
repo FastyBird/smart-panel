@@ -56,6 +56,7 @@
 				<el-button
 					v-if="props.place.hidden"
 					class="ml-0!"
+					:disabled="props.disabled"
 					data-test-id="tiles-inspector-show"
 					@click="emit('show', props.tile.id)"
 				>
@@ -68,6 +69,7 @@
 				<el-button
 					v-else
 					class="ml-0!"
+					:disabled="props.disabled"
 					data-test-id="tiles-inspector-hide"
 					@click="emit('hide', props.tile.id)"
 				>
@@ -93,6 +95,7 @@
 					type="danger"
 					plain
 					class="ml-0!"
+					:disabled="props.disabled"
 					data-test-id="tiles-inspector-remove"
 					@click="emit('remove', props.tile.id)"
 				>

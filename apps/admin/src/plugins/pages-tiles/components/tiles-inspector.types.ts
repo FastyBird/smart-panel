@@ -8,4 +8,6 @@ export interface ITilesInspectorProps {
 	tile: ITile | null;
 	dataSources: IDataSource[];
 	dataSourcesLoading: boolean;
+	/** The layout is being saved: hide, show and remove wait for it */
+	disabled?: boolean;
 }

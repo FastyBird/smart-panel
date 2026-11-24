@@ -22,7 +22,7 @@
 	>
 		<!-- Template 8 on phone: the page is read as a list -->
 		<el-scrollbar
-			v-if="isPhone"
+			v-if="phoneList"
 			class="flex-1 min-h-0"
 		>
 			<tiles-page-list
@@ -39,7 +39,7 @@
 			data-test-id="tiles-editor"
 		>
 			<div class="tiles-editor__bar flex flex-row flex-wrap items-center gap-2 px-3 py-2">
-				<template v-if="isTabletPortrait">
+				<template v-if="compactEditor">
 					<el-button
 						type="primary"
 						plain
@@ -150,7 +150,7 @@
 			<div class="relative flex flex-row flex-1 min-h-0">
 				<!-- Template 8: the palette is 240 px, 208 px on tablet landscape; on tablet portrait it is a sheet -->
 				<el-scrollbar
-					v-if="!isTabletPortrait"
+					v-if="!compactEditor"
 					:style="{ flexBasis: isTabletLandscape ? '208px' : '240px' }"
 					class="tiles-editor__palette shrink-0"
 				>
@@ -183,15 +183,16 @@
 				<!-- Template 8: the inspector, 340 px beside the canvas (360 px on wide); on tablet portrait it lies over the
 				     canvas, for the selected tile or when Data sources is pressed -->
 				<el-scrollbar
-					v-if="!isTabletPortrait || selectedPlace !== null || pagePanelOpen"
+					v-if="!compactEditor || selectedPlace !== null || pagePanelOpen"
 					:style="{ width: `${sizeClass === 'wd' ? INSPECTOR_WIDTH_WIDE : INSPECTOR_WIDTH}px` }"
-					:class="['tiles-editor__inspector shrink-0', { 'tiles-editor__inspector--overlay': isTabletPortrait }]"
+					:class="['tiles-editor__inspector shrink-0', { 'tiles-editor__inspector--overlay': compactEditor }]"
 				>
 					<tiles-inspector
 						:place="selectedPlace"
 						:tile="selectedTile"
 						:data-sources="pageDataSources"
 						:data-sources-loading="dataSourcesLoading"
+						:disabled="saving"
 						@close="onInspectorClose"
 						@edit="onTileEdit"
 						@detail="onTileDetail"
@@ -342,6 +343,13 @@ const formKey = computed<string>((): string => {
 	return `${String(route.name)}:${tileId}:${dataSourceId}:${tileType}`;
 });
 
+// Phone reads the page as a list. A window that narrows past 720 px with unsaved layout changes keeps the editor, as
+// the grids hold the only copy of those changes
+const phoneList = computed<boolean>((): boolean => isPhone.value && !remotePageChanged.value);
+
+// Tablet portrait, and a phone-width window still holding unsaved changes: palette and inspector over the canvas
+const compactEditor = computed<boolean>((): boolean => isTabletPortrait.value || isPhone.value);
+
 const saving = computed<boolean>((): boolean => remotePageResult.value === FormResult.WORKING);
 
 const pageDataSources = computed<IDataSource[]>((): IDataSource[] => dataSources.value.filter((dataSource) => !dataSource.draft));
@@ -409,6 +417,22 @@ const navigate = (to: { name: string; params: Record<string, string>; query?: Re
 // Next to an open form the editor stays usable: replacing a changed form asks first, as closing it does
 const canReplaceOpenForm = async (): Promise<boolean> => !showDrawer.value || !remoteFormChanged.value || confirmDiscard();
 
+// On phone a form is its own page and replaces the editor, whose grids hold the only copy of unsaved layout changes
+const canOpenForm = async (): Promise<boolean> => {
+	if (!inDrawer.value && remotePageChanged.value) {
+		if (!(await confirmDiscard())) {
+			return false;
+		}
+
+		// The editor goes away with its changes; it comes back with the saved layout
+		remotePageChanged.value = false;
+
+		return true;
+	}
+
+	return canReplaceOpenForm();
+};
+
 const onDisplaySelect = (displayId: string): void => {
 	selectedDisplayId.value = displayId;
 };
@@ -454,7 +478,7 @@ const onSave = (): void => {
 const onTileAdd = async (tileType: string): Promise<void> => {
 	paletteSheet.value = false;
 
-	if (!(await canReplaceOpenForm())) {
+	if (!(await canOpenForm())) {
 		return;
 	}
 
@@ -462,7 +486,7 @@ const onTileAdd = async (tileType: string): Promise<void> => {
 };
 
 const onTileEdit = async (id: ITile['id']): Promise<void> => {
-	if ((route.name === RouteNames.PAGE_EDIT_TILE && route.params.tileId === id) || !(await canReplaceOpenForm())) {
+	if ((route.name === RouteNames.PAGE_EDIT_TILE && route.params.tileId === id) || !(await canOpenForm())) {
 		return;
 	}
 
@@ -486,7 +510,7 @@ const onTileRemove = (id: ITile['id']): void => {
 };
 
 const onPageDataSourceAdd = async (): Promise<void> => {
-	if (route.name === RouteNames.PAGE_ADD_DATA_SOURCE || !(await canReplaceOpenForm())) {
+	if (route.name === RouteNames.PAGE_ADD_DATA_SOURCE || !(await canOpenForm())) {
 		return;
 	}
 
@@ -494,7 +518,7 @@ const onPageDataSourceAdd = async (): Promise<void> => {
 };
 
 const onPageDataSourceEdit = async (dataSourceId: IDataSource['id']): Promise<void> => {
-	if ((route.name === RouteNames.PAGE_EDIT_DATA_SOURCE && route.params.dataSourceId === dataSourceId) || !(await canReplaceOpenForm())) {
+	if ((route.name === RouteNames.PAGE_EDIT_DATA_SOURCE && route.params.dataSourceId === dataSourceId) || !(await canOpenForm())) {
 		return;
 	}
 

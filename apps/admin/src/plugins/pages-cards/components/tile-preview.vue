@@ -1,30 +1,28 @@
 <template>
 	<div class="tile-preview grow-1 relative overflow-hidden">
-		<!-- Admin spec §7 `tilePreview`: the plugin draws the tile in the display's tokens -->
-		<display-surface class="h-full w-full">
-			<div class="display-tile h-full w-full">
-				<component
-					:is="previewComponent"
-					v-if="previewComponent"
-					:tile="props.tile"
+		<!-- Admin spec §7 `tilePreview`: the plugin draws the tile in the display's tokens, from the card's display surface -->
+		<div class="display-tile h-full w-full">
+			<component
+				:is="previewComponent"
+				v-if="previewComponent"
+				:tile="props.tile"
+			/>
+			<div
+				v-else
+				class="flex flex-col items-center justify-center gap-1 h-full w-full p-2 box-border"
+			>
+				<icon
+					icon="mdi:puzzle-outline"
+					width="20"
+					height="20"
+					class="display-icon"
+					aria-hidden="true"
 				/>
-				<div
-					v-else
-					class="flex flex-col items-center justify-center gap-1 h-full w-full p-2 box-border"
-				>
-					<icon
-						icon="mdi:puzzle-outline"
-						width="20"
-						height="20"
-						class="display-icon"
-						aria-hidden="true"
-					/>
-					<span class="display-text-caption truncate max-w-full text-center">
-						{{ props.tile.type }}
-					</span>
-				</div>
+				<span class="display-text-caption truncate max-w-full text-center">
+					{{ props.tile.type }}
+				</span>
 			</div>
-		</display-surface>
+		</div>
 
 		<div class="tile-preview__overlay">
 			<el-button
@@ -69,7 +67,7 @@ import { ElButton } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { DisplaySurface, type ITile, useTilesPlugins } from '../../../modules/dashboard';
+import { type ITile, useTilesPlugins } from '../../../modules/dashboard';
 
 import type { ITilesPreviewProps } from './tile-preview.types';
 
