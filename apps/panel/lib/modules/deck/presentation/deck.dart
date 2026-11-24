@@ -345,8 +345,9 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                 },
               ),
 
-              // The pull handle at the top edge opens Settings; a swipe down
-              // anywhere still does too.
+              // The pull handle at the top edge opens Settings when pulled; a
+              // swipe down anywhere still does too. It takes no taps, so the
+              // header under it keeps working.
               Positioned(
                 top: 0,
                 left: 0,
@@ -354,7 +355,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                 child: Center(
                   child: DeckPullHandle(
                     label: AppLocalizations.of(context)!.deck_open_settings,
-                    onTap: _openSettings,
+                    onOpen: _openSettings,
                   ),
                 ),
               ),

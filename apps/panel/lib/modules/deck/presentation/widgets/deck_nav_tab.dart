@@ -92,12 +92,15 @@ class DeckNavMetrics {
   static const double badgePadding = 4;
 
   /// The pull handle at the top edge: a 28 × 4 grip 3 from the top, in a
-  /// 56 × 36 touch zone.
+  /// 56 × 36 zone where a pull starts.
   static const double handleWidth = 28;
   static const double handleHeight = 4;
   static const double handleTop = 3;
   static const double handleTouchWidth = 56;
   static const double handleTouchHeight = 36;
+
+  /// How far a pull goes before it opens Settings, as the swipe down does.
+  static const double handlePull = 20;
 
   /// A tab's radius: the dock's, less the dock's padding, so the two
   /// curves run parallel.
@@ -377,14 +380,42 @@ class _CountBadge extends StatelessWidget {
 }
 
 /// The pull handle at the top edge of the deck (spec §6): a small grip that
-/// opens Settings when tapped. Swiping down anywhere still opens it too.
-class DeckPullHandle extends StatelessWidget {
-  const DeckPullHandle({super.key, required this.label, this.onTap});
+/// opens Settings when pulled down, like the swipe down anywhere on the page.
+///
+/// It sits over the page without reserving space, so it never takes a tap:
+/// taps in its zone reach the page under it (a header button, say). Only a
+/// pull that starts in the zone is its own. Screen readers get one "Open
+/// settings" button.
+class DeckPullHandle extends StatefulWidget {
+  const DeckPullHandle({super.key, required this.label, this.onOpen});
 
   /// What screen readers hear: "Open settings".
   final String label;
 
-  final VoidCallback? onTap;
+  /// Called once per pull, when it passes [DeckNavMetrics.handlePull].
+  final VoidCallback? onOpen;
+
+  @override
+  State<DeckPullHandle> createState() => _DeckPullHandleState();
+}
+
+class _DeckPullHandleState extends State<DeckPullHandle> {
+  double _pulled = 0;
+  bool _opened = false;
+
+  void _start(DragStartDetails details) {
+    _pulled = 0;
+    _opened = false;
+  }
+
+  void _update(DragUpdateDetails details) {
+    _pulled += details.primaryDelta ?? 0;
+
+    if (!_opened && _pulled > AppSpacings.scale(DeckNavMetrics.handlePull)) {
+      _opened = true;
+      widget.onOpen?.call();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -393,27 +424,33 @@ class DeckPullHandle extends StatelessWidget {
     return Semantics(
       container: true,
       button: true,
-      label: label,
-      onTap: onTap,
+      label: widget.label,
+      onTap: widget.onOpen,
       excludeSemantics: true,
+      // Translucent, over a child that never hits: the page under the zone
+      // still gets every pointer; a tap goes to it, and only a vertical pull
+      // wins the gesture arena here.
       child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          width: AppSpacings.scale(DeckNavMetrics.handleTouchWidth),
-          height: AppSpacings.scale(DeckNavMetrics.handleTouchHeight),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: AppSpacings.scale(DeckNavMetrics.handleTop),
-              ),
-              child: Container(
-                width: AppSpacings.scale(DeckNavMetrics.handleWidth),
-                height: AppSpacings.scale(DeckNavMetrics.handleHeight),
-                decoration: BoxDecoration(
-                  color: AppControlColors.handle(brightness),
-                  borderRadius: BorderRadius.circular(AppBorderRadius.pill),
+        behavior: HitTestBehavior.translucent,
+        onVerticalDragStart: widget.onOpen == null ? null : _start,
+        onVerticalDragUpdate: widget.onOpen == null ? null : _update,
+        child: IgnorePointer(
+          child: SizedBox(
+            width: AppSpacings.scale(DeckNavMetrics.handleTouchWidth),
+            height: AppSpacings.scale(DeckNavMetrics.handleTouchHeight),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: AppSpacings.scale(DeckNavMetrics.handleTop),
+                ),
+                child: Container(
+                  width: AppSpacings.scale(DeckNavMetrics.handleWidth),
+                  height: AppSpacings.scale(DeckNavMetrics.handleHeight),
+                  decoration: BoxDecoration(
+                    color: AppControlColors.handle(brightness),
+                    borderRadius: BorderRadius.circular(AppBorderRadius.pill),
+                  ),
                 ),
               ),
             ),

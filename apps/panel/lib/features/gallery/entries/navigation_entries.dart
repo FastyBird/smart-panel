@@ -320,7 +320,7 @@ Widget _settings(BuildContext context) {
             width: AppSpacings.scale(1),
           ),
         ),
-        child: DeckPullHandle(label: 'Open settings', onTap: () {}),
+        child: DeckPullHandle(label: 'Open settings', onOpen: () {}),
       ),
     ],
   );

@@ -610,10 +610,10 @@ void main() {
 
   group('Pull handle', () {
     for (final brightness in _brightnesses) {
-      testWidgets('a 28 × 4 grip in a 56 × 36 touch zone in ${brightness.name}', (tester) async {
+      testWidgets('a 28 × 4 grip in a 56 × 36 zone in ${brightness.name}', (tester) async {
         final handle = tester.ensureSemantics();
-        var taps = 0;
-        await _pump(tester, DeckPullHandle(label: 'Open settings', onTap: () => taps++), brightness: brightness);
+        var opened = 0;
+        await _pump(tester, DeckPullHandle(label: 'Open settings', onOpen: () => opened++), brightness: brightness);
 
         expect(tester.getSize(find.byType(DeckPullHandle)), const Size(56, 36));
         final grip = find.descendant(of: find.byType(DeckPullHandle), matching: find.byType(Container));
@@ -621,13 +621,82 @@ void main() {
         expect(tester.getTopLeft(grip).dy - tester.getTopLeft(find.byType(DeckPullHandle)).dy, 3);
         expect((tester.widget<Container>(grip).decoration! as BoxDecoration).color, AppControlColors.handle(brightness));
 
-        // The whole zone takes the tap, not just the grip.
-        await tester.tapAt(tester.getBottomLeft(find.byType(DeckPullHandle)) + const Offset(2, -2));
+        // Screen readers get one button that opens Settings.
         tester.semantics.tap(find.semantics.byLabel('Open settings'));
-        expect(taps, 2);
+        expect(opened, 1);
         handle.dispose();
       });
     }
+
+    /// The deck's layout: the handle at the top centre, over a 208 wide page
+    /// whose header has a button under the handle's zone.
+    Widget page({required VoidCallback onButton, required VoidCallback onOpen}) => SizedBox(
+      width: 208,
+      height: 300,
+      child: Stack(
+        children: [
+          Scaffold(
+            body: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: SizedBox(
+                  width: 120,
+                  height: 36,
+                  child: TextButton(onPressed: onButton, child: const Text('Remote')),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Center(child: DeckPullHandle(label: 'Open settings', onOpen: onOpen)),
+          ),
+        ],
+      ),
+    );
+
+    testWidgets('a tap in its zone reaches the header button under it', (tester) async {
+      var button = 0, opened = 0;
+      await _pump(tester, page(onButton: () => button++, onOpen: () => opened++));
+
+      final zone = tester.getRect(find.byType(DeckPullHandle));
+      expect(zone.overlaps(tester.getRect(find.byType(TextButton))), isTrue);
+      await tester.tapAt(zone.center);
+      await tester.tapAt(Offset(zone.center.dx, zone.top + 10));
+      await tester.pumpAndSettle();
+
+      expect(button, 2);
+      expect(opened, 0);
+    });
+
+    testWidgets('a pull down from it opens Settings once; sideways or short does not', (tester) async {
+      var button = 0, opened = 0;
+      await _pump(tester, page(onButton: () => button++, onOpen: () => opened++));
+      final start = tester.getRect(find.byType(DeckPullHandle)).center;
+
+      // Exact distances: dragFrom would add the touch slop.
+      Future<void> pull(Offset by) async {
+        final gesture = await tester.startGesture(start);
+        for (var i = 1; i <= 10; i++) {
+          await gesture.moveTo(start + by * (i / 10));
+        }
+        await gesture.up();
+        await tester.pumpAndSettle();
+      }
+
+      // Under the touch slop it is a tap, and the button under it takes it.
+      await pull(const Offset(0, 15));
+      expect((opened, button), (0, 1), reason: 'short');
+      await pull(const Offset(60, 0));
+      expect((opened, button), (0, 1), reason: 'sideways');
+
+      // A pull opens Settings and does not also press the button.
+      await pull(const Offset(0, 80));
+      expect((opened, button), (1, 1));
+    });
   });
 
   test('metrics follow the spec', () {
