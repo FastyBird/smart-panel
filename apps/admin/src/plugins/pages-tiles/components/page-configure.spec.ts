@@ -350,4 +350,45 @@ describe('PageConfigure', () => {
 		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
 		expect(backend.has('tile-a')).toBe(false);
 	});
+	it('keeps the page changed when a new draft tile arrives while a save runs', async () => {
+		const pending: (() => void)[] = [];
+
+		edit.mockImplementation(
+			({ id }: { id: string }) =>
+				new Promise((resolve) => {
+					pending.push(() => resolve(tiles.value.find((tile) => tile.id === id)));
+				})
+		);
+
+		const wrapper = await mountConfigure();
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		// Added from the tile form after the save read the grids
+		tiles.value = [
+			...tiles.value,
+			{
+				id: 'tile-new',
+				type: 'tiles-time',
+				parent: { type: 'page', id: PAGE_ID },
+				row: 1,
+				col: 1,
+				rowSpan: 1,
+				colSpan: 1,
+				hidden: false,
+				draft: true,
+			},
+		];
+		await flushPromises();
+
+		pending.forEach((resolve) => resolve());
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
+		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
+		expect(hiddenItem('tile-new')).toBeDefined();
+
+		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-new');
+	});
 });

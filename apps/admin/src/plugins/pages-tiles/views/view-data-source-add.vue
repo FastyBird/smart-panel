@@ -164,6 +164,13 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// The editor asks before a changed form is left; a confirmed discard, a save or a deleted record lets it go
+const releaseForm = (): void => {
+	remoteFormChanged.value = false;
+
+	emit('update:remote-form-changed', false);
+};
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('pagesTilesPlugin.texts.misc.confirmDiscard'), t('pagesTilesPlugin.headings.misc.discard'), {
 		confirmButtonText: t('dashboardModule.buttons.discard.title'),
@@ -171,6 +178,7 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
+			releaseForm();
 			if (inDrawer.value) {
 				router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 			} else {
@@ -198,6 +206,8 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
+			releaseForm();
+
 			if (inDrawer.value) {
 				router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 			} else {

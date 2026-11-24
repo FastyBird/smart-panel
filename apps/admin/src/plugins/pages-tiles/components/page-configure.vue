@@ -555,9 +555,12 @@ const initializeGrids = (): void => {
 	suppressMarkChanged.value = false;
 };
 
-// Filling the grids from the store; a new draft tile counts as a change through the tiles watcher
+// Filling the grids from the store is not a change; a new draft tile is
 const addTilesToGrids = (): void => {
 	const wasSuppressed = suppressMarkChanged.value;
+
+	// A draft that reaches a grid here is new (from a form, even while a save runs), and so is a change to save
+	let addedDraft = false;
 
 	suppressMarkChanged.value = true;
 
@@ -570,6 +573,8 @@ const addTilesToGrids = (): void => {
 		const fitsHorizontally = tile.col + tile.colSpan - 1 <= (props.gridLayout?.cols ?? 0);
 		const fitsVertically = tile.row + tile.rowSpan - 1 <= (props.gridLayout?.rows ?? 0);
 
+		addedDraft = addedDraft || tile.draft;
+
 		if (fitsHorizontally && fitsVertically && !tile.hidden && !tile.draft) {
 			pageGrid?.addWidget({ id: tile.id, x: tile.col - 1, y: tile.row - 1, w: tile.colSpan, h: tile.rowSpan });
 		} else {
@@ -580,6 +585,10 @@ const addTilesToGrids = (): void => {
 	draftGrid?.compact();
 
 	suppressMarkChanged.value = wasSuppressed;
+
+	if (addedDraft) {
+		markChanged();
+	}
 };
 
 // Only where it fits the grid and covers no other tile; otherwise it keeps the size it was dropped at

@@ -248,7 +248,7 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationNormalized, onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
 import { ElButton, ElDrawer, ElMessageBox, ElOption, ElScrollbar, ElSelect, ElTag } from 'element-plus';
 
@@ -335,13 +335,15 @@ const showDrawer = computed<boolean>((): boolean => isFormRoute.value);
 const { inDrawer } = provideEditDrawer((): boolean => isFormRoute.value);
 
 // One form per tile and data source (and one for each Add): a new key remounts the routed form
-const formKey = computed<string>((): string => {
-	const tileId = typeof route.params?.tileId === 'string' ? route.params.tileId : '';
-	const dataSourceId = typeof route.params?.dataSourceId === 'string' ? route.params.dataSourceId : '';
-	const tileType = typeof route.query?.tileType === 'string' ? route.query.tileType : '';
+const formKeyOf = (location: RouteLocationNormalized): string => {
+	const tileId = typeof location.params?.tileId === 'string' ? location.params.tileId : '';
+	const dataSourceId = typeof location.params?.dataSourceId === 'string' ? location.params.dataSourceId : '';
+	const tileType = typeof location.query?.tileType === 'string' ? location.query.tileType : '';
 
-	return `${String(route.name)}:${tileId}:${dataSourceId}:${tileType}`;
-});
+	return `${String(location.name)}:${tileId}:${dataSourceId}:${tileType}`;
+};
+
+const formKey = computed<string>((): string => formKeyOf(route));
 
 // Phone reads the page as a list. A window that narrows past 720 px with unsaved layout changes keeps the editor, as
 // the grids hold the only copy of those changes
@@ -415,7 +417,18 @@ const navigate = (to: { name: string; params: Record<string, string>; query?: Re
 };
 
 // Next to an open form the editor stays usable: replacing a changed form asks first, as closing it does
-const canReplaceOpenForm = async (): Promise<boolean> => !showDrawer.value || !remoteFormChanged.value || confirmDiscard();
+// A confirmed discard lets the form go here, so the route guard below does not ask a second time
+const discardForm = async (): Promise<boolean> => {
+	if (!(await confirmDiscard())) {
+		return false;
+	}
+
+	remoteFormChanged.value = false;
+
+	return true;
+};
+
+const canReplaceOpenForm = async (): Promise<boolean> => !showDrawer.value || !remoteFormChanged.value || discardForm();
 
 // On phone a form is its own page and replaces the editor, whose grids hold the only copy of unsaved layout changes
 const canOpenForm = async (): Promise<boolean> => {
@@ -541,7 +554,7 @@ const onPageDataSourceRemove = (id: IDataSource['id']): void => {
 };
 
 const onCloseDrawer = async (done?: () => void): Promise<void> => {
-	if (remoteFormChanged.value && !(await confirmDiscard())) {
+	if (remoteFormChanged.value && !(await discardForm())) {
 		return;
 	}
 
@@ -549,6 +562,16 @@ const onCloseDrawer = async (done?: () => void): Promise<void> => {
 
 	done?.();
 };
+
+// Back, a breadcrumb or a link that closes or replaces a changed form while staying in the editor asks first; the
+// editor's own buttons and the form's Discard and Save have already let the form go
+onBeforeRouteUpdate(async (to: RouteLocationNormalized): Promise<boolean> => {
+	if (!remoteFormChanged.value || formKeyOf(to) === formKey.value) {
+		return true;
+	}
+
+	return discardForm();
+});
 
 onBeforeRouteLeave(async (): Promise<boolean> => {
 	// An open form with changes counts too: leaving the editor closes it

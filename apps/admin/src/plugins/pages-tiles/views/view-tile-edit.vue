@@ -175,6 +175,13 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// The editor asks before a changed form is left; a confirmed discard, a save or a deleted record lets it go
+const releaseForm = (): void => {
+	remoteFormChanged.value = false;
+
+	emit('update:remote-form-changed', false);
+};
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('pagesTilesPlugin.texts.misc.confirmDiscard'), t('pagesTilesPlugin.headings.misc.discard'), {
 		confirmButtonText: t('dashboardModule.buttons.discard.title'),
@@ -182,6 +189,7 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
+			releaseForm();
 			if (inDrawer.value) {
 				router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 			} else {
@@ -248,6 +256,8 @@ watch(
 			wasTileLoaded.value = true;
 		} else if (wasTileLoaded.value && !isLoading.value) {
 			// Tile was previously loaded but is now null - it was deleted
+			releaseForm();
+
 			flashMessage.warning(t('pagesTilesPlugin.messages.tiles.deletedWhileEditing'), { duration: 0 });
 			// Redirect to page configure
 			if (props.page?.id) {

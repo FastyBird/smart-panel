@@ -377,6 +377,45 @@ describe('ViewPageConfigure', () => {
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_ADD_TILE);
 	});
 
+	it('asks before Back or a link closes a changed form inside the editor, and asks once when the editor closes it', async () => {
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure/tile/add`);
+
+		wrapper.findComponent({ name: 'RoutedForm' }).vm.$emit('update:remote-form-changed', true);
+		await flushPromises();
+
+		confirm.mockRejectedValueOnce(new Error('cancel'));
+
+		await router.push({ name: RouteNames.PAGE, params: { id: PAGE_ID } });
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_ADD_TILE);
+
+		// The drawer's own close asks, and the route change it makes does not ask again
+		confirm.mockResolvedValueOnce(true);
+
+		wrapper.findComponent({ name: 'EditDrawerLayout' }).vm.$emit('close');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(2);
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE);
+	});
+
+	it('lets a form go without asking once it reports itself clean', async () => {
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure/tile/add`);
+		const form = wrapper.findComponent({ name: 'RoutedForm' });
+
+		form.vm.$emit('update:remote-form-changed', true);
+		form.vm.$emit('update:remote-form-changed', false);
+		await flushPromises();
+
+		await router.push({ name: RouteNames.PAGE, params: { id: PAGE_ID } });
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE);
+	});
+
 	it('keeps the palette behind Add tile and the data sources behind a button on tablet portrait', async () => {
 		isTabletPortrait.value = true;
 
