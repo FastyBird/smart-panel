@@ -182,7 +182,7 @@ void main() {
     // clamped to 48 … 88 (Compact) or 160.
     const cases = {
       ScreenSizeClass.compact: (height: 320.0, numeral: 88.0),
-      ScreenSizeClass.regular: (height: 320.0, numeral: 130.0),
+      ScreenSizeClass.regular: (height: 320.0, numeral: 122.0),
       ScreenSizeClass.expanded: (height: 400.0, numeral: 160.0),
     };
 

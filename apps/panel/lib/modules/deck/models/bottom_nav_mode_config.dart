@@ -10,8 +10,14 @@ class BottomNavModeConfig {
   /// Icon displayed on the mode button.
   final IconData icon;
 
-  /// Short label displayed below the icon.
+  /// Short label displayed below the icon: the current mode ("Relax").
   final String label;
+
+  /// What the mode belongs to ("Lights mode"). The mode chip reads
+  /// "Lights mode: Relax" and the popup takes it as its title
+  /// (docs/display-ui-design-spec.md §6: every domain mode control names its
+  /// domain).
+  final String? title;
 
   /// Theme color for the mode button accent.
   final ThemeColors color;
@@ -26,6 +32,7 @@ class BottomNavModeConfig {
   const BottomNavModeConfig({
     required this.icon,
     required this.label,
+    this.title,
     required this.color,
     required this.popupBuilder,
   });

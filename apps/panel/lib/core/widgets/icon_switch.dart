@@ -1,8 +1,10 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_switch.dart';
 import 'package:flutter/material.dart';
 
+/// A switch that flips at once and reports the new state.
+///
+/// Draws the one [AppSwitch]. [iconOn], [iconOff] and [toggleMode] are kept
+/// so callers compile; the switch no longer shows icons or a neutral mode.
 class IconSwitch extends StatefulWidget {
   final bool switchState;
   final IconData iconOn;
@@ -23,157 +25,26 @@ class IconSwitch extends StatefulWidget {
   State<IconSwitch> createState() => _IconSwitchState();
 }
 
-class _IconSwitchState extends State<IconSwitch>
-    with SingleTickerProviderStateMixin {
-  late bool switchState;
-
-  @override
-  void initState() {
-    super.initState();
-
-    switchState = widget.switchState;
-  }
+class _IconSwitchState extends State<IconSwitch> {
+  late bool _switchState = widget.switchState;
 
   @override
   void didUpdateWidget(covariant IconSwitch oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Update the local state if the parent's switchState changes
     if (oldWidget.switchState != widget.switchState) {
-      setState(() {
-        switchState = widget.switchState;
-      });
+      setState(() => _switchState = widget.switchState);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final ScreenService screenService = locator<ScreenService>();
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          switchState = !switchState;
-        });
-
-        widget.onChanged(switchState);
+    return AppSwitch(
+      value: _switchState,
+      onChanged: (value) {
+        setState(() => _switchState = value);
+        widget.onChanged(value);
       },
-      child: SizedBox(
-        width: screenService.scale(
-          55,
-        ),
-        height: screenService.scale(
-          26,
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Background Track
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(screenService.scale(
-                  20,
-                )),
-                border: Border.all(
-                  color: widget.toggleMode
-                      ? (Theme.of(context).brightness == Brightness.light
-                          ? AppBorderColorLight.darker
-                          : AppBorderColorDark.light)
-                      : (switchState
-                          ? (Theme.of(context).brightness == Brightness.light
-                              ? AppColorsLight.primary
-                              : AppColorsDark.primary)
-                          : (Theme.of(context).brightness == Brightness.light
-                              ? AppBorderColorLight.darker
-                              : AppBorderColorDark.light)),
-                  width: screenService.scale(
-                    1,
-                  ),
-                ),
-                color: widget.toggleMode
-                    ? (Theme.of(context).brightness == Brightness.light
-                        ? AppBorderColorLight.darker
-                        : AppBorderColorDark.light)
-                    : (switchState
-                        ? (Theme.of(context).brightness == Brightness.light
-                            ? AppColorsLight.primary
-                            : AppColorsDark.primary)
-                        : (Theme.of(context).brightness == Brightness.light
-                            ? AppBorderColorLight.darker
-                            : AppBorderColorDark.light)),
-              ),
-              width: screenService.scale(
-                55,
-              ),
-              height: screenService.scale(
-                26,
-              ),
-            ),
-            // Thumb with Icon
-            AnimatedAlign(
-              duration: const Duration(milliseconds: 200),
-              alignment:
-                  switchState ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                width: screenService.scale(
-                  26,
-                ),
-                height: screenService.scale(
-                  26,
-                ),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.blank,
-                  border: Border.all(
-                    color: widget.toggleMode
-                        ? (Theme.of(context).brightness == Brightness.light
-                            ? AppBorderColorLight.darker
-                            : AppBorderColorDark.light)
-                        : (switchState
-                            ? (Theme.of(context).brightness == Brightness.light
-                                ? AppColorsLight.primary
-                                : AppColorsDark.primary)
-                            : (Theme.of(context).brightness == Brightness.light
-                                ? AppBorderColorLight.darker
-                                : AppBorderColorDark.light)),
-                    width: screenService.scale(
-                      1,
-                    ),
-                  ),
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: widget.toggleMode
-                        ? (Theme.of(context).brightness == Brightness.light
-                            ? AppColors.white
-                            : Color.fromARGB(255, 20, 20, 20))
-                        : AppColors.white,
-                  ),
-                  child: Icon(
-                    switchState ? widget.iconOn : widget.iconOff,
-                    color: widget.toggleMode
-                        ? (Theme.of(context).brightness == Brightness.light
-                            ? Color.fromARGB(255, 96, 98, 102)
-                            : Color.fromARGB(255, 207, 211, 220))
-                        : (switchState
-                            ? (Theme.of(context).brightness == Brightness.light
-                                ? AppColorsLight.primary
-                                : AppColorsDark.primary)
-                            : (Theme.of(context).brightness == Brightness.light
-                                ? AppBorderColorLight.darker
-                                : AppBorderColorDark.light)),
-                    size: screenService.scale(
-                      18,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

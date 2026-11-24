@@ -269,6 +269,27 @@ void main() {
       expect(find.byKey(const ValueKey('mode')), findsNothing);
     });
 
+    testWidgets('gives the landscape action at most half the row', (tester) async {
+      const action = SizedBox(key: ValueKey('mode'), width: 1000, height: 10);
+
+      await _pump(
+        tester,
+        const PageHeader(
+          title: 'Lights',
+          sizeClass: ScreenSizeClass.regular,
+          landscapeAction: action,
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      // 640 wide less 8 px padding on each side at Regular.
+      expect(
+        tester.getSize(find.byKey(const ValueKey('mode'))).width,
+        (640 - 16) * PageHeaderMetrics.landscapeActionShare,
+      );
+      expect(find.text('Lights'), findsOneWidget);
+    });
+
     testWidgets('the back button calls onBack', (tester) async {
       var backs = 0;
 

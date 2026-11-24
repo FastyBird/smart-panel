@@ -871,6 +871,20 @@ class AppClimateColors {
       brightness == Brightness.dark ? heatingDark : heatingLight;
 }
 
+/// Control colours that are not a neutral, status, domain or accent token.
+class AppControlColors {
+  /// The track of a switch that is off (design canvas, Settings and the
+  /// domain views).
+  static const Color switchOffLight = Color(0xFFA9AFB9);
+  static const Color switchOffDark = Color(0xFF44474E);
+
+  /// The thumb of a slider and a switch.
+  static const Color thumb = AppColors.white;
+
+  static Color switchOff(Brightness brightness) =>
+      brightness == Brightness.dark ? switchOffDark : switchOffLight;
+}
+
 /// The eight accents a panel can take (docs/display-ui-design-spec.md §2).
 /// Amber and red are left out because they are warning and danger.
 enum AppAccent {

@@ -235,6 +235,52 @@ class AppLocalizationsEs extends AppLocalizations {
   String get device_offline_paused_short => 'Controles en pausa';
 
   @override
+  String get control_decrease => 'Disminuir';
+
+  @override
+  String get control_increase => 'Aumentar';
+
+  @override
+  String mode_chip_label(String title, String mode) {
+    return '$title: $mode';
+  }
+
+  @override
+  String get mode_title_lights => 'Modo de luces';
+
+  @override
+  String get mode_title_climate => 'Modo de clima';
+
+  @override
+  String get mode_title_shading => 'Modo de sombreado';
+
+  @override
+  String get mode_title_energy => 'Rango de energía';
+
+  @override
+  String dial_now(String value) {
+    return 'Ahora $value';
+  }
+
+  @override
+  String get dial_heat_setpoint => 'Consigna de calefacción';
+
+  @override
+  String get dial_cool_setpoint => 'Consigna de refrigeración';
+
+  @override
+  String get dial_target_temperature => 'Temperatura objetivo';
+
+  @override
+  String get dial_target_value => 'Valor objetivo';
+
+  @override
+  String get control_state_pending => 'Enviando';
+
+  @override
+  String get control_state_unconfirmed => 'Sin confirmar';
+
+  @override
   String devices_offline_skipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

@@ -520,6 +520,90 @@ abstract class AppLocalizations {
   /// **'Controls paused'**
   String get device_offline_paused_short;
 
+  /// Minus button of a stepper or the thermostat dial, for screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease'**
+  String get control_decrease;
+
+  /// Plus button of a stepper or the thermostat dial, for screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Increase'**
+  String get control_increase;
+
+  /// Mode chip label that names its domain, e.g. Lights mode: Relax
+  ///
+  /// In en, this message translates to:
+  /// **'{title}: {mode}'**
+  String mode_chip_label(String title, String mode);
+
+  /// Title of the lighting mode chip and popup
+  ///
+  /// In en, this message translates to:
+  /// **'Lights mode'**
+  String get mode_title_lights;
+
+  /// Title of the climate mode chip and popup
+  ///
+  /// In en, this message translates to:
+  /// **'Climate mode'**
+  String get mode_title_climate;
+
+  /// Title of the shading mode chip and popup
+  ///
+  /// In en, this message translates to:
+  /// **'Shading mode'**
+  String get mode_title_shading;
+
+  /// Title of the energy range chip and popup
+  ///
+  /// In en, this message translates to:
+  /// **'Energy range'**
+  String get mode_title_energy;
+
+  /// Current reading under the thermostat dial target, e.g. Now 21.4°
+  ///
+  /// In en, this message translates to:
+  /// **'Now {value}'**
+  String dial_now(String value);
+
+  /// Screen-reader label of the heat (first) thumb on a two-setpoint thermostat dial
+  ///
+  /// In en, this message translates to:
+  /// **'Heating setpoint'**
+  String get dial_heat_setpoint;
+
+  /// Screen-reader label of the cool (second) thumb on a two-setpoint thermostat dial
+  ///
+  /// In en, this message translates to:
+  /// **'Cooling setpoint'**
+  String get dial_cool_setpoint;
+
+  /// Screen-reader label of a temperature dial when its screen gives none
+  ///
+  /// In en, this message translates to:
+  /// **'Target temperature'**
+  String get dial_target_temperature;
+
+  /// Screen-reader label of a non-temperature dial when its screen gives none
+  ///
+  /// In en, this message translates to:
+  /// **'Target value'**
+  String get dial_target_value;
+
+  /// Screen-reader state of a control whose command is still being sent
+  ///
+  /// In en, this message translates to:
+  /// **'Sending'**
+  String get control_state_pending;
+
+  /// Screen-reader state of a control whose command was never confirmed
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed'**
+  String get control_state_unconfirmed;
+
   /// Message shown when devices are skipped due to being offline
   ///
   /// In en, this message translates to:

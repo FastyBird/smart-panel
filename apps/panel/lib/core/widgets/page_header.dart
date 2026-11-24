@@ -48,6 +48,10 @@ class PageHeaderMetrics {
   /// Between the back button, icon tile, title and actions.
   static const double gap = 8;
 
+  /// The most of the header row the landscape action may take, so a long
+  /// mode chip label ellipsizes instead of pushing out the title.
+  static const double landscapeActionShare = 0.5;
+
   static const double stateIconSize = 11;
 
   final ScreenSizeClass sizeClass;
@@ -212,22 +216,48 @@ class PageHeader extends StatelessWidget {
           constraints: BoxConstraints(
             minHeight: AppSpacings.scale(metrics.height),
           ),
-          child: Row(
-            children: [
-              if (leadingWidget != null) ...[
-                leadingWidget,
-                SizedBox(width: gap),
-              ],
-              Expanded(child: _buildTitle(metrics, neutrals)),
-              if (trailing != null) ...[
-                SizedBox(width: gap),
-                trailing!,
-              ],
-              if (landscapeAction != null && isLandscape) landscapeAction!,
-            ],
-          ),
+          child: landscapeAction != null && isLandscape
+              ? LayoutBuilder(
+                  builder: (context, constraints) => _buildRow(
+                    metrics,
+                    neutrals,
+                    leadingWidget,
+                    gap,
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth *
+                            PageHeaderMetrics.landscapeActionShare,
+                      ),
+                      child: landscapeAction!,
+                    ),
+                  ),
+                )
+              : _buildRow(metrics, neutrals, leadingWidget, gap, null),
         ),
       ),
+    );
+  }
+
+  Widget _buildRow(
+    PageHeaderMetrics metrics,
+    AppNeutralPalette neutrals,
+    Widget? leadingWidget,
+    double gap,
+    Widget? action,
+  ) {
+    return Row(
+      children: [
+        if (leadingWidget != null) ...[
+          leadingWidget,
+          SizedBox(width: gap),
+        ],
+        Expanded(child: _buildTitle(metrics, neutrals)),
+        if (trailing != null) ...[
+          SizedBox(width: gap),
+          trailing!,
+        ],
+        ?action,
+      ],
     );
   }
 

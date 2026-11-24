@@ -21,6 +21,22 @@ strict:
   - lib/core/widgets/tile_wrappers.dart
   - lib/core/widgets/offline_note.dart
   - lib/modules/devices/presentation/widgets/device_offline_overlay.dart
+  # DR-7: the slider, switch, stepper, segmented control, mode chip and dial.
+  - lib/core/widgets/control_colors.dart
+  - lib/core/widgets/app_slider.dart
+  - lib/core/widgets/app_switch.dart
+  - lib/core/widgets/app_stepper.dart
+  - lib/core/widgets/slider_with_steps.dart
+  - lib/core/widgets/card_slider.dart
+  - lib/core/widgets/icon_switch.dart
+  - lib/core/widgets/value_selector.dart
+  - lib/core/widgets/mode_selector.dart
+  - lib/core/widgets/intent_mode_selector.dart
+  - lib/core/widgets/circular_control_dial.dart
+  - lib/features/settings/presentation/widgets/settings_slider.dart
+  - lib/features/settings/presentation/widgets/settings_toggle.dart
+  - lib/modules/deck/presentation/widgets/deck_mode_chip.dart
+  - lib/modules/deck/presentation/widgets/deck_mode_popup.dart
 
 # Generated code is never checked.
 exclude:

@@ -1,5 +1,8 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:flutter/material.dart';
 
@@ -7,14 +10,12 @@ import 'package:flutter/material.dart';
 // CardSlider
 // -----------------------------------------------------------------------------
 
-/// A reusable card-style slider widget with labeled steps.
+/// A card with a label, the value and the one slider
+/// (docs/display-ui-design-spec.md §5).
 ///
-/// Features:
-/// - Continuous or discrete step modes
-/// - Customizable step labels
-/// - Theme-aware colors via [ThemeColorFamily] and [themeColor]
-/// - Custom thumb with colored border for better visibility
-/// - Smooth animated transitions when value or enabled state changes
+/// The value is a Barlow card value (18, 28 on Expanded). Step labels are
+/// dropped; in [discrete] mode [steps] sets the snap points and the value
+/// shows the current step's name. [showSteps] is kept so callers compile.
 class CardSlider extends StatefulWidget {
   // --- Display ---
   /// Label shown above the slider (e.g., 'Speed', 'Volume')
@@ -33,10 +34,11 @@ class CardSlider extends StatefulWidget {
   /// Callback when value changes
   final ValueChanged<double>? onChanged;
 
-  /// Labels to show below the slider (e.g., ['Off', 'Low', 'Med', 'High', 'Max'])
+  /// Snap points in [discrete] mode, and the value's name at each
+  /// (e.g., ['Off', 'Low', 'Med', 'High', 'Max']).
   final List<String> steps;
 
-  /// Whether to show step labels below the slider. Defaults to true.
+  /// No longer draws anything; step labels are dropped.
   final bool showSteps;
 
   /// When true, the slider snaps to discrete step positions.
@@ -75,6 +77,9 @@ class CardSlider extends StatefulWidget {
   /// When false, removes the card border (useful when embedded in a sheet/drawer).
   final bool showBorder;
 
+  /// Pending, not confirmed or disabled look of the slider.
+  final ControlState state;
+
   const CardSlider({
     super.key,
     required this.label,
@@ -94,6 +99,7 @@ class CardSlider extends StatefulWidget {
     this.cardColor,
     this.borderColor,
     this.showBorder = true,
+    this.state = ControlState.idle,
   });
 
   @override
@@ -129,16 +135,18 @@ class _CardSliderState extends State<CardSlider> {
   void didUpdateWidget(CardSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // A slider that stops taking input mid-drag never calls onChangeEnd
+    // (the slider passes null), so end the drag here; otherwise device
+    // values would be ignored from now on.
+    final interactive = widget.enabled &&
+        widget.onChanged != null &&
+        widget.state != ControlState.disabled;
+    if (!interactive) _isDragging = false;
+
     // Never overwrite display value while user is dragging
     if (_isDragging) return;
 
     if (oldWidget.enabled != widget.enabled) {
-      // If slider becomes disabled mid-drag, the onChangeEnd callback will
-      // never fire (SliderWithSteps passes null when disabled). Reset the
-      // flag so external updates are accepted again.
-      if (!widget.enabled && _isDragging) {
-        _isDragging = false;
-      }
       _enabledStateChangeTime = DateTime.now();
       _displayValue = widget.value.clamp(0.0, 1.0);
       return;
@@ -166,46 +174,51 @@ class _CardSliderState extends State<CardSlider> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    final secondaryColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final neutrals = Theme.of(context).neutrals;
     final displayLabel =
         widget.enabled ? widget.label : (widget.disabledLabel ?? widget.label);
+    final isExpanded =
+        locator<ScreenService>().sizeClass == ScreenSizeClass.expanded;
+
+    // A card value (spec §3: Barlow 18, 28 on Expanded); a step's name is
+    // text, so it stays Roboto 12.
+    final valueFontSize = widget.discrete
+        ? AppFontSize.small
+        : AppSpacings.scale(isExpanded ? 28 : 18);
 
     final valueText = widget.discrete
         ? _getCurrentStepLabel()
-        : '${(_displayValue * 100).toInt()}%';
+        : '${(_displayValue * 100).toInt()} %';
 
-    return AnimatedOpacity(
-      opacity: widget.enabled ? 1.0 : 0.5,
-      duration: const Duration(milliseconds: 200),
-      child: BaseCard(
-        color: widget.cardColor,
-        borderColor: widget.borderColor,
-        borderWidth: widget.showBorder ? null : 0,
-        headerIcon: widget.icon,
-        headerTitle: displayLabel.toUpperCase(),
-        headerTitleColor: secondaryColor,
-        headerTrailing: widget.showHeaderValue
-            ? Text(
-                valueText,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: AppFontSize.extraLarge,
-                  fontWeight: FontWeight.w600,
-                ),
-              )
-            : null,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: AppSpacings.pMd,
-          children: [
-            _buildSliderRow(context),
-            if (widget.footer != null) widget.footer!,
-          ],
-        ),
+    return BaseCard(
+      color: widget.cardColor,
+      borderColor: widget.borderColor,
+      borderWidth: widget.showBorder ? null : 0,
+      headerIcon: widget.icon,
+      headerTitle: displayLabel.toUpperCase(),
+      headerTitleColor:
+          widget.enabled ? neutrals.textSecondary : neutrals.textDisabled,
+      headerTrailing: widget.showHeaderValue
+          ? Text(
+              valueText,
+              style: TextStyle(
+                color: widget.enabled
+                    ? neutrals.textPrimary
+                    : neutrals.textDisabled,
+                fontFamily: widget.discrete ? null : AppNumeralFont.family,
+                fontSize: valueFontSize,
+                fontWeight: AppNumeralFont.value,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            )
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
+        children: [
+          _buildSliderRow(context),
+          if (widget.footer != null) widget.footer!,
+        ],
       ),
     );
   }
@@ -215,9 +228,10 @@ class _CardSliderState extends State<CardSlider> {
       value: _displayValue,
       themeColor: widget.themeColor,
       steps: widget.steps,
-      showSteps: widget.showSteps,
       enabled: widget.enabled,
       discrete: widget.discrete,
+      state: widget.state,
+      semanticLabel: widget.label,
       onChanged: widget.onChanged != null
           ? (v) {
               setState(() {

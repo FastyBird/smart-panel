@@ -929,6 +929,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					label: name,
 					color: _getModeColor(key),
 					iconSize: AppSpacings.scale(18),
+					semanticValue: statusText,
 					labelBuilder: (isSelected, contentColor) {
 						return Column(
 							mainAxisSize: MainAxisSize.min,
