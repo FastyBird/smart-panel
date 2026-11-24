@@ -444,4 +444,25 @@ describe('PageConfigure', () => {
 
 		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-hidden');
 	});
+	it('keeps hidden tiles at one cell: the panel does not resize them, before or after a save', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		const panel = hiddenItem('tile-a')!.gridstackNode!.grid!;
+
+		expect(panel.opts.disableResize).toBe(true);
+		expect(hiddenItem('tile-a')?.classList.contains('ui-resizable-disabled')).toBe(true);
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(panel.opts.disableResize).toBe(true);
+		expect(hiddenItem('tile-a')?.classList.contains('ui-resizable-disabled')).toBe(true);
+
+		// Back on the page it can be resized again
+		expect(pageItem('tile-b')?.classList.contains('ui-resizable-disabled')).toBe(false);
+	});
 });

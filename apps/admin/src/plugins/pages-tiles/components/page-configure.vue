@@ -442,6 +442,8 @@ const initializeGrids = (): void => {
 			margin: GRID_MARGIN,
 			float: false,
 			acceptWidgets: true,
+			// Hidden tiles stay one cell, so they drop into any free cell; their size is set on the page
+			disableResize: true,
 			staticGrid: saving.value,
 		},
 		draftGridContainer.value
