@@ -443,6 +443,55 @@ void main() {
       expect(red(150), closeTo(128, 6));
     });
 
+    testWidgets('right to left, the fill and the gradient run from the right', (tester) async {
+      /// The red channel along the middle of a 300 px slider at [value].
+      Future<int Function(int x)> paint(double value, {List<Color>? gradient}) async {
+        final key = GlobalKey();
+        await _pump(
+          tester,
+          Directionality(
+            textDirection: TextDirection.rtl,
+            child: RepaintBoundary(
+              key: key,
+              child: SizedBox(
+                width: 300,
+                child: AppSlider(
+                  value: value,
+                  trackGradient: gradient,
+                  activeColor: const Color(0xFFFF0000),
+                  onChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+        );
+        final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+        final bytes = await tester.runAsync(() async {
+          final image = await boundary.toImage();
+          final data = await image.toByteData();
+          image.dispose();
+
+          return data!;
+        });
+        final width = boundary.size.width.round();
+        final y = (boundary.size.height / 2).floor();
+
+        return (int x) => bytes!.getUint8((y * width + x) * 4);
+      }
+
+      // At 0.25 the thumb is near the right end: the fill is right of it,
+      // the left end is the empty track.
+      final fill = await paint(0.25);
+      expect(fill(295), 255);
+      expect(fill(5), lessThan(255));
+
+      // The first colour is under the thumb at 0, at the right end.
+      final travelStart = 299 - (AppSpacings.scale(AppSliderMetrics.row.thumb) / 2).floor();
+      final gradient = await paint(1, gradient: const [Color(0xFF000000), Color(0xFFFFFFFF)]);
+      expect(gradient(travelStart), lessThan(4));
+      expect(gradient(150), closeTo(128, 6));
+    });
+
     testWidgets('SliderWithSteps draws the one slider without step labels', (tester) async {
       await _pump(
         tester,

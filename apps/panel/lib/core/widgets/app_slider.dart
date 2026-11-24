@@ -342,6 +342,8 @@ class AppSliderTrackShape extends SliderTrackShape {
     final rect = _fullRect(parentBox, offset, sliderTheme.trackHeight ?? 0);
     final radius = Radius.circular(rect.height / 2);
     final canvas = context.canvas;
+    // Right to left, the value runs from the right end.
+    final rtl = textDirection == TextDirection.rtl;
 
     if (gradient != null) {
       // The stops follow the thumb's travel, so each colour sits under the
@@ -353,7 +355,12 @@ class AppSliderTrackShape extends SliderTrackShape {
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, radius),
-        Paint()..shader = LinearGradient(colors: gradient!).createShader(travel),
+        Paint()
+          ..shader = LinearGradient(
+            begin: rtl ? Alignment.centerRight : Alignment.centerLeft,
+            end: rtl ? Alignment.centerLeft : Alignment.centerRight,
+            colors: gradient!,
+          ).createShader(travel),
       );
 
       return;
@@ -364,12 +371,10 @@ class AppSliderTrackShape extends SliderTrackShape {
       Paint()..color = background,
     );
 
-    final filled = Rect.fromLTRB(
-      rect.left,
-      rect.top,
-      thumbCenter.dx.clamp(rect.left, rect.right),
-      rect.bottom,
-    );
+    final thumbX = thumbCenter.dx.clamp(rect.left, rect.right);
+    final filled = rtl
+        ? Rect.fromLTRB(thumbX, rect.top, rect.right, rect.bottom)
+        : Rect.fromLTRB(rect.left, rect.top, thumbX, rect.bottom);
     if (filled.width > 0) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(filled, radius),
