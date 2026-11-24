@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery_scope.dart';
 import 'package:fastybird_smart_panel/features/gallery/gallery_sections.dart';
@@ -85,7 +86,7 @@ void main() {
     // Sections fill as their tasks land.
     expect(
       gallerySections.where((section) => section.entries.isNotEmpty).map((section) => section.task),
-      ['DR-5', 'DR-6', 'DR-7'],
+      ['DR-5', 'DR-6', 'DR-7', 'DR-8'],
     );
   });
 
@@ -119,10 +120,11 @@ void main() {
     }
   });
 
-  testWidgets('the Controls entries fit the Compact portrait and square canvases', (tester) async {
+  for (final id in ['controls', 'lists']) {
+  testWidgets('the $id entries fit the Compact portrait and square canvases', (tester) async {
     await _pump(tester);
-    await _tap(tester, 'gallery-section-controls');
-    final section = gallerySections.firstWhere((section) => section.id == 'controls');
+    await _tap(tester, 'gallery-section-$id');
+    final section = gallerySections.firstWhere((section) => section.id == id);
 
     for (final (canvas, orientation) in [('compact', 'portrait'), ('square', 'landscape')]) {
       await _tap(tester, 'gallery-canvas-$canvas');
@@ -133,7 +135,7 @@ void main() {
           .state<ScrollableState>(
             find
                 .descendant(
-                  of: find.byKey(const ValueKey('gallery-section-view-controls')),
+                  of: find.byKey(ValueKey('gallery-section-view-$id')),
                   matching: find.byType(Scrollable),
                 )
                 .first,
@@ -150,6 +152,55 @@ void main() {
         position.jumpTo((position.pixels + 100).clamp(0, position.maxScrollExtent).toDouble());
       }
       expect(seen, section.entries.map((entry) => entry.title).toSet(), reason: '$canvas $orientation');
+    }
+  });
+  }
+
+  testWidgets("a sample's close button never closes the gallery", (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    // The gallery is pushed over a home page, as on the panel.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ComponentGalleryScreen()),
+            ),
+            child: const Text('home'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('home'));
+    await tester.pumpAndSettle();
+    await _tap(tester, 'gallery-section-lists');
+
+    final scrollable = find
+        .descendant(of: find.byKey(const ValueKey('gallery-section-view-lists')), matching: find.byType(Scrollable))
+        .first;
+    for (final title in ['Bottom sheet', 'Right drawer', 'Selection dialog']) {
+      await tester.scrollUntilVisible(find.text(title), 100, scrollable: scrollable);
+      await tester.pumpAndSettle();
+      // Tap where each close button is drawn: a sample may not take it.
+      final close = find.byType(SheetCloseButton);
+      expect(close, findsWidgets, reason: title);
+      for (final center in [for (var i = 0; i < close.evaluate().length; i++) tester.getCenter(close.at(i))]) {
+        await tester.tapAt(center);
+        await tester.pumpAndSettle();
+      }
+      expect(find.byType(ComponentGalleryScreen), findsOneWidget, reason: title);
     }
   });
 

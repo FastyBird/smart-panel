@@ -3,9 +3,8 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Shows a right-side drawer with consistent styling across the app.
 ///
@@ -29,6 +28,9 @@ Future<T?> showRightDrawer<T>(
   /// Optional title. Shown in the header when [titleWidget] is null.
   String? title,
 
+  /// A line under the title in `text.secondary`.
+  String? subtitle,
+
   /// Optional custom widget for the title. When set, has priority over [title].
   Widget? titleWidget,
 
@@ -45,8 +47,9 @@ Future<T?> showRightDrawer<T>(
   /// Optional bottom section (e.g. primary action button). Shown below [content].
   Widget? footerSection,
 
-  /// Maximum width of the drawer. Clamped to 80% of screen width.
-  double width = 600,
+  /// The drawer's width; defaults to the size class's (220 / 300 / 380).
+  /// Held to 80% of the screen.
+  double? width,
 
   /// Whether content is wrapped in [ListView]. Set to false when
   /// content uses [Expanded] or has its own scroll.
@@ -59,11 +62,12 @@ Future<T?> showRightDrawer<T>(
     context: context,
     barrierDismissible: barrierDismissible,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: Colors.black54,
+    barrierColor: AppScrim.color,
     transitionDuration: const Duration(milliseconds: 300),
     pageBuilder: (context, animation, secondaryAnimation) {
       return RightDrawer(
         title: title,
+        subtitle: subtitle,
         titleWidget: titleWidget,
         titleIcon: titleIcon,
         showCloseButton: showCloseButton,
@@ -90,190 +94,110 @@ Future<T?> showRightDrawer<T>(
   );
 }
 
-/// Content widget for [showRightDrawer]. Builds the drawer panel with
-/// optional title bar (with full-width bottom border), main content, and
-/// optional footer section.
+/// The right drawer (docs/display-ui-design-spec.md §5), the landscape
+/// counterpart of the bottom sheet: `surface.raised` with a `border.light`
+/// outline, radius 12 on its left corners, one soft shadow in light and none
+/// in dark. The sheet's header ([SheetHeader]), then the content and an
+/// optional footer, all inside the drawer's padding.
 class RightDrawer extends StatelessWidget {
   const RightDrawer({
     super.key,
     this.title,
+    this.subtitle,
     this.titleWidget,
     this.titleIcon,
     this.showCloseButton = true,
     required this.content,
     this.footerSection,
-    this.width = 600,
+    this.width,
     this.scrollable = true,
+    this.sizeClass,
   });
 
   final String? title;
+  final String? subtitle;
   final Widget? titleWidget;
   final IconData? titleIcon;
   final bool showCloseButton;
   final Widget content;
   final Widget? footerSection;
-  final double width;
+
+  /// Defaults to the size class's width.
+  final double? width;
   final bool scrollable;
+
+  /// The class to size the drawer for; defaults to the screen's.
+  final ScreenSizeClass? sizeClass;
 
   bool get _hasHeader => title != null || titleWidget != null;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenWidth = locator<ScreenService>().logicalWidth;
-    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    final borderColor =
-        isDark ? AppBorderColorDark.darker : AppBorderColorLight.darker;
+    final theme = Theme.of(context);
+    final neutrals = theme.neutrals;
+    final screen = locator<ScreenService>();
+    final resolvedClass = sizeClass ?? screen.sizeClass;
+    final padding = AppSpacings.scale(SheetMetrics.paddingFor(resolvedClass));
+    final gap = AppSpacings.scale(SheetMetrics.gapFor(resolvedClass));
+    final radius = Radius.circular(AppBorderRadius.medium);
 
-    final effectiveWidth = math.min(width, screenWidth * 0.8);
+    final effectiveWidth = math.min(
+      width ?? AppSpacings.scale(SheetMetrics.drawerWidthFor(resolvedClass)),
+      screen.logicalWidth * 0.8,
+    );
 
-    final paddedContent = scrollable
+    final contentArea = scrollable
         ? ListView(
             shrinkWrap: true,
             primary: false,
+            padding: EdgeInsets.zero,
             children: [content],
           )
         : content;
 
     return Align(
       alignment: Alignment.centerRight,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: effectiveWidth),
+      child: Container(
+        width: effectiveWidth,
+        decoration: BoxDecoration(
+          color: neutrals.surfaceRaised,
+          border: Border.all(
+            color: neutrals.borderLight,
+            width: AppSpacings.scale(1),
+          ),
+          borderRadius: BorderRadius.horizontal(left: radius),
+          boxShadow: AppRaisedShadow.of(
+            theme.brightness,
+            offset: const Offset(-4, 0),
+          ),
+        ),
         child: Material(
-          color: bgColor,
-          elevation: 16,
-          child: DecoratedBox(
-            position: DecorationPosition.foreground,
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color: borderColor,
-                  width: AppSpacings.scale(1),
-                ),
-              ),
-            ),
-            child: SafeArea(
+          type: MaterialType.transparency,
+          child: SafeArea(
+            left: false,
+            child: Padding(
+              padding: EdgeInsets.all(padding),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: gap,
                 children: [
                   if (_hasHeader)
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: borderColor,
-                            width: AppSpacings.scale(1),
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacings.pLg,
-                          vertical: AppSpacings.pMd,
-                        ),
-                        child: _buildHeader(context, textColor, isDark),
-                      ),
+                    SheetHeader(
+                      title: title,
+                      subtitle: subtitle,
+                      titleWidget: titleWidget,
+                      titleIcon: titleIcon,
+                      showCloseButton: showCloseButton,
+                      sizeClass: resolvedClass,
                     ),
-                  Expanded(
-                    child: paddedContent,
-                  ),
-                  if (footerSection != null)
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: borderColor,
-                            width: AppSpacings.scale(1),
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacings.pLg,
-                          vertical: AppSpacings.pMd,
-                        ),
-                        child: footerSection!,
-                      ),
-                    ),
+                  Expanded(child: contentArea),
+                  if (footerSection != null) footerSection!,
                 ],
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, Color textColor, bool isDark) {
-    final titleContent = titleWidget ??
-        (title != null
-            ? Row(
-                spacing: AppSpacings.pSm,
-                children: [
-                  if (titleIcon != null)
-                    Icon(
-                      titleIcon,
-                      color: textColor,
-                      size: AppSpacings.scale(24),
-                    ),
-                  Text(
-                    title!.toUpperCase(),
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: AppFontSize.large,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              )
-            : null);
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        if (titleContent != null) Expanded(child: titleContent),
-        if (showCloseButton) _buildCloseButton(context, isDark),
-      ],
-    );
-  }
-
-  Widget _buildCloseButton(BuildContext context, bool isDark) {
-    return Theme(
-      data: isDark
-          ? ThemeData(
-              brightness: Brightness.dark,
-              filledButtonTheme: AppFilledButtonsDarkThemes.neutral,
-            )
-          : ThemeData(
-              filledButtonTheme: AppFilledButtonsLightThemes.neutral,
-            ),
-      child: Builder(builder: (context) {
-        final buttonSize = math.max(AppSpacings.scale(32), 26.0);
-        final iconSize = math.max(AppSpacings.scale(15), 12.0);
-        return FilledButton(
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            Navigator.pop(context);
-          },
-          style: FilledButton.styleFrom(
-            padding: EdgeInsets.zero,
-            fixedSize: Size.square(buttonSize),
-            minimumSize: Size.zero,
-            shape: const CircleBorder(),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Icon(
-            MdiIcons.close,
-            size: iconSize,
-            color: isDark
-                ? AppFilledButtonsDarkThemes.neutralForegroundColor
-                : AppFilledButtonsLightThemes.neutralForegroundColor,
-          ),
-        );
-      }),
     );
   }
 }

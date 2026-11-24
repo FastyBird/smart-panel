@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
@@ -16,6 +18,15 @@ import 'package:flutter/material.dart';
 // (e.g. toggles, sync) — it takes getters and a [Listenable] so content
 // rebuilds on change. Tiles should use [TileLayout.horizontal] in [UniversalTile].
 // Trigger is typically in the page header trailing (e.g. layers icon).
+
+/// The item list's sizes in the sheet and the drawer (design canvas,
+/// "Navigation and overlays").
+class DeckItemListMetrics {
+  DeckItemListMetrics._();
+
+  /// Space between items.
+  static const double gap = 4;
+}
 
 /// Generic item sheet used by domain views (lighting, climate, shading, media).
 ///
@@ -41,6 +52,7 @@ class DeckItemSheet {
   static void showItemSheet(
     BuildContext context, {
     required String title,
+    String? subtitle,
     IconData? icon,
     Widget? titleWidget,
     required int itemCount,
@@ -54,6 +66,7 @@ class DeckItemSheet {
     showBottomSheetDialog(
       context,
       title: titleWidget != null ? null : sheetTitle,
+      subtitle: subtitle,
       titleWidget: titleWidget,
       titleIcon: icon,
       scrollable: false,
@@ -77,6 +90,7 @@ class DeckItemSheet {
   static void showItemSheetWithUpdates(
     BuildContext context, {
     required String title,
+    String? subtitle,
     IconData? icon,
     Widget? titleWidget,
     required Listenable rebuildWhen,
@@ -92,6 +106,7 @@ class DeckItemSheet {
     showBottomSheetDialog(
       context,
       title: titleWidget != null ? null : sheetTitle,
+      subtitle: subtitle,
       titleWidget: titleWidget,
       titleIcon: icon,
       scrollable: false,
@@ -128,18 +143,16 @@ class _Content extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+    // The sheet lays its content edge to edge; the list lines up with the
+    // header.
+    final padding = SheetMetrics.paddingFor(locator<ScreenService>().sizeClass);
 
     return VerticalScrollWithGradient(
       itemCount: itemCount,
-      separatorHeight: AppSpacings.pSm,
-      backgroundColor: bgColor,
+      separatorHeight: AppSpacings.scale(DeckItemListMetrics.gap),
+      backgroundColor: Theme.of(context).neutrals.surfaceRaised,
       shrinkWrap: true,
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-        vertical: AppSpacings.pMd,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacings.scale(padding)),
       itemBuilder: itemBuilder,
     );
   }

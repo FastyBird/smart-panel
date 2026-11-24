@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/features/gallery/entries/card_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/control_entries.dart';
 import 'package:fastybird_smart_panel/features/gallery/entries/header_entries.dart';
+import 'package:fastybird_smart_panel/features/gallery/entries/list_entries.dart';
 import 'package:flutter/widgets.dart';
 
 /// One component sample in the gallery.
@@ -70,6 +71,7 @@ const List<GallerySection> gallerySections = [
     task: 'DR-8',
     issue: 1718,
     title: 'List rows, sheets, drawers, dialogs, toasts and banners',
+    entries: listEntries,
   ),
   GallerySection(
     id: 'states',

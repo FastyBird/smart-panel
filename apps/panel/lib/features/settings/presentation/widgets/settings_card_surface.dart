@@ -1,7 +1,8 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Shared theme-aware surface styling used by SettingsCard and SettingsTile.
+/// The settings surfaces: `surface.card` with a `border.light` outline and no
+/// shadow (docs/display-ui-design-spec.md §3), the same as the list row.
 class SettingsCardSurface {
 	final Color surfaceColor;
 	final Color borderColor;
@@ -18,16 +19,14 @@ class SettingsCardSurface {
 	});
 
 	factory SettingsCardSurface.of(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-
-		final surfaceColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+		final neutrals = Theme.of(context).neutrals;
 
 		return SettingsCardSurface._(
-			surfaceColor: surfaceColor,
-			borderColor: isDark ? surfaceColor : AppBorderColorLight.light,
-			textColor: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-			secondaryTextColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-			shadow: [],
+			surfaceColor: neutrals.surfaceCard,
+			borderColor: neutrals.borderLight,
+			textColor: neutrals.textPrimary,
+			secondaryTextColor: neutrals.textSecondary,
+			shadow: const [],
 		);
 	}
 }
