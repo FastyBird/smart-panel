@@ -391,4 +391,27 @@ describe('PageConfigure', () => {
 
 		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-new');
 	});
+	it('marks the page changed when it opens with a draft tile already in the store', async () => {
+		tiles.value = [
+			...tiles.value,
+			{
+				id: 'tile-draft',
+				type: 'tiles-time',
+				parent: { type: 'page', id: PAGE_ID },
+				row: 1,
+				col: 1,
+				rowSpan: 1,
+				colSpan: 1,
+				hidden: false,
+				draft: true,
+			},
+		];
+
+		const wrapper = await mountConfigure();
+
+		expect(hiddenItem('tile-draft')).toBeDefined();
+		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
+
+		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-draft');
+	});
 });

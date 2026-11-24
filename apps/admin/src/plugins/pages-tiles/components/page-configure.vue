@@ -553,6 +553,11 @@ const initializeGrids = (): void => {
 	addTilesToGrids();
 
 	suppressMarkChanged.value = false;
+
+	// A draft already in the store when the grids fill (added from a form before the editor opened) is still unsaved
+	if (tiles.value.some((tile) => tile.draft && (pageTiles.has(tile.id) || draftTiles.has(tile.id)))) {
+		markChanged();
+	}
 };
 
 // Filling the grids from the store is not a change; a new draft tile is
