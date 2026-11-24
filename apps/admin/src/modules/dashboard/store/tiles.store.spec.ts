@@ -203,4 +203,26 @@ describe('Tiles Store', () => {
 
 		expect(store.findAll('page')).toHaveLength(0);
 	});
+	// The tile editor (pages-tiles page-configure) relies on this: after a failed DELETE whose recovery read fails too, the
+	// store no longer holds the tile and a second remove resolves without a request, so the editor checks the backend first
+	it('drops a tile whose DELETE and recovery read failed, and treats a later remove of it as done without a request', async () => {
+		store.set({
+			id: tileId,
+			parent: { type: 'page', id: parentId },
+			data: { type: 'some-tile', row: 0, col: 0, rowSpan: 1, colSpan: 1, hidden: false, createdAt: new Date() },
+		} satisfies ITilesSetActionPayload);
+
+		(mockBackendClient.DELETE as Mock).mockResolvedValue({ error: new Error('API failed'), response: { status: 500 } });
+		(mockBackendClient.GET as Mock).mockResolvedValue({ error: new Error('API failed'), response: { status: 500 } });
+
+		await expect(store.remove({ id: tileId, parent: { type: 'page', id: parentId } })).rejects.toThrow();
+
+		expect(store.findById('page', tileId)).toBeNull();
+
+		(mockBackendClient.DELETE as Mock).mockClear();
+
+		await expect(store.remove({ id: tileId, parent: { type: 'page', id: parentId } })).resolves.toBe(true);
+
+		expect(mockBackendClient.DELETE).not.toHaveBeenCalled();
+	});
 });

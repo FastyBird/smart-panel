@@ -681,6 +681,22 @@ const saveLayout = async (): Promise<void> => {
 	const updates: Promise<void>[] = [];
 	const removals: Promise<void>[] = [];
 
+	// A failed removal the store no longer holds is only settled from a fresh read of the page's tiles: still there, it is
+	// sent again; gone, the earlier request did delete it. When the read fails, the save fails and the removal stays pending.
+	// This runs before any request starts, so a failed read never leaves one running behind unlocked grids
+	const unknown = [...removedTiles].filter((id) => failedRemovals.has(id) && !findTileById('page', id));
+
+	if (unknown.length > 0) {
+		await fetchTiles();
+
+		for (const id of unknown) {
+			if (!findTileById('page', id)) {
+				removedTiles.delete(id);
+				failedRemovals.delete(id);
+			}
+		}
+	}
+
 	const persist = async (id: ITile['id'], data: Record<string, unknown>): Promise<void> => {
 		const tile = findTileById('page', id);
 
@@ -710,21 +726,6 @@ const saveLayout = async (): Promise<void> => {
 			const size = hiddenSizes.get(node.id);
 
 			updates.push(persist(node.id, size ? { hidden: true, rowSpan: size.h, colSpan: size.w } : { hidden: true }));
-		}
-	}
-
-	// A failed removal the store no longer holds is only settled from a fresh read of the page's tiles: still there, it is
-	// sent again; gone, the earlier request did delete it. When the read fails, the save fails and the removal stays pending
-	const unknown = [...removedTiles].filter((id) => failedRemovals.has(id) && !findTileById('page', id));
-
-	if (unknown.length > 0) {
-		await fetchTiles();
-
-		for (const id of unknown) {
-			if (!findTileById('page', id)) {
-				removedTiles.delete(id);
-				failedRemovals.delete(id);
-			}
 		}
 	}
 

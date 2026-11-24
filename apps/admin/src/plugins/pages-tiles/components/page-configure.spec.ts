@@ -326,8 +326,13 @@ describe('PageConfigure', () => {
 		expect(storeLookup.missing.has('tile-a')).toBe(true);
 		expect(backend.has('tile-a')).toBe(true);
 
-		// A retry while the read still fails settles nothing: no success, the removal stays pending
+		// A retry while the read still fails settles nothing: no success, the removal stays pending, and no update starts
+		// that could outlive the save behind unlocked grids
+		edit.mockClear();
+
 		await save();
+
+		expect(edit).not.toHaveBeenCalled();
 
 		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
 		expect(backend.has('tile-a')).toBe(true);
