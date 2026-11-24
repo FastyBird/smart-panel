@@ -338,7 +338,7 @@
 			"title": "Kontynuuj edycję"
 		},
 		"removeDisplays": {
-			"title": "Usuń {count} wyświetlacz | Usuń {count} wyświetlacze | Usuń {count} wyświetlaczy"
+			"title": "Usuń wyświetlacze ({count})"
 		}
 	},
 	"edit": {

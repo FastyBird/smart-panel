@@ -105,7 +105,7 @@ import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer, useFlashMessage } from '../../../common';
+import { type AppBarAction, AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer, useFlashMessage } from '../../../common';
 import { ListDisplays } from '../components/components';
 import { useDisplaysActions, useDisplaysDataSource, usePermitJoin } from '../composables/composables';
 import { RouteNames } from '../displays.constants';
@@ -181,7 +181,7 @@ watch(formKey, (): void => {
 });
 
 // The phone app bar: Search, and Permit join while the server offers it
-const phoneActions = computed<{ icon: string; label: string; handler: () => void }[]>(() => [
+const phoneActions = computed<AppBarAction[]>((): AppBarAction[] => [
 	{ icon: 'mdi:magnify', label: t('displaysModule.fields.search.placeholder'), handler: onSearch },
 	...(permitJoinAvailable.value
 		? [
@@ -191,6 +191,8 @@ const phoneActions = computed<{ icon: string; label: string; handler: () => void
 						? t('displaysModule.buttons.permitJoin.disable', { time: permitJoinRemainingTimeFormatted.value })
 						: t('displaysModule.buttons.permitJoin.title'),
 					handler: onPermitJoin,
+					// A second tap while the request is out would toggle it back
+					disabled: permitJoinActivating.value,
 				},
 			]
 		: []),

@@ -39,6 +39,7 @@ vi.mock('../../../common', () => ({
 }));
 
 const permitJoinAvailable = ref(false);
+const permitJoinActivating = ref(false);
 
 vi.mock('../composables/composables', () => ({
 	useDisplaysActions: () => ({ remove: vi.fn(), bulkRemove: vi.fn() }),
@@ -46,7 +47,7 @@ vi.mock('../composables/composables', () => ({
 		isAvailable: permitJoinAvailable,
 		isActive: ref(false),
 		remainingTimeFormatted: ref(''),
-		activating: ref(false),
+		activating: permitJoinActivating,
 		fetchStatus: vi.fn().mockResolvedValue(undefined),
 		activate: vi.fn().mockResolvedValue(undefined),
 		deactivate: vi.fn().mockResolvedValue(undefined),
@@ -118,6 +119,7 @@ describe('ViewDisplays', () => {
 		mountedWith.length = 0;
 		confirm.mockReset();
 		permitJoinAvailable.value = false;
+		permitJoinActivating.value = false;
 	});
 
 	it('opens the next display clean after a changed form is discarded', async () => {
@@ -164,5 +166,11 @@ describe('ViewDisplays', () => {
 		await flushPromises();
 
 		expect((header.props('actions') as { icon: string }[]).map((action) => action.icon)).toEqual(['mdi:magnify', 'mdi:link-variant-plus']);
+
+		// A second tap while the request is out would toggle it back
+		permitJoinActivating.value = true;
+		await flushPromises();
+
+		expect((header.props('actions') as { disabled?: boolean }[])[1]?.disabled).toBe(true);
 	});
 });

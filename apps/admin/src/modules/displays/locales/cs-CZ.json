@@ -338,7 +338,7 @@
 			"title": "Pokračovat v úpravách"
 		},
 		"removeDisplays": {
-			"title": "Odebrat {count} displej | Odebrat {count} displeje | Odebrat {count} displejů"
+			"title": "Odebrat displeje ({count})"
 		}
 	},
 	"edit": {
