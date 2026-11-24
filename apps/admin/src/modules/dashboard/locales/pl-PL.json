@@ -80,8 +80,7 @@
       "add": "Dodaj źródło danych",
       "edit": "Edytuj źródło danych",
       "remove": "Usunąć źródło danych?",
-      "selectPlugin": "Wymagana wtyczka źródła danych",
-      "adjustFilters": "Filtruj źródła danych"
+      "selectPlugin": "Wymagana wtyczka źródła danych"
     },
     "misc": {
       "discard": "Odrzucić zmiany?"
@@ -107,8 +106,7 @@
     "dataSources": {
       "add": "Dodaj nowe źródło danych smart panelu",
       "edit": "Edytuj źródło danych smart panelu",
-      "detail": "Zarządzaj źródłem danych smart panelu",
-      "adjustFilters": "Dostosuj filtry wyświetlania"
+      "detail": "Zarządzaj źródłem danych smart panelu"
     }
   },
   "messages": {
@@ -189,15 +187,18 @@
     },
     "dataSources": {
       "noDataSources": "Nie masz skonfigurowanych żadnych źródeł danych",
-      "noFilteredDataSources": "Nie znaleziono źródeł danych pasujących do aktywnych kryteriów filtra",
       "loadingDataSources": "Ładowanie źródeł danych...",
       "loadingDataSource": "Ładowanie źródła danych...",
       "confirmRemove": "Czy na pewno chcesz usunąć źródło danych? Tej operacji nie można cofnąć.",
       "selectPlugin": "Aby utworzyć nowe źródło danych, wybierz kompatybilną wtyczkę z listy. Wtyczki zapewniają niezbędne opcje konfiguracji dla określonych typów źródeł danych.",
-      "noPlugins": "Nie skonfigurowano jeszcze żadnych wtyczek źródeł danych."
+      "noPlugins": "Nie skonfigurowano jeszcze żadnych wtyczek źródeł danych.",
+      "description": "Skąd pochodzą wartości pokazane tutaj.",
+      "noDataSourcesHint": "Dodaj źródło danych, aby pokazać wartość z urządzenia lub pogody."
     },
     "misc": {
-      "confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?"
+      "confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
+      "yes": "Tak",
+      "no": "Nie"
     }
   },
   "fields": {
@@ -278,9 +279,6 @@
       }
     },
     "dataSources": {
-      "search": {
-        "placeholder": "Szukaj źródeł danych..."
-      },
       "plugin": {
         "title": "Wtyczka źródła danych",
         "placeholder": "Wybierz wtyczkę źródła danych"
@@ -422,6 +420,13 @@
     "pages": {
       "edit": "Edytuj {page}",
       "more": "Więcej akcji dla {page}"
+    },
+    "dataSources": {
+      "edit": "Edytuj źródło danych",
+      "more": "Więcej akcji dla źródła danych"
+    },
+    "tiles": {
+      "edit": "Edytuj kafelek"
     }
   }
 }

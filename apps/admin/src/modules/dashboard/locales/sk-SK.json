@@ -80,8 +80,7 @@
 			"add": "Pridať zdroj dát",
 			"edit": "Upraviť zdroj dát",
 			"remove": "Odstrániť zdroj dát?",
-			"selectPlugin": "Vyžaduje sa plugin zdroja dát",
-			"adjustFilters": "Filtrovať zdroje dát"
+			"selectPlugin": "Vyžaduje sa plugin zdroja dát"
 		},
 		"misc": {
 			"discard": "Zahodiť zmeny?"
@@ -107,8 +106,7 @@
 		"dataSources": {
 			"add": "Pridať nový zdroj dát smart panelu",
 			"edit": "Upraviť zdroj dát smart panelu",
-			"detail": "Spravovať zdroj dát smart panelu",
-			"adjustFilters": "Upraviť filtre zobrazenia"
+			"detail": "Spravovať zdroj dát smart panelu"
 		}
 	},
 	"messages": {
@@ -189,15 +187,18 @@
 		},
 		"dataSources": {
 			"noDataSources": "Nemáte nakonfigurovaný žiadny zdroj dát",
-			"noFilteredDataSources": "Neboli nájdené žiadne zdroje dát zodpovedajúce aktívnym filtrom",
 			"loadingDataSources": "Načítavanie zdrojov dát...",
 			"loadingDataSource": "Načítavanie zdroja dát...",
 			"confirmRemove": "Naozaj chcete odstrániť zdroj dát? Toto sa nedá vrátiť.",
 			"selectPlugin": "Na vytvorenie nového zdroja dát vyberte kompatibilný plugin zo zoznamu. Pluginy poskytujú potrebné konfiguračné možnosti pre konkrétne typy zdrojov dát.",
-			"noPlugins": "Zatiaľ neboli nakonfigurované žiadne pluginy zdrojov dát."
+			"noPlugins": "Zatiaľ neboli nakonfigurované žiadne pluginy zdrojov dát.",
+			"description": "Odkiaľ pochádzajú tu zobrazené hodnoty.",
+			"noDataSourcesHint": "Pridajte zdroj dát a zobrazte hodnotu zo zariadenia alebo počasia."
 		},
 		"misc": {
-			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?"
+			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
+			"yes": "Áno",
+			"no": "Nie"
 		}
 	},
 	"fields": {
@@ -278,9 +279,6 @@
 			}
 		},
 		"dataSources": {
-			"search": {
-				"placeholder": "Vyhľadať zdroje dát..."
-			},
 			"plugin": {
 				"title": "Plugin zdroja dát",
 				"placeholder": "Vyberte plugin zdroja dát"
@@ -422,6 +420,13 @@
 		"pages": {
 			"edit": "Upraviť {page}",
 			"more": "Ďalšie akcie pre {page}"
+		},
+		"dataSources": {
+			"edit": "Upraviť zdroj dát",
+			"more": "Ďalšie akcie pre zdroj dát"
+		},
+		"tiles": {
+			"edit": "Upraviť dlaždicu"
 		}
 	}
 }

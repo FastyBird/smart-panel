@@ -80,8 +80,7 @@
 			"add": "Añadir fuente de datos",
 			"edit": "Editar fuente de datos",
 			"remove": "¿Eliminar fuente de datos?",
-			"selectPlugin": "Se requiere plugin de fuente de datos",
-			"adjustFilters": "Filtrar fuentes de datos"
+			"selectPlugin": "Se requiere plugin de fuente de datos"
 		},
 		"misc": {
 			"discard": "¿Descartar cambios?"
@@ -107,8 +106,7 @@
 		"dataSources": {
 			"add": "Añadir nueva fuente de datos del panel inteligente",
 			"edit": "Editar fuente de datos del panel inteligente",
-			"detail": "Gestionar fuente de datos del panel inteligente",
-			"adjustFilters": "Ajustar filtros de visualización"
+			"detail": "Gestionar fuente de datos del panel inteligente"
 		}
 	},
 	"messages": {
@@ -189,15 +187,18 @@
 		},
 		"dataSources": {
 			"noDataSources": "No tienes ninguna fuente de datos configurada",
-			"noFilteredDataSources": "No se encontraron fuentes de datos que coincidan con los criterios de filtro activos",
 			"loadingDataSources": "Cargando fuentes de datos...",
 			"loadingDataSource": "Cargando fuente de datos...",
 			"confirmRemove": "¿Estás seguro de que deseas eliminar la fuente de datos? Esto no se puede revertir.",
 			"selectPlugin": "Para crear una nueva fuente de datos, por favor selecciona un plugin compatible de la lista. Los plugins proporcionan las opciones de configuración necesarias para tipos de fuente de datos específicos.",
-			"noPlugins": "Aún no se han configurado plugins de fuente de datos."
+			"noPlugins": "Aún no se han configurado plugins de fuente de datos.",
+			"description": "De dónde vienen los valores que se muestran aquí.",
+			"noDataSourcesHint": "Añada una fuente de datos para mostrar un valor de un dispositivo o del tiempo."
 		},
 		"misc": {
-			"confirmDiscard": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?"
+			"confirmDiscard": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?",
+			"yes": "Sí",
+			"no": "No"
 		}
 	},
 	"fields": {
@@ -278,9 +279,6 @@
 			}
 		},
 		"dataSources": {
-			"search": {
-				"placeholder": "Buscar fuentes de datos..."
-			},
 			"plugin": {
 				"title": "Plugin de fuente de datos",
 				"placeholder": "Seleccionar plugin de fuente de datos"
@@ -422,6 +420,13 @@
 		"pages": {
 			"edit": "Editar {page}",
 			"more": "Más acciones para {page}"
+		},
+		"dataSources": {
+			"edit": "Editar fuente de datos",
+			"more": "Más acciones para la fuente de datos"
+		},
+		"tiles": {
+			"edit": "Editar mosaico"
 		}
 	}
 }

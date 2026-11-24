@@ -80,8 +80,7 @@
       "add": "Add data source",
       "edit": "Edit data source",
       "remove": "Remove data source?",
-      "selectPlugin": "Data source plugin required",
-      "adjustFilters": "Filter data sources"
+      "selectPlugin": "Data source plugin required"
     },
     "misc": {
       "discard": "Discard changes?"
@@ -107,8 +106,7 @@
     "dataSources": {
       "add": "Add new smart panel data source",
       "edit": "Edit smart panel data source",
-      "detail": "Manage smart panel data source",
-      "adjustFilters": "Adjust display filters"
+      "detail": "Manage smart panel data source"
     }
   },
   "messages": {
@@ -189,15 +187,18 @@
     },
     "dataSources": {
       "noDataSources": "You don't have configured any data source",
-      "noFilteredDataSources": "No data sources found matching the active filter criteria",
       "loadingDataSources": "Loading data sources...",
       "loadingDataSource": "Loading data source...",
       "confirmRemove": "Are you sure you want to remove data source? This cannot be reversed.",
       "selectPlugin": "To create a new data source, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific data source types.",
-      "noPlugins": "No data source plugins have been configured yet."
+      "noPlugins": "No data source plugins have been configured yet.",
+      "description": "Where the values shown here come from.",
+      "noDataSourcesHint": "Add a data source to show a value from a device or the weather."
     },
     "misc": {
-      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+      "yes": "Yes",
+      "no": "No"
     }
   },
   "fields": {
@@ -278,9 +279,6 @@
       }
     },
     "dataSources": {
-      "search": {
-        "placeholder": "Search data sources..."
-      },
       "plugin": {
         "title": "Data source plugin",
         "placeholder": "Select data source plugin"
@@ -422,6 +420,13 @@
     "pages": {
       "edit": "Edit {page}",
       "more": "More actions for {page}"
+    },
+    "dataSources": {
+      "edit": "Edit data source",
+      "more": "More actions for the data source"
+    },
+    "tiles": {
+      "edit": "Edit tile"
     }
   }
 }

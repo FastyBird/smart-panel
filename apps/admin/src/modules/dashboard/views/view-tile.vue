@@ -2,100 +2,73 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isTileRoute || isLGDevice"
+		v-if="isTileRoute || inDrawer"
 		:title="t('dashboardModule.headings.tiles.detail')"
 		:subtitle="t('dashboardModule.subHeadings.tiles.detail')"
 		icon="mdi:widget-tree"
-		:actions="[{ icon: 'mdi:plus', label: t('dashboardModule.buttons.add.title'), handler: onDataSourceAdd }]"
-		@back="() => router.back()"
+		:actions="tile ? [{ icon: 'mdi:pencil', label: t('dashboardModule.buttons.edit.title'), handler: onTileEdit }] : []"
+		@back="onBack"
 	>
 		<template #actions>
-			<div class="flex items-center">
+			<el-tooltip
+				v-if="tile"
+				:content="t('dashboardModule.buttons.edit.title')"
+				placement="top"
+			>
 				<el-button
-					type="primary"
+					:aria-label="t('dashboardModule.aria.tiles.edit')"
 					plain
-					class="ml-2!"
-					@click="onDataSourceAdd"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
-
-					{{ t('dashboardModule.buttons.addDataSource.title') }}
-				</el-button>
-				<el-button
-					plain
-					class="ml-2!"
+					data-test-id="tile-edit"
 					@click="onTileEdit"
 				>
 					<template #icon>
 						<icon icon="mdi:pencil" />
 					</template>
 				</el-button>
-			</div>
+			</el-tooltip>
 		</template>
 	</view-header>
 
 	<div
-		v-if="isTileRoute || isLGDevice"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden"
+		v-if="isTileRoute || inDrawer"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<el-card
-			v-if="tile"
-			class="mt-2"
-			body-class="p-0!"
+		<!-- Template 4: edit and the data source forms open next to the detail from tablet portrait up, as their own
+		     page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
 		>
-			<tile-detail :tile="tile" />
-		</el-card>
-
-		<list-data-sources
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="dataSourcesPaginated"
-			:all-items="dataSources"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			@edit="onDataSourceEdit"
-			@remove="onDataSourceRemove"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-		/>
-	</div>
-
-	<router-view
-		v-else
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component
-			:is="Component"
-			v-if="tile"
-			:tile="tile"
-		/>
-	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-data-sources-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
+			<!-- Template 3: the summary card, then the data sources; the page scrolls as one -->
+			<div
+				v-if="tile"
+				class="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto"
+			>
+				<tile-summary
+					:key="tile.id"
+					:tile="tile"
 				/>
 
-				<view-error v-else>
+				<data-sources-card
+					:items="dataSources"
+					:loading="areLoading"
+					@add="onDataSourceAdd"
+					@edit="onDataSourceEdit"
+					@remove="onDataSourceRemove"
+				/>
+			</div>
+
+			<state-view
+				v-else
+				kind="loading"
+				icon="mdi:widget-tree"
+				:title="t('dashboardModule.texts.tiles.loadingTile')"
+			/>
+
+			<template #form>
+				<!-- Keyed like the form: an error caught in one form does not stay over the next one -->
+				<view-error :key="formKey">
 					<template #icon>
 						<icon icon="mdi:widget-tree" />
 					</template>
@@ -105,7 +78,7 @@
 
 					<suspense>
 						<router-view
-							:key="props.id"
+							:key="formKey"
 							v-slot="{ Component }"
 						>
 							<component
@@ -118,24 +91,35 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<router-view
+		v-else
+		:key="formKey"
+		v-slot="{ Component }"
+	>
+		<component
+			:is="Component"
+			v-if="tile"
+			:tile="tile"
+		/>
+	</router-view>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDrawer, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
-import ListDataSourcesAdjust from '../components/data-sources/list-data-sources-adjust.vue';
-import ListDataSources from '../components/data-sources/list-data-sources.vue';
-import TileDetail from '../components/tiles/tile-detail.vue';
+import { AppBreadcrumbs, EditDrawerLayout, StateView, ViewError, ViewHeader, provideEditDrawer, useFlashMessage, useUuid } from '../../../common';
+import DataSourcesCard from '../components/data-sources/data-sources-card.vue';
+import TileSummary from '../components/tiles/tile-summary.vue';
 import { useDataSourcesActions } from '../composables/useDataSourcesActions';
 import { useDataSourcesDataSource } from '../composables/useDataSourcesDataSource';
 import { useTile } from '../composables/useTile';
@@ -155,191 +139,132 @@ const props = defineProps<IViewTileProps>();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
-const flashMessage = useFlashMessage();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
-
-const { isLGDevice } = useBreakpoints();
-
-const { tile, fetchTile, isLoading } = useTile({ id: props.id });
-
-// Track if tile was previously loaded to detect deletion
-const wasTileLoaded = ref<boolean>(false);
-// Track parent page ID before deletion for redirect
-const parentPageId = ref<string | null>(null);
-const {
-	dataSources,
-	dataSourcesPaginated,
-	totalRows,
-	filters,
-	filtersActive,
-	sortBy,
-	sortDir,
-	paginateSize,
-	paginatePage,
-	areLoading,
-	fetchDataSources,
-	resetFilter,
-} = useDataSourcesDataSource({ parent: 'tile', parentId: props.id });
-const dataSourcesActions = useDataSourcesActions({ parent: 'tile', parentId: props.id });
 
 if (!validateUuid(props.id)) {
 	throw new Error('Tile identifier is not valid');
 }
 
-const mounted = ref<boolean>(false);
+const { tile, fetchTile, isLoading } = useTile({ id: props.id });
 
-const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
+// Track if the tile was loaded once, so its deletion can be told from a failed first load
+const wasTileLoaded = ref<boolean>(false);
+// The page the tile sits on, kept so a deleted tile can return there
+const parentPageId = ref<string | null>(null);
+
+const { dataSources, areLoading, fetchDataSources } = useDataSourcesDataSource({ parent: 'tile', parentId: props.id });
+const dataSourcesActions = useDataSourcesActions({ parent: 'tile', parentId: props.id });
 
 const remoteFormChanged = ref<boolean>(false);
 
-const isTileRoute = computed<boolean>((): boolean => {
-	return route.name === RouteNames.TILE;
+const FORM_ROUTES: string[] = [RouteNames.TILE_EDIT, RouteNames.TILE_ADD_DATA_SOURCE, RouteNames.TILE_EDIT_DATA_SOURCE];
+
+const isTileRoute = computed<boolean>((): boolean => route.name === RouteNames.TILE);
+
+const isFormRoute = (): boolean => route.matched.some((matched) => FORM_ROUTES.includes(String(matched.name)));
+
+const showDrawer = ref<boolean>(isFormRoute());
+
+// Template 4: the forms open next to this page from tablet portrait up, as their own page on phone
+const { inDrawer } = provideEditDrawer((): boolean => !isTileRoute.value);
+
+// One form per data source (and one for edit and for Add): a new key remounts the routed form
+const formKey = computed<string>(
+	(): string => `${String(route.name)}:${typeof route.params?.dataSourceId === 'string' ? route.params.dataSourceId : ''}`
+);
+
+// The changed flag belongs to the form that is open. Any route change that replaces or closes it clears the flag
+// before the next form mounts, so that one starts clean. A declined discard leaves the route, and the flag, as it was
+watch(formKey, (): void => {
+	remoteFormChanged.value = false;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
-	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
-		return [
-			{
-				label: t('dashboardModule.breadcrumbs.tiles.detail'),
-				route: router.resolve({ name: RouteNames.TILE, params: { id: props.id } }),
-			},
-		];
-	}
+	(): { label: string; route: RouteLocationResolvedGeneric }[] => [
+		{
+			label: t('dashboardModule.breadcrumbs.tiles.detail'),
+			route: router.resolve({ name: RouteNames.TILE, params: { id: props.id } }),
+		},
+	]
 );
 
-const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
-
-		done?.();
+const navigate = (to: { name: string; params: Record<string, string> }): void => {
+	if (inDrawer.value) {
+		router.replace(to);
 	} else {
-		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
-				confirmButtonText: t('dashboardModule.buttons.yes.title'),
-				cancelButtonText: t('dashboardModule.buttons.no.title'),
-				type: 'warning',
-			})
-				.then((): void => {
-					if (isLGDevice.value) {
-						router.replace({
-							name: RouteNames.TILE,
-							params: {
-								id: props.id,
-							},
-						});
-					} else {
-						router.push({
-							name: RouteNames.TILE,
-							params: {
-								id: props.id,
-							},
-						});
-					}
-
-					done?.();
-				})
-				.catch((): void => {
-					// Just ignore it
-				});
-		} else {
-			if (isLGDevice.value) {
-				router.replace({
-					name: RouteNames.TILE,
-					params: {
-						id: props.id,
-					},
-				});
-			} else {
-				router.push({
-					name: RouteNames.TILE,
-					params: {
-						id: props.id,
-					},
-				});
-			}
-
-			done?.();
-		}
+		router.push(to);
 	}
 };
 
-const onTileEdit = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.TILE_EDIT,
-			params: {
-				id: props.id,
-			},
+const confirmDiscard = async (): Promise<boolean> => {
+	try {
+		await ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
+			confirmButtonText: t('dashboardModule.buttons.discard.title'),
+			cancelButtonText: t('dashboardModule.buttons.keepEditing.title'),
+			type: 'warning',
 		});
-	} else {
-		router.push({
-			name: RouteNames.TILE_EDIT,
-			params: {
-				id: props.id,
-			},
-		});
+
+		return true;
+	} catch {
+		return false;
 	}
 };
 
-const onDataSourceAdd = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.TILE_ADD_DATA_SOURCE,
-			params: {
-				id: props.id,
-			},
-		});
-	} else {
-		router.push({
-			name: RouteNames.TILE_ADD_DATA_SOURCE,
-			params: {
-				id: props.id,
-			},
-		});
+const onCloseDrawer = async (done?: () => void): Promise<void> => {
+	if (remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
 	}
+
+	navigate({ name: RouteNames.TILE, params: { id: props.id } });
+
+	done?.();
 };
 
-const onDataSourceEdit = (id: IDataSource['id']): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.TILE_EDIT_DATA_SOURCE,
-			params: {
-				id: props.id,
-				dataSourceId: id,
-			},
-		});
-	} else {
-		router.push({
-			name: RouteNames.TILE_EDIT_DATA_SOURCE,
-			params: {
-				id: props.id,
-				dataSourceId: id,
-			},
-		});
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => !showDrawer.value || !remoteFormChanged.value || confirmDiscard();
+
+const onTileEdit = async (): Promise<void> => {
+	if (route.name === RouteNames.TILE_EDIT || !(await canReplaceOpenForm())) {
+		return;
 	}
+
+	navigate({ name: RouteNames.TILE_EDIT, params: { id: props.id } });
+};
+
+const onDataSourceAdd = async (): Promise<void> => {
+	if (route.name === RouteNames.TILE_ADD_DATA_SOURCE || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	navigate({ name: RouteNames.TILE_ADD_DATA_SOURCE, params: { id: props.id } });
+};
+
+const onDataSourceEdit = async (id: IDataSource['id']): Promise<void> => {
+	if ((route.name === RouteNames.TILE_EDIT_DATA_SOURCE && route.params.dataSourceId === id) || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	navigate({ name: RouteNames.TILE_EDIT_DATA_SOURCE, params: { id: props.id, dataSourceId: id } });
 };
 
 const onDataSourceRemove = (id: IDataSource['id']): void => {
 	dataSourcesActions.remove(id);
 };
 
-const onResetFilters = (): void => {
-	resetFilter();
-};
+const onBack = async (): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
 
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
+	router.back();
 };
 
 onBeforeMount((): void => {
 	fetchTile()
 		.then((): void => {
-			// Mark as loaded if tile was successfully fetched
 			if (tile.value !== null) {
 				wasTileLoaded.value = true;
 			}
@@ -355,35 +280,19 @@ onBeforeMount((): void => {
 
 			throw new DashboardException('Something went wrong', err);
 		});
-
-	showDrawer.value =
-		route.matched.find(
-			(matched) =>
-				matched.name === RouteNames.TILE_EDIT || matched.name === RouteNames.TILE_ADD_DATA_SOURCE || matched.name === RouteNames.TILE_EDIT_DATA_SOURCE
-		) !== undefined;
-});
-
-onMounted((): void => {
-	mounted.value = true;
 });
 
 watch(
 	(): string => route.path,
 	(): void => {
-		showDrawer.value =
-			route.matched.find(
-				(matched) =>
-					matched.name === RouteNames.TILE_EDIT ||
-					matched.name === RouteNames.TILE_ADD_DATA_SOURCE ||
-					matched.name === RouteNames.TILE_EDIT_DATA_SOURCE
-			) !== undefined;
+		showDrawer.value = isFormRoute();
 	}
 );
 
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		// Only throw error if tile was never loaded (initial load failed)
+		// Only throw error if the tile was never loaded (initial load failed)
 		if (!val && tile.value === null && !wasTileLoaded.value) {
 			throw new DashboardException('Tile not found');
 		}
@@ -395,31 +304,17 @@ watch(
 	(val: ITile | null): void => {
 		if (val !== null) {
 			wasTileLoaded.value = true;
-			// Capture parent page ID before deletion
 			if (val.parent?.type === 'page' && val.parent?.id) {
 				parentPageId.value = val.parent.id;
 			}
+
 			meta.title = t('dashboardModule.meta.tiles.detail.title');
 		} else if (wasTileLoaded.value && !isLoading.value) {
-			// Tile was previously loaded but is now null - it was deleted
+			// The tile was deleted while it was open
 			flashMessage.warning(t('dashboardModule.messages.tiles.deletedWhileEditing'), { duration: 0 });
-			// Redirect to parent page if available, otherwise to pages list
-			if (parentPageId.value) {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.PAGE, params: { id: parentPageId.value } });
-				} else {
-					router.push({ name: RouteNames.PAGE, params: { id: parentPageId.value } });
-				}
-			} else {
-				// Fallback to pages list if parent not available
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.PAGES });
-				} else {
-					router.push({ name: RouteNames.PAGES });
-				}
-			}
+
+			router.replace(parentPageId.value ? { name: RouteNames.PAGE, params: { id: parentPageId.value } } : { name: RouteNames.PAGES });
 		} else if (!isLoading.value && val === null && !wasTileLoaded.value) {
-			// Tile was never loaded - initial load failed
 			throw new DashboardException('Tile not found');
 		}
 	}

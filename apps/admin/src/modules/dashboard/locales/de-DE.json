@@ -80,8 +80,7 @@
 			"add": "Datenquelle hinzufügen",
 			"edit": "Datenquelle bearbeiten",
 			"remove": "Datenquelle entfernen?",
-			"selectPlugin": "Datenquellen-Plugin erforderlich",
-			"adjustFilters": "Datenquellen filtern"
+			"selectPlugin": "Datenquellen-Plugin erforderlich"
 		},
 		"misc": {
 			"discard": "Änderungen verwerfen?"
@@ -107,8 +106,7 @@
 		"dataSources": {
 			"add": "Neue Smart Panel Datenquelle hinzufügen",
 			"edit": "Smart Panel Datenquelle bearbeiten",
-			"detail": "Smart Panel Datenquelle verwalten",
-			"adjustFilters": "Anzeigefilter anpassen"
+			"detail": "Smart Panel Datenquelle verwalten"
 		}
 	},
 	"messages": {
@@ -189,15 +187,18 @@
 		},
 		"dataSources": {
 			"noDataSources": "Sie haben noch keine Datenquellen konfiguriert",
-			"noFilteredDataSources": "Keine Datenquellen gefunden, die den aktiven Filterkriterien entsprechen",
 			"loadingDataSources": "Datenquellen werden geladen...",
 			"loadingDataSource": "Datenquelle wird geladen...",
 			"confirmRemove": "Sind Sie sicher, dass Sie die Datenquelle entfernen möchten? Dies kann nicht rückgängig gemacht werden.",
 			"selectPlugin": "Um eine neue Datenquelle zu erstellen, wählen Sie bitte ein kompatibles Plugin aus der Liste. Plugins bieten die notwendigen Konfigurationsoptionen für bestimmte Datenquellentypen.",
-			"noPlugins": "Es wurden noch keine Datenquellen-Plugins konfiguriert."
+			"noPlugins": "Es wurden noch keine Datenquellen-Plugins konfiguriert.",
+			"description": "Woher die hier angezeigten Werte stammen.",
+			"noDataSourcesHint": "Fügen Sie eine Datenquelle hinzu, um einen Wert von einem Gerät oder vom Wetter anzuzeigen."
 		},
 		"misc": {
-			"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?"
+			"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
+			"yes": "Ja",
+			"no": "Nein"
 		}
 	},
 	"fields": {
@@ -278,9 +279,6 @@
 			}
 		},
 		"dataSources": {
-			"search": {
-				"placeholder": "Datenquellen suchen..."
-			},
 			"plugin": {
 				"title": "Datenquellen-Plugin",
 				"placeholder": "Datenquellen-Plugin auswählen"
@@ -422,6 +420,13 @@
 		"pages": {
 			"edit": "{page} bearbeiten",
 			"more": "Weitere Aktionen für {page}"
+		},
+		"dataSources": {
+			"edit": "Datenquelle bearbeiten",
+			"more": "Weitere Aktionen für die Datenquelle"
+		},
+		"tiles": {
+			"edit": "Kachel bearbeiten"
 		}
 	}
 }
