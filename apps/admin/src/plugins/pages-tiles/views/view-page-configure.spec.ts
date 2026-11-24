@@ -71,7 +71,11 @@ vi.mock('../../../modules/dashboard', () => ({
 
 vi.mock('../../../modules/displays', () => ({
 	useDisplays: () => ({
-		displays: ref([{ id: 'display-1', name: 'Hall', macAddress: 'aa', rows: 4, cols: 6, darkMode: true, screenWidth: 800, screenHeight: 480 }]),
+		displays: ref([
+			{ id: 'display-1', name: 'Hall', macAddress: 'aa', rows: 4, cols: 6, darkMode: true, screenWidth: 800, screenHeight: 480 },
+			{ id: 'display-2', name: 'Kitchen', macAddress: 'bb', rows: 4, cols: 6, darkMode: false, screenWidth: 800, screenHeight: 480 },
+			{ id: 'display-3', name: 'Office', macAddress: 'cc', rows: 3, cols: 5, darkMode: false, screenWidth: 640, screenHeight: 480 },
+		]),
 		fetchDisplays: vi.fn().mockResolvedValue(undefined),
 		isLoading: ref(false),
 	}),
@@ -326,6 +330,51 @@ describe('ViewPageConfigure', () => {
 		await flushPromises();
 
 		expect(wrapper.findComponent({ name: 'TilesInspector' }).props('disabled')).toBe(true);
+	});
+
+	it('asks before a display with another grid replaces unsaved changes; the same grid only changes the theme', async () => {
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+		const configure = () => wrapper.findComponent({ name: 'PageConfigure' });
+		const select = wrapper.findComponent({ name: 'ElSelect' });
+
+		configure().vm.$emit('update:remote-page-changed', true);
+		await flushPromises();
+
+		select.vm.$emit('change', 'display-2');
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(configure().props('dark')).toBe(false);
+
+		confirm.mockRejectedValueOnce(new Error('cancel'));
+
+		select.vm.$emit('change', 'display-3');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(configure().props('gridLayout')).toEqual({ rows: 4, cols: 6 });
+
+		confirm.mockResolvedValueOnce(true);
+
+		select.vm.$emit('change', 'display-3');
+		await flushPromises();
+
+		expect(configure().props('gridLayout')).toEqual({ rows: 3, cols: 5 });
+	});
+
+	it('asks before leaving with a changed form open, even when the layout is clean', async () => {
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure/tile/add`);
+
+		wrapper.findComponent({ name: 'RoutedForm' }).vm.$emit('update:remote-form-changed', true);
+		await flushPromises();
+
+		confirm.mockRejectedValueOnce(new Error('cancel'));
+
+		await router.push({ name: 'dashboard_module-pages' });
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_ADD_TILE);
 	});
 
 	it('keeps the palette behind Add tile and the data sources behind a button on tablet portrait', async () => {

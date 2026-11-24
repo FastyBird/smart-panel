@@ -433,7 +433,18 @@ const canOpenForm = async (): Promise<boolean> => {
 	return canReplaceOpenForm();
 };
 
-const onDisplaySelect = (displayId: string): void => {
+const gridOf = (display: IDisplay | null): string =>
+	display ? `${props.page.rows ?? display.rows ?? 12}x${props.page.cols ?? display.cols ?? 24}` : '';
+
+// A display with another grid rebuilds the canvas from the saved layout, so unsaved changes are asked about first; a
+// display with the same grid only changes the theme and keeps them
+const onDisplaySelect = async (displayId: string): Promise<void> => {
+	const next = applicableDisplays.value.find((display) => display.id === displayId) ?? null;
+
+	if (remotePageChanged.value && gridOf(next) !== gridOf(selectedDisplay.value) && !(await confirmDiscard())) {
+		return;
+	}
+
 	selectedDisplayId.value = displayId;
 };
 
@@ -540,7 +551,8 @@ const onCloseDrawer = async (done?: () => void): Promise<void> => {
 };
 
 onBeforeRouteLeave(async (): Promise<boolean> => {
-	if (allowLeave || !remotePageChanged.value) {
+	// An open form with changes counts too: leaving the editor closes it
+	if (allowLeave || (!remotePageChanged.value && !remoteFormChanged.value)) {
 		return true;
 	}
 

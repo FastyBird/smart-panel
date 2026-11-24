@@ -90,7 +90,7 @@ const flashMessage = useFlashMessage();
 const { getElement } = useTilesPlugins();
 
 // The editor view loads the tiles; this reads them from the store
-const { tiles } = useTiles({ parent: 'page', parentId: props.page.id });
+const { tiles, fetchTiles } = useTiles({ parent: 'page', parentId: props.page.id });
 const {
 	findById: findTileById,
 	edit: editTile,
@@ -102,7 +102,8 @@ const {
 // manager, stores manager, etc.)
 const appContext = getCurrentInstance()?.appContext ?? null;
 
-const HIDDEN_TILE_WIDTH = 2;
+// One cell, so a hidden tile fits any free cell it is dropped on; it takes its own size again on the page
+const HIDDEN_TILE_WIDTH = 1;
 const GRID_MARGIN = 4;
 // The bottom panel keeps a low row, whatever size the page cells grow to
 const HIDDEN_CELL_MAX = 72;
@@ -118,6 +119,7 @@ const draftGridContainer = ref<HTMLElement | null>(null);
 
 const pageTiles = new Set<ITile['id']>();
 const draftTiles = new Set<ITile['id']>();
+// Tiles taken off both grids, deleted when the page is saved; each leaves the set once its own request succeeds
 const removedTiles = new Set<ITile['id']>();
 // The size a tile had on the page before it was hidden, kept until it is shown or the page is saved
 const hiddenSizes = new Map<ITile['id'], { w: number; h: number }>();
@@ -131,14 +133,13 @@ const hiddenCount = ref<number>(0);
 // One square cell, sized so the whole page fits the canvas
 const cellSize = ref<number>(0);
 
-const initialized = ref<boolean>(false);
 const suppressMarkChanged = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
 // While the layout is being saved the grids are locked, so nothing changes under the request
 const saving = ref<boolean>(false);
 
-let changeTimeout: ReturnType<typeof setTimeout> | undefined;
-let initTimeout: ReturnType<typeof setTimeout> | undefined;
+// The grid layout when a drag or resize started, so a gesture that ends where it began changes nothing
+let layoutAtGesture = '';
 
 const frameStyle = computed<{ width: string; height: string }>((): { width: string; height: string } => {
 	const cols = props.gridLayout?.cols ?? 0;
@@ -197,19 +198,23 @@ const markSelection = (): void => {
 	}
 };
 
+// Filling the grids from the store is not a change; everything after it is, from the first moment
 const markChanged = (): void => {
-	if (!initialized.value || suppressMarkChanged.value) {
+	if (suppressMarkChanged.value) {
 		return;
 	}
 
 	revision++;
 
-	clearTimeout(changeTimeout);
-
-	changeTimeout = setTimeout((): void => {
-		pageChanged.value = true;
-	}, 50);
+	pageChanged.value = true;
 };
+
+const layoutKey = (): string =>
+	JSON.stringify(
+		(pageGrid?.engine.nodes ?? [])
+			.map((node) => [String(node.id), node.x, node.y, node.w, node.h])
+			.sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+	);
 
 const updateHiddenCount = (): void => {
 	hiddenCount.value = draftTiles.size;
@@ -251,10 +256,19 @@ const onCanvasResize = (): void => {
 };
 
 // The cell is a button: a click or Enter selects the tile, a double click opens its form
-const wireGridItem = (itemEl: HTMLElement, tile: ITile): void => {
+const wireGridItem = (itemEl: GridItemHTMLElement, tile: ITile): void => {
+	const place = placeOf(tile.id);
+
+	// The tile type and where it sits, so two tiles of one type read apart
+	const where = place
+		? place.hidden
+			? t('pagesTilesPlugin.editor.inspector.hidden')
+			: t('pagesTilesPlugin.editor.inspector.positionValue', { row: place.row, col: place.col })
+		: '';
+
 	itemEl.setAttribute('tabindex', '0');
 	itemEl.setAttribute('role', 'button');
-	itemEl.setAttribute('aria-label', tileName(tile));
+	itemEl.setAttribute('aria-label', where ? `${tileName(tile)}, ${where}` : tileName(tile));
 
 	if (itemEl.dataset.wired === 'true') {
 		return;
@@ -279,14 +293,18 @@ const wireGridItem = (itemEl: HTMLElement, tile: ITile): void => {
 	});
 };
 
-const renderTileContent = (itemEl: HTMLElement, tile: ITile): void => {
+// The preview gets the tile as the store has it, at the size its cell has now, saved or not
+const renderTileContent = (itemEl: GridItemHTMLElement, tile: ITile): void => {
 	const content = itemEl.querySelector('.grid-stack-item-content');
 
 	if (!content) {
 		return;
 	}
 
-	const vnode = h(TilePreview, { tile });
+	const node = itemEl.gridstackNode;
+	const live: ITile = node ? { ...tile, colSpan: node.w ?? tile.colSpan, rowSpan: node.h ?? tile.rowSpan } : tile;
+
+	const vnode = h(TilePreview, { tile: live });
 
 	if (appContext) {
 		vnode.appContext = appContext;
@@ -295,6 +313,18 @@ const renderTileContent = (itemEl: HTMLElement, tile: ITile): void => {
 	render(vnode, content as HTMLElement);
 
 	wireGridItem(itemEl, tile);
+};
+
+const refreshGridItems = (): void => {
+	for (const grid of [pageGrid, draftGrid]) {
+		for (const itemEl of grid?.getGridItems() ?? []) {
+			const tile = tiles.value.find((item) => item.id === itemEl.gridstackNode?.id);
+
+			if (tile) {
+				renderTileContent(itemEl, tile);
+			}
+		}
+	}
 };
 
 const unmountGridComponents = (grid: GridStack): void => {
@@ -376,6 +406,8 @@ const initializeGrids = (): void => {
 			margin: GRID_MARGIN,
 			float: true,
 			acceptWidgets: true,
+			// A rebuild during a save stays locked until the save settles
+			staticGrid: saving.value,
 		},
 		pageGridContainer.value
 	);
@@ -388,16 +420,26 @@ const initializeGrids = (): void => {
 			margin: GRID_MARGIN,
 			float: false,
 			acceptWidgets: true,
+			staticGrid: saving.value,
 		},
 		draftGridContainer.value
 	);
 
+	pageGrid.on('dragstart resizestart', (): void => {
+		layoutAtGesture = layoutKey();
+	});
+
 	pageGrid.on('dragstop resizestop', (): void => {
-		markChanged();
+		if (layoutKey() !== layoutAtGesture) {
+			markChanged();
+		}
+
+		refreshGridItems();
 		reportSelection();
 	});
 
 	draftGrid.on('dragstop', (): void => {
+		refreshGridItems();
 		reportSelection();
 	});
 
@@ -425,6 +467,7 @@ const initializeGrids = (): void => {
 			if (size) {
 				nextTick((): void => {
 					restoreSize(itemEl, size);
+					renderTileContent(itemEl, tile);
 					reportSelection();
 				});
 			}
@@ -488,7 +531,12 @@ const initializeGrids = (): void => {
 	suppressMarkChanged.value = false;
 };
 
+// Filling the grids from the store; a new draft tile counts as a change through the tiles watcher
 const addTilesToGrids = (): void => {
+	const wasSuppressed = suppressMarkChanged.value;
+
+	suppressMarkChanged.value = true;
+
 	for (const tile of tiles.value) {
 		// Skip tiles removed in this session, and tiles already in a grid
 		if (removedTiles.has(tile.id) || pageTiles.has(tile.id) || draftTiles.has(tile.id)) {
@@ -506,6 +554,8 @@ const addTilesToGrids = (): void => {
 	}
 
 	draftGrid?.compact();
+
+	suppressMarkChanged.value = wasSuppressed;
 };
 
 // Only where it fits the grid and covers no other tile; otherwise it keeps the size it was dropped at
@@ -601,10 +651,11 @@ const removeTile = (id: ITile['id']): void => {
 	}
 };
 
-// Sends the layout as it is now; returns the removals it sent, so only those are settled
-const saveLayout = async (): Promise<ITile['id'][]> => {
+// Sends the layout as it is now. Each removal leaves the pending set as soon as its own request succeeds, so a retry
+// never sends a confirmed one again
+const saveLayout = async (): Promise<void> => {
 	const updates: Promise<void>[] = [];
-	const removed = [...removedTiles];
+	const removals: Promise<void>[] = [];
 
 	const persist = async (id: ITile['id'], data: Record<string, unknown>): Promise<void> => {
 		const tile = findTileById('page', id);
@@ -638,23 +689,27 @@ const saveLayout = async (): Promise<ITile['id'][]> => {
 		}
 	}
 
-	for (const id of removed) {
-		const tile = findTileById('page', id);
-
-		if (tile) {
-			updates.push(removeTileDirectly({ id, parent: tile.parent }).then((): void => undefined));
-		}
+	for (const id of [...removedTiles]) {
+		removals.push(
+			removeTileDirectly({ id, parent: { type: 'page', id: props.page.id } }).then((): void => {
+				removedTiles.delete(id);
+			})
+		);
 	}
 
 	// Every request settles before the grids unlock, so a retry never overlaps one still running
-	const results = await Promise.allSettled(updates);
+	const results = await Promise.allSettled([...updates, ...removals]);
 	const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
 
 	if (failed) {
+		// A failed delete can leave the store without the tile while the backend still has it, and the store then
+		// treats a retry as done; reload the tiles so the retry sends it again. Tiles still pending removal stay off the grids
+		if ((await Promise.allSettled(removals)).some((result) => result.status === 'rejected')) {
+			await fetchTiles().catch((): void => undefined);
+		}
+
 		throw failed.reason;
 	}
-
-	return removed;
 };
 
 const lockGrids = (locked: boolean): void => {
@@ -671,10 +726,6 @@ onMounted((): void => {
 		resizeObserver = new ResizeObserver(onCanvasResize);
 		resizeObserver.observe(canvasArea.value);
 	}
-
-	initTimeout = setTimeout((): void => {
-		initialized.value = true;
-	}, 500);
 });
 
 onBeforeUnmount((): void => {
@@ -684,9 +735,6 @@ onBeforeUnmount((): void => {
 		cancelAnimationFrame(resizeFrame);
 	}
 
-	clearTimeout(changeTimeout);
-	clearTimeout(initTimeout);
-
 	destroyGrids();
 });
 
@@ -694,6 +742,7 @@ watch(
 	(): ITile[] => tiles.value,
 	(val: ITile[]): void => {
 		addTilesToGrids();
+		refreshGridItems();
 
 		// Saving turns drafts into tiles; that is not a change. A tile added while saving reaches a grid and counts there
 		if (!saving.value && val.some((tile) => tile.draft)) {
@@ -725,17 +774,12 @@ watch(
 		lockGrids(true);
 
 		try {
-			const removed = await saveLayout();
+			await saveLayout();
 
-			for (const id of removed) {
-				removedTiles.delete(id);
-			}
-
-			hiddenSizes.clear();
-
-			// A change that came in while saving (a tile added from a form) is still to be saved
+			// A change that came in while saving (a tile added from a form, a size kept for a tile hidden on a rebuilt
+			// grid) is still to be saved
 			if (revision === sentRevision) {
-				clearTimeout(changeTimeout);
+				hiddenSizes.clear();
 
 				pageChanged.value = false;
 			}
@@ -764,6 +808,11 @@ watch(
 		if (newVal && oldVal && newVal.rows === oldVal.rows && newVal.cols === oldVal.cols) {
 			return;
 		}
+
+		// The view asks before a display with another grid replaces unsaved changes; the rebuilt grids start from the store
+		removedTiles.clear();
+		revision++;
+		pageChanged.value = false;
 
 		nextTick((): void => {
 			initializeGrids();

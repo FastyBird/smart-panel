@@ -10,6 +10,7 @@ import PageConfigure from './page-configure.vue';
 const edit = vi.fn();
 const save = vi.fn();
 const removeDirectly = vi.fn();
+const fetchTiles = vi.fn();
 
 const PAGE_ID = 'page-1';
 
@@ -29,7 +30,7 @@ vi.mock('../../../common', () => ({
 vi.mock('../../../modules/dashboard', () => ({
 	DisplaySurface: { name: 'DisplaySurface', template: '<div><slot /></div>' },
 	FormResult: { NONE: 'none', WORKING: 'working', ERROR: 'error', OK: 'ok' },
-	useTiles: () => ({ tiles }),
+	useTiles: () => ({ tiles, fetchTiles }),
 	useTilesActions: () => ({
 		findById: (_parent: string, id: string) => tiles.value.find((tile) => tile.id === id) ?? null,
 		edit,
@@ -40,7 +41,7 @@ vi.mock('../../../modules/dashboard', () => ({
 }));
 
 vi.mock('./tile-preview.vue', () => ({
-	default: { name: 'TilePreview', template: '<div />' },
+	default: { name: 'TilePreview', props: ['tile'], template: '<div class="preview" :data-size="`${tile.colSpan}x${tile.rowSpan}`" />' },
 }));
 
 const mountConfigure = async () => {
@@ -72,6 +73,7 @@ describe('PageConfigure', () => {
 		edit.mockReset().mockImplementation(async ({ id }: { id: string }) => tiles.value.find((tile) => tile.id === id));
 		save.mockReset();
 		removeDirectly.mockReset().mockResolvedValue(true);
+		fetchTiles.mockReset().mockResolvedValue(undefined);
 	});
 
 	it('puts the tiles on the page where they are saved', async () => {
@@ -211,5 +213,59 @@ describe('PageConfigure', () => {
 		await flushPromises();
 
 		expect(pageItem('tile-a')).toBeUndefined();
+	});
+	it('leaves the page clean after filling the grids, and tracks the first edit at once', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+
+		expect(wrapper.emitted('update:remote-page-changed')).toBeUndefined();
+
+		exposed.hideTile('tile-b');
+		await nextTick();
+
+		expect(wrapper.emitted('update:remote-page-changed')).toEqual([[true]]);
+	});
+
+	it('names each tile by its type and place, and draws the preview at the size its cell has', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		expect(pageItem('tile-b')?.getAttribute('aria-label')).toBe('Clock, pagesTilesPlugin.editor.inspector.positionValue');
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		grid.addWidget({ id: 'tile-a', x: 0, y: 2, w: 1, h: 1 });
+		await nextTick();
+		await flushPromises();
+
+		expect(pageItem('tile-a')?.querySelector('.preview')?.getAttribute('data-size')).toBe('2x2');
+	});
+
+	it('deletes a removed tile once, and reloads the tiles after a failed delete so a retry sends it again', async () => {
+		removeDirectly.mockRejectedValueOnce(new Error('failed')).mockResolvedValue(true);
+
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { removeTile: (id: string) => void };
+
+		exposed.removeTile('tile-a');
+		exposed.removeTile('tile-b');
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+		expect(removeDirectly).toHaveBeenCalledTimes(2);
+		expect(fetchTiles).toHaveBeenCalledTimes(1);
+
+		await wrapper.setProps({ remotePageSubmit: false });
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		// Only the one that failed is sent again, with its page, whatever the store holds
+		expect(removeDirectly).toHaveBeenCalledTimes(3);
+		expect(removeDirectly).toHaveBeenLastCalledWith({ id: 'tile-a', parent: { type: 'page', id: PAGE_ID } });
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
 	});
 });
