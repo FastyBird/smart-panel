@@ -94,15 +94,20 @@ class RoomScenePill extends StatelessWidget {
                     )
                   else
                     Icon(icon, size: iconSize, color: foreground),
-                  Text(
-                    name,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: foreground,
-                      fontSize: AppSpacings.scale(
-                        RoomOverviewMetrics.pillFontFor(resolvedClass),
+                  // Loose, so it keeps its width in a scrolling row and
+                  // ellipsises in the sky's wrap when the text is enlarged.
+                  Flexible(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: AppSpacings.scale(
+                          RoomOverviewMetrics.pillFontFor(resolvedClass),
+                        ),
+                        fontWeight: FontWeight.w500,
                       ),
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

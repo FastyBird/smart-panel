@@ -231,25 +231,35 @@ class SkyPanelView extends StatelessWidget {
                   );
                 }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: gap,
-                  children: [
-                    clock,
-                    if (card != null) card,
-                    if (footer != null)
-                      Expanded(
-                        // Reversed, so the footer sits at the foot and
-                        // scrolls if the panel is too short for it.
-                        child: SingleChildScrollView(
-                          reverse: true,
-                          child: SizedBox(
+                // The footer sits at the foot; when the panel is too short
+                // for all of it (enlarged text, a short panel), everything
+                // scrolls together instead of clipping.
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.hasBoundedHeight
+                          ? constraints.maxHeight
+                          : 0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      spacing: gap,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: gap,
+                          children: [clock, ?card],
+                        ),
+                        if (footer != null)
+                          SizedBox(
                             width: constraints.maxWidth,
                             child: footer!(context, look),
                           ),
-                        ),
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
                 );
               },
             ),

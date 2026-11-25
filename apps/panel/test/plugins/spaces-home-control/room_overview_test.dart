@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_look.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_panel.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/room_domain_card.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/room_mode.dart';
@@ -971,6 +972,157 @@ void main() {
         expect(find.text('Retry Work'), findsNothing);
       },
     );
+  });
+
+  group('review round 2', () {
+    testWidgets('Compact keeps the energy pill, at the end of the mode row', (
+      tester,
+    ) async {
+      var opened = 0;
+      await _pump(
+        tester,
+        RoomOverviewLayout(
+          skyBuilder: _Sky().build,
+          cards: _fourCards,
+          scenes: _scenes,
+          readings: _readings,
+          modes: sources(),
+          energyPill: RoomStatusPill(
+            key: const ValueKey('energy'),
+            icon: MdiIcons.flashOutline,
+            text: '4.2 kWh',
+            onTap: () => opened++,
+            sizeClass: ScreenSizeClass.compact,
+          ),
+          sizeClass: ScreenSizeClass.compact,
+          square: false,
+        ),
+        size: const Size(400, 240),
+      );
+
+      final energy = find.byKey(const ValueKey('energy'));
+      expect(energy, findsOneWidget);
+      // In the row with the room mode button, after the scenes.
+      expect(
+        tester.getCenter(energy).dy,
+        moreOrLessEquals(
+          tester.getCenter(find.byType(RoomModeButton)).dy,
+          epsilon: 1,
+        ),
+      );
+      await tester.ensureVisible(energy);
+      await tester.pumpAndSettle();
+      await tester.tap(energy);
+      expect(opened, 1);
+    });
+
+    testWidgets('Compact shows the energy pill without modes or scenes', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        RoomOverviewLayout(
+          skyBuilder: _Sky().build,
+          cards: _fourCards,
+          energyPill: RoomStatusPill(
+            key: const ValueKey('energy'),
+            icon: MdiIcons.flashOutline,
+            text: '4.2 kWh',
+            onTap: () {},
+            sizeClass: ScreenSizeClass.compact,
+          ),
+          sizeClass: ScreenSizeClass.compact,
+          square: false,
+        ),
+        size: const Size(400, 240),
+      );
+
+      expect(find.byKey(const ValueKey('energy')), findsOneWidget);
+    });
+
+    testWidgets(
+      'a short landscape sky with enlarged text scrolls: weather and scenes '
+      'stay reachable',
+      (tester) async {
+        var weather = 0;
+        final ran = <String>[];
+
+        Widget sky(
+          BuildContext context, {
+          required bool landscape,
+          required ScreenSizeClass sizeClass,
+          String? readings,
+          Widget Function(BuildContext context, SkyLook look)? footer,
+        }) => SkyPanelView(
+          look: SkyLook.of(SkyDayPart.day, SkyWeather.partlyCloudy),
+          time: '12:11',
+          date: 'Saturday 21 November',
+          weather: SkyWeatherInfo(
+            temperature: '6°',
+            label: 'Partly cloudy',
+            icon: MdiIcons.weatherPartlyCloudy,
+          ),
+          readings: readings,
+          onWeatherTap: () => weather++,
+          landscape: landscape,
+          sizeClass: sizeClass,
+          footer: footer,
+        );
+
+        await _pump(
+          tester,
+          RoomOverviewLayout(
+            skyBuilder: sky,
+            cards: _fourCards,
+            scenes: _scenes,
+            readings: _readings,
+            onScene: ran.add,
+            sizeClass: ScreenSizeClass.regular,
+            square: false,
+          ),
+          size: const Size(480, 280),
+          textScale: 2.5,
+        );
+
+        expect(tester.takeException(), isNull);
+
+        final card = find.byType(SkyWeatherCard);
+        await tester.ensureVisible(card);
+        await tester.pumpAndSettle();
+        await tester.tap(card);
+        expect(weather, 1);
+
+        final dinner = find.byKey(const ValueKey('room-scene-dinner'));
+        await tester.ensureVisible(dinner);
+        await tester.pumpAndSettle();
+        await tester.tap(dinner);
+        expect(ran, ['dinner']);
+      },
+    );
+
+    testWidgets('the footer still sits at the foot of a tall sky', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        SkyPanelView(
+          look: SkyLook.of(SkyDayPart.day, SkyWeather.clear),
+          time: '12:11',
+          date: 'Saturday 21 November',
+          landscape: true,
+          sizeClass: ScreenSizeClass.regular,
+          footer: (context, look) =>
+              const SizedBox(key: ValueKey('footer'), height: 36),
+        ),
+        size: const Size(240, 400),
+      );
+
+      // The panel's foot less its 12 px padding.
+      expect(
+        tester.getBottomLeft(find.byKey(const ValueKey('footer'))).dy,
+        moreOrLessEquals(400 - 12, epsilon: 0.5),
+      );
+    });
   });
 
   group('room mode on Compact', () {

@@ -40,6 +40,7 @@ typedef RoomSkyBuilder =
 /// | Domain cards | icon and value, 2 or 3 actions | icon, title, state, value, 3 actions | as Regular, value 28 |
 /// | Automations | in the mode chooser | in the mode details | under the cards |
 /// | Readings | one line in the weather card | the status strip | the status strip |
+/// | Energy | at the end of the room mode and scenes row | the status strip | the status strip |
 ///
 /// Loading shows the layout as skeleton blocks and an error offers Try
 /// again; both keep the sky. A room without domain cards keeps the sky and
@@ -78,7 +79,8 @@ class RoomOverviewLayout extends StatelessWidget {
   final List<QuickScene> scenes;
   final List<SensorReading> readings;
 
-  /// The energy pill at the end of the status strip.
+  /// The energy pill at the end of the status strip; on Compact, which has
+  /// no strip, at the end of the room mode and scenes row.
   final Widget? energyPill;
 
   /// The room mode's read models; the control shows while they have modes.
@@ -272,7 +274,8 @@ class RoomOverviewLayout extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: gap,
       children: [
-        if (compact && (showModes || scenes.isNotEmpty))
+        // Compact has no status strip, so the energy pill ends this row.
+        if (compact && (showModes || scenes.isNotEmpty || energyPill != null))
           scroller([
             if (showModes)
               RoomModeButton(
@@ -282,6 +285,7 @@ class RoomOverviewLayout extends StatelessWidget {
               ),
             for (final scene in scenes)
               _scenePill(scene, sizeClass, compact: true),
+            ?energyPill,
           ]),
         if (!compact && !landscape && scenes.isNotEmpty)
           scroller([for (final scene in scenes) _scenePill(scene, sizeClass)]),
