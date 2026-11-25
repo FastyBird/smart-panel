@@ -1,5 +1,5 @@
 <template>
-	<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+	<div class="grid grid-cols-2 tp:grid-cols-4 dt:grid-cols-7 gap-4">
 		<el-card
 			v-for="(day, index) in props.forecast"
 			:key="index"
@@ -16,11 +16,11 @@
 				<span class="font-bold">
 					{{ formatTemp(day.temperature.max) }}°{{ temperatureUnit }}
 				</span>
-				<span class="text-gray-400">
+				<span class="text-muted">
 					{{ formatTemp(day.temperature.min) }}°{{ temperatureUnit }}
 				</span>
 			</div>
-			<div class="text-xs text-gray-500 mt-1 truncate">
+			<div class="text-help mt-1 truncate">
 				{{ day.weather.description }}
 			</div>
 		</el-card>

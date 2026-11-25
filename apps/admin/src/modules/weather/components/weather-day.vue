@@ -22,7 +22,7 @@
 				<span class="font-bold text-4xl">
 					{{ temperature !== null ? format(temperature, { maximumFractionDigits: 1 }) : '-' }}
 				</span>
-				<span class="text-lg text-gray-400">
+				<span class="text-lg text-muted">
 					{{ unit }}
 				</span>
 			</span>

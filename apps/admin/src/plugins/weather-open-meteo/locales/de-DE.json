@@ -73,5 +73,8 @@
 	"texts": {
 		"aboutSettings": "Konfigurieren Sie Ihre Open-Meteo Wetter-Einstellungen. Dieser Anbieter ist kostenlos und erfordert keinen API-Schlüssel.",
 		"orEnterManually": "Oder Standort manuell eingeben"
+	},
+	"sections": {
+		"location": "Open-Meteo-Standort"
 	}
 }

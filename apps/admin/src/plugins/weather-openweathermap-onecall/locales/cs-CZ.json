@@ -78,5 +78,8 @@
 	"texts": {
 		"aboutApiSettings": "Nakonfigurujte nastavení OpenWeatherMap One Call API 3.0. Toto API vyžaduje placené předplatné a poskytuje podrobnější data o počasí včetně upozornění na počasí.",
 		"orEnterManually": "Nebo zadejte lokaci ručně"
+	},
+	"sections": {
+		"location": "Lokace OpenWeatherMap One Call"
 	}
 }

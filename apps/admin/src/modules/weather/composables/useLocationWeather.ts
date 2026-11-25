@@ -34,13 +34,29 @@ export const useLocationWeather = (): IUseLocationWeather => {
 
 	const weather = computed<ILocationWeatherDetail | null>(() => data.value);
 
+	// The latest request wins: a page moved to another location while a request was out shows that location's weather,
+	// never the answer of the earlier one
+	let latestRequest = 0;
+	let loadingFor: string | null = null;
+	let dataFor: string | null = null;
+
 	const fetchLocationWeather = async (locationId: string): Promise<void> => {
-		if (isLoading.value) {
+		// The same location is already on its way
+		if (isLoading.value && loadingFor === locationId) {
 			return;
 		}
 
+		const request = ++latestRequest;
+
+		loadingFor = locationId;
 		isLoading.value = true;
 		hasError.value = false;
+
+		// Another location's weather does not stay on screen while this one loads
+		if (dataFor !== locationId) {
+			data.value = null;
+			dataFor = null;
+		}
 
 		try {
 			const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/weather/{locationId}`, {
@@ -78,11 +94,16 @@ export const useLocationWeather = (): IUseLocationWeather => {
 						}
 					}
 
+					if (request !== latestRequest) {
+						return;
+					}
+
 					data.value = {
 						current: transformedCurrent,
 						forecast: transformedForecast,
 						hourlyForecast: transformedHourly,
 					};
+					dataFor = locationId;
 
 					return;
 				}
@@ -97,6 +118,11 @@ export const useLocationWeather = (): IUseLocationWeather => {
 
 			throw new WeatherApiException(errorReason, response?.status ?? 500);
 		} catch (err) {
+			// A newer request has taken over; this one's failure is not the page's any more
+			if (request !== latestRequest) {
+				return;
+			}
+
 			hasError.value = true;
 
 			if (err instanceof WeatherApiException) {
@@ -105,7 +131,10 @@ export const useLocationWeather = (): IUseLocationWeather => {
 
 			logger.error('[WEATHER] Failed to fetch location weather', err);
 		} finally {
-			isLoading.value = false;
+			if (request === latestRequest) {
+				isLoading.value = false;
+				loadingFor = null;
+			}
 		}
 	};
 

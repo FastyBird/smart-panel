@@ -6,7 +6,6 @@
 		"weather": "Weather",
 		"aboutPrimaryLocation": "Primary location",
 		"locations": "Weather locations",
-		"locationDetail": "{location}",
 		"forecast": "Forecast",
 		"hourlyForecast": "Hourly forecast",
 		"addLocation": "Add location",
@@ -112,7 +111,11 @@
 				"placeholder": "e.g., Home, Office, Beach House",
 				"validation": {
 					"required": "Location name is required"
-				}
+				},
+				"description": "A friendly name for this location"
+			},
+			"id": {
+				"title": "Internal identifier"
 			}
 		},
 		"config": {
@@ -130,10 +133,7 @@
 		"weatherError": "Unable to Load Weather",
 		"weatherErrorDescription": "Weather data could not be loaded for this location. Please check your API configuration and try again.",
 		"locationDetail": {
-			"provider": "Provider",
-			"temperature": "Temperature",
 			"feelsLike": "Feels Like",
-			"conditions": "Conditions",
 			"humidity": "Humidity",
 			"wind": "Wind",
 			"pressure": "Pressure"
@@ -142,7 +142,9 @@
 			"loadingLocations": "Loading locations...",
 			"noLocations": "No locations configured yet",
 			"noFilteredLocations": "No locations match your filter criteria",
-			"noLocationsHint": "Add a location to show its weather on the displays."
+			"noLocationsHint": "Add a location to show its weather on the displays.",
+			"loadingWeather": "Loading the weather…",
+			"loadingLocation": "Loading the location…"
 		}
 	},
 	"filters": {
@@ -256,5 +258,9 @@
 	"aria": {
 		"edit": "Edit {location}",
 		"more": "More actions for {location}"
+	},
+	"sections": {
+		"general": "General",
+		"identifiers": "Identifiers"
 	}
 }

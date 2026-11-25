@@ -73,5 +73,8 @@
 	"texts": {
 		"aboutSettings": "Configure your Open-Meteo weather settings. This provider is free and requires no API key.",
 		"orEnterManually": "Or enter location manually"
+	},
+	"sections": {
+		"location": "Open-Meteo location"
 	}
 }

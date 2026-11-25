@@ -78,5 +78,8 @@
 	"texts": {
 		"aboutApiSettings": "Skonfiguruj ustawienia OpenWeatherMap One Call API 3.0. To API wymaga płatnej subskrypcji i zapewnia bardziej szczegółowe dane pogodowe, w tym alerty pogodowe.",
 		"orEnterManually": "Lub wprowadź lokalizację ręcznie"
+	},
+	"sections": {
+		"location": "Lokalizacja OpenWeatherMap One Call"
 	}
 }

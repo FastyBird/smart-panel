@@ -6,7 +6,6 @@
 		"weather": "Clima",
 		"aboutPrimaryLocation": "Ubicación principal",
 		"locations": "Ubicaciones meteorológicas",
-		"locationDetail": "{location}",
 		"forecast": "Pronóstico",
 		"hourlyForecast": "Pronóstico por horas",
 		"addLocation": "Añadir ubicación",
@@ -112,7 +111,11 @@
 				"placeholder": "ej., Casa, Oficina, Casa de playa",
 				"validation": {
 					"required": "El nombre de la ubicación es obligatorio"
-				}
+				},
+				"description": "Un nombre descriptivo para esta ubicación"
+			},
+			"id": {
+				"title": "Identificador interno"
 			}
 		},
 		"config": {
@@ -130,10 +133,7 @@
 		"weatherError": "No se puede cargar el clima",
 		"weatherErrorDescription": "No se pudieron cargar los datos meteorológicos para esta ubicación. Por favor verifica tu configuración de API e inténtalo de nuevo.",
 		"locationDetail": {
-			"provider": "Proveedor",
-			"temperature": "Temperatura",
 			"feelsLike": "Sensación térmica",
-			"conditions": "Condiciones",
 			"humidity": "Humedad",
 			"wind": "Viento",
 			"pressure": "Presión"
@@ -142,7 +142,9 @@
 			"loadingLocations": "Cargando ubicaciones...",
 			"noLocations": "Aún no hay ubicaciones configuradas",
 			"noFilteredLocations": "Ninguna ubicación coincide con los criterios de filtro",
-			"noLocationsHint": "Añada una ubicación para mostrar su tiempo en las pantallas."
+			"noLocationsHint": "Añada una ubicación para mostrar su tiempo en las pantallas.",
+			"loadingWeather": "Cargando el tiempo…",
+			"loadingLocation": "Cargando la ubicación…"
 		}
 	},
 	"filters": {
@@ -256,5 +258,9 @@
 	"aria": {
 		"edit": "Editar {location}",
 		"more": "Más acciones para {location}"
+	},
+	"sections": {
+		"general": "General",
+		"identifiers": "Identificadores"
 	}
 }

@@ -1,94 +1,39 @@
 <template>
-	<dl class="grid m-0">
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('weatherModule.texts.locationDetail.provider') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				{{ providerName }}
-			</el-text>
-		</dd>
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('weatherModule.texts.locationDetail.temperature') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<div class="flex items-center gap-2">
-				<el-icon :size="32">
-					<icon :icon="weatherIcon" />
-				</el-icon>
-				<el-text class="text-xl font-bold">
-					{{ format(props.current.temperature, { maximumFractionDigits: 1 }) }}{{ temperatureUnit }}
-				</el-text>
-				<el-text class="text-gray-500">
-					{{ t('weatherModule.texts.locationDetail.feelsLike', { temp: `${format(props.current.feelsLike, { maximumFractionDigits: 1 })}${temperatureUnit}` }) }}
-				</el-text>
-			</div>
-		</dd>
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('weatherModule.texts.locationDetail.conditions') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				{{ props.current.weather.description }}
-			</el-text>
-		</dd>
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('weatherModule.texts.locationDetail.humidity') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				{{ props.current.humidity }}%
-			</el-text>
-		</dd>
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('weatherModule.texts.locationDetail.wind') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				{{ format(props.current.wind.speed, { maximumFractionDigits: 1 }) }} m/s
-			</el-text>
-		</dd>
-		<dt
-			class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('weatherModule.texts.locationDetail.pressure') }}
-		</dt>
-		<dd class="col-start-2 m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				{{ props.current.pressure }} hPa
-			</el-text>
-		</dd>
-	</dl>
+	<!-- Template 3: the current weather card -->
+	<div
+		class="flex flex-col gap-4"
+		data-test-id="location-current"
+	>
+		<div class="flex items-center gap-3">
+			<icon
+				:icon="weatherIcon"
+				width="48"
+				height="48"
+				aria-hidden="true"
+			/>
+			<span class="flex flex-col gap-0.5 min-w-0">
+				<span class="text-title">{{ format(props.current.temperature, { maximumFractionDigits: 1 }) }}{{ temperatureUnit }}</span>
+				<span class="text-secondary truncate">{{ props.current.weather.description }}</span>
+			</span>
+		</div>
+
+		<kv-grid
+			:items="items"
+			:cols="2"
+		/>
+	</div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElIcon, ElText } from 'element-plus';
-
 import { Icon } from '@iconify/vue';
 
-import { useNumberFormat } from '../../../common';
+import { KvGrid, type KvGridItem, useNumberFormat } from '../../../common';
 import { useConfigModule } from '../../config';
-import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { getWeatherIcon } from '../utils/utils';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 import type { ILocationDetailProps } from './location-detail.types';
 
@@ -103,21 +48,20 @@ const { t } = useI18n();
 const { configModule: weatherConfig } = useConfigModule({ type: WEATHER_MODULE_NAME });
 const { format } = useNumberFormat();
 
-const temperatureUnit = computed<string>(() => {
+const temperatureUnit = computed<string>((): string => {
 	const config = weatherConfig.value as { unit?: string } | null;
 	return config?.unit === 'fahrenheit' ? '°F' : '°C';
 });
 
-const providerName = computed<string>(() => {
-	// Extract provider name from type (e.g., 'openweathermap-onecall' -> 'OpenWeatherMap')
-	const type = props.location.type;
-	if (type.startsWith('openweathermap')) {
-		return 'OpenWeatherMap';
-	}
-	return type;
-});
+const weatherIcon = computed<string>((): string => getWeatherIcon(props.current.weather.code, props.current.sunrise, props.current.sunset));
 
-const weatherIcon = computed<string>(() => {
-	return getWeatherIcon(props.current.weather.code, props.current.sunrise, props.current.sunset);
-});
+const items = computed<KvGridItem[]>((): KvGridItem[] => [
+	{
+		label: t('weatherModule.texts.locationDetail.feelsLike'),
+		value: `${format(props.current.feelsLike, { maximumFractionDigits: 1 })}${temperatureUnit.value}`,
+	},
+	{ label: t('weatherModule.texts.locationDetail.humidity'), value: `${props.current.humidity} %` },
+	{ label: t('weatherModule.texts.locationDetail.wind'), value: `${format(props.current.wind.speed, { maximumFractionDigits: 1 })} m/s` },
+	{ label: t('weatherModule.texts.locationDetail.pressure'), value: `${props.current.pressure} hPa` },
+]);
 </script>

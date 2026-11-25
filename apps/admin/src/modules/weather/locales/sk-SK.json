@@ -1,4 +1,8 @@
 {
+	"sections": {
+		"general": "Všeobecné",
+		"identifiers": "Identifikátory"
+	},
 	"menu": {
 		"title": "Lokality počasia"
 	},
@@ -6,7 +10,6 @@
 		"weather": "Počasie",
 		"aboutPrimaryLocation": "Primárna poloha",
 		"locations": "Polohy počasia",
-		"locationDetail": "{location}",
 		"forecast": "Predpoveď",
 		"hourlyForecast": "Hodinová predpoveď",
 		"addLocation": "Pridať polohu",
@@ -84,8 +87,10 @@
 			"name": {
 				"title": "Názov polohy",
 				"placeholder": "napr. Domov, Kancelária, Chata",
+				"description": "Priateľský názov pre túto polohu",
 				"validation": { "required": "Názov polohy je povinný" }
-			}
+			},
+			"id": { "title": "Interný identifikátor" }
 		},
 		"config": {
 			"primaryLocation": {
@@ -102,10 +107,7 @@
 		"weatherError": "Nepodarilo sa načítať počasie",
 		"weatherErrorDescription": "Údaje o počasí sa nepodarilo načítať pre túto polohu. Skontrolujte konfiguráciu API a skúste to znova.",
 		"locationDetail": {
-			"provider": "Poskytovateľ",
-			"temperature": "Teplota",
 			"feelsLike": "Pocitová teplota",
-			"conditions": "Podmienky",
 			"humidity": "Vlhkosť",
 			"wind": "Vietor",
 			"pressure": "Tlak"
@@ -114,7 +116,9 @@
 			"loadingLocations": "Načítavanie polôh...",
 			"noLocations": "Zatiaľ nie sú nakonfigurované žiadne polohy",
 			"noFilteredLocations": "Žiadne polohy nezodpovedajú vašim filtrom",
-			"noLocationsHint": "Pridajte polohu, ktorej počasie sa zobrazí na displejoch."
+			"noLocationsHint": "Pridajte polohu, ktorej počasie sa zobrazí na displejoch.",
+			"loadingWeather": "Načítava sa počasie…",
+			"loadingLocation": "Načítava sa poloha…"
 		}
 	},
 	"filters": {

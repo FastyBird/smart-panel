@@ -6,7 +6,6 @@
 		"weather": "Wetter",
 		"aboutPrimaryLocation": "Primärer Standort",
 		"locations": "Wetterstandorte",
-		"locationDetail": "{location}",
 		"forecast": "Vorhersage",
 		"hourlyForecast": "Stundenvorhersage",
 		"addLocation": "Standort hinzufügen",
@@ -112,7 +111,11 @@
 				"placeholder": "z.B. Zuhause, Büro, Ferienhaus",
 				"validation": {
 					"required": "Standortname ist erforderlich"
-				}
+				},
+				"description": "Ein freundlicher Name für diesen Standort"
+			},
+			"id": {
+				"title": "Interner Bezeichner"
 			}
 		},
 		"config": {
@@ -130,10 +133,7 @@
 		"weatherError": "Wetter konnte nicht geladen werden",
 		"weatherErrorDescription": "Wetterdaten konnten für diesen Standort nicht geladen werden. Bitte überprüfen Sie Ihre API-Konfiguration und versuchen Sie es erneut.",
 		"locationDetail": {
-			"provider": "Anbieter",
-			"temperature": "Temperatur",
 			"feelsLike": "Gefühlt wie",
-			"conditions": "Bedingungen",
 			"humidity": "Luftfeuchtigkeit",
 			"wind": "Wind",
 			"pressure": "Luftdruck"
@@ -142,7 +142,9 @@
 			"loadingLocations": "Standorte werden geladen...",
 			"noLocations": "Noch keine Standorte konfiguriert",
 			"noFilteredLocations": "Keine Standorte entsprechen Ihren Filterkriterien",
-			"noLocationsHint": "Fügen Sie einen Standort hinzu, um sein Wetter auf den Displays anzuzeigen."
+			"noLocationsHint": "Fügen Sie einen Standort hinzu, um sein Wetter auf den Displays anzuzeigen.",
+			"loadingWeather": "Wetter wird geladen…",
+			"loadingLocation": "Standort wird geladen…"
 		}
 	},
 	"filters": {
@@ -256,5 +258,9 @@
 	"aria": {
 		"edit": "{location} bearbeiten",
 		"more": "Weitere Aktionen für {location}"
+	},
+	"sections": {
+		"general": "Allgemein",
+		"identifiers": "Kennungen"
 	}
 }

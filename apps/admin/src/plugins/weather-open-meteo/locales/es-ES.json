@@ -73,5 +73,8 @@
 	"texts": {
 		"aboutSettings": "Configure los ajustes del clima Open-Meteo. Este proveedor es gratuito y no requiere clave API.",
 		"orEnterManually": "O introduzca la ubicación manualmente"
+	},
+	"sections": {
+		"location": "Ubicación de Open-Meteo"
 	}
 }

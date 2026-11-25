@@ -6,7 +6,7 @@
 				:key="index"
 				class="flex flex-col items-center gap-1 min-w-[4rem] text-center"
 			>
-				<div class="text-xs text-gray-500">
+				<div class="text-help">
 					{{ formatHour(hour.dateTime) }}
 				</div>
 				<el-icon :size="28">
@@ -15,7 +15,7 @@
 				<div class="font-bold text-sm">
 					{{ formatTemp(hour.temperature) }}°{{ temperatureUnit }}
 				</div>
-				<div class="text-xs text-gray-400">
+				<div class="text-help text-muted">
 					{{ hour.humidity }}%
 				</div>
 			</div>

@@ -78,5 +78,8 @@
 	"texts": {
 		"aboutApiSettings": "Configure your OpenWeatherMap One Call API 3.0 settings. This API requires a paid subscription and provides more detailed weather data including weather alerts.",
 		"orEnterManually": "Or enter location manually"
+	},
+	"sections": {
+		"location": "OpenWeatherMap One Call location"
 	}
 }

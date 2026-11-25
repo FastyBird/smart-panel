@@ -35,7 +35,7 @@
 				:placeholder="t('weatherOpenweathermapOnecallPlugin.fields.config.apiKey.placeholder')"
 				name="apiKey"
 			/>
-			<div class="text-xs text-gray-500 mt-1">
+			<div class="text-xs text-secondary mt-1">
 				{{ t('weatherOpenweathermapOnecallPlugin.fields.config.apiKey.description') }}
 			</div>
 		</el-form-item>

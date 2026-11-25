@@ -7,166 +7,156 @@
 		status-icon
 		@submit.prevent="onSubmit"
 	>
-		<!-- Location Name -->
-		<el-form-item
-			:label="t('weatherOpenweathermapPlugin.fields.locations.name.title')"
-			prop="name"
-		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('weatherOpenweathermapPlugin.fields.locations.name.placeholder')"
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('weatherOpenweathermapPlugin.fields.locations.name.description') }}
-			</div>
-		</el-form-item>
-
-		<!-- Location Type -->
-		<el-form-item
-			:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.title')"
-			prop="locationType"
-		>
-			<div class="flex flex-row items-center gap-2 w-full">
-				<el-select
-					v-model="model.locationType"
-					:placeholder="t('weatherOpenweathermapPlugin.fields.locations.locationType.placeholder')"
-					name="locationType"
-					class="flex-1"
+		<location-form-frame :model="model">
+			<plugin-form-section :title="t('weatherOpenweathermapPlugin.sections.location')">
+				<!-- Location Type -->
+				<el-form-item
+					:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.title')"
+					prop="locationType"
 				>
-					<el-option
-						:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.values.latLon')"
-						:value="OpenWeatherMapLocationType.lat_lon"
-					/>
-					<el-option
-						:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.values.cityName')"
-						:value="OpenWeatherMapLocationType.city_name"
-					/>
-					<el-option
-						:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.values.cityId')"
-						:value="OpenWeatherMapLocationType.city_id"
-					/>
-					<el-option
-						:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.values.zipCode')"
-						:value="OpenWeatherMapLocationType.zip_code"
-					/>
-				</el-select>
-				<el-button
-					:loading="isGettingLocation"
-					:disabled="model.locationType !== OpenWeatherMapLocationType.lat_lon"
-					class="px-2!"
-					@click="getMyLocation"
+					<div class="flex flex-row items-center gap-2 w-full">
+						<el-select
+							v-model="model.locationType"
+							:placeholder="t('weatherOpenweathermapPlugin.fields.locations.locationType.placeholder')"
+							name="locationType"
+							class="flex-1"
+						>
+							<el-option
+								:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.values.latLon')"
+								:value="OpenWeatherMapLocationType.lat_lon"
+							/>
+							<el-option
+								:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.values.cityName')"
+								:value="OpenWeatherMapLocationType.city_name"
+							/>
+							<el-option
+								:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.values.cityId')"
+								:value="OpenWeatherMapLocationType.city_id"
+							/>
+							<el-option
+								:label="t('weatherOpenweathermapPlugin.fields.locations.locationType.values.zipCode')"
+								:value="OpenWeatherMapLocationType.zip_code"
+							/>
+						</el-select>
+						<el-button
+							:loading="isGettingLocation"
+							:disabled="model.locationType !== OpenWeatherMapLocationType.lat_lon"
+							class="px-2!"
+							@click="getMyLocation"
+						>
+							<template #icon>
+								<icon icon="mdi:map-marker-account-outline" />
+							</template>
+							{{ t('weatherOpenweathermapPlugin.buttons.myLocation.title') }}
+						</el-button>
+					</div>
+				</el-form-item>
+
+				<!-- Latitude/Longitude fields (when lat_lon type) -->
+				<div
+					v-if="model.locationType === OpenWeatherMapLocationType.lat_lon"
+					class="flex flex-row items-start gap-4"
 				>
-					<template #icon>
-						<icon icon="mdi:map-marker-account-outline" />
-					</template>
-					{{ t('weatherOpenweathermapPlugin.buttons.myLocation.title') }}
-				</el-button>
-			</div>
-		</el-form-item>
+					<el-form-item
+						:label="t('weatherOpenweathermapPlugin.fields.locations.latitude.title')"
+						prop="latitude"
+						class="flex-1"
+					>
+						<el-input
+							v-model="model.latitude"
+							:placeholder="t('weatherOpenweathermapPlugin.fields.locations.latitude.placeholder')"
+							name="latitude"
+							type="number"
+							step="0.0001"
+						/>
+					</el-form-item>
+					<el-form-item
+						:label="t('weatherOpenweathermapPlugin.fields.locations.longitude.title')"
+						prop="longitude"
+						class="flex-1"
+					>
+						<el-input
+							v-model="model.longitude"
+							:placeholder="t('weatherOpenweathermapPlugin.fields.locations.longitude.placeholder')"
+							name="longitude"
+							type="number"
+							step="0.0001"
+						/>
+					</el-form-item>
+				</div>
 
-		<!-- Latitude/Longitude fields (when lat_lon type) -->
-		<div
-			v-if="model.locationType === OpenWeatherMapLocationType.lat_lon"
-			class="flex flex-row items-start gap-4"
-		>
-			<el-form-item
-				:label="t('weatherOpenweathermapPlugin.fields.locations.latitude.title')"
-				prop="latitude"
-				class="flex-1"
-			>
-				<el-input
-					v-model="model.latitude"
-					:placeholder="t('weatherOpenweathermapPlugin.fields.locations.latitude.placeholder')"
-					name="latitude"
-					type="number"
-					step="0.0001"
-				/>
-			</el-form-item>
-			<el-form-item
-				:label="t('weatherOpenweathermapPlugin.fields.locations.longitude.title')"
-				prop="longitude"
-				class="flex-1"
-			>
-				<el-input
-					v-model="model.longitude"
-					:placeholder="t('weatherOpenweathermapPlugin.fields.locations.longitude.placeholder')"
-					name="longitude"
-					type="number"
-					step="0.0001"
-				/>
-			</el-form-item>
-		</div>
+				<!-- City Name field (when city_name type) -->
+				<el-form-item
+					v-if="model.locationType === OpenWeatherMapLocationType.city_name"
+					:label="t('weatherOpenweathermapPlugin.fields.locations.cityName.title')"
+					prop="cityName"
+				>
+					<el-input
+						v-model="model.cityName"
+						:placeholder="t('weatherOpenweathermapPlugin.fields.locations.cityName.placeholder')"
+						name="cityName"
+					/>
+				</el-form-item>
 
-		<!-- City Name field (when city_name type) -->
-		<el-form-item
-			v-if="model.locationType === OpenWeatherMapLocationType.city_name"
-			:label="t('weatherOpenweathermapPlugin.fields.locations.cityName.title')"
-			prop="cityName"
-		>
-			<el-input
-				v-model="model.cityName"
-				:placeholder="t('weatherOpenweathermapPlugin.fields.locations.cityName.placeholder')"
-				name="cityName"
-			/>
-		</el-form-item>
+				<!-- Country Code field (when city_name type) -->
+				<el-form-item
+					v-if="model.locationType === OpenWeatherMapLocationType.city_name"
+					:label="t('weatherOpenweathermapPlugin.fields.locations.countryCode.title')"
+					prop="countryCode"
+				>
+					<el-input
+						v-model="model.countryCode"
+						:placeholder="t('weatherOpenweathermapPlugin.fields.locations.countryCode.placeholder')"
+						name="countryCode"
+						maxlength="2"
+					/>
+				</el-form-item>
 
-		<!-- Country Code field (when city_name type) -->
-		<el-form-item
-			v-if="model.locationType === OpenWeatherMapLocationType.city_name"
-			:label="t('weatherOpenweathermapPlugin.fields.locations.countryCode.title')"
-			prop="countryCode"
-		>
-			<el-input
-				v-model="model.countryCode"
-				:placeholder="t('weatherOpenweathermapPlugin.fields.locations.countryCode.placeholder')"
-				name="countryCode"
-				maxlength="2"
-			/>
-		</el-form-item>
+				<!-- City ID field (when city_id type) -->
+				<el-form-item
+					v-if="model.locationType === OpenWeatherMapLocationType.city_id"
+					:label="t('weatherOpenweathermapPlugin.fields.locations.cityId.title')"
+					prop="cityId"
+				>
+					<el-input
+						v-model="model.cityId"
+						:placeholder="t('weatherOpenweathermapPlugin.fields.locations.cityId.placeholder')"
+						name="cityId"
+						type="number"
+					/>
+					<div class="text-help mt-1">
+						{{ t('weatherOpenweathermapPlugin.fields.locations.cityId.description') }}
+					</div>
+				</el-form-item>
 
-		<!-- City ID field (when city_id type) -->
-		<el-form-item
-			v-if="model.locationType === OpenWeatherMapLocationType.city_id"
-			:label="t('weatherOpenweathermapPlugin.fields.locations.cityId.title')"
-			prop="cityId"
-		>
-			<el-input
-				v-model="model.cityId"
-				:placeholder="t('weatherOpenweathermapPlugin.fields.locations.cityId.placeholder')"
-				name="cityId"
-				type="number"
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('weatherOpenweathermapPlugin.fields.locations.cityId.description') }}
-			</div>
-		</el-form-item>
+				<!-- ZIP Code field (when zip_code type) -->
+				<el-form-item
+					v-if="model.locationType === OpenWeatherMapLocationType.zip_code"
+					:label="t('weatherOpenweathermapPlugin.fields.locations.zipCode.title')"
+					prop="zipCode"
+				>
+					<el-input
+						v-model="model.zipCode"
+						:placeholder="t('weatherOpenweathermapPlugin.fields.locations.zipCode.placeholder')"
+						name="zipCode"
+					/>
+				</el-form-item>
 
-		<!-- ZIP Code field (when zip_code type) -->
-		<el-form-item
-			v-if="model.locationType === OpenWeatherMapLocationType.zip_code"
-			:label="t('weatherOpenweathermapPlugin.fields.locations.zipCode.title')"
-			prop="zipCode"
-		>
-			<el-input
-				v-model="model.zipCode"
-				:placeholder="t('weatherOpenweathermapPlugin.fields.locations.zipCode.placeholder')"
-				name="zipCode"
-			/>
-		</el-form-item>
-
-		<!-- Country Code field (when zip_code type) -->
-		<el-form-item
-			v-if="model.locationType === OpenWeatherMapLocationType.zip_code"
-			:label="t('weatherOpenweathermapPlugin.fields.locations.countryCode.title')"
-			prop="zipCountryCode"
-		>
-			<el-input
-				v-model="model.zipCountryCode"
-				:placeholder="t('weatherOpenweathermapPlugin.fields.locations.countryCode.placeholder')"
-				name="zipCountryCode"
-				maxlength="2"
-			/>
-		</el-form-item>
+				<!-- Country Code field (when zip_code type) -->
+				<el-form-item
+					v-if="model.locationType === OpenWeatherMapLocationType.zip_code"
+					:label="t('weatherOpenweathermapPlugin.fields.locations.countryCode.title')"
+					prop="zipCountryCode"
+				>
+					<el-input
+						v-model="model.zipCountryCode"
+						:placeholder="t('weatherOpenweathermapPlugin.fields.locations.countryCode.placeholder')"
+						name="zipCountryCode"
+						maxlength="2"
+					/>
+				</el-form-item>
+			</plugin-form-section>
+		</location-form-frame>
 	</el-form>
 
 	<!-- Map (when lat_lon type) -->
@@ -202,8 +192,8 @@ import 'leaflet/dist/leaflet.css';
 import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
-import { useFlashMessage } from '../../../common';
-import { FormResult, type FormResultType, useLocationsActions } from '../../../modules/weather';
+import { PluginFormSection, useFlashMessage } from '../../../common';
+import { FormResult, type FormResultType, LocationFormFrame, useLocationsActions } from '../../../modules/weather';
 import { OpenWeatherMapLocationType, WEATHER_OPENWEATHERMAP_PLUGIN_TYPE } from '../weather-openweathermap.constants';
 
 import type { IOpenWeatherMapLocationEditFormProps } from './openweathermap-location-edit-form.types';
