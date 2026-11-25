@@ -120,9 +120,6 @@
 		"no": {
 			"title": "No"
 		},
-		"manageElements": {
-			"title": "Gestionar elementos"
-		},
 		"addCard": {
 			"title": "Añadir tarjeta"
 		},
@@ -159,5 +156,17 @@
 				"placeholder": "Número de columnas"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Cambios sin guardar"
+		},
+		"messages": {
+			"saved": "Diseño de la página guardado.",
+			"saveFailed": "No se pudo guardar el diseño de la página. Inténtelo de nuevo."
+		}
+	},
+	"sections": {
+		"grid": "Cuadrícula de mosaicos"
 	}
 }

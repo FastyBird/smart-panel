@@ -120,9 +120,6 @@
 		"no": {
 			"title": "Nie"
 		},
-		"manageElements": {
-			"title": "Zarządzaj elementami"
-		},
 		"addCard": {
 			"title": "Dodaj kartę"
 		},
@@ -159,5 +156,17 @@
 				"placeholder": "Liczba kolumn"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Niezapisane zmiany"
+		},
+		"messages": {
+			"saved": "Układ strony zapisany.",
+			"saveFailed": "Nie udało się zapisać układu strony. Spróbuj ponownie."
+		}
+	},
+	"sections": {
+		"grid": "Siatka kafelków"
 	}
 }

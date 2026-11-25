@@ -120,9 +120,6 @@
 		"no": {
 			"title": "No"
 		},
-		"manageElements": {
-			"title": "Manage elements"
-		},
 		"addCard": {
 			"title": "Add card"
 		},
@@ -159,5 +156,17 @@
 				"placeholder": "Number of columns"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Unsaved changes"
+		},
+		"messages": {
+			"saved": "Page layout saved.",
+			"saveFailed": "The page layout could not be saved. Try again."
+		}
+	},
+	"sections": {
+		"grid": "Tile grid"
 	}
 }

@@ -120,9 +120,6 @@
 		"no": {
 			"title": "Nie"
 		},
-		"manageElements": {
-			"title": "Spravovať elementy"
-		},
 		"addCard": {
 			"title": "Pridať kartu"
 		},
@@ -159,5 +156,17 @@
 				"placeholder": "Počet stĺpcov"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Neuložené zmeny"
+		},
+		"messages": {
+			"saved": "Rozvrhnutie stránky uložené.",
+			"saveFailed": "Rozvrhnutie stránky sa nepodarilo uložiť. Skúste to znova."
+		}
+	},
+	"sections": {
+		"grid": "Mriežka dlaždíc"
 	}
 }

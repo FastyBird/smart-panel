@@ -6,53 +6,49 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('pagesCardsPlugin.fields.cards.id.title')"
-			prop="id"
+		<plugin-form-section
+			:title="t('dashboardModule.sections.general')"
+			data-test-id="card-form-general"
 		>
-			<el-input
-				v-model="model.id"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
+			<el-form-item
+				:label="t('pagesCardsPlugin.fields.cards.title.title')"
+				prop="title"
+			>
+				<el-input
+					v-model="model.title"
+					:placeholder="t('pagesCardsPlugin.fields.cards.title.placeholder')"
+					name="title"
+				/>
+			</el-form-item>
 
-		<el-form-item
-			:label="t('pagesCardsPlugin.fields.cards.title.title')"
-			prop="title"
+			<el-form-item
+				:label="t('pagesCardsPlugin.fields.cards.icon.title')"
+				prop="icon"
+			>
+				<icon-picker
+					v-model="model.icon"
+					:placeholder="t('pagesCardsPlugin.fields.cards.icon.placeholder')"
+				/>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('pagesCardsPlugin.fields.cards.order.title')"
+				prop="order"
+			>
+				<el-input-number
+					v-model="model.order"
+					:placeholder="t('pagesCardsPlugin.fields.cards.order.placeholder')"
+					name="order"
+					:min="0"
+				/>
+			</el-form-item>
+		</plugin-form-section>
+
+		<plugin-form-section
+			:title="t('pagesCardsPlugin.sections.grid')"
+			data-test-id="card-form-grid"
 		>
-			<el-input
-				v-model="model.title"
-				:placeholder="t('pagesCardsPlugin.fields.cards.title.placeholder')"
-				name="title"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('pagesCardsPlugin.fields.cards.icon.title')"
-			prop="icon"
-		>
-			<icon-picker
-				v-model="model.icon"
-				:placeholder="t('pagesCardsPlugin.fields.cards.icon.placeholder')"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('pagesCardsPlugin.fields.cards.order.title')"
-			prop="order"
-		>
-			<el-input-number
-				v-model="model.order"
-				:placeholder="t('pagesCardsPlugin.fields.cards.order.placeholder')"
-				name="order"
-				:min="0"
-			/>
-		</el-form-item>
-
-		<el-row :gutter="10">
-			<el-col :span="12">
+			<div class="grid grid-cols-1 tp:grid-cols-2 gap-x-4">
 				<el-form-item
 					:label="t('pagesCardsPlugin.fields.cards.rows.title')"
 					prop="rows"
@@ -74,9 +70,7 @@
 						</template>
 					</el-button>
 				</el-form-item>
-			</el-col>
 
-			<el-col :span="12">
 				<el-form-item
 					:label="t('pagesCardsPlugin.fields.cards.cols.title')"
 					prop="cols"
@@ -98,8 +92,25 @@
 						</template>
 					</el-button>
 				</el-form-item>
-			</el-col>
-		</el-row>
+			</div>
+		</plugin-form-section>
+
+		<plugin-form-section
+			:title="t('dashboardModule.sections.identifiers')"
+			data-test-id="card-form-identifiers"
+		>
+			<el-form-item
+				:label="t('pagesCardsPlugin.fields.cards.id.title')"
+				prop="id"
+			>
+				<el-input
+					v-model="model.id"
+					name="id"
+					readonly
+					disabled
+				/>
+			</el-form-item>
+		</plugin-form-section>
 	</el-form>
 </template>
 
@@ -107,11 +118,11 @@
 import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, type FormInstance, type FormRules } from 'element-plus';
+import { ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, type FormInstance, type FormRules } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { IconPicker, injectStoresManager } from '../../../common';
+import { IconPicker, PluginFormSection, injectStoresManager } from '../../../common';
 import { DashboardApiException, DashboardException, FormResult, type FormResultType } from '../../../modules/dashboard';
 import { cardsStoreKey } from '../store/keys';
 

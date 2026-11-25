@@ -120,9 +120,6 @@
 		"no": {
 			"title": "Ne"
 		},
-		"manageElements": {
-			"title": "Spravovat prvky"
-		},
 		"addCard": {
 			"title": "Přidat kartu"
 		},
@@ -159,5 +156,17 @@
 				"placeholder": "Počet sloupců"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Neuložené změny"
+		},
+		"messages": {
+			"saved": "Rozvržení stránky uloženo.",
+			"saveFailed": "Rozvržení stránky se nepodařilo uložit. Zkuste to znovu."
+		}
+	},
+	"sections": {
+		"grid": "Mřížka dlaždic"
 	}
 }

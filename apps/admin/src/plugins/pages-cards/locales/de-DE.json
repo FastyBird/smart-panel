@@ -120,9 +120,6 @@
 		"no": {
 			"title": "Nein"
 		},
-		"manageElements": {
-			"title": "Elemente verwalten"
-		},
 		"addCard": {
 			"title": "Karte hinzufügen"
 		},
@@ -159,5 +156,17 @@
 				"placeholder": "Anzahl der Spalten"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Ungespeicherte Änderungen"
+		},
+		"messages": {
+			"saved": "Seitenlayout gespeichert.",
+			"saveFailed": "Das Seitenlayout konnte nicht gespeichert werden. Versuchen Sie es erneut."
+		}
+	},
+	"sections": {
+		"grid": "Kachelraster"
 	}
 }
