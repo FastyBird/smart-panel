@@ -158,9 +158,13 @@ describe('ViewLocation', () => {
 		expect(wrapper.find('[data-kind="error"]').exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'LocationSummary' }).exists()).toBe(true);
 
+		// The page load asked once; Retry asks again
+		expect(fetchLocationWeather).toHaveBeenCalledTimes(1);
+
 		await wrapper.get('[data-test-id="location-weather-retry"]').trigger('click');
 
-		expect(fetchLocationWeather).toHaveBeenCalledWith('location-1');
+		expect(fetchLocationWeather).toHaveBeenCalledTimes(2);
+		expect(fetchLocationWeather).toHaveBeenLastCalledWith('location-1');
 
 		await wrapper.get('[data-test-id="location-edit"]').trigger('click');
 		await flushPromises();
