@@ -44,10 +44,6 @@
 		"cards": {
 			"remove": "Odebrat kartu"
 		},
-		"configure": {
-			"display": "Displej",
-			"cards": "Karty"
-		},
 		"misc": {
 			"discard": "Zahodit změny?"
 		}
@@ -85,8 +81,6 @@
 		"cards": {
 			"confirmRemove": "Opravdu chcete odebrat kartu {card}?",
 			"noCards": "Na tuto stránku zatím nebyly přidány žádné karty.",
-			"noTiles": "V této kartě nejsou žádné dlaždice. Klikněte na + pro přidání.",
-			"tilesCount": "dlaždice",
 			"loadingCard": "Načítání karty..."
 		},
 		"tiles": {
@@ -123,9 +117,6 @@
 		},
 		"addCard": {
 			"title": "Přidat kartu"
-		},
-		"addPageDataSource": {
-			"title": "Přidat zdroj dat stránky"
 		}
 	},
 	"fields": {
@@ -160,11 +151,51 @@
 	},
 	"editor": {
 		"texts": {
-			"unsaved": "Neuložené změny"
+			"unsaved": "Neuložené změny",
+			"noCardsHint": "Přidejte kartu, která na této stránce seskupí dlaždice.",
+			"loadingDisplays": "Načítání displejů…",
+			"noDisplay": "Není displej, pro který stránku rozvrhnout",
+			"noDisplayHint": "Mřížka se řídí displejem, který stránku zobrazuje. Spárujte displej nebo ho vyberte v nastavení stránky."
 		},
 		"messages": {
 			"saved": "Rozvržení stránky uloženo.",
 			"saveFailed": "Rozvržení stránky se nepodařilo uložit. Zkuste to znovu."
+		},
+		"card": {
+			"tiles": "Dlaždice: {count}"
+		},
+		"buttons": {
+			"addTile": "Přidat dlaždici",
+			"dataSources": "Zdroje dat",
+			"edit": "Upravit",
+			"detail": "Detail",
+			"remove": "Odebrat"
+		},
+		"aria": {
+			"addTile": "Přidat dlaždici do karty {card}",
+			"closeInspector": "Zavřít inspektor"
+		},
+		"inspector": {
+			"inCard": "V kartě {card}",
+			"card": "Karta",
+			"position": "Umístění",
+			"positionValue": "Řádek {row}, sloupec {col}",
+			"size": "Velikost v buňkách",
+			"sizeValue": "{cols} × {rows}",
+			"order": "Pořadí",
+			"tiles": "Dlaždice",
+			"grid": "Mřížka",
+			"gridFromDisplay": "Podle displeje",
+			"saveHint": "Přesuny, změny velikosti a odebrání se projeví po uložení stránky.",
+			"nothingSelected": "Vyberte kartu nebo dlaždici a uvidíte, co s ní můžete dělat."
+		},
+		"display": {
+			"title": "Displej",
+			"grid": "Mřížka {cols} × {rows}"
+		},
+		"phone": {
+			"readOnly": "Karty se uspořádávají na tabletu nebo počítači. Klepnutím na dlaždici zobrazíte její detail.",
+			"noTiles": "V této kartě zatím nejsou žádné dlaždice."
 		}
 	},
 	"sections": {

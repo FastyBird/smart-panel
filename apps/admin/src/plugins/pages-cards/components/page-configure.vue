@@ -1,332 +1,82 @@
 <template>
-	<div class="h-full box-border overflow-hidden p-2">
-		<el-row
-			:gutter="10"
-			justify="center"
-			class="h-full"
+	<!-- Template 8: the canvas, the page's cards one under another, each drawn as the display draws it -->
+	<el-scrollbar
+		class="cards-configure flex-1 min-h-0 min-w-0"
+		view-class="p-4 box-border"
+		data-test-id="cards-configure-canvas"
+	>
+		<div
+			class="flex flex-col gap-4 mx-auto"
+			:style="props.gridCardStyle"
 		>
-			<el-col
-				:span="16"
-				class="h-full overflow-hidden p-2"
+			<state-view
+				v-if="sortedCards.length === 0"
+				kind="empty"
+				icon="mdi:view-dashboard-outline"
+				:title="t('pagesCardsPlugin.texts.cards.noCards')"
+				:description="t('pagesCardsPlugin.editor.texts.noCardsHint')"
+			/>
+
+			<section
+				v-for="card in sortedCards"
+				:key="card.id"
+				:class="['cards-configure__card', { 'is-selected': props.selectedCardId === card.id }]"
+				:aria-label="card.title"
+				:data-test-id="`cards-configure-card-${card.id}`"
 			>
-				<el-card
-					body-class="p-0! flex flex-col overflow-hidden h-full"
-					:class="[ns.b(), 'mx-auto overflow-hidden h-full']"
-					:style="props.gridCardStyle"
-				>
-					<div :class="[ns.e('header'), 'flex items-center px-2 flex-shrink-0 min-h-9 py-1 b-b b-b-solid gap-1.5']">
-						<div class="flex items-center gap-1 min-w-0 max-w-48">
-							<el-icon
-								:size="14"
-								class="flex-shrink-0"
-								color="var(--el-text-color-regular)"
-							>
-								<icon :icon="formatIcon(props.page.icon, 'mdi:view-dashboard-variant')" />
-							</el-icon>
-							<el-text
-								size="small"
-								class="truncate"
-							>
-								{{ props.page.title }}
-							</el-text>
-						</div>
-						<div class="flex items-center gap-1 flex-1 min-w-0 flex-wrap justify-end">
-							<el-tag
-								v-for="ds in visibleDataSources"
-								:key="ds.id"
-								size="small"
-								closable
-								:class="ns.e('data-source-tag')"
-								@close="onRemoveDataSource(ds.id)"
-							>
-								<span
-									class="inline-flex items-center gap-0.5"
-									@click="emit('editPageDataSource', ds.id)"
-								>
-									<el-icon :size="12">
-										<icon :icon="getDataSourceIcon(ds) || 'mdi:database'" />
-									</el-icon>
-									<span class="truncate">{{ getDataSourceLabel(ds) }}</span>
-								</span>
-							</el-tag>
-							<el-popover
-								v-if="hiddenDataSources.length > 0"
-								:width="280"
-								trigger="click"
-								placement="bottom"
-							>
-								<template #reference>
-									<el-tag
-										size="small"
-										type="info"
-										class="cursor-pointer flex-shrink-0"
-									>
-										+{{ hiddenDataSources.length }}
-									</el-tag>
-								</template>
-								<div class="flex flex-col gap-1">
-									<div
-										v-for="ds in hiddenDataSources"
-										:key="ds.id"
-										:class="[ns.e('overflow-item'), 'flex items-center gap-1 py-1 px-1 rounded']"
-									>
-										<div
-											class="flex items-center gap-1 min-w-0 flex-1 cursor-pointer"
-											@click="emit('editPageDataSource', ds.id)"
-										>
-											<el-icon
-												:size="14"
-												color="var(--el-text-color-regular)"
-											>
-												<icon :icon="getDataSourceIcon(ds) || 'mdi:database'" />
-											</el-icon>
-											<el-text
-												size="small"
-												class="truncate"
-											>
-												{{ getDataSourceLabel(ds) }}
-											</el-text>
-										</div>
-										<div class="flex items-center flex-shrink-0 gap-0.5">
-											<el-button
-												size="small"
-												text
-												circle
-												@click="emit('editPageDataSource', ds.id)"
-											>
-												<template #icon>
-													<icon
-														icon="mdi:pencil"
-														:width="14"
-													/>
-												</template>
-											</el-button>
-											<el-button
-												size="small"
-												text
-												type="danger"
-												circle
-												@click="onRemoveDataSource(ds.id)"
-											>
-												<template #icon>
-													<icon
-														icon="mdi:trash-can-outline"
-														:width="14"
-													/>
-												</template>
-											</el-button>
-										</div>
-									</div>
-								</div>
-							</el-popover>
-						</div>
+				<div class="cards-configure__card-header flex items-center gap-1 pl-1 pr-2 py-1">
+					<!-- The card heading is a button: a click selects the card, a double click opens its form -->
+					<button
+						type="button"
+						class="cards-configure__card-title flex items-center gap-2 flex-1 min-w-0 px-2 py-1 text-left"
+						:aria-pressed="props.selectedCardId === card.id"
+						:data-test-id="`cards-configure-select-${card.id}`"
+						@click="emit('selectCard', card.id)"
+						@dblclick="emit('editCard', card.id)"
+					>
+						<icon
+							v-if="card.icon"
+							:icon="formatIcon(card.icon, 'mdi:card-outline')"
+							width="18"
+							height="18"
+							class="shrink-0 text-secondary"
+							aria-hidden="true"
+						/>
+						<span class="text-label truncate">{{ card.title }}</span>
+						<span class="text-help whitespace-nowrap">{{ t('pagesCardsPlugin.editor.card.tiles', { count: getCardTiles(card.id).length }) }}</span>
+					</button>
+
+					<el-tooltip
+						:content="t('pagesCardsPlugin.editor.buttons.addTile')"
+						placement="top"
+					>
 						<el-button
-							size="small"
-							plain
-							class="flex-shrink-0"
-							@click="emit('addPageDataSource')"
+							text
+							circle
+							:aria-label="t('pagesCardsPlugin.editor.aria.addTile', { card: card.title })"
+							:data-test-id="`cards-configure-add-tile-${card.id}`"
+							@click="emit('addTile', card.id)"
 						>
 							<template #icon>
 								<icon icon="mdi:plus" />
 							</template>
 						</el-button>
-					</div>
-
-					<div class="flex-1 overflow-auto min-h-0">
-						<div
-							v-if="sortedCards.length === 0"
-							class="p-4 text-center"
-						>
-							<empty-state
-								icon="mdi:view-dashboard-outline"
-								:description="t('pagesCardsPlugin.texts.cards.noCards')"
-							/>
-						</div>
-
-						<div
-							v-for="card in sortedCards"
-							:key="card.id"
-							class="b-b b-b-solid"
-							style="border-color: var(--el-border-color-lighter)"
-						>
-							<div :class="[ns.e('card-header'), 'flex items-center justify-between px-2 h-8 min-h-8 b-b b-b-solid']">
-								<div class="flex items-center gap-1 min-w-0">
-									<el-icon
-										v-if="card.icon"
-										:size="14"
-										color="var(--el-text-color-regular)"
-									>
-										<icon :icon="formatIcon(card.icon, '')" />
-									</el-icon>
-									<el-text
-										size="small"
-										class="truncate font-medium"
-									>
-										{{ card.title }}
-									</el-text>
-									<el-tag
-										size="small"
-										type="info"
-										class="ml-1"
-									>
-										#{{ card.order }}
-									</el-tag>
-								</div>
-								<div class="flex items-center gap-1">
-									<el-button
-										size="small"
-										plain
-										@click="emit('addTile', card.id)"
-									>
-										<template #icon>
-											<icon icon="mdi:plus" />
-										</template>
-									</el-button>
-									<el-button
-										size="small"
-										plain
-										@click="emit('editCard', card.id)"
-									>
-										<template #icon>
-											<icon icon="mdi:pencil" />
-										</template>
-									</el-button>
-									<el-button
-										size="small"
-										plain
-										type="danger"
-										@click="emit('removeCard', card.id)"
-									>
-										<template #icon>
-											<icon icon="mdi:trash-can-outline" />
-										</template>
-									</el-button>
-								</div>
-							</div>
-
-							<!-- Admin spec §7 `tilePreview`: the tiles are drawn in the selected display's theme -->
-							<display-surface
-								:dark="props.selectedDisplay?.darkMode ?? false"
-								class="p-2"
-							>
-								<div
-									:ref="(el) => setGridRef(card.id, el as HTMLElement | null)"
-									class="card-grid-container"
-								/>
-							</display-surface>
-						</div>
-					</div>
-				</el-card>
-			</el-col>
-
-			<el-col
-				:span="8"
-				class="h-full overflow-auto p-2"
-			>
-				<div class="flex flex-col gap-2">
-					<el-card
-						v-if="props.displays.length > 0"
-						body-class="p-2!"
-					>
-						<template #header>
-							{{ t('pagesCardsPlugin.headings.configure.display') }}
-						</template>
-
-						<el-select
-							v-if="props.displays.length > 1"
-							:model-value="props.selectedDisplay?.id"
-							size="small"
-							class="w-full"
-							@change="(val: string) => emit('selectDisplay', val)"
-						>
-							<el-option
-								v-for="d in props.displays"
-								:key="d.id"
-								:value="d.id"
-								:label="d.name || d.macAddress"
-							>
-								<div class="flex items-center justify-between w-full">
-									<span>{{ d.name || d.macAddress }}</span>
-									<el-text
-										v-if="d.screenWidth && d.screenHeight"
-										type="info"
-										size="small"
-									>
-										{{ d.screenWidth }}x{{ d.screenHeight }}
-									</el-text>
-								</div>
-							</el-option>
-						</el-select>
-
-						<div
-							v-else-if="props.selectedDisplay"
-							class="flex flex-col"
-						>
-							<el-text size="small">
-								{{ props.selectedDisplay.name || props.selectedDisplay.macAddress }}
-							</el-text>
-							<el-text
-								v-if="props.selectedDisplay.screenWidth && props.selectedDisplay.screenHeight"
-								type="info"
-								size="small"
-							>
-								{{ props.selectedDisplay.screenWidth }}x{{ props.selectedDisplay.screenHeight }}
-								&middot;
-								{{ props.gridLayout?.cols ?? '?' }}x{{ props.gridLayout?.rows ?? '?' }}
-							</el-text>
-						</div>
-					</el-card>
-
-					<el-card body-class="p-2!">
-						<template #header>
-							{{ t('pagesCardsPlugin.headings.configure.cards') }}
-						</template>
-
-						<div class="flex flex-col gap-1">
-							<div
-								v-for="card in sortedCards"
-								:key="card.id"
-								class="flex items-center justify-between p-1 rounded hover:bg-fill-light cursor-pointer"
-								@click="emit('editCard', card.id)"
-							>
-								<div class="flex items-center gap-1 min-w-0">
-									<el-icon
-										v-if="card.icon"
-										:size="14"
-									>
-										<icon :icon="formatIcon(card.icon, '')" />
-									</el-icon>
-									<el-text
-										size="small"
-										class="truncate"
-									>
-										{{ card.title }}
-									</el-text>
-								</div>
-								<el-text
-									type="info"
-									size="small"
-								>
-									{{ getCardTiles(card.id).length }} {{ t('pagesCardsPlugin.texts.cards.tilesCount') }}
-								</el-text>
-							</div>
-
-							<el-button
-								size="small"
-								class="w-full mt-1"
-								@click="emit('addCard')"
-							>
-								<template #icon>
-									<icon icon="mdi:plus" />
-								</template>
-								{{ t('pagesCardsPlugin.buttons.addCard.title') }}
-							</el-button>
-						</div>
-					</el-card>
+					</el-tooltip>
 				</div>
-			</el-col>
-		</el-row>
-	</div>
+
+				<!-- Admin spec §7 `tilePreview`: the tiles are drawn in the selected display's theme -->
+				<display-surface
+					:dark="props.selectedDisplay?.darkMode ?? false"
+					class="p-2"
+				>
+					<div
+						:ref="(el) => setGridRef(card.id, el as HTMLElement | null)"
+						class="card-grid-container"
+					/>
+				</display-surface>
+			</section>
+		</div>
+	</el-scrollbar>
 </template>
 
 <script setup lang="ts">
@@ -335,29 +85,18 @@ import { useI18n } from 'vue-i18n';
 
 import { storeToRefs } from 'pinia';
 
-import { ElButton, ElCard, ElCol, ElIcon, ElOption, ElPopover, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
-import { GridStack } from 'gridstack';
+import { ElButton, ElScrollbar, ElTooltip } from 'element-plus';
+import { type GridItemHTMLElement, GridStack } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
 import { Icon } from '@iconify/vue';
 
-import { injectStoresManager } from '../../../common';
-import EmptyState from '../../../common/components/empty-state.vue';
-import {
-	DashboardException,
-	DisplaySurface,
-	FormResult,
-	type FormResultType,
-	type IDataSource,
-	type ITile,
-	useDataSources,
-	useDataSourcesActions,
-	useDataSourcesPlugins,
-} from '../../../modules/dashboard';
+import { StateView, injectStoresManager } from '../../../common';
+import { DashboardException, DisplaySurface, FormResult, type FormResultType, type ITile, useTilesPlugins } from '../../../modules/dashboard';
 import { tilesStoreKey } from '../../../modules/dashboard/store/keys';
 import type { ICard } from '../store/cards.store.types';
 
-import type { IPageConfigureProps } from './page-configure.types';
+import type { IPageConfigureProps, IPageConfigureTilePlace } from './page-configure.types';
 import TilePreview from './tile-preview.vue';
 
 defineOptions({
@@ -366,58 +105,30 @@ defineOptions({
 
 const { t } = useI18n();
 
-const ns = useNamespace('cards-page-configure');
-
 const props = withDefaults(defineProps<IPageConfigureProps>(), {
 	remotePageResult: FormResult.NONE,
 	remotePageChanged: false,
+	selectedTileId: null,
+	selectedCardId: null,
 });
 
 const emit = defineEmits<{
-	(e: 'selectDisplay', displayId: string): void;
-	(e: 'addPageDataSource'): void;
-	(e: 'editPageDataSource', id: IDataSource['id']): void;
-	(e: 'addCard'): void;
+	(e: 'selectCard', id: ICard['id']): void;
+	(e: 'selectTile', place: IPageConfigureTilePlace | null): void;
 	(e: 'editCard', id: ICard['id']): void;
-	(e: 'removeCard', id: ICard['id']): void;
 	(e: 'addTile', cardId: ICard['id']): void;
 	(e: 'editTile', tileId: ITile['id'], cardId: ICard['id']): void;
-	(e: 'tileDetail', id: ITile['id']): void;
 	(e: 'update:remote-page-submit', remotePageSubmit: boolean): void;
 	(e: 'update:remote-page-result', remotePageResult: FormResultType): void;
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
 
-const { dataSources: pageDataSources, fetchDataSources: fetchPageDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
-const { remove: removeDataSource } = useDataSourcesActions({ parent: 'page', parentId: props.page.id });
-const { getElement: getDataSourceElement } = useDataSourcesPlugins();
-
-const MAX_VISIBLE_DATA_SOURCES = 3;
-
-const nonDraftDataSources = computed<IDataSource[]>(() => pageDataSources.value.filter((ds) => !ds.draft));
-const visibleDataSources = computed<IDataSource[]>(() => nonDraftDataSources.value.slice(0, MAX_VISIBLE_DATA_SOURCES));
-const hiddenDataSources = computed<IDataSource[]>(() => nonDraftDataSources.value.slice(MAX_VISIBLE_DATA_SOURCES));
-
-const getDataSourceIcon = (ds: IDataSource): string | null => {
-	const record = ds as Record<string, unknown>;
-
-	return typeof record.icon === 'string' && record.icon ? record.icon : null;
-};
+const { getElement: getTileElement } = useTilesPlugins();
 
 const formatIcon = (icon: string | null, fallback: string): string => {
 	if (!icon) return fallback;
 
 	return icon.includes(':') ? icon : `mdi:${icon}`;
-};
-
-const getDataSourceLabel = (ds: IDataSource): string => {
-	const element = getDataSourceElement(ds.type);
-
-	return element?.name?.trim() ? element.name : ds.type;
-};
-
-const onRemoveDataSource = (id: IDataSource['id']): void => {
-	removeDataSource(id);
 };
 
 const appContext = getCurrentInstance()?.appContext ?? null;
@@ -502,6 +213,10 @@ const setGridRef = (cardId: string, el: HTMLElement | null): void => {
 const onTileRemove = (tileId: ITile['id'], cardId: string): void => {
 	removedTiles.add(tileId);
 
+	if (props.selectedTileId === tileId) {
+		emit('selectTile', null);
+	}
+
 	const grid = cardGrids.get(cardId);
 
 	if (!grid) return;
@@ -512,6 +227,18 @@ const onTileRemove = (tileId: ITile['id'], cardId: string): void => {
 		grid.removeWidget(el);
 	}
 };
+
+// The inspector's Remove: the tile leaves its card now and is deleted on Save
+const removeTile = (tileId: ITile['id']): void => {
+	const itemEl = itemOf(tileId);
+	const cardId = itemEl ? cardIdOfItem(itemEl) : null;
+
+	if (cardId !== null) {
+		onTileRemove(tileId, cardId);
+	}
+};
+
+defineExpose({ removeTile });
 
 const unmountGridComponents = (grid: GridStack): void => {
 	for (const el of grid.getGridItems()) {
@@ -546,19 +273,124 @@ const destroyCardGrid = (cardId: string): void => {
 	cardTileSets.delete(cardId);
 };
 
-const renderTileContent = (itemElContent: Element, tile: ITile, cardId: string): void => {
-	const vnode = h(TilePreview, {
-		tile,
-		onDetail: (id: ITile['id']): void => {
-			emit('tileDetail', id);
-		},
-		onEdit: (id: ITile['id']): void => {
-			emit('editTile', id, cardId);
-		},
-		onRemove: (id: ITile['id']): void => {
-			onTileRemove(id, cardId);
-		},
+const tileName = (tile: ITile): string => {
+	const element = getTileElement(tile.type);
+
+	return element?.name?.trim() ? element.name : tile.type;
+};
+
+const cardIdOfItem = (itemEl: GridItemHTMLElement): ICard['id'] | null => {
+	for (const [cardId, grid] of cardGrids) {
+		if (itemEl.gridstackNode?.grid === grid) {
+			return cardId;
+		}
+	}
+
+	return null;
+};
+
+const itemOf = (tileId: ITile['id']): GridItemHTMLElement | null => {
+	for (const [, grid] of cardGrids) {
+		const itemEl = grid.getGridItems().find((item) => item.gridstackNode?.id === tileId);
+
+		if (itemEl) {
+			return itemEl;
+		}
+	}
+
+	return null;
+};
+
+// Where the tile sits in the editor now, in which card, saved or not
+const placeOf = (tileId: ITile['id']): IPageConfigureTilePlace | null => {
+	const itemEl = itemOf(tileId);
+	const node = itemEl?.gridstackNode;
+	const cardId = itemEl ? cardIdOfItem(itemEl) : null;
+
+	if (!node || cardId === null) {
+		return null;
+	}
+
+	return { id: tileId, cardId, row: (node.y ?? 0) + 1, col: (node.x ?? 0) + 1, rowSpan: node.h ?? 1, colSpan: node.w ?? 1 };
+};
+
+const findTile = (tileId: ITile['id']): ITile | undefined => {
+	for (const [, store] of tilesByCard) {
+		const tile = store.tiles.value.find((item) => item.id === tileId);
+
+		if (tile) {
+			return tile;
+		}
+	}
+
+	return undefined;
+};
+
+// The tile type, its card and where it sits, so two tiles of one type read apart
+const labelOf = (itemEl: GridItemHTMLElement, tile: ITile): string => {
+	const node = itemEl.gridstackNode;
+	const card = sortedCards.value.find((item) => item.id === cardIdOfItem(itemEl));
+	const where = node ? t('pagesCardsPlugin.editor.inspector.positionValue', { row: (node.y ?? 0) + 1, col: (node.x ?? 0) + 1 }) : '';
+
+	return [tileName(tile), card?.title, where].filter((part) => part).join(', ');
+};
+
+// Tiles move when others are dragged, moved to another card or removed, so the selection ring, every name and the
+// inspector are refreshed after each change
+const refreshGridItems = (): void => {
+	for (const [, grid] of cardGrids) {
+		for (const itemEl of grid.getGridItems()) {
+			const id = itemEl.gridstackNode?.id;
+			const tile = id ? findTile(id) : undefined;
+
+			itemEl.classList.toggle('is-selected', id !== undefined && id === props.selectedTileId);
+
+			if (tile) {
+				itemEl.setAttribute('aria-label', labelOf(itemEl, tile));
+			}
+		}
+	}
+
+	if (props.selectedTileId) {
+		emit('selectTile', placeOf(props.selectedTileId));
+	}
+};
+
+// The cell is a button: a click or Enter selects the tile, a double click opens its form
+const wireGridItem = (itemEl: GridItemHTMLElement, tile: ITile): void => {
+	itemEl.setAttribute('tabindex', '0');
+	itemEl.setAttribute('role', 'button');
+	itemEl.setAttribute('aria-label', labelOf(itemEl, tile));
+
+	if (itemEl.dataset.wired === 'true') {
+		return;
+	}
+
+	itemEl.dataset.wired = 'true';
+
+	itemEl.addEventListener('click', (): void => {
+		emit('selectTile', placeOf(tile.id));
 	});
+
+	itemEl.addEventListener('dblclick', (): void => {
+		const cardId = cardIdOfItem(itemEl);
+
+		if (cardId !== null) {
+			emit('editTile', tile.id, cardId);
+		}
+	});
+
+	itemEl.addEventListener('keydown', (event: KeyboardEvent): void => {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+
+			emit('selectTile', placeOf(tile.id));
+		}
+	});
+};
+
+const renderTileContent = (itemElContent: Element, tile: ITile): void => {
+	const vnode = h(TilePreview, { tile });
 
 	if (appContext) {
 		vnode.appContext = appContext;
@@ -662,10 +494,17 @@ const initializeCardGrid = (card: ICard): void => {
 
 			if (!tile) continue;
 
-			renderTileContent(itemElContent, tile, card.id);
+			renderTileContent(itemElContent, tile);
+			wireGridItem(itemEl as GridItemHTMLElement, tile);
 
 			tileSet.add(tile.id);
 		}
+
+		refreshGridItems();
+	});
+
+	grid.on('change', (): void => {
+		refreshGridItems();
 	});
 
 	grid.on('removed', function (_event, items) {
@@ -682,6 +521,8 @@ const initializeCardGrid = (card: ICard): void => {
 				markChanged();
 			}
 		}
+
+		refreshGridItems();
 	});
 
 	// Update cell height to be square
@@ -788,11 +629,6 @@ onBeforeMount((): void => {
 			});
 		}
 	}
-
-	fetchPageDataSources().catch((error: unknown): void => {
-		const err = error as Error;
-		throw new DashboardException('Something went wrong', err);
-	});
 });
 
 const updateCellSizes = (): void => {
@@ -1062,6 +898,13 @@ watch(
 );
 
 watch(
+	(): ITile['id'] | null => props.selectedTileId,
+	(): void => {
+		refreshGridItems();
+	}
+);
+
+watch(
 	(): boolean => pageChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-page-changed', val);
@@ -1091,6 +934,60 @@ watch(
 );
 </script>
 
-<style rel="stylesheet/scss" lang="scss">
-@use 'page-configure.scss';
+<style scoped lang="scss">
+.cards-configure {
+	background-color: var(--el-fill-color-lighter);
+
+	&__card {
+		border: 1px solid var(--el-border-color);
+		border-radius: var(--el-border-radius-base);
+		background-color: var(--el-bg-color);
+		overflow: hidden;
+
+		&.is-selected {
+			outline: 2px solid var(--el-color-primary);
+			outline-offset: 1px;
+		}
+	}
+
+	&__card-header {
+		border-bottom: 1px solid var(--el-border-color-lighter);
+	}
+
+	&__card-title {
+		border: 0;
+		border-radius: var(--el-border-radius-small);
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+
+		&:hover {
+			background-color: var(--el-fill-color-light);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--el-color-primary);
+			outline-offset: -2px;
+		}
+	}
+
+	:deep(.grid-stack-item) {
+		outline: none;
+		cursor: pointer;
+
+		> .grid-stack-item-content {
+			display: flex;
+			flex-direction: column;
+			border-radius: 6px;
+		}
+
+		// Admin spec §7: the host draws the selection ring, 2 px in the admin's primary colour
+		&.is-selected > .grid-stack-item-content,
+		&:focus-visible > .grid-stack-item-content {
+			outline: 2px solid var(--el-color-primary);
+			outline-offset: 1px;
+		}
+	}
+}
 </style>

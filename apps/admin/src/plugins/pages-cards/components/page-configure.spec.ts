@@ -42,6 +42,7 @@ vi.mock('pinia', async (importOriginal) => ({
 }));
 
 vi.mock('../../../common', () => ({
+	StateView: { name: 'StateView', template: '<div />' },
 	injectStoresManager: () => ({ getStore: () => tilesStore }),
 }));
 
@@ -56,6 +57,7 @@ vi.mock('../../../modules/dashboard', () => ({
 	useDataSources: () => ({ dataSources: ref([]), fetchDataSources: vi.fn().mockResolvedValue(undefined) }),
 	useDataSourcesActions: () => ({ remove: vi.fn() }),
 	useDataSourcesPlugins: () => ({ getElement: () => undefined }),
+	useTilesPlugins: () => ({ getElement: () => ({ name: 'Clock' }) }),
 }));
 
 vi.mock('./tile-preview.vue', () => ({
@@ -70,7 +72,6 @@ const mountConfigure = async (gridLayout: { rows: number; cols: number } | null 
 			cards: [{ id: CARD_ID, title: 'Living room', icon: null, order: 1, rows: null, cols: null }] as never,
 			gridLayout,
 			gridCardStyle: {},
-			displays: [],
 			selectedDisplay: null,
 		},
 	});
@@ -137,5 +138,67 @@ describe('CardsPageConfigure', () => {
 		expect(wrapper.emitted('update:remote-page-result')).not.toContainEqual(['ok']);
 		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
 		expect(tilesStore.edit).not.toHaveBeenCalled();
+	});
+
+	it('selects a tile by click or Enter with its place in its card, and opens its form on a double click', async () => {
+		cardTiles.value = [{ ...tile('tile-a', false), row: 2, col: 3, rowSpan: 1, colSpan: 2 }];
+
+		const wrapper = await mountConfigure();
+		const item = document.querySelector<HTMLElement>('.grid-stack-item')!;
+
+		expect(item.getAttribute('role')).toBe('button');
+		expect(item.getAttribute('aria-label')).toBe('Clock, Living room, pagesCardsPlugin.editor.inspector.positionValue');
+
+		item.click();
+
+		expect(wrapper.emitted('selectTile')?.at(-1)).toEqual([{ id: 'tile-a', cardId: CARD_ID, row: 2, col: 3, rowSpan: 1, colSpan: 2 }]);
+
+		item.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+		expect(wrapper.emitted('selectTile')).toHaveLength(2);
+
+		item.dispatchEvent(new MouseEvent('dblclick'));
+
+		expect(wrapper.emitted('editTile')?.at(-1)).toEqual(['tile-a', CARD_ID]);
+
+		await wrapper.setProps({ selectedTileId: 'tile-a' });
+
+		expect(item.classList.contains('is-selected')).toBe(true);
+	});
+
+	it('removes a tile from its card on request, clears its selection and deletes it on Save', async () => {
+		cardTiles.value = [tile('tile-a', false)];
+		tilesStore.remove.mockResolvedValue(true);
+
+		const wrapper = await mountConfigure();
+
+		await wrapper.setProps({ selectedTileId: 'tile-a' });
+
+		(wrapper.vm as unknown as { removeTile: (id: string) => void }).removeTile('tile-a');
+		await flushPromises();
+
+		expect(document.querySelector('.grid-stack-item')).toBeNull();
+		expect(wrapper.emitted('selectTile')?.at(-1)).toEqual([null]);
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(tilesStore.remove).toHaveBeenCalledWith({ id: 'tile-a', parent: { type: 'card', id: CARD_ID } });
+	});
+
+	it('selects a card from its heading and adds a tile to it from its button', async () => {
+		const wrapper = await mountConfigure();
+
+		await wrapper.get(`[data-test-id="cards-configure-select-${CARD_ID}"]`).trigger('click');
+
+		expect(wrapper.emitted('selectCard')?.at(-1)).toEqual([CARD_ID]);
+
+		await wrapper.get(`[data-test-id="cards-configure-select-${CARD_ID}"]`).trigger('dblclick');
+
+		expect(wrapper.emitted('editCard')?.at(-1)).toEqual([CARD_ID]);
+
+		await wrapper.get(`[data-test-id="cards-configure-add-tile-${CARD_ID}"]`).trigger('click');
+
+		expect(wrapper.emitted('addTile')?.at(-1)).toEqual([CARD_ID]);
 	});
 });

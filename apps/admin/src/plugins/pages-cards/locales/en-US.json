@@ -44,10 +44,6 @@
 		"cards": {
 			"remove": "Remove card"
 		},
-		"configure": {
-			"display": "Display",
-			"cards": "Cards"
-		},
 		"misc": {
 			"discard": "Discard changes?"
 		}
@@ -85,8 +81,6 @@
 		"cards": {
 			"confirmRemove": "Are you sure you want to remove card {card}?",
 			"noCards": "No cards have been added to this page yet.",
-			"noTiles": "No tiles in this card. Click + to add one.",
-			"tilesCount": "tiles",
 			"loadingCard": "Loading card..."
 		},
 		"tiles": {
@@ -123,9 +117,6 @@
 		},
 		"addCard": {
 			"title": "Add card"
-		},
-		"addPageDataSource": {
-			"title": "Add page data source"
 		}
 	},
 	"fields": {
@@ -160,11 +151,51 @@
 	},
 	"editor": {
 		"texts": {
-			"unsaved": "Unsaved changes"
+			"unsaved": "Unsaved changes",
+			"noCardsHint": "Add a card to group tiles on this page.",
+			"loadingDisplays": "Loading displays…",
+			"noDisplay": "No display to lay out the page for",
+			"noDisplayHint": "The grid comes from the display that shows this page. Pair a display, or choose one in the page settings."
 		},
 		"messages": {
 			"saved": "Page layout saved.",
 			"saveFailed": "The page layout could not be saved. Try again."
+		},
+		"card": {
+			"tiles": "Tiles: {count}"
+		},
+		"buttons": {
+			"addTile": "Add tile",
+			"dataSources": "Data sources",
+			"edit": "Edit",
+			"detail": "Detail",
+			"remove": "Remove"
+		},
+		"aria": {
+			"addTile": "Add a tile to {card}",
+			"closeInspector": "Close the inspector"
+		},
+		"inspector": {
+			"inCard": "In card {card}",
+			"card": "Card",
+			"position": "Position",
+			"positionValue": "Row {row}, column {col}",
+			"size": "Size in cells",
+			"sizeValue": "{cols} × {rows}",
+			"order": "Order",
+			"tiles": "Tiles",
+			"grid": "Grid",
+			"gridFromDisplay": "From the display",
+			"saveHint": "Moves, resizes and removals take effect when you save the page.",
+			"nothingSelected": "Select a card or a tile to see what you can do with it."
+		},
+		"display": {
+			"title": "Display",
+			"grid": "{cols} × {rows} grid"
+		},
+		"phone": {
+			"readOnly": "Cards are arranged on a tablet or a computer. Tap a tile to see its detail.",
+			"noTiles": "No tiles in this card yet."
 		}
 	},
 	"sections": {

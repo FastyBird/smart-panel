@@ -511,7 +511,7 @@ Protect epic, built on this epic's components.
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :white_check_mark: Done |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :construction: In Progress |
 
-**Next up:** AR-20 part 5b (the Cards page canvas and inspector on template 8), once part 5a (the Cards page configure host, its toolbar, and the card, tile and data source forms on template 4) merges.
+**Next up:** AR-21 (weather locations on the list, detail and edit templates, and the weather provider forms on the slot contract), once AR-20 part 5b (the Cards page canvas and inspector on template 8) merges.
 
 ---
 
