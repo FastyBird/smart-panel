@@ -365,10 +365,23 @@ const compactEditor = computed<boolean>((): boolean => isTabletPortrait.value ||
 
 const pageDataSources = computed<IDataSource[]>((): IDataSource[] => dataSources.value.filter((dataSource) => !dataSource.draft));
 
+// Found by id across the page: a tile moved to another card stays filed under its old card until Save
 const selectedTile = computed<ITile | null>((): ITile | null => {
 	const place = selectedPlace.value;
 
-	return place ? ((tilesByCard.value[place.cardId] ?? []).find((tile) => tile.id === place.id) ?? null) : null;
+	if (!place) {
+		return null;
+	}
+
+	for (const tiles of Object.values(tilesByCard.value)) {
+		const tile = tiles.find((item) => item.id === place.id);
+
+		if (tile) {
+			return tile;
+		}
+	}
+
+	return null;
 });
 
 // The selected card, or with a tile selected the card holding it now

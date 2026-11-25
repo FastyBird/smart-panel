@@ -565,4 +565,19 @@ describe('ViewCardsPageConfigure', () => {
 
 		expect(wrapper.findComponent({ name: 'CardsInspector' }).exists()).toBe(true);
 	});
+
+	it('keeps a tile selected after it moved to another card, before Save files it there', async () => {
+		cardTiles.value = [{ id: TILE_ID, draft: false }];
+
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		// The store still files the tile under its old card; the canvas reports where it sits now
+		wrapper
+			.findComponent({ name: 'PageConfigure' })
+			.vm.$emit('select-tile', { id: TILE_ID, cardId: 'card-other', row: 1, col: 1, rowSpan: 1, colSpan: 1 });
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('tile')).toMatchObject({ id: TILE_ID });
+		expect(wrapper.findComponent({ name: 'PageConfigure' }).props('selectedTileId')).toBe(TILE_ID);
+	});
 });

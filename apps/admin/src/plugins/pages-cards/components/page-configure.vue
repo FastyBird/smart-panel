@@ -145,7 +145,8 @@ const removedTiles = new Set<ITile['id']>();
 const initialized = ref<boolean>(false);
 const suppressMarkChanged = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
-let changeTimeout: ReturnType<typeof setTimeout>;
+// Set while grids are torn down: a grid already destroyed has no element left to read its items from
+let tearingDown = false;
 let initTimeout: ReturnType<typeof setTimeout>;
 
 // Capture storesManager during setup (injection context available)
@@ -251,10 +252,16 @@ const unmountGridComponents = (grid: GridStack): void => {
 };
 
 const destroyGrids = (): void => {
-	for (const [, grid] of cardGrids) {
-		unmountGridComponents(grid);
-		grid.removeAll(true);
-		grid.destroy(false);
+	tearingDown = true;
+
+	try {
+		for (const [, grid] of cardGrids) {
+			unmountGridComponents(grid);
+			grid.removeAll(true);
+			grid.destroy(false);
+		}
+	} finally {
+		tearingDown = false;
 	}
 
 	cardGrids.clear();
@@ -266,9 +273,16 @@ const destroyCardGrid = (cardId: string): void => {
 
 	if (!grid) return;
 
-	unmountGridComponents(grid);
-	grid.removeAll(true);
-	grid.destroy(false);
+	tearingDown = true;
+
+	try {
+		unmountGridComponents(grid);
+		grid.removeAll(true);
+		grid.destroy(false);
+	} finally {
+		tearingDown = false;
+	}
+
 	cardGrids.delete(cardId);
 	cardTileSets.delete(cardId);
 };
@@ -338,6 +352,10 @@ const labelOf = (itemEl: GridItemHTMLElement, tile: ITile): string => {
 // Tiles move when others are dragged, moved to another card or removed, so the selection ring, every name and the
 // inspector are refreshed after each change
 const refreshGridItems = (): void => {
+	if (tearingDown) {
+		return;
+	}
+
 	for (const [, grid] of cardGrids) {
 		for (const itemEl of grid.getGridItems()) {
 			const id = itemEl.gridstackNode?.id;
@@ -404,11 +422,9 @@ const markChanged = (): void => {
 		return;
 	}
 
-	clearTimeout(changeTimeout);
-
-	changeTimeout = setTimeout(() => {
-		pageChanged.value = true;
-	}, 50);
+	// At once: the editor reads the flag to decide what stays on screen, and a window narrowing to phone width right after
+	// a move must not drop the editor holding it
+	pageChanged.value = true;
 };
 
 const initializeCardGrid = (card: ICard): void => {
@@ -670,7 +686,6 @@ onMounted((): void => {
 
 onBeforeUnmount((): void => {
 	window.removeEventListener('resize', onResize);
-	clearTimeout(changeTimeout);
 	clearTimeout(initTimeout);
 	destroyGrids();
 });
