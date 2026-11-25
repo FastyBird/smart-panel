@@ -25,5 +25,8 @@
       "title": "Symbol",
       "placeholder": "Datenquellen-Symbol"
     }
+  },
+  "sections": {
+    "property": "Geräteeigenschaft"
   }
 }

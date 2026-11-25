@@ -8,5 +8,8 @@
 				"required": "Wybierz urządzenie strony"
 			}
 		}
+	},
+	"sections": {
+		"device": "Urządzenie"
 	}
 }

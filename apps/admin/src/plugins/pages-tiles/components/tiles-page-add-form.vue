@@ -6,174 +6,92 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.id.title')"
-			prop="id"
-		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.pages.id.placeholder')"
-				name="id"
-				required
-				disabled
-			/>
-		</el-form-item>
+		<page-form-frame :model="model">
+			<plugin-form-section :title="t('pagesTilesPlugin.sections.grid')">
+				<div class="grid grid-cols-1 tp:grid-cols-2 gap-x-4">
+					<el-form-item
+						:label="t('pagesTilesPlugin.fields.rows.title')"
+						prop="rows"
+					>
+						<el-input-number
+							v-model="model.rows"
+							:placeholder="t('pagesTilesPlugin.fields.rows.placeholder')"
+							:disabled="model.tileSize !== null"
+							:min="1"
+							:max="12"
+							name="rows"
+						/>
+						<el-button
+							plain
+							class="ml-2 px-3!"
+							@click="handleClearRows"
+						>
+							<template #icon>
+								<icon icon="mdi:close" />
+							</template>
+						</el-button>
+					</el-form-item>
 
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.title.title')"
-			prop="title"
-		>
-			<el-input
-				v-model="model.title"
-				:placeholder="t('dashboardModule.fields.pages.title.placeholder')"
-				name="title"
-			/>
-		</el-form-item>
+					<el-form-item
+						:label="t('pagesTilesPlugin.fields.cols.title')"
+						prop="cols"
+					>
+						<el-input-number
+							v-model="model.cols"
+							:placeholder="t('pagesTilesPlugin.fields.cols.placeholder')"
+							:disabled="model.tileSize !== null"
+							:min="1"
+							:max="12"
+							name="cols"
+						/>
+						<el-button
+							plain
+							class="ml-2 px-3!"
+							@click="handleClearCols"
+						>
+							<template #icon>
+								<icon icon="mdi:close" />
+							</template>
+						</el-button>
+					</el-form-item>
+				</div>
 
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.icon.title')"
-			prop="icon"
-		>
-			<icon-picker
-				v-model="model.icon"
-				:placeholder="t('dashboardModule.fields.pages.icon.placeholder')"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.order.title')"
-			prop="order"
-		>
-			<el-input-number
-				v-model="model.order"
-				:placeholder="t('dashboardModule.fields.pages.order.placeholder')"
-				name="order"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.showTopBar.title')"
-			prop="showTopBar"
-		>
-			<el-switch
-				v-model="model.showTopBar"
-				name="showTopBar"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.displays.title')"
-			:prop="['displays']"
-		>
-			<displays-multi-select
-				v-model="model.displays"
-				:placeholder="t('dashboardModule.fields.pages.displays.placeholder')"
-			/>
-			<el-text
-				size="small"
-				class="block mt-1 text-gray-500"
-			>
-				{{ t('dashboardModule.fields.pages.displays.description') }}
-			</el-text>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-row
-			:gutter="10"
-			class="mx-0!"
-		>
-			<el-col
-				:span="12"
-				class="px-0!"
-			>
 				<el-form-item
-					:label="t('pagesTilesPlugin.fields.rows.title')"
-					prop="rows"
+					:label="t('pagesTilesPlugin.fields.tileSize.title')"
+					prop="tileSize"
 				>
 					<el-input-number
-						v-model="model.rows"
-						:placeholder="t('pagesTilesPlugin.fields.rows.placeholder')"
-						:disabled="model.tileSize !== null"
-						:min="1"
-						:max="12"
-						name="rows"
+						v-model="model.tileSize"
+						:placeholder="t('pagesTilesPlugin.fields.tileSize.placeholder')"
+						:disabled="model.rows !== null || model.cols !== null"
+						:min="40"
+						:max="200"
+						name="tileSize"
 					/>
 					<el-button
 						plain
 						class="ml-2 px-3!"
-						@click="handleClearRows"
+						@click="handleClearTileSize"
 					>
 						<template #icon>
 							<icon icon="mdi:close" />
 						</template>
 					</el-button>
 				</el-form-item>
-			</el-col>
 
-			<el-col
-				:span="12"
-				class="px-0!"
-			>
-				<el-form-item
-					:label="t('pagesTilesPlugin.fields.cols.title')"
-					prop="cols"
+				<el-alert
+					:title="t('pagesTilesPlugin.headings.misc.tip')"
+					:description="t('pagesTilesPlugin.texts.misc.gridLayoutTip')"
+					:closable="false"
+					show-icon
+					type="success"
 				>
-					<el-input-number
-						v-model="model.cols"
-						:placeholder="t('pagesTilesPlugin.fields.cols.placeholder')"
-						:disabled="model.tileSize !== null"
-						:min="1"
-						:max="12"
-						name="cols"
-					/>
-					<el-button
-						plain
-						class="ml-2 px-3!"
-						@click="handleClearCols"
-					>
-						<template #icon>
-							<icon icon="mdi:close" />
-						</template>
-					</el-button>
-				</el-form-item>
-			</el-col>
-		</el-row>
-
-		<el-form-item
-			:label="t('pagesTilesPlugin.fields.tileSize.title')"
-			prop="tileSize"
-		>
-			<el-input-number
-				v-model="model.tileSize"
-				:placeholder="t('pagesTilesPlugin.fields.tileSize.placeholder')"
-				:disabled="model.rows !== null || model.cols !== null"
-				:min="40"
-				:max="200"
-				name="tileSize"
-			/>
-			<el-button
-				plain
-				class="ml-2 px-3!"
-				@click="handleClearTileSize"
-			>
-				<template #icon>
-					<icon icon="mdi:close" />
-				</template>
-			</el-button>
-		</el-form-item>
-
-		<el-alert
-			:title="t('pagesTilesPlugin.headings.misc.tip')"
-			:description="t('pagesTilesPlugin.texts.misc.gridLayoutTip')"
-			:closable="false"
-			show-icon
-			type="success"
-		>
-			<template #icon>
-				<icon icon="mdi:lightbulb-on" />
-			</template>
-		</el-alert>
+					<template #icon>
+						<icon icon="mdi:lightbulb-on" />
+					</template>
+				</el-alert>
+			</plugin-form-section>
+		</page-form-frame>
 	</el-form>
 </template>
 
@@ -181,14 +99,12 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCol, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInputNumber, type FormRules } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { IconPicker } from '../../../common';
-import { FormResult, type FormResultType, type IPageAddFormProps, usePageAddForm } from '../../../modules/dashboard';
-import { DisplaysMultiSelect } from '../../../modules/displays';
-import { ElText } from 'element-plus';
+import { PluginFormSection } from '../../../common';
+import { FormResult, type FormResultType, type IPageAddFormProps, PageFormFrame, usePageAddForm } from '../../../modules/dashboard';
 import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 import type { ITilesPageAddForm } from '../schemas/pages.types';
 

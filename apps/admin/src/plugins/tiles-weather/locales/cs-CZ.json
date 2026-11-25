@@ -17,5 +17,8 @@
 			"placeholder": "Vyberte lokaci",
 			"description": "Vyberte meteorologickou lokaci k zobrazení. Pokud není nastavena, bude použita primární lokace z nastavení počasí."
 		}
+	},
+	"sections": {
+		"weather": "Počasí"
 	}
 }

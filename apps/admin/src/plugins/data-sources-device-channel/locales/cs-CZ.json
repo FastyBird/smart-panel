@@ -25,5 +25,8 @@
 			"title": "Ikona",
 			"placeholder": "Ikona zdroje dat"
 		}
+	},
+	"sections": {
+		"property": "Vlastnost zařízení"
 	}
 }

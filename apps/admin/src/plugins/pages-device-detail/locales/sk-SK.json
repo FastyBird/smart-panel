@@ -8,5 +8,8 @@
 				"required": "Prosím vyberte zariadenie stránky"
 			}
 		}
+	},
+	"sections": {
+		"device": "Zariadenie"
 	}
 }

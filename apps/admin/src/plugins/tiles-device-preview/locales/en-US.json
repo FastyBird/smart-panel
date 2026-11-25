@@ -12,5 +12,8 @@
         "required": "Please select tile device"
       }
     }
+  },
+  "sections": {
+    "device": "Device"
   }
 }

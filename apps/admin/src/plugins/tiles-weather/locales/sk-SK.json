@@ -17,5 +17,8 @@
 			"placeholder": "Vyberte polohu",
 			"description": "Vyberte polohu počasia na zobrazenie. Ak nie je nastavená, použije sa primárna poloha z nastavení počasia."
 		}
+	},
+	"sections": {
+		"weather": "Počasie"
 	}
 }

@@ -37,5 +37,8 @@
 		"weather_main": "Weather condition",
 		"weather_description": "Weather description",
 		"wind_speed": "Wind speed"
+	},
+	"sections": {
+		"weather": "Weather"
 	}
 }

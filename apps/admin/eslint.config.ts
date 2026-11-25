@@ -42,6 +42,11 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	'src/plugins/scenes-local',
 	// AR-19: the displays list, detail, edit and access tokens
 	'src/modules/displays',
+	// AR-20: wall-display pages, tiles and data sources, their host form frames and the page, tile and data source plugins
+	'src/modules/dashboard',
+	'src/plugins/pages-*',
+	'src/plugins/tiles-*',
+	'src/plugins/data-sources-*',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

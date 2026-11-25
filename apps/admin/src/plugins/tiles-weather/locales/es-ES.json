@@ -17,5 +17,8 @@
 			"placeholder": "Seleccione una ubicación",
 			"description": "Seleccione una ubicación meteorológica para mostrar. Si no se establece, se utilizará la ubicación principal de la configuración meteorológica."
 		}
+	},
+	"sections": {
+		"weather": "Clima"
 	}
 }

@@ -12,5 +12,8 @@
 				"required": "Por favor, seleccione un dispositivo para el mosaico"
 			}
 		}
+	},
+	"sections": {
+		"device": "Dispositivo"
 	}
 }

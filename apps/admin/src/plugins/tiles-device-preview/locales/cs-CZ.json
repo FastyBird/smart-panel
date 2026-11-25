@@ -12,5 +12,8 @@
 				"required": "Vyberte prosím zařízení dlaždice"
 			}
 		}
+	},
+	"sections": {
+		"device": "Zařízení"
 	}
 }

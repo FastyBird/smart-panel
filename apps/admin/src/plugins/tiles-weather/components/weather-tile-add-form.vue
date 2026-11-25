@@ -6,100 +6,41 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.id.title')"
-			:prop="['id']"
+		<tile-form-frame
+			:model="model"
+			:with-position="props.withPosition"
+			:with-size="props.withSize"
 		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.tiles.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
+			<plugin-form-section :title="t('tilesWeatherPlugin.sections.weather')">
+				<el-form-item
+					:label="t('tilesWeatherPlugin.fields.locationId.title')"
+					:prop="['locationId']"
+				>
+					<el-select
+						v-model="model.locationId"
+						:placeholder="t('tilesWeatherPlugin.fields.locationId.placeholder')"
+						name="locationId"
+						clearable
+						:loading="locationsLoading"
+					>
+						<el-option
+							v-for="location in locations"
+							:key="location.id"
+							:label="location.name"
+							:value="location.id"
+						/>
+					</el-select>
+				</el-form-item>
 
-		<el-form-item
-			:label="t('tilesWeatherPlugin.fields.locationId.title')"
-			:prop="['locationId']"
-		>
-			<el-select
-				v-model="model.locationId"
-				:placeholder="t('tilesWeatherPlugin.fields.locationId.placeholder')"
-				name="locationId"
-				clearable
-				:loading="locationsLoading"
-			>
-				<el-option
-					v-for="location in locations"
-					:key="location.id"
-					:label="location.name"
-					:value="location.id"
+				<el-alert
+					:description="t('tilesWeatherPlugin.fields.locationId.description')"
+					:closable="false"
+					show-icon
+					type="info"
+					class="mb-4"
 				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			:description="t('tilesWeatherPlugin.fields.locationId.description')"
-			:closable="false"
-			show-icon
-			type="info"
-			class="mb-4"
-		/>
-
-		<el-row v-if="props.withPosition">
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.row.title')"
-					:prop="['row']"
-				>
-					<el-input-number
-						v-model="model.row"
-						:placeholder="t('dashboardModule.fields.tiles.row.placeholder')"
-						name="row"
-					/>
-				</el-form-item>
-			</el-col>
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.col.title')"
-					:prop="['col']"
-				>
-					<el-input-number
-						v-model="model.col"
-						:placeholder="t('dashboardModule.fields.tiles.col.placeholder')"
-						name="col"
-					/>
-				</el-form-item>
-			</el-col>
-		</el-row>
-
-		<el-row v-if="props.withSize">
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.rowSpan.title')"
-					:prop="['rowSpan']"
-				>
-					<el-input-number
-						v-model="model.rowSpan"
-						:placeholder="t('dashboardModule.fields.tiles.rowSpan.placeholder')"
-						name="rowSpan"
-					/>
-				</el-form-item>
-			</el-col>
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.colSpan.title')"
-					:prop="['colSpan']"
-				>
-					<el-input-number
-						v-model="model.colSpan"
-						:placeholder="t('dashboardModule.fields.tiles.colSpan.placeholder')"
-						name="colSpan"
-					/>
-				</el-form-item>
-			</el-col>
-		</el-row>
+			</plugin-form-section>
+		</tile-form-frame>
 	</el-form>
 </template>
 
@@ -107,9 +48,10 @@
 import { onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElRow, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, useTileAddForm } from '../../../modules/dashboard';
+import { PluginFormSection } from '../../../common';
+import { FormResult, type FormResultType, TileFormFrame, useTileAddForm } from '../../../modules/dashboard';
 import { useLocations } from '../../../modules/weather';
 import type { IWeatherTileAddForm } from '../schemas/tiles.types';
 import { TILES_WEATHER_PLUGIN_DAY_TYPE } from '../tiles-weather.constants';

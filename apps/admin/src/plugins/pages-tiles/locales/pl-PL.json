@@ -152,5 +152,8 @@
 		"aria": {
 			"closeInspector": "Zamknij inspektor"
 		}
+	},
+	"sections": {
+		"grid": "Siatka kafelków"
 	}
 }

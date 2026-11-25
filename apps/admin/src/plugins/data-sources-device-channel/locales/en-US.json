@@ -25,5 +25,8 @@
       "title": "Icon",
       "placeholder": "Data source icon"
     }
+  },
+  "sections": {
+    "property": "Device property"
   }
 }

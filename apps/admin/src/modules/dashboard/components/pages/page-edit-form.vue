@@ -6,77 +6,7 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.id.title')"
-			:prop="['id']"
-		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.pages.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.title.title')"
-			:prop="['title']"
-		>
-			<el-input
-				v-model="model.title"
-				:placeholder="t('dashboardModule.fields.pages.title.placeholder')"
-				name="title"
-				size="large"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.icon.title')"
-			:prop="['icon']"
-		>
-			<icon-picker
-				v-model="model.icon"
-				:placeholder="t('dashboardModule.fields.pages.icon.placeholder')"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.order.title')"
-			:prop="['order']"
-		>
-			<el-input-number
-				v-model="model.order"
-				:placeholder="t('dashboardModule.fields.pages.order.placeholder')"
-				name="order"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.showTopBar.title')"
-			:prop="['showTopBar']"
-		>
-			<el-switch
-				v-model="model.showTopBar"
-				name="showTopBar"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.displays.title')"
-			:prop="['displays']"
-		>
-			<displays-multi-select
-				v-model="model.displays"
-				:placeholder="t('dashboardModule.fields.pages.displays.placeholder')"
-			/>
-			<el-text
-				size="small"
-				class="block mt-1 text-secondary"
-			>
-				{{ t('dashboardModule.fields.pages.displays.description') }}
-			</el-text>
-		</el-form-item>
+		<page-form-frame :model="model" />
 	</el-form>
 </template>
 
@@ -84,16 +14,14 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, type FormRules } from 'element-plus';
 
-import { IconPicker } from '../../../../common';
-import { ElText } from 'element-plus';
-import { DisplaysMultiSelect } from '../../../displays';
 import { usePageEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../dashboard.constants';
 import type { IPageEditForm } from '../../schemas/pages.types';
 
 import type { IPageEditFormProps } from './page-edit-form.types';
+import PageFormFrame from './page-form-frame.vue';
 
 defineOptions({
 	name: 'PageEditForm',

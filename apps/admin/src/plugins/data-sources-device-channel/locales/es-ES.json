@@ -25,5 +25,8 @@
 			"title": "Icono",
 			"placeholder": "Icono de origen de datos"
 		}
+	},
+	"sections": {
+		"property": "Propiedad del dispositivo"
 	}
 }

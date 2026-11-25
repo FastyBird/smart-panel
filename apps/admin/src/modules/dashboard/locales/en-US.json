@@ -428,5 +428,10 @@
     "tiles": {
       "edit": "Edit tile"
     }
+  },
+  "sections": {
+    "general": "General",
+    "placement": "Position and size",
+    "identifiers": "Identifiers"
   }
 }

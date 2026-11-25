@@ -286,7 +286,7 @@
 							<div
 								v-for="card in sortedCards"
 								:key="card.id"
-								class="flex items-center justify-between p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+								class="flex items-center justify-between p-1 rounded hover:bg-fill-light cursor-pointer"
 								@click="emit('editCard', card.id)"
 							>
 								<div class="flex items-center gap-1 min-w-0">

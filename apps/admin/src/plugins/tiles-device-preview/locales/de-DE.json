@@ -12,5 +12,8 @@
         "required": "Bitte wählen Sie ein Kachel-Gerät"
       }
     }
+  },
+  "sections": {
+    "device": "Gerät"
   }
 }

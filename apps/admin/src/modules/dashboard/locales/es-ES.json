@@ -428,5 +428,10 @@
 		"tiles": {
 			"edit": "Editar mosaico"
 		}
+	},
+	"sections": {
+		"general": "General",
+		"placement": "Posición y tamaño",
+		"identifiers": "Identificadores"
 	}
 }

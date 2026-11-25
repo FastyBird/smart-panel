@@ -152,5 +152,8 @@
     "aria": {
       "closeInspector": "Cerrar el inspector"
     }
+  },
+  "sections": {
+    "grid": "Cuadrícula de mosaicos"
   }
 }

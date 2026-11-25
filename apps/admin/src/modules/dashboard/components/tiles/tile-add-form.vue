@@ -6,72 +6,11 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.id.title')"
-			:prop="['id']"
-		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.tiles.id.placeholder')"
-				name="id"
-				required
-				disabled
-			/>
-		</el-form-item>
-
-		<el-row v-if="props.withPosition">
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.row.title')"
-					:prop="['row']"
-				>
-					<el-input-number
-						v-model="model.row"
-						:placeholder="t('dashboardModule.fields.tiles.row.placeholder')"
-						name="row"
-					/>
-				</el-form-item>
-			</el-col>
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.col.title')"
-					:prop="['col']"
-				>
-					<el-input-number
-						v-model="model.col"
-						:placeholder="t('dashboardModule.fields.tiles.col.placeholder')"
-						name="col"
-					/>
-				</el-form-item>
-			</el-col>
-		</el-row>
-
-		<el-row v-if="props.withSize">
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.rowSpan.title')"
-					:prop="['rowSpan']"
-				>
-					<el-input-number
-						v-model="model.rowSpan"
-						:placeholder="t('dashboardModule.fields.tiles.rowSpan.placeholder')"
-						name="rowSpan"
-					/>
-				</el-form-item>
-			</el-col>
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.colSpan.title')"
-					:prop="['colSpan']"
-				>
-					<el-input-number
-						v-model="model.colSpan"
-						:placeholder="t('dashboardModule.fields.tiles.colSpan.placeholder')"
-						name="colSpan"
-					/>
-				</el-form-item>
-			</el-col>
-		</el-row>
+		<tile-form-frame
+			:model="model"
+			:with-position="props.withPosition"
+			:with-size="props.withSize"
+		/>
 	</el-form>
 </template>
 
@@ -79,7 +18,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, type FormRules } from 'element-plus';
+import { ElForm, type FormRules } from 'element-plus';
 
 import { type IPlugin } from '../../../../common';
 import { useTileAddForm } from '../../composables/composables';
@@ -87,6 +26,7 @@ import { FormResult, type FormResultType } from '../../dashboard.constants';
 import type { ITileAddForm } from '../../schemas/tiles.types';
 
 import type { ITileAddFormProps } from './tile-add-form.types';
+import TileFormFrame from './tile-form-frame.vue';
 
 defineOptions({
 	name: 'TileAddForm',
