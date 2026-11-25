@@ -378,6 +378,24 @@ List<Widget> roomScheduleDetails(
 bool roomOccupancyVisible(OccupancyRepository? r) =>
     r != null && !(r.fresh && r.state?.enabled == false);
 
+/// Whether the room has something for the room mode control to hold
+/// besides modes: a running schedule, occupancy that is on, or (with
+/// [automations]) automations. Then the control stays reachable in a room
+/// with no modes.
+bool roomModeExtras(RoomModeSources s, {required bool automations}) {
+  final schedule = s.schedule;
+  final occupancy = s.occupancy;
+
+  return (schedule != null &&
+          schedule.fresh &&
+          schedule.state?.enabled == true) ||
+      (occupancy != null &&
+          occupancy.fresh &&
+          occupancy.state?.enabled == true) ||
+      (automations &&
+          (s.automations?.automationsForSpace(s.spaceId).isNotEmpty ?? false));
+}
+
 String _occupancyStatus(AppLocalizations l, OccupancyRepository r) {
   final state = r.state;
   final status = r.fresh && state?.running == true ? state?.status.json : null;
@@ -464,7 +482,7 @@ class RoomModeSources {
 
 /// Opens and binds the room mode's read models for [spaceId] while it is
 /// mounted, and hands them to [builder] (null when the room modes module is
-/// not loaded). [builder] runs again whenever the selected mode changes.
+/// not loaded). [builder] runs again whenever any of them changes.
 ///
 /// Pass [sources] to use read models you own (tests, the gallery); they are
 /// then neither bound nor released here.
@@ -565,8 +583,10 @@ class _RoomModeScopeState extends State<RoomModeScope> {
 
     if (sources == null) return widget.builder(context, null);
 
+    // Every source: the schedule, occupancy or a new automation can bring
+    // the control in a room with no modes.
     return ListenableBuilder(
-      listenable: sources.activity,
+      listenable: sources.listenable,
       builder: (context, _) => widget.builder(context, sources),
     );
   }
@@ -611,6 +631,34 @@ class RoomModePanel extends StatelessWidget {
           RoomOverviewMetrics.chipHeightFor(resolvedClass),
         );
         final line = _ScheduleLine(sources: sources, sizeClass: resolvedClass);
+
+        void details() => showRoomModeDetails(
+          context,
+          sources: sources,
+          automations: automationsInDetails,
+          landscape: landscape,
+          sizeClass: resolvedClass,
+        );
+
+        // No modes: the schedule and occupancy line (or the automations'
+        // label) and the details button, no label or chips.
+        if (!RoomModeStatus.visible(sources.activity)) {
+          return Row(
+            spacing: AppSpacings.scale(RoomOverviewMetrics.chipGap),
+            children: [
+              Expanded(
+                child: line.hasContent
+                    ? line
+                    : SectionLabel(label: l.space_automations_title),
+              ),
+              RoomModeDetailsButton(
+                attention: false,
+                size: chipHeight,
+                onTap: details,
+              ),
+            ],
+          );
+        }
 
         return Semantics(
           container: true,
@@ -689,13 +737,7 @@ class RoomModePanel extends StatelessWidget {
                     RoomModeDetailsButton(
                       attention: status.attention,
                       size: chipHeight,
-                      onTap: () => showRoomModeDetails(
-                        context,
-                        sources: sources,
-                        automations: automationsInDetails,
-                        landscape: landscape,
-                        sizeClass: resolvedClass,
-                      ),
+                      onTap: details,
                     ),
                   ],
                 ),
@@ -1005,6 +1047,16 @@ class RoomModeButton extends StatelessWidget {
           sizeClass: sizeClass,
         );
 
+        // No modes: a details button opens the schedule, occupancy and
+        // automations.
+        if (!RoomModeStatus.visible(sources.activity)) {
+          return RoomModeDetailsButton(
+            attention: false,
+            size: AppSpacings.scale(RoomOverviewMetrics.modeButtonHeight),
+            onTap: open,
+          );
+        }
+
         return Semantics(
           container: true,
           button: true,
@@ -1103,32 +1155,35 @@ Future<void> showRoomModeChooser(
       listenable: sources.listenable,
       builder: (context, _) {
         final status = RoomModeStatus.of(sources.activity, l);
+        final modes = RoomModeStatus.visible(sources.activity);
 
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: AppSpacings.scale(RoomOverviewMetrics.padFor(resolvedClass)),
           children: [
-            if (status.outcome != null)
+            if (modes && status.outcome != null)
               RoomModeOutcome(
                 outcome: status.outcome!,
                 text: status.outcomeText!,
               ),
-            for (final option in status.options)
-              AppListRow(
-                key: ValueKey('room-mode-option-${option.key ?? 'manual'}'),
-                title: option.label,
-                icon: option.icon,
-                selected: identical(option, status.selected),
-                enabled: status.enabled,
-                onTap: () {
-                  Navigator.of(layerContext).pop();
-                  status.select(sources.activity, option);
-                },
-              ),
+            if (modes)
+              for (final option in status.options)
+                AppListRow(
+                  key: ValueKey('room-mode-option-${option.key ?? 'manual'}'),
+                  title: option.label,
+                  icon: option.icon,
+                  selected: identical(option, status.selected),
+                  enabled: status.enabled,
+                  onTap: () {
+                    Navigator.of(layerContext).pop();
+                    status.select(sources.activity, option);
+                  },
+                ),
             RoomModeDetails(
               sources: sources,
               automations: true,
+              onClose: () => Navigator.of(layerContext).pop(),
               sizeClass: resolvedClass,
             ),
           ],
@@ -1153,26 +1208,27 @@ Future<void> showRoomModeDetails(
   ScreenSizeClass? sizeClass,
 }) {
   final l = AppLocalizations.of(context)!;
-  final status = RoomModeStatus.of(sources.activity, l);
 
+  // The header, the outcome and Retry live in the content, so they follow
+  // the selection while the layer is open.
   return _showRoomModeLayer(
     context,
-    title: status.selectedKey == null
-        ? l.room_mode_title
-        : l.room_mode_details_title(status.name(l)),
-    subtitle: status.outcomeText,
+    title: l.room_mode_title,
     sources: sources,
     landscape: landscape,
     sizeClass: sizeClass,
-    action: _retryAction(l, sources, status),
     content: (layerContext, resolvedClass) => RoomModeDetails(
       sources: sources,
       automations: automations,
+      header: true,
+      onClose: () => Navigator.of(layerContext).pop(),
       sizeClass: resolvedClass,
     ),
   );
 }
 
+/// What Retry does now: send the selected mode again after Partial, Failed
+/// or Replaced, refresh after Not confirmed or Changed elsewhere.
 (String, VoidCallback)? _retryAction(
   AppLocalizations l,
   RoomModeSources sources,
@@ -1193,30 +1249,14 @@ Future<void> showRoomModeDetails(
 Future<void> _showRoomModeLayer(
   BuildContext context, {
   required String title,
-  String? subtitle,
   required RoomModeSources sources,
   required Widget Function(BuildContext, ScreenSizeClass) content,
-  (String, VoidCallback)? action,
   bool? landscape,
   ScreenSizeClass? sizeClass,
 }) async {
   final screen = locator<ScreenService>();
   final resolvedClass = sizeClass ?? screen.sizeClass;
   final isLandscape = landscape ?? screen.isLandscape;
-
-  Widget? footer = action == null
-      ? null
-      : Builder(
-          builder: (layerContext) => AppDialogButton(
-            label: action.$1,
-            primary: true,
-            sizeClass: resolvedClass,
-            onTap: () {
-              Navigator.of(layerContext).pop();
-              action.$2();
-            },
-          ),
-        );
 
   // Built inside the layer, so a tap closes the layer's own route.
   final body = Builder(
@@ -1227,9 +1267,7 @@ Future<void> _showRoomModeLayer(
     await showRightDrawer<void>(
       context,
       title: title,
-      subtitle: subtitle,
       content: body,
-      footerSection: footer,
       sizeClass: resolvedClass,
     );
 
@@ -1239,37 +1277,34 @@ Future<void> _showRoomModeLayer(
   await showBottomSheetDialog(
     context,
     title: title,
-    subtitle: subtitle,
     content: Padding(
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacings.scale(SheetMetrics.paddingFor(resolvedClass)),
       ),
       child: body,
     ),
-    bottomSection: footer == null
-        ? null
-        : Padding(
-            padding: EdgeInsets.all(
-              AppSpacings.scale(SheetMetrics.paddingFor(resolvedClass)),
-            ),
-            child: footer,
-          ),
     sizeClass: resolvedClass,
   );
 }
 
-/// The details layer's content: the last request's results per part, the
-/// schedule, occupancy and, with [automations], the space's automations.
+/// The details layer's content, all of it live: with [header] the mode and
+/// its outcome, then the last request's results per part, the schedule,
+/// occupancy and, with [automations], the space's automations, and Retry
+/// when the outcome calls for it ([onClose] closes the layer first).
 class RoomModeDetails extends StatelessWidget {
   const RoomModeDetails({
     super.key,
     required this.sources,
     this.automations = true,
+    this.header = false,
+    this.onClose,
     this.sizeClass,
   });
 
   final RoomModeSources sources;
   final bool automations;
+  final bool header;
+  final VoidCallback? onClose;
   final ScreenSizeClass? sizeClass;
 
   @override
@@ -1294,12 +1329,29 @@ class RoomModeDetails extends StatelessWidget {
       listenable: sources.listenable,
       builder: (context, _) {
         final results = sources.activity.state?.activityResults ?? const [];
+        final status = RoomModeStatus.of(sources.activity, l);
+        final modes = RoomModeStatus.visible(sources.activity);
+        final retry = modes ? _retryAction(l, sources, status) : null;
 
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: AppSpacings.pSm,
           children: [
+            if (header && modes) ...[
+              Text(
+                status.selectedKey == null
+                    ? status.name(l)
+                    : l.room_mode_details_title(status.name(l)),
+                key: const ValueKey('room-mode-details-title'),
+                style: style.copyWith(fontWeight: FontWeight.w500),
+              ),
+              if (status.outcome != null)
+                RoomModeOutcome(
+                  outcome: status.outcome!,
+                  text: status.outcomeText!,
+                ),
+            ],
             if (results.isNotEmpty)
               OutcomeDetailsList(
                 rows: [
@@ -1323,6 +1375,17 @@ class RoomModeDetails extends StatelessWidget {
               AutomationsSection(
                 spaceId: sources.spaceId,
                 service: sources.automations,
+              ),
+            if (retry != null)
+              AppDialogButton(
+                key: const ValueKey('room-mode-retry'),
+                label: retry.$1,
+                primary: true,
+                sizeClass: resolvedClass,
+                onTap: () {
+                  onClose?.call();
+                  retry.$2();
+                },
               ),
           ],
         );

@@ -176,15 +176,19 @@ class QuickActionInfo {
     this.semanticLabel,
   });
 
-  QuickActionInfo copyWith({IconData? icon, String? label, bool? selected}) =>
-      QuickActionInfo(
-        type: type,
-        icon: icon ?? this.icon,
-        label: label ?? this.label,
-        disabled: disabled,
-        selected: selected ?? this.selected,
-        semanticLabel: semanticLabel,
-      );
+  QuickActionInfo copyWith({
+    IconData? icon,
+    String? label,
+    bool? selected,
+    String? semanticLabel,
+  }) => QuickActionInfo(
+    type: type,
+    icon: icon ?? this.icon,
+    label: label ?? this.label,
+    disabled: disabled,
+    selected: selected ?? this.selected,
+    semanticLabel: semanticLabel ?? this.semanticLabel,
+  );
 }
 
 /// One domain card on the room overview (docs/display-ui-design-spec.md
@@ -246,6 +250,64 @@ class DomainCardInfo {
     actions: actions ?? this.actions,
     compactActions: compactActions ?? this.compactActions,
     isActive: isActive ?? this.isActive,
+  );
+}
+
+/// A card while a quick action waits for the room to report back: the value
+/// it expects ([primaryValue] and [unit] together), whether the domain is
+/// on, and for Climate the new mode's label, icon and spoken label.
+///
+/// The selection follows: Off is selected while the lights are off and On
+/// (or the Climate mode button) while they are on.
+DomainCardInfo optimisticCard(
+  DomainCardInfo card, {
+  String? primaryValue,
+  String? unit,
+  bool? isActive,
+  ({String label, IconData icon, String semanticLabel, bool on})? climateMode,
+}) {
+  List<QuickActionInfo> select(List<QuickActionInfo> actions, bool on) => [
+    for (final action in actions)
+      switch (action.type) {
+        QuickActionType.lightsOff => action.copyWith(selected: !on),
+        QuickActionType.lightsOn => action.copyWith(selected: on),
+        // The brightness presets only match a reported brightness.
+        QuickActionType.lightsHalf ||
+        QuickActionType.lightsFull => action.copyWith(selected: false),
+        _ => action,
+      },
+  ];
+
+  var actions = card.actions;
+  var compactActions = card.compactActions;
+
+  if (card.domain == DomainType.lights && isActive != null) {
+    actions = select(actions, isActive);
+    compactActions = select(compactActions, isActive);
+  }
+
+  if (climateMode != null &&
+      card.domain == DomainType.climate &&
+      actions.isNotEmpty &&
+      actions.first.type == QuickActionType.climateMode) {
+    actions = [
+      actions.first.copyWith(
+        label: climateMode.label,
+        icon: climateMode.icon,
+        selected: climateMode.on,
+        semanticLabel: climateMode.semanticLabel,
+      ),
+      ...actions.skip(1),
+    ];
+  }
+
+  return card.copyWith(
+    primaryValue: primaryValue,
+    unit: unit,
+    clearUnit: primaryValue != null && unit == null,
+    isActive: isActive,
+    actions: actions,
+    compactActions: compactActions,
   );
 }
 

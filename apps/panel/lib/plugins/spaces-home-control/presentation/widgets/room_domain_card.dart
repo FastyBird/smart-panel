@@ -46,78 +46,96 @@ class RoomDomainCard extends StatelessWidget {
       RoomOverviewMetrics.cardPaddingFor(resolvedClass),
     );
 
-    return Container(
-      decoration: BoxDecoration(
-        color: neutrals.surfaceCard,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
+    final radius = BorderRadius.circular(AppBorderRadius.base);
+
+    // The whole card opens the domain, so its touch target is never shorter
+    // than the card; the quick actions inside take their own taps. Screen
+    // readers get the head's button instead.
+    return Material(
+      color: neutrals.surfaceCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(
           color: neutrals.borderLight,
           width: AppSpacings.scale(1),
         ),
       ),
-      padding: EdgeInsets.all(padding),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final actions = small || card.actions.isEmpty
-              ? const <QuickActionInfo>[]
-              : RoomOverviewMetrics.actionsFor(
-                      AppSpacings.unscale(constraints.maxWidth + 2 * padding),
-                      resolvedClass,
-                    ) ==
-                    3
-              ? card.actions
-              : (card.compactActions.isEmpty
-                    ? card.actions.take(2).toList()
-                    : card.compactActions);
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: AppSpacings.scale(RoomOverviewMetrics.cardGap),
-            children: [
-              Expanded(
-                child: _CardHead(
-                  card: card,
-                  small: small,
-                  sizeClass: resolvedClass,
-                  onOpen: onOpen,
-                ),
-              ),
-              if (actions.isNotEmpty)
-                // At least 36 (40) high; taller with a larger text size.
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: AppSpacings.scale(
-                      RoomOverviewMetrics.actionHeightFor(resolvedClass),
-                    ),
-                  ),
-                  child: IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: AppSpacings.scale(RoomOverviewMetrics.actionGap),
-                      children: [
-                        for (final action in actions)
-                          Expanded(
-                            child: RoomQuickAction(
-                              action: action,
-                              domain: card.domain,
-                              onTap: onAction == null
-                                  ? null
-                                  : () => onAction!(action.type),
-                            ),
+      child: InkWell(
+        key: const ValueKey('room-card-tap'),
+        onTap: onOpen,
+        excludeFromSemantics: true,
+        borderRadius: radius,
+        child: Padding(
+          padding: EdgeInsets.all(padding),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final actions = small || card.actions.isEmpty
+                  ? const <QuickActionInfo>[]
+                  : RoomOverviewMetrics.actionsFor(
+                          AppSpacings.unscale(
+                            constraints.maxWidth + 2 * padding,
                           ),
-                      ],
+                          resolvedClass,
+                        ) ==
+                        3
+                  ? card.actions
+                  : (card.compactActions.isEmpty
+                        ? card.actions.take(2).toList()
+                        : card.compactActions);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: AppSpacings.scale(RoomOverviewMetrics.cardGap),
+                children: [
+                  Expanded(
+                    child: _CardHead(
+                      card: card,
+                      small: small,
+                      sizeClass: resolvedClass,
+                      onOpen: onOpen,
                     ),
                   ),
-                ),
-            ],
-          );
-        },
+                  if (actions.isNotEmpty)
+                    // At least 36 (40) high; taller with a larger text size.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: AppSpacings.scale(
+                          RoomOverviewMetrics.actionHeightFor(resolvedClass),
+                        ),
+                      ),
+                      child: IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          spacing: AppSpacings.scale(
+                            RoomOverviewMetrics.actionGap,
+                          ),
+                          children: [
+                            for (final action in actions)
+                              Expanded(
+                                child: RoomQuickAction(
+                                  action: action,
+                                  domain: card.domain,
+                                  onTap: onAction == null
+                                      ? null
+                                      : () => onAction!(action.type),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 }
 
-/// The card's head: one button that opens the domain.
+/// The card's head: what screen readers hear as the button that opens the
+/// domain (the whole card takes the tap).
 class _CardHead extends StatelessWidget {
   const _CardHead({
     required this.card,
@@ -320,16 +338,7 @@ class _CardHead extends StatelessWidget {
           card.spokenSubtitle ?? (card.subtitle.isEmpty ? null : card.subtitle),
       onTap: onOpen,
       excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onOpen,
-          borderRadius: BorderRadius.circular(
-            AppSpacings.scale(RoomOverviewMetrics.actionRadius),
-          ),
-          child: content,
-        ),
-      ),
+      child: content,
     );
   }
 }

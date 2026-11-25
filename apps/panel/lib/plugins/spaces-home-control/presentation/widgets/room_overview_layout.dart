@@ -243,8 +243,12 @@ class RoomOverviewLayout extends StatelessWidget {
     final compact = sizeClass == ScreenSizeClass.compact;
     final expanded = sizeClass == ScreenSizeClass.expanded;
     final modeSources = modes;
+    // The control shows with modes, and without them while the schedule,
+    // occupancy or (below Expanded, which lists them) automations need it.
     final showModes =
-        modeSources != null && RoomModeStatus.visible(modeSources.activity);
+        modeSources != null &&
+        (RoomModeStatus.visible(modeSources.activity) ||
+            roomModeExtras(modeSources, automations: !expanded));
     final pillGap = AppSpacings.scale(RoomOverviewMetrics.pillGap);
 
     // One row that scrolls sideways; nothing wraps (spec §4, Overflow).
@@ -312,11 +316,23 @@ class RoomOverviewLayout extends StatelessWidget {
             ),
           )
         else if (cards.length == 1)
-          SizedBox(
-            height: AppSpacings.scale(
-              RoomOverviewMetrics.singleCardHeightFor(sizeClass),
+          // Its own height when it fits, else it scrolls.
+          Flexible(
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final cardHeight = AppSpacings.scale(
+                  RoomOverviewMetrics.singleCardHeightFor(sizeClass),
+                );
+                final card = SizedBox(
+                  height: cardHeight,
+                  child: _card(cards.single, sizeClass, small: false),
+                );
+
+                return box.maxHeight >= cardHeight
+                    ? card
+                    : SingleChildScrollView(child: card);
+              },
             ),
-            child: _card(cards.single, sizeClass, small: false),
           )
         else
           Expanded(

@@ -5289,5 +5289,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get room_overview_not_set_up_message =>
-      'Gib den Geräten in diesem Raum in der Admin-App eine Rolle, dann erscheinen sie hier.';
+      'Füge diesem Raum in der Admin-App Geräte hinzu und gib ihnen eine Rolle, dann erscheinen sie hier.';
+
+  @override
+  String sky_room_readings(String readings) {
+    return 'Im Raum: $readings';
+  }
 }

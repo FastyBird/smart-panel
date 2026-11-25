@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/api/api_client.dart';
+import 'package:fastybird_smart_panel/modules/automations/repositories/automations.dart';
+import 'package:fastybird_smart_panel/modules/automations/service.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/mode_schedule.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -673,6 +677,13 @@ void main() {
         size: const Size(576, 400),
       );
       expect(find.text('This room is not set up yet'), findsOneWidget);
+      // A room without devices: add them first, then give them roles.
+      expect(
+        find.text(
+          'Add devices to this room in the admin app and give them a role, and they will show up here.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('loading shows skeleton blocks; an error offers Try again', (
@@ -739,6 +750,227 @@ void main() {
       expect(opened, [DomainType.climate]);
       expect(actions, [QuickActionType.lightsFull]);
     });
+  });
+
+  group('review round 1', () {
+    testWidgets('the whole card opens its domain, even its padding', (
+      tester,
+    ) async {
+      final opened = <DomainType>[];
+      final actions = <QuickActionType>[];
+      await _pump(
+        tester,
+        RoomOverviewLayout(
+          skyBuilder: _Sky().build,
+          cards: [_card(DomainType.lights)],
+          onOpenDomain: opened.add,
+          onAction: actions.add,
+          sizeClass: ScreenSizeClass.compact,
+          square: false,
+        ),
+        size: const Size(240, 356),
+      );
+
+      // The card's top-left corner, inside its padding: not the head.
+      final card = tester.getRect(
+        find.byKey(const ValueKey('room-card-lights')),
+      );
+      await tester.tapAt(card.topLeft + const Offset(3, 3));
+      // Between the head and the actions.
+      await tester.tapAt(Offset(card.center.dx, card.bottom - 3));
+      expect(opened, [DomainType.lights, DomainType.lights]);
+
+      // A quick action still runs alone.
+      await tester.tap(_inCard(DomainType.lights, find.text('Off')));
+      expect(opened, hasLength(2));
+      expect(actions, [QuickActionType.lightsOff]);
+    });
+
+    testWidgets('a lone card scrolls under the mode button on the square', (
+      tester,
+    ) async {
+      // The square: 200 for the page, 76 for the sky, 112 for the content.
+      await _pump(
+        tester,
+        RoomOverviewLayout(
+          skyBuilder: _Sky().build,
+          cards: [_card(DomainType.lights)],
+          modes: sources(),
+          sizeClass: ScreenSizeClass.compact,
+          square: true,
+        ),
+        size: const Size(240, 200),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('room-card-lights'))).height,
+        80,
+      );
+    });
+
+    testWidgets(
+      'without modes the control stays for the schedule, occupancy and automations',
+      (tester) async {
+        final schedule = ModeScheduleRepository(dio: dio)
+          ..state = ModeScheduleState.fromJson({
+            'space_id': _space,
+            'enabled': true,
+            'timezone': 'Europe/Prague',
+            'status': 'running',
+            'manual_override': false,
+            'current': null,
+            'next': {
+              'entry_id': 'next',
+              'mode': 'sleep',
+              'time': '22:30',
+              'local_date': '2026-11-21',
+              'timezone': 'Europe/Prague',
+              'occurs_at': '2026-11-21T21:30:00Z',
+            },
+            'last_attempt': null,
+            'last_attempt_status': null,
+          })
+          ..fresh = true;
+        addTearDown(schedule.dispose);
+        final noModes = ActivityModesRepository(dio: dio)..fresh = true;
+        addTearDown(noModes.dispose);
+
+        await _pump(
+          tester,
+          RoomOverviewLayout(
+            skyBuilder: _Sky().build,
+            cards: _fourCards,
+            modes: RoomModeSources(
+              spaceId: _space,
+              activity: noModes,
+              schedule: schedule,
+            ),
+            sizeClass: ScreenSizeClass.regular,
+            square: false,
+          ),
+          size: const Size(576, 400),
+        );
+
+        // The line and the details button, without label or chips.
+        expect(find.text('Sleep at 22:30'), findsOneWidget);
+        expect(find.byType(RoomModeDetailsButton), findsOneWidget);
+        expect(find.byType(RoomModeChip), findsNothing);
+        expect(find.text('ROOM MODE'), findsNothing);
+
+        // Compact: a details button opens them.
+        await _pump(
+          tester,
+          RoomOverviewLayout(
+            skyBuilder: _Sky().build,
+            cards: _fourCards,
+            modes: RoomModeSources(
+              spaceId: _space,
+              activity: noModes,
+              schedule: schedule,
+            ),
+            sizeClass: ScreenSizeClass.compact,
+            square: false,
+          ),
+          size: const Size(350, 240),
+        );
+        await tester.tap(find.byType(RoomModeDetailsButton));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('schedule-next')), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('room-mode-option-manual')),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets('automations alone keep the control below Expanded', (
+      tester,
+    ) async {
+      final repository = AutomationsRepository(
+        apiClient: ApiClient(Dio()).automationsModule,
+      );
+      final automations = AutomationsService(repository: repository);
+      addTearDown(automations.dispose);
+      repository.insert([
+        {
+          'id': 'a',
+          'name': 'Evening lights',
+          'description': null,
+          'icon': null,
+          'enabled': true,
+          'space_id': _space,
+          'mode': 'restart',
+          'revision': 1,
+          'status': 'ok',
+          'last_triggered_at': null,
+          'last_run_status': null,
+          'created_at': '2026-11-01T00:00:00Z',
+          'updated_at': null,
+        },
+      ]);
+      final noModes = ActivityModesRepository(dio: dio)..fresh = true;
+      addTearDown(noModes.dispose);
+      final modes = RoomModeSources(
+        spaceId: _space,
+        activity: noModes,
+        automations: automations,
+      );
+
+      await _pump(
+        tester,
+        RoomOverviewLayout(
+          skyBuilder: _Sky().build,
+          cards: _fourCards,
+          modes: modes,
+          sizeClass: ScreenSizeClass.regular,
+          square: false,
+        ),
+        size: const Size(576, 400),
+      );
+      expect(find.byType(RoomModeDetailsButton), findsOneWidget);
+      await tester.tap(find.byType(RoomModeDetailsButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Evening lights'), findsOneWidget);
+    });
+
+    testWidgets(
+      'the details follow the selection while open: header, outcome and Retry',
+      (tester) async {
+        adapter.status = 'failed';
+        final activity = ActivityModesRepository(dio: dio);
+        addTearDown(activity.dispose);
+        await tester.runAsync(() => activity.bind(_space));
+        final modes = RoomModeSources(spaceId: _space, activity: activity);
+
+        await _pump(
+          tester,
+          RoomOverviewLayout(
+            skyBuilder: _Sky().build,
+            cards: _fourCards,
+            modes: modes,
+            sizeClass: ScreenSizeClass.regular,
+            square: false,
+          ),
+          size: const Size(576, 400),
+        );
+        await tester.tap(find.byType(RoomModeDetailsButton));
+        await tester.pumpAndSettle();
+        expect(find.text('Room mode: Work'), findsOneWidget);
+        expect(find.text('Retry Work'), findsOneWidget);
+
+        // Another panel selects Relax while the details are open.
+        adapter
+          ..mode = 'relax'
+          ..status = 'active';
+        await tester.runAsync(activity.refresh);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Room mode: Relax'), findsOneWidget);
+        expect(find.text('Room mode: Work'), findsNothing);
+        expect(find.text('Retry Work'), findsNothing);
+      },
+    );
   });
 
   group('room mode on Compact', () {

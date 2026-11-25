@@ -5286,5 +5286,10 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get room_overview_not_set_up_message =>
-      'Priraďte zariadeniam v tejto miestnosti rolu v administrácii a objavia sa tu.';
+      'Pridajte do tejto miestnosti zariadenia v administrácii a priraďte im rolu, potom sa tu objavia.';
+
+  @override
+  String sky_room_readings(String readings) {
+    return 'V miestnosti: $readings';
+  }
 }

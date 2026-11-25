@@ -5274,5 +5274,10 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get room_overview_not_set_up_message =>
-      'Přiřaďte zařízením v této místnosti roli v administraci a objeví se tu.';
+      'Přidejte do této místnosti zařízení v administraci a přiřaďte jim roli, pak se tu objeví.';
+
+  @override
+  String sky_room_readings(String readings) {
+    return 'V místnosti: $readings';
+  }
 }

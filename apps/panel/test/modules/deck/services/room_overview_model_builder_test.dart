@@ -1074,4 +1074,99 @@ void main() {
       expect(action.sceneId, isNull);
     });
   });
+  group('optimisticCard', () {
+    DomainCardInfo lightsOff() => DomainCardInfo(
+      domain: DomainType.lights,
+      icon: DomainType.lights.icon,
+      title: 'Lights',
+      primaryValue: 'Off',
+      subtitle: '4 lights',
+      actions: [
+        QuickActionInfo(
+          type: QuickActionType.lightsOff,
+          icon: MdiIcons.lightbulbOff,
+          label: 'Off',
+          selected: true,
+        ),
+        QuickActionInfo(
+          type: QuickActionType.lightsHalf,
+          icon: MdiIcons.brightnessAuto,
+          label: '50%',
+        ),
+        QuickActionInfo(
+          type: QuickActionType.lightsFull,
+          icon: MdiIcons.brightness7,
+          label: '100%',
+        ),
+      ],
+      compactActions: [
+        QuickActionInfo(
+          type: QuickActionType.lightsOff,
+          icon: MdiIcons.lightbulbOff,
+          label: 'Off',
+          selected: true,
+        ),
+        QuickActionInfo(
+          type: QuickActionType.lightsOn,
+          icon: MdiIcons.lightbulbOn,
+          label: 'On',
+        ),
+      ],
+    );
+
+    test('On shows On at once and moves the selection to On', () {
+      final card = optimisticCard(
+        lightsOff(),
+        primaryValue: 'On',
+        isActive: true,
+      );
+
+      expect(card.primaryValue, 'On');
+      expect(card.unit, isNull);
+      expect(card.isActive, isTrue);
+      expect(card.compactActions.map((a) => a.selected), [false, true]);
+      expect(card.actions.map((a) => a.selected), [false, false, false]);
+    });
+
+    test(
+      'a new climate mode changes its spoken label with its visible one',
+      () {
+        final heat = DomainCardInfo(
+          domain: DomainType.climate,
+          icon: DomainType.climate.icon,
+          title: 'Climate',
+          primaryValue: '21.5',
+          unit: '\u00B0',
+          subtitle: 'Heating',
+          actions: [
+            QuickActionInfo(
+              type: QuickActionType.climateMode,
+              icon: MdiIcons.fire,
+              label: 'Heat',
+              selected: true,
+              semanticLabel: _l.room_card_climate_mode('Heat'),
+            ),
+          ],
+        );
+
+        final cool = optimisticCard(
+          heat,
+          climateMode: (
+            label: 'Cool',
+            icon: MdiIcons.snowflake,
+            semanticLabel: _l.room_card_climate_mode('Cool'),
+            on: true,
+          ),
+        );
+
+        expect(cool.actions.single.label, 'Cool');
+        expect(
+          cool.actions.single.semanticLabel,
+          _l.room_card_climate_mode('Cool'),
+        );
+        // The value and its unit stay.
+        expect((cool.primaryValue, cool.unit), ('21.5', '\u00B0'));
+      },
+    );
+  });
 }

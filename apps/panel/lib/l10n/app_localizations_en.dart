@@ -5232,5 +5232,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get room_overview_not_set_up_message =>
-      'Give the devices in this room a role in the admin app and they will show up here.';
+      'Add devices to this room in the admin app and give them a role, and they will show up here.';
+
+  @override
+  String sky_room_readings(String readings) {
+    return 'In the room: $readings';
+  }
 }

@@ -1616,5 +1616,6 @@
   "room_overview_empty_title": "Hier gibt es nichts zu steuern",
   "room_overview_empty_message": "Licht, Klima, Beschattung und Medien erscheinen hier, sobald sie in diesem Raum sind.",
   "room_overview_not_set_up_title": "Dieser Raum ist noch nicht eingerichtet",
-  "room_overview_not_set_up_message": "Gib den Geräten in diesem Raum in der Admin-App eine Rolle, dann erscheinen sie hier."
+  "room_overview_not_set_up_message": "Füge diesem Raum in der Admin-App Geräte hinzu und gib ihnen eine Rolle, dann erscheinen sie hier.",
+  "sky_room_readings": "Im Raum: {readings}"
 }

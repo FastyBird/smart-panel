@@ -19,6 +19,7 @@ import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
+import 'package:fastybird_smart_panel/core/widgets/outcome_details_sheet.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/room_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1133,9 +1134,10 @@ void main() {
       expect(tester.takeException(), isNull);
       // The unknown part is named Unknown with an Unknown status.
       final details = find.byType(RoomModeDetails);
+      final rows = find.byType(OutcomeDetailsList);
       expect(
         find.descendant(
-          of: details,
+          of: rows,
           matching: find.textContaining('Unknown', findRichText: true),
         ),
         findsNWidgets(2),

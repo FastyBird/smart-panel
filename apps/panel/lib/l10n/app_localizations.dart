@@ -9475,8 +9475,14 @@ abstract class AppLocalizations {
   /// Room overview line when the room has no devices at all
   ///
   /// In en, this message translates to:
-  /// **'Give the devices in this room a role in the admin app and they will show up here.'**
+  /// **'Add devices to this room in the admin app and give them a role, and they will show up here.'**
   String get room_overview_not_set_up_message;
+
+  /// Screen reader label of the sky card that holds only the room readings (no weather location)
+  ///
+  /// In en, this message translates to:
+  /// **'In the room: {readings}'**
+  String sky_room_readings(String readings);
 }
 
 class _AppLocalizationsDelegate

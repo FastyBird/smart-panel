@@ -227,30 +227,25 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       final override = _optimistic[card.domain];
       if (override == null || override.isExpired) return card;
 
-      var updated = card.copyWith(
+      final mode = override.climateMode;
+      final modeInfo = mode == null ? null : _climateModeInfo(mode);
+
+      return optimisticCard(
+        card,
         primaryValue: override.primaryValue,
         unit: override.unit,
-        clearUnit: override.primaryValue != null && override.unit == null,
         isActive: override.isActive,
+        climateMode: mode == null
+            ? null
+            : (
+                label: modeInfo!.$1,
+                icon: modeInfo.$2,
+                semanticLabel: AppLocalizations.of(
+                  context,
+                )!.room_card_climate_mode(modeInfo.$1),
+                on: mode != ClimateMode.off,
+              ),
       );
-
-      // Climate mode button update
-      if (override.climateMode != null &&
-          card.domain == DomainType.climate &&
-          card.actions.isNotEmpty) {
-        final (label, icon) = _climateModeInfo(override.climateMode!);
-        final newActions = [
-          card.actions[0].copyWith(
-            label: label,
-            icon: icon,
-            selected: override.climateMode != ClimateMode.off,
-          ),
-          ...card.actions.skip(1),
-        ];
-        updated = updated.copyWith(actions: newActions);
-      }
-
-      return updated;
     }).toList();
 
     setState(() {
@@ -512,8 +507,15 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       if (card == null) continue;
 
       final override = entry.value;
+      // Lights turned on show On until the room reports them on, with
+      // whatever brightness it reports.
+      final onlyOn =
+          entry.key == DomainType.lights &&
+          override.isActive == true &&
+          override.unit == null;
       final primaryMatches =
           override.primaryValue == null ||
+          (onlyOn && card.isActive) ||
           (card.primaryValue == override.primaryValue &&
               card.unit == override.unit);
       final activeMatches =
@@ -691,11 +693,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
           }
           break;
         case QuickActionType.lightsOn:
-          _setOptimistic(DomainType.lights, isActive: true);
-          final result = await spacesService.turnRoleOn(
-            _roomId,
-            LightingStateRole.main,
+          // Every light in the room, as Off turns every light off; a room
+          // may have no light in the main role.
+          _setOptimistic(
+            DomainType.lights,
+            primaryValue: l.light_state_on,
+            isActive: true,
           );
+          final result = await spacesService.turnLightsOn(_roomId);
           if (mounted) {
             IntentResultHandler.showOfflineAlertIfNeeded(context, result);
           }

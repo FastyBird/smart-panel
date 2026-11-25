@@ -1616,5 +1616,6 @@
   "room_overview_empty_title": "Aquí no hay nada que controlar",
   "room_overview_empty_message": "Las luces, el clima, las persianas y los medios aparecen aquí cuando estén en esta habitación.",
   "room_overview_not_set_up_title": "La habitación aún no está configurada",
-  "room_overview_not_set_up_message": "Asigna un rol a los dispositivos de esta habitación en la app de administración y aparecerán aquí."
+  "room_overview_not_set_up_message": "Añade dispositivos a esta habitación en la app de administración y asígnales un rol; aparecerán aquí.",
+  "sky_room_readings": "En la habitación: {readings}"
 }

@@ -227,6 +227,22 @@ void main() {
       );
     });
 
+    test('the next tick is always ahead, within the minute', () {
+      expect(
+        skyUntilNextMinute(DateTime(2026, 10, 25, 2, 30, 59, 999)),
+        const Duration(milliseconds: 1),
+      );
+      expect(
+        skyUntilNextMinute(DateTime(2026, 10, 25, 2, 30)),
+        const Duration(minutes: 1),
+      );
+      // A UTC time in the hour the clocks go back: never negative.
+      final repeated = DateTime.utc(2026, 10, 25, 1, 30, 12, 500);
+      final delay = skyUntilNextMinute(repeated);
+      expect(delay, greaterThan(Duration.zero));
+      expect(delay, const Duration(seconds: 47, milliseconds: 500));
+    });
+
     test('temperatures are whole degrees with a true minus sign', () {
       expect(skyTemperature(6.4), '6°');
       expect(skyTemperature(-2.2), '−2°');
@@ -414,6 +430,37 @@ void main() {
       expect(find.text('Clear sky'), findsOneWidget);
     });
 
+    testWidgets('without weather Compact keeps the room readings', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _app(
+          SizedBox(
+            width: 160,
+            height: 240,
+            child: SkyPanelView(
+              look: SkyLook.of(SkyDayPart.day, SkyWeather.clear),
+              time: '12:11',
+              date: 'Sat 21 Nov',
+              readings: '21.4 °C · 46 %',
+              onWeatherTap: () {},
+              landscape: true,
+              sizeClass: ScreenSizeClass.compact,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('21.4 °C · 46 %'), findsOneWidget);
+      // Not a forecast button without weather.
+      final node = tester.getSemantics(
+        find.bySemanticsLabel('In the room: 21.4 °C · 46 %'),
+      );
+      expect(node.flagsCollection.isButton, isFalse);
+      handle.dispose();
+    });
+
     testWidgets('the weather card is one flat button that opens the forecast', (
       tester,
     ) async {
@@ -449,6 +496,12 @@ void main() {
         look.glassLine,
       );
       expect(tester.widget<Text>(find.text('12:11')).style!.color, look.text);
+
+      // The temperature is spoken too, not only drawn.
+      final node = tester.getSemantics(
+        find.bySemanticsLabel('Weather, Clear sky. Open forecast'),
+      );
+      expect(node.value, '6°');
 
       await tester.tap(find.byType(SkyWeatherCard));
       expect(opened, 1);

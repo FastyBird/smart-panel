@@ -5326,5 +5326,10 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get room_overview_not_set_up_message =>
-      'Nadaj urządzeniom w tym pokoju rolę w aplikacji administracyjnej, a pojawią się tutaj.';
+      'Dodaj urządzenia do tego pokoju w aplikacji administracyjnej i nadaj im rolę, a pojawią się tutaj.';
+
+  @override
+  String sky_room_readings(String readings) {
+    return 'W pokoju: $readings';
+  }
 }

@@ -203,11 +203,13 @@ class SkyPanelView extends StatelessWidget {
                   size: _clockSize(resolvedClass, constraints, padding),
                   sizeClass: resolvedClass,
                 );
-                final card = weather == null
+                // Without weather the card keeps the room's readings.
+                final card =
+                    weather == null && (readings == null || readings!.isEmpty)
                     ? null
                     : SkyWeatherCard(
                         look: look,
-                        weather: weather!,
+                        weather: weather,
                         readings: readings,
                         showLabel: resolvedClass != ScreenSizeClass.compact,
                         onTap: onWeatherTap,
@@ -358,12 +360,13 @@ class _Clock extends StatelessWidget {
 }
 
 /// The weather card (spec §2): one flat translucent fill, no blur. A button
-/// that opens the forecast.
+/// that opens the forecast. Without [weather] (no weather location) it only
+/// holds Compact's room readings and is not a button.
 class SkyWeatherCard extends StatelessWidget {
   const SkyWeatherCard({
     super.key,
     required this.look,
-    required this.weather,
+    this.weather,
     this.readings,
     this.showLabel = true,
     this.onTap,
@@ -371,7 +374,7 @@ class SkyWeatherCard extends StatelessWidget {
   });
 
   final SkyLook look;
-  final SkyWeatherInfo weather;
+  final SkyWeatherInfo? weather;
 
   /// Compact's room readings line.
   final String? readings;
@@ -391,49 +394,53 @@ class SkyWeatherCard extends StatelessWidget {
     );
     final radius = BorderRadius.circular(AppBorderRadius.base);
     final caption = AppSpacings.scale(SkyPanelMetrics.dateFor(resolvedClass));
+    final weather = this.weather;
+    final hasReadings = readings != null && readings!.isNotEmpty;
+    final onTap = weather == null ? null : this.onTap;
 
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpacings.scale(SkyPanelMetrics.cardLineGap),
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: AppSpacings.scale(SkyPanelMetrics.cardGap),
-          children: [
-            Icon(
-              weather.icon,
-              size: AppSpacings.scale(
-                SkyPanelMetrics.cardIconFor(resolvedClass),
-              ),
-              color: look.text,
-            ),
-            Text(
-              weather.temperature,
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
+        if (weather != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.scale(SkyPanelMetrics.cardGap),
+            children: [
+              Icon(
+                weather.icon,
+                size: AppSpacings.scale(
+                  SkyPanelMetrics.cardIconFor(resolvedClass),
+                ),
                 color: look.text,
-                fontFamily: AppNumeralFont.family,
-                fontSize: AppSpacings.scale(
-                  SkyPanelMetrics.cardTemperatureFor(resolvedClass),
-                ),
-                fontWeight: AppNumeralFont.value,
-                height: 1,
               ),
-            ),
-            if (showLabel)
-              Flexible(
-                child: Text(
-                  weather.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: look.text, fontSize: caption),
+              Text(
+                weather.temperature,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  color: look.text,
+                  fontFamily: AppNumeralFont.family,
+                  fontSize: AppSpacings.scale(
+                    SkyPanelMetrics.cardTemperatureFor(resolvedClass),
+                  ),
+                  fontWeight: AppNumeralFont.value,
+                  height: 1,
                 ),
               ),
-          ],
-        ),
-        if (readings != null && readings!.isNotEmpty)
+              if (showLabel)
+                Flexible(
+                  child: Text(
+                    weather.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: look.text, fontSize: caption),
+                  ),
+                ),
+            ],
+          ),
+        if (hasReadings)
           Row(
             mainAxisSize: MainAxisSize.min,
             spacing: AppSpacings.scale(SkyPanelMetrics.readingsGap),
@@ -463,8 +470,14 @@ class SkyWeatherCard extends StatelessWidget {
     return Semantics(
       container: true,
       button: onTap != null,
-      label: localizations.sky_weather_open(weather.label),
-      value: readings,
+      // The temperature and readings are drawn as text the replacement
+      // label would hide, so they are the value.
+      label: weather == null
+          ? localizations.sky_room_readings(readings ?? '')
+          : localizations.sky_weather_open(weather.label),
+      value: weather == null
+          ? null
+          : [weather.temperature, if (hasReadings) readings!].join(', '),
       onTap: onTap,
       excludeSemantics: true,
       child: ConstrainedBox(
@@ -568,16 +581,7 @@ class _SkyPanelState extends State<SkyPanel> {
 
   /// Ticks on the minute, so the clock turns over when the minute does.
   void _scheduleTick() {
-    final now = DateTime.now();
-    final next = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      now.hour,
-      now.minute,
-    ).add(const Duration(minutes: 1));
-
-    _clockTimer = Timer(next.difference(now), () {
+    _clockTimer = Timer(skyUntilNextMinute(DateTime.now()), () {
       if (!mounted) return;
       setState(() => _now = DateTime.now());
       _scheduleTick();
@@ -636,6 +640,17 @@ class _SkyPanelState extends State<SkyPanel> {
     );
   }
 }
+
+/// How long until the next minute turns over: always positive, and computed
+/// from the current minute's offset, never from rebuilt local time, which is
+/// ambiguous in the hour repeated when the clocks go back.
+Duration skyUntilNextMinute(DateTime now) =>
+    const Duration(minutes: 1) -
+    Duration(
+      seconds: now.second,
+      milliseconds: now.millisecond,
+      microseconds: now.microsecond,
+    );
 
 /// The clock's time and, on a 12-hour clock, its AM/PM: ("21:47", null) or
 /// ("9:47", "PM").
