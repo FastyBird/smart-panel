@@ -1793,6 +1793,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String get deck_all_pages => 'Wszystkie strony';
 
   @override
+  String get deck_settings => 'Ustawienia';
+
+  @override
+  String get deck_open_settings => 'Otwórz ustawienia';
+
+  @override
   String get system_view_entry => 'Wejście';
 
   @override

@@ -120,6 +120,25 @@ void main() {
       expect(tabs.scrollableTabs[0].icon, MdiIcons.shieldHome);
     });
 
+    test('All pages without dashboards only when asked, and with no count', () {
+      final items = [const SecurityViewItem(id: 'security', title: 'Security')];
+
+      final plain = buildDeckNavTabs(items: items, currentIndex: 0, localizations: localizations);
+      expect(plain.scrollableTabs.where((tab) => tab.isMore), isEmpty);
+
+      final always = buildDeckNavTabs(
+        items: items,
+        currentIndex: 0,
+        localizations: localizations,
+        alwaysShowAllPages: true,
+      );
+      final allPages = always.scrollableTabs.last;
+      expect(allPages.isMore, true);
+      expect(allPages.label, localizations.deck_all_pages);
+      expect(allPages.badgeCount, 0);
+      expect(allPages.isMoreActive, false);
+    });
+
     test('should add More tab when DashboardPageItems exist', () {
       final tabs = buildDeckNavTabs(
         items: [
@@ -140,7 +159,7 @@ void main() {
       expect(tabs.scrollableTabs, hasLength(1));
       final moreTab = tabs.scrollableTabs.last;
       expect(moreTab.isMore, true);
-      expect(moreTab.label, localizations.deck_nav_more);
+      expect(moreTab.label, localizations.deck_all_pages);
       expect(moreTab.pageIndex, -1);
       expect(moreTab.badgeCount, 1);
       expect(moreTab.isMoreActive, false);

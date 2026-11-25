@@ -66,4 +66,5 @@ export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mod
 export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_side_dock.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_more_sheet.dart';
+export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_nav_tab.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_panel.dart';

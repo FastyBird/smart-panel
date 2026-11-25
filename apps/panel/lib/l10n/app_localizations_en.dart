@@ -1753,7 +1753,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deck_nav_more => 'More';
 
   @override
-  String get deck_all_pages => 'All Pages';
+  String get deck_all_pages => 'All pages';
+
+  @override
+  String get deck_settings => 'Settings';
+
+  @override
+  String get deck_open_settings => 'Open settings';
 
   @override
   String get system_view_entry => 'Entry';

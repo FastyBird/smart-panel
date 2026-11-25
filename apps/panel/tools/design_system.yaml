@@ -56,6 +56,11 @@ strict:
   - lib/core/widgets/outcome_indicator.dart
   - lib/core/widgets/outcome_details_sheet.dart
   - lib/modules/deck/presentation/widgets/domain_state_view.dart
+  # DR-10: the deck bar and dock, All pages and the Settings entries.
+  - lib/modules/deck/presentation/widgets/deck_nav_tab.dart
+  - lib/modules/deck/presentation/widgets/deck_bottom_nav_bar.dart
+  - lib/modules/deck/presentation/widgets/deck_side_dock.dart
+  - lib/modules/deck/presentation/widgets/deck_more_sheet.dart
 
 # Generated code is never checked.
 exclude:

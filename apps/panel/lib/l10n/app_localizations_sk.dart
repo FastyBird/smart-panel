@@ -1774,6 +1774,12 @@ class AppLocalizationsSk extends AppLocalizations {
   String get deck_all_pages => 'Všetky stránky';
 
   @override
+  String get deck_settings => 'Nastavenia';
+
+  @override
+  String get deck_open_settings => 'Otvoriť nastavenia';
+
+  @override
   String get system_view_entry => 'Vstup';
 
   @override
