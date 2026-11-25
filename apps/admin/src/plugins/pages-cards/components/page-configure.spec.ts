@@ -188,6 +188,8 @@ describe('CardsPageConfigure', () => {
 		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
 
 		expect(document.querySelector('.grid-stack-item')).toBeNull();
+		// The card counts what it holds now, not what the store keeps until Save
+		expect(wrapper.emitted('tileCounts')?.at(-1)).toEqual([{ [CARD_ID]: 0 }]);
 		expect(wrapper.emitted('selectTile')?.at(-1)).toEqual([null]);
 
 		await wrapper.setProps({ remotePageSubmit: true });

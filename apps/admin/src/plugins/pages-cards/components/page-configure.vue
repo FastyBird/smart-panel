@@ -43,7 +43,7 @@
 							aria-hidden="true"
 						/>
 						<span class="text-label truncate">{{ card.title }}</span>
-						<span class="text-help whitespace-nowrap">{{ t('pagesCardsPlugin.editor.card.tiles', { count: getCardTiles(card.id).length }) }}</span>
+						<span class="text-help whitespace-nowrap">{{ t('pagesCardsPlugin.editor.card.tiles', { count: tileCountOf(card.id) }) }}</span>
 					</button>
 
 					<el-tooltip
@@ -115,6 +115,7 @@ const props = withDefaults(defineProps<IPageConfigureProps>(), {
 const emit = defineEmits<{
 	(e: 'selectCard', id: ICard['id']): void;
 	(e: 'selectTile', place: IPageConfigureTilePlace | null): void;
+	(e: 'tileCounts', counts: Record<ICard['id'], number>): void;
 	(e: 'editCard', id: ICard['id']): void;
 	(e: 'addTile', cardId: ICard['id']): void;
 	(e: 'editTile', tileId: ITile['id'], cardId: ICard['id']): void;
@@ -145,6 +146,11 @@ const removedTiles = new Set<ITile['id']>();
 const initialized = ref<boolean>(false);
 const suppressMarkChanged = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
+// The tiles each card holds in the editor now, with removals and moves to another card that wait for Save
+const liveTileCounts = ref<Record<ICard['id'], number>>({});
+
+const tileCountOf = (cardId: ICard['id']): number => liveTileCounts.value[cardId] ?? getCardTiles(cardId).length;
+
 // Set while grids are torn down: a grid already destroyed has no element left to read its items from
 let tearingDown = false;
 let initTimeout: ReturnType<typeof setTimeout>;
@@ -355,6 +361,16 @@ const refreshGridItems = (): void => {
 	if (tearingDown) {
 		return;
 	}
+
+	const counts: Record<ICard['id'], number> = {};
+
+	for (const [cardId, grid] of cardGrids) {
+		counts[cardId] = grid.getGridItems().length;
+	}
+
+	liveTileCounts.value = counts;
+
+	emit('tileCounts', counts);
 
 	for (const [, grid] of cardGrids) {
 		for (const itemEl of grid.getGridItems()) {

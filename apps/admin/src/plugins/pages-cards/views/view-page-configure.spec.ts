@@ -115,6 +115,7 @@ vi.mock('../components/page-configure.vue', () => ({
 		emits: [
 			'select-card',
 			'select-tile',
+			'tile-counts',
 			'edit-card',
 			'add-tile',
 			'edit-tile',
@@ -579,5 +580,25 @@ describe('ViewCardsPageConfigure', () => {
 
 		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('tile')).toMatchObject({ id: TILE_ID });
 		expect(wrapper.findComponent({ name: 'PageConfigure' }).props('selectedTileId')).toBe(TILE_ID);
+	});
+
+	it('counts the tiles a card holds on the canvas now, before Save files removals and moves', async () => {
+		cardTiles.value = [
+			{ id: TILE_ID, draft: false },
+			{ id: 'tile-2', draft: false },
+		];
+
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+		const configure = wrapper.findComponent({ name: 'PageConfigure' });
+
+		configure.vm.$emit('select-card', CARD_ID);
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('cardTileCount')).toBe(2);
+
+		configure.vm.$emit('tile-counts', { [CARD_ID]: 1 });
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('cardTileCount')).toBe(1);
 	});
 });

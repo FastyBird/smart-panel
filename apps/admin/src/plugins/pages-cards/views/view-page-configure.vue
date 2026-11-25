@@ -163,6 +163,7 @@
 					:selected-card-id="selectedPlace === null ? selectedCardId : null"
 					@select-card="onSelectCard"
 					@select-tile="onSelectTile"
+					@tile-counts="(counts: Record<string, number>) => (cardTileCounts = counts)"
 					@edit-card="onCardEdit"
 					@add-tile="onTileAdd"
 					@edit-tile="onTileEdit"
@@ -188,7 +189,7 @@
 						:place="selectedPlace"
 						:tile="selectedTile"
 						:card="inspectorCard"
-						:card-tile-count="inspectorCard ? (tilesByCard[inspectorCard.id] ?? []).length : 0"
+						:card-tile-count="inspectorCard ? (cardTileCounts[inspectorCard.id] ?? (tilesByCard[inspectorCard.id] ?? []).length) : 0"
 						:grid-layout="gridLayout"
 						:data-sources="pageDataSources"
 						:data-sources-loading="dataSourcesLoading"
@@ -321,6 +322,9 @@ const selectedDisplayId = ref<string | null>(null);
 // Template 8: one thing is selected at a time, a tile (with its place in the editor) or a card
 const selectedPlace = ref<IPageConfigureTilePlace | null>(null);
 const selectedCardId = ref<string | null>(null);
+
+// The tiles each card holds on the canvas now, removals and moves to another card included, as the canvas reports them
+const cardTileCounts = ref<Record<string, number>>({});
 
 // Tablet portrait: the inspector shows the page's data sources only when asked
 const pagePanelOpen = ref<boolean>(false);
