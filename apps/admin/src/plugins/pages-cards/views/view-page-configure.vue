@@ -92,6 +92,7 @@
 			</div>
 
 			<page-configure
+				:key="configureKey"
 				v-model:remote-page-submit="remotePageSubmit"
 				v-model:remote-page-result="remotePageResult"
 				v-model:remote-page-changed="remotePageChanged"
@@ -197,6 +198,9 @@ const remotePageResult = ref<FormResultType>(FormResult.NONE);
 const remotePageChanged = ref<boolean>(false);
 
 const selectedDisplayId = ref<string | null>(null);
+
+// A new key remounts the canvas from the saved layout: a confirmed discard drops every pending move and removal
+const configureKey = ref<number>(0);
 
 // Leaving the editor asks first while the layout has changes; Discard and a save let it go
 let allowLeave = false;
@@ -312,8 +316,13 @@ const gridOf = (display: IDisplay | null): string => (display ? `${display.rows 
 const onDisplaySelect = async (displayId: string): Promise<void> => {
 	const next = applicableDisplays.value.find((display) => display.id === displayId) ?? null;
 
-	if (remotePageChanged.value && gridOf(next) !== gridOf(selectedDisplay.value) && !(await confirmDiscard())) {
-		return;
+	if (remotePageChanged.value && gridOf(next) !== gridOf(selectedDisplay.value)) {
+		if (!(await confirmDiscard())) {
+			return;
+		}
+
+		remotePageChanged.value = false;
+		configureKey.value++;
 	}
 
 	selectedDisplayId.value = displayId;
@@ -406,6 +415,20 @@ const onCloseDrawer = async (done?: () => void): Promise<void> => {
 // Back, a breadcrumb or a link that closes or replaces a changed form while staying in the editor asks first; the
 // editor's own buttons and the form's Discard and Save have already let the form go
 onBeforeRouteUpdate(async (to: RouteLocationNormalized): Promise<boolean> => {
+	// On phone a form replaces the editor, whose grids hold the only copy of unsaved layout changes. The editor's own
+	// buttons have asked already (and cleared the flag); Back, Forward or a link have not
+	const toForm = to.matched.some((matched) => FORM_ROUTES.includes(String(matched.name)));
+
+	if (toForm && !inDrawer.value && !isFormRoute.value && remotePageChanged.value) {
+		if (!(await confirmDiscard())) {
+			return false;
+		}
+
+		remotePageChanged.value = false;
+
+		return true;
+	}
+
 	if (!remoteFormChanged.value || formKeyOf(to) === formKey.value) {
 		return true;
 	}

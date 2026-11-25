@@ -14,6 +14,7 @@ const confirm = vi.fn();
 const success = vi.fn();
 const error = vi.fn();
 const removeCard = vi.fn();
+const configureMounts = vi.fn();
 
 const isPhone = ref<boolean>(false);
 
@@ -100,6 +101,8 @@ vi.mock('../components/page-configure.vue', () => ({
 			'update:remote-page-changed',
 		],
 		setup() {
+			configureMounts();
+
 			return (): ReturnType<typeof h> => h('div');
 		},
 	}),
@@ -155,7 +158,7 @@ describe('ViewCardsPageConfigure', () => {
 	beforeEach(() => {
 		isPhone.value = false;
 
-		for (const mock of [confirm, success, error, removeCard]) {
+		for (const mock of [confirm, success, error, removeCard, configureMounts]) {
 			mock.mockReset();
 		}
 	});
@@ -342,5 +345,49 @@ describe('ViewCardsPageConfigure', () => {
 
 		expect(confirm).toHaveBeenCalledTimes(1);
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_ADD_DATA_SOURCE);
+	});
+	it('asks before Back, Forward or a link opens a form over the editor holding unsaved changes on phone', async () => {
+		isPhone.value = true;
+
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('update:remote-page-changed', true);
+		await flushPromises();
+
+		confirm.mockRejectedValueOnce(new Error('cancel'));
+
+		await router.push({ name: RouteNames.PAGE_EDIT_CARD, params: { id: PAGE_ID, cardId: CARD_ID } });
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE);
+		expect(wrapper.find('[data-test-id="cards-editor"]').exists()).toBe(true);
+
+		confirm.mockResolvedValueOnce(true);
+
+		await router.push({ name: RouteNames.PAGE_EDIT_CARD, params: { id: PAGE_ID, cardId: CARD_ID } });
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(2);
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_EDIT_CARD);
+	});
+
+	it('rebuilds the canvas from the saved layout when the changes are discarded for a display with another grid', async () => {
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('update:remote-page-changed', true);
+		await flushPromises();
+
+		expect(configureMounts).toHaveBeenCalledTimes(1);
+
+		confirm.mockResolvedValueOnce(true);
+
+		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('select-display', 'display-3');
+		await flushPromises();
+
+		// A fresh canvas holds no pending moves or removals, and the editor is clean again
+		expect(configureMounts).toHaveBeenCalledTimes(2);
+		expect(wrapper.findComponent({ name: 'PageConfigure' }).props('gridLayout')).toEqual({ rows: 3, cols: 5 });
+		expect(wrapper.find('[data-test-id="cards-editor-unsaved"]').exists()).toBe(false);
 	});
 });
