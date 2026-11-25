@@ -3,11 +3,14 @@
 		v-if="weatherData"
 		class="flex items-center gap-2"
 	>
-		<el-icon :size="24">
-			<icon :icon="iconType" />
-		</el-icon>
-		<span class="font-medium">
-			{{ temperature !== null ? format(temperature, { maximumFractionDigits: 1 }) : '-' }}{{ unit }}
+		<icon
+			:icon="iconType"
+			width="24"
+			height="24"
+			aria-hidden="true"
+		/>
+		<span class="text-body font-medium whitespace-nowrap">
+			{{ temperature !== null ? format(temperature, { maximumFractionDigits: 1 }) : '—' }}{{ unit }}
 		</span>
 	</div>
 	<el-tooltip
@@ -15,29 +18,32 @@
 		:content="t('weatherModule.table.columns.weather.error')"
 		placement="top"
 	>
-		<div
-			class="flex items-center gap-1 text-red-500 cursor-help"
+		<span
+			class="inline-flex items-center gap-1 text-danger cursor-help"
 			@click.stop
 		>
-			<el-icon :size="16">
-				<icon icon="mdi:alert-circle" />
-			</el-icon>
-			<span class="text-xs">{{ t('weatherModule.table.columns.weather.failed') }}</span>
-		</div>
+			<icon
+				icon="mdi:alert-circle"
+				width="16"
+				height="16"
+				aria-hidden="true"
+			/>
+			<span class="text-help text-danger">{{ t('weatherModule.table.columns.weather.failed') }}</span>
+		</span>
 	</el-tooltip>
-	<div
+	<span
 		v-else
-		class="text-gray-400"
+		class="text-help"
 	>
-		-
-	</div>
+		—
+	</span>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElIcon, ElTooltip } from 'element-plus';
+import { ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

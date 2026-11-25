@@ -15,15 +15,13 @@
 		"bulkDeleteLocations": "Usuń lokalizacje",
 		"discard": "Odrzuć zmiany",
 		"selectProvider": "Wybierz dostawcę pogody",
-		"unsupportedProvider": "Nieobsługiwany dostawca",
-		"adjustFilters": "Dostosuj filtry"
+		"unsupportedProvider": "Nieobsługiwany dostawca"
 	},
 	"subHeadings": {
 		"locations": "Zarządzaj lokalizacjami danych pogodowych",
 		"locationDetail": "Informacje pogodowe dla {location}",
 		"addLocation": "Dodaj nową lokalizację pogody",
-		"editLocation": "Edytuj szczegóły lokalizacji",
-		"adjustFilters": "Dostosuj filtry listy lokalizacji"
+		"editLocation": "Edytuj szczegóły lokalizacji"
 	},
 	"breadcrumbs": {
 		"locations": "lokalizacje",
@@ -57,9 +55,6 @@
 		}
 	},
 	"buttons": {
-		"add": {
-			"title": "Dodaj"
-		},
 		"save": {
 			"title": "Zapisz"
 		},
@@ -78,9 +73,6 @@
 		"no": {
 			"title": "Nie"
 		},
-		"reset": {
-			"title": "Resetuj filtry"
-		},
 		"detail": {
 			"title": "Szczegóły"
 		},
@@ -89,6 +81,21 @@
 		},
 		"back": {
 			"title": "Wstecz"
+		},
+		"edit": {
+			"title": "Edytuj"
+		},
+		"more": {
+			"title": "Więcej akcji"
+		},
+		"remove": {
+			"title": "Usuń"
+		},
+		"keepEditing": {
+			"title": "Kontynuuj edycję"
+		},
+		"addLocation": {
+			"title": "Dodaj lokalizację"
 		}
 	},
 	"fields": {
@@ -134,7 +141,8 @@
 		"misc": {
 			"loadingLocations": "Ładowanie lokalizacji...",
 			"noLocations": "Nie skonfigurowano jeszcze żadnych lokalizacji",
-			"noFilteredLocations": "Żadne lokalizacje nie pasują do kryteriów filtra"
+			"noFilteredLocations": "Żadne lokalizacje nie pasują do kryteriów filtra",
+			"noLocationsHint": "Dodaj lokalizację, aby wyświetlać jej pogodę na wyświetlaczach."
 		}
 	},
 	"filters": {
@@ -145,7 +153,6 @@
 			"primary": {
 				"title": "Status głównej",
 				"values": {
-					"all": "Wszystkie",
 					"primary": "Główna",
 					"secondary": "Drugorzędna"
 				}
@@ -168,8 +175,7 @@
 			"primary": {
 				"title": "Główna",
 				"values": {
-					"yes": "Tak",
-					"no": "Nie"
+					"yes": "Tak"
 				}
 			}
 		}
@@ -246,5 +252,9 @@
 		"brokenClouds": "Duże zachmurzenie",
 		"overcastClouds": "Pochmurno",
 		"unknown": "Nieznane"
+	},
+	"aria": {
+		"edit": "Edytuj {location}",
+		"more": "Więcej akcji dla {location}"
 	}
 }

@@ -11,7 +11,7 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div class="flex flex-col overflow-hidden h-full">
-		<el-scrollbar class="grow-1 p-2 md:px-4">
+		<el-scrollbar class="grow-1 p-2 tp:px-4">
 			<template v-if="location">
 				<!-- Plugin-provided form component -->
 				<component
@@ -41,53 +41,17 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice && location"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('weatherModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('weatherModule.buttons.cancel.title') }}
-				</el-button>
-
-				<el-button
-					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult !== FormResult.NONE || !remoteFormChanged"
-					type="primary"
-					class="order-2"
-					@click="onSubmit"
-				>
-					<template
-						v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
-						#icon
-					>
-						<icon
-							v-if="remoteFormResult === FormResult.OK"
-							icon="mdi:check-circle"
-						/>
-						<icon
-							v-else-if="remoteFormResult === FormResult.ERROR"
-							icon="mdi:cross-circle"
-						/>
-					</template>
-					{{ t('weatherModule.buttons.save.title') }}
-				</el-button>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-if="location !== null"
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			:can-save="remoteFormChanged && remoteFormResult === FormResult.NONE"
+			@save="onSubmit"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -97,11 +61,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElMessageBox, ElScrollbar, ElSkeleton } from 'element-plus';
+import { ElAlert, ElMessageBox, ElScrollbar, ElSkeleton } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { AppBreadcrumbs, FormFooter, ViewHeader, useBreakpoints, useEditDrawer, useFlashMessage, useSizeClass } from '../../../common';
 import { useLocation } from '../composables';
 import { useWeatherLocationsPlugins } from '../composables/useWeatherLocationsPlugins';
 import type { IWeatherLocation } from '../store/locations.store.types';
@@ -129,7 +91,16 @@ useMeta({
 	title: t('weatherModule.meta.locations.edit.title'),
 });
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
+
+// The location detail page still opens this form in its own drawer only on large screens, and as a page below that,
+// whatever the template 4 size classes say: leaving goes back the way the detail page came in, so Back still reaches the
+// list. Part 2 of AR-21 moves the detail page onto the edit drawer and drops this
+const { isLGDevice } = useBreakpoints();
+
+const detailInDrawer = computed<boolean>((): boolean => isLGDevice.value);
 
 const isDetailRoute = computed<boolean>(
 	(): boolean =>
@@ -188,21 +159,30 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// The editor asks before a changed form is left; a confirmed discard, a save or a deleted record lets it go
+const releaseForm = (): void => {
+	remoteFormChanged.value = false;
+
+	emit('update:remote-form-changed', false);
+};
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('weatherModule.messages.confirmDiscard'), t('weatherModule.headings.discard'), {
-		confirmButtonText: t('weatherModule.buttons.yes.title'),
-		cancelButtonText: t('weatherModule.buttons.no.title'),
+		confirmButtonText: t('weatherModule.buttons.discard.title'),
+		cancelButtonText: t('weatherModule.buttons.keepEditing.title'),
 		type: 'warning',
 	})
 		.then((): void => {
+			releaseForm();
+
 			if (isDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (detailInDrawer.value) {
 					router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 				} else {
 					router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 				}
 			} else {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.WEATHER_LOCATIONS });
 				} else {
 					router.push({ name: RouteNames.WEATHER_LOCATIONS });
@@ -220,13 +200,13 @@ const onSubmit = (): void => {
 
 const onClose = (): void => {
 	if (isDetailRoute.value) {
-		if (isLGDevice.value) {
+		if (detailInDrawer.value) {
 			router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 		} else {
 			router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 		}
 	} else {
-		if (isLGDevice.value) {
+		if (inDrawer.value) {
 			router.replace({ name: RouteNames.WEATHER_LOCATIONS });
 		} else {
 			router.push({ name: RouteNames.WEATHER_LOCATIONS });
@@ -266,14 +246,16 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
+			releaseForm();
+
 			if (isDetailRoute.value) {
-				if (isLGDevice.value) {
+				if (detailInDrawer.value) {
 					router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 				} else {
 					router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 				}
 			} else {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.WEATHER_LOCATIONS });
 				} else {
 					router.push({ name: RouteNames.WEATHER_LOCATIONS });
@@ -307,9 +289,11 @@ watch(
 			wasLocationLoaded.value = true;
 		} else if (wasLocationLoaded.value && !isLoading.value) {
 			// Location was previously loaded but is now null - it was deleted
+			releaseForm();
+
 			flashMessage.warning(t('weatherModule.messages.locations.deletedWhileEditing'), { duration: 0 });
 			// Redirect to locations list
-			if (isLGDevice.value) {
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.WEATHER_LOCATIONS });
 			} else {
 				router.push({ name: RouteNames.WEATHER_LOCATIONS });

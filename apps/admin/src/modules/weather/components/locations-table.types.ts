@@ -15,4 +15,6 @@ export interface ILocationsTableProps {
 	weatherByLocation: Record<string, ILocationWeatherData>;
 	temperatureUnit: 'celsius' | 'fahrenheit';
 	weatherFetchCompleted: boolean;
+	/** The provider's name for a location type */
+	providerName: (type: string) => string;
 }

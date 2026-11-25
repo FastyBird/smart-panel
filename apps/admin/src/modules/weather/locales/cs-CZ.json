@@ -15,15 +15,13 @@
 		"bulkDeleteLocations": "Smazat lokace",
 		"discard": "Zahodit změny",
 		"selectProvider": "Vyberte poskytovatele počasí",
-		"unsupportedProvider": "Nepodporovaný poskytovatel",
-		"adjustFilters": "Upravit filtry"
+		"unsupportedProvider": "Nepodporovaný poskytovatel"
 	},
 	"subHeadings": {
 		"locations": "Správa lokací meteorologických dat",
 		"locationDetail": "Informace o počasí pro {location}",
 		"addLocation": "Přidat novou meteorologickou lokaci",
-		"editLocation": "Upravit podrobnosti lokace",
-		"adjustFilters": "Přizpůsobit filtry seznamu lokací"
+		"editLocation": "Upravit podrobnosti lokace"
 	},
 	"breadcrumbs": {
 		"locations": "lokace",
@@ -57,9 +55,6 @@
 		}
 	},
 	"buttons": {
-		"add": {
-			"title": "Přidat"
-		},
 		"save": {
 			"title": "Uložit"
 		},
@@ -78,9 +73,6 @@
 		"no": {
 			"title": "Ne"
 		},
-		"reset": {
-			"title": "Resetovat filtry"
-		},
 		"detail": {
 			"title": "Detail"
 		},
@@ -89,6 +81,21 @@
 		},
 		"back": {
 			"title": "Zpět"
+		},
+		"edit": {
+			"title": "Upravit"
+		},
+		"more": {
+			"title": "Další akce"
+		},
+		"remove": {
+			"title": "Odebrat"
+		},
+		"keepEditing": {
+			"title": "Pokračovat v úpravách"
+		},
+		"addLocation": {
+			"title": "Přidat lokaci"
 		}
 	},
 	"fields": {
@@ -134,7 +141,8 @@
 		"misc": {
 			"loadingLocations": "Načítání lokací...",
 			"noLocations": "Zatím nejsou nakonfigurovány žádné lokace",
-			"noFilteredLocations": "Žádné lokace neodpovídají kritériím filtru"
+			"noFilteredLocations": "Žádné lokace neodpovídají kritériím filtru",
+			"noLocationsHint": "Přidejte lokaci, jejíž počasí se zobrazí na displejích."
 		}
 	},
 	"filters": {
@@ -145,7 +153,6 @@
 			"primary": {
 				"title": "Stav primární lokace",
 				"values": {
-					"all": "Vše",
 					"primary": "Primární",
 					"secondary": "Sekundární"
 				}
@@ -168,8 +175,7 @@
 			"primary": {
 				"title": "Primární",
 				"values": {
-					"yes": "Ano",
-					"no": "Ne"
+					"yes": "Ano"
 				}
 			}
 		}
@@ -246,5 +252,9 @@
 		"brokenClouds": "Oblačno s přeháňkami",
 		"overcastClouds": "Zataženo",
 		"unknown": "Neznámé"
+	},
+	"aria": {
+		"edit": "Upravit {location}",
+		"more": "Další akce pro {location}"
 	}
 }

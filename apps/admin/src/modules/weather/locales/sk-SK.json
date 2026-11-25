@@ -15,15 +15,13 @@
 		"bulkDeleteLocations": "Odstrániť polohy",
 		"discard": "Zahodiť zmeny",
 		"selectProvider": "Vyberte poskytovateľa počasia",
-		"unsupportedProvider": "Nepodporovaný poskytovateľ",
-		"adjustFilters": "Upraviť filtre"
+		"unsupportedProvider": "Nepodporovaný poskytovateľ"
 	},
 	"subHeadings": {
 		"locations": "Spravujte polohy údajov o počasí",
 		"locationDetail": "Informácie o počasí pre {location}",
 		"addLocation": "Pridať novú polohu počasia",
-		"editLocation": "Upraviť detaily polohy",
-		"adjustFilters": "Prispôsobiť filtre zoznamu polôh"
+		"editLocation": "Upraviť detaily polohy"
 	},
 	"breadcrumbs": {
 		"locations": "polohy",
@@ -57,17 +55,24 @@
 		}
 	},
 	"buttons": {
-		"add": { "title": "Pridať" },
+		"addLocation": { "title": "Pridať polohu" },
 		"save": { "title": "Uložiť" },
 		"cancel": { "title": "Zrušiť" },
 		"discard": { "title": "Zahodiť" },
 		"resetFilters": { "title": "Resetovať filtre" },
 		"yes": { "title": "Áno" },
 		"no": { "title": "Nie" },
-		"reset": { "title": "Resetovať filtre" },
 		"detail": { "title": "Detail" },
 		"retry": { "title": "Skúsiť znova" },
-		"back": { "title": "Späť" }
+		"back": { "title": "Späť" },
+		"edit": { "title": "Upraviť" },
+		"more": { "title": "Ďalšie akcie" },
+		"remove": { "title": "Odobrať" },
+		"keepEditing": { "title": "Pokračovať v úpravách" }
+	},
+	"aria": {
+		"edit": "Upraviť {location}",
+		"more": "Ďalšie akcie pre {location}"
 	},
 	"fields": {
 		"locations": {
@@ -108,7 +113,8 @@
 		"misc": {
 			"loadingLocations": "Načítavanie polôh...",
 			"noLocations": "Zatiaľ nie sú nakonfigurované žiadne polohy",
-			"noFilteredLocations": "Žiadne polohy nezodpovedajú vašim filtrom"
+			"noFilteredLocations": "Žiadne polohy nezodpovedajú vašim filtrom",
+			"noLocationsHint": "Pridajte polohu, ktorej počasie sa zobrazí na displejoch."
 		}
 	},
 	"filters": {
@@ -116,7 +122,7 @@
 			"types": { "title": "Poskytovateľ počasia" },
 			"primary": {
 				"title": "Stav primárnej polohy",
-				"values": { "all": "Všetky", "primary": "Primárna", "secondary": "Sekundárna" }
+				"values": { "primary": "Primárna", "secondary": "Sekundárna" }
 			}
 		}
 	},
@@ -125,7 +131,7 @@
 			"name": { "title": "Názov" },
 			"weather": { "title": "Počasie", "failed": "Zlyhanie", "error": "Nepodarilo sa načítať údaje o počasí. Skontrolujte konfiguráciu API." },
 			"type": { "title": "Poskytovateľ" },
-			"primary": { "title": "Primárna", "values": { "yes": "Áno", "no": "Nie" } }
+			"primary": { "title": "Primárna", "values": { "yes": "Áno" } }
 		}
 	},
 	"meta": {

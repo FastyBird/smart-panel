@@ -1,33 +1,70 @@
 <template>
+	<!-- Template 1: one card with the filter bar, the table (a row list on phone) and the pagination -->
 	<el-card
 		shadow="never"
-		class="px-1 py-2 shrink-0"
-		body-class="p-0!"
+		class="flex flex-col flex-grow min-h-0 overflow-hidden"
+		body-class="p-0! flex flex-col flex-grow min-h-0 overflow-hidden"
 	>
-		<locations-filter
-			v-model:filters="innerFilters"
-			:filters-active="props.filtersActive"
-			:selected-count="selectedItems.length"
-			:bulk-actions="bulkActions"
-			@reset-filters="emit('reset-filters')"
-			@adjust-list="emit('adjust-list')"
-			@bulk-action="onBulkAction"
-		/>
-	</el-card>
+		<list-filter-bar
+			ref="filterBar"
+			v-model:search="search"
+			:search-placeholder="t('weatherModule.fields.locations.search.placeholder')"
+			:quick-filters="quickFilters"
+			:active-count="activeCount"
+			:selected-count="isPhone ? 0 : selectedItems.length"
+			@quick-filter="onQuickFilter"
+			@reset="emit('reset-filters')"
+			@clear-selection="onClearSelection"
+		>
+			<template #filters>
+				<list-locations-adjust v-model:filters="innerFilters" />
+			</template>
 
-	<div
-		ref="wrapper"
-		class="flex-grow overflow-hidden"
-	>
-		<el-card
-			shadow="never"
-			class="max-h-full flex flex-col overflow-hidden box-border"
-			body-class="p-0! max-h-full overflow-hidden flex flex-col"
+			<template #bulk>
+				<el-button
+					type="danger"
+					plain
+					size="small"
+					data-test-id="bulk-delete"
+					@click="emit('bulk-action', 'delete', selectedItems)"
+				>
+					{{ t('application.bulkActions.delete') }}
+				</el-button>
+			</template>
+		</list-filter-bar>
+
+		<!-- The rows scroll inside the card, so the pagination below stays reachable -->
+		<div
+			v-if="isPhone"
+			class="flex-grow min-h-0 overflow-y-auto"
+			data-test-id="locations-row-list-scroll"
+		>
+			<locations-row-list
+				:items="props.items"
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				:primary-location-id="props.primaryLocationId"
+				:weather-by-location="props.weatherByLocation"
+				:temperature-unit="props.temperatureUnit"
+				:weather-fetch-completed="props.weatherFetchCompleted"
+				:provider-name="providerName"
+				@detail="(id: IWeatherLocation['id']) => emit('detail', id)"
+				@edit="(id: IWeatherLocation['id']) => emit('edit', id)"
+				@remove="(id: IWeatherLocation['id']) => emit('remove', id)"
+				@reset-filters="emit('reset-filters')"
+			/>
+		</div>
+
+		<div
+			v-else
+			ref="wrapper"
+			class="flex-grow min-h-0 overflow-hidden"
 		>
 			<locations-table
+				ref="table"
+				v-model:filters="innerFilters"
 				v-model:sort-by="sortBy"
 				v-model:sort-dir="sortDir"
-				v-model:filters="innerFilters"
 				:items="props.items"
 				:total-rows="props.totalRows"
 				:loading="props.loading"
@@ -37,45 +74,44 @@
 				:weather-by-location="props.weatherByLocation"
 				:temperature-unit="props.temperatureUnit"
 				:weather-fetch-completed="props.weatherFetchCompleted"
-				@detail="onDetail"
-				@edit="onEdit"
-				@remove="onRemove"
-				@reset-filters="onResetFilters"
-				@selected-changes="onSelectionChange"
+				:provider-name="providerName"
+				@detail="(id: IWeatherLocation['id']) => emit('detail', id)"
+				@edit="(id: IWeatherLocation['id']) => emit('edit', id)"
+				@remove="(id: IWeatherLocation['id']) => emit('remove', id)"
+				@reset-filters="emit('reset-filters')"
+				@selected-changes="(selected: IWeatherLocation[]) => (selectedItems = selected)"
 			/>
+		</div>
 
-			<div
-				ref="paginator"
-				class="flex justify-center w-full py-4"
-			>
-				<el-pagination
-					v-model:current-page="paginatePage"
-					v-model:page-size="paginateSize"
-					:layout="isMDDevice ? 'total, sizes, prev, pager, next, jumper' : 'total, sizes, prev, pager, next'"
-					:total="props.allItems.length"
-					@size-change="onPaginatePageSize"
-					@current-change="onPaginatePage"
-				/>
-			</div>
-		</el-card>
-	</div>
+		<div class="flex flex-wrap justify-end w-full box-border px-4 py-2.5 border-t border-t-solid border-light overflow-hidden">
+			<el-pagination
+				v-model:current-page="paginatePage"
+				v-model:page-size="paginateSize"
+				:layout="isPhone ? 'prev, pager, next' : 'total, sizes, prev, pager, next'"
+				:total="props.allItems.length"
+				@size-change="(size: number) => emit('update:paginate-size', size)"
+				@current-change="(page: number) => emit('update:paginate-page', page)"
+			/>
+		</div>
+	</el-card>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElPagination } from 'element-plus';
+import { ElButton, ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { type IBulkAction, useBreakpoints } from '../../../common';
-import type { IWeatherLocationsFilter } from '../composables/types';
+import { ListFilterBar, type ListFilterBarQuickFilter, useSizeClass } from '../../../common';
+import { type IWeatherLocationsFilter, useWeatherLocationsPlugins } from '../composables/composables';
 import type { IWeatherLocation } from '../store/locations.store.types';
 
-import LocationsFilter from './locations-filter.vue';
-import LocationsTable from './locations-table.vue';
+import ListLocationsAdjust from './list-locations-adjust.vue';
 import type { IListLocationsProps } from './list-locations.types';
+import LocationsRowList from './locations-row-list.vue';
+import LocationsTable from './locations-table.vue';
 
 defineOptions({
 	name: 'ListLocations',
@@ -88,149 +124,132 @@ const emit = defineEmits<{
 	(e: 'edit', id: IWeatherLocation['id']): void;
 	(e: 'remove', id: IWeatherLocation['id']): void;
 	(e: 'reset-filters'): void;
-	(e: 'adjust-list'): void;
 	(e: 'update:filters', filters: IWeatherLocationsFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;
-	(e: 'update:sort-by', dir: 'name' | 'type'): void;
+	(e: 'update:sort-by', by: 'name' | 'type'): void;
 	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
 	(e: 'bulk-action', action: string, items: IWeatherLocation[]): void;
 }>();
 
 const { t } = useI18n();
-const { isMDDevice } = useBreakpoints();
+const { isPhone } = useSizeClass();
 
-let observer: ResizeObserver | null = null;
-
-const wrapper = ref<HTMLElement | null>(null);
-const paginator = ref<HTMLElement | null>(null);
+const { options: providerOptions } = useWeatherLocationsPlugins();
 
 const innerFilters = useVModel(props, 'filters', emit);
 
+const filterBar = ref<InstanceType<typeof ListFilterBar> | null>(null);
+const table = ref<InstanceType<typeof LocationsTable> | null>(null);
+const wrapper = ref<HTMLElement | null>(null);
+
+const selectedItems = ref<IWeatherLocation[]>([]);
+
 const sortBy = ref<'name' | 'type'>(props.sortBy);
-
 const sortDir = ref<'ascending' | 'descending' | null>(props.sortDir);
-
 const paginatePage = ref<number>(props.paginatePage);
-
 const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
 
-const selectedItems = ref<IWeatherLocation[]>([]);
+const providerName = (type: string): string => providerOptions.value.find((option) => option.value === type)?.label ?? type;
 
-const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
+const search = computed<string>({
+	get: (): string => innerFilters.value.search ?? '',
+	set: (value: string): void => {
+		innerFilters.value.search = value === '' ? undefined : value;
+	},
+});
+
+// The bar keeps one quick filter, Primary or not; the providers live in the filters drawer
+const quickFilters = computed<ListFilterBarQuickFilter[]>((): ListFilterBarQuickFilter[] => [
 	{
-		key: 'delete',
-		label: t('application.bulkActions.delete'),
-		icon: 'mdi:trash',
-		type: 'danger',
+		id: 'primary',
+		label: t('weatherModule.filters.locations.primary.title'),
+		options: [
+			{ value: 'primary', label: t('weatherModule.filters.locations.primary.values.primary') },
+			{ value: 'secondary', label: t('weatherModule.filters.locations.primary.values.secondary') },
+		],
+		value: innerFilters.value.primary === 'all' ? null : innerFilters.value.primary,
 	},
 ]);
 
-const onDetail = (id: IWeatherLocation['id']): void => {
-	emit('detail', id);
-};
+// Active filters, the search excluded: it is visible in the bar on its own
+const activeCount = computed<number>((): number => (innerFilters.value.primary !== 'all' ? 1 : 0) + (innerFilters.value.types.length > 0 ? 1 : 0));
 
-const onEdit = (id: IWeatherLocation['id']): void => {
-	emit('edit', id);
-};
-
-const onRemove = (id: IWeatherLocation['id']): void => {
-	emit('remove', id);
-};
-
-const onResetFilters = (): void => {
-	emit('reset-filters');
-};
-
-const onPaginatePageSize = (size: number): void => {
-	emit('update:paginate-size', size);
-};
-
-const onPaginatePage = (page: number): void => {
-	emit('update:paginate-page', page);
-};
-
-const onSelectionChange = (selected: IWeatherLocation[]): void => {
-	selectedItems.value = selected;
-};
-
-const onBulkAction = (action: string): void => {
-	emit('bulk-action', action, selectedItems.value);
-};
-
-onMounted((): void => {
-	if (!wrapper.value) {
-		return;
+const onQuickFilter = (id: string, value: string | null): void => {
+	if (id === 'primary') {
+		innerFilters.value.primary = (value ?? 'all') as IWeatherLocationsFilter['primary'];
 	}
+};
 
-	const updateHeight = () => {
-		tableHeight.value = wrapper.value!.clientHeight - paginator.value!.clientHeight;
-	};
+const onClearSelection = (): void => {
+	table.value?.clearSelection();
+	selectedItems.value = [];
+};
 
-	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
-		observer = new ResizeObserver(updateHeight);
-		observer.observe(wrapper.value);
+// The phone app bar's Search action moves focus to the search field
+const focusSearch = (): void => {
+	filterBar.value?.focusSearch();
+};
+
+defineExpose({ focusSearch });
+
+// The table, and its checked rows, go away on phone; a selection kept here would act on rows nobody can see
+watch(isPhone, (phone: boolean): void => {
+	if (phone) {
+		selectedItems.value = [];
 	}
-
-	updateHeight();
 });
+
+let observer: ResizeObserver | null = null;
+
+const updateHeight = (): void => {
+	if (wrapper.value) {
+		tableHeight.value = wrapper.value.clientHeight;
+	}
+};
+
+// The table is not rendered on phone, so the wrapper comes and goes with the size class
+watch(
+	wrapper,
+	(element: HTMLElement | null, previous: HTMLElement | null | undefined): void => {
+		if (observer && previous) {
+			observer.unobserve(previous);
+		}
+
+		if (!element) {
+			return;
+		}
+
+		if (observer === null && typeof window !== 'undefined' && 'ResizeObserver' in window) {
+			observer = new ResizeObserver(updateHeight);
+		}
+
+		observer?.observe(element);
+
+		updateHeight();
+	},
+	{ flush: 'post' }
+);
 
 onBeforeUnmount((): void => {
-	if (observer && wrapper.value) {
-		observer.unobserve(wrapper.value);
-	}
+	observer?.disconnect();
+	observer = null;
 });
 
-watch(
-	(): 'name' | 'type' => sortBy.value,
-	(val: 'name' | 'type'): void => {
-		emit('update:sort-by', val);
-	}
-);
-
-watch(
-	(): 'ascending' | 'descending' | null => sortDir.value,
-	(val: 'ascending' | 'descending' | null): void => {
-		emit('update:sort-dir', val);
-	}
-);
-
+watch(sortBy, (val): void => emit('update:sort-by', val));
+watch(sortDir, (val): void => emit('update:sort-dir', val));
 watch(
 	(): number => props.paginatePage,
 	(val: number): void => {
 		paginatePage.value = val;
 	}
 );
-
 watch(
 	(): number => props.paginateSize,
 	(val: number): void => {
 		paginateSize.value = val;
-	}
-);
-
-watch(
-	(): 'ascending' | 'descending' | null => props.sortDir,
-	(val: 'ascending' | 'descending' | null): void => {
-		sortDir.value = val;
-	}
-);
-
-watch(
-	(): 'name' | 'type' => props.sortBy,
-	(val: 'name' | 'type'): void => {
-		sortBy.value = val;
-	}
-);
-
-watch(
-	(): boolean => isMDDevice.value,
-	(val: boolean): void => {
-		if (!val) {
-			selectedItems.value = [];
-		}
 	}
 );
 </script>

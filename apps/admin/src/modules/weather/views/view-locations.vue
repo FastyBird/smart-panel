@@ -2,84 +2,62 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isLocationsListRoute || isLGDevice"
+		v-if="isLocationsListRoute || inDrawer"
 		:title="t('weatherModule.headings.locations')"
 		:subtitle="t('weatherModule.subHeadings.locations')"
-		:icon="'mdi:map-marker-multiple'"
-		:actions="[{ icon: 'mdi:plus', label: t('weatherModule.buttons.add.title'), handler: onLocationCreate }]"
+		icon="mdi:map-marker-multiple"
+		:actions="phoneActions"
 	>
 		<template #actions>
-			<div class="flex items-center">
-				<el-button
-					type="primary"
-					plain
-					class="ml-2!"
-					@click="onLocationCreate"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
+			<el-button
+				type="primary"
+				data-test-id="add-location"
+				@click="onLocationCreate"
+			>
+				<template #icon>
+					<icon icon="mdi:plus" />
+				</template>
 
-					{{ t('weatherModule.buttons.add.title') }}
-				</el-button>
-			</div>
+				{{ t('weatherModule.buttons.addLocation.title') }}
+			</el-button>
 		</template>
 	</view-header>
 
 	<div
-		v-if="isLocationsListRoute || isLGDevice"
-		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+		v-if="isLocationsListRoute || inDrawer"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<list-locations
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			v-model:paginate-size="paginateSize"
-			v-model:paginate-page="paginatePage"
-			:items="locationsPaginated"
-			:all-items="locations"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			:primary-location-id="primaryLocationId"
-			:weather-by-location="weatherByLocation"
-			:weather-fetch-completed="weatherFetchCompleted"
-			:temperature-unit="temperatureUnit"
-			@detail="onLocationDetail"
-			@edit="onLocationEdit"
-			@remove="onLocationRemove"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-			@bulk-action="onBulkAction"
-		/>
-	</div>
+		<!-- Template 4: add and edit open next to the list from tablet portrait up, as their own page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<list-locations
+				ref="list"
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				:items="locationsPaginated"
+				:all-items="locations"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				:primary-location-id="primaryLocationId"
+				:weather-by-location="weatherByLocation"
+				:weather-fetch-completed="weatherFetchCompleted"
+				:temperature-unit="temperatureUnit"
+				@detail="onLocationDetail"
+				@edit="onLocationEdit"
+				@remove="onLocationRemove"
+				@reset-filters="onResetFilters"
+				@bulk-action="onBulkAction"
+			/>
 
-	<router-view
-		v-else
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component :is="Component" />
-	</router-view>
-
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-locations-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
-					:filters-active="filtersActive"
-					@reset-filters="onResetFilters"
-				/>
-
-				<view-error v-else>
+			<template #form>
+				<view-error :key="formKey">
 					<template #icon>
 						<icon icon="mdi:map-marker" />
 					</template>
@@ -87,9 +65,11 @@
 						{{ t('weatherModule.messages.requestError') }}
 					</template>
 
+					<!-- Keyed by the location: switching to another location remounts the editor, so its save goes to the
+					     location now shown and not to the one opened first -->
 					<suspense>
 						<router-view
-							:key="props.id"
+							:key="formKey"
 							v-slot="{ Component }"
 						>
 							<component
@@ -100,23 +80,30 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<router-view
+		v-else
+		:key="formKey"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElMessageBox } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { type AppBarAction, AppBreadcrumbs, EditDrawerLayout, ViewError, ViewHeader, provideEditDrawer } from '../../../common';
 import { useConfigModule } from '../../config';
-import ListLocationsAdjust from '../components/list-locations-adjust.vue';
 import ListLocations from '../components/list-locations.vue';
 import { useLocationsActions } from '../composables/useLocationsActions';
 import { useLocationsDataSource } from '../composables/useLocationsDataSource';
@@ -131,7 +118,7 @@ defineOptions({
 	name: 'ViewLocations',
 });
 
-const props = defineProps<IViewLocationsProps>();
+defineProps<IViewLocationsProps>();
 
 const route = useRoute();
 const router = useRouter();
@@ -140,8 +127,6 @@ const { t } = useI18n();
 useMeta({
 	title: t('weatherModule.meta.locations.list.title'),
 });
-
-const { isLGDevice } = useBreakpoints();
 
 const {
 	fetchLocations,
@@ -167,16 +152,41 @@ const temperatureUnit = computed<'celsius' | 'fahrenheit'>((): 'celsius' | 'fahr
 	return config?.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
 });
 
-const mounted = ref<boolean>(false);
-
-const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
+const list = ref<InstanceType<typeof ListLocations> | null>(null);
 
 const remoteFormChanged = ref<boolean>(false);
 
 const isLocationsListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.WEATHER_LOCATIONS;
 });
+
+const isFormRoute = (): boolean =>
+	route.matched.some((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT);
+
+const showDrawer = ref<boolean>(isFormRoute());
+
+// Template 4: add and edit open next to this page from tablet portrait up, as their own page on phone
+const { inDrawer } = provideEditDrawer((): boolean => !isLocationsListRoute.value);
+
+// One form per location (and one for Add, keyed by the provider picked): a new key remounts the routed form
+const formKey = computed<string>((): string => {
+	const id = typeof route.params?.id === 'string' ? route.params.id : '';
+	const provider = typeof route.query?.provider === 'string' ? route.query.provider : '';
+
+	return `${String(route.name)}:${id}:${provider}`;
+});
+
+// The changed flag belongs to the form that is open. Any route change that replaces or closes it clears the flag
+// before the next form mounts, so that one starts clean. A declined discard leaves the route, and the flag, as it was
+watch(formKey, (): void => {
+	remoteFormChanged.value = false;
+});
+
+// The phone app bar: Search and Add
+const phoneActions = computed<AppBarAction[]>((): AppBarAction[] => [
+	{ icon: 'mdi:magnify', label: t('weatherModule.fields.locations.search.placeholder'), handler: onSearch },
+	{ icon: 'mdi:plus', label: t('weatherModule.buttons.addLocation.title'), handler: onLocationCreate },
+]);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -189,88 +199,63 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
-
-		done?.();
+const navigate = (to: { name: string; params?: Record<string, string> }): void => {
+	if (inDrawer.value) {
+		router.replace(to);
 	} else {
-		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('weatherModule.messages.confirmDiscard'), t('weatherModule.headings.discard'), {
-				confirmButtonText: t('weatherModule.buttons.yes.title'),
-				cancelButtonText: t('weatherModule.buttons.no.title'),
-				type: 'warning',
-			})
-				.then((): void => {
-					if (isLGDevice.value) {
-						router.replace({
-							name: RouteNames.WEATHER_LOCATIONS,
-						});
-					} else {
-						router.push({
-							name: RouteNames.WEATHER_LOCATIONS,
-						});
-					}
-
-					done?.();
-				})
-				.catch((): void => {
-					// Just ignore it
-				});
-		} else {
-			if (isLGDevice.value) {
-				router.replace({
-					name: RouteNames.WEATHER_LOCATIONS,
-				});
-			} else {
-				router.push({
-					name: RouteNames.WEATHER_LOCATIONS,
-				});
-			}
-
-			done?.();
-		}
+		router.push(to);
 	}
 };
 
-const onLocationDetail = (id: IWeatherLocation['id']): void => {
-	router.push({
-		name: RouteNames.WEATHER_LOCATION,
-		params: {
-			id,
-		},
-	});
-};
+const confirmDiscard = async (): Promise<boolean> => {
+	try {
+		await ElMessageBox.confirm(t('weatherModule.messages.confirmDiscard'), t('weatherModule.headings.discard'), {
+			confirmButtonText: t('weatherModule.buttons.discard.title'),
+			cancelButtonText: t('weatherModule.buttons.keepEditing.title'),
+			type: 'warning',
+		});
 
-const onLocationEdit = (id: IWeatherLocation['id']): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.WEATHER_LOCATION_EDIT,
-			params: {
-				id,
-			},
-		});
-	} else {
-		router.push({
-			name: RouteNames.WEATHER_LOCATION_EDIT,
-			params: {
-				id,
-			},
-		});
+		return true;
+	} catch {
+		return false;
 	}
 };
 
-const onLocationCreate = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.WEATHER_LOCATION_ADD,
-		});
-	} else {
-		router.push({
-			name: RouteNames.WEATHER_LOCATION_ADD,
-		});
+const onCloseDrawer = async (done?: () => void): Promise<void> => {
+	if (remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
 	}
+
+	navigate({ name: RouteNames.WEATHER_LOCATIONS });
+
+	done?.();
+};
+
+// Next to a docked form the page stays usable: replacing a changed form asks first, as closing it does
+const canReplaceOpenForm = async (): Promise<boolean> => !showDrawer.value || !remoteFormChanged.value || confirmDiscard();
+
+const onLocationDetail = async (id: IWeatherLocation['id']): Promise<void> => {
+	if (!(await canReplaceOpenForm())) {
+		return;
+	}
+
+	router.push({ name: RouteNames.WEATHER_LOCATION, params: { id } });
+};
+
+const onLocationEdit = async (id: IWeatherLocation['id']): Promise<void> => {
+	if ((route.name === RouteNames.WEATHER_LOCATION_EDIT && route.params.id === id) || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	navigate({ name: RouteNames.WEATHER_LOCATION_EDIT, params: { id } });
+};
+
+const onLocationCreate = async (): Promise<void> => {
+	if (route.name === RouteNames.WEATHER_LOCATION_ADD || !(await canReplaceOpenForm())) {
+		return;
+	}
+
+	navigate({ name: RouteNames.WEATHER_LOCATION_ADD });
 };
 
 const onLocationRemove = (id: IWeatherLocation['id']): void => {
@@ -289,9 +274,9 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
+// The phone app bar's Search action
+const onSearch = (): void => {
+	list.value?.focusSearch();
 };
 
 onBeforeMount((): void => {
@@ -305,22 +290,12 @@ onBeforeMount((): void => {
 		// Silently fail - weather data is optional for the list
 		console.warn('[WEATHER] Failed to fetch locations weather:', error);
 	});
-
-	showDrawer.value =
-		route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !==
-		undefined;
-});
-
-onMounted((): void => {
-	mounted.value = true;
 });
 
 watch(
 	(): string => route.path,
 	(): void => {
-		showDrawer.value =
-			route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !==
-			undefined;
+		showDrawer.value = isFormRoute();
 	}
 );
 

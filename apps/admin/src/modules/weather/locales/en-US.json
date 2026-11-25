@@ -15,15 +15,13 @@
 		"bulkDeleteLocations": "Delete locations",
 		"discard": "Discard changes",
 		"selectProvider": "Select a weather provider",
-		"unsupportedProvider": "Unsupported provider",
-		"adjustFilters": "Adjust filters"
+		"unsupportedProvider": "Unsupported provider"
 	},
 	"subHeadings": {
 		"locations": "Manage weather data locations",
 		"locationDetail": "Weather information for {location}",
 		"addLocation": "Add a new weather location",
-		"editLocation": "Edit location details",
-		"adjustFilters": "Customize location list filters"
+		"editLocation": "Edit location details"
 	},
 	"breadcrumbs": {
 		"locations": "locations",
@@ -57,9 +55,6 @@
 		}
 	},
 	"buttons": {
-		"add": {
-			"title": "Add"
-		},
 		"save": {
 			"title": "Save"
 		},
@@ -78,9 +73,6 @@
 		"no": {
 			"title": "No"
 		},
-		"reset": {
-			"title": "Reset filters"
-		},
 		"detail": {
 			"title": "Detail"
 		},
@@ -89,6 +81,21 @@
 		},
 		"back": {
 			"title": "Back"
+		},
+		"edit": {
+			"title": "Edit"
+		},
+		"more": {
+			"title": "More actions"
+		},
+		"remove": {
+			"title": "Remove"
+		},
+		"keepEditing": {
+			"title": "Keep editing"
+		},
+		"addLocation": {
+			"title": "Add location"
 		}
 	},
 	"fields": {
@@ -134,7 +141,8 @@
 		"misc": {
 			"loadingLocations": "Loading locations...",
 			"noLocations": "No locations configured yet",
-			"noFilteredLocations": "No locations match your filter criteria"
+			"noFilteredLocations": "No locations match your filter criteria",
+			"noLocationsHint": "Add a location to show its weather on the displays."
 		}
 	},
 	"filters": {
@@ -145,7 +153,6 @@
 			"primary": {
 				"title": "Primary status",
 				"values": {
-					"all": "All",
 					"primary": "Primary",
 					"secondary": "Secondary"
 				}
@@ -168,8 +175,7 @@
 			"primary": {
 				"title": "Primary",
 				"values": {
-					"yes": "Yes",
-					"no": "No"
+					"yes": "Yes"
 				}
 			}
 		}
@@ -246,5 +252,9 @@
 		"brokenClouds": "Broken clouds",
 		"overcastClouds": "Overcast clouds",
 		"unknown": "Unknown"
+	},
+	"aria": {
+		"edit": "Edit {location}",
+		"more": "More actions for {location}"
 	}
 }

@@ -15,15 +15,13 @@
 		"bulkDeleteLocations": "Eliminar ubicaciones",
 		"discard": "Descartar cambios",
 		"selectProvider": "Seleccionar un proveedor meteorológico",
-		"unsupportedProvider": "Proveedor no compatible",
-		"adjustFilters": "Ajustar filtros"
+		"unsupportedProvider": "Proveedor no compatible"
 	},
 	"subHeadings": {
 		"locations": "Gestionar ubicaciones de datos meteorológicos",
 		"locationDetail": "Información meteorológica de {location}",
 		"addLocation": "Añadir una nueva ubicación meteorológica",
-		"editLocation": "Editar detalles de la ubicación",
-		"adjustFilters": "Personalizar filtros de la lista de ubicaciones"
+		"editLocation": "Editar detalles de la ubicación"
 	},
 	"breadcrumbs": {
 		"locations": "ubicaciones",
@@ -57,9 +55,6 @@
 		}
 	},
 	"buttons": {
-		"add": {
-			"title": "Añadir"
-		},
 		"save": {
 			"title": "Guardar"
 		},
@@ -78,9 +73,6 @@
 		"no": {
 			"title": "No"
 		},
-		"reset": {
-			"title": "Restablecer filtros"
-		},
 		"detail": {
 			"title": "Detalle"
 		},
@@ -89,6 +81,21 @@
 		},
 		"back": {
 			"title": "Volver"
+		},
+		"edit": {
+			"title": "Editar"
+		},
+		"more": {
+			"title": "Más acciones"
+		},
+		"remove": {
+			"title": "Eliminar"
+		},
+		"keepEditing": {
+			"title": "Seguir editando"
+		},
+		"addLocation": {
+			"title": "Añadir ubicación"
 		}
 	},
 	"fields": {
@@ -134,7 +141,8 @@
 		"misc": {
 			"loadingLocations": "Cargando ubicaciones...",
 			"noLocations": "Aún no hay ubicaciones configuradas",
-			"noFilteredLocations": "Ninguna ubicación coincide con los criterios de filtro"
+			"noFilteredLocations": "Ninguna ubicación coincide con los criterios de filtro",
+			"noLocationsHint": "Añada una ubicación para mostrar su tiempo en las pantallas."
 		}
 	},
 	"filters": {
@@ -145,7 +153,6 @@
 			"primary": {
 				"title": "Estado de principal",
 				"values": {
-					"all": "Todas",
 					"primary": "Principal",
 					"secondary": "Secundaria"
 				}
@@ -168,8 +175,7 @@
 			"primary": {
 				"title": "Principal",
 				"values": {
-					"yes": "Sí",
-					"no": "No"
+					"yes": "Sí"
 				}
 			}
 		}
@@ -246,5 +252,9 @@
 		"brokenClouds": "Nubosidad parcial",
 		"overcastClouds": "Cielo cubierto",
 		"unknown": "Desconocido"
+	},
+	"aria": {
+		"edit": "Editar {location}",
+		"more": "Más acciones para {location}"
 	}
 }
