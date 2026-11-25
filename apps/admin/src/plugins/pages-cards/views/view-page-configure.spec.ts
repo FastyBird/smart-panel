@@ -15,6 +15,9 @@ const success = vi.fn();
 const error = vi.fn();
 const removeCard = vi.fn();
 const configureMounts = vi.fn();
+const removeTile = vi.fn();
+const unsetDataSources = vi.fn();
+const cardTiles = ref<{ id: string; draft: boolean }[]>([]);
 
 const isPhone = ref<boolean>(false);
 
@@ -39,6 +42,13 @@ vi.mock('@iconify/vue', () => ({
 }));
 
 vi.mock('../../../common', () => ({
+	injectStoresManager: () => ({
+		getStore: () => ({
+			findForParent: () => cardTiles.value,
+			remove: (...args: unknown[]) => removeTile(...args),
+			unset: (...args: unknown[]) => unsetDataSources(...args),
+		}),
+	}),
 	ViewError: { name: 'ViewError', template: '<div><slot /></div>' },
 	EditDrawerLayout: { name: 'EditDrawerLayout', props: ['open'], template: '<div><slot /><slot name="form" /></div>' },
 	provideEditDrawer: () => ({ inDrawer: computed<boolean>(() => !isPhone.value) }),
@@ -157,10 +167,13 @@ enableAutoUnmount(afterEach);
 describe('ViewCardsPageConfigure', () => {
 	beforeEach(() => {
 		isPhone.value = false;
+		cardTiles.value = [];
 
-		for (const mock of [confirm, success, error, removeCard, configureMounts]) {
+		for (const mock of [confirm, success, error, removeCard, configureMounts, removeTile, unsetDataSources]) {
 			mock.mockReset();
 		}
+
+		removeTile.mockResolvedValue(true);
 	});
 
 	it('lays the cards out for the display that shows the page', async () => {
@@ -389,5 +402,26 @@ describe('ViewCardsPageConfigure', () => {
 		expect(configureMounts).toHaveBeenCalledTimes(2);
 		expect(wrapper.findComponent({ name: 'PageConfigure' }).props('gridLayout')).toEqual({ rows: 3, cols: 5 });
 		expect(wrapper.find('[data-test-id="cards-editor-unsaved"]').exists()).toBe(false);
+	});
+
+	it('drops the tiles added but never saved when the layout changes are discarded', async () => {
+		cardTiles.value = [
+			{ id: 'tile-saved', draft: false },
+			{ id: 'tile-draft', draft: true },
+		];
+
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('update:remote-page-changed', true);
+		await flushPromises();
+
+		confirm.mockResolvedValueOnce(true);
+
+		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('select-display', 'display-3');
+		await flushPromises();
+
+		expect(removeTile).toHaveBeenCalledTimes(1);
+		expect(removeTile).toHaveBeenCalledWith({ id: 'tile-draft', parent: { type: 'card', id: CARD_ID } });
+		expect(unsetDataSources).toHaveBeenCalledWith({ parent: { type: 'tile', id: 'tile-draft' } });
 	});
 });

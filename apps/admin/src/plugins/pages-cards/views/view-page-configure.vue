@@ -151,8 +151,9 @@ import { ElButton, ElMessageBox, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { EditDrawerLayout, ViewError, provideEditDrawer, useFlashMessage } from '../../../common';
+import { EditDrawerLayout, ViewError, injectStoresManager, provideEditDrawer, useFlashMessage } from '../../../common';
 import { RouteNames as DashboardRouteNames, FormResult, type FormResultType, type IDataSource, type ITile } from '../../../modules/dashboard';
+import { dataSourcesStoreKey, tilesStoreKey } from '../../../modules/dashboard/store/keys';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
 import PageConfigure from '../components/page-configure.vue';
 import { useCards } from '../composables/useCards';
@@ -191,6 +192,10 @@ const { displays, fetchDisplays, isLoading: loadingDisplays } = useDisplays();
 
 const { cards, fetchCards, areLoading: loadingCards } = useCards({ pageId: props.page.id });
 const { remove: removeCard } = useCardsActions();
+
+const storesManager = injectStoresManager();
+const tilesStore = storesManager.getStore(tilesStoreKey);
+const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
 const remoteFormChanged = ref<boolean>(false);
 const remotePageSubmit = ref<boolean>(false);
@@ -291,6 +296,27 @@ const discardForm = async (): Promise<boolean> => {
 	return true;
 };
 
+// A confirmed layout discard drops every unsaved change: the canvas is rebuilt from the saved layout, and tiles added
+// from a form but never saved (drafts in the tiles store, which a re-fetch keeps) go with their data sources
+const discardLayout = (): void => {
+	for (const card of cards.value) {
+		for (const tile of tilesStore.findForParent('card', card.id)) {
+			if (!tile.draft) {
+				continue;
+			}
+
+			dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
+
+			tilesStore.remove({ id: tile.id, parent: { type: 'card', id: card.id } }).catch((): void => {
+				// A draft is only dropped from the store; there is nothing to fail on
+			});
+		}
+	}
+
+	remotePageChanged.value = false;
+	configureKey.value++;
+};
+
 const canReplaceOpenForm = async (): Promise<boolean> => !isFormRoute.value || !remoteFormChanged.value || discardForm();
 
 // On phone a form is its own page and replaces the editor, whose grids hold the only copy of unsaved layout changes
@@ -302,8 +328,7 @@ const canOpenForm = async (): Promise<boolean> => {
 
 		// The editor goes away with its changes; it comes back with the saved layout. Should the window widen past 720 px
 		// while asking, the form opens beside the editor instead, so the canvas is rebuilt from the saved layout here too
-		remotePageChanged.value = false;
-		configureKey.value++;
+		discardLayout();
 
 		return true;
 	}
@@ -323,8 +348,7 @@ const onDisplaySelect = async (displayId: string): Promise<void> => {
 			return;
 		}
 
-		remotePageChanged.value = false;
-		configureKey.value++;
+		discardLayout();
 	}
 
 	selectedDisplayId.value = displayId;
@@ -338,6 +362,8 @@ const onDiscard = async (): Promise<void> => {
 	if (!(await confirmDiscard())) {
 		return;
 	}
+
+	discardLayout();
 
 	allowLeave = true;
 
@@ -426,8 +452,7 @@ onBeforeRouteUpdate(async (to: RouteLocationNormalized): Promise<boolean> => {
 			return false;
 		}
 
-		remotePageChanged.value = false;
-		configureKey.value++;
+		discardLayout();
 
 		return true;
 	}
@@ -445,7 +470,15 @@ onBeforeRouteLeave(async (): Promise<boolean> => {
 		return true;
 	}
 
-	return confirmDiscard();
+	if (!(await confirmDiscard())) {
+		return false;
+	}
+
+	if (remotePageChanged.value) {
+		discardLayout();
+	}
+
+	return true;
 });
 
 onBeforeMount((): void => {
