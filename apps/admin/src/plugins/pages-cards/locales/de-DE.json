@@ -68,7 +68,8 @@
 			"notFound": "Karte {card} wurde nicht gefunden.",
 			"notRemoved": "Karte {card} konnte nicht entfernt werden.",
 			"removeCanceled": "Entfernung von Karte {card} wurde abgebrochen.",
-			"deletedWhileEditing": "Diese Karte wurde gelöscht und ist nicht mehr verfügbar."
+			"deletedWhileEditing": "Diese Karte wurde gelöscht und ist nicht mehr verfügbar.",
+			"notSaved": "Die Karte konnte nicht gespeichert werden. Versuchen Sie es erneut."
 		},
 		"tiles": {
 			"deletedWhileEditing": "Diese Kachel wurde gelöscht und ist nicht mehr verfügbar."

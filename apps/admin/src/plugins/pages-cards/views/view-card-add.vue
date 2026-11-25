@@ -43,7 +43,7 @@ import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
 import { ElMessageBox, ElScrollbar } from 'element-plus';
 
-import { AppBreadcrumbs, FormFooter, ViewHeader, useEditDrawer, useSizeClass, useUuid } from '../../../common';
+import { AppBreadcrumbs, FormFooter, ViewHeader, useEditDrawer, useFlashMessage, useSizeClass, useUuid } from '../../../common';
 import { RouteNames as DashboardRouteNames, FormResult, type FormResultType } from '../../../modules/dashboard';
 import CardAddForm from '../components/card-add-form.vue';
 import { RouteNames } from '../pages-cards.contants';
@@ -62,6 +62,7 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('pagesCardsPlugin.meta.pages.addCard.title'),
@@ -159,6 +160,9 @@ watch(
 			} else {
 				router.push({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 			}
+		} else if (val === FormResult.ERROR) {
+			// The form stays open with what was typed, so the save can be tried again
+			flashMessage.error(t('pagesCardsPlugin.messages.cards.notSaved'));
 		}
 	}
 );

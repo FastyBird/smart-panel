@@ -68,7 +68,8 @@
 			"notFound": "Card {card} was not found.",
 			"notRemoved": "Card {card} couldn't be removed.",
 			"removeCanceled": "Card {card} removal was canceled.",
-			"deletedWhileEditing": "This card was deleted and is no longer available."
+			"deletedWhileEditing": "This card was deleted and is no longer available.",
+			"notSaved": "The card could not be saved. Try again."
 		},
 		"tiles": {
 			"deletedWhileEditing": "This tile was deleted and is no longer available."

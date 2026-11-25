@@ -244,6 +244,9 @@ watch(
 			} else {
 				router.push({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 			}
+		} else if (val === FormResult.ERROR) {
+			// The form stays open with what was typed, so the save can be tried again
+			flashMessage.error(t('pagesCardsPlugin.messages.cards.notSaved'));
 		}
 	}
 );

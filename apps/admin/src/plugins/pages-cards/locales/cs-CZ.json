@@ -68,7 +68,8 @@
 			"notFound": "Karta {card} nebyla nalezena.",
 			"notRemoved": "Kartu {card} se nepodařilo odebrat.",
 			"removeCanceled": "Odebrání karty {card} bylo zrušeno.",
-			"deletedWhileEditing": "Tato karta byla smazána a již není k dispozici."
+			"deletedWhileEditing": "Tato karta byla smazána a již není k dispozici.",
+			"notSaved": "Kartu se nepodařilo uložit. Zkuste to znovu."
 		},
 		"tiles": {
 			"deletedWhileEditing": "Tato dlaždice byla smazána a již není k dispozici."

@@ -300,8 +300,10 @@ const canOpenForm = async (): Promise<boolean> => {
 			return false;
 		}
 
-		// The editor goes away with its changes; it comes back with the saved layout
+		// The editor goes away with its changes; it comes back with the saved layout. Should the window widen past 720 px
+		// while asking, the form opens beside the editor instead, so the canvas is rebuilt from the saved layout here too
 		remotePageChanged.value = false;
+		configureKey.value++;
 
 		return true;
 	}
@@ -425,6 +427,7 @@ onBeforeRouteUpdate(async (to: RouteLocationNormalized): Promise<boolean> => {
 		}
 
 		remotePageChanged.value = false;
+		configureKey.value++;
 
 		return true;
 	}

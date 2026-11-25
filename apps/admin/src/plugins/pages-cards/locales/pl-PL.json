@@ -68,7 +68,8 @@
 			"notFound": "Karta {card} nie została znaleziona.",
 			"notRemoved": "Nie udało się usunąć karty {card}.",
 			"removeCanceled": "Usuwanie karty {card} zostało anulowane.",
-			"deletedWhileEditing": "Ta karta została usunięta i nie jest już dostępna."
+			"deletedWhileEditing": "Ta karta została usunięta i nie jest już dostępna.",
+			"notSaved": "Nie udało się zapisać karty. Spróbuj ponownie."
 		},
 		"tiles": {
 			"deletedWhileEditing": "Ten kafelek został usunięty i nie jest już dostępny."
