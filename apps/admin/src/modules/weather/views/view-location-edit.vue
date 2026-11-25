@@ -63,7 +63,7 @@ import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-rout
 
 import { ElAlert, ElMessageBox, ElScrollbar, ElSkeleton } from 'element-plus';
 
-import { AppBreadcrumbs, FormFooter, ViewHeader, useEditDrawer, useFlashMessage, useSizeClass } from '../../../common';
+import { AppBreadcrumbs, FormFooter, ViewHeader, useBreakpoints, useEditDrawer, useFlashMessage, useSizeClass } from '../../../common';
 import { useLocation } from '../composables';
 import { useWeatherLocationsPlugins } from '../composables/useWeatherLocationsPlugins';
 import type { IWeatherLocation } from '../store/locations.store.types';
@@ -94,6 +94,13 @@ useMeta({
 // Template 4: in the drawer from tablet portrait up, its own page on phone
 const { inDrawer } = useEditDrawer();
 const { isPhone } = useSizeClass();
+
+// The location detail page still opens this form in its own drawer only on large screens, and as a page below that,
+// whatever the template 4 size classes say: leaving goes back the way the detail page came in, so Back still reaches the
+// list. Part 2 of AR-21 moves the detail page onto the edit drawer and drops this
+const { isLGDevice } = useBreakpoints();
+
+const detailInDrawer = computed<boolean>((): boolean => isLGDevice.value);
 
 const isDetailRoute = computed<boolean>(
 	(): boolean =>
@@ -169,7 +176,7 @@ const onDiscard = (): void => {
 			releaseForm();
 
 			if (isDetailRoute.value) {
-				if (inDrawer.value) {
+				if (detailInDrawer.value) {
 					router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 				} else {
 					router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
@@ -193,7 +200,7 @@ const onSubmit = (): void => {
 
 const onClose = (): void => {
 	if (isDetailRoute.value) {
-		if (inDrawer.value) {
+		if (detailInDrawer.value) {
 			router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 		} else {
 			router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
@@ -242,7 +249,7 @@ watch(
 			releaseForm();
 
 			if (isDetailRoute.value) {
-				if (inDrawer.value) {
+				if (detailInDrawer.value) {
 					router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
 				} else {
 					router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
