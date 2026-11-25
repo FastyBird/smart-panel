@@ -45,8 +45,7 @@
 				"title": "IPv6"
 			},
 			"configPath": {
-				"title": "Konfigurationspfad",
-				"tooltip": "Konfigurationsdateipfad:"
+				"title": "Konfigurationspfad"
 			}
 		},
 		"applicationOverview": {
@@ -59,7 +58,6 @@
 			},
 			"webSocket": {
 				"title": "WebSocket",
-				"tooltip": "Verfügb. 5m: {wsAvailability5m} (aktualisiert {last})",
 				"state": {
 					"connected": "Verbunden",
 					"disconnected": "Getrennt"
@@ -81,20 +79,19 @@
 				"title": "Prozess {uptime}"
 			}
 		},
-		"spaces": {
-			"rooms": "{count} Räume",
-			"zones": "{count} Zonen"
+		"logs": {
+			"levels": {
+				"placeholder": "Alle Stufen"
+			}
 		}
 	},
 	"texts": {
 		"updated": "Aktualisiert {time}",
 		"noLogs": "Es wurden keine Anwendungsprotokolle aufgezeichnet.",
-		"noFilteredLogs": "Keine Anwendungsprotokolle gefunden, die den aktiven Filterkriterien entsprechen"
+		"noFilteredLogs": "Keine Anwendungsprotokolle gefunden, die den aktiven Filterkriterien entsprechen",
+		"loadingLogs": "Protokolle werden geladen…"
 	},
 	"buttons": {
-		"copy": {
-			"title": "Kopieren"
-		},
 		"spaces": {
 			"title": "Räume"
 		},
@@ -112,6 +109,15 @@
 		},
 		"resetFilters": {
 			"title": "Filter zurücksetzen"
+		},
+		"refresh": {
+			"title": "Aktualisieren"
+		},
+		"openLogs": {
+			"title": "Systemprotokolle öffnen"
 		}
+	},
+	"aria": {
+		"levels": "Protokollstufen"
 	}
 }

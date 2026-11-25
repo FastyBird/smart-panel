@@ -45,8 +45,7 @@
 				"title": "IPv6"
 			},
 			"configPath": {
-				"title": "Cesta ke konfiguraci",
-				"tooltip": "Cesta ke konfiguračnímu souboru:"
+				"title": "Cesta ke konfiguraci"
 			}
 		},
 		"applicationOverview": {
@@ -59,7 +58,6 @@
 			},
 			"webSocket": {
 				"title": "WebSocket",
-				"tooltip": "Dostupnost 5m: {wsAvailability5m} (aktualizováno {last})",
 				"state": {
 					"connected": "Připojeno",
 					"disconnected": "Odpojeno"
@@ -81,20 +79,19 @@
 				"title": "Proces {uptime}"
 			}
 		},
-		"spaces": {
-			"rooms": "{count} místností",
-			"zones": "{count} zón"
+		"logs": {
+			"levels": {
+				"placeholder": "Všechny úrovně"
+			}
 		}
 	},
 	"texts": {
 		"updated": "Aktualizováno {time}",
 		"noLogs": "Nebyly zaznamenány žádné aplikační logy.",
-		"noFilteredLogs": "Nebyly nalezeny žádné aplikační logy odpovídající aktivním kritériím filtru"
+		"noFilteredLogs": "Nebyly nalezeny žádné aplikační logy odpovídající aktivním kritériím filtru",
+		"loadingLogs": "Načítání záznamů…"
 	},
 	"buttons": {
-		"copy": {
-			"title": "Kopírovat"
-		},
 		"spaces": {
 			"title": "Prostory"
 		},
@@ -112,6 +109,15 @@
 		},
 		"resetFilters": {
 			"title": "Resetovat filtry"
+		},
+		"refresh": {
+			"title": "Obnovit"
+		},
+		"openLogs": {
+			"title": "Otevřít systémové záznamy"
 		}
+	},
+	"aria": {
+		"levels": "Úrovně záznamů"
 	}
 }

@@ -45,8 +45,7 @@
 				"title": "IPv6"
 			},
 			"configPath": {
-				"title": "Ścieżka konfiguracji",
-				"tooltip": "Ścieżka pliku konfiguracji:"
+				"title": "Ścieżka konfiguracji"
 			}
 		},
 		"applicationOverview": {
@@ -59,7 +58,6 @@
 			},
 			"webSocket": {
 				"title": "Gniazdo sieciowe",
-				"tooltip": "Dostępność 5m: {wsAvailability5m} (zaktualizowano {last})",
 				"state": {
 					"connected": "Połączony",
 					"disconnected": "Rozłączony"
@@ -81,20 +79,19 @@
 				"title": "Proces {uptime}"
 			}
 		},
-		"spaces": {
-			"rooms": "{count} pokoi",
-			"zones": "{count} stref"
+		"logs": {
+			"levels": {
+				"placeholder": "Wszystkie poziomy"
+			}
 		}
 	},
 	"texts": {
 		"updated": "Zaktualizowano {time}",
 		"noLogs": "Nie zarejestrowano żadnych logów aplikacji.",
-		"noFilteredLogs": "Nie znaleziono logów aplikacji pasujących do aktywnych kryteriów filtra"
+		"noFilteredLogs": "Nie znaleziono logów aplikacji pasujących do aktywnych kryteriów filtra",
+		"loadingLogs": "Wczytywanie logów…"
 	},
 	"buttons": {
-		"copy": {
-			"title": "Kopiuj"
-		},
 		"spaces": {
 			"title": "Przestrzenie"
 		},
@@ -112,6 +109,15 @@
 		},
 		"resetFilters": {
 			"title": "Resetuj filtry"
+		},
+		"refresh": {
+			"title": "Odśwież"
+		},
+		"openLogs": {
+			"title": "Otwórz logi systemowe"
 		}
+	},
+	"aria": {
+		"levels": "Poziomy logów"
 	}
 }

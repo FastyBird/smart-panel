@@ -1,56 +1,22 @@
 <template>
-	<el-card
-		shadow="never"
-		header-class="px-3! py-3! font-bold"
-	>
-		<template #header>
-			{{ t('statsModule.headings.uptime') }}
-		</template>
-
-		<div class="flex flex-col gap-2">
-			<div class="font-bold text-2xl">
-				<el-tooltip
-					v-if="systemModuleSection?.systemUptimeSec.lastUpdated"
-					:content="t('statsModule.texts.updated', { time: formatRelative(systemModuleSection?.systemUptimeSec.lastUpdated) })"
-					placement="top-start"
-				>
-					<el-icon :size="18">
-						<icon
-							v-if="isStale"
-							icon="mdi:warning"
-						/>
-						<icon
-							v-else
-							icon="mdi:info-circle-outline"
-						/>
-					</el-icon>
-				</el-tooltip>
-
-				{{ fmtUptime(systemModuleSection?.systemUptimeSec.value) }}
-			</div>
-
-			<div class="color-[var(--el-text-color-secondary)]">
-				{{
-					t('statsModule.fields.uptime.process.title', {
-						uptime: fmtUptime(systemModuleSection?.processUptimeSec.value),
-					})
-				}}
-			</div>
-		</div>
-	</el-card>
+	<stat-tile
+		icon="mdi:timer-outline"
+		:label="t('statsModule.headings.uptime')"
+		:value="fmtUptime(systemModuleSection?.systemUptimeSec.value)"
+		:hint="t('statsModule.fields.uptime.process.title', { uptime: fmtUptime(systemModuleSection?.processUptimeSec.value) })"
+		:last-updated="systemModuleSection?.systemUptimeSec.lastUpdated ?? null"
+		:stale="isStale"
+		:loading="props.loading"
+	/>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElIcon, ElTooltip } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { formatRelative } from '../../../common';
 import { STALE_MS } from '../stats.constants';
 
+import StatTile from './stat-tile.vue';
 import type { IStatsUptimeProps } from './stats-uptime.types';
 
 defineOptions({

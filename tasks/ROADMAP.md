@@ -511,7 +511,7 @@ Protect epic, built on this epic's components.
 | 3   | Reference modules (AR-9 … AR-16): Devices, Automations, Remote access, MCP, Notifications               | admin       | :white_check_mark: Done |
 | 4   | Everything else and plugins (AR-17 … AR-29): remaining modules, plugin forms, slot docs, lint as errors | admin, docs | :construction: In Progress |
 
-**Next up:** AR-22 (the overview as a dashboard of stat tiles and panels), once AR-21 part 2 (the weather location detail, the `locationAddForm` host frame, the provider location forms and the lint switch) merges.
+**Next up:** AR-23 (Buddy chat on the two-pane template and Buddy setup on the wizard template), once AR-22 (the overview as a dashboard of stat tiles and panels) merges.
 
 ---
 

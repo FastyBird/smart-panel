@@ -7,107 +7,58 @@
 		icon="mdi:monitor-dashboard"
 	/>
 
-	<div class="p-4">
-		<el-row :gutter="20">
-			<el-col :span="9">
-				<div class="grid gap-2">
-					<system-information
-						:system-info="systemInfo"
-						:config-app="configApp"
-						:loading="isLoadingSystemInfo || isLoadingAppConfig"
-					/>
+	<!-- Template 6: stat tiles, then the panels two to one -->
+	<div
+		class="page-pad flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto box-border [&>*]:shrink-0"
+		data-test-id="overview"
+	>
+		<!-- Two tiles per row on phone; from tablet portrait the row takes as many 150 px tiles as fit -->
+		<div
+			class="grid grid-cols-2 tp:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4"
+			data-test-id="overview-tiles"
+		>
+			<stats-devices
+				:devices-module-section="devicesModuleSection"
+				:loading="isLoadingStats"
+			/>
 
-					<weather-day />
+			<stats-devices-communication
+				:devices-module-section="devicesModuleSection"
+				:loading="isLoadingStats"
+			/>
 
-					<quick-links />
-				</div>
-			</el-col>
+			<stats-spaces :loading="isLoadingStats" />
 
-			<el-col :span="15">
+			<stats-dashboard
+				:dashboard-module-section="dashboardModuleSection"
+				:loading="isLoadingStats"
+			/>
+
+			<stats-cpu
+				:system-module-section="systemModuleSection"
+				:system-info="systemInfo"
+				:loading="isLoadingStats || isLoadingSystemInfo"
+			/>
+
+			<stats-memory
+				:system-module-section="systemModuleSection"
+				:system-info="systemInfo"
+				:loading="isLoadingStats || isLoadingSystemInfo"
+			/>
+
+			<stats-uptime
+				:system-module-section="systemModuleSection"
+				:loading="isLoadingStats"
+			/>
+		</div>
+
+		<div class="grid grid-cols-1 tl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-4 items-start">
+			<div class="flex flex-col gap-4 min-w-0">
 				<application-overview
 					:api-module-section="apiModuleSection"
 					:websocket-module-section="websocketModuleSection"
 					:loading="isLoadingStats"
 				/>
-
-				<el-row
-					class="mt-2 mb-2"
-					:gutter="10"
-				>
-					<el-col :span="8">
-						<stats-cpu
-							:system-module-section="systemModuleSection"
-							:system-info="systemInfo"
-							:loading="isLoadingStats || isLoadingSystemInfo"
-							class="h-full"
-						/>
-					</el-col>
-
-					<el-col :span="8">
-						<stats-memory
-							:system-module-section="systemModuleSection"
-							:system-info="systemInfo"
-							:loading="isLoadingStats || isLoadingSystemInfo"
-							class="h-full"
-						/>
-					</el-col>
-
-					<el-col :span="8">
-						<stats-uptime
-							:system-module-section="systemModuleSection"
-							:loading="isLoadingStats"
-							class="h-full"
-						/>
-					</el-col>
-				</el-row>
-
-				<el-card
-					shadow="never"
-					class="mb-2"
-				>
-					<el-row :gutter="16">
-						<el-col
-							:xs="24"
-							:sm="12"
-							:md="6"
-						>
-							<stats-spaces :loading="isLoadingStats" />
-						</el-col>
-
-						<el-col
-							:xs="24"
-							:sm="12"
-							:md="6"
-						>
-							<stats-dashboard
-								:dashboard-module-section="dashboardModuleSection"
-								:loading="isLoadingStats"
-							/>
-						</el-col>
-
-						<el-col
-							:xs="24"
-							:sm="12"
-							:md="6"
-						>
-							<stats-devices
-								:devices-module-section="devicesModuleSection"
-								:loading="isLoadingStats"
-							/>
-						</el-col>
-
-						<el-col
-							:xs="24"
-							:sm="12"
-							:md="6"
-						>
-							<stats-devices-communication
-								:devices-module-section="devicesModuleSection"
-								:loading="isLoadingStats"
-							/>
-						</el-col>
-					</el-row>
-				</el-card>
 
 				<application-logs
 					v-model:filters="systemLogsFilters"
@@ -118,8 +69,20 @@
 					@reset="systemLogsResetFilter"
 					@detail="openSystemLogs"
 				/>
-			</el-col>
-		</el-row>
+			</div>
+
+			<div class="flex flex-col gap-4 min-w-0">
+				<system-information
+					:system-info="systemInfo"
+					:config-app="configApp"
+					:loading="isLoadingSystemInfo || isLoadingAppConfig"
+				/>
+
+				<weather-day />
+
+				<quick-links />
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -128,8 +91,6 @@ import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRouter } from 'vue-router';
-
-import { ElCard, ElCol, ElRow } from 'element-plus';
 
 import { AppBreadcrumbs, ViewHeader } from '../../../common';
 import { useConfigApp } from '../../config';

@@ -1,114 +1,33 @@
 <template>
+	<!-- Template 6: the System information panel -->
 	<el-card
+		v-loading="props.loading"
 		shadow="never"
-		header-class="px-3! py-3! font-bold"
-		body-class="p-0!"
+		body-class="flex flex-col gap-3 p-4!"
+		data-test-id="system-information"
 	>
-		<template #header>
-			{{ t('statsModule.headings.systemInformation') }}
-		</template>
+		<span class="text-card-title">{{ t('statsModule.headings.systemInformation') }}</span>
 
-		<el-descriptions
-			v-loading="loading"
-			:column="1"
-			size="small"
-			border
-		>
-			<el-descriptions-item
-				:label-width="150"
-				class-name="border-l-none! border-t-none!"
-				label-class-name="border-l-none! border-t-none!"
-			>
-				<template #label>
-					{{ t('statsModule.fields.systemInformation.timezone.title') }}
-				</template>
+		<kv-grid
+			:items="items"
+			:cols="2"
+		/>
 
-				{{ systemInfo?.os.timezone }}
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				:label-width="150"
-				class-name="border-l-none! border-t-none!"
-				label-class-name="border-l-none! border-t-none!"
-			>
-				<template #label>
-					{{ t('statsModule.fields.systemInformation.operatingSystem.title') }}
-				</template>
-
-				{{ systemInfo?.os.distro }} {{ systemInfo?.os.platform }} {{ systemInfo?.os.release }}
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				:label-width="150"
-				class-name="border-l-none! border-t-none!"
-				label-class-name="border-l-none! border-t-none!"
-			>
-				<template #label>
-					{{ t('statsModule.fields.systemInformation.hostname.title') }}
-				</template>
-
-				{{ systemInfo?.defaultNetwork.hostname }}
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				:label-width="150"
-				class-name="border-l-none! border-t-none!"
-				label-class-name="border-l-none! border-t-none!"
-			>
-				<template #label>{{ t('statsModule.fields.systemInformation.ipv4.title') }} ({{ systemInfo?.defaultNetwork.interface }})</template>
-
-				{{ systemInfo?.defaultNetwork.ip4 }}
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				:label-width="150"
-				class-name="border-l-none! border-t-none!"
-				label-class-name="border-l-none! border-t-none!"
-			>
-				<template #label>{{ t('statsModule.fields.systemInformation.ipv6.title') }} ({{ systemInfo?.defaultNetwork.interface }})</template>
-
-				{{ systemInfo?.defaultNetwork.ip6 }}
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				:label-width="150"
-				class-name="border-l-none! border-t-none! border-b-none! config-path-cell"
-				label-class-name="border-l-none! border-t-none! border-b-none! whitespace-nowrap!"
-			>
-				<template #label>
-					{{ t('statsModule.fields.systemInformation.configPath.title') }}
-				</template>
-
-				<el-tooltip placement="top-start">
-					<template #content>
-						<div class="flex flex-col gap-2">
-							<div class="font-bold">{{ t('statsModule.fields.systemInformation.configPath.tooltip') }}</div>
-							<span class="font-mono text-xs">{{ configApp?.path }}</span>
-							<el-button
-								size="small"
-								type="primary"
-								@click.stop="copyPath"
-							>
-								{{ t('statsModule.buttons.copy.title') }}
-							</el-button>
-						</div>
-					</template>
-
-					<span class="block overflow-hidden text-ellipsis whitespace-nowrap pr-4">
-						{{ configApp?.path }}
-					</span>
-				</el-tooltip>
-			</el-descriptions-item>
-		</el-descriptions>
+		<copy-field
+			v-if="props.configApp?.path"
+			:value="props.configApp.path"
+			:label="t('statsModule.fields.systemInformation.configPath.title')"
+		/>
 	</el-card>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElTooltip, vLoading } from 'element-plus';
+import { ElCard, vLoading } from 'element-plus';
 
-import { useFlashMessage } from '../../../common';
+import { CopyField, KvGrid, type KvGridItem } from '../../../common';
 
 import type { ISystemInformationProps } from './system-information.types';
 
@@ -121,18 +40,29 @@ const props = withDefaults(defineProps<ISystemInformationProps>(), {
 });
 
 const { t } = useI18n();
-const { success } = useFlashMessage();
 
-const copyPath = (): void => {
-	navigator.clipboard.writeText(props.configApp?.path || '');
+const network = computed<string>((): string => props.systemInfo?.defaultNetwork.interface ?? '');
 
-	success('Config path copied to clipboard!');
-};
+const items = computed<KvGridItem[]>((): KvGridItem[] => [
+	{ label: t('statsModule.fields.systemInformation.timezone.title'), value: props.systemInfo?.os.timezone },
+	{
+		label: t('statsModule.fields.systemInformation.operatingSystem.title'),
+		value: [props.systemInfo?.os.distro, props.systemInfo?.os.platform, props.systemInfo?.os.release].filter((part) => part).join(' '),
+	},
+	{ label: t('statsModule.fields.systemInformation.hostname.title'), value: props.systemInfo?.defaultNetwork.hostname, mono: true },
+	{
+		label: network.value
+			? `${t('statsModule.fields.systemInformation.ipv4.title')} (${network.value})`
+			: t('statsModule.fields.systemInformation.ipv4.title'),
+		value: props.systemInfo?.defaultNetwork.ip4,
+		mono: true,
+	},
+	{
+		label: network.value
+			? `${t('statsModule.fields.systemInformation.ipv6.title')} (${network.value})`
+			: t('statsModule.fields.systemInformation.ipv6.title'),
+		value: props.systemInfo?.defaultNetwork.ip6,
+		mono: true,
+	},
+]);
 </script>
-
-<style>
-.config-path-cell {
-	max-width: 0;
-	overflow: hidden;
-}
-</style>

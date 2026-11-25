@@ -1,69 +1,29 @@
 <template>
-	<el-card
-		shadow="never"
-		header-class="px-3! py-3! font-bold"
-	>
-		<template #header>
-			{{ t('statsModule.headings.cpu') }}
-		</template>
-
-		<div class="flex flex-col gap-2">
-			<div class="font-bold text-2xl">
-				<el-tooltip
-					v-if="systemModuleSection?.cpuLoad1m.lastUpdated"
-					:content="t('statsModule.texts.updated', { time: formatRelative(systemModuleSection?.cpuLoad1m.lastUpdated) })"
-					placement="top-start"
-				>
-					<el-icon :size="18">
-						<icon
-							v-if="isStale"
-							icon="mdi:warning"
-						/>
-						<icon
-							v-else
-							icon="mdi:info-circle-outline"
-						/>
-					</el-icon>
-				</el-tooltip>
-
-				{{ formatPct(systemModuleSection?.cpuLoad1m.value) }}
-			</div>
-
-			<div class="color-[var(--el-text-color-secondary)]">
-				{{
-					t('statsModule.fields.cpu.temperature.title', {
-						temperature: systemInfo?.temperature.cpu ?? t('application.value.notAvailable'),
-						unit: '°C',
-					})
-				}}
-			</div>
-
-			<el-progress
-				:percentage="percentage"
-				:stroke-width="10"
-				:show-text="false"
-				:color="[
-					{ color: 'var(--el-color-success)', percentage: 60 },
-					{ color: 'var(--el-color-warning)', percentage: 85 },
-					{ color: 'var(--el-color-error)', percentage: 100 },
-				]"
-				class="mt-2"
-			/>
-		</div>
-	</el-card>
+	<stat-tile
+		icon="mdi:cpu-64-bit"
+		:label="t('statsModule.headings.cpu')"
+		:value="formatPct(systemModuleSection?.cpuLoad1m.value)"
+		:hint="
+			t('statsModule.fields.cpu.temperature.title', {
+				temperature: systemInfo?.temperature.cpu ?? t('application.value.notAvailable'),
+				unit: '°C',
+			})
+		"
+		:last-updated="systemModuleSection?.cpuLoad1m.lastUpdated ?? null"
+		:stale="isStale"
+		:progress="percentage"
+		:loading="props.loading"
+	/>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElIcon, ElProgress, ElTooltip } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { formatRelative, useNumberFormat } from '../../../common';
+import { useNumberFormat } from '../../../common';
 import { STALE_MS } from '../stats.constants';
 
+import StatTile from './stat-tile.vue';
 import type { IStatsCpuProps } from './stats-cpu.types';
 
 defineOptions({

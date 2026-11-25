@@ -1,15 +1,15 @@
 <template>
+	<!-- Template 6: the Quick links panel -->
 	<el-card
 		shadow="never"
-		header-class="px-3! py-3! font-bold"
+		body-class="flex flex-col gap-3 p-4!"
+		data-test-id="quick-links"
 	>
-		<template #header>
-			{{ t('statsModule.headings.quickLinks') }}
-		</template>
+		<span class="text-card-title">{{ t('statsModule.headings.quickLinks') }}</span>
 
-		<div class="flex flex-row flex-wrap gap-2">
+		<div class="grid grid-cols-2 gap-2">
 			<el-button
-				class="flex-1 min-w-[120px] ml-0!"
+				class="ml-0!"
 				@click="onOpenSpaces"
 			>
 				<template #icon>
@@ -19,7 +19,7 @@
 			</el-button>
 
 			<el-button
-				class="flex-1 min-w-[120px] ml-0!"
+				class="ml-0!"
 				@click="onOpenPages"
 			>
 				<template #icon>
@@ -29,7 +29,7 @@
 			</el-button>
 
 			<el-button
-				class="flex-1 min-w-[120px] ml-0!"
+				class="ml-0!"
 				@click="onOpenDevices"
 			>
 				<template #icon>
@@ -39,7 +39,7 @@
 			</el-button>
 
 			<el-button
-				class="flex-1 min-w-[120px] ml-0!"
+				class="ml-0!"
 				@click="onOpenConfig"
 			>
 				<template #icon>
@@ -49,7 +49,7 @@
 			</el-button>
 
 			<el-button
-				class="flex-1 min-w-[120px] ml-0!"
+				class="ml-0!"
 				@click="onOpenDocs"
 			>
 				<template #icon>
@@ -69,10 +69,10 @@ import { ElButton, ElCard } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { RouteNames as SpacesModuleRouteNames } from '../../spaces';
 import { RouteNames as ConfigModuleRouteNames } from '../../config';
 import { RouteNames as DashboardModuleRouteNames } from '../../dashboard';
 import { RouteNames as DevicesModuleRouteNames } from '../../devices';
+import { RouteNames as SpacesModuleRouteNames } from '../../spaces';
 
 defineOptions({
 	name: 'QuickLinks',

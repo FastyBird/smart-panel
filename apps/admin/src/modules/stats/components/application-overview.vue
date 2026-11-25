@@ -1,54 +1,48 @@
 <template>
+	<!-- Template 6: the Smart Panel panel -->
 	<el-card
 		shadow="never"
-		header-class="px-3! py-3! font-bold"
+		body-class="flex flex-col gap-3 p-4!"
+		data-test-id="application-overview"
 	>
-		<template #header>
-			{{ t('statsModule.headings.applicationOverview') }}
-		</template>
+		<span class="text-card-title">{{ t('statsModule.headings.applicationOverview') }}</span>
 
-		<div class="grid grid-cols-3 gap-2">
-			<div>
-				<div class="color-[var(--el-text-color-secondary)] flex flex-row items-center">
-					{{ t('statsModule.fields.applicationOverview.version.title') }}
-				</div>
-				<div class="font-bold text-lg mt-1">
-					{{ appVersion }}
-				</div>
+		<div class="grid grid-cols-1 tp:grid-cols-3 gap-4">
+			<div class="flex flex-col gap-1 min-w-0">
+				<span class="text-label">{{ t('statsModule.fields.applicationOverview.version.title') }}</span>
+				<span class="text-body font-medium truncate">{{ appVersion }}</span>
 			</div>
 
-			<div>
-				<div class="color-[var(--el-text-color-secondary)] flex flex-row items-center">
+			<div class="flex flex-col gap-1 min-w-0">
+				<span class="inline-flex items-center gap-1 text-label">
+					{{ t('statsModule.fields.applicationOverview.apip95.title') }}
 					<el-tooltip
 						:content="t('statsModule.fields.applicationOverview.apip95.tooltip')"
-						placement="top-start"
+						placement="top"
 					>
-						<el-icon
-							class="mr-2"
-							:size="14"
-						>
-							<icon icon="mdi:info-circle-outline" />
-						</el-icon>
+						<icon
+							icon="mdi:information-outline"
+							width="14"
+							height="14"
+							class="text-muted"
+							:aria-label="t('statsModule.fields.applicationOverview.apip95.tooltip')"
+							role="img"
+						/>
 					</el-tooltip>
-
-					{{ t('statsModule.fields.applicationOverview.apip95.title') }}
-				</div>
-				<div class="font-bold text-lg mt-1">{{ apiModuleSection?.p95Ms5m.value ?? 0 }} ms</div>
+				</span>
+				<span class="text-body font-medium">{{ apiModuleSection?.p95Ms5m.value ?? 0 }} ms</span>
 			</div>
 
-			<div>
-				<div class="color-[var(--el-text-color-secondary)] flex flex-row items-center">
-					{{ t('statsModule.fields.applicationOverview.webSocket.title') }}
-				</div>
-				<div class="font-bold text-lg mt-1 flex flex-row items-center">
-					<span :class="{ 'color-[var(--el-color-success)]': socketsConnected, 'color-[var(--el-color-warning)]': !socketsConnected }">
-						{{
-							socketsConnected
-								? t('statsModule.fields.applicationOverview.webSocket.state.connected')
-								: t('statsModule.fields.applicationOverview.webSocket.state.disconnected')
-						}}
-					</span>
-				</div>
+			<div class="flex flex-col gap-1 min-w-0 items-start">
+				<span class="text-label">{{ t('statsModule.fields.applicationOverview.webSocket.title') }}</span>
+				<status-tag
+					:status="socketsConnected ? 'ok' : 'warn'"
+					:label="
+						socketsConnected
+							? t('statsModule.fields.applicationOverview.webSocket.state.connected')
+							: t('statsModule.fields.applicationOverview.webSocket.state.disconnected')
+					"
+				/>
 			</div>
 		</div>
 	</el-card>
@@ -58,11 +52,11 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElIcon, ElTooltip } from 'element-plus';
+import { ElCard, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useSockets } from '../../../common';
+import { StatusTag, useSockets } from '../../../common';
 
 import type { IApplicationOverviewProps } from './application-overview.types';
 

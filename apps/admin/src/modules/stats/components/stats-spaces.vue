@@ -1,13 +1,10 @@
 <template>
-	<div class="flex flex-row items-center">
-		<span class="color-[var(--el-text-color-secondary)]">
-			{{ t('statsModule.headings.spaces') }}
-		</span>
-	</div>
-
-	<div class="text-3xl mt-1 flex flex-row items-center">
-		{{ totalCount }}
-	</div>
+	<stat-tile
+		icon="mdi:home-group"
+		:label="t('statsModule.headings.spaces')"
+		:value="String(totalCount)"
+		:loading="props.loading"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -16,13 +13,14 @@ import { useI18n } from 'vue-i18n';
 
 import { useSpaces } from '../../spaces';
 
+import StatTile from './stat-tile.vue';
 import type { IStatsSpacesProps } from './stats-spaces.types';
 
 defineOptions({
 	name: 'StatsSpaces',
 });
 
-withDefaults(defineProps<IStatsSpacesProps>(), {
+const props = withDefaults(defineProps<IStatsSpacesProps>(), {
 	loading: false,
 });
 

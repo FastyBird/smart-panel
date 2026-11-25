@@ -1,46 +1,22 @@
 <template>
-	<div class="flex flex-row items-center">
-		<el-tooltip
-			v-if="devicesModuleSection?.onlineNow.lastUpdated"
-			:content="t('statsModule.texts.updated', { time: formatRelative(devicesModuleSection?.onlineNow.lastUpdated) })"
-			placement="top-start"
-		>
-			<el-icon
-				:size="12"
-				class="mr-1"
-			>
-				<icon
-					v-if="isStale"
-					icon="mdi:warning"
-				/>
-				<icon
-					v-else
-					icon="mdi:info-circle-outline"
-				/>
-			</el-icon>
-		</el-tooltip>
-
-		<span class="color-[var(--el-text-color-secondary)]">
-			{{ t('statsModule.headings.devices') }}
-		</span>
-	</div>
-
-	<div class="text-3xl mt-1 flex flex-row items-center">
-		{{ format(devicesModuleSection?.onlineNow.value ?? 0, { maximumFractionDigits: 0 }) }}
-	</div>
+	<stat-tile
+		icon="mdi:devices"
+		:label="t('statsModule.headings.devices')"
+		:value="format(devicesModuleSection?.onlineNow.value ?? 0, { maximumFractionDigits: 0 })"
+		:last-updated="devicesModuleSection?.onlineNow.lastUpdated ?? null"
+		:stale="isStale"
+		:loading="props.loading"
+	/>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElIcon, ElTooltip } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { formatRelative, useNumberFormat } from '../../../common';
+import { useNumberFormat } from '../../../common';
 import { STALE_MS } from '../stats.constants';
 
+import StatTile from './stat-tile.vue';
 import type { IStatsDevicesProps } from './stats-devices.types';
 
 defineOptions({
