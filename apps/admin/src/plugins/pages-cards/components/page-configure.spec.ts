@@ -62,13 +62,13 @@ vi.mock('./tile-preview.vue', () => ({
 	default: { name: 'TilePreview', template: '<div />' },
 }));
 
-const mountConfigure = async () => {
+const mountConfigure = async (gridLayout: { rows: number; cols: number } | null = { rows: 4, cols: 6 }) => {
 	const wrapper = mount(PageConfigure, {
 		attachTo: document.body,
 		props: {
 			page: { id: PAGE_ID, title: 'Climate', icon: null } as never,
 			cards: [{ id: CARD_ID, title: 'Living room', icon: null, order: 1, rows: null, cols: null }] as never,
-			gridLayout: { rows: 4, cols: 6 },
+			gridLayout,
 			gridCardStyle: {},
 			displays: [],
 			selectedDisplay: null,
@@ -121,5 +121,21 @@ describe('CardsPageConfigure', () => {
 		const wrapper = await mountConfigure();
 
 		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
+	});
+
+	it('does not report a save without a display to read the layout from, and stays changed', async () => {
+		cardTiles.value = [tile('tile-b', true)];
+
+		const wrapper = await mountConfigure(null);
+
+		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+		expect(wrapper.emitted('update:remote-page-result')).not.toContainEqual(['ok']);
+		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
+		expect(tilesStore.edit).not.toHaveBeenCalled();
 	});
 });

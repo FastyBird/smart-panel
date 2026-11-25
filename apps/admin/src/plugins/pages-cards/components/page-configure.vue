@@ -956,6 +956,15 @@ watch(
 	async (val: boolean): Promise<void> => {
 		if (val) {
 			emit('update:remote-page-submit', false);
+
+			// Without a display there are no grids to read the layout from: nothing would be stored, so the save fails and
+			// the page stays changed
+			if (props.gridLayout === null || cardGrids.size === 0) {
+				emit('update:remote-page-result', FormResult.ERROR);
+
+				return;
+			}
+
 			emit('update:remote-page-result', FormResult.WORKING);
 
 			try {

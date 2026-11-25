@@ -424,4 +424,21 @@ describe('ViewCardsPageConfigure', () => {
 		expect(removeTile).toHaveBeenCalledWith({ id: 'tile-draft', parent: { type: 'card', id: CARD_ID } });
 		expect(unsetDataSources).toHaveBeenCalledWith({ parent: { type: 'tile', id: 'tile-draft' } });
 	});
+
+	it('keeps the editor while a save is in flight instead of discarding under it', async () => {
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure`);
+		const configure = wrapper.findComponent({ name: 'PageConfigure' });
+
+		configure.vm.$emit('update:remote-page-changed', true);
+		configure.vm.$emit('update:remote-page-result', 'working');
+		await flushPromises();
+
+		await router.push({ name: 'dashboard_module-pages' });
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE);
+		expect(removeTile).not.toHaveBeenCalled();
+		expect(wrapper.find('[data-test-id="cards-editor-save"]').attributes('disabled')).toBeDefined();
+	});
 });

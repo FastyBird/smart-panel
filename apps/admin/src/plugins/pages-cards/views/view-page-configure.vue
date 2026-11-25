@@ -83,7 +83,7 @@
 					type="primary"
 					class="ml-0!"
 					:loading="saving"
-					:disabled="!remotePageChanged || saving"
+					:disabled="!remotePageChanged || saving || gridLayout === null"
 					data-test-id="cards-editor-save"
 					@click="onSave"
 				>
@@ -322,6 +322,11 @@ const canReplaceOpenForm = async (): Promise<boolean> => !isFormRoute.value || !
 // On phone a form is its own page and replaces the editor, whose grids hold the only copy of unsaved layout changes
 const canOpenForm = async (): Promise<boolean> => {
 	if (!inDrawer.value && remotePageChanged.value) {
+		// A save in flight may still store a draft tile: the layout is not discarded under it
+		if (saving.value) {
+			return false;
+		}
+
 		if (!(await confirmDiscard())) {
 			return false;
 		}
@@ -344,7 +349,7 @@ const onDisplaySelect = async (displayId: string): Promise<void> => {
 	const next = applicableDisplays.value.find((display) => display.id === displayId) ?? null;
 
 	if (remotePageChanged.value && gridOf(next) !== gridOf(selectedDisplay.value)) {
-		if (!(await confirmDiscard())) {
+		if (saving.value || !(await confirmDiscard())) {
 			return;
 		}
 
@@ -448,7 +453,7 @@ onBeforeRouteUpdate(async (to: RouteLocationNormalized): Promise<boolean> => {
 	const toForm = to.matched.some((matched) => FORM_ROUTES.includes(String(matched.name)));
 
 	if (toForm && !inDrawer.value && !isFormRoute.value && remotePageChanged.value) {
-		if (!(await confirmDiscard())) {
+		if (saving.value || !(await confirmDiscard())) {
 			return false;
 		}
 
@@ -468,6 +473,11 @@ onBeforeRouteLeave(async (): Promise<boolean> => {
 	// An open form with changes counts too: leaving the editor closes it
 	if (allowLeave || (!remotePageChanged.value && !remoteFormChanged.value)) {
 		return true;
+	}
+
+	// A save in flight may still store a draft tile: the editor stays until it settles
+	if (remotePageChanged.value && saving.value) {
+		return false;
 	}
 
 	if (!(await confirmDiscard())) {
