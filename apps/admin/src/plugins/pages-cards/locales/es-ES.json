@@ -44,10 +44,6 @@
 		"cards": {
 			"remove": "Eliminar tarjeta"
 		},
-		"configure": {
-			"display": "Pantalla",
-			"cards": "Tarjetas"
-		},
 		"misc": {
 			"discard": "¿Descartar cambios?"
 		}
@@ -85,8 +81,6 @@
 		"cards": {
 			"confirmRemove": "¿Está seguro de que desea eliminar la tarjeta {card}?",
 			"noCards": "Aún no se han añadido tarjetas a esta página.",
-			"noTiles": "No hay mosaicos en esta tarjeta. Haga clic en + para añadir uno.",
-			"tilesCount": "mosaicos",
 			"loadingCard": "Cargando tarjeta..."
 		},
 		"tiles": {
@@ -123,9 +117,6 @@
 		},
 		"addCard": {
 			"title": "Añadir tarjeta"
-		},
-		"addPageDataSource": {
-			"title": "Añadir fuente de datos de página"
 		}
 	},
 	"fields": {
@@ -160,11 +151,51 @@
 	},
 	"editor": {
 		"texts": {
-			"unsaved": "Cambios sin guardar"
+			"unsaved": "Cambios sin guardar",
+			"noCardsHint": "Añada una tarjeta para agrupar mosaicos en esta página.",
+			"loadingDisplays": "Cargando pantallas…",
+			"noDisplay": "No hay ninguna pantalla para la que organizar la página",
+			"noDisplayHint": "La cuadrícula depende de la pantalla que muestra esta página. Empareje una pantalla o elija una en los ajustes de la página."
 		},
 		"messages": {
 			"saved": "Diseño de la página guardado.",
 			"saveFailed": "No se pudo guardar el diseño de la página. Inténtelo de nuevo."
+		},
+		"card": {
+			"tiles": "Mosaicos: {count}"
+		},
+		"buttons": {
+			"addTile": "Añadir mosaico",
+			"dataSources": "Fuentes de datos",
+			"edit": "Editar",
+			"detail": "Detalle",
+			"remove": "Eliminar"
+		},
+		"aria": {
+			"addTile": "Añadir un mosaico a {card}",
+			"closeInspector": "Cerrar el inspector"
+		},
+		"inspector": {
+			"inCard": "En la tarjeta {card}",
+			"card": "Tarjeta",
+			"position": "Posición",
+			"positionValue": "Fila {row}, columna {col}",
+			"size": "Tamaño en celdas",
+			"sizeValue": "{cols} × {rows}",
+			"order": "Orden",
+			"tiles": "Mosaicos",
+			"grid": "Cuadrícula",
+			"gridFromDisplay": "Según la pantalla",
+			"saveHint": "Los movimientos, cambios de tamaño y eliminaciones se aplican al guardar la página.",
+			"nothingSelected": "Seleccione una tarjeta o un mosaico para ver qué puede hacer con él."
+		},
+		"display": {
+			"title": "Pantalla",
+			"grid": "Cuadrícula de {cols} × {rows}"
+		},
+		"phone": {
+			"readOnly": "Las tarjetas se organizan en una tableta o un ordenador. Toque un mosaico para ver su detalle.",
+			"noTiles": "Esta tarjeta aún no tiene mosaicos."
 		}
 	},
 	"sections": {

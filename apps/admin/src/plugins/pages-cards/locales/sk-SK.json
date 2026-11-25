@@ -44,10 +44,6 @@
 		"cards": {
 			"remove": "Odstrániť kartu"
 		},
-		"configure": {
-			"display": "Displej",
-			"cards": "Karty"
-		},
 		"misc": {
 			"discard": "Zahodiť zmeny?"
 		}
@@ -85,8 +81,6 @@
 		"cards": {
 			"confirmRemove": "Naozaj chcete odstrániť kartu {card}?",
 			"noCards": "Na túto stránku ešte neboli pridané žiadne karty.",
-			"noTiles": "Žiadne dlaždice v tejto karte. Kliknite na + pre pridanie.",
-			"tilesCount": "dlaždíc",
 			"loadingCard": "Načítavanie karty..."
 		},
 		"tiles": {
@@ -123,9 +117,6 @@
 		},
 		"addCard": {
 			"title": "Pridať kartu"
-		},
-		"addPageDataSource": {
-			"title": "Pridať zdroj dát stránky"
 		}
 	},
 	"fields": {
@@ -160,11 +151,51 @@
 	},
 	"editor": {
 		"texts": {
-			"unsaved": "Neuložené zmeny"
+			"unsaved": "Neuložené zmeny",
+			"noCardsHint": "Pridajte kartu, ktorá na tejto stránke zoskupí dlaždice.",
+			"loadingDisplays": "Načítavajú sa displeje…",
+			"noDisplay": "Nie je displej, pre ktorý stránku rozvrhnúť",
+			"noDisplayHint": "Mriežka sa riadi displejom, ktorý stránku zobrazuje. Spárujte displej alebo ho vyberte v nastaveniach stránky."
 		},
 		"messages": {
 			"saved": "Rozvrhnutie stránky uložené.",
 			"saveFailed": "Rozvrhnutie stránky sa nepodarilo uložiť. Skúste to znova."
+		},
+		"card": {
+			"tiles": "Dlaždice: {count}"
+		},
+		"buttons": {
+			"addTile": "Pridať dlaždicu",
+			"dataSources": "Zdroje dát",
+			"edit": "Upraviť",
+			"detail": "Detail",
+			"remove": "Odobrať"
+		},
+		"aria": {
+			"addTile": "Pridať dlaždicu do karty {card}",
+			"closeInspector": "Zavrieť inšpektor"
+		},
+		"inspector": {
+			"inCard": "V karte {card}",
+			"card": "Karta",
+			"position": "Umiestnenie",
+			"positionValue": "Riadok {row}, stĺpec {col}",
+			"size": "Veľkosť v bunkách",
+			"sizeValue": "{cols} × {rows}",
+			"order": "Poradie",
+			"tiles": "Dlaždice",
+			"grid": "Mriežka",
+			"gridFromDisplay": "Podľa displeja",
+			"saveHint": "Presuny, zmeny veľkosti a odstránenia sa prejavia po uložení stránky.",
+			"nothingSelected": "Vyberte kartu alebo dlaždicu a uvidíte, čo s ňou môžete robiť."
+		},
+		"display": {
+			"title": "Displej",
+			"grid": "Mriežka {cols} × {rows}"
+		},
+		"phone": {
+			"readOnly": "Karty sa usporadúvajú na tablete alebo počítači. Ťuknutím na dlaždicu zobrazíte jej detail.",
+			"noTiles": "V tejto karte zatiaľ nie sú žiadne dlaždice."
 		}
 	},
 	"sections": {

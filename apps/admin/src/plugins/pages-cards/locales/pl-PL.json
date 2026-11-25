@@ -44,10 +44,6 @@
 		"cards": {
 			"remove": "Usuń kartę"
 		},
-		"configure": {
-			"display": "Wyświetlanie",
-			"cards": "Karty"
-		},
 		"misc": {
 			"discard": "Odrzucić zmiany?"
 		}
@@ -85,8 +81,6 @@
 		"cards": {
 			"confirmRemove": "Czy na pewno chcesz usunąć kartę {card}?",
 			"noCards": "Do tej strony nie dodano jeszcze żadnych kart.",
-			"noTiles": "Brak kafelków w tej karcie. Kliknij +, aby dodać jeden.",
-			"tilesCount": "kafelki",
 			"loadingCard": "Ładowanie karty..."
 		},
 		"tiles": {
@@ -123,9 +117,6 @@
 		},
 		"addCard": {
 			"title": "Dodaj kartę"
-		},
-		"addPageDataSource": {
-			"title": "Dodaj źródło danych strony"
 		}
 	},
 	"fields": {
@@ -160,11 +151,51 @@
 	},
 	"editor": {
 		"texts": {
-			"unsaved": "Niezapisane zmiany"
+			"unsaved": "Niezapisane zmiany",
+			"noCardsHint": "Dodaj kartę, aby pogrupować kafelki na tej stronie.",
+			"loadingDisplays": "Wczytywanie wyświetlaczy…",
+			"noDisplay": "Brak wyświetlacza, dla którego można rozplanować stronę",
+			"noDisplayHint": "Siatka zależy od wyświetlacza, który pokazuje tę stronę. Sparuj wyświetlacz lub wybierz go w ustawieniach strony."
 		},
 		"messages": {
 			"saved": "Układ strony zapisany.",
 			"saveFailed": "Nie udało się zapisać układu strony. Spróbuj ponownie."
+		},
+		"card": {
+			"tiles": "Kafelki: {count}"
+		},
+		"buttons": {
+			"addTile": "Dodaj kafelek",
+			"dataSources": "Źródła danych",
+			"edit": "Edytuj",
+			"detail": "Szczegóły",
+			"remove": "Usuń"
+		},
+		"aria": {
+			"addTile": "Dodaj kafelek do karty {card}",
+			"closeInspector": "Zamknij inspektor"
+		},
+		"inspector": {
+			"inCard": "W karcie {card}",
+			"card": "Karta",
+			"position": "Położenie",
+			"positionValue": "Wiersz {row}, kolumna {col}",
+			"size": "Rozmiar w komórkach",
+			"sizeValue": "{cols} × {rows}",
+			"order": "Kolejność",
+			"tiles": "Kafelki",
+			"grid": "Siatka",
+			"gridFromDisplay": "Według wyświetlacza",
+			"saveHint": "Przesunięcia, zmiany rozmiaru i usunięcia zostaną zastosowane po zapisaniu strony.",
+			"nothingSelected": "Wybierz kartę lub kafelek, aby zobaczyć, co możesz z nim zrobić."
+		},
+		"display": {
+			"title": "Wyświetlacz",
+			"grid": "Siatka {cols} × {rows}"
+		},
+		"phone": {
+			"readOnly": "Karty układa się na tablecie lub komputerze. Stuknij kafelek, aby zobaczyć jego szczegóły.",
+			"noTiles": "Ta karta nie ma jeszcze kafelków."
 		}
 	},
 	"sections": {

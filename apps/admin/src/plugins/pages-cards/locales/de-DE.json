@@ -44,10 +44,6 @@
 		"cards": {
 			"remove": "Karte entfernen"
 		},
-		"configure": {
-			"display": "Anzeige",
-			"cards": "Karten"
-		},
 		"misc": {
 			"discard": "Änderungen verwerfen?"
 		}
@@ -85,8 +81,6 @@
 		"cards": {
 			"confirmRemove": "Sind Sie sicher, dass Sie Karte {card} entfernen möchten?",
 			"noCards": "Dieser Seite wurden noch keine Karten hinzugefügt.",
-			"noTiles": "Keine Kacheln in dieser Karte. Klicken Sie auf +, um eine hinzuzufügen.",
-			"tilesCount": "Kacheln",
 			"loadingCard": "Karte wird geladen..."
 		},
 		"tiles": {
@@ -123,9 +117,6 @@
 		},
 		"addCard": {
 			"title": "Karte hinzufügen"
-		},
-		"addPageDataSource": {
-			"title": "Seitendatenquelle hinzufügen"
 		}
 	},
 	"fields": {
@@ -160,11 +151,51 @@
 	},
 	"editor": {
 		"texts": {
-			"unsaved": "Ungespeicherte Änderungen"
+			"unsaved": "Ungespeicherte Änderungen",
+			"noCardsHint": "Fügen Sie eine Karte hinzu, um Kacheln auf dieser Seite zu gruppieren.",
+			"loadingDisplays": "Displays werden geladen…",
+			"noDisplay": "Kein Display, für das die Seite angeordnet werden kann",
+			"noDisplayHint": "Das Raster richtet sich nach dem Display, das diese Seite zeigt. Koppeln Sie ein Display oder wählen Sie eines in den Seiteneinstellungen."
 		},
 		"messages": {
 			"saved": "Seitenlayout gespeichert.",
 			"saveFailed": "Das Seitenlayout konnte nicht gespeichert werden. Versuchen Sie es erneut."
+		},
+		"card": {
+			"tiles": "Kacheln: {count}"
+		},
+		"buttons": {
+			"addTile": "Kachel hinzufügen",
+			"dataSources": "Datenquellen",
+			"edit": "Bearbeiten",
+			"detail": "Details",
+			"remove": "Entfernen"
+		},
+		"aria": {
+			"addTile": "Kachel zu {card} hinzufügen",
+			"closeInspector": "Inspektor schließen"
+		},
+		"inspector": {
+			"inCard": "In Karte {card}",
+			"card": "Karte",
+			"position": "Position",
+			"positionValue": "Zeile {row}, Spalte {col}",
+			"size": "Größe in Zellen",
+			"sizeValue": "{cols} × {rows}",
+			"order": "Reihenfolge",
+			"tiles": "Kacheln",
+			"grid": "Raster",
+			"gridFromDisplay": "Vom Display",
+			"saveHint": "Verschieben, Größenänderungen und Entfernen werden beim Speichern der Seite wirksam.",
+			"nothingSelected": "Wählen Sie eine Karte oder Kachel aus, um zu sehen, was Sie damit tun können."
+		},
+		"display": {
+			"title": "Display",
+			"grid": "Raster {cols} × {rows}"
+		},
+		"phone": {
+			"readOnly": "Karten werden auf einem Tablet oder Computer angeordnet. Tippen Sie auf eine Kachel, um ihre Details zu sehen.",
+			"noTiles": "Diese Karte enthält noch keine Kacheln."
 		}
 	},
 	"sections": {

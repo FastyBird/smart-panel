@@ -20,6 +20,9 @@ const unsetDataSources = vi.fn();
 const cardTiles = ref<{ id: string; draft: boolean }[]>([]);
 
 const isPhone = ref<boolean>(false);
+const isTabletPortrait = ref<boolean>(false);
+const removeDataSource = vi.fn();
+const removeTileFromCanvas = vi.fn();
 
 const PAGE_ID = '00000000-0000-4000-8000-00000000c001';
 const CARD_ID = '00000000-0000-4000-8000-00000000c002';
@@ -34,6 +37,9 @@ vi.mock('vue-i18n', () => ({
 vi.mock('element-plus', () => ({
 	ElButton: { name: 'ElButton', template: '<button v-bind="$attrs"><slot /></button>' },
 	ElTag: { name: 'ElTag', template: '<span v-bind="$attrs"><slot /></span>' },
+	ElOption: { name: 'ElOption', template: '<div />' },
+	ElScrollbar: { name: 'ElScrollbar', template: '<div><slot /></div>' },
+	ElSelect: { name: 'ElSelect', emits: ['change'], template: '<div />' },
 	ElMessageBox: { confirm: (...args: unknown[]) => confirm(...args) },
 }));
 
@@ -45,11 +51,18 @@ vi.mock('../../../common', () => ({
 	injectStoresManager: () => ({
 		getStore: () => ({
 			findForParent: () => cardTiles.value,
+			fetch: vi.fn().mockResolvedValue([]),
 			remove: (...args: unknown[]) => removeTile(...args),
 			unset: (...args: unknown[]) => unsetDataSources(...args),
 		}),
 	}),
 	ViewError: { name: 'ViewError', template: '<div><slot /></div>' },
+	StateView: { name: 'StateView', template: '<div />' },
+	useSizeClass: () => ({
+		sizeClass: computed<string>(() => (isPhone.value ? 'phone' : isTabletPortrait.value ? 'tp' : 'dt')),
+		isPhone: computed<boolean>(() => isPhone.value),
+		isTabletPortrait: computed<boolean>(() => isTabletPortrait.value),
+	}),
 	EditDrawerLayout: { name: 'EditDrawerLayout', props: ['open'], template: '<div><slot /><slot name="form" /></div>' },
 	provideEditDrawer: () => ({ inDrawer: computed<boolean>(() => !isPhone.value) }),
 	useFlashMessage: () => ({ success, error, warning: vi.fn() }),
@@ -58,6 +71,8 @@ vi.mock('../../../common', () => ({
 vi.mock('../../../modules/dashboard', () => ({
 	RouteNames: { PAGES: 'dashboard_module-pages', TILE: 'dashboard_module-tile' },
 	FormResult: { NONE: 'none', WORKING: 'working', ERROR: 'error', OK: 'ok' },
+	useDataSourcesDataSource: () => ({ dataSources: ref([]), areLoading: ref(false), fetchDataSources: vi.fn().mockResolvedValue(undefined) }),
+	useDataSourcesActions: () => ({ remove: removeDataSource }),
 }));
 
 vi.mock('../../../modules/displays', () => ({
@@ -92,30 +107,42 @@ vi.mock('../components/page-configure.vue', () => ({
 			selectedDisplay: { type: Object, default: null },
 			page: { type: Object, default: null },
 			cards: { type: Array, default: () => [] },
-			displays: { type: Array, default: () => [] },
 			gridCardStyle: { type: Object, default: () => ({}) },
+			selectedTileId: { type: String, default: null },
+			selectedCardId: { type: String, default: null },
 			remotePageSubmit: { type: Boolean, default: false },
 		},
 		emits: [
-			'select-display',
-			'add-card',
+			'select-card',
+			'select-tile',
+			'tile-counts',
 			'edit-card',
-			'remove-card',
 			'add-tile',
 			'edit-tile',
-			'tile-detail',
-			'add-page-data-source',
-			'edit-page-data-source',
 			'update:remote-page-submit',
 			'update:remote-page-result',
 			'update:remote-page-changed',
 		],
-		setup() {
+		setup(_props, { expose }) {
 			configureMounts();
+
+			expose({ removeTile: removeTileFromCanvas });
 
 			return (): ReturnType<typeof h> => h('div');
 		},
 	}),
+}));
+
+vi.mock('../components/cards-inspector.vue', () => ({
+	default: {
+		name: 'CardsInspector',
+		props: ['place', 'tile', 'card', 'cardTileCount', 'gridLayout', 'dataSources', 'dataSourcesLoading', 'disabled'],
+		template: '<div />',
+	},
+}));
+
+vi.mock('../components/cards-page-list.vue', () => ({
+	default: { name: 'CardsPageList', props: ['cards', 'tiles'], template: '<div />' },
 }));
 
 const RoutedForm = defineComponent({
@@ -167,9 +194,10 @@ enableAutoUnmount(afterEach);
 describe('ViewCardsPageConfigure', () => {
 	beforeEach(() => {
 		isPhone.value = false;
+		isTabletPortrait.value = false;
 		cardTiles.value = [];
 
-		for (const mock of [confirm, success, error, removeCard, configureMounts, removeTile, unsetDataSources]) {
+		for (const mock of [confirm, success, error, removeCard, configureMounts, removeTile, unsetDataSources, removeDataSource, removeTileFromCanvas]) {
 			mock.mockReset();
 		}
 
@@ -202,12 +230,14 @@ describe('ViewCardsPageConfigure', () => {
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_CARD_EDIT_TILE);
 		expect(router.currentRoute.value.params).toMatchObject({ cardId: CARD_ID, tileId: TILE_ID });
 
-		await wrapper.find('[data-test-id="cards-editor-add-data-source"]').trigger('click');
+		const inspector = wrapper.findComponent({ name: 'CardsInspector' });
+
+		inspector.vm.$emit('add-data-source');
 		await flushPromises();
 
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_ADD_DATA_SOURCE);
 
-		configure.vm.$emit('remove-card', CARD_ID);
+		inspector.vm.$emit('remove-card', CARD_ID);
 
 		expect(removeCard).toHaveBeenCalledWith(CARD_ID);
 	});
@@ -274,12 +304,16 @@ describe('ViewCardsPageConfigure', () => {
 	});
 
 	it('asks before a form replaces the editor holding unsaved changes on phone', async () => {
-		isPhone.value = true;
-
 		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure`);
 
 		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('update:remote-page-changed', true);
 		await flushPromises();
+
+		// A window narrowed past 720 px keeps the editor while it holds unsaved changes
+		isPhone.value = true;
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="cards-editor"]').exists()).toBe(true);
 
 		confirm.mockRejectedValueOnce(new Error('cancel'));
 
@@ -307,7 +341,7 @@ describe('ViewCardsPageConfigure', () => {
 		configure().vm.$emit('update:remote-page-changed', true);
 		await flushPromises();
 
-		configure().vm.$emit('select-display', 'display-2');
+		wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('change', 'display-2');
 		await flushPromises();
 
 		expect(confirm).not.toHaveBeenCalled();
@@ -315,7 +349,7 @@ describe('ViewCardsPageConfigure', () => {
 
 		confirm.mockRejectedValueOnce(new Error('cancel'));
 
-		configure().vm.$emit('select-display', 'display-3');
+		wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('change', 'display-3');
 		await flushPromises();
 
 		expect(confirm).toHaveBeenCalledTimes(1);
@@ -360,11 +394,12 @@ describe('ViewCardsPageConfigure', () => {
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_ADD_DATA_SOURCE);
 	});
 	it('asks before Back, Forward or a link opens a form over the editor holding unsaved changes on phone', async () => {
-		isPhone.value = true;
-
 		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure`);
 
 		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('update:remote-page-changed', true);
+		await flushPromises();
+
+		isPhone.value = true;
 		await flushPromises();
 
 		confirm.mockRejectedValueOnce(new Error('cancel'));
@@ -395,7 +430,7 @@ describe('ViewCardsPageConfigure', () => {
 
 		confirm.mockResolvedValueOnce(true);
 
-		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('select-display', 'display-3');
+		wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('change', 'display-3');
 		await flushPromises();
 
 		// A fresh canvas holds no pending moves or removals, and the editor is clean again
@@ -417,7 +452,7 @@ describe('ViewCardsPageConfigure', () => {
 
 		confirm.mockResolvedValueOnce(true);
 
-		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('select-display', 'display-3');
+		wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('change', 'display-3');
 		await flushPromises();
 
 		expect(removeTile).toHaveBeenCalledTimes(1);
@@ -440,5 +475,130 @@ describe('ViewCardsPageConfigure', () => {
 		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE);
 		expect(removeTile).not.toHaveBeenCalled();
 		expect(wrapper.find('[data-test-id="cards-editor-save"]').attributes('disabled')).toBeDefined();
+	});
+
+	it('reads the page as a list on phone and opens a tile detail from it', async () => {
+		isPhone.value = true;
+		cardTiles.value = [{ id: TILE_ID, draft: false }];
+
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure`);
+		const list = wrapper.findComponent({ name: 'CardsPageList' });
+
+		expect(list.exists()).toBe(true);
+		expect(list.props('tiles')).toEqual({ [CARD_ID]: [{ id: TILE_ID, draft: false }] });
+		expect(wrapper.find('[data-test-id="cards-editor"]').exists()).toBe(false);
+
+		list.vm.$emit('detail', TILE_ID);
+		await flushPromises();
+
+		expect(router.currentRoute.value.name).toBe('dashboard_module-tile');
+	});
+
+	it('keeps the editor on phone width while the page has tiles added but never saved', async () => {
+		isPhone.value = true;
+		cardTiles.value = [{ id: TILE_ID, draft: true }];
+
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		expect(wrapper.find('[data-test-id="cards-editor"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'CardsPageList' }).exists()).toBe(false);
+	});
+
+	it('shows the selected tile in the inspector and passes its actions on', async () => {
+		cardTiles.value = [{ id: TILE_ID, draft: false }];
+
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure`);
+		const place = { id: TILE_ID, cardId: CARD_ID, row: 1, col: 2, rowSpan: 1, colSpan: 2 };
+
+		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('select-tile', place);
+		await flushPromises();
+
+		const inspector = wrapper.findComponent({ name: 'CardsInspector' });
+
+		expect(inspector.props('place')).toEqual(place);
+		expect(inspector.props('tile')).toMatchObject({ id: TILE_ID });
+		expect(inspector.props('card')).toMatchObject({ id: CARD_ID });
+		expect(wrapper.findComponent({ name: 'PageConfigure' }).props('selectedTileId')).toBe(TILE_ID);
+
+		inspector.vm.$emit('remove-tile', TILE_ID);
+
+		expect(removeTileFromCanvas).toHaveBeenCalledWith(TILE_ID);
+
+		inspector.vm.$emit('edit-tile', TILE_ID, CARD_ID);
+		await flushPromises();
+
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_CARD_EDIT_TILE);
+
+		inspector.vm.$emit('close');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('place')).toBeNull();
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('card')).toBeNull();
+	});
+
+	it('shows the selected card in the inspector and adds a tile to it', async () => {
+		const { wrapper, router } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		wrapper.findComponent({ name: 'PageConfigure' }).vm.$emit('select-card', CARD_ID);
+		await flushPromises();
+
+		const inspector = wrapper.findComponent({ name: 'CardsInspector' });
+
+		expect(inspector.props('card')).toMatchObject({ id: CARD_ID });
+		expect(inspector.props('place')).toBeNull();
+		expect(wrapper.findComponent({ name: 'PageConfigure' }).props('selectedCardId')).toBe(CARD_ID);
+
+		inspector.vm.$emit('add-tile', CARD_ID);
+		await flushPromises();
+
+		expect(router.currentRoute.value.name).toBe(RouteNames.PAGE_CARD_ADD_TILE);
+		expect(router.currentRoute.value.params).toMatchObject({ cardId: CARD_ID });
+	});
+
+	it('keeps the data sources behind a button on tablet portrait', async () => {
+		isTabletPortrait.value = true;
+
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).exists()).toBe(false);
+
+		await wrapper.find('[data-test-id="cards-editor-data-sources"]').trigger('click');
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).exists()).toBe(true);
+	});
+
+	it('keeps a tile selected after it moved to another card, before Save files it there', async () => {
+		cardTiles.value = [{ id: TILE_ID, draft: false }];
+
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+
+		// The store still files the tile under its old card; the canvas reports where it sits now
+		wrapper
+			.findComponent({ name: 'PageConfigure' })
+			.vm.$emit('select-tile', { id: TILE_ID, cardId: 'card-other', row: 1, col: 1, rowSpan: 1, colSpan: 1 });
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('tile')).toMatchObject({ id: TILE_ID });
+		expect(wrapper.findComponent({ name: 'PageConfigure' }).props('selectedTileId')).toBe(TILE_ID);
+	});
+
+	it('counts the tiles a card holds on the canvas now, before Save files removals and moves', async () => {
+		cardTiles.value = [
+			{ id: TILE_ID, draft: false },
+			{ id: 'tile-2', draft: false },
+		];
+
+		const { wrapper } = await mountAt(`/page/${PAGE_ID}/configure`);
+		const configure = wrapper.findComponent({ name: 'PageConfigure' });
+
+		configure.vm.$emit('select-card', CARD_ID);
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('cardTileCount')).toBe(2);
+
+		configure.vm.$emit('tile-counts', { [CARD_ID]: 1 });
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'CardsInspector' }).props('cardTileCount')).toBe(1);
 	});
 });

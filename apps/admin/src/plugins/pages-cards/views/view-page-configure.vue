@@ -20,7 +20,21 @@
 		class="h-full"
 		@close="onCloseDrawer()"
 	>
+		<!-- Template 8 on phone: the page is read as a list -->
+		<el-scrollbar
+			v-if="phoneList"
+			class="flex-1 min-h-0"
+		>
+			<cards-page-list
+				:cards="cards"
+				:tiles="tilesByCard"
+				@detail="onTileDetail"
+			/>
+		</el-scrollbar>
+
+		<!-- Template 8: toolbar · canvas · inspector -->
 		<div
+			v-else
 			class="cards-editor flex flex-col flex-1 min-h-0 overflow-hidden"
 			data-test-id="cards-editor"
 		>
@@ -39,14 +53,18 @@
 				</el-button>
 
 				<el-button
+					v-if="compactEditor"
+					:type="pagePanelOpen ? 'primary' : 'default'"
+					:plain="pagePanelOpen"
+					:aria-pressed="pagePanelOpen"
 					class="ml-0!"
-					data-test-id="cards-editor-add-data-source"
-					@click="onPageDataSourceAdd"
+					data-test-id="cards-editor-data-sources"
+					@click="onTogglePagePanel"
 				>
 					<template #icon>
-						<icon icon="mdi:database-plus-outline" />
+						<icon icon="mdi:database-outline" />
 					</template>
-					{{ t('pagesCardsPlugin.buttons.addPageDataSource.title') }}
+					{{ t('pagesCardsPlugin.editor.buttons.dataSources') }}
 				</el-button>
 
 				<el-tag
@@ -59,6 +77,43 @@
 				</el-tag>
 
 				<div class="grow-1" />
+
+				<div
+					v-if="selectedDisplay"
+					class="flex items-center gap-2 min-w-0"
+				>
+					<span class="text-label">{{ t('pagesCardsPlugin.editor.display.title') }}</span>
+
+					<el-select
+						v-if="applicableDisplays.length > 1"
+						:model-value="selectedDisplay.id"
+						:aria-label="t('pagesCardsPlugin.editor.display.title')"
+						class="w-[200px]"
+						data-test-id="cards-editor-display"
+						@change="(value: string) => onDisplaySelect(value)"
+					>
+						<el-option
+							v-for="display in applicableDisplays"
+							:key="display.id"
+							:value="display.id"
+							:label="display.name || display.macAddress"
+						/>
+					</el-select>
+
+					<span
+						v-else
+						class="text-body truncate"
+					>
+						{{ selectedDisplay.name || selectedDisplay.macAddress }}
+					</span>
+
+					<span
+						v-if="gridLayout"
+						class="text-help whitespace-nowrap"
+					>
+						{{ displayDetails }}
+					</span>
+				</div>
 
 				<el-button
 					v-if="remotePageChanged"
@@ -91,28 +146,67 @@
 				</el-button>
 			</div>
 
-			<page-configure
-				:key="configureKey"
-				v-model:remote-page-submit="remotePageSubmit"
-				v-model:remote-page-result="remotePageResult"
-				v-model:remote-page-changed="remotePageChanged"
-				:page="props.page"
-				:cards="cards"
-				:grid-layout="gridLayout"
-				:grid-card-style="gridCardStyle"
-				:displays="applicableDisplays"
-				:selected-display="selectedDisplay"
-				class="flex-1 min-h-0"
-				@select-display="onDisplaySelect"
-				@add-card="onCardAdd"
-				@edit-card="onCardEdit"
-				@remove-card="onCardRemove"
-				@add-tile="onTileAdd"
-				@edit-tile="onTileEdit"
-				@tile-detail="onTileDetail"
-				@add-page-data-source="onPageDataSourceAdd"
-				@edit-page-data-source="onPageDataSourceEdit"
-			/>
+			<div class="relative flex flex-row flex-1 min-h-0">
+				<page-configure
+					v-if="gridLayout"
+					ref="configure"
+					:key="configureKey"
+					v-model:remote-page-submit="remotePageSubmit"
+					v-model:remote-page-result="remotePageResult"
+					v-model:remote-page-changed="remotePageChanged"
+					:page="props.page"
+					:cards="cards"
+					:grid-layout="gridLayout"
+					:grid-card-style="gridCardStyle"
+					:selected-display="selectedDisplay"
+					:selected-tile-id="selectedPlace?.id ?? null"
+					:selected-card-id="selectedPlace === null ? selectedCardId : null"
+					@select-card="onSelectCard"
+					@select-tile="onSelectTile"
+					@tile-counts="(counts: Record<string, number>) => (cardTileCounts = counts)"
+					@edit-card="onCardEdit"
+					@add-tile="onTileAdd"
+					@edit-tile="onTileEdit"
+				/>
+
+				<state-view
+					v-else
+					:kind="loadingDisplays ? 'loading' : 'empty'"
+					icon="mdi:monitor-off"
+					:title="loadingDisplays ? t('pagesCardsPlugin.editor.texts.loadingDisplays') : t('pagesCardsPlugin.editor.texts.noDisplay')"
+					:description="loadingDisplays ? undefined : t('pagesCardsPlugin.editor.texts.noDisplayHint')"
+					class="flex-1"
+				/>
+
+				<!-- Template 8: the inspector, 340 px beside the canvas (360 px on wide); on tablet portrait it lies over the
+				     canvas, for the selected tile or card, or when Data sources is pressed -->
+				<el-scrollbar
+					v-if="!compactEditor || inspectorCard !== null || selectedPlace !== null || pagePanelOpen"
+					:style="{ width: `${sizeClass === 'wd' ? INSPECTOR_WIDTH_WIDE : INSPECTOR_WIDTH}px` }"
+					:class="['cards-editor__inspector shrink-0', { 'cards-editor__inspector--overlay': compactEditor }]"
+				>
+					<cards-inspector
+						:place="selectedPlace"
+						:tile="selectedTile"
+						:card="inspectorCard"
+						:card-tile-count="inspectorTileCount"
+						:grid-layout="gridLayout"
+						:data-sources="pageDataSources"
+						:data-sources-loading="dataSourcesLoading"
+						:disabled="saving"
+						@close="onInspectorClose"
+						@edit-tile="onTileEdit"
+						@detail="onTileDetail"
+						@remove-tile="onTileRemove"
+						@add-tile="onTileAdd"
+						@edit-card="onCardEdit"
+						@remove-card="onCardRemove"
+						@add-data-source="onPageDataSourceAdd"
+						@edit-data-source="onPageDataSourceEdit"
+						@remove-data-source="onPageDataSourceRemove"
+					/>
+				</el-scrollbar>
+			</div>
 		</div>
 
 		<template #form>
@@ -147,14 +241,25 @@ import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { type RouteLocationNormalized, onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElMessageBox, ElTag } from 'element-plus';
+import { ElButton, ElMessageBox, ElOption, ElScrollbar, ElSelect, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { EditDrawerLayout, ViewError, injectStoresManager, provideEditDrawer, useFlashMessage } from '../../../common';
-import { RouteNames as DashboardRouteNames, FormResult, type FormResultType, type IDataSource, type ITile } from '../../../modules/dashboard';
+import { EditDrawerLayout, StateView, ViewError, injectStoresManager, provideEditDrawer, useFlashMessage, useSizeClass } from '../../../common';
+import {
+	RouteNames as DashboardRouteNames,
+	FormResult,
+	type FormResultType,
+	type IDataSource,
+	type ITile,
+	useDataSourcesActions,
+	useDataSourcesDataSource,
+} from '../../../modules/dashboard';
 import { dataSourcesStoreKey, tilesStoreKey } from '../../../modules/dashboard/store/keys';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
+import CardsInspector from '../components/cards-inspector.vue';
+import CardsPageList from '../components/cards-page-list.vue';
+import type { IPageConfigureExpose, IPageConfigureTilePlace } from '../components/page-configure.types';
 import PageConfigure from '../components/page-configure.vue';
 import { useCards } from '../composables/useCards';
 import { useCardsActions } from '../composables/useCardsActions';
@@ -174,6 +279,9 @@ const emit = defineEmits<{
 	(e: 'update:remote-page-changed', pageChanged: boolean): void;
 }>();
 
+const INSPECTOR_WIDTH = 340;
+const INSPECTOR_WIDTH_WIDE = 360;
+
 const FORM_ROUTES: string[] = [
 	RouteNames.PAGE_ADD_CARD,
 	RouteNames.PAGE_EDIT_CARD,
@@ -188,6 +296,8 @@ const router = useRouter();
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
+const { sizeClass, isPhone, isTabletPortrait } = useSizeClass();
+
 const { displays, fetchDisplays, isLoading: loadingDisplays } = useDisplays();
 
 const { cards, fetchCards, areLoading: loadingCards } = useCards({ pageId: props.page.id });
@@ -197,12 +307,27 @@ const storesManager = injectStoresManager();
 const tilesStore = storesManager.getStore(tilesStoreKey);
 const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
+const { dataSources, areLoading: dataSourcesLoading, fetchDataSources } = useDataSourcesDataSource({ parent: 'page', parentId: props.page.id });
+const dataSourcesActions = useDataSourcesActions({ parent: 'page', parentId: props.page.id });
+
+const configure = ref<IPageConfigureExpose | null>(null);
+
 const remoteFormChanged = ref<boolean>(false);
 const remotePageSubmit = ref<boolean>(false);
 const remotePageResult = ref<FormResultType>(FormResult.NONE);
 const remotePageChanged = ref<boolean>(false);
 
 const selectedDisplayId = ref<string | null>(null);
+
+// Template 8: one thing is selected at a time, a tile (with its place in the editor) or a card
+const selectedPlace = ref<IPageConfigureTilePlace | null>(null);
+const selectedCardId = ref<string | null>(null);
+
+// The tiles each card holds on the canvas now, removals and moves to another card included, as the canvas reports them
+const cardTileCounts = ref<Record<string, number>>({});
+
+// Tablet portrait: the inspector shows the page's data sources only when asked
+const pagePanelOpen = ref<boolean>(false);
 
 // A new key remounts the canvas from the saved layout: a confirmed discard drops every pending move and removal
 const configureKey = ref<number>(0);
@@ -226,6 +351,49 @@ const formKeyOf = (location: RouteLocationNormalized): string => {
 const formKey = computed<string>((): string => formKeyOf(route));
 
 const saving = computed<boolean>((): boolean => remotePageResult.value === FormResult.WORKING);
+
+// The tiles of each card as the store holds them, saved or added from a form
+const tilesByCard = computed<Record<string, ITile[]>>(
+	(): Record<string, ITile[]> => Object.fromEntries(cards.value.map((card) => [card.id, tilesStore.findForParent('card', card.id)]))
+);
+
+// Phone reads the page as a list. A window that narrows past 720 px with unsaved layout changes keeps the editor, as
+// the grids hold the only copy of those changes; so does a page with tiles added from a form but never saved, which
+// the list leaves out and only the editor can save
+const hasDrafts = computed<boolean>((): boolean => Object.values(tilesByCard.value).some((tiles) => tiles.some((tile) => tile.draft)));
+
+const phoneList = computed<boolean>((): boolean => isPhone.value && !remotePageChanged.value && !hasDrafts.value);
+
+// Tablet portrait, and a phone-width window still holding unsaved changes: the inspector lies over the canvas
+const compactEditor = computed<boolean>((): boolean => isTabletPortrait.value || isPhone.value);
+
+const pageDataSources = computed<IDataSource[]>((): IDataSource[] => dataSources.value.filter((dataSource) => !dataSource.draft));
+
+// Found by id across the page: a tile moved to another card stays filed under its old card until Save
+const selectedTile = computed<ITile | null>((): ITile | null => {
+	const place = selectedPlace.value;
+
+	if (!place) {
+		return null;
+	}
+
+	for (const tiles of Object.values(tilesByCard.value)) {
+		const tile = tiles.find((item) => item.id === place.id);
+
+		if (tile) {
+			return tile;
+		}
+	}
+
+	return null;
+});
+
+// The selected card, or with a tile selected the card holding it now
+const inspectorCard = computed<ICard | null>((): ICard | null => {
+	const cardId = selectedPlace.value?.cardId ?? selectedCardId.value;
+
+	return cardId ? (cards.value.find((card) => card.id === cardId) ?? null) : null;
+});
 
 const applicableDisplays = computed<IDisplay[]>((): IDisplay[] => {
 	if (props.page.displays !== null && props.page.displays.length > 0) {
@@ -260,6 +428,24 @@ const gridCardStyle = computed<Record<string, string>>((): Record<string, string
 	return {
 		maxWidth: `${Math.min(display.screenWidth, 600)}px`,
 	};
+});
+
+// The tiles the inspected card holds on the canvas now; before the canvas has reported, the ones the store files under it
+const inspectorTileCount = computed<number>((): number => {
+	const card = inspectorCard.value;
+
+	return card ? (cardTileCounts.value[card.id] ?? (tilesByCard.value[card.id] ?? []).length) : 0;
+});
+
+const displayDetails = computed<string>((): string => {
+	const display = selectedDisplay.value;
+	const grid = t('pagesCardsPlugin.editor.display.grid', { cols: gridLayout.value?.cols ?? 0, rows: gridLayout.value?.rows ?? 0 });
+
+	if (display?.screenWidth && display.screenHeight) {
+		return `${display.screenWidth} × ${display.screenHeight} · ${grid}`;
+	}
+
+	return grid;
 });
 
 const confirmDiscard = async (): Promise<boolean> => {
@@ -357,6 +543,42 @@ const onDisplaySelect = async (displayId: string): Promise<void> => {
 	}
 
 	selectedDisplayId.value = displayId;
+};
+
+const onSelectCard = (id: ICard['id']): void => {
+	selectedPlace.value = null;
+	selectedCardId.value = id;
+	pagePanelOpen.value = false;
+};
+
+const onSelectTile = (place: IPageConfigureTilePlace | null): void => {
+	selectedPlace.value = place;
+
+	if (place !== null) {
+		selectedCardId.value = null;
+		pagePanelOpen.value = false;
+	}
+};
+
+const onInspectorClose = (): void => {
+	selectedPlace.value = null;
+	selectedCardId.value = null;
+};
+
+const onTogglePagePanel = (): void => {
+	pagePanelOpen.value = !pagePanelOpen.value;
+
+	if (pagePanelOpen.value) {
+		onInspectorClose();
+	}
+};
+
+const onTileRemove = (id: ITile['id']): void => {
+	configure.value?.removeTile(id);
+};
+
+const onPageDataSourceRemove = (id: IDataSource['id']): void => {
+	dataSourcesActions.remove(id);
 };
 
 const onClose = (): void => {
@@ -503,7 +725,51 @@ onBeforeMount((): void => {
 			flashMessage.error(t('pagesCardsPlugin.messages.misc.requestError'));
 		});
 	}
+
+	fetchDataSources().catch((): void => {
+		flashMessage.error(t('pagesCardsPlugin.messages.misc.requestError'));
+	});
 });
+
+// The phone list reads the tiles without the canvas, so the editor loads each card's tiles itself, once
+const fetchedCards = new Set<string>();
+
+watch(
+	(): ICard[] => cards.value,
+	(val: ICard[]): void => {
+		for (const card of val) {
+			if (fetchedCards.has(card.id)) {
+				continue;
+			}
+
+			fetchedCards.add(card.id);
+
+			tilesStore.fetch({ parent: { type: 'card', id: card.id } }).catch((): void => {
+				flashMessage.error(t('pagesCardsPlugin.messages.misc.requestError'));
+			});
+		}
+	},
+	{ immediate: true }
+);
+
+// A tile or card that is gone (removed here, in a form or by another admin) leaves the inspector
+watch(
+	(): ITile | null => selectedTile.value,
+	(val: ITile | null): void => {
+		if (val === null && selectedPlace.value !== null) {
+			selectedPlace.value = null;
+		}
+	}
+);
+
+watch(
+	(): ICard[] => cards.value,
+	(val: ICard[]): void => {
+		if (selectedCardId.value !== null && !val.some((card) => card.id === selectedCardId.value)) {
+			selectedCardId.value = null;
+		}
+	}
+);
 
 // The changed flag belongs to the form that is open. Any route change that replaces or closes it clears the flag
 // before the next form mounts, so that one starts clean. A declined discard leaves the route, and the flag, as it was
@@ -568,6 +834,21 @@ watch(
 	&__bar {
 		flex: none;
 		border-bottom: 1px solid var(--el-border-color);
+	}
+
+	&__inspector {
+		border-left: 1px solid var(--el-border-color);
+		background-color: var(--el-bg-color);
+	}
+
+	// Tablet portrait: the inspector lies over the canvas, as a drawer from the right
+	&__inspector--overlay {
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 10;
+		box-shadow: var(--fb-shadow-overlay);
 	}
 }
 </style>
