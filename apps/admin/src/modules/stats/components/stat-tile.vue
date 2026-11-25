@@ -26,6 +26,7 @@
 
 		<span
 			v-else
+			:title="props.value === '' ? undefined : props.value"
 			class="text-title truncate"
 			data-test-id="stat-tile-value"
 		>

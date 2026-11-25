@@ -24,6 +24,12 @@ describe('StatTile', () => {
 		expect(wrapper.text()).toContain('Temp 48 °C');
 	});
 
+	it('keeps the full figure in reach when a narrow tile cuts it', () => {
+		const wrapper = render({ value: '123d 12:34:56' });
+
+		expect(wrapper.get('[data-test-id="stat-tile-value"]').attributes('title')).toBe('123d 12:34:56');
+	});
+
 	it('says when the figure was measured, and warns once it is stale', () => {
 		expect(render().find('[data-test-id="stat-tile-updated"]').exists()).toBe(false);
 
