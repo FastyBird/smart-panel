@@ -138,6 +138,7 @@ class SubtitleItem {
 /// Types of quick actions available on domain cards.
 enum QuickActionType {
   lightsOff,
+  lightsOn,
   lightsHalf,
   lightsFull,
   climateMode,
@@ -151,38 +152,58 @@ enum QuickActionType {
   mediaStop,
 }
 
-/// A quick action button on a domain card.
+/// A quick action button on a domain card: a short label, or an icon when
+/// [label] is null.
 class QuickActionInfo {
   final QuickActionType type;
   final IconData icon;
   final String? label;
   final bool disabled;
 
+  /// Whether it matches the domain's state now ("Off" while the lights are
+  /// off); drawn in the domain's tint.
+  final bool selected;
+
+  /// What screen readers hear; defaults to [label].
+  final String? semanticLabel;
+
   const QuickActionInfo({
     required this.type,
     required this.icon,
     this.label,
     this.disabled = false,
+    this.selected = false,
+    this.semanticLabel,
   });
 
-  QuickActionInfo copyWith({IconData? icon, String? label}) => QuickActionInfo(
-    type: type,
-    icon: icon ?? this.icon,
-    label: label ?? this.label,
-    disabled: disabled,
-  );
+  QuickActionInfo copyWith({IconData? icon, String? label, bool? selected}) =>
+      QuickActionInfo(
+        type: type,
+        icon: icon ?? this.icon,
+        label: label ?? this.label,
+        disabled: disabled,
+        selected: selected ?? this.selected,
+        semanticLabel: semanticLabel,
+      );
 }
 
+/// One domain card on the room overview (docs/display-ui-design-spec.md
+/// §4, §9): the domain's state, never a domain mode name.
+///
+/// - [primaryValue] and [unit]: "50" " %", "21.5" "°", "Off", "Watch".
+/// - [subtitle]: the state line, "3 of 4 active", "Heating to 22.0 °C".
+/// - [actions]: three quick actions; [compactActions] the two a narrow card
+///   keeps.
 class DomainCardInfo {
   final DomainType domain;
   final IconData icon;
   final String title;
   final String primaryValue;
-  final String? targetValue;
-  final IconData? targetIcon;
+  final String? unit;
   final String subtitle;
   final List<SubtitleItem> subtitleItems;
   final List<QuickActionInfo> actions;
+  final List<QuickActionInfo> compactActions;
   final bool isActive;
 
   const DomainCardInfo({
@@ -190,28 +211,32 @@ class DomainCardInfo {
     required this.icon,
     required this.title,
     required this.primaryValue,
-    this.targetValue,
-    this.targetIcon,
+    this.unit,
     required this.subtitle,
     this.subtitleItems = const [],
     this.actions = const [],
+    this.compactActions = const [],
     this.isActive = false,
   });
 
+  /// An optimistic value replaces the value and its unit together.
   DomainCardInfo copyWith({
     String? primaryValue,
+    String? unit,
+    bool clearUnit = false,
     bool? isActive,
     List<QuickActionInfo>? actions,
+    List<QuickActionInfo>? compactActions,
   }) => DomainCardInfo(
     domain: domain,
     icon: icon,
     title: title,
     primaryValue: primaryValue ?? this.primaryValue,
-    targetValue: targetValue,
-    targetIcon: targetIcon,
+    unit: clearUnit ? null : unit ?? this.unit,
     subtitle: subtitle,
     subtitleItems: subtitleItems,
     actions: actions ?? this.actions,
+    compactActions: compactActions ?? this.compactActions,
     isActive: isActive ?? this.isActive,
   );
 }
@@ -497,7 +522,7 @@ List<DomainCardInfo> _buildDomainCards({
         break;
 
       case DomainType.media:
-        cards.add(_buildMediaCard(domain, input));
+        cards.add(_buildMediaCard(domain, count, input));
         break;
 
       case DomainType.sensors:
@@ -522,65 +547,66 @@ DomainCardInfo _buildLightsCard(
   final lightsOn = ls?.lightsOn ?? input.lightsOnCount ?? 0;
   final totalLights = ls?.totalLights ?? count;
   final isActive = lightsOn > 0;
+  final brightness = ls?.averageBrightness?.round();
 
-  // Primary value — same intent logic as the mode selector in lights domain view:
-  // 1. Intent active and confirmed (isModeFromIntent + detectedMode) → mode name
-  // 2. Lights on but no active intent → "Custom"
-  // 3. All off → "Off"
-  String primaryValue;
-  if (ls != null &&
-      ls.isModeFromIntent &&
-      ls.detectedMode != null &&
-      ls.detectedMode != LightingMode.off) {
-    primaryValue = _lightingModeLabel(ls.detectedMode!, l);
-  } else if (isActive) {
-    primaryValue = l.domain_mode_custom;
+  // The state, never the lighting mode: the brightness while lights are on,
+  // "On" without one, "Off".
+  final String primaryValue;
+  String? unit;
+  if (!isActive) {
+    primaryValue = l.light_state_off;
+  } else if (brightness != null) {
+    primaryValue = '$brightness';
+    unit = ' %';
   } else {
-    primaryValue = l.space_lighting_mode_off;
+    primaryValue = l.light_state_on;
   }
 
   final subtitle = isActive
       ? l.room_overview_lights_active(lightsOn, totalLights)
       : l.room_overview_light_count(totalLights);
 
+  final off = QuickActionInfo(
+    type: QuickActionType.lightsOff,
+    icon: MdiIcons.lightbulbOff,
+    label: l.light_state_off,
+    selected: !isActive,
+  );
+
   return DomainCardInfo(
     domain: domain,
     icon: domain.icon,
     title: domain.localizedLabel(l),
     primaryValue: primaryValue,
+    unit: unit,
     subtitle: subtitle,
     actions: [
-      QuickActionInfo(
-        type: QuickActionType.lightsOff,
-        icon: MdiIcons.lightbulbOff,
-        label: l.space_lighting_mode_off,
-      ),
+      off,
       QuickActionInfo(
         type: QuickActionType.lightsHalf,
         icon: MdiIcons.brightnessAuto,
         label: '50%',
+        selected:
+            isActive && brightness != null && (brightness - 50).abs() <= 2,
       ),
       QuickActionInfo(
         type: QuickActionType.lightsFull,
         icon: MdiIcons.brightness7,
         label: '100%',
+        selected: isActive && brightness != null && brightness >= 98,
+      ),
+    ],
+    compactActions: [
+      off,
+      QuickActionInfo(
+        type: QuickActionType.lightsOn,
+        icon: MdiIcons.lightbulbOn,
+        label: l.light_state_on,
+        selected: isActive,
       ),
     ],
     isActive: isActive,
   );
-}
-
-String _lightingModeLabel(LightingMode mode, AppLocalizations l) {
-  switch (mode) {
-    case LightingMode.work:
-      return l.space_lighting_mode_work;
-    case LightingMode.relax:
-      return l.space_lighting_mode_relax;
-    case LightingMode.night:
-      return l.space_lighting_mode_night;
-    case LightingMode.off:
-      return l.space_lighting_mode_off;
-  }
 }
 
 DomainCardInfo _buildClimateCard(
@@ -595,25 +621,52 @@ DomainCardInfo _buildClimateCard(
       ? null
       : cs?.currentTemperature ??
             (contribution == null ? input.temperature : null);
-  // Locale-aware number formatting
   final tempUnit = input.displayUnits.temperature;
 
-  // Primary: target temp when available, fallback to current temp, then count
-  String primaryValue;
-  if (cs?.isOff == true) {
+  String format(double value) => NumberUtils.formatDecimal(
+    UnitConverter.convertTemperature(value, tempUnit),
+    decimalPlaces: 1,
+  );
+
+  String withSymbol(double value) =>
+      '${format(value)}${UnitConverter.temperatureSymbol(tempUnit)}';
+
+  // The value is the room's temperature now; the state line says what the
+  // climate is doing about it.
+  final String primaryValue;
+  String? unit;
+  if (currentTemperature != null) {
+    primaryValue = format(currentTemperature);
+    unit = '°';
+  } else if (cs?.isOff == true) {
     primaryValue = l.thermostat_mode_off;
   } else if (cs?.effectiveTargetTemperature != null) {
-    final target = cs!.effectiveTargetTemperature!;
-    primaryValue =
-        '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+    primaryValue = format(cs!.effectiveTargetTemperature!);
+    unit = '°';
   } else {
-    final temp = currentTemperature;
-    if (temp != null) {
-      primaryValue =
-          '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
-    } else {
-      primaryValue = '$count';
-    }
+    primaryValue = '$count';
+  }
+
+  final target = cs?.effectiveTargetTemperature;
+  final String subtitle;
+  if (contribution?.isUnavailable == true) {
+    subtitle = contribution!.hasConflict
+        ? l.climate_temperature_coverage_conflict
+        : l.climate_temperature_coverage_unavailable;
+  } else if (cs == null) {
+    subtitle = l.room_overview_device_count(count);
+  } else if (cs.isOff) {
+    subtitle = l.thermostat_state_off;
+  } else if (cs.isHeating && target != null) {
+    subtitle = l.thermostat_state_heating_to(withSymbol(target));
+  } else if (cs.isCooling && target != null) {
+    subtitle = l.thermostat_state_cooling_to(withSymbol(target));
+  } else if (cs.isHeating) {
+    subtitle = l.thermostat_state_heating;
+  } else if (cs.isCooling) {
+    subtitle = l.thermostat_state_cooling;
+  } else {
+    subtitle = l.thermostat_state_idling;
   }
 
   // Mode label and icon for the mode action button
@@ -640,31 +693,40 @@ DomainCardInfo _buildClimateCard(
       break;
   }
 
-  final subtitle = contribution?.isUnavailable == true
-      ? contribution!.hasConflict
-            ? l.climate_temperature_coverage_conflict
-            : l.climate_temperature_coverage_unavailable
-      : l.room_overview_device_count(count);
-  final temp = currentTemperature;
   final isActive = cs != null
       ? (cs.mode != ClimateMode.off && cs.mode != null)
-      : temp != null;
+      : currentTemperature != null;
+
+  final minus = QuickActionInfo(
+    type: QuickActionType.climateMinus,
+    icon: MdiIcons.minus,
+    semanticLabel: l.room_card_lower_target,
+  );
+  final plus = QuickActionInfo(
+    type: QuickActionType.climatePlus,
+    icon: MdiIcons.plus,
+    semanticLabel: l.room_card_raise_target,
+  );
 
   return DomainCardInfo(
     domain: domain,
     icon: domain.icon,
     title: domain.localizedLabel(l),
     primaryValue: primaryValue,
+    unit: unit,
     subtitle: subtitle,
     actions: [
       QuickActionInfo(
         type: QuickActionType.climateMode,
         icon: modeIcon,
         label: modeLabel,
+        selected: isActive,
+        semanticLabel: l.room_card_climate_mode(modeLabel),
       ),
-      QuickActionInfo(type: QuickActionType.climateMinus, icon: MdiIcons.minus),
-      QuickActionInfo(type: QuickActionType.climatePlus, icon: MdiIcons.plus),
+      minus,
+      plus,
     ],
+    compactActions: [minus, plus],
     isActive: isActive,
   );
 }
@@ -685,31 +747,35 @@ DomainCardInfo _buildShadingCard(
           ) ??
           false);
 
-  // Primary: detected mode label if intent active, else "Custom" when open, "Closed" when all closed
   final isActive =
       cvs?.anyOpen ??
       (input.shadingPosition != null && input.shadingPosition! > 0);
   final allClosed = cvs?.allClosed ?? !isActive;
+  final pos = grouped
+      ? (current ? cvs?.averagePosition : null)
+      : cvs?.averagePosition ?? input.shadingPosition;
 
-  String primaryValue;
+  // The position, never the covers mode. A group whose members disagree or
+  // have not reported says so instead of averaging.
+  final String primaryValue;
+  String? unit;
   if (grouped && (!current || cvs?.averagePosition == null)) {
     primaryValue = current && cvs?.isPositionMixed == true
         ? l.groupMixed
         : l.groupUnknown;
-  } else if (cvs != null && cvs.isModeFromIntent && cvs.detectedMode != null) {
-    primaryValue = _coversModeLabel(cvs.detectedMode!, l);
+  } else if (!grouped && cvs?.isPositionMixed == true) {
+    primaryValue = l.groupMixed;
+  } else if (pos != null) {
+    primaryValue = '$pos';
+    unit = ' %';
   } else if (allClosed) {
     primaryValue = l.covers_mode_closed;
   } else {
-    primaryValue = l.domain_mode_custom;
+    primaryValue = l.covers_mode_open;
   }
 
-  // Subtitle: position description
-  String subtitle;
-  final pos = grouped
-      ? (current ? cvs?.averagePosition : null)
-      : cvs?.averagePosition ?? input.shadingPosition;
-  if (pos != null) {
+  final String subtitle;
+  if (pos != null && !(grouped && !current)) {
     if (pos == 0) {
       subtitle = l.shading_fully_closed;
     } else if (pos == 100) {
@@ -721,57 +787,69 @@ DomainCardInfo _buildShadingCard(
     subtitle = l.room_overview_device_count(count);
   }
 
+  final open = QuickActionInfo(
+    type: QuickActionType.coversOpen,
+    disabled: !ready('open'),
+    icon: MdiIcons.arrowExpandVertical,
+    label: l.shading_action_open,
+    selected: pos == 100,
+  );
+  final close = QuickActionInfo(
+    type: QuickActionType.coversClose,
+    disabled: !ready('close'),
+    icon: MdiIcons.arrowCollapseVertical,
+    label: l.shading_action_close,
+    selected: pos == 0,
+  );
+
   return DomainCardInfo(
     domain: domain,
     icon: domain.icon,
     title: domain.localizedLabel(l),
     primaryValue: primaryValue,
+    unit: unit,
     subtitle: subtitle,
     actions: [
-      QuickActionInfo(
-        type: QuickActionType.coversOpen,
-        disabled: !ready('open'),
-        icon: MdiIcons.arrowExpandVertical,
-        label: l.shading_action_open,
-      ),
+      open,
       QuickActionInfo(
         type: QuickActionType.coversHalf,
         disabled: cvs == null || grouped,
         icon: MdiIcons.arrowSplitHorizontal,
         label: '50%',
+        selected: pos == 50,
+      ),
+      close,
+    ],
+    // Narrow cards keep the two ends as icons.
+    compactActions: [
+      QuickActionInfo(
+        type: open.type,
+        disabled: open.disabled,
+        icon: MdiIcons.arrowUp,
+        selected: open.selected,
+        semanticLabel: l.room_card_open_shading,
       ),
       QuickActionInfo(
-        type: QuickActionType.coversClose,
-        disabled: !ready('close'),
-        icon: MdiIcons.arrowCollapseVertical,
-        label: l.shading_action_close,
+        type: close.type,
+        disabled: close.disabled,
+        icon: MdiIcons.arrowDown,
+        selected: close.selected,
+        semanticLabel: l.room_card_close_shading,
       ),
     ],
     isActive: isActive,
   );
 }
 
-String _coversModeLabel(CoversMode mode, AppLocalizations l) {
-  switch (mode) {
-    case CoversMode.open:
-      return l.covers_mode_open;
-    case CoversMode.closed:
-      return l.covers_mode_closed;
-    case CoversMode.privacy:
-      return l.covers_mode_privacy;
-    case CoversMode.daylight:
-      return l.covers_mode_daylight;
-  }
-}
-
 DomainCardInfo _buildMediaCard(
   DomainType domain,
+  int count,
   RoomOverviewBuildInput input,
 ) {
   final l = input.localizations;
   final ms = input.mediaState;
 
-  // Primary: activity label if active, else "Off"
+  // The activity running now ("Watch"), else "Off".
   final isActive = ms?.isActive ?? false;
   final primaryValue =
       isActive &&
@@ -780,31 +858,36 @@ DomainCardInfo _buildMediaCard(
       ? _mediaActivityLabel(ms.activityKey!, l)
       : l.media_activity_off;
 
-  final subtitle = '';
+  final pause = QuickActionInfo(
+    type: QuickActionType.mediaPause,
+    icon: MdiIcons.pause,
+    disabled: !isActive,
+    semanticLabel: l.room_card_media_pause,
+  );
+  final stop = QuickActionInfo(
+    type: QuickActionType.mediaStop,
+    icon: MdiIcons.stop,
+    disabled: !isActive,
+    semanticLabel: l.room_card_media_stop,
+  );
 
   return DomainCardInfo(
     domain: domain,
     icon: isActive ? MdiIcons.playCircle : domain.icon,
     title: domain.localizedLabel(l),
     primaryValue: primaryValue,
-    subtitle: subtitle,
+    subtitle: l.room_overview_device_count(count),
     actions: [
       QuickActionInfo(
         type: QuickActionType.mediaPlay,
         icon: MdiIcons.play,
         disabled: !isActive,
+        semanticLabel: l.room_card_media_play,
       ),
-      QuickActionInfo(
-        type: QuickActionType.mediaPause,
-        icon: MdiIcons.pause,
-        disabled: !isActive,
-      ),
-      QuickActionInfo(
-        type: QuickActionType.mediaStop,
-        icon: MdiIcons.stop,
-        disabled: !isActive,
-      ),
+      pause,
+      stop,
     ],
+    compactActions: [pause, stop],
     isActive: isActive,
   );
 }

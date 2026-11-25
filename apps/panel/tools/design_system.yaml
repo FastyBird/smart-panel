@@ -61,6 +61,13 @@ strict:
   - lib/modules/deck/presentation/widgets/deck_bottom_nav_bar.dart
   - lib/modules/deck/presentation/widgets/deck_side_dock.dart
   - lib/modules/deck/presentation/widgets/deck_more_sheet.dart
+  # DR-11: the room overview, its widgets and the sky panel. The older sky
+  # layers stay until DR-21 moves the weather detail onto the new sky.
+  - lib/plugins/spaces-home-control/presentation/system_pages/room_overview.dart
+  - lib/plugins/spaces-home-control/presentation/widgets/
+  - lib/modules/deck/presentation/widgets/sky/sky_look.dart
+  - lib/modules/deck/presentation/widgets/sky/sky_backdrop.dart
+  - lib/modules/deck/presentation/widgets/sky/sky_panel.dart
 
 # Generated code is never checked.
 exclude:

@@ -8749,7 +8749,7 @@ abstract class AppLocalizations {
   /// No description provided for @space_activity_pending.
   ///
   /// In en, this message translates to:
-  /// **'Sending request…'**
+  /// **'Sending'**
   String get space_activity_pending;
 
   /// No description provided for @space_activity_details.
@@ -9291,6 +9291,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Results of the commands sent, not what the devices are doing now.'**
   String get outcome_details_note;
+
+  /// Screen reader label of the weather card on the sky; it opens the forecast
+  ///
+  /// In en, this message translates to:
+  /// **'Weather, {condition}. Open forecast'**
+  String sky_weather_open(String condition);
+
+  /// Screen reader label of a domain card's head on the room overview
+  ///
+  /// In en, this message translates to:
+  /// **'{title}, {value}. Open {title}'**
+  String room_card_open(String title, String value);
+
+  /// Screen reader label of the climate card's minus quick action
+  ///
+  /// In en, this message translates to:
+  /// **'Lower the target temperature'**
+  String get room_card_lower_target;
+
+  /// Screen reader label of the climate card's plus quick action
+  ///
+  /// In en, this message translates to:
+  /// **'Raise the target temperature'**
+  String get room_card_raise_target;
+
+  /// Screen reader label of the climate card's mode quick action
+  ///
+  /// In en, this message translates to:
+  /// **'Climate mode {mode}. Change'**
+  String room_card_climate_mode(String mode);
+
+  /// Screen reader label of the shading card's open quick action
+  ///
+  /// In en, this message translates to:
+  /// **'Open shading'**
+  String get room_card_open_shading;
+
+  /// Screen reader label of the shading card's close quick action
+  ///
+  /// In en, this message translates to:
+  /// **'Close shading'**
+  String get room_card_close_shading;
+
+  /// Screen reader label of the media card's play quick action
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get room_card_media_play;
+
+  /// Screen reader label of the media card's pause quick action
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get room_card_media_pause;
+
+  /// Screen reader label of the media card's stop quick action
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get room_card_media_stop;
+
+  /// The room mode control's label (spec §8)
+  ///
+  /// In en, this message translates to:
+  /// **'Room mode'**
+  String get room_mode_title;
+
+  /// Room mode outcome when modes could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Modes are unavailable'**
+  String get room_mode_unavailable;
+
+  /// After 'Partial': the first part of the room mode that did not complete
+  ///
+  /// In en, this message translates to:
+  /// **'{domain} did not finish'**
+  String room_mode_part_unfinished(String domain);
+
+  /// Screen reader label of the Compact room mode button
+  ///
+  /// In en, this message translates to:
+  /// **'Room mode {mode}. Change room mode'**
+  String room_mode_button(String mode);
+
+  /// Title of the room mode details layer
+  ///
+  /// In en, this message translates to:
+  /// **'Room mode: {mode}'**
+  String room_mode_details_title(String mode);
+
+  /// Action in the room mode details that sends the mode again (spec §8)
+  ///
+  /// In en, this message translates to:
+  /// **'Retry {mode}'**
+  String room_mode_retry(String mode);
+
+  /// Room mode schedule line when the clock is not set
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule paused · clock not set'**
+  String get room_schedule_paused;
+
+  /// Room mode schedule line when the last scheduled attempt failed or was interrupted; it never claims the mode did not start
+  ///
+  /// In en, this message translates to:
+  /// **'{mode} at {time} failed'**
+  String room_schedule_failed(String mode, String time);
+
+  /// Room mode schedule line: the next scheduled mode (spec §8: 'Sleep at 22:30')
+  ///
+  /// In en, this message translates to:
+  /// **'{mode} at {time}'**
+  String room_schedule_at(String mode, String time);
+
+  /// Room mode occupancy line when occupancy is not known
+  ///
+  /// In en, this message translates to:
+  /// **'Occupancy unknown'**
+  String get room_occupancy_unknown;
+
+  /// Room mode occupancy line while a manual selection pauses the automation
+  ///
+  /// In en, this message translates to:
+  /// **'Manual · automation paused'**
+  String get room_occupancy_manual;
+
+  /// After 'Vacant' on the occupancy line: the occupancy automation is on
+  ///
+  /// In en, this message translates to:
+  /// **'automation on'**
+  String get room_occupancy_automation_on;
+
+  /// Screen reader label of a scene pill
+  ///
+  /// In en, this message translates to:
+  /// **'Run scene {name}'**
+  String room_scene_run(String name);
+
+  /// Screen reader label of the energy pill in the status strip
+  ///
+  /// In en, this message translates to:
+  /// **'Energy, {value}. Open energy'**
+  String room_energy_open(String value);
+
+  /// Room overview error title (design canvas)
+  ///
+  /// In en, this message translates to:
+  /// **'This room did not load'**
+  String get room_overview_error_title;
+
+  /// Room overview error line (design canvas)
+  ///
+  /// In en, this message translates to:
+  /// **'The gateway answered with an error. The clock and weather still work.'**
+  String get room_overview_error_message;
+
+  /// Room overview error action (design canvas)
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get room_overview_try_again;
+
+  /// Room overview empty state: devices but no domain cards (spec §8)
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to control here'**
+  String get room_overview_empty_title;
+
+  /// Room overview empty state line
+  ///
+  /// In en, this message translates to:
+  /// **'Lights, climate, shading and media appear here once they are in this room.'**
+  String get room_overview_empty_message;
+
+  /// Room overview when the room has no devices at all (spec §8)
+  ///
+  /// In en, this message translates to:
+  /// **'This room is not set up yet'**
+  String get room_overview_not_set_up_title;
+
+  /// Room overview line when the room has no devices at all
+  ///
+  /// In en, this message translates to:
+  /// **'Give the devices in this room a role in the admin app and they will show up here.'**
+  String get room_overview_not_set_up_message;
 }
 
 class _AppLocalizationsDelegate

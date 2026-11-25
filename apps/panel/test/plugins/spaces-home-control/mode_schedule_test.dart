@@ -5,13 +5,14 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/space_mode_sections.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_home_control_plugin_data_schedule_state_last_attempt_status.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_home_control_plugin_data_schedule_state_status.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/mode_schedule_section.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/room_mode.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/mode_schedule.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,6 +42,23 @@ Map<String, dynamic> schedule(String id) => {
   'last_attempt': null,
   'last_attempt_status': null,
 };
+
+/// The schedule's part of the room mode details, on its own.
+Widget scheduleDetails(Dio dio, ModeScheduleRepository schedule) => MaterialApp(
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(
+    body: RoomModeDetails(
+      sources: RoomModeSources(
+        spaceId: 'space',
+        activity: ActivityModesRepository(dio: dio),
+        schedule: schedule,
+      ),
+      automations: false,
+      sizeClass: ScreenSizeClass.regular,
+    ),
+  ),
+);
 
 class ScheduleAdapter implements HttpClientAdapter {
   final requests = <RequestOptions>[];
@@ -245,14 +263,27 @@ void main() {
     'a widget-owned session binds its space and displays the fetched schedule',
     (tester) async {
       final registry = ModeScheduleRegistry(dio: dio);
+      final activities = ActivityModesRegistry(dio: Dio());
       locator.registerSingleton<ModeScheduleRegistry>(registry);
+      locator.registerSingleton<ActivityModesRegistry>(activities);
       try {
         await tester.pumpWidget(
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const Scaffold(
-              body: ModeScheduleSection(spaceId: 'owned-space'),
+            home: Scaffold(
+              body: RoomModeScope(
+                spaceId: 'owned-space',
+                builder: (context, sources) => sources == null
+                    ? const SizedBox.shrink()
+                    : SingleChildScrollView(
+                        child: RoomModeDetails(
+                          sources: sources,
+                          automations: false,
+                          sizeClass: ScreenSizeClass.regular,
+                        ),
+                      ),
+              ),
             ),
           ),
         );
@@ -269,7 +300,9 @@ void main() {
       } finally {
         await tester.pumpWidget(const SizedBox());
         locator.unregister<ModeScheduleRegistry>();
+        locator.unregister<ActivityModesRegistry>();
         registry.dispose();
+        activities.dispose();
       }
     },
   );
@@ -279,17 +312,10 @@ void main() {
     adapter.disabled = true;
     await tester.runAsync(() => repository.bind('space'));
     expect(repository.fresh, isTrue);
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: ModeScheduleSection(spaceId: 'space', repository: repository),
-        ),
-      ),
-    );
+    await tester.pumpWidget(scheduleDetails(dio, repository));
     await tester.pumpAndSettle();
     expect(find.byType(Text), findsNothing);
+    expect(roomScheduleVisible(repository), isFalse);
     expect(find.byKey(const ValueKey('schedule-current')), findsNothing);
     expect(find.byKey(const ValueKey('schedule-next')), findsNothing);
     expect(find.byKey(const ValueKey('schedule-manual')), findsNothing);
@@ -300,15 +326,7 @@ void main() {
   ) async {
     adapter.failed = true;
     await tester.runAsync(() => repository.bind('space'));
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: ModeScheduleSection(spaceId: 'space', repository: repository),
-        ),
-      ),
-    );
+    await tester.pumpWidget(scheduleDetails(dio, repository));
     await tester.pumpAndSettle();
     expect(
       find.text(
@@ -319,68 +337,6 @@ void main() {
     expect(find.textContaining('did not start'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
-  testWidgets(
-    'room mode sections scroll in a short viewport with enlarged text',
-    (tester) async {
-      final schedules = ModeScheduleRegistry(dio: dio);
-      final activities = ActivityModesRegistry(dio: dio);
-      locator.registerSingleton<ModeScheduleRegistry>(schedules);
-      locator.registerSingleton<ActivityModesRegistry>(activities);
-      try {
-        await tester.pumpWidget(
-          MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: MediaQuery(
-              data: const MediaQueryData(textScaler: TextScaler.linear(2.5)),
-              child: Scaffold(
-                body: Center(
-                  child: SizedBox(
-                    width: 480,
-                    height: 280,
-                    child: Column(
-                      children: [
-                        const Flexible(
-                          child: SpaceModeSections(spaceId: 'space'),
-                        ),
-                        const Expanded(
-                          child: SizedBox(key: ValueKey('domains')),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-        await tester.runAsync(() => pumpEventQueue());
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(
-          tester.getSize(find.byKey(const ValueKey('domains'))).height,
-          greaterThan(0),
-        );
-        final scroll = tester.state<ScrollableState>(
-          find.byType(Scrollable).first,
-        );
-        expect(scroll.position.maxScrollExtent, greaterThan(0));
-        await tester.drag(
-          find.byType(SingleChildScrollView).first,
-          const Offset(0, -500),
-        );
-        await tester.pumpAndSettle();
-        expect(scroll.position.pixels, greaterThan(0));
-        expect(tester.takeException(), isNull);
-      } finally {
-        await tester.pumpWidget(const SizedBox());
-        locator.unregister<ModeScheduleRegistry>();
-        locator.unregister<ActivityModesRegistry>();
-        schedules.dispose();
-        activities.dispose();
-      }
-    },
-  );
   testWidgets('last page release cancels periodic polling', (tester) async {
     final registry = ModeScheduleRegistry(dio: dio);
     final session = registry.create();
@@ -393,21 +349,13 @@ void main() {
     'shows authored local times, planned modes and manual precedence without any action',
     (tester) async {
       await tester.runAsync(() => repository.bind('space'));
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: ModeScheduleSection(spaceId: 'space', repository: repository),
-          ),
-        ),
-      );
+      await tester.pumpWidget(scheduleDetails(dio, repository));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('schedule-current')), findsOneWidget);
       expect(find.textContaining('09:00 (Europe/Prague)'), findsOneWidget);
       expect(find.textContaining('18:00 (Europe/Prague)'), findsOneWidget);
       expect(find.byKey(const ValueKey('schedule-manual')), findsOneWidget);
-      expect(find.byType(FilterChip), findsNothing);
+      expect(find.byType(RoomModeChip), findsNothing);
       repository.markStale();
       await tester.pump();
       expect(find.byKey(const ValueKey('schedule-current')), findsNothing);
@@ -422,4 +370,28 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets('the overview line names the next mode, a pause and a failure', (
+    tester,
+  ) async {
+    await tester.runAsync(() => repository.bind('space'));
+    final l = lookupAppLocalizations(const Locale('en'));
+    expect(roomScheduleLine(l, repository), 'Relax at 18:00');
+
+    // A failed attempt says it failed, never that it did not start.
+    repository.state = repository.state!.copyWith(
+      lastAttempt: repository.state!.current,
+      lastAttemptStatus:
+          SpacesHomeControlPluginDataScheduleStateLastAttemptStatus.failed,
+    );
+    expect(roomScheduleLine(l, repository), 'Work at 09:00 failed');
+
+    adapter.unknown = false;
+    repository.state = repository.state!.copyWith(
+      status: SpacesHomeControlPluginDataScheduleStateStatus.clockUncertain,
+    );
+    expect(roomScheduleLine(l, repository), 'Schedule paused · clock not set');
+
+    repository.markStale();
+    expect(roomScheduleLine(l, repository), 'Schedule unavailable or stopped.');
+  });
 }

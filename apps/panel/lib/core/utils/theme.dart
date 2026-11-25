@@ -892,6 +892,122 @@ class AppControlColors {
       brightness == Brightness.dark ? handleDark : handleLight;
 }
 
+/// One day part of the sky panel (docs/display-ui-design-spec.md §2, Sky):
+/// a clear and an overcast three-stop gradient (top, 62 %, bottom), the text
+/// colour for each, and the weather card's flat fill and outline.
+///
+/// A condition mixes the two gradients and the two text colours by its cover
+/// factor; see `SkyLook` in the deck's sky widgets.
+@immutable
+class AppSkyPart {
+  const AppSkyPart({
+    required this.clear,
+    required this.overcast,
+    required this.text,
+    required this.overcastText,
+    required this.light,
+    required this.glass,
+    required this.glassLine,
+  });
+
+  /// Top, middle (at 62 %) and bottom.
+  final List<Color> clear;
+  final List<Color> overcast;
+
+  final Color text;
+  final Color overcastText;
+
+  /// Whether the sky is light, so its layers are white on it.
+  final bool light;
+
+  /// The weather card and the scene pills on the sky.
+  final Color glass;
+  final Color glassLine;
+}
+
+/// The sky panel's colours (docs/display-ui-design-spec.md §2, Sky; every
+/// value is in `Sky.dc.html` on the design canvas). The sky is the same in
+/// the light and the dark theme.
+class AppSkyColors {
+  AppSkyColors._();
+
+  static const Color _lightGlass = Color.fromRGBO(255, 255, 255, 0.62);
+  static const Color _lightGlassLine = Color.fromRGBO(255, 255, 255, 0.85);
+  static const Color _darkGlassLine = Color.fromRGBO(255, 255, 255, 0.18);
+
+  static const AppSkyPart morning = AppSkyPart(
+    clear: [Color(0xFF8FB6E0), Color(0xFFF0C9B8), Color(0xFFFBE6D2)],
+    overcast: [Color(0xFF9AA5B1), Color(0xFFC3CAD2), Color(0xFFDDE1E6)],
+    text: Color(0xFF10263F),
+    overcastText: Color(0xFF1B2430),
+    light: true,
+    glass: _lightGlass,
+    glassLine: _lightGlassLine,
+  );
+
+  static const AppSkyPart day = AppSkyPart(
+    clear: [Color(0xFF7FB4EA), Color(0xFFB9D9F5), Color(0xFFE4F1FB)],
+    overcast: [Color(0xFF9AA5B1), Color(0xFFC3CAD2), Color(0xFFDDE1E6)],
+    text: Color(0xFF10263F),
+    overcastText: Color(0xFF1B2430),
+    light: true,
+    glass: _lightGlass,
+    glassLine: _lightGlassLine,
+  );
+
+  static const AppSkyPart evening = AppSkyPart(
+    clear: [Color(0xFF252B55), Color(0xFF5A3D6E), Color(0xFFA85A55)],
+    overcast: [Color(0xFF2B2F3D), Color(0xFF454A5A), Color(0xFF6B6670)],
+    text: Color(0xFFFFFFFF),
+    overcastText: Color(0xFFFFFFFF),
+    light: false,
+    glass: Color.fromRGBO(20, 16, 40, 0.55),
+    glassLine: _darkGlassLine,
+  );
+
+  static const AppSkyPart night = AppSkyPart(
+    clear: [Color(0xFF0B1026), Color(0xFF141C3D), Color(0xFF1D2850)],
+    overcast: [Color(0xFF0D0F14), Color(0xFF191C24), Color(0xFF252A35)],
+    text: Color(0xFFEEF1F8),
+    overcastText: Color(0xFFEEF1F8),
+    light: false,
+    glass: Color.fromRGBO(255, 255, 255, 0.10),
+    glassLine: _darkGlassLine,
+  );
+
+  /// The sun: a radial glow from its core to transparent at 70 %.
+  static const List<Color> sunDay = [
+    Color(0xFFFFFBE0),
+    Color(0xFFFFE9A0),
+    Color.fromRGBO(255, 233, 160, 0),
+  ];
+  static const List<Color> sunMorning = [
+    Color(0xFFFFF3D0),
+    Color(0xFFFFCF8F),
+    Color.fromRGBO(255, 207, 143, 0),
+  ];
+  static const List<Color> sunEvening = [
+    Color(0xFFFFD9A0),
+    Color(0xFFF0A070),
+    Color.fromRGBO(240, 160, 112, 0),
+  ];
+
+  static const Color moon = Color(0xFFF3EED8);
+  static const Color star = Color.fromRGBO(255, 255, 255, 0.75);
+  static const Color lightning = Color(0xFFFFE27A);
+
+  /// Cloud bars, fog bands, rain lines and snow dots, on a light sky and on a
+  /// dark one.
+  static const Color cloudOnLight = Color.fromRGBO(255, 255, 255, 0.5);
+  static const Color cloudOnDark = Color.fromRGBO(255, 255, 255, 0.10);
+  static const Color fogOnLight = Color.fromRGBO(255, 255, 255, 0.4);
+  static const Color fogOnDark = Color.fromRGBO(255, 255, 255, 0.08);
+  static const Color rainOnLight = Color.fromRGBO(27, 36, 48, 0.14);
+  static const Color rainOnDark = Color.fromRGBO(255, 255, 255, 0.13);
+  static const Color snowOnLight = Color(0xFFFFFFFF);
+  static const Color snowOnDark = Color.fromRGBO(255, 255, 255, 0.85);
+}
+
 /// The scrim behind sheets, drawers and dialogs (design canvas, overlays).
 class AppScrim {
   AppScrim._();

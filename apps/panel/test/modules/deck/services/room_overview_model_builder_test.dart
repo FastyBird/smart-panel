@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -339,7 +340,7 @@ void main() {
       });
 
       test(
-        'should show Custom as primary value when lights are on without intent',
+        'lights on without a known brightness show On, not a lighting mode',
         () {
           final input = RoomOverviewBuildInput(
             display: createDisplay(),
@@ -360,10 +361,121 @@ void main() {
           final lightsCard = model.domainCards.firstWhere(
             (c) => c.domain == DomainType.lights,
           );
-          expect(lightsCard.primaryValue, 'Custom');
+          expect(lightsCard.primaryValue, 'On');
+          expect(lightsCard.unit, isNull);
           expect(lightsCard.isActive, true);
         },
       );
+
+      test('lights show their brightness even while a lighting mode is active', () {
+        final model = buildRoomOverviewModel(
+          RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [
+              DevicesModuleDeviceCategory.lighting,
+              DevicesModuleDeviceCategory.lighting,
+            ],
+            lightingState: LightingStateModel.fromJson({
+              'has_lights': true,
+              'detected_mode': 'relax',
+              'mode_confidence': 'exact',
+              'is_mode_from_intent': true,
+              'total_lights': 4,
+              'lights_on': 3,
+              'average_brightness': 50.4,
+            }, spaceId: _roomUuid),
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+          ),
+        );
+        final card = model.domainCards.firstWhere(
+          (c) => c.domain == DomainType.lights,
+        );
+
+        // Cards show state, never a domain mode name (spec §9).
+        expect(card.primaryValue, '50');
+        expect(card.unit, ' %');
+        expect(card.primaryValue, isNot(_l.space_lighting_mode_relax));
+        expect(card.subtitle, _l.room_overview_lights_active(3, 4));
+        expect(card.actions.map((a) => a.label), ['Off', '50%', '100%']);
+        expect(card.actions.map((a) => a.selected), [false, true, false]);
+        // A narrow card keeps Off and On.
+        expect(card.compactActions.map((a) => a.type), [
+          QuickActionType.lightsOff,
+          QuickActionType.lightsOn,
+        ]);
+        expect(card.compactActions.last.selected, isTrue);
+      });
+
+      test('shading shows its position, never a covers mode', () {
+        final model = buildRoomOverviewModel(
+          RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.windowCovering],
+            coversState: CoversStateModel.fromJson({
+              'has_covers': true,
+              'detected_mode': 'privacy',
+              'is_mode_from_intent': true,
+              'average_position': 40,
+              'any_open': true,
+              'all_closed': false,
+            }, spaceId: _roomUuid),
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+          ),
+        );
+        final card = model.domainCards.firstWhere(
+          (c) => c.domain == DomainType.shading,
+        );
+
+        expect(card.primaryValue, '40');
+        expect(card.unit, ' %');
+        expect(card.primaryValue, isNot(_l.covers_mode_privacy));
+        // A narrow card keeps open and close as icons, with spoken labels.
+        expect(card.compactActions.map((a) => a.label), [null, null]);
+        expect(card.compactActions.map((a) => a.semanticLabel), [
+          _l.room_card_open_shading,
+          _l.room_card_close_shading,
+        ]);
+      });
+
+      test('climate shows the room temperature and what it is doing', () {
+        final model = buildRoomOverviewModel(
+          RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+            climateState: ClimateStateModel.fromJson({
+              'has_climate': true,
+              'mode': 'heat',
+              'current_temperature': 21.5,
+              'heating_setpoint': 22.0,
+              'supports_heating': true,
+              'is_heating': true,
+            }, spaceId: _roomUuid),
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+          ),
+        );
+        final card = model.domainCards.firstWhere(
+          (c) => c.domain == DomainType.climate,
+        );
+
+        expect(card.primaryValue, '21.5');
+        expect(card.unit, '\u00B0');
+        expect(card.subtitle, _l.thermostat_state_heating_to('22.0\u00B0C'));
+        expect(card.actions.first.label, _l.thermostat_mode_heat);
+        expect(card.actions.first.selected, isTrue);
+        expect(card.compactActions.map((a) => a.type), [
+          QuickActionType.climateMinus,
+          QuickActionType.climatePlus,
+        ]);
+      });
 
       test(
         'withheld climate readings cannot fall back to a raw overview value',
@@ -409,7 +521,7 @@ void main() {
         },
       );
 
-      test('should show temperature with unit as climate primary value', () {
+      test('should show the room temperature as the climate value', () {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
@@ -425,7 +537,8 @@ void main() {
         final climateCard = model.domainCards.firstWhere(
           (c) => c.domain == DomainType.climate,
         );
-        expect(climateCard.primaryValue, '21.5\u00B0C');
+        expect(climateCard.primaryValue, '21.5');
+        expect(climateCard.unit, '\u00B0');
         expect(climateCard.isActive, true);
       });
     });

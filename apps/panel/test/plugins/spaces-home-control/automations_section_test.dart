@@ -142,7 +142,7 @@ void main() {
       await tester.pumpWidget(app('room'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Automations'), findsOneWidget);
+      expect(find.text('AUTOMATIONS'), findsOneWidget);
       expect(find.text('Kitchen fan'), findsNothing);
       expect(find.byType(AppSwitch), findsNWidgets(4));
 
@@ -190,14 +190,14 @@ void main() {
     await tester.pumpWidget(app('room'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Automations'), findsNothing);
+    expect(find.text('AUTOMATIONS'), findsNothing);
     expect(find.byType(AppSwitch), findsNothing);
 
     // An automation moved into the space appears without a reload
     repository.insert([_automation('e', 'Kitchen fan', spaceId: 'room')]);
     await tester.pump();
 
-    expect(find.text('Automations'), findsOneWidget);
+    expect(find.text('AUTOMATIONS'), findsOneWidget);
     expect(find.text('Kitchen fan'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
