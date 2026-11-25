@@ -1184,6 +1184,100 @@ void main() {
     });
   });
 
+  group('review round 4', () {
+    test('card heights hold the target line at its full size', () {
+      // Value 18, gap 2 and target 10 on Compact need 30 beside the 24 tile.
+      expect(
+        RoomOverviewMetrics.valueWithTargetFor(ScreenSizeClass.compact),
+        30,
+      );
+      expect(
+        RoomOverviewMetrics.singleCardHeightFor(
+          ScreenSizeClass.compact,
+          target: true,
+        ),
+        82,
+      );
+      expect(
+        RoomOverviewMetrics.singleCardHeightFor(ScreenSizeClass.compact),
+        80,
+      );
+      expect(
+        RoomOverviewMetrics.singleCardHeightFor(
+          ScreenSizeClass.regular,
+          target: true,
+        ),
+        92,
+      );
+      expect(
+        RoomOverviewMetrics.cardMinHeightFor(
+          ScreenSizeClass.compact,
+          target: true,
+        ),
+        82,
+      );
+      expect(RoomOverviewMetrics.cardMinHeightFor(ScreenSizeClass.compact), 76);
+    });
+
+    testWidgets('a lone Compact climate card keeps its target at 10', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        RoomOverviewLayout(
+          skyBuilder: _Sky().build,
+          cards: [
+            DomainCardInfo(
+              domain: DomainType.climate,
+              icon: DomainType.climate.icon,
+              title: 'Climate',
+              primaryValue: '21.5',
+              unit: '°',
+              target: '22°',
+              subtitle: 'Heating',
+              actions: [
+                QuickActionInfo(
+                  type: QuickActionType.climateMode,
+                  icon: MdiIcons.fire,
+                  label: 'Heat',
+                ),
+                QuickActionInfo(
+                  type: QuickActionType.climateMinus,
+                  icon: MdiIcons.minus,
+                ),
+                QuickActionInfo(
+                  type: QuickActionType.climatePlus,
+                  icon: MdiIcons.plus,
+                ),
+              ],
+              compactActions: [
+                QuickActionInfo(
+                  type: QuickActionType.climateMinus,
+                  icon: MdiIcons.minus,
+                ),
+                QuickActionInfo(
+                  type: QuickActionType.climatePlus,
+                  icon: MdiIcons.plus,
+                ),
+              ],
+            ),
+          ],
+          sizeClass: ScreenSizeClass.compact,
+          square: false,
+        ),
+        size: const Size(400, 240),
+      );
+
+      expect(tester.takeException(), isNull);
+      // Not scaled down to fit a head too short for it (the rect on screen,
+      // after the value's FittedBox).
+      expect(
+        tester.getRect(find.text('22°')).height,
+        moreOrLessEquals(10, epsilon: 0.01),
+      );
+    });
+  });
+
   group('room mode on Compact', () {
     testWidgets(
       'the button opens the chooser; choosing a mode sends it and closes it',

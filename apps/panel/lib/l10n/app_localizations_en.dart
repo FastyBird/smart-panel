@@ -5211,6 +5211,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String room_card_idling_target(String temperature) {
+    return 'Idling, target $temperature';
+  }
+
+  @override
   String get room_overview_error_title => 'This room did not load';
 
   @override

@@ -27,6 +27,13 @@ class _DomainOptimistic {
   final String? unit;
   final bool? isActive;
   final ClimateMode? climateMode;
+
+  /// The Climate target sent, in °C, and as the card shows it ("23°").
+  final double? targetValue;
+  final String? target;
+
+  /// The shading position sent, for the Open / 50 % / Close selection.
+  final int? shadingPosition;
   final DateTime createdAt;
 
   const _DomainOptimistic({
@@ -34,6 +41,9 @@ class _DomainOptimistic {
     this.unit,
     this.isActive,
     this.climateMode,
+    this.targetValue,
+    this.target,
+    this.shadingPosition,
     required this.createdAt,
   });
 
@@ -229,12 +239,23 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
       final mode = override.climateMode;
       final modeInfo = mode == null ? null : _climateModeInfo(mode);
+      final target = override.target;
 
       return optimisticCard(
         card,
         primaryValue: override.primaryValue,
         unit: override.unit,
         isActive: override.isActive,
+        shadingPosition: override.shadingPosition,
+        target: target,
+        spokenTarget: target == null || climateState == null
+            ? null
+            : climateSpokenState(
+                AppLocalizations.of(context)!,
+                heating: climateState.isHeating,
+                cooling: climateState.isCooling,
+                target: target,
+              ),
         climateMode: mode == null
             ? null
             : (
@@ -482,12 +503,18 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     String? unit,
     bool? isActive,
     ClimateMode? climateMode,
+    double? targetValue,
+    String? target,
+    int? shadingPosition,
   }) {
     _optimistic[domain] = _DomainOptimistic(
       primaryValue: primaryValue,
       unit: unit,
       isActive: isActive,
       climateMode: climateMode,
+      targetValue: targetValue,
+      target: target,
+      shadingPosition: shadingPosition,
       createdAt: DateTime.now(),
     );
     _rebuildModel();
@@ -530,7 +557,10 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         modeMatches = card.actions[0].label == expectedLabel;
       }
 
-      if (primaryMatches && activeMatches && modeMatches) {
+      final targetMatches =
+          override.target == null || card.target == override.target;
+
+      if (primaryMatches && activeMatches && modeMatches && targetMatches) {
         toRemove.add(entry.key);
       }
     }
@@ -731,13 +761,27 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         case QuickActionType.climatePlus:
           final cs = spacesService.getClimateState(_roomId);
           if (cs == null) return;
-          final target = cs.effectiveTargetTemperature;
+          // Repeated taps step from the target already sent.
+          final pending = _optimistic[DomainType.climate];
+          final live = pending != null && !pending.isExpired ? pending : null;
+          final target = live?.targetValue ?? cs.effectiveTargetTemperature;
           if (target == null) return;
           final mode = cs.mode ?? ClimateMode.heat;
           final newTarget = type == QuickActionType.climatePlus
               ? target + 1.0
               : target - 1.0;
           final clamped = newTarget.clamp(cs.minSetpoint, cs.maxSetpoint);
+          // The card shows the new target at once; the room temperature
+          // stays as measured.
+          _setOptimistic(
+            DomainType.climate,
+            climateMode: live?.climateMode,
+            targetValue: clamped,
+            target: climateTargetDegrees(
+              clamped,
+              DisplayUnits.fromLocator().temperature,
+            ),
+          );
           final result = await spacesService.setSetpoint(
             _roomId,
             clamped,
@@ -756,6 +800,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             primaryValue: '0',
             unit: ' %',
             isActive: false,
+            shadingPosition: 0,
           );
           final result = await spacesService.setCoversMode(
             _roomId,
@@ -774,6 +819,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             primaryValue: '50',
             unit: ' %',
             isActive: true,
+            shadingPosition: 50,
           );
           final result = await spacesService.setCoversPosition(_roomId, 50);
           if (mounted) {
@@ -789,6 +835,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             primaryValue: '100',
             unit: ' %',
             isActive: true,
+            shadingPosition: 100,
           );
           final result = await spacesService.setCoversMode(
             _roomId,

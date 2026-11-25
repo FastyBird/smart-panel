@@ -5268,6 +5268,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String room_card_idling_target(String temperature) {
+    return 'En reposo, objetivo $temperature';
+  }
+
+  @override
   String get room_overview_error_title => 'La habitación no se cargó';
 
   @override

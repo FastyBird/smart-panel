@@ -1610,6 +1610,7 @@
   "room_occupancy_automation_on": "automatización activa",
   "room_scene_run": "Ejecutar la escena {name}",
   "room_energy_open": "Energía, {value}. Abrir energía",
+  "room_card_idling_target": "En reposo, objetivo {temperature}",
   "room_overview_error_title": "La habitación no se cargó",
   "room_overview_error_message": "La pasarela respondió con un error. El reloj y el tiempo siguen funcionando.",
   "room_overview_try_again": "Intentar de nuevo",

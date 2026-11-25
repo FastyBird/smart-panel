@@ -1610,6 +1610,7 @@
   "room_occupancy_automation_on": "Automatik an",
   "room_scene_run": "Szene {name} ausführen",
   "room_energy_open": "Energie, {value}. Energie öffnen",
+  "room_card_idling_target": "Leerlauf, Ziel {temperature}",
   "room_overview_error_title": "Dieser Raum wurde nicht geladen",
   "room_overview_error_message": "Das Gateway hat mit einem Fehler geantwortet. Uhr und Wetter funktionieren weiter.",
   "room_overview_try_again": "Erneut versuchen",

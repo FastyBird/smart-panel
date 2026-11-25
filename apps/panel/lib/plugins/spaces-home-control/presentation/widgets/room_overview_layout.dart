@@ -325,7 +325,10 @@ class RoomOverviewLayout extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, box) {
                 final cardHeight = AppSpacings.scale(
-                  RoomOverviewMetrics.singleCardHeightFor(sizeClass),
+                  RoomOverviewMetrics.singleCardHeightFor(
+                    sizeClass,
+                    target: cards.single.target != null,
+                  ),
                 );
                 final card = SizedBox(
                   height: cardHeight,
@@ -402,13 +405,12 @@ class RoomOverviewLayout extends StatelessWidget {
       for (var i = 0; i < cards.length; i += columns)
         cards.sublist(i, math.min(i + columns, cards.length)),
     ];
+    // Rows hold the target line at its full size when a card shows one.
+    final target = cards.any((card) => card.target != null);
     final minHeight = AppSpacings.scale(
       small
-          ? RoomOverviewMetrics.cardPaddingFor(sizeClass) * 2 +
-                RoomOverviewMetrics.chipFor(sizeClass) +
-                RoomOverviewMetrics.headGapFor(ScreenSizeClass.compact) +
-                RoomOverviewMetrics.valueFor(sizeClass)
-          : RoomOverviewMetrics.cardMinHeightFor(sizeClass),
+          ? RoomOverviewMetrics.smallCardMinHeightFor(sizeClass, target: target)
+          : RoomOverviewMetrics.cardMinHeightFor(sizeClass, target: target),
     );
 
     Widget row(List<DomainCardInfo> row) => Row(

@@ -5475,6 +5475,16 @@
       }
     }
   },
+  "room_card_idling_target": "Idling, target {temperature}",
+  "@room_card_idling_target": {
+    "description": "Screen reader state of an idle climate card with its target",
+    "placeholders": {
+      "temperature": {
+        "type": "String",
+        "example": "22°"
+      }
+    }
+  },
   "room_overview_error_title": "This room did not load",
   "@room_overview_error_title": {
     "description": "Room overview error title (design canvas)"

@@ -9436,6 +9436,12 @@ abstract class AppLocalizations {
   /// **'Energy, {value}. Open energy'**
   String room_energy_open(String value);
 
+  /// Screen reader state of an idle climate card with its target
+  ///
+  /// In en, this message translates to:
+  /// **'Idling, target {temperature}'**
+  String room_card_idling_target(String temperature);
+
   /// Room overview error title (design canvas)
   ///
   /// In en, this message translates to:

@@ -1610,6 +1610,7 @@
   "room_occupancy_automation_on": "automatika zapnutá",
   "room_scene_run": "Spustiť scénu {name}",
   "room_energy_open": "Energia, {value}. Otvoriť energiu",
+  "room_card_idling_target": "V pokoji, cieľ {temperature}",
   "room_overview_error_title": "Miestnosť sa nenačítala",
   "room_overview_error_message": "Brána odpovedala chybou. Hodiny a počasie fungujú ďalej.",
   "room_overview_try_again": "Skúsiť znova",

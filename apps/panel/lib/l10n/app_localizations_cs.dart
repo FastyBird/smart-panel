@@ -5253,6 +5253,11 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String room_card_idling_target(String temperature) {
+    return 'V klidu, cíl $temperature';
+  }
+
+  @override
   String get room_overview_error_title => 'Místnost se nenačetla';
 
   @override

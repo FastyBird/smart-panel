@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 
 /// The room overview's sizes per class (docs/display-ui-design-spec.md §4,
@@ -109,13 +111,38 @@ class RoomOverviewMetrics {
   static const double actionFont = 12;
   static const double actionIcon = 16;
 
-  /// A lone card's height (one domain): 80 / 92 / 116.
-  static double singleCardHeightFor(ScreenSizeClass c) =>
-      _byClass(c, 80, 92, 116);
+  /// The head's height: the icon tile, or the value with the target under
+  /// it when the card shows one ([target]).
+  static double headFor(ScreenSizeClass c, {bool target = false}) =>
+      target ? math.max(chipFor(c), valueWithTargetFor(c)) : chipFor(c);
 
-  /// The shortest a card with quick actions gets before the cards scroll.
-  static double cardMinHeightFor(ScreenSizeClass c) =>
-      cardPaddingFor(c) * 2 + chipFor(c) + cardGap + actionHeightFor(c);
+  /// The value with the target line under it: 30 / 34 / 40.
+  static double valueWithTargetFor(ScreenSizeClass c) =>
+      valueFor(c) + targetGap + targetFont;
+
+  /// A lone card's height (one domain): 80 / 92 / 116, and enough for a
+  /// target line at its full size (82 on Compact).
+  static double singleCardHeightFor(ScreenSizeClass c, {bool target = false}) =>
+      math.max(_byClass(c, 80, 92, 116), cardMinHeightFor(c, target: target));
+
+  /// The shortest a card with quick actions gets before the cards scroll;
+  /// with [target], tall enough for the target line at its full size.
+  static double cardMinHeightFor(ScreenSizeClass c, {bool target = false}) =>
+      cardPaddingFor(c) * 2 +
+      headFor(c, target: target) +
+      cardGap +
+      actionHeightFor(c);
+
+  /// The shortest a small card (icon over value) gets before the cards
+  /// scroll.
+  static double smallCardMinHeightFor(
+    ScreenSizeClass c, {
+    bool target = false,
+  }) =>
+      cardPaddingFor(c) * 2 +
+      chipFor(c) +
+      headGapFor(ScreenSizeClass.compact) +
+      (target ? valueWithTargetFor(c) : valueFor(c));
 
   /// Quick actions on a card [cardWidth] wide (spec §4): three when each is
   /// at least 36 wide, else two.

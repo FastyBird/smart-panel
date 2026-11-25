@@ -5304,6 +5304,11 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
+  String room_card_idling_target(String temperature) {
+    return 'Bezczynny, cel $temperature';
+  }
+
+  @override
   String get room_overview_error_title => 'Pokój się nie wczytał';
 
   @override

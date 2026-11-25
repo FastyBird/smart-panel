@@ -5267,6 +5267,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String room_card_idling_target(String temperature) {
+    return 'Leerlauf, Ziel $temperature';
+  }
+
+  @override
   String get room_overview_error_title => 'Dieser Raum wurde nicht geladen';
 
   @override

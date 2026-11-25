@@ -484,6 +484,37 @@ void main() {
         ]);
       });
 
+      test('an idle climate card speaks its target; an off one does not', () {
+        ClimateStateModel state(String mode) => ClimateStateModel.fromJson({
+          'has_climate': true,
+          'mode': mode,
+          'current_temperature': 21.5,
+          'heating_setpoint': 22.0,
+          'supports_heating': true,
+          'is_heating': false,
+        }, spaceId: _roomUuid);
+        DomainCardInfo card(String mode) => buildRoomOverviewModel(
+          RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+            climateState: state(mode),
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+          ),
+        ).domainCards.firstWhere((card) => card.domain == DomainType.climate);
+
+        final idle = card('heat');
+        expect(idle.subtitle, _l.thermostat_state_idling);
+        expect(idle.target, '22\u00B0');
+        expect(idle.spokenSubtitle, 'Idling, target 22\u00B0');
+
+        final off = card('off');
+        expect(off.target, isNull);
+        expect(off.spokenSubtitle, isNull);
+      });
+
       test(
         'a coverage warning reaches screen readers while heating to a target',
         () {
@@ -1211,5 +1242,85 @@ void main() {
         expect((cool.primaryValue, cool.unit), ('21.5', '\u00B0'));
       },
     );
+
+    test('shading selections follow the position sent, keeping disabled', () {
+      QuickActionInfo action(
+        QuickActionType type, {
+        bool selected = false,
+        bool disabled = false,
+      }) => QuickActionInfo(
+        type: type,
+        icon: MdiIcons.arrowUp,
+        selected: selected,
+        disabled: disabled,
+      );
+      final closed = DomainCardInfo(
+        domain: DomainType.shading,
+        icon: DomainType.shading.icon,
+        title: 'Shading',
+        primaryValue: '0',
+        unit: ' %',
+        subtitle: 'Fully closed',
+        actions: [
+          action(QuickActionType.coversOpen),
+          action(QuickActionType.coversHalf, disabled: true),
+          action(QuickActionType.coversClose, selected: true),
+        ],
+        compactActions: [
+          action(QuickActionType.coversOpen),
+          action(QuickActionType.coversClose, selected: true),
+        ],
+      );
+
+      final opened = optimisticCard(
+        closed,
+        primaryValue: '100',
+        unit: ' %',
+        isActive: true,
+        shadingPosition: 100,
+      );
+
+      expect(opened.actions.map((a) => a.selected), [true, false, false]);
+      expect(opened.compactActions.map((a) => a.selected), [true, false]);
+      expect(opened.actions.map((a) => a.disabled), [false, true, false]);
+
+      final half = optimisticCard(closed, shadingPosition: 50);
+      expect(half.actions.map((a) => a.selected), [false, true, false]);
+      expect(half.compactActions.map((a) => a.selected), [false, false]);
+    });
+
+    test('a new climate target replaces the shown and spoken one', () {
+      DomainCardInfo climate({String? target}) => DomainCardInfo(
+        domain: DomainType.climate,
+        icon: DomainType.climate.icon,
+        title: 'Climate',
+        primaryValue: '21.5',
+        unit: '\u00B0',
+        target: target,
+        subtitle: target == null ? 'No temperature' : 'Heating',
+        spokenSubtitle: target == null
+            ? null
+            : _l.thermostat_state_heating_to(target),
+      );
+
+      final raised = optimisticCard(
+        climate(target: '22\u00B0'),
+        target: '23\u00B0',
+        spokenTarget: _l.thermostat_state_heating_to('23\u00B0'),
+      );
+      expect(raised.target, '23\u00B0');
+      expect(raised.spokenSubtitle, _l.thermostat_state_heating_to('23\u00B0'));
+      // The room temperature stays as measured.
+      expect((raised.primaryValue, raised.unit), ('21.5', '\u00B0'));
+
+      // A card showing no target (a coverage warning) does not get one.
+      final warned = optimisticCard(
+        climate(),
+        target: '23\u00B0',
+        spokenTarget: _l.thermostat_state_heating_to('23\u00B0'),
+      );
+      expect(warned.target, isNull);
+      expect(warned.spokenSubtitle, isNull);
+    });
   });
 }

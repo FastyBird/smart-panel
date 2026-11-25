@@ -18,6 +18,7 @@ import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/system_pages/room_overview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// A room with lights and a thermostat, nothing loaded beyond the counts.
 class _Deck extends ChangeNotifier implements DeckService {
@@ -93,13 +94,14 @@ class _Intents extends ChangeNotifier implements IntentsService {
 /// Records the lighting intents the page sends.
 class _Spaces extends ChangeNotifier implements SpacesService {
   final sent = <String>[];
+  ClimateStateModel? climate;
 
   @override
   SpaceView? getSpace(String id) => null;
   @override
   LightingStateModel? getLightingState(String spaceId) => null;
   @override
-  ClimateStateModel? getClimateState(String spaceId) => null;
+  ClimateStateModel? getClimateState(String spaceId) => climate;
   @override
   CoversStateModel? getCoversState(String spaceId) => null;
   @override
@@ -131,8 +133,36 @@ class _Spaces extends ChangeNotifier implements SpacesService {
   }
 
   @override
+  Future<ClimateIntentResult?> setSetpoint(
+    String spaceId,
+    double value, {
+    required ClimateMode mode,
+  }) async {
+    sent.add('setpoint $value ${mode.name} $spaceId');
+
+    return null;
+  }
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+Widget _page() => MaterialApp(
+  theme: AppTheme.lightThemeFor(AppAccent.blue),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  locale: const Locale('en'),
+  home: const Scaffold(
+    body: RoomOverviewPage(
+      viewItem: SystemViewItem(
+        id: 'room',
+        viewType: SystemViewType.room,
+        roomId: 'room',
+        title: 'Living room',
+      ),
+    ),
+  ),
+);
 
 void main() {
   late _Spaces spaces;
@@ -165,25 +195,11 @@ void main() {
     tester.view.physicalSize = const Size(350, 240);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    spaces
+      ..sent.clear()
+      ..climate = null;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.lightThemeFor(AppAccent.blue),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('en'),
-        home: const Scaffold(
-          body: RoomOverviewPage(
-            viewItem: SystemViewItem(
-              id: 'room',
-              viewType: SystemViewType.room,
-              roomId: 'room',
-              title: 'Living room',
-            ),
-          ),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_page());
     await tester.pump(const Duration(milliseconds: 100));
 
     final lights = find.byKey(const ValueKey('room-card-lights'));
@@ -209,4 +225,73 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 7));
   });
+
+  testWidgets(
+    'plus shows the new target at once and the next tap steps from it',
+    (tester) async {
+      tester.view.physicalSize = const Size(350, 240);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      spaces
+        ..sent.clear()
+        ..climate = ClimateStateModel.fromJson({
+          'has_climate': true,
+          'mode': 'heat',
+          'current_temperature': 21.5,
+          'heating_setpoint': 22.0,
+          'supports_heating': true,
+          'is_heating': true,
+        }, spaceId: 'room');
+      addTearDown(() => spaces.climate = null);
+
+      await tester.pumpWidget(_page());
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final climate = find.byKey(const ValueKey('room-card-climate'));
+      final target = find.descendant(
+        of: climate,
+        matching: find.byKey(const ValueKey('room-card-target')),
+      );
+      expect(
+        find.descendant(of: target, matching: find.text('22°')),
+        findsOneWidget,
+      );
+
+      final plus = find.descendant(
+        of: climate,
+        matching: find.byIcon(MdiIcons.plus),
+      );
+      await tester.tap(plus);
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(spaces.sent, ['setpoint 23.0 heat room']);
+      // The target follows before the room reports back; the room
+      // temperature stays as measured.
+      expect(
+        find.descendant(of: target, matching: find.text('23°')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: climate,
+          matching: find.textContaining('21.5', findRichText: true),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(plus);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(spaces.sent, [
+        'setpoint 23.0 heat room',
+        'setpoint 24.0 heat room',
+      ]);
+      expect(
+        find.descendant(of: target, matching: find.text('24°')),
+        findsOneWidget,
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 7));
+    },
+  );
 }

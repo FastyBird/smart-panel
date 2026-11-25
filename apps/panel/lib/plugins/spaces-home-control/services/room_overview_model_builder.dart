@@ -237,15 +237,17 @@ class DomainCardInfo {
     bool? isActive,
     List<QuickActionInfo>? actions,
     List<QuickActionInfo>? compactActions,
+    String? target,
+    String? spokenSubtitle,
   }) => DomainCardInfo(
     domain: domain,
     icon: icon,
     title: title,
     primaryValue: primaryValue ?? this.primaryValue,
     unit: clearUnit ? null : unit ?? this.unit,
-    target: target,
+    target: target ?? this.target,
     subtitle: subtitle,
-    spokenSubtitle: spokenSubtitle,
+    spokenSubtitle: spokenSubtitle ?? this.spokenSubtitle,
     subtitleItems: subtitleItems,
     actions: actions ?? this.actions,
     compactActions: compactActions ?? this.compactActions,
@@ -253,18 +255,44 @@ class DomainCardInfo {
   );
 }
 
+/// A climate target in the card's short form: "22°", "22.5°".
+String climateTargetDegrees(double value, TemperatureUnit unit) {
+  final converted = UnitConverter.convertTemperature(value, unit);
+  final whole = (converted * 10).round() % 10 == 0;
+
+  return '${NumberUtils.formatDecimal(converted, decimalPlaces: whole ? 0 : 1)}\u00B0';
+}
+
+/// What screen readers hear for a climate card showing [target]: "Heating
+/// to 22°", "Cooling to 22°", "Idling, target 22°".
+String climateSpokenState(
+  AppLocalizations l, {
+  required bool heating,
+  required bool cooling,
+  required String target,
+}) => heating
+    ? l.thermostat_state_heating_to(target)
+    : cooling
+    ? l.thermostat_state_cooling_to(target)
+    : l.room_card_idling_target(target);
+
 /// A card while a quick action waits for the room to report back: the value
 /// it expects ([primaryValue] and [unit] together), whether the domain is
 /// on, and for Climate the new mode's label, icon and spoken label.
 ///
 /// The selection follows: Off is selected while the lights are off and On
-/// (or the Climate mode button) while they are on.
+/// (or the Climate mode button) while they are on; Open, 50 % and Close
+/// follow [shadingPosition]. A Climate [target] ("23°") replaces the one
+/// under the value, with [spokenTarget] for screen readers.
 DomainCardInfo optimisticCard(
   DomainCardInfo card, {
   String? primaryValue,
   String? unit,
   bool? isActive,
   ({String label, IconData icon, String semanticLabel, bool on})? climateMode,
+  int? shadingPosition,
+  String? target,
+  String? spokenTarget,
 }) {
   List<QuickActionInfo> select(List<QuickActionInfo> actions, bool on) => [
     for (final action in actions)
@@ -286,6 +314,21 @@ DomainCardInfo optimisticCard(
     compactActions = select(compactActions, isActive);
   }
 
+  List<QuickActionInfo> position(List<QuickActionInfo> actions, int pos) => [
+    for (final action in actions)
+      switch (action.type) {
+        QuickActionType.coversOpen => action.copyWith(selected: pos == 100),
+        QuickActionType.coversHalf => action.copyWith(selected: pos == 50),
+        QuickActionType.coversClose => action.copyWith(selected: pos == 0),
+        _ => action,
+      },
+  ];
+
+  if (card.domain == DomainType.shading && shadingPosition != null) {
+    actions = position(actions, shadingPosition);
+    compactActions = position(compactActions, shadingPosition);
+  }
+
   if (climateMode != null &&
       card.domain == DomainType.climate &&
       actions.isNotEmpty &&
@@ -301,6 +344,12 @@ DomainCardInfo optimisticCard(
     ];
   }
 
+  // Only where the card shows a target (not off, no coverage warning).
+  final retarget =
+      target != null &&
+      card.domain == DomainType.climate &&
+      card.target != null;
+
   return card.copyWith(
     primaryValue: primaryValue,
     unit: unit,
@@ -308,6 +357,8 @@ DomainCardInfo optimisticCard(
     isActive: isActive,
     actions: actions,
     compactActions: compactActions,
+    target: retarget ? target : null,
+    spokenSubtitle: retarget ? spokenTarget : null,
   );
 }
 
@@ -698,13 +749,7 @@ DomainCardInfo _buildClimateCard(
     decimalPlaces: 1,
   );
 
-  // A target in the card's short form: "22°", "22.5°".
-  String degrees(double value) {
-    final converted = UnitConverter.convertTemperature(value, tempUnit);
-    final whole = (converted * 10).round() % 10 == 0;
-
-    return '${NumberUtils.formatDecimal(converted, decimalPlaces: whole ? 0 : 1)}\u00B0';
-  }
+  String degrees(double value) => climateTargetDegrees(value, tempUnit);
 
   // The value is the room's temperature now; the state line says what the
   // climate is doing about it.
@@ -796,13 +841,17 @@ DomainCardInfo _buildClimateCard(
     subtitle: subtitle,
     // A coverage warning replaces the state, and screen readers hear it too.
     spokenSubtitle:
-        target == null || cs == null || contribution?.isUnavailable == true
+        target == null ||
+            cs == null ||
+            cs.isOff ||
+            contribution?.isUnavailable == true
         ? null
-        : cs.isHeating
-        ? l.thermostat_state_heating_to(degrees(target))
-        : cs.isCooling
-        ? l.thermostat_state_cooling_to(degrees(target))
-        : null,
+        : climateSpokenState(
+            l,
+            heating: cs.isHeating,
+            cooling: cs.isCooling,
+            target: degrees(target),
+          ),
     actions: [
       QuickActionInfo(
         type: QuickActionType.climateMode,
