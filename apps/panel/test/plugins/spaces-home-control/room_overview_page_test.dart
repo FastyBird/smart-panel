@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -16,6 +18,7 @@ import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/system_pages/room_overview.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/room_domain_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -96,6 +99,10 @@ class _Spaces extends ChangeNotifier implements SpacesService {
   final sent = <String>[];
   ClimateStateModel? climate;
 
+  /// Held setpoint requests, completed by the test; null answers at once
+  /// with success.
+  List<Completer<ClimateIntentResult?>>? held;
+
   @override
   SpaceView? getSpace(String id) => null;
   @override
@@ -140,12 +147,56 @@ class _Spaces extends ChangeNotifier implements SpacesService {
   }) async {
     sent.add('setpoint $value ${mode.name} $spaceId');
 
-    return null;
+    final held = this.held;
+    if (held == null) return _ok();
+
+    final request = Completer<ClimateIntentResult?>();
+    held.add(request);
+
+    return request.future;
+  }
+
+  @override
+  Future<ClimateIntentResult?> setClimateMode(
+    String spaceId,
+    ClimateMode mode,
+  ) async {
+    sent.add('mode ${mode.name} $spaceId');
+
+    return _ok();
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+ClimateIntentResult _ok() =>
+    ClimateIntentResult(success: true, affectedDevices: 1, failedDevices: 0);
+
+/// Heating to 22° in Heat, with a 26° cooling setpoint.
+ClimateStateModel _heating() => ClimateStateModel.fromJson({
+  'has_climate': true,
+  'mode': 'heat',
+  'current_temperature': 21.5,
+  'heating_setpoint': 22.0,
+  'cooling_setpoint': 26.0,
+  'supports_heating': true,
+  'supports_cooling': true,
+  'is_heating': true,
+}, spaceId: 'room');
+
+Finder _climate() => find.byKey(const ValueKey('room-card-climate'));
+
+Finder _target(String text) => find.descendant(
+  of: find.descendant(
+    of: _climate(),
+    matching: find.byKey(const ValueKey('room-card-target')),
+  ),
+  matching: find.text(text),
+);
+
+Finder _plus() =>
+    find.descendant(of: _climate(), matching: find.byIcon(MdiIcons.plus));
 
 Widget _page() => MaterialApp(
   theme: AppTheme.lightThemeFor(AppAccent.blue),
@@ -294,4 +345,117 @@ void main() {
       await tester.pump(const Duration(seconds: 7));
     },
   );
+
+  group('review round 5', () {
+    setUp(() {
+      spaces
+        ..sent.clear()
+        ..held = null
+        ..climate = _heating();
+    });
+    tearDown(() {
+      spaces
+        ..held = null
+        ..climate = null;
+    });
+
+    Future<void> pumpPage(WidgetTester tester, Size size) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_page());
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    Future<void> chooseMode(WidgetTester tester, String mode) async {
+      await tester.tap(
+        find.descendant(of: _climate(), matching: find.text('Heat')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(mode).last);
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    Future<void> finish(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 7));
+    }
+
+    testWidgets('plus after a pending Cool steps the cooling setpoint', (
+      tester,
+    ) async {
+      // Wide enough for the mode button beside minus and plus.
+      await pumpPage(tester, const Size(800, 480));
+
+      await chooseMode(tester, 'Cool');
+      await tester.tap(_plus());
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Cool 26° + 1, not Heat 22° + 1.
+      expect(spaces.sent, ['mode cool room', 'setpoint 27.0 cool room']);
+      expect(_target('27°'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('plus after a pending Off keeps the card off', (tester) async {
+      await pumpPage(tester, const Size(800, 480));
+
+      await chooseMode(tester, 'Off');
+      await tester.tap(_plus());
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final card = tester.widget<RoomDomainCard>(_climate()).card;
+      expect(card.isActive, isFalse);
+      expect(card.actions.first.label, 'Off');
+      await finish(tester);
+    });
+
+    testWidgets(
+      'a failed plus puts the target back, says so, and the next tap steps '
+      'from the reported one',
+      (tester) async {
+        spaces.held = [];
+        await pumpPage(tester, const Size(350, 240));
+
+        await tester.tap(_plus());
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_target('23°'), findsOneWidget);
+
+        spaces.held!.single.complete(null);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_target('22°'), findsOneWidget);
+        expect(find.text('Action failed'), findsOneWidget);
+
+        spaces.held = null;
+        await tester.pump(const Duration(seconds: 5));
+        await tester.tap(_plus());
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(spaces.sent, [
+          'setpoint 23.0 heat room',
+          'setpoint 23.0 heat room',
+        ]);
+        await finish(tester);
+      },
+    );
+
+    testWidgets('an older failure does not undo a newer tap', (tester) async {
+      spaces.held = [];
+      await pumpPage(tester, const Size(350, 240));
+
+      await tester.tap(_plus());
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(_plus());
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_target('24°'), findsOneWidget);
+
+      spaces.held!.first.complete(null);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_target('24°'), findsOneWidget);
+
+      spaces.held!.last.complete(_ok());
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_target('24°'), findsOneWidget);
+      await finish(tester);
+    });
+  });
 }

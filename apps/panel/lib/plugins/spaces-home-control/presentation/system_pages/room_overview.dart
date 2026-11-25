@@ -34,6 +34,10 @@ class _DomainOptimistic {
 
   /// The shading position sent, for the Open / 50 % / Close selection.
   final int? shadingPosition;
+
+  /// The request this override belongs to, so a late failure clears only
+  /// its own.
+  final int? request;
   final DateTime createdAt;
 
   const _DomainOptimistic({
@@ -44,6 +48,7 @@ class _DomainOptimistic {
     this.targetValue,
     this.target,
     this.shadingPosition,
+    this.request,
     required this.createdAt,
   });
 
@@ -96,6 +101,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
   // Optimistic overrides per domain
   final Map<DomainType, _DomainOptimistic> _optimistic = {};
+  int _climateRequest = 0;
   Timer? _optimisticCleanupTimer;
 
   // Error state
@@ -506,6 +512,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     double? targetValue,
     String? target,
     int? shadingPosition,
+    int? request,
   }) {
     _optimistic[domain] = _DomainOptimistic(
       primaryValue: primaryValue,
@@ -515,6 +522,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       targetValue: targetValue,
       target: target,
       shadingPosition: shadingPosition,
+      request: request,
       createdAt: DateTime.now(),
     );
     _rebuildModel();
@@ -761,37 +769,56 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         case QuickActionType.climatePlus:
           final cs = spacesService.getClimateState(_roomId);
           if (cs == null) return;
-          // Repeated taps step from the target already sent.
+          // A mode still on its way counts: its setpoint is the one to
+          // step, and repeated taps step from the target already sent.
           final pending = _optimistic[DomainType.climate];
           final live = pending != null && !pending.isExpired ? pending : null;
-          final target = live?.targetValue ?? cs.effectiveTargetTemperature;
+          final mode = live?.climateMode ?? cs.mode ?? ClimateMode.heat;
+          final target = live?.targetValue ?? cs.targetFor(mode);
           if (target == null) return;
-          final mode = cs.mode ?? ClimateMode.heat;
           final newTarget = type == QuickActionType.climatePlus
               ? target + 1.0
               : target - 1.0;
           final clamped = newTarget.clamp(cs.minSetpoint, cs.maxSetpoint);
-          // The card shows the new target at once; the room temperature
-          // stays as measured.
+          final request = ++_climateRequest;
+          // The card shows the new target at once, keeping a pending mode
+          // and on/off state; the room temperature stays as measured.
           _setOptimistic(
             DomainType.climate,
+            isActive: live?.isActive,
             climateMode: live?.climateMode,
             targetValue: clamped,
             target: climateTargetDegrees(
               clamped,
               DisplayUnits.fromLocator().temperature,
             ),
+            request: request,
           );
           final result = await spacesService.setSetpoint(
             _roomId,
             clamped,
             mode: mode,
           );
-          if (mounted) {
-            IntentResultHandler.showOfflineAlertIfNeededForClimate(
-              context,
-              result,
-            );
+          if (!mounted) return;
+
+          final failed = result == null || !result.success;
+          // A failed request puts back what was pending before it, unless
+          // a newer tap has replaced it since.
+          if (failed && _optimistic[DomainType.climate]?.request == request) {
+            if (live != null && !live.isExpired) {
+              _optimistic[DomainType.climate] = live;
+            } else {
+              _optimistic.remove(DomainType.climate);
+            }
+            _rebuildModel();
+          }
+          final alerted =
+              IntentResultHandler.showOfflineAlertIfNeededForClimate(
+                context,
+                result,
+              );
+          if (failed && !alerted) {
+            Toast.showError(context, message: l.room_overview_action_failed);
           }
           break;
         case QuickActionType.coversClose:
