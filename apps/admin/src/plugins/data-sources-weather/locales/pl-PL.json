@@ -37,5 +37,8 @@
 		"weather_main": "Warunki pogodowe",
 		"weather_description": "Opis pogody",
 		"wind_speed": "Predkosc wiatru"
+	},
+	"sections": {
+		"weather": "Pogoda"
 	}
 }

@@ -428,5 +428,10 @@
     "tiles": {
       "edit": "Upravit dlaždici"
     }
+  },
+  "sections": {
+    "general": "Obecné",
+    "placement": "Pozice a velikost",
+    "identifiers": "Identifikátory"
   }
 }

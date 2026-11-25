@@ -17,5 +17,8 @@
 			"placeholder": "Wybierz lokalizację",
 			"description": "Wybierz lokalizację pogodową do wyświetlenia. Jeśli nie ustawiono, zostanie użyta główna lokalizacja z ustawień pogody."
 		}
+	},
+	"sections": {
+		"weather": "Pogoda"
 	}
 }

@@ -428,5 +428,10 @@
 		"tiles": {
 			"edit": "Kachel bearbeiten"
 		}
+	},
+	"sections": {
+		"general": "Allgemein",
+		"placement": "Position und Größe",
+		"identifiers": "Kennungen"
 	}
 }

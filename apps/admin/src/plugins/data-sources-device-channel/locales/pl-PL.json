@@ -25,5 +25,8 @@
 			"title": "Ikona",
 			"placeholder": "Ikona zrodla danych"
 		}
+	},
+	"sections": {
+		"property": "Właściwość urządzenia"
 	}
 }

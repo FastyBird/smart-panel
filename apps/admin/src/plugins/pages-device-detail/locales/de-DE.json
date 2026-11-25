@@ -8,5 +8,8 @@
         "required": "Bitte wählen Sie ein Seitengerät"
       }
     }
+  },
+  "sections": {
+    "device": "Gerät"
   }
 }

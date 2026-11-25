@@ -152,5 +152,8 @@
 		"aria": {
 			"closeInspector": "Zavrieť inšpektor"
 		}
+	},
+	"sections": {
+		"grid": "Mriežka dlaždíc"
 	}
 }

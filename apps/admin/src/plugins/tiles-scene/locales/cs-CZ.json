@@ -10,5 +10,8 @@
 				"required": "Vyberte prosím scénu"
 			}
 		}
+	},
+	"sections": {
+		"scene": "Scéna"
 	}
 }

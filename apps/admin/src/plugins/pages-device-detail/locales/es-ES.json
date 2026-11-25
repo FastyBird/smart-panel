@@ -8,5 +8,8 @@
 				"required": "Por favor, seleccione un dispositivo para la p\u00e1gina"
 			}
 		}
+	},
+	"sections": {
+		"device": "Dispositivo"
 	}
 }

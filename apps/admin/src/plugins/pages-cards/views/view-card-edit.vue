@@ -17,7 +17,7 @@
 	>
 		<el-scrollbar
 			v-if="card !== null"
-			class="grow-1 p-2 md:px-4"
+			class="grow-1 p-2 tp:px-4"
 		>
 			<card-edit-form
 				v-model:remote-form-submit="remoteFormSubmit"

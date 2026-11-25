@@ -152,5 +152,8 @@
     "aria": {
       "closeInspector": "Close the inspector"
     }
+  },
+  "sections": {
+    "grid": "Tile grid"
   }
 }

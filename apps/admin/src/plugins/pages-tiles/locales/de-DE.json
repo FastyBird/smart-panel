@@ -152,5 +152,8 @@
     "aria": {
       "closeInspector": "Inspektor schließen"
     }
+  },
+  "sections": {
+    "grid": "Kachelraster"
   }
 }

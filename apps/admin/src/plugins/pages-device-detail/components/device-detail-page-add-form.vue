@@ -6,96 +6,29 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.id.title')"
-			prop="id"
-		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.pages.id.placeholder')"
-				name="id"
-				required
-				disabled
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.title.title')"
-			prop="title"
-		>
-			<el-input
-				v-model="model.title"
-				:placeholder="t('dashboardModule.fields.pages.title.placeholder')"
-				name="title"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('pagesDeviceDetailPlugin.fields.device.title')"
-			prop="device"
-		>
-			<el-select
-				v-model="model.device"
-				:placeholder="t('pagesDeviceDetailPlugin.fields.device.placeholder')"
-				name="device"
-				:loading="loadingDevices"
-				filterable
-			>
-				<el-option
-					v-for="item in devicesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.icon.title')"
-			prop="icon"
-		>
-			<icon-picker
-				v-model="model.icon"
-				:placeholder="t('dashboardModule.fields.pages.icon.placeholder')"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.order.title')"
-			prop="order"
-		>
-			<el-input-number
-				v-model="model.order"
-				:placeholder="t('dashboardModule.fields.pages.order.placeholder')"
-				name="order"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.showTopBar.title')"
-			prop="showTopBar"
-		>
-			<el-switch
-				v-model="model.showTopBar"
-				name="showTopBar"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.pages.displays.title')"
-			:prop="['displays']"
-		>
-			<displays-multi-select
-				v-model="model.displays"
-				:placeholder="t('dashboardModule.fields.pages.displays.placeholder')"
-			/>
-			<el-text
-				size="small"
-				class="block mt-1 text-gray-500"
-			>
-				{{ t('dashboardModule.fields.pages.displays.description') }}
-			</el-text>
-		</el-form-item>
+		<page-form-frame :model="model">
+			<plugin-form-section :title="t('pagesDeviceDetailPlugin.sections.device')">
+				<el-form-item
+					:label="t('pagesDeviceDetailPlugin.fields.device.title')"
+					prop="device"
+				>
+					<el-select
+						v-model="model.device"
+						:placeholder="t('pagesDeviceDetailPlugin.fields.device.placeholder')"
+						name="device"
+						:loading="loadingDevices"
+						filterable
+					>
+						<el-option
+							v-for="item in devicesOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-select>
+				</el-form-item>
+			</plugin-form-section>
+		</page-form-frame>
 	</el-form>
 </template>
 
@@ -103,14 +36,19 @@
 import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
-import { IconPicker } from '../../../common';
-import { DashboardException, FormResult, type FormResultType, type IPageAddFormProps, usePageAddForm } from '../../../modules/dashboard';
+import { PluginFormSection } from '../../../common';
+import {
+	DashboardException,
+	FormResult,
+	type FormResultType,
+	type IPageAddFormProps,
+	PageFormFrame,
+	usePageAddForm,
+} from '../../../modules/dashboard';
 import { type IDevice, useDevices } from '../../../modules/devices';
-import { DisplaysMultiSelect } from '../../../modules/displays';
-import { ElText } from 'element-plus';
 import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 import type { IDeviceDetailPageAddForm } from '../schemas/pages.types';
 

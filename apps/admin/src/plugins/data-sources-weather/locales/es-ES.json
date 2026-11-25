@@ -37,5 +37,8 @@
 		"weather_main": "Condición climática",
 		"weather_description": "Descripción del clima",
 		"wind_speed": "Velocidad del viento"
+	},
+	"sections": {
+		"weather": "Clima"
 	}
 }

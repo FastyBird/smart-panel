@@ -10,5 +10,8 @@
 				"required": "Please select a scene"
 			}
 		}
+	},
+	"sections": {
+		"scene": "Scene"
 	}
 }

@@ -6,90 +6,80 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.dataSources.id.title')"
-			prop="id"
-		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.dataSources.id.placeholder')"
-				name="id"
-				required
-				disabled
-			/>
-		</el-form-item>
+		<data-source-form-frame :model="model">
+			<plugin-form-section :title="t('dataSourcesWeatherPlugin.sections.weather')">
+				<el-form-item
+					:label="t('dataSourcesWeatherPlugin.fields.locationId.title')"
+					prop="locationId"
+				>
+					<el-select
+						v-model="model.locationId"
+						:placeholder="t('dataSourcesWeatherPlugin.fields.locationId.placeholder')"
+						name="locationId"
+						:loading="loadingLocations"
+						filterable
+						clearable
+					>
+						<el-option
+							v-for="item in locationsOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-select>
+				</el-form-item>
 
-		<el-form-item
-			:label="t('dataSourcesWeatherPlugin.fields.locationId.title')"
-			prop="locationId"
-		>
-			<el-select
-				v-model="model.locationId"
-				:placeholder="t('dataSourcesWeatherPlugin.fields.locationId.placeholder')"
-				name="locationId"
-				:loading="loadingLocations"
-				filterable
-				clearable
-			>
-				<el-option
-					v-for="item in locationsOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
+				<el-alert
+					:description="t('dataSourcesWeatherPlugin.fields.locationId.description')"
+					:closable="false"
+					show-icon
+					type="info"
 				/>
-			</el-select>
-		</el-form-item>
 
-		<el-alert
-			:description="t('dataSourcesWeatherPlugin.fields.locationId.description')"
-			:closable="false"
-			show-icon
-			type="info"
-		/>
+				<el-form-item
+					:label="t('dataSourcesWeatherPlugin.fields.dayOffset.title')"
+					prop="dayOffset"
+					class="mt-4"
+				>
+					<el-input-number
+						v-model="model.dayOffset"
+						:placeholder="t('dataSourcesWeatherPlugin.fields.dayOffset.placeholder')"
+						:min="0"
+						:max="7"
+						name="dayOffset"
+					/>
+				</el-form-item>
 
-		<el-form-item
-			:label="t('dataSourcesWeatherPlugin.fields.dayOffset.title')"
-			prop="dayOffset"
-			class="mt-4"
-		>
-			<el-input-number
-				v-model="model.dayOffset"
-				:placeholder="t('dataSourcesWeatherPlugin.fields.dayOffset.placeholder')"
-				:min="0"
-				:max="7"
-				name="dayOffset"
-			/>
-		</el-form-item>
+				<el-form-item
+					:label="t('dataSourcesWeatherPlugin.fields.field.title')"
+					prop="field"
+				>
+					<el-select
+						v-model="model.field"
+						:placeholder="t('dataSourcesWeatherPlugin.fields.field.placeholder')"
+						name="field"
+						filterable
+					>
+						<el-option
+							v-for="item in fieldOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-select>
+				</el-form-item>
 
-		<el-form-item
-			:label="t('dataSourcesWeatherPlugin.fields.field.title')"
-			prop="field"
-		>
-			<el-select
-				v-model="model.field"
-				:placeholder="t('dataSourcesWeatherPlugin.fields.field.placeholder')"
-				name="field"
-				filterable
-			>
-				<el-option
-					v-for="item in fieldOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dataSourcesWeatherPlugin.fields.icon.title')"
-			prop="icon"
-		>
-			<icon-picker
-				v-model="model.icon"
-				:placeholder="t('dataSourcesWeatherPlugin.fields.icon.placeholder')"
-			/>
-		</el-form-item>
-
+				<el-form-item
+					:label="t('dataSourcesWeatherPlugin.fields.icon.title')"
+					prop="icon"
+				>
+					<icon-picker
+						v-model="model.icon"
+						:placeholder="t('dataSourcesWeatherPlugin.fields.icon.placeholder')"
+					/>
+				</el-form-item>
+			</plugin-form-section>
+		</data-source-form-frame>
 	</el-form>
 </template>
 
@@ -97,11 +87,18 @@
 import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElOption, ElSelect, type FormRules } from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
-import { IconPicker } from '../../../common';
-import { DashboardException, FormResult, type FormResultType, type IDataSourceAddFormProps, useDataSourceAddForm } from '../../../modules/dashboard';
+import { IconPicker, PluginFormSection } from '../../../common';
+import {
+	DashboardException,
+	DataSourceFormFrame,
+	FormResult,
+	type FormResultType,
+	type IDataSourceAddFormProps,
+	useDataSourceAddForm,
+} from '../../../modules/dashboard';
 import { type IWeatherLocation, useLocations } from '../../../modules/weather';
 import { DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE, WeatherDataField } from '../data-sources-weather.constants';
 import type { IForecastDayDataSourceAddForm } from '../schemas/data-sources.types';

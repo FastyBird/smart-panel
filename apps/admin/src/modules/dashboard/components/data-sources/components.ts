@@ -5,3 +5,4 @@ export { default as DataSourceEditForm } from './data-source-edit-form.vue';
 export { default as SelectDataSourcePlugin } from './select-data-source-plugin.vue';
 
 export * from './types';
+export { default as DataSourceFormFrame } from './data-source-form-frame.vue';

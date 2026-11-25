@@ -6,92 +6,33 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.id.title')"
-			prop="id"
+		<tile-form-frame
+			:model="model"
+			:with-position="props.withPosition"
+			:with-size="props.withSize"
 		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.tiles.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('tilesScenePlugin.fields.scene.title')"
-			prop="scene"
-		>
-			<el-select
-				v-model="model.scene"
-				:placeholder="t('tilesScenePlugin.fields.scene.placeholder')"
-				name="scene"
-				:loading="loadingScenes"
-				filterable
-			>
-				<el-option
-					v-for="item in scenesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-row v-if="props.withPosition">
-			<el-col :span="12">
+			<plugin-form-section :title="t('tilesScenePlugin.sections.scene')">
 				<el-form-item
-					:label="t('dashboardModule.fields.tiles.row.title')"
-					prop="row"
+					:label="t('tilesScenePlugin.fields.scene.title')"
+					prop="scene"
 				>
-					<el-input-number
-						v-model="model.row"
-						:placeholder="t('dashboardModule.fields.tiles.row.placeholder')"
-						name="row"
-					/>
+					<el-select
+						v-model="model.scene"
+						:placeholder="t('tilesScenePlugin.fields.scene.placeholder')"
+						name="scene"
+						:loading="loadingScenes"
+						filterable
+					>
+						<el-option
+							v-for="item in scenesOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-select>
 				</el-form-item>
-			</el-col>
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.col.title')"
-					prop="col"
-				>
-					<el-input-number
-						v-model="model.col"
-						:placeholder="t('dashboardModule.fields.tiles.col.placeholder')"
-						name="col"
-					/>
-				</el-form-item>
-			</el-col>
-		</el-row>
-
-		<el-row v-if="props.withSize">
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.rowSpan.title')"
-					prop="rowSpan"
-				>
-					<el-input-number
-						v-model="model.rowSpan"
-						:placeholder="t('dashboardModule.fields.tiles.rowSpan.placeholder')"
-						name="rowSpan"
-					/>
-				</el-form-item>
-			</el-col>
-			<el-col :span="12">
-				<el-form-item
-					:label="t('dashboardModule.fields.tiles.colSpan.title')"
-					prop="colSpan"
-				>
-					<el-input-number
-						v-model="model.colSpan"
-						:placeholder="t('dashboardModule.fields.tiles.colSpan.placeholder')"
-						name="colSpan"
-					/>
-				</el-form-item>
-			</el-col>
-		</el-row>
+			</plugin-form-section>
+		</tile-form-frame>
 	</el-form>
 </template>
 
@@ -99,10 +40,18 @@
 import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElRow, ElSelect, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
-import { DashboardException, FormResult, type FormResultType, type ITileEditFormProps, useTileEditForm } from '../../../modules/dashboard';
+import { PluginFormSection } from '../../../common';
+import {
+	DashboardException,
+	FormResult,
+	type FormResultType,
+	type ITileEditFormProps,
+	TileFormFrame,
+	useTileEditForm,
+} from '../../../modules/dashboard';
 import { type IScene, useScenes } from '../../../modules/scenes';
 import type { ISceneTileEditForm } from '../schemas/tiles.types';
 

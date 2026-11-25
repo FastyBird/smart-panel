@@ -8,5 +8,8 @@
         "required": "Please select page device"
       }
     }
+  },
+  "sections": {
+    "device": "Device"
   }
 }

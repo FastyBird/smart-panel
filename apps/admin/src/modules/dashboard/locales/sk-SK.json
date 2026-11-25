@@ -428,5 +428,10 @@
 		"tiles": {
 			"edit": "Upraviť dlaždicu"
 		}
+	},
+	"sections": {
+		"general": "Všeobecné",
+		"placement": "Pozícia a veľkosť",
+		"identifiers": "Identifikátory"
 	}
 }

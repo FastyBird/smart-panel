@@ -37,5 +37,8 @@
 		"weather_main": "Stav počasí",
 		"weather_description": "Popis počasí",
 		"wind_speed": "Rychlost větru"
+	},
+	"sections": {
+		"weather": "Počasí"
 	}
 }

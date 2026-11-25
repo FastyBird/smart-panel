@@ -428,5 +428,10 @@
     "tiles": {
       "edit": "Edytuj kafelek"
     }
+  },
+  "sections": {
+    "general": "Ogólne",
+    "placement": "Położenie i rozmiar",
+    "identifiers": "Identyfikatory"
   }
 }

@@ -5,3 +5,4 @@ export { default as SelectTilePlugin } from './select-tile-plugin.vue';
 
 export * from './types';
 export { default as DisplaySurface } from './display-surface.vue';
+export { default as TileFormFrame } from './tile-form-frame.vue';

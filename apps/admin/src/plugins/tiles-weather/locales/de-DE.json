@@ -17,5 +17,8 @@
 			"placeholder": "Standort auswählen",
 			"description": "Wählen Sie einen Wetterstandort zur Anzeige. Wenn nicht festgelegt, wird der primäre Standort aus den Wettereinstellungen verwendet."
 		}
+	},
+	"sections": {
+		"weather": "Wetter"
 	}
 }

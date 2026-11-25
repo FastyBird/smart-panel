@@ -12,5 +12,8 @@
 				"required": "Wybierz urządzenie kafelka"
 			}
 		}
+	},
+	"sections": {
+		"device": "Urządzenie"
 	}
 }

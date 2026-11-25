@@ -5,31 +5,20 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.dataSources.id.title')"
-			:prop="['id']"
-		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.dataSources.id.placeholder')"
-				name="id"
-				readonly
-				disabled
-			/>
-		</el-form-item>
+		<data-source-form-frame :model="model" />
 	</el-form>
 </template>
 
 <script setup lang="ts">
 import { watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput } from 'element-plus';
+import { ElForm } from 'element-plus';
 
 import { useDataSourceEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../dashboard.constants';
 
 import type { IDataSourceEditFormProps } from './data-source-edit-form.types';
+import DataSourceFormFrame from './data-source-form-frame.vue';
 
 defineOptions({
 	name: 'DataSourceEditForm',
@@ -48,8 +37,6 @@ const emit = defineEmits<{
 	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
-
-const { t } = useI18n();
 
 const { model, formEl, formChanged, submit, formResult } = useDataSourceEditForm({ dataSource: props.dataSource, onlyDraft: props.onlyDraft });
 

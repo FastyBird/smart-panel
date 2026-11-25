@@ -6,40 +6,31 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('dashboardModule.fields.dataSources.id.title')"
-			prop="id"
-		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('dashboardModule.fields.dataSources.id.placeholder')"
-				name="id"
-				required
-				disabled
-			/>
-		</el-form-item>
+		<data-source-form-frame :model="model">
+			<plugin-form-section :title="t('dataSourcesDeviceChannelPlugin.sections.property')">
+				<device-property-picker
+					v-model:device-id="model.device"
+					:channel-id="model.channel"
+					:property-id="model.property"
+					device-prop="device"
+					channel-prop="channel"
+					property-prop="property"
+					:texts="pickerTexts"
+					@update:channel-id="onChannelUpdate"
+					@update:property-id="onPropertyUpdate"
+				/>
 
-		<device-property-picker
-			v-model:device-id="model.device"
-			:channel-id="model.channel"
-			:property-id="model.property"
-			device-prop="device"
-			channel-prop="channel"
-			property-prop="property"
-			:texts="pickerTexts"
-			@update:channel-id="onChannelUpdate"
-			@update:property-id="onPropertyUpdate"
-		/>
-
-		<el-form-item
-			:label="t('dataSourcesDeviceChannelPlugin.fields.icon.title')"
-			prop="icon"
-		>
-			<icon-picker
-				v-model="model.icon"
-				:placeholder="t('dataSourcesDeviceChannelPlugin.fields.icon.placeholder')"
-			/>
-		</el-form-item>
+				<el-form-item
+					:label="t('dataSourcesDeviceChannelPlugin.fields.icon.title')"
+					prop="icon"
+				>
+					<icon-picker
+						v-model="model.icon"
+						:placeholder="t('dataSourcesDeviceChannelPlugin.fields.icon.placeholder')"
+					/>
+				</el-form-item>
+			</plugin-form-section>
+		</data-source-form-frame>
 	</el-form>
 </template>
 
@@ -47,10 +38,16 @@
 import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, type FormRules } from 'element-plus';
 
-import { IconPicker } from '../../../common';
-import { FormResult, type FormResultType, type IDataSourceEditFormProps, useDataSourceEditForm } from '../../../modules/dashboard';
+import { IconPicker, PluginFormSection } from '../../../common';
+import {
+	DataSourceFormFrame,
+	FormResult,
+	type FormResultType,
+	type IDataSourceEditFormProps,
+	useDataSourceEditForm,
+} from '../../../modules/dashboard';
 import { DevicePropertyPicker, type IDevicePropertyPickerTexts } from '../../../modules/devices';
 import type { IDeviceChannelDataSourceEditForm } from '../schemas/data-sources.types';
 
