@@ -4,3 +4,4 @@ export { default as TileSummary } from './tile-summary.vue';
 export { default as SelectTilePlugin } from './select-tile-plugin.vue';
 
 export * from './types';
+export { default as DisplaySurface } from './display-surface.vue';

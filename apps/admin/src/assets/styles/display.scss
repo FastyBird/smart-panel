@@ -1,0 +1,146 @@
+// The wall display's look, for tile previews in the admin (admin spec §7 `tilePreview`, §9 tile preview font).
+// Values come from docs/display-ui-design-spec.md §2 and §3; keep them in step with that spec, never with the admin
+// tokens. Only `.display-surface` and what is inside it use them, so the font downloads only where a tile is drawn.
+
+@font-face {
+	font-family: 'Display Roboto';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('../fonts/roboto/roboto-regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Display Roboto';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('../fonts/roboto/roboto-medium.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Display Roboto';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('../fonts/roboto/roboto-bold.woff2') format('woff2');
+}
+
+.display-surface {
+	// Display spec §2: surfaces, text, borders (light)
+	--dp-surface-page: #f3f4f6;
+	--dp-surface-card: #ffffff;
+	--dp-surface-raised: #ffffff;
+	--dp-fill-base: #eceef1;
+	--dp-fill-light: #f6f7f9;
+	--dp-border-base: #dcdfe5;
+	--dp-border-light: #e8eaee;
+	--dp-text-primary: #1b1f26;
+	--dp-text-secondary: #5b6270;
+	--dp-text-muted: #676e7a;
+	--dp-text-disabled: #8b919b;
+
+	// Display spec §2: the default (blue) accent and the status text shades
+	--dp-accent-fill: #2563c9;
+	--dp-accent-text: #2563c9;
+	--dp-accent-soft: #e9effa;
+	--dp-ok-text: #2e7d32;
+	--dp-warning-text: #a35600;
+	--dp-danger-text: #c62828;
+	--dp-info-text: #5b6675;
+
+	// Display spec §3, as the admin spec §7 asks for the tile: Roboto and radius 6
+	--dp-font: 'Display Roboto', Roboto, system-ui, sans-serif;
+	--dp-radius: 6px;
+	--dp-radius-small: 4px;
+
+	font-family: var(--dp-font);
+	color: var(--dp-text-primary);
+	background-color: var(--dp-surface-page);
+
+	&[data-display-theme='dark'] {
+		--dp-surface-page: #121315;
+		--dp-surface-card: #1b1c1f;
+		--dp-surface-raised: #232428;
+		--dp-fill-base: #2a2b30;
+		--dp-fill-light: #222327;
+		--dp-border-base: #33353a;
+		--dp-border-light: #2a2c30;
+		--dp-text-primary: #e9eaec;
+		--dp-text-secondary: #a2a7af;
+		--dp-text-muted: #8a9099;
+		--dp-text-disabled: #6b7079;
+
+		--dp-accent-fill: #3570d8;
+		--dp-accent-text: #8ab4f8;
+		--dp-accent-soft: #212e48;
+		--dp-ok-text: #6cc070;
+		--dp-warning-text: #f0a742;
+		--dp-danger-text: #f2706b;
+		--dp-info-text: #a3acb9;
+	}
+}
+
+// A tile as the display draws it: a card with a hairline border and no shadow (display spec §3, elevation)
+.display-tile {
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	border: 1px solid var(--dp-border-light);
+	border-radius: var(--dp-radius);
+	background-color: var(--dp-surface-card);
+	color: var(--dp-text-primary);
+	font-family: var(--dp-font);
+}
+
+// Display spec §3 type scale, for plugin previews
+.display-text-caption {
+	font-size: 10px;
+	font-weight: 500;
+	line-height: 1.2;
+	color: var(--dp-text-muted);
+}
+
+.display-text-body {
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.25;
+	color: var(--dp-text-primary);
+}
+
+.display-text-secondary {
+	color: var(--dp-text-secondary);
+}
+
+.display-text-value {
+	font-size: 18px;
+	font-weight: 500;
+	line-height: 1.1;
+	color: var(--dp-text-primary);
+}
+
+.display-icon {
+	color: var(--dp-text-secondary);
+}
+
+.display-icon-accent {
+	color: var(--dp-accent-text);
+}
+
+.display-icon-warning {
+	color: var(--dp-warning-text);
+}
+
+// An icon tile inside a tile: radius 6 on the accent's soft tint (display spec §3)
+.display-icon-tile {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--dp-radius);
+	background-color: var(--dp-accent-soft);
+	color: var(--dp-accent-text);
+}

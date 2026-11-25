@@ -31,11 +31,6 @@
       "addDataSource": "Añadir fuente de datos de página",
       "editDataSource": "Editar fuente de datos de página"
     },
-    "configure": {
-      "draft": "Borrador",
-      "display": "Pantalla",
-      "quickAddTile": "Añadir mosaico rápido"
-    },
     "misc": {
       "discard": "¿Descartar cambios?",
       "tip": "Consejo"
@@ -87,21 +82,6 @@
     },
     "update": {
       "title": "Actualizar"
-    },
-    "yes": {
-      "title": "Sí"
-    },
-    "no": {
-      "title": "No"
-    },
-    "manageElements": {
-      "title": "Gestionar elementos"
-    },
-    "addPageTile": {
-      "title": "Añadir mosaico de página"
-    },
-    "addPageDataSource": {
-      "title": "Añadir fuente de datos de página"
     }
   },
   "fields": {
@@ -116,6 +96,61 @@
     "tileSize": {
       "title": "Tamaño de mosaico",
       "placeholder": "Tamaño de mosaico"
+    }
+  },
+  "editor": {
+    "palette": {
+      "title": "Añadir un mosaico",
+      "description": "Los mosaicos nuevos esperan en Mosaicos ocultos hasta que los arrastre a la página.",
+      "empty": "No hay ningún tipo de mosaico activado. Active un plugin de mosaicos en Extensiones."
+    },
+    "hidden": {
+      "title": "Mosaicos ocultos",
+      "description": "No se muestran en la pantalla. Arrastre un mosaico a la página para mostrarlo.",
+      "empty": "Arrastre aquí un mosaico para ocultarlo"
+    },
+    "inspector": {
+      "onPage": "En la página",
+      "hidden": "Oculto",
+      "position": "Posición",
+      "positionValue": "Fila {row}, columna {col}",
+      "notPlaced": "Sin colocar",
+      "size": "Tamaño en celdas",
+      "sizeValue": "{cols} × {rows}",
+      "saveHint": "Los movimientos, las ocultaciones y las eliminaciones se aplican al guardar la página.",
+      "nothingSelected": "Seleccione un mosaico para ver dónde está y qué puede hacer con él."
+    },
+    "buttons": {
+      "addTile": "Añadir mosaico",
+      "dataSources": "Fuentes de datos",
+      "edit": "Editar",
+      "detail": "Detalle",
+      "hide": "Ocultar",
+      "show": "Mostrar en la página",
+      "remove": "Eliminar"
+    },
+    "texts": {
+      "unsaved": "Cambios sin guardar",
+      "loadingDisplays": "Cargando pantallas…",
+      "noDisplay": "No hay ninguna pantalla para la que organizar la página",
+      "noDisplayHint": "La cuadrícula depende de la pantalla que muestra esta página. Empareje una pantalla o elija una en los ajustes de la página."
+    },
+    "display": {
+      "title": "Pantalla",
+      "grid": "Cuadrícula de {cols} × {rows}"
+    },
+    "messages": {
+      "saved": "Diseño de la página guardado.",
+      "saveFailed": "No se pudo guardar el diseño de la página. Inténtelo de nuevo.",
+      "noRoom": "No hay ningún hueco libre en la página. Haga sitio o arrastre el mosaico donde lo quiera."
+    },
+    "phone": {
+      "readOnly": "Los mosaicos se organizan en una tableta o un ordenador. Toque un mosaico para ver su detalle.",
+      "noTiles": "Esta página aún no tiene mosaicos.",
+      "noHiddenTiles": "No hay mosaicos ocultos."
+    },
+    "aria": {
+      "closeInspector": "Cerrar el inspector"
     }
   }
 }

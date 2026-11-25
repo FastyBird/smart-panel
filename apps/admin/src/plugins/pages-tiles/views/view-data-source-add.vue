@@ -11,7 +11,7 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div class="flex flex-col overflow-hidden h-full">
-		<el-scrollbar class="grow-1 p-2 md:px-4">
+		<el-scrollbar class="grow-1 p-2 tp:px-4">
 			<select-data-source-plugin v-model="selectedType" />
 
 			<el-divider />
@@ -56,53 +56,16 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('pagesTilesPlugin.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('pagesTilesPlugin.buttons.close.title') }}
-				</el-button>
-
-				<el-button
-					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult !== FormResult.NONE"
-					type="primary"
-					class="order-2"
-					@click="onSubmit"
-				>
-					<template
-						v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
-						#icon
-					>
-						<icon
-							v-if="remoteFormResult === FormResult.OK"
-							icon="mdi:check-circle"
-						/>
-						<icon
-							v-else-if="remoteFormResult === FormResult.ERROR"
-							icon="mdi:cross-circle"
-						/>
-					</template>
-					{{ t('pagesTilesPlugin.buttons.add.title') }}
-				</el-button>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			:can-save="selectedType !== undefined && remoteFormResult === FormResult.NONE"
+			@save="onSubmit"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -112,11 +75,9 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDivider, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElAlert, ElDivider, ElMessageBox, ElScrollbar } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBreadcrumbs, type IPlugin, type IPluginElement, ViewHeader, useBreakpoints, useUuid } from '../../../common';
+import { AppBreadcrumbs, FormFooter, type IPlugin, type IPluginElement, ViewHeader, useEditDrawer, useSizeClass, useUuid } from '../../../common';
 import {
 	RouteNames as DashboardRouteNames,
 	DataSourceAddForm,
@@ -151,7 +112,9 @@ useMeta({
 
 const { generate: uuidGenerate } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const { plugins } = useDataSourcesPlugins();
 
@@ -201,14 +164,22 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// The editor asks before a changed form is left; a confirmed discard, a save or a deleted record lets it go
+const releaseForm = (): void => {
+	remoteFormChanged.value = false;
+
+	emit('update:remote-form-changed', false);
+};
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('pagesTilesPlugin.texts.misc.confirmDiscard'), t('pagesTilesPlugin.headings.misc.discard'), {
-		confirmButtonText: t('pagesTilesPlugin.buttons.yes.title'),
-		cancelButtonText: t('pagesTilesPlugin.buttons.no.title'),
+		confirmButtonText: t('dashboardModule.buttons.discard.title'),
+		cancelButtonText: t('dashboardModule.buttons.keepEditing.title'),
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isLGDevice.value) {
+			releaseForm();
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 			} else {
 				router.push({ name: RouteNames.PAGE, params: { id: props.page?.id } });
@@ -224,7 +195,7 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 	} else {
 		router.push({ name: RouteNames.PAGE, params: { id: props.page?.id } });
@@ -235,7 +206,9 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			if (isLGDevice.value) {
+			releaseForm();
+
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 			} else {
 				router.push({ name: RouteNames.PAGE, params: { id: props.page?.id } });

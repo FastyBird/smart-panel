@@ -31,11 +31,6 @@
 			"addDataSource": "Dodaj źródło danych strony",
 			"editDataSource": "Edytuj źródło danych strony"
 		},
-		"configure": {
-			"draft": "Wersja robocza",
-			"display": "Wyświetlanie",
-			"quickAddTile": "Szybkie dodawanie kafelka"
-		},
 		"misc": {
 			"discard": "Odrzucić zmiany?",
 			"tip": "Wskazówka"
@@ -87,21 +82,6 @@
 		},
 		"update": {
 			"title": "Zaktualizuj"
-		},
-		"yes": {
-			"title": "Tak"
-		},
-		"no": {
-			"title": "Nie"
-		},
-		"manageElements": {
-			"title": "Zarządzaj elementami"
-		},
-		"addPageTile": {
-			"title": "Dodaj kafelek strony"
-		},
-		"addPageDataSource": {
-			"title": "Dodaj źródło danych strony"
 		}
 	},
 	"fields": {
@@ -116,6 +96,61 @@
 		"tileSize": {
 			"title": "Rozmiar kafelka",
 			"placeholder": "Rozmiar kafelka"
+		}
+	},
+	"editor": {
+		"palette": {
+			"title": "Dodaj kafelek",
+			"description": "Nowe kafelki czekają w ukrytych kafelkach, dopóki nie przeciągniesz ich na stronę.",
+			"empty": "Żaden typ kafelka nie jest włączony. Włącz wtyczkę kafelków w rozszerzeniach."
+		},
+		"hidden": {
+			"title": "Ukryte kafelki",
+			"description": "Nie są wyświetlane na wyświetlaczu. Przeciągnij kafelek na stronę, aby go pokazać.",
+			"empty": "Przeciągnij tu kafelek, aby go ukryć"
+		},
+		"inspector": {
+			"onPage": "Na stronie",
+			"hidden": "Ukryty",
+			"position": "Położenie",
+			"positionValue": "Wiersz {row}, kolumna {col}",
+			"notPlaced": "Nieumieszczony",
+			"size": "Rozmiar w komórkach",
+			"sizeValue": "{cols} × {rows}",
+			"saveHint": "Przesunięcia, ukrycia i usunięcia zostaną zastosowane po zapisaniu strony.",
+			"nothingSelected": "Wybierz kafelek, aby zobaczyć, gdzie się znajduje i co możesz z nim zrobić."
+		},
+		"buttons": {
+			"addTile": "Dodaj kafelek",
+			"dataSources": "Źródła danych",
+			"edit": "Edytuj",
+			"detail": "Szczegóły",
+			"hide": "Ukryj",
+			"show": "Pokaż na stronie",
+			"remove": "Usuń"
+		},
+		"texts": {
+			"unsaved": "Niezapisane zmiany",
+			"loadingDisplays": "Wczytywanie wyświetlaczy…",
+			"noDisplay": "Brak wyświetlacza, dla którego można rozplanować stronę",
+			"noDisplayHint": "Siatka zależy od wyświetlacza, który pokazuje tę stronę. Sparuj wyświetlacz lub wybierz go w ustawieniach strony."
+		},
+		"display": {
+			"title": "Wyświetlacz",
+			"grid": "Siatka {cols} × {rows}"
+		},
+		"messages": {
+			"saved": "Układ strony zapisany.",
+			"saveFailed": "Nie udało się zapisać układu strony. Spróbuj ponownie.",
+			"noRoom": "Na stronie nie ma wolnego miejsca. Zrób miejsce lub przeciągnij kafelek tam, gdzie chcesz."
+		},
+		"phone": {
+			"readOnly": "Kafelki rozmieszcza się na tablecie lub komputerze. Dotknij kafelka, aby zobaczyć jego szczegóły.",
+			"noTiles": "Na tej stronie nie ma jeszcze kafelków.",
+			"noHiddenTiles": "Brak ukrytych kafelków."
+		},
+		"aria": {
+			"closeInspector": "Zamknij inspektor"
 		}
 	}
 }

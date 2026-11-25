@@ -1,26 +1,28 @@
 <template>
 	<div class="flex flex-col items-center justify-center h-full w-full p-2 gap-1 overflow-hidden">
-		<el-icon
-			:size="iconSize"
-			color="var(--el-color-primary)"
+		<span
+			class="display-icon-tile"
+			:style="{ width: `${iconSize + 12}px`, height: `${iconSize + 12}px` }"
 		>
-			<icon :icon="sceneIcon" />
-		</el-icon>
-		<el-text
+			<icon
+				:icon="sceneIcon"
+				:width="iconSize"
+				:height="iconSize"
+				aria-hidden="true"
+			/>
+		</span>
+		<span
 			v-if="props.tile.rowSpan > 1 || props.tile.colSpan > 1"
-			size="small"
-			class="truncate max-w-full text-center"
+			class="display-text-body truncate max-w-full text-center"
 		>
 			{{ sceneName }}
-		</el-text>
+		</span>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
-
-import { ElIcon, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

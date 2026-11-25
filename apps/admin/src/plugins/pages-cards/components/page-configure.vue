@@ -204,12 +204,16 @@
 								</div>
 							</div>
 
-							<div class="p-2">
+							<!-- Admin spec §7 `tilePreview`: the tiles are drawn in the selected display's theme -->
+							<display-surface
+								:dark="props.selectedDisplay?.darkMode ?? false"
+								class="p-2"
+							>
 								<div
 									:ref="(el) => setGridRef(card.id, el as HTMLElement | null)"
 									class="card-grid-container"
 								/>
-							</div>
+							</display-surface>
 						</div>
 					</div>
 				</el-card>
@@ -341,6 +345,7 @@ import { injectStoresManager } from '../../../common';
 import EmptyState from '../../../common/components/empty-state.vue';
 import {
 	DashboardException,
+	DisplaySurface,
 	FormResult,
 	type FormResultType,
 	type IDataSource,

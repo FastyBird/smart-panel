@@ -1,25 +1,22 @@
 <template>
 	<div class="flex flex-row items-center justify-center h-full w-full p-2 gap-2 overflow-hidden">
-		<el-icon
-			:size="iconSize"
-			color="var(--el-color-warning)"
-		>
-			<icon icon="mdi:weather-sunny" />
-		</el-icon>
+		<icon
+			icon="mdi:weather-sunny"
+			:width="iconSize"
+			:height="iconSize"
+			class="display-icon-warning shrink-0"
+			aria-hidden="true"
+		/>
 		<div class="flex flex-col min-w-0">
-			<el-text
-				class="font-bold leading-none"
-				style="font-size: clamp(14px, 2.5vw, 24px)"
+			<span
+				class="display-text-value"
+				:style="{ fontSize: props.tile.rowSpan >= 2 ? '28px' : '18px' }"
 			>
 				{{ t('tilesWeatherPlugin.preview.day.temperature') }}
-			</el-text>
-			<el-text
-				type="info"
-				size="small"
-				class="truncate"
-			>
+			</span>
+			<span class="display-text-caption truncate">
 				{{ t('tilesWeatherPlugin.preview.day.condition') }}
-			</el-text>
+			</span>
 		</div>
 	</div>
 </template>
@@ -27,8 +24,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-
-import { ElIcon, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

@@ -1,0 +1,468 @@
+import { nextTick, ref } from 'vue';
+
+import type { GridItemHTMLElement } from 'gridstack';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+
+import PageConfigure from './page-configure.vue';
+
+const edit = vi.fn();
+const save = vi.fn();
+const removeDirectly = vi.fn();
+const fetchTiles = vi.fn();
+const storeLookup = { missing: new Set<string>() };
+
+const PAGE_ID = 'page-1';
+
+const tiles = ref([
+	{ id: 'tile-a', type: 'tiles-time', parent: { type: 'page', id: PAGE_ID }, row: 1, col: 1, rowSpan: 2, colSpan: 2, hidden: false, draft: false },
+	{ id: 'tile-b', type: 'tiles-time', parent: { type: 'page', id: PAGE_ID }, row: 1, col: 4, rowSpan: 1, colSpan: 1, hidden: false, draft: false },
+]);
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({ t: (key: string, params?: Record<string, unknown>) => (params ? `${key}:${JSON.stringify(params)}` : key) }),
+}));
+
+vi.mock('../../../common', () => ({
+	useFlashMessage: () => ({ warning: vi.fn() }),
+}));
+
+vi.mock('../../../modules/dashboard', () => ({
+	DisplaySurface: { name: 'DisplaySurface', template: '<div><slot /></div>' },
+	FormResult: { NONE: 'none', WORKING: 'working', ERROR: 'error', OK: 'ok' },
+	useTiles: () => ({ tiles, fetchTiles }),
+	useTilesActions: () => ({
+		findById: (_parent: string, id: string) => (storeLookup.missing.has(id) ? null : (tiles.value.find((tile) => tile.id === id) ?? null)),
+		edit,
+		save,
+		removeDirectly,
+	}),
+	useTilesPlugins: () => ({ getElement: () => ({ name: 'Clock' }) }),
+}));
+
+vi.mock('./tile-preview.vue', () => ({
+	default: { name: 'TilePreview', props: ['tile'], template: '<div class="preview" :data-size="`${tile.colSpan}x${tile.rowSpan}`" />' },
+}));
+
+const mountConfigure = async () => {
+	const wrapper = mount(PageConfigure, {
+		attachTo: document.body,
+		props: { page: { id: PAGE_ID } as never, gridLayout: { rows: 4, cols: 6 } },
+	});
+
+	await nextTick();
+	await flushPromises();
+
+	return wrapper;
+};
+
+const pageItem = (id: string): GridItemHTMLElement | undefined =>
+	[...document.querySelectorAll<GridItemHTMLElement>('[data-test-id="page-configure-canvas"] .grid-stack-item')].find(
+		(item) => item.gridstackNode?.id === id
+	);
+
+const hiddenItem = (id: string): GridItemHTMLElement | undefined =>
+	[...document.querySelectorAll<GridItemHTMLElement>('[data-test-id="page-configure-hidden"] .grid-stack-item')].find(
+		(item) => item.gridstackNode?.id === id
+	);
+
+enableAutoUnmount(afterEach);
+
+describe('PageConfigure', () => {
+	beforeEach(() => {
+		edit.mockReset().mockImplementation(async ({ id }: { id: string }) => tiles.value.find((tile) => tile.id === id));
+		save.mockReset();
+		removeDirectly.mockReset().mockResolvedValue(true);
+		fetchTiles.mockReset().mockResolvedValue(undefined);
+		storeLookup.missing.clear();
+	});
+
+	it('puts the tiles on the page where they are saved', async () => {
+		await mountConfigure();
+
+		expect(pageItem('tile-a')?.gridstackNode).toMatchObject({ x: 0, y: 0, w: 2, h: 2 });
+		expect(pageItem('tile-b')?.gridstackNode).toMatchObject({ x: 3, y: 0, w: 1, h: 1 });
+	});
+
+	it('keeps the size a tile had on the page, resized or not, when it is hidden, shown and saved', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void; showTile: (id: string) => boolean };
+
+		// Resized on the page, not saved yet
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		grid.update(pageItem('tile-b')!, { w: 2, h: 1 });
+
+		exposed.hideTile('tile-b');
+		await flushPromises();
+
+		expect(pageItem('tile-b')).toBeUndefined();
+		expect(hiddenItem('tile-b')).toBeDefined();
+
+		// Saved while hidden: the size goes with it
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(edit).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'tile-b', data: expect.objectContaining({ hidden: true, rowSpan: 1, colSpan: 2 }) })
+		);
+
+		edit.mockClear();
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		expect(exposed.showTile('tile-a')).toBe(true);
+		await flushPromises();
+
+		expect(pageItem('tile-a')?.gridstackNode).toMatchObject({ w: 2, h: 2 });
+	});
+
+	it('locks the layout while it is being saved and settles only what it sent', async () => {
+		const pending: (() => void)[] = [];
+		const finish = (): void => pending.forEach((resolve) => resolve());
+
+		edit.mockImplementation(
+			({ id }: { id: string }) =>
+				new Promise((resolve) => {
+					pending.push(() => resolve(tiles.value.find((tile) => tile.id === id)));
+				})
+		);
+
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void; removeTile: (id: string) => void };
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['working']);
+
+		// Nothing moves under the request
+		exposed.hideTile('tile-a');
+		exposed.removeTile('tile-b');
+
+		expect(pageItem('tile-a')).toBeDefined();
+		expect(pageItem('tile-b')).toBeDefined();
+
+		finish();
+		edit.mockImplementation(async ({ id }: { id: string }) => tiles.value.find((tile) => tile.id === id));
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
+		expect(removeDirectly).not.toHaveBeenCalled();
+	});
+	it('gives a hidden tile dragged back onto the page the size it had there, where it fits', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		// What a drop from the panel does: the tile arrives at the panel's size
+		grid.addWidget({ id: 'tile-a', x: 0, y: 2, w: 2, h: 1 });
+		await nextTick();
+		await flushPromises();
+
+		expect(pageItem('tile-a')?.gridstackNode).toMatchObject({ x: 0, y: 2, w: 2, h: 2 });
+	});
+
+	it('keeps the dropped size when the saved one would cover another tile', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		grid.addWidget({ id: 'tile-c-blocker', x: 0, y: 3, w: 1, h: 1 });
+		grid.addWidget({ id: 'tile-a', x: 0, y: 2, w: 2, h: 1 });
+		await nextTick();
+		await flushPromises();
+
+		expect(pageItem('tile-a')?.gridstackNode).toMatchObject({ x: 0, y: 2, w: 2, h: 1 });
+	});
+
+	it('keeps the grids locked until every request of a failed save has settled', async () => {
+		const pending: (() => void)[] = [];
+
+		edit.mockImplementation(({ id }: { id: string }) =>
+			id === 'tile-a'
+				? Promise.reject(new Error('failed'))
+				: new Promise((resolve) => {
+						pending.push(() => resolve(tiles.value.find((tile) => tile.id === id)));
+					})
+		);
+
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['working']);
+
+		exposed.hideTile('tile-a');
+		expect(pageItem('tile-a')).toBeDefined();
+
+		pending.forEach((resolve) => resolve());
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		expect(pageItem('tile-a')).toBeUndefined();
+	});
+	it('leaves the page clean after filling the grids, and tracks the first edit at once', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+
+		expect(wrapper.emitted('update:remote-page-changed')).toBeUndefined();
+
+		exposed.hideTile('tile-b');
+		await nextTick();
+
+		expect(wrapper.emitted('update:remote-page-changed')).toEqual([[true]]);
+	});
+
+	it('names each tile by its type and place, and draws the preview at the size its cell has', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void; showTile: (id: string) => boolean };
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		expect(pageItem('tile-b')?.getAttribute('aria-label')).toBe('Clock, pagesTilesPlugin.editor.inspector.positionValue:{"row":1,"col":4}');
+
+		// Two hidden tiles of one type read apart by their place in the panel
+		exposed.hideTile('tile-b');
+		await flushPromises();
+
+		const hiddenB = hiddenItem('tile-b')?.getAttribute('aria-label');
+
+		expect(hiddenB).toContain('pagesTilesPlugin.editor.inspector.hidden');
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		expect(hiddenItem('tile-a')?.getAttribute('aria-label')).not.toBe(hiddenItem('tile-b')?.getAttribute('aria-label'));
+
+		exposed.showTile('tile-b');
+		await flushPromises();
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		grid.addWidget({ id: 'tile-a', x: 0, y: 2, w: 1, h: 1 });
+		await nextTick();
+		await flushPromises();
+
+		expect(pageItem('tile-a')?.querySelector('.preview')?.getAttribute('data-size')).toBe('2x2');
+	});
+
+	it('deletes a removed tile once, and reloads the tiles after a failed delete so a retry sends it again', async () => {
+		removeDirectly.mockRejectedValueOnce(new Error('failed')).mockResolvedValue(true);
+
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { removeTile: (id: string) => void };
+
+		exposed.removeTile('tile-a');
+		exposed.removeTile('tile-b');
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+		expect(removeDirectly).toHaveBeenCalledTimes(2);
+		expect(fetchTiles).toHaveBeenCalledTimes(1);
+
+		await wrapper.setProps({ remotePageSubmit: false });
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		// Only the one that failed is sent again, with its page, whatever the store holds
+		expect(removeDirectly).toHaveBeenCalledTimes(3);
+		expect(removeDirectly).toHaveBeenLastCalledWith({ id: 'tile-a', parent: { type: 'page', id: PAGE_ID } });
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
+	});
+	it('settles a failed removal the store no longer holds only from a fresh read of the tiles', async () => {
+		// The tiles store's rule: the tile leaves the store before its DELETE, and a tile it does not hold counts as removed
+		const backend = new Set(tiles.value.map((tile) => tile.id));
+		let deleteFails = true;
+
+		removeDirectly.mockImplementation(async ({ id }: { id: string }) => {
+			if (storeLookup.missing.has(id)) {
+				return true;
+			}
+
+			storeLookup.missing.add(id);
+
+			if (deleteFails) {
+				throw new Error('failed');
+			}
+
+			backend.delete(id);
+
+			return true;
+		});
+
+		// The reads after the failure fail too, so the store keeps no record of tile-a
+		fetchTiles.mockRejectedValue(new Error('offline'));
+
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { removeTile: (id: string) => void };
+		const save = async (): Promise<void> => {
+			await wrapper.setProps({ remotePageSubmit: false });
+			await wrapper.setProps({ remotePageSubmit: true });
+			await flushPromises();
+		};
+
+		exposed.removeTile('tile-a');
+
+		await save();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+		expect(storeLookup.missing.has('tile-a')).toBe(true);
+		expect(backend.has('tile-a')).toBe(true);
+
+		// A retry while the read still fails settles nothing: no success, the removal stays pending, and no update starts
+		// that could outlive the save behind unlocked grids
+		edit.mockClear();
+
+		await save();
+
+		expect(edit).not.toHaveBeenCalled();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['error']);
+		expect(backend.has('tile-a')).toBe(true);
+
+		// The read works again and brings the tile back to the store: the retry deletes it for real
+		deleteFails = false;
+		fetchTiles.mockImplementation(async () => {
+			if (backend.has('tile-a')) {
+				storeLookup.missing.delete('tile-a');
+			}
+		});
+
+		await save();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
+		expect(backend.has('tile-a')).toBe(false);
+	});
+	it('keeps the page changed when a new draft tile arrives while a save runs', async () => {
+		const pending: (() => void)[] = [];
+
+		edit.mockImplementation(
+			({ id }: { id: string }) =>
+				new Promise((resolve) => {
+					pending.push(() => resolve(tiles.value.find((tile) => tile.id === id)));
+				})
+		);
+
+		const wrapper = await mountConfigure();
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		// Added from the tile form after the save read the grids
+		tiles.value = [
+			...tiles.value,
+			{
+				id: 'tile-new',
+				type: 'tiles-time',
+				parent: { type: 'page', id: PAGE_ID },
+				row: 1,
+				col: 1,
+				rowSpan: 1,
+				colSpan: 1,
+				hidden: false,
+				draft: true,
+			},
+		];
+		await flushPromises();
+
+		pending.forEach((resolve) => resolve());
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-page-result')?.at(-1)).toEqual(['ok']);
+		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
+		expect(hiddenItem('tile-new')).toBeDefined();
+
+		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-new');
+	});
+	it('marks the page changed when it opens with a draft tile already in the store', async () => {
+		tiles.value = [
+			...tiles.value,
+			{
+				id: 'tile-draft',
+				type: 'tiles-time',
+				parent: { type: 'page', id: PAGE_ID },
+				row: 1,
+				col: 1,
+				rowSpan: 1,
+				colSpan: 1,
+				hidden: false,
+				draft: true,
+			},
+		];
+
+		const wrapper = await mountConfigure();
+
+		expect(hiddenItem('tile-draft')).toBeDefined();
+		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
+
+		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-draft');
+	});
+	it('gives a tile hidden when the editor opened its stored size when it is dragged onto the page', async () => {
+		tiles.value = [
+			...tiles.value,
+			{
+				id: 'tile-hidden',
+				type: 'tiles-time',
+				parent: { type: 'page', id: PAGE_ID },
+				row: 1,
+				col: 1,
+				rowSpan: 2,
+				colSpan: 2,
+				hidden: true,
+				draft: false,
+			},
+		];
+
+		await mountConfigure();
+
+		expect(hiddenItem('tile-hidden')?.gridstackNode).toMatchObject({ w: 1, h: 1 });
+
+		const grid = pageItem('tile-b')!.gridstackNode!.grid!;
+
+		grid.addWidget({ id: 'tile-hidden', x: 0, y: 2, w: 1, h: 1 });
+		await nextTick();
+		await flushPromises();
+
+		expect(pageItem('tile-hidden')?.gridstackNode).toMatchObject({ x: 0, y: 2, w: 2, h: 2 });
+
+		tiles.value = tiles.value.filter((tile) => tile.id !== 'tile-hidden');
+	});
+	it('keeps hidden tiles at one cell: the panel does not resize them, before or after a save', async () => {
+		const wrapper = await mountConfigure();
+		const exposed = wrapper.vm as unknown as { hideTile: (id: string) => void };
+
+		exposed.hideTile('tile-a');
+		await flushPromises();
+
+		const panel = hiddenItem('tile-a')!.gridstackNode!.grid!;
+
+		expect(panel.opts.disableResize).toBe(true);
+		expect(hiddenItem('tile-a')?.classList.contains('ui-resizable-disabled')).toBe(true);
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(panel.opts.disableResize).toBe(true);
+		expect(hiddenItem('tile-a')?.classList.contains('ui-resizable-disabled')).toBe(true);
+
+		// Back on the page it can be resized again
+		expect(pageItem('tile-b')?.classList.contains('ui-resizable-disabled')).toBe(false);
+	});
+});

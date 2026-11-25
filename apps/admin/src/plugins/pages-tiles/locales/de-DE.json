@@ -31,11 +31,6 @@
       "addDataSource": "Seitendatenquelle hinzufügen",
       "editDataSource": "Seitendatenquelle bearbeiten"
     },
-    "configure": {
-      "draft": "Entwurf",
-      "display": "Anzeige",
-      "quickAddTile": "Kachel schnell hinzufügen"
-    },
     "misc": {
       "discard": "Änderungen verwerfen?",
       "tip": "Tipp"
@@ -87,21 +82,6 @@
     },
     "update": {
       "title": "Aktualisieren"
-    },
-    "yes": {
-      "title": "Ja"
-    },
-    "no": {
-      "title": "Nein"
-    },
-    "manageElements": {
-      "title": "Elemente verwalten"
-    },
-    "addPageTile": {
-      "title": "Seitenkachel hinzufügen"
-    },
-    "addPageDataSource": {
-      "title": "Seitendatenquelle hinzufügen"
     }
   },
   "fields": {
@@ -116,6 +96,61 @@
     "tileSize": {
       "title": "Kachelgröße",
       "placeholder": "Kachelgröße"
+    }
+  },
+  "editor": {
+    "palette": {
+      "title": "Kachel hinzufügen",
+      "description": "Neue Kacheln warten unter Ausgeblendete Kacheln, bis Sie sie auf die Seite ziehen.",
+      "empty": "Kein Kacheltyp ist aktiviert. Aktivieren Sie ein Kachel-Plugin unter Erweiterungen."
+    },
+    "hidden": {
+      "title": "Ausgeblendete Kacheln",
+      "description": "Werden auf dem Display nicht angezeigt. Ziehen Sie eine Kachel auf die Seite, um sie anzuzeigen.",
+      "empty": "Kachel hierher ziehen, um sie auszublenden"
+    },
+    "inspector": {
+      "onPage": "Auf der Seite",
+      "hidden": "Ausgeblendet",
+      "position": "Position",
+      "positionValue": "Zeile {row}, Spalte {col}",
+      "notPlaced": "Nicht platziert",
+      "size": "Größe in Zellen",
+      "sizeValue": "{cols} × {rows}",
+      "saveHint": "Verschieben, Ausblenden und Entfernen werden beim Speichern der Seite übernommen.",
+      "nothingSelected": "Wählen Sie eine Kachel, um zu sehen, wo sie liegt und was Sie damit tun können."
+    },
+    "buttons": {
+      "addTile": "Kachel hinzufügen",
+      "dataSources": "Datenquellen",
+      "edit": "Bearbeiten",
+      "detail": "Details",
+      "hide": "Ausblenden",
+      "show": "Auf der Seite zeigen",
+      "remove": "Entfernen"
+    },
+    "texts": {
+      "unsaved": "Ungespeicherte Änderungen",
+      "loadingDisplays": "Displays werden geladen…",
+      "noDisplay": "Kein Display, für das die Seite angeordnet werden kann",
+      "noDisplayHint": "Das Raster richtet sich nach dem Display, das diese Seite zeigt. Koppeln Sie ein Display oder wählen Sie eines in den Seiteneinstellungen."
+    },
+    "display": {
+      "title": "Display",
+      "grid": "Raster {cols} × {rows}"
+    },
+    "messages": {
+      "saved": "Seitenlayout gespeichert.",
+      "saveFailed": "Das Seitenlayout konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+      "noRoom": "Auf der Seite ist kein Platz frei. Schaffen Sie Platz oder ziehen Sie die Kachel an die gewünschte Stelle."
+    },
+    "phone": {
+      "readOnly": "Kacheln werden auf einem Tablet oder Computer angeordnet. Tippen Sie auf eine Kachel, um ihre Details zu sehen.",
+      "noTiles": "Auf dieser Seite gibt es noch keine Kacheln.",
+      "noHiddenTiles": "Keine ausgeblendeten Kacheln."
+    },
+    "aria": {
+      "closeInspector": "Inspektor schließen"
     }
   }
 }

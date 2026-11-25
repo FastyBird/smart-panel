@@ -17,7 +17,7 @@
 	>
 		<el-scrollbar
 			v-if="tile !== null"
-			class="grow-1 p-2 md:px-4"
+			class="grow-1 p-2 tp:px-4"
 		>
 			<component
 				:is="element?.components?.tileEditForm"
@@ -47,53 +47,17 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('pagesTilesPlugin.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('pagesTilesPlugin.buttons.close.title') }}
-				</el-button>
-
-				<el-button
-					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult !== FormResult.NONE || !remoteFormChanged"
-					type="primary"
-					class="order-2"
-					@click="onSubmit"
-				>
-					<template
-						v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
-						#icon
-					>
-						<icon
-							v-if="remoteFormResult === FormResult.OK"
-							icon="mdi:check-circle"
-						/>
-						<icon
-							v-else-if="remoteFormResult === FormResult.ERROR"
-							icon="mdi:cross-circle"
-						/>
-					</template>
-					{{ t('pagesTilesPlugin.buttons.update.title') }}
-				</el-button>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-if="tile !== null"
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			:can-save="remoteFormChanged && remoteFormResult === FormResult.NONE"
+			@save="onSubmit"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -103,11 +67,19 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBreadcrumbs, type IPlugin, type IPluginElement, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import {
+	AppBreadcrumbs,
+	FormFooter,
+	type IPlugin,
+	type IPluginElement,
+	ViewHeader,
+	useEditDrawer,
+	useFlashMessage,
+	useSizeClass,
+	useUuid,
+} from '../../../common';
 import {
 	DashboardApiException,
 	DashboardException,
@@ -146,7 +118,9 @@ useMeta({
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 const { tile, isLoading, fetchTile } = useTile({ id: props.id, parent: 'page', parentId: props.page.id });
 
@@ -201,14 +175,22 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+// The editor asks before a changed form is left; a confirmed discard, a save or a deleted record lets it go
+const releaseForm = (): void => {
+	remoteFormChanged.value = false;
+
+	emit('update:remote-form-changed', false);
+};
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('pagesTilesPlugin.texts.misc.confirmDiscard'), t('pagesTilesPlugin.headings.misc.discard'), {
-		confirmButtonText: t('pagesTilesPlugin.buttons.yes.title'),
-		cancelButtonText: t('pagesTilesPlugin.buttons.no.title'),
+		confirmButtonText: t('dashboardModule.buttons.discard.title'),
+		cancelButtonText: t('dashboardModule.buttons.keepEditing.title'),
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isLGDevice.value) {
+			releaseForm();
+			if (inDrawer.value) {
 				router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 			} else {
 				router.push({ name: RouteNames.PAGE, params: { id: props.page?.id } });
@@ -224,7 +206,7 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
+	if (inDrawer.value) {
 		router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
 	} else {
 		router.push({ name: RouteNames.PAGE, params: { id: props.page?.id } });
@@ -274,17 +256,19 @@ watch(
 			wasTileLoaded.value = true;
 		} else if (wasTileLoaded.value && !isLoading.value) {
 			// Tile was previously loaded but is now null - it was deleted
+			releaseForm();
+
 			flashMessage.warning(t('pagesTilesPlugin.messages.tiles.deletedWhileEditing'), { duration: 0 });
 			// Redirect to page configure
 			if (props.page?.id) {
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: RouteNames.PAGE, params: { id: props.page.id } });
 				} else {
 					router.push({ name: RouteNames.PAGE, params: { id: props.page.id } });
 				}
 			} else {
 				// Fallback to pages list
-				if (isLGDevice.value) {
+				if (inDrawer.value) {
 					router.replace({ name: DashboardRouteNames.PAGES });
 				} else {
 					router.push({ name: DashboardRouteNames.PAGES });
