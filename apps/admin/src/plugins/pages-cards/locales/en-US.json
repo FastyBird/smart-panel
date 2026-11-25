@@ -68,7 +68,8 @@
 			"notFound": "Card {card} was not found.",
 			"notRemoved": "Card {card} couldn't be removed.",
 			"removeCanceled": "Card {card} removal was canceled.",
-			"deletedWhileEditing": "This card was deleted and is no longer available."
+			"deletedWhileEditing": "This card was deleted and is no longer available.",
+			"notSaved": "The card could not be saved. Try again."
 		},
 		"tiles": {
 			"deletedWhileEditing": "This tile was deleted and is no longer available."
@@ -120,9 +121,6 @@
 		"no": {
 			"title": "No"
 		},
-		"manageElements": {
-			"title": "Manage elements"
-		},
 		"addCard": {
 			"title": "Add card"
 		},
@@ -159,5 +157,17 @@
 				"placeholder": "Number of columns"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Unsaved changes"
+		},
+		"messages": {
+			"saved": "Page layout saved.",
+			"saveFailed": "The page layout could not be saved. Try again."
+		}
+	},
+	"sections": {
+		"grid": "Tile grid"
 	}
 }

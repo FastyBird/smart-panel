@@ -68,7 +68,8 @@
 			"notFound": "No se encontró la tarjeta {card}.",
 			"notRemoved": "No se pudo eliminar la tarjeta {card}.",
 			"removeCanceled": "Se canceló la eliminación de la tarjeta {card}.",
-			"deletedWhileEditing": "Esta tarjeta fue eliminada y ya no está disponible."
+			"deletedWhileEditing": "Esta tarjeta fue eliminada y ya no está disponible.",
+			"notSaved": "No se pudo guardar la tarjeta. Inténtelo de nuevo."
 		},
 		"tiles": {
 			"deletedWhileEditing": "Este mosaico fue eliminado y ya no está disponible."
@@ -120,9 +121,6 @@
 		"no": {
 			"title": "No"
 		},
-		"manageElements": {
-			"title": "Gestionar elementos"
-		},
 		"addCard": {
 			"title": "Añadir tarjeta"
 		},
@@ -159,5 +157,17 @@
 				"placeholder": "Número de columnas"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Cambios sin guardar"
+		},
+		"messages": {
+			"saved": "Diseño de la página guardado.",
+			"saveFailed": "No se pudo guardar el diseño de la página. Inténtelo de nuevo."
+		}
+	},
+	"sections": {
+		"grid": "Cuadrícula de mosaicos"
 	}
 }

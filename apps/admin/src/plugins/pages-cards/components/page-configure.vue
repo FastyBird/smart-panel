@@ -823,6 +823,12 @@ onMounted((): void => {
 
 	initTimeout = setTimeout(() => {
 		initialized.value = true;
+
+		// A tile added from a form while the canvas was away (on phone the form replaces it) is still a draft: the canvas
+		// starts changed so Save can store it. A layout of saved tiles only starts clean
+		if (sortedCards.value.some((card) => getCardTiles(card.id).some((tile) => tile.draft && !removedTiles.has(tile.id)))) {
+			pageChanged.value = true;
+		}
 	}, 500);
 });
 
@@ -950,6 +956,15 @@ watch(
 	async (val: boolean): Promise<void> => {
 		if (val) {
 			emit('update:remote-page-submit', false);
+
+			// Without a display there are no grids to read the layout from: nothing would be stored, so the save fails and
+			// the page stays changed
+			if (props.gridLayout === null || cardGrids.size === 0) {
+				emit('update:remote-page-result', FormResult.ERROR);
+
+				return;
+			}
+
 			emit('update:remote-page-result', FormResult.WORKING);
 
 			try {

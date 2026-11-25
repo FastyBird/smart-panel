@@ -68,7 +68,8 @@
 			"notFound": "Karta {card} nebyla nalezena.",
 			"notRemoved": "Kartu {card} se nepodařilo odebrat.",
 			"removeCanceled": "Odebrání karty {card} bylo zrušeno.",
-			"deletedWhileEditing": "Tato karta byla smazána a již není k dispozici."
+			"deletedWhileEditing": "Tato karta byla smazána a již není k dispozici.",
+			"notSaved": "Kartu se nepodařilo uložit. Zkuste to znovu."
 		},
 		"tiles": {
 			"deletedWhileEditing": "Tato dlaždice byla smazána a již není k dispozici."
@@ -120,9 +121,6 @@
 		"no": {
 			"title": "Ne"
 		},
-		"manageElements": {
-			"title": "Spravovat prvky"
-		},
 		"addCard": {
 			"title": "Přidat kartu"
 		},
@@ -159,5 +157,17 @@
 				"placeholder": "Počet sloupců"
 			}
 		}
+	},
+	"editor": {
+		"texts": {
+			"unsaved": "Neuložené změny"
+		},
+		"messages": {
+			"saved": "Rozvržení stránky uloženo.",
+			"saveFailed": "Rozvržení stránky se nepodařilo uložit. Zkuste to znovu."
+		}
+	},
+	"sections": {
+		"grid": "Mřížka dlaždic"
 	}
 }
