@@ -73,5 +73,8 @@
 	"texts": {
 		"aboutSettings": "Nakonfigurujte nastavení počasí Open-Meteo. Tento poskytovatel je zdarma a nevyžaduje API klíč.",
 		"orEnterManually": "Nebo zadejte lokaci ručně"
+	},
+	"sections": {
+		"location": "Lokace Open-Meteo"
 	}
 }

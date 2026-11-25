@@ -125,5 +125,8 @@
 	},
 	"texts": {
 		"aboutApiSettings": "Nakonfigurujte nastavení OpenWeatherMap API. Pro načítání dat o počasí potřebujete platný API klíč. Vyberte preferovanou jednotku teploty pro zobrazení počasí."
+	},
+	"sections": {
+		"location": "Lokace OpenWeatherMap"
 	}
 }

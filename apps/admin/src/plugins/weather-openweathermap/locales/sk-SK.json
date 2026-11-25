@@ -125,5 +125,8 @@
 	},
 	"texts": {
 		"aboutApiSettings": "Nakonfigurujte nastavenia API OpenWeatherMap. Na získavanie údajov o počasí potrebujete platný API kľúč. Vyberte preferovanú jednotku teploty pre zobrazenie počasia."
+	},
+	"sections": {
+		"location": "Poloha OpenWeatherMap"
 	}
 }

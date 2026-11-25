@@ -125,5 +125,8 @@
 	},
 	"texts": {
 		"aboutApiSettings": "Skonfiguruj ustawienia API OpenWeatherMap. Potrzebujesz prawidłowego klucza API, aby pobierać dane pogodowe. Wybierz preferowaną jednostkę temperatury dla wyświetlania pogody."
+	},
+	"sections": {
+		"location": "Lokalizacja OpenWeatherMap"
 	}
 }

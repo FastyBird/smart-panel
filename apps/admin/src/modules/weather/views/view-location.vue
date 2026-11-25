@@ -2,156 +2,147 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		v-if="isLocationRoute || isLGDevice"
-		:title="t('weatherModule.headings.locationDetail', { location: location?.name })"
-		:subtitle="t('weatherModule.subHeadings.locationDetail', { location: location?.name })"
+		v-if="isLocationRoute || inDrawer"
+		:title="location?.name ?? t('weatherModule.meta.locations.detail.title')"
+		:subtitle="t('weatherModule.subHeadings.locationDetail', { location: location?.name ?? '' })"
 		icon="mdi:map-marker"
-		:actions="[...(isLocationRoute && location ? [{ icon: 'mdi:pencil', label: t('weatherModule.headings.editLocation'), handler: onEdit }] : [])]"
-		@back="onClose"
+		:actions="location ? [{ icon: 'mdi:pencil', label: t('weatherModule.buttons.edit.title'), handler: onEdit }] : []"
+		@back="onBack"
 	>
 		<template #actions>
-			<div class="flex items-center">
+			<el-tooltip
+				v-if="location"
+				:content="t('weatherModule.buttons.edit.title')"
+				placement="top"
+			>
 				<el-button
-					v-if="location"
+					:aria-label="t('weatherModule.aria.edit', { location: location.name })"
 					plain
-					class="ml-2!"
+					data-test-id="location-edit"
 					@click="onEdit"
 				>
 					<template #icon>
 						<icon icon="mdi:pencil" />
 					</template>
 				</el-button>
-			</div>
+			</el-tooltip>
 		</template>
 	</view-header>
 
-	<!-- Loading state -->
 	<div
-		v-if="isLocationLoading || isWeatherLoading"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+		v-if="isLocationRoute || inDrawer"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<el-card class="mt-2">
-			<el-skeleton
-				:rows="5"
-				animated
-			/>
-		</el-card>
-	</div>
+		<!-- Template 4: edit opens next to the detail from tablet portrait up, as its own page on phone -->
+		<edit-drawer-layout
+			:open="showDrawer"
+			:before-close="onCloseDrawer"
+			@close="onCloseDrawer()"
+		>
+			<!-- Template 3: the summary card, then a card per part of the weather; the page scrolls as one -->
+			<div
+				v-if="location"
+				class="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto [&>*]:shrink-0"
+			>
+				<location-summary
+					:location="location"
+					:primary="location.id === primaryLocationId"
+					:provider-name="providerName"
+				/>
 
-	<!-- Location not found -->
-	<entity-not-found
-		v-else-if="!location"
-		icon="mdi:map-marker"
-		:message="t('weatherModule.messages.locations.notFound')"
-		:button-label="t('weatherModule.buttons.back.title')"
-		@back="onClose"
-	/>
+				<state-view
+					v-if="isWeatherLoading && !weather"
+					kind="loading"
+					icon="mdi:weather-partly-cloudy"
+					:title="t('weatherModule.texts.misc.loadingWeather')"
+				/>
 
-	<!-- Error state - weather failed to load -->
-	<div
-		v-else-if="hasWeatherError || !weather"
-		class="flex flex-col items-center justify-center w-full h-full"
-	>
-		<el-result>
-			<template #icon>
-				<icon-with-child :size="80">
-					<template #primary>
-						<icon icon="mdi:weather-cloudy" />
-					</template>
-					<template #secondary>
-						<icon icon="mdi:alert-circle" />
-					</template>
-				</icon-with-child>
-			</template>
-
-			<template #title>
-				{{ t('weatherModule.texts.weatherError') }}
-			</template>
-
-			<template #sub-title>
-				{{ t('weatherModule.texts.weatherErrorDescription') }}
-			</template>
-
-			<template #extra>
-				<el-button
-					type="primary"
-					@click="onRetry"
+				<!-- The location stays editable when its weather does not load: a wrong place or key is fixed in Edit -->
+				<state-view
+					v-else-if="hasWeatherError || !weather"
+					kind="error"
+					icon="mdi:weather-cloudy-alert"
+					:title="t('weatherModule.texts.weatherError')"
+					:description="t('weatherModule.texts.weatherErrorDescription')"
 				>
-					{{ t('weatherModule.buttons.retry.title') }}
-				</el-button>
-			</template>
-		</el-result>
-	</div>
+					<template #action>
+						<el-button
+							plain
+							data-test-id="location-weather-retry"
+							@click="onRetry"
+						>
+							{{ t('weatherModule.buttons.retry.title') }}
+						</el-button>
+					</template>
+				</state-view>
 
-	<!-- Success state - show weather data -->
-	<el-scrollbar
-		v-else-if="(isLocationRoute || isLGDevice) && location && weather"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
-	>
-		<el-card
-			class="mt-2"
-			body-class="p-0!"
-		>
-			<location-detail
-				:location="location"
-				:current="weather.current"
-			/>
-		</el-card>
+				<div
+					v-else
+					class="grid grid-cols-1 tl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-4 items-start"
+				>
+					<el-card
+						shadow="never"
+						body-class="flex flex-col gap-3 p-4!"
+						data-test-id="location-current-card"
+					>
+						<span class="text-card-title">{{ t('weatherModule.headings.weather') }}</span>
 
-		<el-card
-			v-if="weather.hourlyForecast && weather.hourlyForecast.length > 0"
-			class="mt-4"
-		>
-			<template #header>
-				<div class="flex items-center">
-					<el-icon :size="20">
-						<icon icon="mdi:clock-outline" />
-					</el-icon>
-					<span class="ml-2 font-medium">{{ t('weatherModule.headings.hourlyForecast') }}</span>
+						<location-detail :current="weather.current" />
+					</el-card>
+
+					<div class="flex flex-col gap-4 min-w-0">
+						<el-card
+							v-if="weather.hourlyForecast && weather.hourlyForecast.length > 0"
+							shadow="never"
+							body-class="flex flex-col gap-3 p-4!"
+							data-test-id="location-hourly-card"
+						>
+							<span class="text-card-title">{{ t('weatherModule.headings.hourlyForecast') }}</span>
+
+							<location-hourly-forecast
+								:hourly-forecast="weather.hourlyForecast"
+								:sunrise="weather.current?.sunrise"
+								:sunset="weather.current?.sunset"
+							/>
+						</el-card>
+
+						<el-card
+							shadow="never"
+							body-class="flex flex-col gap-3 p-4!"
+							data-test-id="location-forecast-card"
+						>
+							<span class="text-card-title">{{ t('weatherModule.headings.forecast') }}</span>
+
+							<location-forecast :forecast="weather.forecast" />
+						</el-card>
+					</div>
 				</div>
-			</template>
+			</div>
 
-			<location-hourly-forecast
-				:hourly-forecast="weather.hourlyForecast"
-				:sunrise="weather.current?.sunrise"
-				:sunset="weather.current?.sunset"
+			<state-view
+				v-else-if="isLocationLoading"
+				kind="loading"
+				icon="mdi:map-marker"
+				:title="t('weatherModule.texts.misc.loadingLocation')"
 			/>
-		</el-card>
 
-		<el-card class="mt-4 mb-2">
-			<template #header>
-				<div class="flex items-center">
-					<el-icon :size="20">
-						<icon icon="mdi:calendar-week" />
-					</el-icon>
-					<span class="ml-2 font-medium">{{ t('weatherModule.headings.forecast') }}</span>
-				</div>
-			</template>
+			<state-view
+				v-else
+				kind="not-found"
+				icon="mdi:map-marker"
+				:title="t('weatherModule.messages.locations.notFound')"
+			>
+				<template #action>
+					<el-button
+						plain
+						@click="onBack"
+					>
+						{{ t('weatherModule.buttons.back.title') }}
+					</el-button>
+				</template>
+			</state-view>
 
-			<location-forecast :forecast="weather.forecast" />
-		</el-card>
-	</el-scrollbar>
-
-	<!-- Router view for small devices when not on main route -->
-	<router-view
-		v-else-if="location && weather"
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component :is="Component" />
-	</router-view>
-
-	<!-- Drawer for large devices -->
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="'40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
+			<template #form>
 				<view-error>
 					<template #icon>
 						<icon icon="mdi:map-marker" />
@@ -161,10 +152,7 @@
 					</template>
 
 					<suspense>
-						<router-view
-							:key="props.id"
-							v-slot="{ Component }"
-						>
+						<router-view v-slot="{ Component }">
 							<component
 								:is="Component"
 								v-model:remote-form-changed="remoteFormChanged"
@@ -173,27 +161,38 @@
 					</suspense>
 				</view-error>
 			</template>
-		</app-bar-scope>
-	</el-drawer>
+		</edit-drawer-layout>
+	</div>
+
+	<!-- Phone: the edit form is its own page -->
+	<router-view
+		v-else
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox, ElResult, ElScrollbar, ElSkeleton } from 'element-plus';
+import { ElButton, ElCard, ElMessageBox, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, EntityNotFound, IconWithChild, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, EditDrawerLayout, StateView, ViewError, ViewHeader, provideEditDrawer } from '../../../common';
+import { useConfigModule } from '../../config';
 import LocationDetail from '../components/location-detail.vue';
 import LocationForecast from '../components/location-forecast.vue';
 import LocationHourlyForecast from '../components/location-hourly-forecast.vue';
+import LocationSummary from '../components/location-summary.vue';
 import { useLocation } from '../composables/useLocation';
 import { useLocationWeather } from '../composables/useLocationWeather';
-import { RouteNames } from '../weather.constants';
+import { useWeatherLocationsPlugins } from '../composables/useWeatherLocationsPlugins';
+import { RouteNames, WEATHER_MODULE_NAME } from '../weather.constants';
 
 import type { IViewLocationProps } from './view-location.types';
 
@@ -207,23 +206,36 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
-useMeta({
+const { meta } = useMeta({
 	title: t('weatherModule.meta.locations.detail.title'),
 });
-
-const { isLGDevice } = useBreakpoints();
 
 const locationId = computed(() => props.id);
 
 const { location, isLoading: isLocationLoading, fetchLocation } = useLocation({ id: locationId });
 const { weather, isLoading: isWeatherLoading, hasError: hasWeatherError, fetchLocationWeather } = useLocationWeather();
+const { configModule: weatherConfig } = useConfigModule({ type: WEATHER_MODULE_NAME });
+const { options: providerOptions } = useWeatherLocationsPlugins();
 
-const mounted = ref<boolean>(false);
-const showDrawer = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
-const isLocationRoute = computed<boolean>((): boolean => {
-	return route.name === RouteNames.WEATHER_LOCATION;
+const isLocationRoute = computed<boolean>((): boolean => route.name === RouteNames.WEATHER_LOCATION);
+
+const showDrawer = computed<boolean>((): boolean => route.name === RouteNames.WEATHER_LOCATION_DETAIL_EDIT);
+
+// Template 4: the edit form opens next to the detail from tablet portrait up, as its own page on phone
+const { inDrawer } = provideEditDrawer((): boolean => showDrawer.value);
+
+const primaryLocationId = computed<string | null>((): string | null => {
+	const config = weatherConfig.value as { primaryLocationId?: string | null } | null;
+
+	return config?.primaryLocationId ?? null;
+});
+
+const providerName = computed<string>((): string => {
+	const type = location.value?.type ?? '';
+
+	return providerOptions.value.find((option) => option.value === type)?.label ?? type;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -241,104 +253,94 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const onCloseDrawer = (done?: () => void): void => {
-	if (remoteFormChanged.value) {
-		ElMessageBox.confirm(t('weatherModule.messages.confirmDiscard'), t('weatherModule.headings.discard'), {
-			confirmButtonText: t('weatherModule.buttons.yes.title'),
-			cancelButtonText: t('weatherModule.buttons.no.title'),
+const confirmDiscard = async (): Promise<boolean> => {
+	try {
+		await ElMessageBox.confirm(t('weatherModule.messages.confirmDiscard'), t('weatherModule.headings.discard'), {
+			confirmButtonText: t('weatherModule.buttons.discard.title'),
+			cancelButtonText: t('weatherModule.buttons.keepEditing.title'),
 			type: 'warning',
-		})
-			.then((): void => {
-				if (isLGDevice.value) {
-					router.replace({
-						name: RouteNames.WEATHER_LOCATION,
-						params: { id: props.id },
-					});
-				} else {
-					router.push({
-						name: RouteNames.WEATHER_LOCATION,
-						params: { id: props.id },
-					});
-				}
+		});
 
-				done?.();
-			})
-			.catch((): void => {
-				// Just ignore it
-			});
-	} else {
-		if (isLGDevice.value) {
-			router.replace({
-				name: RouteNames.WEATHER_LOCATION,
-				params: { id: props.id },
-			});
-		} else {
-			router.push({
-				name: RouteNames.WEATHER_LOCATION,
-				params: { id: props.id },
-			});
-		}
-
-		done?.();
+		return true;
+	} catch {
+		return false;
 	}
 };
 
-const onClose = (): void => {
-	if (isLGDevice.value) {
-		router.replace({ name: RouteNames.WEATHER_LOCATIONS });
-	} else {
-		router.push({ name: RouteNames.WEATHER_LOCATIONS });
+const onCloseDrawer = async (done?: () => void): Promise<void> => {
+	if (remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
 	}
+
+	router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+
+	done?.();
 };
 
 const onEdit = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.WEATHER_LOCATION_DETAIL_EDIT,
-			params: { id: props.id },
-		});
+	if (showDrawer.value) {
+		return;
+	}
+
+	const to = { name: RouteNames.WEATHER_LOCATION_DETAIL_EDIT, params: { id: props.id } };
+
+	if (inDrawer.value) {
+		router.replace(to);
 	} else {
-		router.push({
-			name: RouteNames.WEATHER_LOCATION_DETAIL_EDIT,
-			params: { id: props.id },
-		});
+		router.push(to);
 	}
 };
 
-const onRetry = async (): Promise<void> => {
-	await fetchLocationWeather(props.id);
+const onBack = async (): Promise<void> => {
+	if (showDrawer.value && remoteFormChanged.value && !(await confirmDiscard())) {
+		return;
+	}
+
+	router.push({ name: RouteNames.WEATHER_LOCATIONS });
 };
 
-onBeforeMount(async (): Promise<void> => {
-	await fetchLocation();
+const onRetry = async (): Promise<void> => {
 	await fetchLocationWeather(props.id).catch(() => {
-		// Error is handled by hasError state in useLocationWeather
+		// The error state shows it
+	});
+};
+
+const load = async (id: string): Promise<void> => {
+	await fetchLocation().catch(() => {
+		// The not-found state shows it
 	});
 
-	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_DETAIL_EDIT) !== undefined;
+	await fetchLocationWeather(id).catch(() => {
+		// The error state shows it
+	});
+};
+
+onBeforeMount((): void => {
+	void load(props.id);
 });
 
-onMounted((): void => {
-	mounted.value = true;
-});
-
-// Refetch data when navigating to a different location (same route, different id)
+// Another location on the same route (the breadcrumb or a link): load its record and its weather
 watch(
-	() => props.id,
-	async (newId, oldId) => {
-		if (newId !== oldId && mounted.value) {
-			await fetchLocation();
-			await fetchLocationWeather(newId).catch(() => {
-				// Error is handled by hasError state in useLocationWeather
-			});
+	(): string => props.id,
+	(newId: string, oldId: string): void => {
+		if (newId !== oldId) {
+			void load(newId);
 		}
 	}
 );
 
 watch(
-	(): string => route.path,
-	(): void => {
-		showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_DETAIL_EDIT) !== undefined;
-	}
+	(): string | undefined => location.value?.name,
+	(name: string | undefined): void => {
+		meta.title = name ?? t('weatherModule.meta.locations.detail.title');
+	},
+	{ immediate: true }
 );
+
+// The changed flag belongs to the form that is open; closing it clears the flag
+watch(showDrawer, (open: boolean): void => {
+	if (!open) {
+		remoteFormChanged.value = false;
+	}
+});
 </script>

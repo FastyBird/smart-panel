@@ -125,5 +125,8 @@
 	},
 	"texts": {
 		"aboutApiSettings": "Configure your OpenWeatherMap API settings. You need a valid API key to fetch weather data. Select your preferred temperature unit for weather displays."
+	},
+	"sections": {
+		"location": "OpenWeatherMap location"
 	}
 }

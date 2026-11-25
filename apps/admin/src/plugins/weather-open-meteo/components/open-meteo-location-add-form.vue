@@ -7,90 +7,80 @@
 		status-icon
 		@submit.prevent="onSubmit"
 	>
-		<!-- Location Name -->
-		<el-form-item
-			:label="t('weatherOpenMeteoPlugin.fields.locations.name.title')"
-			prop="name"
-		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('weatherOpenMeteoPlugin.fields.locations.name.placeholder')"
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('weatherOpenMeteoPlugin.fields.locations.name.description') }}
-			</div>
-		</el-form-item>
+		<location-form-frame :model="model">
+			<plugin-form-section :title="t('weatherOpenMeteoPlugin.sections.location')">
+				<!-- City Search with My Location button -->
+				<el-form-item :label="t('weatherOpenMeteoPlugin.fields.locations.citySearch.title')">
+					<div class="flex flex-row items-center gap-2 w-full">
+						<el-autocomplete
+							v-model="searchQuery"
+							:fetch-suggestions="handleCitySearch"
+							:placeholder="t('weatherOpenMeteoPlugin.fields.locations.citySearch.placeholder')"
+							:loading="isSearching"
+							:debounce="500"
+							clearable
+							class="flex-1"
+							@select="handleCitySelect"
+						>
+							<template #default="{ item }">
+								<div class="flex flex-col py-1">
+									<span class="font-medium">{{ item.name }}</span>
+									<span class="text-xs text-secondary">
+										{{ item.state ? `${item.state}, ` : '' }}{{ item.country }}
+										<span class="ml-2 text-muted"> ({{ item.lat.toFixed(4) }}, {{ item.lon.toFixed(4) }}) </span>
+									</span>
+								</div>
+							</template>
+						</el-autocomplete>
+						<el-button
+							:loading="isGettingLocation"
+							class="px-2!"
+							@click="getMyLocation"
+						>
+							<template #icon>
+								<icon icon="mdi:map-marker-account-outline" />
+							</template>
+							{{ t('weatherOpenMeteoPlugin.buttons.myLocation.title') }}
+						</el-button>
+					</div>
+					<div class="text-help mt-1">
+						{{ t('weatherOpenMeteoPlugin.fields.locations.citySearch.description') }}
+					</div>
+				</el-form-item>
 
-		<!-- City Search with My Location button -->
-		<el-form-item :label="t('weatherOpenMeteoPlugin.fields.locations.citySearch.title')">
-			<div class="flex flex-row items-center gap-2 w-full">
-				<el-autocomplete
-					v-model="searchQuery"
-					:fetch-suggestions="handleCitySearch"
-					:placeholder="t('weatherOpenMeteoPlugin.fields.locations.citySearch.placeholder')"
-					:loading="isSearching"
-					:debounce="500"
-					clearable
-					class="flex-1"
-					@select="handleCitySelect"
-				>
-					<template #default="{ item }">
-						<div class="flex flex-col py-1">
-							<span class="font-medium">{{ item.name }}</span>
-							<span class="text-xs text-gray-500">
-								{{ item.state ? `${item.state}, ` : '' }}{{ item.country }}
-								<span class="ml-2 text-gray-400"> ({{ item.lat.toFixed(4) }}, {{ item.lon.toFixed(4) }}) </span>
-							</span>
-						</div>
-					</template>
-				</el-autocomplete>
-				<el-button
-					:loading="isGettingLocation"
-					class="px-2!"
-					@click="getMyLocation"
-				>
-					<template #icon>
-						<icon icon="mdi:map-marker-account-outline" />
-					</template>
-					{{ t('weatherOpenMeteoPlugin.buttons.myLocation.title') }}
-				</el-button>
-			</div>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('weatherOpenMeteoPlugin.fields.locations.citySearch.description') }}
-			</div>
-		</el-form-item>
+				<el-divider content-position="left" class="mt-6!">{{ t('weatherOpenMeteoPlugin.texts.orEnterManually') }}</el-divider>
 
-		<el-divider content-position="left" class="mt-6!">{{ t('weatherOpenMeteoPlugin.texts.orEnterManually') }}</el-divider>
-
-		<!-- Latitude/Longitude fields -->
-		<div class="flex flex-row items-start gap-4">
-			<el-form-item
-				:label="t('weatherOpenMeteoPlugin.fields.locations.latitude.title')"
-				prop="latitude"
-				class="flex-1"
-			>
-				<el-input
-					v-model="model.latitude"
-					:placeholder="t('weatherOpenMeteoPlugin.fields.locations.latitude.placeholder')"
-					name="latitude"
-					type="number"
-					step="0.0001"
-				/>
-			</el-form-item>
-			<el-form-item
-				:label="t('weatherOpenMeteoPlugin.fields.locations.longitude.title')"
-				prop="longitude"
-				class="flex-1"
-			>
-				<el-input
-					v-model="model.longitude"
-					:placeholder="t('weatherOpenMeteoPlugin.fields.locations.longitude.placeholder')"
-					name="longitude"
-					type="number"
-					step="0.0001"
-				/>
-			</el-form-item>
-		</div>
+				<!-- Latitude/Longitude fields -->
+				<div class="flex flex-row items-start gap-4">
+					<el-form-item
+						:label="t('weatherOpenMeteoPlugin.fields.locations.latitude.title')"
+						prop="latitude"
+						class="flex-1"
+					>
+						<el-input
+							v-model="model.latitude"
+							:placeholder="t('weatherOpenMeteoPlugin.fields.locations.latitude.placeholder')"
+							name="latitude"
+							type="number"
+							step="0.0001"
+						/>
+					</el-form-item>
+					<el-form-item
+						:label="t('weatherOpenMeteoPlugin.fields.locations.longitude.title')"
+						prop="longitude"
+						class="flex-1"
+					>
+						<el-input
+							v-model="model.longitude"
+							:placeholder="t('weatherOpenMeteoPlugin.fields.locations.longitude.placeholder')"
+							name="longitude"
+							type="number"
+							step="0.0001"
+						/>
+					</el-form-item>
+				</div>
+			</plugin-form-section>
+		</location-form-frame>
 	</el-form>
 
 	<!-- Map -->
@@ -123,8 +113,8 @@ import 'leaflet/dist/leaflet.css';
 import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
-import { useFlashMessage } from '../../../common';
-import { FormResult, type FormResultType, useLocationsActions } from '../../../modules/weather';
+import { PluginFormSection, useFlashMessage } from '../../../common';
+import { FormResult, type FormResultType, LocationFormFrame, useLocationsActions } from '../../../modules/weather';
 import { useLocationMap, type ILocationModel } from '../composables/composables';
 
 import type { IOpenMeteoLocationAddFormProps } from './open-meteo-location-add-form.types';

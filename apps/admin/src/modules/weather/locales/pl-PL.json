@@ -6,7 +6,6 @@
 		"weather": "Pogoda",
 		"aboutPrimaryLocation": "Lokalizacja główna",
 		"locations": "Lokalizacje pogody",
-		"locationDetail": "{location}",
 		"forecast": "Prognoza",
 		"hourlyForecast": "Prognoza godzinowa",
 		"addLocation": "Dodaj lokalizację",
@@ -112,7 +111,11 @@
 				"placeholder": "np. Dom, Biuro, Domek letniskowy",
 				"validation": {
 					"required": "Nazwa lokalizacji jest wymagana"
-				}
+				},
+				"description": "Przyjazna nazwa dla tej lokalizacji"
+			},
+			"id": {
+				"title": "Identyfikator wewnętrzny"
 			}
 		},
 		"config": {
@@ -130,10 +133,7 @@
 		"weatherError": "Nie udało się załadować pogody",
 		"weatherErrorDescription": "Nie udało się załadować danych pogodowych dla tej lokalizacji. Sprawdź konfigurację API i spróbuj ponownie.",
 		"locationDetail": {
-			"provider": "Dostawca",
-			"temperature": "Temperatura",
 			"feelsLike": "Odczuwalna",
-			"conditions": "Warunki",
 			"humidity": "Wilgotność",
 			"wind": "Wiatr",
 			"pressure": "Ciśnienie"
@@ -142,7 +142,9 @@
 			"loadingLocations": "Ładowanie lokalizacji...",
 			"noLocations": "Nie skonfigurowano jeszcze żadnych lokalizacji",
 			"noFilteredLocations": "Żadne lokalizacje nie pasują do kryteriów filtra",
-			"noLocationsHint": "Dodaj lokalizację, aby wyświetlać jej pogodę na wyświetlaczach."
+			"noLocationsHint": "Dodaj lokalizację, aby wyświetlać jej pogodę na wyświetlaczach.",
+			"loadingWeather": "Wczytywanie pogody…",
+			"loadingLocation": "Wczytywanie lokalizacji…"
 		}
 	},
 	"filters": {
@@ -256,5 +258,9 @@
 	"aria": {
 		"edit": "Edytuj {location}",
 		"more": "Więcej akcji dla {location}"
+	},
+	"sections": {
+		"general": "Ogólne",
+		"identifiers": "Identyfikatory"
 	}
 }

@@ -78,5 +78,8 @@
 	"texts": {
 		"aboutApiSettings": "Konfigurieren Sie Ihre OpenWeatherMap One Call API 3.0 Einstellungen. Diese API erfordert ein kostenpflichtiges Abonnement und bietet detailliertere Wetterdaten einschließlich Wetterwarnungen.",
 		"orEnterManually": "Oder Standort manuell eingeben"
+	},
+	"sections": {
+		"location": "OpenWeatherMap One Call-Standort"
 	}
 }

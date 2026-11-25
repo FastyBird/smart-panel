@@ -125,5 +125,8 @@
 	},
 	"texts": {
 		"aboutApiSettings": "Configure los ajustes de la API de OpenWeatherMap. Necesita una clave API válida para obtener datos del clima. Seleccione su unidad de temperatura preferida para las visualizaciones del clima."
+	},
+	"sections": {
+		"location": "Ubicación de OpenWeatherMap"
 	}
 }

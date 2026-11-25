@@ -6,7 +6,6 @@
 		"weather": "Počasí",
 		"aboutPrimaryLocation": "Primární lokace",
 		"locations": "Meteorologické lokace",
-		"locationDetail": "{location}",
 		"forecast": "Předpověď",
 		"hourlyForecast": "Hodinová předpověď",
 		"addLocation": "Přidat lokaci",
@@ -112,7 +111,11 @@
 				"placeholder": "např. Domov, Kancelář, Chata",
 				"validation": {
 					"required": "Název lokace je povinný"
-				}
+				},
+				"description": "Přátelský název pro tuto lokaci"
+			},
+			"id": {
+				"title": "Interní identifikátor"
 			}
 		},
 		"config": {
@@ -130,10 +133,7 @@
 		"weatherError": "Nelze načíst počasí",
 		"weatherErrorDescription": "Data o počasí se nepodařilo načíst pro tuto lokaci. Zkontrolujte prosím konfiguraci API a zkuste to znovu.",
 		"locationDetail": {
-			"provider": "Poskytovatel",
-			"temperature": "Teplota",
 			"feelsLike": "Pocitová teplota",
-			"conditions": "Podmínky",
 			"humidity": "Vlhkost",
 			"wind": "Vítr",
 			"pressure": "Tlak"
@@ -142,7 +142,9 @@
 			"loadingLocations": "Načítání lokací...",
 			"noLocations": "Zatím nejsou nakonfigurovány žádné lokace",
 			"noFilteredLocations": "Žádné lokace neodpovídají kritériím filtru",
-			"noLocationsHint": "Přidejte lokaci, jejíž počasí se zobrazí na displejích."
+			"noLocationsHint": "Přidejte lokaci, jejíž počasí se zobrazí na displejích.",
+			"loadingWeather": "Načítání počasí…",
+			"loadingLocation": "Načítání lokace…"
 		}
 	},
 	"filters": {
@@ -256,5 +258,9 @@
 	"aria": {
 		"edit": "Upravit {location}",
 		"more": "Další akce pro {location}"
+	},
+	"sections": {
+		"general": "Obecné",
+		"identifiers": "Identifikátory"
 	}
 }

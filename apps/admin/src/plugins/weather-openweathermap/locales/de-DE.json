@@ -125,5 +125,8 @@
 	},
 	"texts": {
 		"aboutApiSettings": "Konfigurieren Sie Ihre OpenWeatherMap API-Einstellungen. Sie benötigen einen gültigen API-Schlüssel, um Wetterdaten abzurufen. Wählen Sie Ihre bevorzugte Temperatureinheit für die Wetteranzeige."
+	},
+	"sections": {
+		"location": "OpenWeatherMap-Standort"
 	}
 }

@@ -78,5 +78,8 @@
 	"texts": {
 		"aboutApiSettings": "Configure los ajustes de OpenWeatherMap One Call API 3.0. Esta API requiere una suscripción de pago y proporciona datos del clima más detallados, incluidas alertas meteorológicas.",
 		"orEnterManually": "O introduzca la ubicación manualmente"
+	},
+	"sections": {
+		"location": "Ubicación de OpenWeatherMap One Call"
 	}
 }
