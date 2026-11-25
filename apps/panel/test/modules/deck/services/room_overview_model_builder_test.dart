@@ -485,6 +485,49 @@ void main() {
       });
 
       test(
+        'a coverage warning reaches screen readers while heating to a target',
+        () {
+          for (final status in ['coverage_conflict', 'coverage_stale']) {
+            final model = buildRoomOverviewModel(
+              RoomOverviewBuildInput(
+                display: createDisplay(),
+                room: createRoom(),
+                deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+                climateState: ClimateStateModel.fromJson({
+                  'has_climate': true,
+                  'mode': 'heat',
+                  'current_temperature': null,
+                  'heating_setpoint': 22.0,
+                  'supports_heating': true,
+                  'is_heating': true,
+                  'temperature_contribution': {
+                    'status': status,
+                    'selected_property_ids': ['aggregate'],
+                    'unavailable_property_ids': ['aggregate'],
+                  },
+                }, spaceId: _roomUuid),
+                scenes: [],
+                now: DateTime(2024, 6, 15, 12, 0),
+                localizations: _l,
+              ),
+            );
+            final card = model.domainCards.firstWhere(
+              (card) => card.domain == DomainType.climate,
+            );
+            final warning = status == 'coverage_conflict'
+                ? _l.climate_temperature_coverage_conflict
+                : _l.climate_temperature_coverage_unavailable;
+
+            expect(card.subtitle, warning);
+            expect(card.target, isNull);
+            // No "Heating to 22°": the card reads the warning out instead.
+            expect(card.spokenSubtitle, isNull);
+            expect(card.spokenSubtitle ?? card.subtitle, warning);
+          }
+        },
+      );
+
+      test(
         'withheld climate readings cannot fall back to a raw overview value',
         () {
           for (final status in ['coverage_conflict', 'coverage_stale', 'ok']) {

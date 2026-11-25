@@ -216,31 +216,39 @@ class SkyPanelView extends StatelessWidget {
                         sizeClass: resolvedClass,
                       );
 
+                // At least the panel's height, so the content centres (or
+                // the footer sits at the foot); when the panel is too short
+                // for it (enlarged text, a short panel), it scrolls instead
+                // of clipping.
+                final fill = BoxConstraints(
+                  minHeight: constraints.hasBoundedHeight
+                      ? constraints.maxHeight
+                      : 0,
+                );
+
                 if (!landscape) {
-                  return Row(
-                    spacing: gap,
-                    children: [
-                      Expanded(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: clock,
-                        ),
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: fill,
+                      child: Row(
+                        spacing: gap,
+                        children: [
+                          Expanded(
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: clock,
+                            ),
+                          ),
+                          if (card != null) Flexible(child: card),
+                        ],
                       ),
-                      if (card != null) Flexible(child: card),
-                    ],
+                    ),
                   );
                 }
 
-                // The footer sits at the foot; when the panel is too short
-                // for all of it (enlarged text, a short panel), everything
-                // scrolls together instead of clipping.
                 return SingleChildScrollView(
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.hasBoundedHeight
-                          ? constraints.maxHeight
-                          : 0,
-                    ),
+                    constraints: fill,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -408,6 +416,23 @@ class SkyWeatherCard extends StatelessWidget {
     final hasReadings = readings != null && readings!.isNotEmpty;
     final onTap = weather == null ? null : this.onTap;
 
+    final temperature = weather == null
+        ? null
+        : Text(
+            weather.temperature,
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              color: look.text,
+              fontFamily: AppNumeralFont.family,
+              fontSize: AppSpacings.scale(
+                SkyPanelMetrics.cardTemperatureFor(resolvedClass),
+              ),
+              fontWeight: AppNumeralFont.value,
+              height: 1,
+            ),
+          );
+
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -425,20 +450,19 @@ class SkyWeatherCard extends StatelessWidget {
                 ),
                 color: look.text,
               ),
-              Text(
-                weather.temperature,
-                maxLines: 1,
-                softWrap: false,
-                style: TextStyle(
-                  color: look.text,
-                  fontFamily: AppNumeralFont.family,
-                  fontSize: AppSpacings.scale(
-                    SkyPanelMetrics.cardTemperatureFor(resolvedClass),
+              // Alone in the row (Compact), it scales down like the clock
+              // rather than overflow a narrow card at enlarged text; beside
+              // the label, the label gives way instead.
+              if (showLabel)
+                temperature!
+              else
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: temperature!,
                   ),
-                  fontWeight: AppNumeralFont.value,
-                  height: 1,
                 ),
-              ),
               if (showLabel)
                 Flexible(
                   child: Text(

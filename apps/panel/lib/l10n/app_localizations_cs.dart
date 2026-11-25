@@ -5249,7 +5249,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String room_energy_open(String value) {
-    return 'Energie, $value. Otevřít energie';
+    return 'Energie, $value. Otevřít energii';
   }
 
   @override

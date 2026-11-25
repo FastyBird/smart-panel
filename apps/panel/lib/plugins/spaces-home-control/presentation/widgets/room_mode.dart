@@ -548,11 +548,33 @@ class _RoomModeScopeState extends State<RoomModeScope> {
     owned.occupancy?.bind(spaceId);
   }
 
+  /// Releases the read models this scope opened.
+  void _release() {
+    final owned = _owned;
+    if (owned != null) {
+      _activityRegistry?.release(owned.activity);
+      if (owned.schedule != null) _scheduleRegistry?.release(owned.schedule!);
+      if (owned.occupancy != null) {
+        _occupancyRegistry?.release(owned.occupancy!);
+      }
+    }
+    _owned = null;
+  }
+
   @override
   void didUpdateWidget(covariant RoomModeScope oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (widget.spaceId != oldWidget.spaceId && _owned != null) {
+    final owns = widget.sources == null;
+    final owned = oldWidget.sources == null;
+
+    if (owned && !owns) {
+      // Supplied sources now: stop polling our own.
+      _release();
+    } else if (!owned && owns) {
+      // Back to our own: open and bind them for the current room.
+      _open();
+    } else if (widget.spaceId != oldWidget.spaceId && _owned != null) {
       _owned = RoomModeSources(
         spaceId: widget.spaceId,
         activity: _owned!.activity,
@@ -566,14 +588,7 @@ class _RoomModeScopeState extends State<RoomModeScope> {
 
   @override
   void dispose() {
-    final owned = _owned;
-    if (owned != null) {
-      _activityRegistry?.release(owned.activity);
-      if (owned.schedule != null) _scheduleRegistry?.release(owned.schedule!);
-      if (owned.occupancy != null) {
-        _occupancyRegistry?.release(owned.occupancy!);
-      }
-    }
+    _release();
     super.dispose();
   }
 

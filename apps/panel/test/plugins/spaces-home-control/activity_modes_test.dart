@@ -249,6 +249,26 @@ class ActivityAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Counts the sessions the scope opens and releases.
+class CountingActivityModesRegistry extends ActivityModesRegistry {
+  CountingActivityModesRegistry({required super.dio});
+
+  int live = 0;
+
+  @override
+  ActivityModesRepository create() {
+    live++;
+
+    return super.create();
+  }
+
+  @override
+  void release(ActivityModesRepository session) {
+    live--;
+    super.release(session);
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
@@ -1056,6 +1076,50 @@ void main() {
           adapter.requests.every((request) => request.method == 'GET'),
           isTrue,
         );
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        locator.unregister<ActivityModesRegistry>();
+        registry.dispose();
+      }
+    },
+  );
+
+  testWidgets(
+    'the scope opens its own sessions when sources go away and releases them '
+    'when sources come back',
+    (tester) async {
+      final registry = CountingActivityModesRegistry(dio: dio);
+      locator.registerSingleton<ActivityModesRegistry>(registry);
+      Widget app({ActivityModesRepository? supplied}) => MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: roomMode(
+            key: const ValueKey('scope'),
+            spaceId: space,
+            repository: supplied,
+          ),
+        ),
+      );
+      try {
+        await tester.runAsync(() => repository.bind(space));
+        await tester.pumpWidget(app(supplied: repository));
+        await tester.pumpAndSettle();
+        expect(registry.live, 0);
+        expect(find.byType(RoomModeChip), findsWidgets);
+
+        // Same scope, no sources: it opens and binds its own.
+        await tester.pumpWidget(app());
+        await tester.pumpAndSettle();
+        expect(registry.live, 1);
+        expect(find.byType(RoomModeChip), findsWidgets);
+
+        // Sources again: its own are released, so they stop polling.
+        await tester.pumpWidget(app(supplied: repository));
+        await tester.pumpAndSettle();
+        expect(registry.live, 0);
+        expect(find.byType(RoomModeChip), findsWidgets);
         expect(tester.takeException(), isNull);
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());

@@ -794,7 +794,9 @@ DomainCardInfo _buildClimateCard(
         ? degrees(target)
         : null,
     subtitle: subtitle,
-    spokenSubtitle: target == null || cs == null
+    // A coverage warning replaces the state, and screen readers hear it too.
+    spokenSubtitle:
+        target == null || cs == null || contribution?.isUnavailable == true
         ? null
         : cs.isHeating
         ? l.thermostat_state_heating_to(degrees(target))

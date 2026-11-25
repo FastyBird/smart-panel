@@ -1125,6 +1125,65 @@ void main() {
     });
   });
 
+  group('review round 3', () {
+    testWidgets(
+      'a short portrait sky with enlarged text scrolls: the weather card '
+      'stays reachable',
+      (tester) async {
+        var weather = 0;
+
+        Widget sky(
+          BuildContext context, {
+          required bool landscape,
+          required ScreenSizeClass sizeClass,
+          String? readings,
+          Widget Function(BuildContext context, SkyLook look)? footer,
+        }) => SkyPanelView(
+          look: SkyLook.of(SkyDayPart.day, SkyWeather.partlyCloudy),
+          time: '12:11',
+          date: 'Sat 21 Nov',
+          weather: SkyWeatherInfo(
+            temperature: '6°',
+            label: 'Partly cloudy',
+            icon: MdiIcons.weatherPartlyCloudy,
+          ),
+          readings: readings,
+          onWeatherTap: () => weather++,
+          landscape: landscape,
+          sizeClass: sizeClass,
+          footer: footer,
+        );
+
+        await _pump(
+          tester,
+          RoomOverviewLayout(
+            skyBuilder: sky,
+            cards: _fourCards,
+            readings: _readings,
+            sizeClass: ScreenSizeClass.compact,
+            square: false,
+          ),
+          size: const Size(208, 304),
+          textScale: 2.5,
+        );
+
+        expect(tester.takeException(), isNull);
+
+        final card = find.byType(SkyWeatherCard);
+        await tester.ensureVisible(card);
+        await tester.pumpAndSettle();
+        await tester.tap(card);
+        expect(weather, 1);
+      },
+    );
+
+    test('the Czech energy action is grammatical', () {
+      final cs = lookupAppLocalizations(const Locale('cs'));
+
+      expect(cs.room_energy_open('4,2 kWh'), endsWith('Otevřít energii'));
+    });
+  });
+
   group('room mode on Compact', () {
     testWidgets(
       'the button opens the chooser; choosing a mode sends it and closes it',

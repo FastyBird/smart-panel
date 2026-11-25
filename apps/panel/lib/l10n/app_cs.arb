@@ -1660,7 +1660,7 @@
   "room_occupancy_manual": "Ručně · automatika pozastavena",
   "room_occupancy_automation_on": "automatika zapnutá",
   "room_scene_run": "Spustit scénu {name}",
-  "room_energy_open": "Energie, {value}. Otevřít energie",
+  "room_energy_open": "Energie, {value}. Otevřít energii",
   "room_overview_error_title": "Místnost se nenačetla",
   "room_overview_error_message": "Brána odpověděla chybou. Hodiny a počasí fungují dál.",
   "room_overview_try_again": "Zkusit znovu",
