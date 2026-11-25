@@ -24,9 +24,7 @@ vi.mock('../../../common', async () => {
 
 	return {
 		...actual,
-		// The selection column is behind `v-if="isMDDevice"`, and jsdom reports a
-		// narrow viewport, so without this the column under test never renders.
-		useBreakpoints: () => ({ isMDDevice: true }),
+		useSizeClass: () => ({ isTabletPortrait: false }),
 	};
 });
 
@@ -69,13 +67,13 @@ describe('LocationsTable', (): void => {
 				weatherByLocation: {},
 				temperatureUnit: 'celsius',
 				weatherFetchCompleted: true,
+				providerName: (type: string) => type,
 				...props,
 			} as ILocationsTableProps,
 			global: {
-				// These render plugin metadata and live weather from stores, which the
+				// This renders live weather from the store, which the
 				// selection predicate has nothing to do with.
 				stubs: {
-					LocationsTableColumnPlugin: true,
 					LocationsTableColumnWeather: true,
 				},
 			},

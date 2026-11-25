@@ -89,8 +89,8 @@ dark, and updates all six locales.
 | AR-17 | #1674 | 4 | `refactor(admin): move spaces onto the page templates` | AR-9, AR-10 | merged in #1752, #1754 and #1755 |
 | AR-18 | #1675 | 4 | `refactor(admin): move scenes onto the page templates` | AR-9, AR-10 | done (#1757, #1758) |
 | AR-19 | #1676 | 4 | `refactor(admin): move displays onto the page templates` | AR-9, AR-10 | done (#1760, #1761) |
-| AR-20 | #1677 | 4 | `refactor(admin): move pages and tiles onto the page templates` | AR-9, AR-10, AR-13 | done (#1762, #1763, #1765, #1768, #1769; part 5b, the Cards canvas and inspector, in review) |
-| AR-21 | #1678 | 4 | `refactor(admin): move weather onto the page templates` | AR-9, AR-10 | open |
+| AR-20 | #1677 | 4 | `refactor(admin): move pages and tiles onto the page templates` | AR-9, AR-10, AR-13 | done (#1762, #1763, #1765, #1768, #1769, #1771) |
+| AR-21 | #1678 | 4 | `refactor(admin): move weather onto the page templates` | AR-9, AR-10 | part 1 (the locations list, add and edit) in review; then part 2, the location detail, the `locationAddForm` host frame, the provider forms and lint |
 | AR-22 | #1679 | 4 | `refactor(admin): rebuild the overview as a dashboard` | AR-3, AR-8 | open |
 | AR-23 | #1680 | 4 | `refactor(admin): move buddy onto the two-pane and wizard templates` | AR-5, AR-8 | open |
 | AR-24 | #1681 | 4 | `refactor(admin): move users, extensions and system onto the page templates` | AR-3, AR-5, AR-8 | open |

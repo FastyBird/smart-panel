@@ -15,15 +15,13 @@
 		"bulkDeleteLocations": "Standorte löschen",
 		"discard": "Änderungen verwerfen",
 		"selectProvider": "Wetteranbieter auswählen",
-		"unsupportedProvider": "Nicht unterstützter Anbieter",
-		"adjustFilters": "Filter anpassen"
+		"unsupportedProvider": "Nicht unterstützter Anbieter"
 	},
 	"subHeadings": {
 		"locations": "Wetterdaten-Standorte verwalten",
 		"locationDetail": "Wetterinformationen für {location}",
 		"addLocation": "Neuen Wetterstandort hinzufügen",
-		"editLocation": "Standortdetails bearbeiten",
-		"adjustFilters": "Standortlistenfilter anpassen"
+		"editLocation": "Standortdetails bearbeiten"
 	},
 	"breadcrumbs": {
 		"locations": "Standorte",
@@ -57,9 +55,6 @@
 		}
 	},
 	"buttons": {
-		"add": {
-			"title": "Hinzufügen"
-		},
 		"save": {
 			"title": "Speichern"
 		},
@@ -78,9 +73,6 @@
 		"no": {
 			"title": "Nein"
 		},
-		"reset": {
-			"title": "Filter zurücksetzen"
-		},
 		"detail": {
 			"title": "Details"
 		},
@@ -89,6 +81,21 @@
 		},
 		"back": {
 			"title": "Zurück"
+		},
+		"edit": {
+			"title": "Bearbeiten"
+		},
+		"more": {
+			"title": "Weitere Aktionen"
+		},
+		"remove": {
+			"title": "Entfernen"
+		},
+		"keepEditing": {
+			"title": "Weiter bearbeiten"
+		},
+		"addLocation": {
+			"title": "Standort hinzufügen"
 		}
 	},
 	"fields": {
@@ -134,7 +141,8 @@
 		"misc": {
 			"loadingLocations": "Standorte werden geladen...",
 			"noLocations": "Noch keine Standorte konfiguriert",
-			"noFilteredLocations": "Keine Standorte entsprechen Ihren Filterkriterien"
+			"noFilteredLocations": "Keine Standorte entsprechen Ihren Filterkriterien",
+			"noLocationsHint": "Fügen Sie einen Standort hinzu, um sein Wetter auf den Displays anzuzeigen."
 		}
 	},
 	"filters": {
@@ -145,7 +153,6 @@
 			"primary": {
 				"title": "Primärstatus",
 				"values": {
-					"all": "Alle",
 					"primary": "Primär",
 					"secondary": "Sekundär"
 				}
@@ -168,8 +175,7 @@
 			"primary": {
 				"title": "Primär",
 				"values": {
-					"yes": "Ja",
-					"no": "Nein"
+					"yes": "Ja"
 				}
 			}
 		}
@@ -246,5 +252,9 @@
 		"brokenClouds": "Aufgelockerte Bewölkung",
 		"overcastClouds": "Bedeckt",
 		"unknown": "Unbekannt"
+	},
+	"aria": {
+		"edit": "{location} bearbeiten",
+		"more": "Weitere Aktionen für {location}"
 	}
 }
