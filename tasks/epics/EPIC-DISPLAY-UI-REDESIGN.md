@@ -85,8 +85,8 @@ behaviour in `display-app-design-spec.md`, and updates all six locales.
 | DR-7 | #1717 | 2 | `feat(panel): add one slider, switch, stepper, segmented control and mode chip` | DR-1, DR-2, DR-3 | done |
 | DR-8 | #1718 | 2 | `feat(panel): re-skin list rows, sheets, drawers, dialogs, toasts and banners` | DR-1, DR-2, DR-3 | done |
 | DR-9 | #1719 | 2 | `feat(panel): add state templates, loading skeletons and the outcome indicator` | DR-1, DR-2, DR-8 | done |
-| DR-10 | #1720 | 2 | `feat(panel): re-skin the deck bar and dock and add a visible settings entry` | DR-2, DR-3, DR-8 | in review |
-| DR-11 | #1721 | 3 | `feat(panel): move the room overview onto the redesign` | DR-5, DR-6, DR-7, DR-9, DR-10 | open |
+| DR-10 | #1720 | 2 | `feat(panel): re-skin the deck bar and dock and add a visible settings entry` | DR-2, DR-3, DR-8 | done |
+| DR-11 | #1721 | 3 | `feat(panel): move the room overview onto the redesign` | DR-5, DR-6, DR-7, DR-9, DR-10 | in review |
 | DR-12 | #1722 | 3 | `feat(panel): move the lights, climate and shading views onto the redesign` | DR-5, DR-6, DR-7, DR-9 | open |
 | DR-13 | #1723 | 3 | `feat(panel): move overlays and interrupts onto one overlay layout` | DR-8, DR-9 | open |
 | DR-14 | #1724 | 3 | `feat(panel): move the security view and entry overview onto the redesign` | DR-5, DR-6, DR-9 | open |
