@@ -12,6 +12,7 @@ import ViewLocation from './view-location.vue';
 
 const confirm = vi.fn();
 const fetchLocationWeather = vi.fn();
+const fetchLocation = vi.fn();
 
 const LOCATION = { id: 'location-1', name: 'Prague', type: 'weather-open-meteo' };
 
@@ -53,7 +54,7 @@ vi.mock('../../config', () => ({
 }));
 
 vi.mock('../composables/useLocation', () => ({
-	useLocation: () => ({ location, isLoading: ref(false), fetchLocation: vi.fn().mockResolvedValue(undefined) }),
+	useLocation: () => ({ location, isLoading: ref(false), fetchLocation }),
 }));
 
 vi.mock('../composables/useLocationWeather', () => ({
@@ -80,11 +81,16 @@ vi.mock('../components/location-hourly-forecast.vue', () => ({
 	default: { name: 'LocationHourlyForecast', template: '<div />' },
 }));
 
+// Counts the editor's setups, so a test can tell a remount from a reused instance
+const formMounts = vi.fn();
+
 const RoutedForm = defineComponent({
 	name: 'RoutedForm',
 	props: { remoteFormChanged: { type: Boolean, default: false } },
 	emits: ['update:remote-form-changed'],
 	setup() {
+		formMounts();
+
 		return (): ReturnType<typeof h> => h('form');
 	},
 });
@@ -124,6 +130,8 @@ describe('ViewLocation', () => {
 	beforeEach(() => {
 		confirm.mockReset();
 		fetchLocationWeather.mockReset().mockResolvedValue(undefined);
+		fetchLocation.mockReset().mockResolvedValue(undefined);
+		formMounts.mockReset();
 		location.value = LOCATION;
 		weather.value = WEATHER;
 		hasError.value = false;
@@ -206,5 +214,42 @@ describe('ViewLocation', () => {
 		const { wrapper } = await mountAt('/weather/location/location-1');
 
 		expect(wrapper.find('[data-kind="not-found"]').exists()).toBe(true);
+	});
+
+	it('loads the weather of the location it moved to, not of the one it left while loading', async () => {
+		let finishFirst: () => void = () => {};
+
+		fetchLocation.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishFirst = resolve;
+				})
+		);
+
+		const router = makeRouter();
+
+		await router.push('/weather/location/location-1');
+
+		mount(defineComponent({ render: () => h(RouterView) }), { global: { plugins: [router] } });
+
+		// Location 1's record is still on its way when the page moves to location 2
+		await router.push('/weather/location/location-2');
+		await flushPromises();
+
+		finishFirst();
+		await flushPromises();
+
+		expect(fetchLocationWeather.mock.calls.map((call) => call[0])).toEqual(['location-2']);
+	});
+
+	it('remounts the editor for another location, so its form does not save the values of one location to another', async () => {
+		const { router } = await mountAt('/weather/location/location-1/edit');
+
+		expect(formMounts).toHaveBeenCalledTimes(1);
+
+		await router.push('/weather/location/location-2/edit');
+		await flushPromises();
+
+		expect(formMounts).toHaveBeenCalledTimes(2);
 	});
 });

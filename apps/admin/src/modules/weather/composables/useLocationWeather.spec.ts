@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { transformWeatherDayResponse } from '../store/weather-day.transformers';
 import { WeatherApiException } from '../weather.exceptions';
 
 import { useLocationWeather } from './useLocationWeather';
@@ -256,6 +257,80 @@ describe('useLocationWeather', () => {
 		await Promise.all([promise1, promise2]);
 
 		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows the weather of the location asked for last, whichever answer comes first', async () => {
+		const pending: Record<string, (value: unknown) => void> = {};
+
+		(backendClient.GET as Mock).mockImplementation(
+			(_path: string, options: { params: { path: { locationId: string } } }) =>
+				new Promise((resolve) => {
+					pending[options.params.path.locationId] = resolve;
+				})
+		);
+
+		const answer = (temperature: number) => ({
+			data: { data: { current: { ...mockWeatherDayRes, temperature }, forecast: mockForecastRes } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		// Each answer keeps its own temperature, so the test can tell whose weather is shown
+		(transformWeatherDayResponse as Mock).mockImplementation((res: { temperature: number }) => ({
+			...mockTransformedWeatherDay,
+			temperature: res.temperature,
+		}));
+
+		const { weather, isLoading, fetchLocationWeather } = useLocationWeather();
+
+		// The page opened location A, then moved to B before A's weather came back
+		const first = fetchLocationWeather('location-a');
+		const second = fetchLocationWeather('location-b');
+
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+
+		pending['location-b']!(answer(20));
+		await second;
+
+		expect(weather.value?.current.temperature).toBe(20);
+		expect(isLoading.value).toBe(false);
+
+		// A's late answer does not replace B's weather
+		pending['location-a']!(answer(10));
+		await first;
+
+		expect(weather.value?.current.temperature).toBe(20);
+
+		(transformWeatherDayResponse as Mock).mockImplementation(() => mockTransformedWeatherDay);
+	});
+
+	it('does not let a late failure of an earlier location mark the weather shown as failed', async () => {
+		const pending: Record<string, (value: unknown) => void> = {};
+
+		(backendClient.GET as Mock).mockImplementation(
+			(_path: string, options: { params: { path: { locationId: string } } }) =>
+				new Promise((resolve) => {
+					pending[options.params.path.locationId] = resolve;
+				})
+		);
+
+		const { weather, hasError, fetchLocationWeather } = useLocationWeather();
+
+		const first = fetchLocationWeather('location-a');
+		const second = fetchLocationWeather('location-b');
+
+		pending['location-b']!({
+			data: { data: { current: mockWeatherDayRes, forecast: mockForecastRes } },
+			error: undefined,
+			response: { status: 200 },
+		});
+		await second;
+
+		pending['location-a']!({ data: undefined, error: { message: 'Failed' }, response: { status: 500 } });
+		await first.catch(() => undefined);
+
+		expect(hasError.value).toBe(false);
+		expect(weather.value).not.toBeNull();
 	});
 
 	it('should throw error when response is missing data', async () => {

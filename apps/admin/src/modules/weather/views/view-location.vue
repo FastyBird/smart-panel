@@ -152,7 +152,11 @@
 					</template>
 
 					<suspense>
-						<router-view v-slot="{ Component }">
+						<!-- Keyed by the location: another location's edit URL remounts the editor and its provider form -->
+						<router-view
+							:key="props.id"
+							v-slot="{ Component }"
+						>
 							<component
 								:is="Component"
 								v-model:remote-form-changed="remoteFormChanged"
@@ -167,6 +171,7 @@
 	<!-- Phone: the edit form is its own page -->
 	<router-view
 		v-else
+		:key="props.id"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -309,6 +314,11 @@ const load = async (id: string): Promise<void> => {
 	await fetchLocation().catch(() => {
 		// The not-found state shows it
 	});
+
+	// The page moved on to another location while this one's record loaded: that load fetches its own weather
+	if (id !== props.id) {
+		return;
+	}
 
 	await fetchLocationWeather(id).catch(() => {
 		// The error state shows it
