@@ -43,7 +43,7 @@
 							aria-hidden="true"
 						/>
 						<span class="text-label truncate">{{ card.title }}</span>
-						<span class="text-help whitespace-nowrap">{{ t('pagesCardsPlugin.editor.card.tiles', { count: tileCountOf(card.id) }) }}</span>
+						<span class="text-help whitespace-nowrap">{{ tilesLabel(card.id) }}</span>
 					</button>
 
 					<el-tooltip
@@ -151,6 +151,8 @@ const liveTileCounts = ref<Record<ICard['id'], number>>({});
 
 const tileCountOf = (cardId: ICard['id']): number => liveTileCounts.value[cardId] ?? getCardTiles(cardId).length;
 
+const tilesLabel = (cardId: ICard['id']): string => t('pagesCardsPlugin.editor.card.tiles', { count: tileCountOf(cardId) });
+
 // Set while grids are torn down: a grid already destroyed has no element left to read its items from
 let tearingDown = false;
 let initTimeout: ReturnType<typeof setTimeout>;
@@ -242,6 +244,21 @@ const removeTile = (tileId: ITile['id']): void => {
 
 	if (cardId !== null) {
 		onTileRemove(tileId, cardId);
+
+		return;
+	}
+
+	// Not in a grid right now (the cards are being rebuilt, or its card is still loading): it is still removed, so the
+	// grids leave it out when they place their tiles and Save deletes it, and the inspector lets it go
+	if (findTile(tileId) === undefined) {
+		return;
+	}
+
+	removedTiles.add(tileId);
+	pageChanged.value = true;
+
+	if (props.selectedTileId === tileId) {
+		emit('selectTile', null);
 	}
 };
 

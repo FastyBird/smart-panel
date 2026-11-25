@@ -241,4 +241,31 @@ describe('CardsPageConfigure', () => {
 		expect(errorHandler).not.toHaveBeenCalled();
 		expect(windowErrors).not.toHaveBeenCalled();
 	});
+
+	it('still removes a tile that is not in a grid right now, and lets the inspector go', async () => {
+		cardTiles.value = [tile('tile-a', false)];
+		tilesStore.remove.mockReset().mockResolvedValue(true);
+
+		// No display yet: the cards have no grids to hold the tile
+		const wrapper = await mountConfigure(null);
+
+		await wrapper.setProps({ selectedTileId: 'tile-a' });
+
+		(wrapper.vm as unknown as { removeTile: (id: string) => void }).removeTile('tile-a');
+		await flushPromises();
+
+		expect(wrapper.emitted('selectTile')?.at(-1)).toEqual([null]);
+		expect(wrapper.emitted('update:remote-page-changed')?.at(-1)).toEqual([true]);
+
+		// Once the grids are built the tile stays out of them, and Save deletes it
+		await wrapper.setProps({ gridLayout: { rows: 4, cols: 6 } });
+		await flushPromises();
+
+		expect(document.querySelector('.grid-stack-item')).toBeNull();
+
+		await wrapper.setProps({ remotePageSubmit: true });
+		await flushPromises();
+
+		expect(tilesStore.remove).toHaveBeenCalledWith({ id: 'tile-a', parent: { type: 'card', id: CARD_ID } });
+	});
 });

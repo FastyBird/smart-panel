@@ -189,7 +189,7 @@
 						:place="selectedPlace"
 						:tile="selectedTile"
 						:card="inspectorCard"
-						:card-tile-count="inspectorCard ? (cardTileCounts[inspectorCard.id] ?? (tilesByCard[inspectorCard.id] ?? []).length) : 0"
+						:card-tile-count="inspectorTileCount"
 						:grid-layout="gridLayout"
 						:data-sources="pageDataSources"
 						:data-sources-loading="dataSourcesLoading"
@@ -428,6 +428,13 @@ const gridCardStyle = computed<Record<string, string>>((): Record<string, string
 	return {
 		maxWidth: `${Math.min(display.screenWidth, 600)}px`,
 	};
+});
+
+// The tiles the inspected card holds on the canvas now; before the canvas has reported, the ones the store files under it
+const inspectorTileCount = computed<number>((): number => {
+	const card = inspectorCard.value;
+
+	return card ? (cardTileCounts.value[card.id] ?? (tilesByCard.value[card.id] ?? []).length) : 0;
 });
 
 const displayDetails = computed<string>((): string => {
