@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_noti
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -830,6 +831,50 @@ void main() {
       await tester.pumpAndSettle();
 
       expect((opened, button), (1, 0));
+    });
+
+    testWidgets('a pull down over a list opens Settings with the device\'s smaller slop', (tester) async {
+      var opened = 0;
+      final list = ScrollController();
+      addTearDown(list.dispose);
+
+      await _pump(
+        tester,
+        Builder(
+          // A slop of 8, which the list takes too.
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(gestureSettings: const DeviceGestureSettings(touchSlop: 8)),
+            child: SizedBox(
+              width: 208,
+              height: 300,
+              child: Stack(
+                children: [
+                  ListView(
+                    controller: list,
+                    children: [for (var i = 0; i < 30; i++) SizedBox(height: 40, child: Text('Row $i'))],
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Center(child: DeckPullHandle(label: 'Open settings', onOpen: () => opened++)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final start = tester.getRect(find.byType(DeckPullHandle)).center;
+      final gesture = await tester.startGesture(start);
+      for (var i = 1; i <= 8; i++) {
+        await gesture.moveTo(start + Offset(0, 5.0 * i));
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(opened, 1);
     });
 
     testWidgets('an upward drag from it scrolls the page under it', (tester) async {

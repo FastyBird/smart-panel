@@ -444,6 +444,11 @@ class _DeckPullHandleState extends State<DeckPullHandle> {
                         // The pull counts from the touch, including the
                         // movement that won the arena.
                         ..dragStartBehavior = DragStartBehavior.down
+                        // The device's slop, like the page's scrollables, so
+                        // a pull is not lost to them on a smaller slop.
+                        ..gestureSettings = MediaQuery.maybeGestureSettingsOf(
+                          context,
+                        )
                         ..onStart = _start
                         ..onUpdate = _update,
                     ),
