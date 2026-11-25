@@ -106,6 +106,9 @@ List<DeckNavTabData> buildAllPagesEntries(
 ///
 /// Tapping a page closes the sheet and calls [onNavigateToIndex]; tapping
 /// Settings closes it and calls [onOpenSettings], which also shows the entry.
+///
+/// The grid follows the deck while it is open, so a tile always opens the
+/// page it names, even after a reorder.
 Future<void> showMoreSheet(
   BuildContext context, {
   required int currentIndex,
@@ -114,10 +117,6 @@ Future<void> showMoreSheet(
 }) {
   final localizations = AppLocalizations.of(context)!;
   final screen = locator<ScreenService>();
-  final entries = buildAllPagesEntries(
-    context.read<DeckService>().items,
-    localizations,
-  );
 
   return showBottomSheetDialog(
     context,
@@ -131,7 +130,10 @@ Future<void> showMoreSheet(
           ),
         ),
         child: DeckAllPagesGrid(
-          entries: entries,
+          entries: buildAllPagesEntries(
+            sheetContext.watch<DeckService>().items,
+            localizations,
+          ),
           currentIndex: currentIndex,
           onSelect: (index) {
             Navigator.of(sheetContext).pop();
@@ -222,7 +224,8 @@ class DeckAllPagesGrid extends StatelessWidget {
         final minWidth = AppSpacings.scale(
           AllPagesMetrics.tileMinWidthFor(resolvedClass, square: square),
         );
-        final columns = constraints.hasBoundedWidth
+        final bounded = constraints.hasBoundedWidth;
+        final columns = bounded
             ? ((constraints.maxWidth + gap) / (minWidth + gap)).floor().clamp(
                 AllPagesMetrics.minColumns,
                 1 << 20,
@@ -238,9 +241,20 @@ class DeckAllPagesGrid extends StatelessWidget {
                 spacing: gap,
                 children: [
                   for (var i = start; i < start + columns; i++)
-                    Expanded(
-                      child: i < tiles.length ? tiles[i] : const SizedBox(),
-                    ),
+                    // Unbounded (in a sideways scroll, say), tiles keep their
+                    // narrowest width instead of sharing the row.
+                    bounded
+                        ? Expanded(
+                            child: i < tiles.length
+                                ? tiles[i]
+                                : const SizedBox(),
+                          )
+                        : SizedBox(
+                            width: minWidth,
+                            child: i < tiles.length
+                                ? tiles[i]
+                                : const SizedBox(),
+                          ),
                 ],
               ),
           ],

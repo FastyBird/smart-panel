@@ -43,7 +43,13 @@ class _FakeDeckService extends ChangeNotifier implements DeckService {
   _FakeDeckService(this.items);
 
   @override
-  final List<DeckItem> items;
+  List<DeckItem> items;
+
+  /// The deck changing under the navigation (a reorder, say).
+  void replace(List<DeckItem> next) {
+    items = next;
+    notifyListeners();
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -113,6 +119,17 @@ Future<void> _pump(
 
 Finder _tab(String label) => find.byWidgetPredicate((widget) => widget is DeckNavTab && widget.label == label);
 
+/// Whether the tab lies wholly inside the scroll area of [of].
+bool _inView(WidgetTester tester, String label, Finder of) {
+  final view = tester.getRect(find.descendant(of: of, matching: find.byType(Scrollable)));
+  final tab = tester.getRect(_tab(label));
+
+  return tab.left >= view.left - 0.5 &&
+      tab.right <= view.right + 0.5 &&
+      tab.top >= view.top - 0.5 &&
+      tab.bottom <= view.bottom + 0.5;
+}
+
 /// The tab's fill.
 Color? _fill(WidgetTester tester, String label) =>
     tester.widget<Material>(find.descendant(of: _tab(label), matching: find.byType(Material)).first).color;
@@ -149,9 +166,10 @@ DeckDock _dock({
   ValueChanged<int>? onNavigate,
   VoidCallback? onMore,
   VoidCallback? onSettings,
+  List<DeckNavTabData> tabs = _tabs,
 }) => DeckDock(
   homeTab: _home,
-  tabs: _tabs,
+  tabs: tabs,
   currentIndex: current,
   onNavigateToIndex: onNavigate ?? (_) {},
   onMoreTapped: onMore ?? () {},
@@ -326,6 +344,23 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('keeps the current tab in view when All pages appears and narrows the tabs', (tester) async {
+      // 260 wide: the tabs scroll in 157, Energy (the last) is at the end.
+      Widget bar(List<DeckNavTabData> tabs) => SizedBox(
+        width: 260,
+        child: _bar(current: 5, sizeClass: ScreenSizeClass.compact, onSettings: () {}, tabs: tabs),
+      );
+      final pagesOnly = _tabs.where((tab) => !tab.isMore).toList();
+
+      await _pump(tester, bar(pagesOnly));
+      expect(_inView(tester, 'Energy', find.byType(DeckBar)), isTrue);
+
+      // The first dashboard: All pages takes 40 from the tabs' area.
+      await tester.pumpWidget(_app(bar(_tabs)));
+      await tester.pumpAndSettle();
+      expect(_inView(tester, 'Energy', find.byType(DeckBar)), isTrue);
+    });
+
     testWidgets('keeping the current tab in view scrolls only the bar', (tester) async {
       final outer = ScrollController(initialScrollOffset: 40);
       addTearDown(outer.dispose);
@@ -447,6 +482,23 @@ void main() {
       expect(tester.takeException(), isNull);
       final inner = tester.state<ScrollableState>(find.descendant(of: find.byType(DeckDock), matching: find.byType(Scrollable)));
       expect(inner.position.maxScrollExtent, greaterThan(0));
+      // And the current tab is scrolled into view.
+      expect(_inView(tester, 'Energy', find.byType(DeckDock)), isTrue);
+    });
+
+    testWidgets('keeps the current tab in view when All pages appears and shortens the tabs', (tester) async {
+      Widget dock(List<DeckNavTabData> tabs) => SizedBox(
+        height: 240,
+        child: _dock(current: 5, sizeClass: ScreenSizeClass.compact, onSettings: () {}, tabs: tabs),
+      );
+      final pagesOnly = _tabs.where((tab) => !tab.isMore).toList();
+
+      await _pump(tester, dock(pagesOnly));
+      expect(_inView(tester, 'Energy', find.byType(DeckDock)), isTrue);
+
+      await tester.pumpWidget(_app(dock(_tabs)));
+      await tester.pumpAndSettle();
+      expect(_inView(tester, 'Energy', find.byType(DeckDock)), isTrue);
     });
   });
 
@@ -558,6 +610,48 @@ void main() {
       expect(find.byType(BottomSheetDialog), findsNothing);
     });
 
+    testWidgets('the sheet follows the deck: a tile opens the page it names after a reorder', (tester) async {
+      final pages = <int>[];
+      await _pump(
+        tester,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showMoreSheet(context, currentIndex: 0, onNavigateToIndex: pages.add),
+            child: const Text('open'),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      // Shading moves from 3 to 2.
+      final deck = tester.element(find.text('open')).read<DeckService>() as _FakeDeckService;
+      deck.replace([_items[0], _items[4], _items[3], _items[2], _items[1]]);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(DomainType.shading.label));
+      await tester.pumpAndSettle();
+      expect(pages, [2]);
+    });
+
+    testWidgets('an unbounded width (a sideways scroll) gives each tile its narrowest width', (tester) async {
+      await _pump(
+        tester,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DeckAllPagesGrid(
+            entries: entries,
+            currentIndex: 0,
+            onSelect: (_) {},
+            sizeClass: ScreenSizeClass.compact,
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(tile('Home')).width, AllPagesMetrics.tileMinWidthFor(ScreenSizeClass.compact));
+    });
+
     test('the entries follow the deck, one per item', () {
       final localizations = lookupAppLocalizations(const Locale('en'));
       final entries = buildAllPagesEntries(_items, localizations);
@@ -593,6 +687,32 @@ void main() {
       await tester.tap(_tab('Settings').first);
       await tester.tap(_tab('Settings').last);
       expect(settings, 2);
+    });
+
+    testWidgets('All pages shows without dashboards, so its Settings entry stays reachable', (tester) async {
+      var more = 0;
+      await _pump(
+        tester,
+        SizedBox(
+          width: 640,
+          height: 400,
+          child: Column(
+            children: [
+              Expanded(
+                child: DeckSideDock(currentIndex: 0, onNavigateToIndex: (_) {}, onMoreTapped: () => more++),
+              ),
+              DeckBottomNavBar(currentIndex: 0, onNavigateToIndex: (_) {}, onMoreTapped: () => more++),
+            ],
+          ),
+        ),
+      );
+
+      // _items has no dashboard pages.
+      expect(_tab('All pages'), findsNWidgets(2));
+      expect(tester.widget<DeckNavTab>(_tab('All pages').first).badgeCount, 0);
+      await tester.tap(_tab('All pages').first);
+      await tester.tap(_tab('All pages').last);
+      expect(more, 2);
     });
 
     testWidgets('the bar shows the mode button a domain registers', (tester) async {
@@ -696,6 +816,59 @@ void main() {
       // A pull opens Settings and does not also press the button.
       await pull(const Offset(0, 80));
       expect((opened, button), (1, 1));
+    });
+
+    testWidgets('one move just past the pull, then release, opens Settings', (tester) async {
+      var button = 0, opened = 0;
+      await _pump(tester, page(onButton: () => button++, onOpen: () => opened++));
+      final start = tester.getRect(find.byType(DeckPullHandle)).center;
+
+      // The move that wins the arena counts toward the pull.
+      final gesture = await tester.startGesture(start);
+      await gesture.moveBy(const Offset(0, 24));
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect((opened, button), (1, 0));
+    });
+
+    testWidgets('an upward drag from it scrolls the page under it', (tester) async {
+      var opened = 0;
+      final list = ScrollController();
+      addTearDown(list.dispose);
+
+      await _pump(
+        tester,
+        SizedBox(
+          width: 208,
+          height: 300,
+          child: Stack(
+            children: [
+              ListView(
+                controller: list,
+                children: [for (var i = 0; i < 30; i++) SizedBox(height: 40, child: Text('Row $i'))],
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Center(child: DeckPullHandle(label: 'Open settings', onOpen: () => opened++)),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final start = tester.getRect(find.byType(DeckPullHandle)).center;
+      final gesture = await tester.startGesture(start);
+      for (var i = 1; i <= 10; i++) {
+        await gesture.moveTo(start - Offset(0, 6.0 * i));
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(list.offset, greaterThan(0));
+      expect(opened, 0);
     });
   });
 

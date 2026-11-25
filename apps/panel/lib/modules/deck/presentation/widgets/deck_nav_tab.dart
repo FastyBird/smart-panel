@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -384,8 +385,9 @@ class _CountBadge extends StatelessWidget {
 ///
 /// It sits over the page without reserving space, so it never takes a tap:
 /// taps in its zone reach the page under it (a header button, say). Only a
-/// pull that starts in the zone is its own. Screen readers get one "Open
-/// settings" button.
+/// pull down that starts in the zone is its own; an upward drag stays with
+/// the page (a list scrolling up). Screen readers get one "Open settings"
+/// button.
 class DeckPullHandle extends StatefulWidget {
   const DeckPullHandle({super.key, required this.label, this.onOpen});
 
@@ -428,12 +430,24 @@ class _DeckPullHandleState extends State<DeckPullHandle> {
       onTap: widget.onOpen,
       excludeSemantics: true,
       // Translucent, over a child that never hits: the page under the zone
-      // still gets every pointer; a tap goes to it, and only a vertical pull
+      // still gets every pointer; a tap goes to it, and only a pull down
       // wins the gesture arena here.
-      child: GestureDetector(
+      child: RawGestureDetector(
         behavior: HitTestBehavior.translucent,
-        onVerticalDragStart: widget.onOpen == null ? null : _start,
-        onVerticalDragUpdate: widget.onOpen == null ? null : _update,
+        gestures: widget.onOpen == null
+            ? const <Type, GestureRecognizerFactory>{}
+            : {
+                _PullDownRecognizer:
+                    GestureRecognizerFactoryWithHandlers<_PullDownRecognizer>(
+                      () => _PullDownRecognizer(debugOwner: this),
+                      (recognizer) => recognizer
+                        // The pull counts from the touch, including the
+                        // movement that won the arena.
+                        ..dragStartBehavior = DragStartBehavior.down
+                        ..onStart = _start
+                        ..onUpdate = _update,
+                    ),
+              },
         child: IgnorePointer(
           child: SizedBox(
             width: AppSpacings.scale(DeckNavMetrics.handleTouchWidth),
@@ -459,4 +473,16 @@ class _DeckPullHandleState extends State<DeckPullHandle> {
       ),
     );
   }
+}
+
+/// A vertical drag that only claims a pull down. An upward drag never passes
+/// its slop, so it stays with whatever is under the handle.
+class _PullDownRecognizer extends VerticalDragGestureRecognizer {
+  _PullDownRecognizer({super.debugOwner});
+
+  @override
+  bool hasSufficientGlobalDistanceToAccept(
+    PointerDeviceKind pointerDeviceKind,
+    double? deviceTouchSlop,
+  ) => globalDistanceMoved > computeHitSlop(pointerDeviceKind, gestureSettings);
 }

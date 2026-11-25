@@ -43,10 +43,15 @@ class DeckNavTabs {
 ///
 /// Both the bottom nav bar (portrait) and side dock (landscape) use
 /// the same logic to turn [DeckService.items] into navigation tabs.
+///
+/// "All pages" is added while there are dashboard pages, its count being how
+/// many. With [alwaysShowAllPages] it is added without them too (no count),
+/// so the sheet and its Settings entry stay reachable.
 DeckNavTabs buildDeckNavTabs({
   required List<DeckItem> items,
   required int currentIndex,
   required AppLocalizations localizations,
+  bool alwaysShowAllPages = false,
 }) {
   DeckNavTabData? homeTab;
   final scrollableTabs = <DeckNavTabData>[];
@@ -82,7 +87,7 @@ DeckNavTabs buildDeckNavTabs({
 
   final dashboardPages = items.whereType<DashboardPageItem>().toList();
 
-  if (dashboardPages.isNotEmpty) {
+  if (dashboardPages.isNotEmpty || alwaysShowAllPages) {
     final isDashboardActive =
         currentIndex < items.length && items[currentIndex] is DashboardPageItem;
     scrollableTabs.add(DeckNavTabData(

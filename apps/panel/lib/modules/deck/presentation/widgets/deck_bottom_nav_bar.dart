@@ -42,6 +42,8 @@ class DeckBottomNavBar extends StatelessWidget {
       items: deckService.items,
       currentIndex: currentIndex,
       localizations: localizations,
+      // The sheet is the way to Settings and to every page.
+      alwaysShowAllPages: onMoreTapped != null,
     );
 
     return DeckBar(
@@ -114,28 +116,35 @@ class DeckBar extends StatefulWidget {
 class _DeckBarState extends State<DeckBar> {
   final GlobalKey _selectedKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
-  bool _lastHadMode = false;
   bool _scrollScheduled = false;
+  double? _viewport;
 
   @override
   void initState() {
     super.initState();
-    _lastHadMode = widget.mode != null;
     _scheduleScrollToSelected();
   }
 
   @override
   void didUpdateWidget(DeckBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    // The mode button changes the width the tabs scroll in.
-    final hasMode = widget.mode != null;
-
-    if (widget.currentIndex != oldWidget.currentIndex ||
-        hasMode != _lastHadMode) {
-      _lastHadMode = hasMode;
+    if (widget.currentIndex != oldWidget.currentIndex) {
       _scheduleScrollToSelected();
     }
+  }
+
+  /// A control appearing (the mode button, "All pages") narrows the tabs'
+  /// scroll area; the current tab is brought back into view then. Only on a
+  /// shrink, so a manual scroll is left alone.
+  bool _onMetrics(ScrollMetricsNotification notification) {
+    if (notification.depth != 0) return false;
+
+    final viewport = notification.metrics.viewportDimension;
+    final shrank = _viewport != null && viewport < _viewport! - 0.5;
+    _viewport = viewport;
+    if (shrank) scrollDeckTabIntoView(_selectedKey, _scrollController);
+
+    return false;
   }
 
   @override
@@ -215,12 +224,15 @@ class _DeckBarState extends State<DeckBar> {
             if (widget.homeTab != null && pageTabs.isNotEmpty)
               const _BarDivider(),
             Expanded(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  spacing: gap,
-                  children: [for (final data in pageTabs) tab(data)],
+              child: NotificationListener<ScrollMetricsNotification>(
+                onNotification: _onMetrics,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    spacing: gap,
+                    children: [for (final data in pageTabs) tab(data)],
+                  ),
                 ),
               ),
             ),

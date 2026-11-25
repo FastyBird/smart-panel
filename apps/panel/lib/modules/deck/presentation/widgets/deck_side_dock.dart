@@ -36,6 +36,8 @@ class DeckSideDock extends StatelessWidget {
       items: deckService.items,
       currentIndex: currentIndex,
       localizations: localizations,
+      // The sheet is the way to Settings and to every page.
+      alwaysShowAllPages: onMoreTapped != null,
     );
 
     return DeckDock(
@@ -94,6 +96,7 @@ class _DeckDockState extends State<DeckDock> {
   final GlobalKey _selectedKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
   bool _scrollScheduled = false;
+  double? _viewport;
 
   @override
   void initState() {
@@ -107,6 +110,20 @@ class _DeckDockState extends State<DeckDock> {
     if (widget.currentIndex != oldWidget.currentIndex) {
       _scheduleScrollToSelected();
     }
+  }
+
+  /// "All pages" appearing (or a shorter screen) shortens the tabs' scroll
+  /// area; the current tab is brought back into view then. Only on a
+  /// shrink, so a manual scroll is left alone.
+  bool _onMetrics(ScrollMetricsNotification notification) {
+    if (notification.depth != 0) return false;
+
+    final viewport = notification.metrics.viewportDimension;
+    final shrank = _viewport != null && viewport < _viewport! - 0.5;
+    _viewport = viewport;
+    if (shrank) scrollDeckTabIntoView(_selectedKey, _scrollController);
+
+    return false;
   }
 
   @override
@@ -189,11 +206,14 @@ class _DeckDockState extends State<DeckDock> {
               if (widget.homeTab != null && pageTabs.isNotEmpty)
                 const _DockDivider(),
               Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Column(
-                    spacing: gap,
-                    children: [for (final data in pageTabs) tab(data)],
+                child: NotificationListener<ScrollMetricsNotification>(
+                  onNotification: _onMetrics,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    child: Column(
+                      spacing: gap,
+                      children: [for (final data in pageTabs) tab(data)],
+                    ),
                   ),
                 ),
               ),
