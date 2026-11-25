@@ -2,7 +2,7 @@
 	<stat-tile
 		icon="mdi:view-dashboard-outline"
 		:label="t('statsModule.headings.dashboard')"
-		:value="String(dashboardModuleSection?.registeredPages.value ?? 0)"
+		:value="dashboardModuleSection ? String(dashboardModuleSection.registeredPages.value) : ''"
 		:last-updated="dashboardModuleSection?.registeredPages.lastUpdated ?? null"
 		:stale="isStale"
 		:loading="props.loading"

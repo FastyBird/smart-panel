@@ -2,7 +2,7 @@
 	<stat-tile
 		icon="mdi:swap-vertical"
 		:label="t('statsModule.headings.devicesCommunication')"
-		:value="format(devicesModuleSection?.updatesToday.value ?? 0, { maximumFractionDigits: 0 })"
+		:value="devicesModuleSection ? format(devicesModuleSection.updatesToday.value, { maximumFractionDigits: 0 }) : ''"
 		:last-updated="devicesModuleSection?.updatesToday.lastUpdated ?? null"
 		:stale="isStale"
 		:loading="props.loading"

@@ -2,7 +2,7 @@
 	<stat-tile
 		icon="mdi:memory"
 		:label="t('statsModule.headings.memory')"
-		:value="`${format((systemInfo?.memory.used ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 })} MB`"
+		:value="systemInfo ? `${format(systemInfo.memory.used / 1024 / 1024, { maximumFractionDigits: 0 })} MB` : ''"
 		:hint="
 			t('statsModule.fields.memory.total.title', {
 				total: format((systemInfo?.memory.total ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }),

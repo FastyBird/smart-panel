@@ -2,7 +2,7 @@
 	<stat-tile
 		icon="mdi:devices"
 		:label="t('statsModule.headings.devices')"
-		:value="format(devicesModuleSection?.onlineNow.value ?? 0, { maximumFractionDigits: 0 })"
+		:value="devicesModuleSection ? format(devicesModuleSection.onlineNow.value, { maximumFractionDigits: 0 }) : ''"
 		:last-updated="devicesModuleSection?.onlineNow.lastUpdated ?? null"
 		:stale="isStale"
 		:loading="props.loading"

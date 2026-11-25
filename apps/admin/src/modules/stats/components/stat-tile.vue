@@ -29,7 +29,7 @@
 			class="text-title truncate"
 			data-test-id="stat-tile-value"
 		>
-			{{ props.value }}
+			{{ props.value === '' ? '—' : props.value }}
 		</span>
 
 		<div

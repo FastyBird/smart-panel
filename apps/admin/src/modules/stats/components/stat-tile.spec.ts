@@ -42,4 +42,13 @@ describe('StatTile', () => {
 		expect(render({ progress: 140 }).findComponent({ name: 'ElProgress' }).props('percentage')).toBe(100);
 		expect(render({ progress: -5 }).findComponent({ name: 'ElProgress' }).props('percentage')).toBe(0);
 	});
+
+	it('shows a skeleton until its figure arrives, and a dash when none came', () => {
+		const loading = render({ value: '', loading: true });
+
+		expect(loading.findComponent({ name: 'ElSkeleton' }).exists()).toBe(true);
+		expect(loading.find('[data-test-id="stat-tile-value"]').exists()).toBe(false);
+
+		expect(render({ value: '', loading: false }).get('[data-test-id="stat-tile-value"]').text()).toBe('—');
+	});
 });

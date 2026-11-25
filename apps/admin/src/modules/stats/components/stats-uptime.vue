@@ -2,7 +2,7 @@
 	<stat-tile
 		icon="mdi:timer-outline"
 		:label="t('statsModule.headings.uptime')"
-		:value="fmtUptime(systemModuleSection?.systemUptimeSec.value)"
+		:value="systemModuleSection ? fmtUptime(systemModuleSection.systemUptimeSec.value) : ''"
 		:hint="t('statsModule.fields.uptime.process.title', { uptime: fmtUptime(systemModuleSection?.processUptimeSec.value) })"
 		:last-updated="systemModuleSection?.systemUptimeSec.lastUpdated ?? null"
 		:stale="isStale"

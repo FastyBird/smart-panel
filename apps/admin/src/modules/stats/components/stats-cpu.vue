@@ -2,7 +2,7 @@
 	<stat-tile
 		icon="mdi:cpu-64-bit"
 		:label="t('statsModule.headings.cpu')"
-		:value="formatPct(systemModuleSection?.cpuLoad1m.value)"
+		:value="systemModuleSection ? formatPct(systemModuleSection.cpuLoad1m.value) : ''"
 		:hint="
 			t('statsModule.fields.cpu.temperature.title', {
 				temperature: systemInfo?.temperature.cpu ?? t('application.value.notAvailable'),
