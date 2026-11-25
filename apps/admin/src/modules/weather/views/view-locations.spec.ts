@@ -13,6 +13,9 @@ import ViewLocations from './view-locations.vue';
 const confirm = vi.fn();
 const remove = vi.fn();
 
+// Template 4: the form opens next to the list from tablet portrait up (drawer), as its own page on phone
+const inDrawer = ref<boolean>(true);
+
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string) => key }),
 }));
@@ -34,8 +37,8 @@ vi.mock('../../../common', () => ({
 	AppBreadcrumbs: { name: 'AppBreadcrumbs', template: '<div />' },
 	ViewHeader: { name: 'ViewHeader', props: ['actions'], template: '<div><slot name="actions" /></div>' },
 	ViewError: { name: 'ViewError', template: '<div><slot /></div>' },
-	EditDrawerLayout: { name: 'EditDrawerLayout', props: ['open'], template: '<div><slot /><slot name="form" /></div>' },
-	provideEditDrawer: () => ({ inDrawer: computed<boolean>(() => true) }),
+	EditDrawerLayout: { name: 'EditDrawerLayout', props: ['open'], template: '<div><slot /><slot v-if="open" name="form" /></div>' },
+	provideEditDrawer: () => ({ inDrawer: computed<boolean>(() => inDrawer.value) }),
 }));
 
 vi.mock('../../config', () => ({
@@ -124,6 +127,7 @@ enableAutoUnmount(afterEach);
 describe('ViewLocations', () => {
 	beforeEach(() => {
 		mountedWith.length = 0;
+		inDrawer.value = true;
 		confirm.mockReset();
 		remove.mockReset();
 	});
@@ -181,5 +185,33 @@ describe('ViewLocations', () => {
 		wrapper.findComponent({ name: 'ListLocations' }).vm.$emit('remove', 'location-a');
 
 		expect(remove).toHaveBeenCalledWith('location-a');
+	});
+
+	it('opens Add as its own page on phone and goes back to the list from there', async () => {
+		inDrawer.value = false;
+
+		const { wrapper, router } = await mountAt('/weather/locations');
+
+		expect(wrapper.findComponent({ name: 'ListLocations' }).exists()).toBe(true);
+		expect(wrapper.findComponent(RoutedForm).exists()).toBe(false);
+
+		// The phone app bar's Add
+		const add = (wrapper.findComponent({ name: 'ViewHeader' }).props('actions') as { icon: string; handler: () => void }[]).find(
+			(action) => action.icon === 'mdi:plus'
+		);
+
+		add?.handler();
+		await flushPromises();
+
+		expect(router.currentRoute.value.name).toBe(RouteNames.WEATHER_LOCATION_ADD);
+		// The form replaces the list instead of opening next to it
+		expect(wrapper.findComponent({ name: 'ListLocations' }).exists()).toBe(false);
+		expect(wrapper.findComponent(RoutedForm).exists()).toBe(true);
+
+		// Pushed, not replaced: Back returns to the list
+		router.back();
+		await flushPromises();
+
+		expect(router.currentRoute.value.name).toBe(RouteNames.WEATHER_LOCATIONS);
 	});
 });
