@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/room_overview_metrics.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/services/room_overview_model_builder.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// One domain card on the room overview (docs/display-ui-design-spec.md
 /// §4, §9). It shows the domain's state, never a domain mode name; tapping
@@ -163,35 +164,74 @@ class _CardHead extends StatelessWidget {
       ),
     );
 
+    final number = Text.rich(
+      TextSpan(
+        text: card.primaryValue,
+        children: [
+          if (card.unit != null)
+            TextSpan(
+              text: card.unit,
+              style: TextStyle(
+                color: neutrals.textSecondary,
+                fontSize: valueSize * RoomOverviewMetrics.unitShare,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+        ],
+      ),
+      maxLines: 1,
+      softWrap: false,
+      style: TextStyle(
+        color: neutrals.textPrimary,
+        fontFamily: AppNumeralFont.family,
+        fontSize: valueSize,
+        fontWeight: AppNumeralFont.value,
+        height: 1,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+    );
+
+    // The target sits under the value: "→ 22°".
+    final target = card.target;
+    final targetSize = AppSpacings.scale(RoomOverviewMetrics.targetFont);
+
     final valueText = FittedBox(
       fit: BoxFit.scaleDown,
       alignment: small ? Alignment.center : AlignmentDirectional.centerEnd,
-      child: Text.rich(
-        TextSpan(
-          text: card.primaryValue,
-          children: [
-            if (card.unit != null)
-              TextSpan(
-                text: card.unit,
-                style: TextStyle(
-                  color: neutrals.textSecondary,
-                  fontSize: valueSize * RoomOverviewMetrics.unitShare,
-                  fontWeight: FontWeight.w400,
+      child: target == null
+          ? number
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: small
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.end,
+              spacing: AppSpacings.scale(RoomOverviewMetrics.targetGap),
+              children: [
+                number,
+                Row(
+                  key: const ValueKey('room-card-target'),
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: AppSpacings.scale(2),
+                  children: [
+                    Icon(
+                      MdiIcons.arrowRight,
+                      size: targetSize,
+                      color: neutrals.textSecondary,
+                    ),
+                    Text(
+                      target,
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: neutrals.textSecondary,
+                        fontSize: targetSize,
+                        fontWeight: FontWeight.w500,
+                        height: 1,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-          ],
-        ),
-        maxLines: 1,
-        softWrap: false,
-        style: TextStyle(
-          color: neutrals.textPrimary,
-          fontFamily: AppNumeralFont.family,
-          fontSize: valueSize,
-          fontWeight: AppNumeralFont.value,
-          height: 1,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
-      ),
+              ],
+            ),
     );
 
     final Widget content;
@@ -207,55 +247,67 @@ class _CardHead extends StatelessWidget {
         ],
       );
     } else {
-      content = Row(
-        spacing: AppSpacings.scale(RoomOverviewMetrics.headGapFor(sizeClass)),
-        children: [
-          chip,
-          if (showTitle)
-            Expanded(
-              flex: 3,
-              // A large text size clips the lines rather than overflow a
-              // short card.
-              child: ClipRect(
-                child: OverflowBox(
-                  maxHeight: double.infinity,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: AppSpacings.scale(1),
-                    children: [
-                      Text(
-                        card.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: neutrals.textPrimary,
-                          fontSize: AppSpacings.scale(
-                            RoomOverviewMetrics.titleFor(sizeClass),
-                          ),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (card.subtitle.isNotEmpty)
+      // The value keeps its natural width, up to a share of the row; the
+      // title and state line take the rest.
+      content = LayoutBuilder(
+        builder: (context, constraints) => Row(
+          spacing: AppSpacings.scale(RoomOverviewMetrics.headGapFor(sizeClass)),
+          children: [
+            chip,
+            if (showTitle)
+              Expanded(
+                // A large text size clips the lines rather than overflow a
+                // short card.
+                child: ClipRect(
+                  child: OverflowBox(
+                    maxHeight: double.infinity,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: AppSpacings.scale(1),
+                      children: [
                         Text(
-                          card.subtitle,
+                          card.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: neutrals.textSecondary,
+                            color: neutrals.textPrimary,
                             fontSize: AppSpacings.scale(
-                              RoomOverviewMetrics.stateFor(sizeClass),
+                              RoomOverviewMetrics.titleFor(sizeClass),
                             ),
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                    ],
+                        if (card.subtitle.isNotEmpty)
+                          Text(
+                            card.subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: neutrals.textSecondary,
+                              fontSize: AppSpacings.scale(
+                                RoomOverviewMetrics.stateFor(sizeClass),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          Expanded(flex: 2, child: valueText),
-        ],
+            if (showTitle)
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth:
+                      constraints.maxWidth * RoomOverviewMetrics.valueMaxShare,
+                ),
+                child: valueText,
+              )
+            else
+              Expanded(child: valueText),
+          ],
+        ),
       );
     }
 
@@ -263,7 +315,9 @@ class _CardHead extends StatelessWidget {
       container: true,
       button: true,
       label: localizations.room_card_open(card.title, value),
-      value: showTitle ? card.subtitle : null,
+      // The state line, read even where it is not drawn.
+      value:
+          card.spokenSubtitle ?? (card.subtitle.isEmpty ? null : card.subtitle),
       onTap: onOpen,
       excludeSemantics: true,
       child: Material(

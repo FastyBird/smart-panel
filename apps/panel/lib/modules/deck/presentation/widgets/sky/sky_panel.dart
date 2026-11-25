@@ -8,7 +8,11 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_backdrop.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_look.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system.dart';
+import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +47,11 @@ class SkyPanelMetrics {
 
   /// The clock's line height.
   static const double clockLineHeight = 0.86;
+
+  /// A 12-hour clock's AM/PM: Roboto 500 at 24 % of the clock, at least the
+  /// caption size, 4 after the time.
+  static const double meridiemShare = 0.24;
+  static const double meridiemMin = 10;
 
   /// The date: 10 / 12 / 14.
   static double dateFor(ScreenSizeClass sizeClass) => switch (sizeClass) {
@@ -126,6 +135,7 @@ class SkyPanelView extends StatelessWidget {
     super.key,
     required this.look,
     required this.time,
+    this.meridiem,
     required this.date,
     this.weather,
     this.readings,
@@ -137,8 +147,9 @@ class SkyPanelView extends StatelessWidget {
 
   final SkyLook look;
 
-  /// "12:11".
+  /// "12:11", or "12:11" with [meridiem] "PM" on a 12-hour clock.
   final String time;
+  final String? meridiem;
 
   /// "Saturday 21 November", "Sat 21 Nov" on Compact.
   final String date;
@@ -186,6 +197,7 @@ class SkyPanelView extends StatelessWidget {
               builder: (context, constraints) {
                 final clock = _Clock(
                   time: time,
+                  meridiem: meridiem,
                   date: date,
                   color: look.text,
                   size: _clockSize(resolvedClass, constraints, padding),
@@ -274,6 +286,7 @@ class SkyPanelView extends StatelessWidget {
 class _Clock extends StatelessWidget {
   const _Clock({
     required this.time,
+    required this.meridiem,
     required this.date,
     required this.color,
     required this.size,
@@ -281,6 +294,7 @@ class _Clock extends StatelessWidget {
   });
 
   final String time;
+  final String? meridiem;
   final String date;
   final Color color;
   final double size;
@@ -297,8 +311,25 @@ class _Clock extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: Text(
-            time,
+          child: Text.rich(
+            TextSpan(
+              text: time,
+              children: [
+                if (meridiem != null)
+                  TextSpan(
+                    // After the time, in the text face.
+                    text: ' $meridiem',
+                    style: TextStyle(
+                      fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+                      fontSize: math.max(
+                        AppSpacings.scale(SkyPanelMetrics.meridiemMin),
+                        size * SkyPanelMetrics.meridiemShare,
+                      ),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
             maxLines: 1,
             softWrap: false,
             style: TextStyle(
@@ -491,6 +522,7 @@ class SkyPanel extends StatefulWidget {
 class _SkyPanelState extends State<SkyPanel> {
   WeatherService? _weatherService;
   DisplayRepository? _displayRepository;
+  ModuleConfigRepository<SystemConfigModel>? _systemConfig;
   Timer? _clockTimer;
   DateTime _now = DateTime.now();
 
@@ -506,6 +538,18 @@ class _SkyPanelState extends State<SkyPanel> {
       _displayRepository = locator<DisplayRepository>()..addListener(_changed);
     }
 
+    // The time format chosen in Settings › Language.
+    if (locator.isRegistered<ConfigModuleService>()) {
+      try {
+        _systemConfig =
+            locator<ConfigModuleService>()
+                .getModuleRepository<SystemConfigModel>('system-module')
+              ..addListener(_changed);
+      } catch (_) {
+        // The system configuration is not loaded yet.
+      }
+    }
+
     _scheduleTick();
   }
 
@@ -513,6 +557,7 @@ class _SkyPanelState extends State<SkyPanel> {
   void dispose() {
     _weatherService?.removeListener(_changed);
     _displayRepository?.removeListener(_changed);
+    _systemConfig?.removeListener(_changed);
     _clockTimer?.cancel();
     super.dispose();
   }
@@ -568,9 +613,16 @@ class _SkyPanelState extends State<SkyPanel> {
             icon: skyWeatherIcon(condition, part),
           );
 
+    final (time, meridiem) = skyClock(
+      _now,
+      locale: locale,
+      twelveHour: _systemConfig?.data?.timeFormat == TimeFormat.twelveHour,
+    );
+
     return SkyPanelView(
       look: SkyLook.of(part, condition),
-      time: DateFormat('HH:mm', locale).format(_now),
+      time: time,
+      meridiem: meridiem,
       date: DateFormat(
         sizeClass == ScreenSizeClass.compact ? 'EEE d MMM' : 'EEEE d MMMM',
         locale,
@@ -584,6 +636,19 @@ class _SkyPanelState extends State<SkyPanel> {
     );
   }
 }
+
+/// The clock's time and, on a 12-hour clock, its AM/PM: ("21:47", null) or
+/// ("9:47", "PM").
+(String, String?) skyClock(
+  DateTime now, {
+  required String locale,
+  bool twelveHour = false,
+}) => twelveHour
+    ? (
+        DateFormat('h:mm', locale).format(now),
+        DateFormat('a', locale).format(now),
+      )
+    : (DateFormat('HH:mm', locale).format(now), null);
 
 /// A whole-degree temperature with a true minus sign: "6°", "−2°".
 String skyTemperature(double value) {

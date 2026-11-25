@@ -84,7 +84,14 @@ class RoomOverviewMetrics {
 
   /// The value: 18 / 22 / 28; its unit at 60 %.
   static double valueFor(ScreenSizeClass c) => _byClass(c, 18, 22, 28);
+
+  /// Beside a title the value takes at most this share of the head.
+  static const double valueMaxShare = 0.45;
   static const double unitShare = 0.6;
+
+  /// The target under the value: 10, the caption floor.
+  static const double targetFont = 10;
+  static const double targetGap = 2;
 
   /// The title and the state line (Regular and up).
   static double titleFor(ScreenSizeClass c) => _byClass(c, 12, 12, 14);

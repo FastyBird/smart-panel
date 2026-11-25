@@ -367,47 +367,50 @@ void main() {
         },
       );
 
-      test('lights show their brightness even while a lighting mode is active', () {
-        final model = buildRoomOverviewModel(
-          RoomOverviewBuildInput(
-            display: createDisplay(),
-            room: createRoom(),
-            deviceCategories: [
-              DevicesModuleDeviceCategory.lighting,
-              DevicesModuleDeviceCategory.lighting,
-            ],
-            lightingState: LightingStateModel.fromJson({
-              'has_lights': true,
-              'detected_mode': 'relax',
-              'mode_confidence': 'exact',
-              'is_mode_from_intent': true,
-              'total_lights': 4,
-              'lights_on': 3,
-              'average_brightness': 50.4,
-            }, spaceId: _roomUuid),
-            scenes: [],
-            now: DateTime(2024, 6, 15, 12, 0),
-            localizations: _l,
-          ),
-        );
-        final card = model.domainCards.firstWhere(
-          (c) => c.domain == DomainType.lights,
-        );
+      test(
+        'lights show their brightness even while a lighting mode is active',
+        () {
+          final model = buildRoomOverviewModel(
+            RoomOverviewBuildInput(
+              display: createDisplay(),
+              room: createRoom(),
+              deviceCategories: [
+                DevicesModuleDeviceCategory.lighting,
+                DevicesModuleDeviceCategory.lighting,
+              ],
+              lightingState: LightingStateModel.fromJson({
+                'has_lights': true,
+                'detected_mode': 'relax',
+                'mode_confidence': 'exact',
+                'is_mode_from_intent': true,
+                'total_lights': 4,
+                'lights_on': 3,
+                'average_brightness': 50.4,
+              }, spaceId: _roomUuid),
+              scenes: [],
+              now: DateTime(2024, 6, 15, 12, 0),
+              localizations: _l,
+            ),
+          );
+          final card = model.domainCards.firstWhere(
+            (c) => c.domain == DomainType.lights,
+          );
 
-        // Cards show state, never a domain mode name (spec §9).
-        expect(card.primaryValue, '50');
-        expect(card.unit, ' %');
-        expect(card.primaryValue, isNot(_l.space_lighting_mode_relax));
-        expect(card.subtitle, _l.room_overview_lights_active(3, 4));
-        expect(card.actions.map((a) => a.label), ['Off', '50%', '100%']);
-        expect(card.actions.map((a) => a.selected), [false, true, false]);
-        // A narrow card keeps Off and On.
-        expect(card.compactActions.map((a) => a.type), [
-          QuickActionType.lightsOff,
-          QuickActionType.lightsOn,
-        ]);
-        expect(card.compactActions.last.selected, isTrue);
-      });
+          // Cards show state, never a domain mode name (spec §9).
+          expect(card.primaryValue, '50');
+          expect(card.unit, ' %');
+          expect(card.primaryValue, isNot(_l.space_lighting_mode_relax));
+          expect(card.subtitle, _l.room_overview_lights_active(3, 4));
+          expect(card.actions.map((a) => a.label), ['Off', '50%', '100%']);
+          expect(card.actions.map((a) => a.selected), [false, true, false]);
+          // A narrow card keeps Off and On.
+          expect(card.compactActions.map((a) => a.type), [
+            QuickActionType.lightsOff,
+            QuickActionType.lightsOn,
+          ]);
+          expect(card.compactActions.last.selected, isTrue);
+        },
+      );
 
       test('shading shows its position, never a covers mode', () {
         final model = buildRoomOverviewModel(
@@ -468,7 +471,11 @@ void main() {
 
         expect(card.primaryValue, '21.5');
         expect(card.unit, '\u00B0');
-        expect(card.subtitle, _l.thermostat_state_heating_to('22.0\u00B0C'));
+        // The state line says what it does; the target sits under the value
+        // and screen readers hear both.
+        expect(card.subtitle, _l.thermostat_state_heating);
+        expect(card.target, '22\u00B0');
+        expect(card.spokenSubtitle, _l.thermostat_state_heating_to('22\u00B0'));
         expect(card.actions.first.label, _l.thermostat_mode_heat);
         expect(card.actions.first.selected, isTrue);
         expect(card.compactActions.map((a) => a.type), [

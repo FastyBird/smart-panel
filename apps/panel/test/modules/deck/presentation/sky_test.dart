@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 double _contrast(Color a, Color b) {
@@ -64,6 +65,7 @@ void main() {
     locator.registerSingleton<VisualDensityService>(
       VisualDensityService(pixelRatio: 2),
     );
+    await initializeDateFormatting('en');
   });
 
   tearDownAll(() async {
@@ -215,6 +217,16 @@ void main() {
       expect(skyDayPartAt(DateTime(2026, 1, 1, 23)), SkyDayPart.night);
     });
 
+    test('the clock follows the 12- or 24-hour setting', () {
+      final evening = DateTime(2026, 11, 21, 21, 47);
+      expect(skyClock(evening, locale: 'en'), ('21:47', null));
+      expect(skyClock(evening, locale: 'en', twelveHour: true), ('9:47', 'PM'));
+      expect(
+        skyClock(DateTime(2026, 11, 21, 0, 5), locale: 'en', twelveHour: true),
+        ('12:05', 'AM'),
+      );
+    });
+
     test('temperatures are whole degrees with a true minus sign', () {
       expect(skyTemperature(6.4), '6°');
       expect(skyTemperature(-2.2), '−2°');
@@ -304,6 +316,39 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+
+    testWidgets('a 12-hour clock adds AM/PM at 24 % of the clock', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SizedBox(
+            width: 300,
+            height: 540,
+            child: SkyPanelView(
+              look: SkyLook.of(SkyDayPart.night, SkyWeather.clear),
+              time: '9:47',
+              meridiem: 'PM',
+              date: 'Saturday 21 November',
+              landscape: true,
+              sizeClass: ScreenSizeClass.regular,
+            ),
+          ),
+        ),
+      );
+
+      final clock = tester.widget<Text>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              widget.textSpan?.toPlainText().startsWith('9:47') == true,
+        ),
+      );
+      final mark = (clock.textSpan! as TextSpan).children!.single as TextSpan;
+      expect(mark.text, ' PM');
+      expect(mark.style!.fontSize, 72 * 0.24);
+      expect(clock.style!.fontSize, 72);
+    });
 
     testWidgets('in portrait the clock fits beside the weather card', (
       tester,

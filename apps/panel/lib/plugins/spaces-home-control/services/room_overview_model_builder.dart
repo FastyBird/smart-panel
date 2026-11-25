@@ -191,7 +191,9 @@ class QuickActionInfo {
 /// §4, §9): the domain's state, never a domain mode name.
 ///
 /// - [primaryValue] and [unit]: "50" " %", "21.5" "°", "Off", "Watch".
-/// - [subtitle]: the state line, "3 of 4 active", "Heating to 22.0 °C".
+/// - [subtitle]: the state line, "3 of 4 active", "Heating"; screen readers
+///   hear [spokenSubtitle] instead when there is one ("Heating to 22°").
+/// - [target]: "22°", shown under the value.
 /// - [actions]: three quick actions; [compactActions] the two a narrow card
 ///   keeps.
 class DomainCardInfo {
@@ -200,7 +202,9 @@ class DomainCardInfo {
   final String title;
   final String primaryValue;
   final String? unit;
+  final String? target;
   final String subtitle;
+  final String? spokenSubtitle;
   final List<SubtitleItem> subtitleItems;
   final List<QuickActionInfo> actions;
   final List<QuickActionInfo> compactActions;
@@ -212,7 +216,9 @@ class DomainCardInfo {
     required this.title,
     required this.primaryValue,
     this.unit,
+    this.target,
     required this.subtitle,
+    this.spokenSubtitle,
     this.subtitleItems = const [],
     this.actions = const [],
     this.compactActions = const [],
@@ -233,7 +239,9 @@ class DomainCardInfo {
     title: title,
     primaryValue: primaryValue ?? this.primaryValue,
     unit: clearUnit ? null : unit ?? this.unit,
+    target: target,
     subtitle: subtitle,
+    spokenSubtitle: spokenSubtitle,
     subtitleItems: subtitleItems,
     actions: actions ?? this.actions,
     compactActions: compactActions ?? this.compactActions,
@@ -628,8 +636,13 @@ DomainCardInfo _buildClimateCard(
     decimalPlaces: 1,
   );
 
-  String withSymbol(double value) =>
-      '${format(value)}${UnitConverter.temperatureSymbol(tempUnit)}';
+  // A target in the card's short form: "22°", "22.5°".
+  String degrees(double value) {
+    final converted = UnitConverter.convertTemperature(value, tempUnit);
+    final whole = (converted * 10).round() % 10 == 0;
+
+    return '${NumberUtils.formatDecimal(converted, decimalPlaces: whole ? 0 : 1)}\u00B0';
+  }
 
   // The value is the room's temperature now; the state line says what the
   // climate is doing about it.
@@ -657,10 +670,6 @@ DomainCardInfo _buildClimateCard(
     subtitle = l.room_overview_device_count(count);
   } else if (cs.isOff) {
     subtitle = l.thermostat_state_off;
-  } else if (cs.isHeating && target != null) {
-    subtitle = l.thermostat_state_heating_to(withSymbol(target));
-  } else if (cs.isCooling && target != null) {
-    subtitle = l.thermostat_state_cooling_to(withSymbol(target));
   } else if (cs.isHeating) {
     subtitle = l.thermostat_state_heating;
   } else if (cs.isCooling) {
@@ -714,7 +723,22 @@ DomainCardInfo _buildClimateCard(
     title: domain.localizedLabel(l),
     primaryValue: primaryValue,
     unit: unit,
+    // The target sits under the value on every card; screen readers hear
+    // it with the state: "Heating to 22°".
+    target:
+        target != null &&
+            cs?.isOff != true &&
+            contribution?.isUnavailable != true
+        ? degrees(target)
+        : null,
     subtitle: subtitle,
+    spokenSubtitle: target == null || cs == null
+        ? null
+        : cs.isHeating
+        ? l.thermostat_state_heating_to(degrees(target))
+        : cs.isCooling
+        ? l.thermostat_state_cooling_to(degrees(target))
+        : null,
     actions: [
       QuickActionInfo(
         type: QuickActionType.climateMode,

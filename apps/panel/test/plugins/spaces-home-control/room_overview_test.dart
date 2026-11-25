@@ -567,6 +567,69 @@ void main() {
     });
   });
 
+  group('climate target', () {
+    DomainCardInfo climate() => DomainCardInfo(
+      domain: DomainType.climate,
+      icon: DomainType.climate.icon,
+      title: 'Climate',
+      primaryValue: '21.5',
+      unit: '°',
+      target: '22°',
+      subtitle: 'Heating',
+      spokenSubtitle: 'Heating to 22°',
+    );
+
+    for (final (sizeClass, square) in [
+      (ScreenSizeClass.compact, false),
+      (ScreenSizeClass.compact, true),
+      (ScreenSizeClass.regular, false),
+    ]) {
+      testWidgets(
+        'on ${sizeClass.name}${square ? ' square' : ''} the target sits under the value',
+        (tester) async {
+          final handle = tester.ensureSemantics();
+          await _pump(
+            tester,
+            Column(
+              children: [
+                SizedBox(
+                  width: 164,
+                  height: 101,
+                  child: RoomDomainCard(
+                    card: climate(),
+                    small: square,
+                    onOpen: () {},
+                    sizeClass: sizeClass,
+                  ),
+                ),
+              ],
+            ),
+            size: const Size(240, 200),
+          );
+
+          expect(tester.takeException(), isNull);
+          expect(
+            find.byKey(const ValueKey('room-card-target')),
+            findsOneWidget,
+          );
+          expect(find.text('22°'), findsOneWidget);
+          // The state line fits: no "Heating to …".
+          expect(
+            find.text('Heating'),
+            sizeClass == ScreenSizeClass.regular
+                ? findsOneWidget
+                : findsNothing,
+          );
+          final node = tester.getSemantics(
+            find.bySemanticsLabel(RegExp('^Climate, 21.5°')),
+          );
+          expect(node.value, 'Heating to 22°');
+          handle.dispose();
+        },
+      );
+    }
+  });
+
   group('states', () {
     testWidgets('one domain is one card at its own height', (tester) async {
       await _pump(
