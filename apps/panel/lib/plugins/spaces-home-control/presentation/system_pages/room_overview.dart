@@ -681,8 +681,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     if (spacesService == null) return;
 
     final l = AppLocalizations.of(context)!;
+    // A mode still on its way is the current one, so the picker shows it
+    // and choosing the cached mode again reverses it.
+    final pending = _optimistic[DomainType.climate];
     final current =
-        spacesService.getClimateState(_roomId)?.mode ?? ClimateMode.off;
+        (pending != null && !pending.isExpired ? pending.climateMode : null) ??
+        spacesService.getClimateState(_roomId)?.mode ??
+        ClimateMode.off;
 
     final mode = await showAppSelectionDialog<ClimateMode>(
       context: context,

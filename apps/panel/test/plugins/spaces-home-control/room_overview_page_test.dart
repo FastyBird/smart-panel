@@ -510,5 +510,26 @@ void main() {
         },
       );
     });
+
+    group('review round 7', () {
+      testWidgets('reopening the picker can reverse a pending mode', (
+        tester,
+      ) async {
+        await pumpPage(tester, const Size(800, 480));
+
+        await chooseMode(tester, 'Cool');
+        await tester.tap(
+          find.descendant(of: _climate(), matching: find.text('Cool')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Heat').last);
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(spaces.sent, ['mode cool room', 'mode heat room']);
+        final card = tester.widget<RoomDomainCard>(_climate()).card;
+        expect(card.actions.first.label, 'Heat');
+        await finish(tester);
+      });
+    });
   });
 }
