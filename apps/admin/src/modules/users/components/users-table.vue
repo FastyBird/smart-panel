@@ -107,8 +107,9 @@
 			</template>
 		</el-table-column>
 
+		<!-- Wide enough for Edit and More side by side at the touch size (40 px each, spec section 6) -->
 		<el-table-column
-			:width="96"
+			:width="112"
 			align="right"
 			fixed="right"
 		>

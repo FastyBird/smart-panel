@@ -1,4 +1,4 @@
-import { type ComponentPublicInstance } from 'vue';
+import { type ComponentPublicInstance, type Ref } from 'vue';
 
 import { ElButton, ElTable, ElTableColumn } from 'element-plus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -21,13 +21,20 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+const mocks = vi.hoisted(() => ({
+	isTabletPortrait: null as unknown as Ref<boolean>,
+}));
+
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
+	const { ref } = await import('vue');
+
+	// Tablet landscape and up unless a test picks tablet portrait
+	mocks.isTabletPortrait = ref(false);
 
 	return {
 		...actual,
-		// Every column shows, as from tablet landscape up
-		useSizeClass: () => ({ isTabletPortrait: { value: false } }),
+		useSizeClass: () => ({ isTabletPortrait: mocks.isTabletPortrait }),
 	};
 });
 
@@ -175,6 +182,31 @@ describe('UsersTable', (): void => {
 	// The backend refuses both of these, so offering them for selection only
 	// produces a failure the operator can do nothing about - and "select all"
 	// would always report one.
+	describe('columns', (): void => {
+		const columnProps = (): (string | undefined)[] =>
+			wrapper.findAllComponents(ElTableColumn).map((column) => column.props('prop') as string | undefined);
+
+		afterEach((): void => {
+			mocks.isTabletPortrait.value = false;
+		});
+
+		it('shows the first and last name from tablet landscape up', (): void => {
+			createWrapper();
+
+			expect(columnProps()).toEqual(expect.arrayContaining(['username', 'firstName', 'lastName', 'email', 'role']));
+		});
+
+		it('keeps the username, the email and the role on tablet portrait', (): void => {
+			mocks.isTabletPortrait.value = true;
+
+			createWrapper();
+
+			expect(columnProps()).toEqual(expect.arrayContaining(['username', 'email', 'role']));
+			expect(columnProps()).not.toContain('firstName');
+			expect(columnProps()).not.toContain('lastName');
+		});
+	});
+
 	describe('protected rows', (): void => {
 		const selectableFor = (props: Partial<IUsersTableProps> = {}): ((row: IUser) => boolean) => {
 			createWrapper(props);
