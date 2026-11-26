@@ -553,10 +553,18 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       if (card == null) continue;
 
       final override = entry.value;
+      // Lights turned on show On until the room reports them on, with
+      // whatever brightness it reports, so only on/off counts for them.
+      final onlyOn =
+          entry.key == DomainType.lights &&
+          override.isActive == true &&
+          override.unit == null;
       // Only what the override sets counts: a new room temperature is no
-      // report on a mode or target change.
+      // report on a mode or target change, a new brightness none on On.
       final reported = (
-        override.primaryValue == null ? null : (card.primaryValue, card.unit),
+        override.primaryValue == null || onlyOn
+            ? null
+            : (card.primaryValue, card.unit),
         override.isActive == null ? null : card.isActive,
         override.climateMode == null || card.actions.isEmpty
             ? null
@@ -570,12 +578,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       if (reported != override.baseline) override.roomMoved = true;
       if (!override.roomMoved) continue;
 
-      // Lights turned on show On until the room reports them on, with
-      // whatever brightness it reports.
-      final onlyOn =
-          entry.key == DomainType.lights &&
-          override.isActive == true &&
-          override.unit == null;
       final primaryMatches =
           override.primaryValue == null ||
           (onlyOn && card.isActive) ||

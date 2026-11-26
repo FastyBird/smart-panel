@@ -98,6 +98,7 @@ class _Intents extends ChangeNotifier implements IntentsService {
 class _Spaces extends ChangeNotifier implements SpacesService {
   final sent = <String>[];
   ClimateStateModel? climate;
+  LightingStateModel? lighting;
 
   /// Held setpoint requests, completed by the test; null answers at once
   /// with success.
@@ -106,7 +107,7 @@ class _Spaces extends ChangeNotifier implements SpacesService {
   @override
   SpaceView? getSpace(String id) => null;
   @override
-  LightingStateModel? getLightingState(String spaceId) => null;
+  LightingStateModel? getLightingState(String spaceId) => lighting;
   @override
   ClimateStateModel? getClimateState(String spaceId) => climate;
   @override
@@ -121,6 +122,16 @@ class _Spaces extends ChangeNotifier implements SpacesService {
   Future<CoversStateModel?> fetchCoversState(String spaceId) async => null;
   @override
   Future<SensorStateModel?> fetchSensorState(String spaceId) async => null;
+
+  @override
+  Future<LightingIntentResult?> setLightingMode(
+    String spaceId,
+    LightingMode mode,
+  ) async {
+    sent.add('lighting ${mode.name} $spaceId');
+
+    return null;
+  }
 
   @override
   Future<LightingIntentResult?> turnLightsOn(String spaceId) async {
@@ -184,6 +195,15 @@ ClimateStateModel _heating() => ClimateStateModel.fromJson({
   'supports_cooling': true,
   'is_heating': true,
 }, spaceId: 'room');
+
+/// Four lights, [on] of them on at [brightness] %.
+LightingStateModel _lights(int on, {double? brightness}) =>
+    LightingStateModel.fromJson({
+      'has_lights': true,
+      'total_lights': 4,
+      'lights_on': on,
+      'average_brightness': ?brightness,
+    }, spaceId: 'room');
 
 /// Heating to 22° in Heat, as [_heating], with a new room temperature.
 ClimateStateModel _heatingAt(double temperature) => ClimateStateModel.fromJson({
@@ -638,5 +658,68 @@ void main() {
         },
       );
     });
+  });
+
+  group('review round 10', () {
+    setUp(() {
+      spaces
+        ..sent.clear()
+        ..climate = null
+        ..lighting = _lights(4, brightness: 80);
+    });
+    tearDown(() => spaces.lighting = null);
+
+    Finder lights() => find.byKey(const ValueKey('room-card-lights'));
+
+    String value(WidgetTester tester) => tester
+        .widgetList<Text>(
+          find.descendant(of: lights(), matching: find.byType(Text)),
+        )
+        .firstWhere((text) => text.textSpan != null)
+        .textSpan!
+        .toPlainText();
+
+    Future<void> report(WidgetTester tester, LightingStateModel state) async {
+      spaces
+        ..lighting = state
+        ..notifyListeners();
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    testWidgets(
+      'a brightness change does not confirm On before a delayed Off arrives',
+      (tester) async {
+        tester.view.physicalSize = const Size(350, 240);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(_page());
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(value(tester), '80 %');
+
+        await tester.tap(
+          find.descendant(of: lights(), matching: find.text('Off')).first,
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.tap(
+          find.descendant(of: lights(), matching: find.text('On')).first,
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(spaces.sent, ['lighting off room', 'lights on room']);
+        expect(value(tester), 'On');
+
+        // Only the brightness moves, then the earlier Off lands: On stays.
+        await report(tester, _lights(4, brightness: 60));
+        expect(value(tester), 'On');
+        await report(tester, _lights(0));
+        expect(value(tester), 'On');
+
+        // On lands and confirms it; the room's brightness shows.
+        await report(tester, _lights(4, brightness: 60));
+        expect(value(tester), '60 %');
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(seconds: 7));
+      },
+    );
   });
 }
