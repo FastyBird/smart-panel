@@ -195,6 +195,21 @@
 		},
 		"no": {
 			"title": "Nie"
+		},
+		"more": {
+			"title": "Ďalšie akcie"
+		},
+		"keepEditing": {
+			"title": "Pokračovať v úpravách"
 		}
+	},
+	"sections": {
+		"signIn": "Prihlásenie",
+		"profile": "Profil",
+		"access": "Prístup"
+	},
+	"aria": {
+		"edit": "Upraviť {user}",
+		"more": "Ďalšie akcie pre {user}"
 	}
 }

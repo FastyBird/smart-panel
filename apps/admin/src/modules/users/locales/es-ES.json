@@ -195,6 +195,21 @@
 		},
 		"no": {
 			"title": "No"
+		},
+		"more": {
+			"title": "Más acciones"
+		},
+		"keepEditing": {
+			"title": "Seguir editando"
 		}
+	},
+	"sections": {
+		"signIn": "Inicio de sesión",
+		"profile": "Perfil",
+		"access": "Acceso"
+	},
+	"aria": {
+		"edit": "Editar {user}",
+		"more": "Más acciones para {user}"
 	}
 }

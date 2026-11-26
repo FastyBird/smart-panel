@@ -54,6 +54,8 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	'src/modules/stats',
 	// AR-23: the Buddy chat (two panes) and the Buddy setup wizard
 	'src/modules/buddy',
+	// AR-24: the users list, add and edit
+	'src/modules/users',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

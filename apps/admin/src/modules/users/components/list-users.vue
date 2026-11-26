@@ -1,29 +1,60 @@
 <template>
+	<!-- Template 1: one card with the filter bar, the table (a row list on phone) and the pagination -->
 	<el-card
 		shadow="never"
-		class="px-1 py-2 shrink-0"
-		body-class="p-0!"
+		class="flex flex-col flex-grow min-h-0 overflow-hidden"
+		body-class="p-0! flex flex-col flex-grow min-h-0 overflow-hidden"
 	>
-		<users-filter
-			v-model:filters="innerFilters"
-			:filters-active="props.filtersActive"
-			:selected-count="selectedItems.length"
-			:bulk-actions="bulkActions"
-			@reset-filters="emit('reset-filters')"
-			@bulk-action="onBulkAction"
-		/>
-	</el-card>
+		<list-filter-bar
+			ref="filterBar"
+			v-model:search="search"
+			:search-placeholder="t('usersModule.fields.search.placeholder')"
+			:active-count="activeCount"
+			:selected-count="isPhone ? 0 : selectedItems.length"
+			@reset="emit('reset-filters')"
+			@clear-selection="onClearSelection"
+		>
+			<template #filters>
+				<list-users-adjust v-model:filters="innerFilters" />
+			</template>
 
-	<div
-		ref="wrapper"
-		class="flex-grow overflow-hidden"
-	>
-		<el-card
-			shadow="never"
-			class="max-h-full flex flex-col overflow-hidden box-border"
-			body-class="p-0! max-h-full overflow-hidden flex flex-col"
+			<template #bulk>
+				<el-button
+					type="danger"
+					plain
+					size="small"
+					data-test-id="bulk-delete"
+					@click="emit('bulk-action', 'delete', selectedItems)"
+				>
+					{{ t('application.bulkActions.delete') }}
+				</el-button>
+			</template>
+		</list-filter-bar>
+
+		<!-- The rows scroll inside the card, so the pagination below stays reachable -->
+		<div
+			v-if="isPhone"
+			class="flex-grow min-h-0 overflow-y-auto"
+			data-test-id="users-row-list-scroll"
+		>
+			<users-row-list
+				:items="props.items"
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				:current-user-id="props.currentUserId"
+				@edit="(id: IUser['id']) => emit('edit', id)"
+				@remove="(id: IUser['id']) => emit('remove', id)"
+				@reset-filters="emit('reset-filters')"
+			/>
+		</div>
+
+		<div
+			v-else
+			ref="wrapper"
+			class="flex-grow min-h-0 overflow-hidden"
 		>
 			<users-table
+				ref="table"
 				v-model:filters="innerFilters"
 				v-model:sort-by="sortBy"
 				v-model:sort-dir="sortDir"
@@ -33,43 +64,41 @@
 				:filters-active="props.filtersActive"
 				:table-height="tableHeight"
 				:current-user-id="props.currentUserId"
-				@edit="onEdit"
-				@remove="onRemove"
-				@reset-filters="onResetFilters"
-				@selected-changes="onSelectionChange"
+				@edit="(id: IUser['id']) => emit('edit', id)"
+				@remove="(id: IUser['id']) => emit('remove', id)"
+				@reset-filters="emit('reset-filters')"
+				@selected-changes="(selected: IUser[]) => (selectedItems = selected)"
 			/>
+		</div>
 
-			<div
-				ref="paginator"
-				class="flex justify-center w-full py-4"
-			>
-				<el-pagination
-					v-model:current-page="paginatePage"
-					v-model:page-size="paginateSize"
-					:layout="isMDDevice ? 'total, sizes, prev, pager, next, jumper' : 'total, sizes, prev, pager, next'"
-					:total="props.allItems.length"
-					@size-change="onPaginatePageSize"
-					@current-change="onPaginatePage"
-				/>
-			</div>
-		</el-card>
-	</div>
+		<div class="flex flex-wrap justify-end w-full box-border px-4 py-2.5 border-t border-t-solid border-light overflow-hidden">
+			<el-pagination
+				v-model:current-page="paginatePage"
+				v-model:page-size="paginateSize"
+				:layout="isPhone ? 'prev, pager, next' : 'total, sizes, prev, pager, next'"
+				:total="props.allItems.length"
+				@size-change="(size: number) => emit('update:paginate-size', size)"
+				@current-change="(page: number) => emit('update:paginate-page', page)"
+			/>
+		</div>
+	</el-card>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElPagination } from 'element-plus';
+import { ElButton, ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { type IBulkAction, useBreakpoints } from '../../../common';
+import { ListFilterBar, useSizeClass } from '../../../common';
 import type { IUsersFilter } from '../composables/types';
 import type { IUser } from '../store/users.store.types';
 
-import { type IListUsersProps } from './list-users.types';
-import UsersFilter from './users-filter.vue';
+import ListUsersAdjust from './list-users-adjust.vue';
+import type { IListUsersProps } from './list-users.types';
+import UsersRowList from './users-row-list.vue';
 import UsersTable from './users-table.vue';
 
 defineOptions({
@@ -85,131 +114,118 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: IUsersFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;
-	(e: 'update:sort-by', dir: 'username' | 'firstName' | 'lastName' | 'email' | 'role'): void;
+	(e: 'update:sort-by', by: 'username' | 'firstName' | 'lastName' | 'email' | 'role'): void;
 	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
 	(e: 'bulk-action', action: string, items: IUser[]): void;
 }>();
 
 const { t } = useI18n();
-const { isMDDevice } = useBreakpoints();
-
-let observer: ResizeObserver | null = null;
-
-const wrapper = ref<HTMLElement | null>(null);
-const paginator = ref<HTMLElement | null>(null);
+const { isPhone } = useSizeClass();
 
 const innerFilters = useVModel(props, 'filters', emit);
 
-const remoteFiltersReset = ref<boolean>(false);
+const filterBar = ref<InstanceType<typeof ListFilterBar> | null>(null);
+const table = ref<InstanceType<typeof UsersTable> | null>(null);
+const wrapper = ref<HTMLElement | null>(null);
+
+const selectedItems = ref<IUser[]>([]);
 
 const sortBy = ref<'username' | 'firstName' | 'lastName' | 'email' | 'role'>(props.sortBy);
-
 const sortDir = ref<'ascending' | 'descending' | null>(props.sortDir);
-
 const paginatePage = ref<number>(props.paginatePage);
-
 const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
 
-const selectedItems = ref<IUser[]>([]);
-
-const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
-	{
-		key: 'delete',
-		label: t('application.bulkActions.delete'),
-		icon: 'mdi:trash',
-		type: 'danger',
+const search = computed<string>({
+	get: (): string => innerFilters.value.search ?? '',
+	set: (value: string): void => {
+		innerFilters.value.search = value === '' ? undefined : value;
 	},
-]);
-
-const onEdit = (id: IUser['id']): void => {
-	emit('edit', id);
-};
-
-const onRemove = (id: IUser['id']): void => {
-	emit('remove', id);
-};
-
-const onResetFilters = (): void => {
-	remoteFiltersReset.value = true;
-
-	emit('reset-filters');
-};
-
-const onPaginatePageSize = (size: number): void => {
-	emit('update:paginate-size', size);
-};
-
-const onPaginatePage = (page: number): void => {
-	emit('update:paginate-page', page);
-};
-
-const onSelectionChange = (selected: IUser[]): void => {
-	selectedItems.value = selected;
-};
-
-const onBulkAction = (action: string): void => {
-	emit('bulk-action', action, selectedItems.value);
-};
-
-onMounted((): void => {
-	if (!wrapper.value) {
-		return;
-	}
-
-	const updateHeight = () => {
-		tableHeight.value = wrapper.value!.clientHeight - paginator.value!.clientHeight;
-	};
-
-	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
-		observer = new ResizeObserver(updateHeight);
-		observer.observe(wrapper.value);
-	}
-
-	updateHeight();
 });
+
+// Active filters, the search excluded: it is visible in the bar on its own
+const activeCount = computed<number>((): number => (innerFilters.value.roles.length > 0 ? 1 : 0));
+
+const onClearSelection = (): void => {
+	table.value?.clearSelection();
+	selectedItems.value = [];
+};
+
+// The phone app bar's Search action moves focus to the search field
+const focusSearch = (): void => {
+	filterBar.value?.focusSearch();
+};
+
+defineExpose({ focusSearch });
+
+// The table, and its checked rows, go away on phone; a selection kept here would act on rows nobody can see
+watch(isPhone, (phone: boolean): void => {
+	if (phone) {
+		selectedItems.value = [];
+	}
+});
+
+let observer: ResizeObserver | null = null;
+
+const updateHeight = (): void => {
+	if (wrapper.value) {
+		tableHeight.value = wrapper.value.clientHeight;
+	}
+};
+
+// The table is not rendered on phone, so the wrapper comes and goes with the size class
+watch(
+	wrapper,
+	(element: HTMLElement | null, previous: HTMLElement | null | undefined): void => {
+		if (observer && previous) {
+			observer.unobserve(previous);
+		}
+
+		if (!element) {
+			return;
+		}
+
+		if (observer === null && typeof window !== 'undefined' && 'ResizeObserver' in window) {
+			observer = new ResizeObserver(updateHeight);
+		}
+
+		observer?.observe(element);
+
+		updateHeight();
+	},
+	{ flush: 'post' }
+);
 
 onBeforeUnmount((): void => {
-	if (observer && wrapper.value) {
-		observer.unobserve(wrapper.value);
-	}
+	observer?.disconnect();
+	observer = null;
 });
 
-watch(
-	(): 'username' | 'firstName' | 'lastName' | 'email' | 'role' => sortBy.value,
-	(val: 'username' | 'firstName' | 'lastName' | 'email' | 'role'): void => {
-		emit('update:sort-by', val);
-	}
-);
-
-watch(
-	(): 'ascending' | 'descending' | null => sortDir.value,
-	(val: 'ascending' | 'descending' | null): void => {
-		emit('update:sort-dir', val);
-	}
-);
-
-watch(
-	(): 'ascending' | 'descending' | null => props.sortDir,
-	(val: 'ascending' | 'descending' | null): void => {
-		sortDir.value = val;
-	}
-);
-
+watch(sortBy, (val): void => emit('update:sort-by', val));
+watch(sortDir, (val): void => emit('update:sort-dir', val));
 watch(
 	(): 'username' | 'firstName' | 'lastName' | 'email' | 'role' => props.sortBy,
-	(val: 'username' | 'firstName' | 'lastName' | 'email' | 'role'): void => {
+	(val): void => {
 		sortBy.value = val;
 	}
 );
-
 watch(
-	(): boolean => isMDDevice.value,
-	(val: boolean): void => {
-		if (!val) {
-			selectedItems.value = [];
-		}
+	(): 'ascending' | 'descending' | null => props.sortDir,
+	(val): void => {
+		sortDir.value = val;
+	}
+);
+watch(
+	(): number => props.paginatePage,
+	(val: number): void => {
+		paginatePage.value = val;
+	}
+);
+watch(
+	(): number => props.paginateSize,
+	(val: number): void => {
+		paginateSize.value = val;
 	}
 );
 </script>

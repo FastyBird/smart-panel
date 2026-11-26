@@ -1,4 +1,4 @@
-import { type ComponentPublicInstance } from 'vue';
+import { type ComponentPublicInstance, type Ref } from 'vue';
 
 import { ElButton, ElTable, ElTableColumn } from 'element-plus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +8,7 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import type { IUser } from '../store/users.store.types';
 
+import UsersRowActions from './users-row-actions.vue';
 import type { IUsersTableProps } from './users-table.types';
 import UsersTable from './users-table.vue';
 
@@ -20,14 +21,20 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+const mocks = vi.hoisted(() => ({
+	isTabletPortrait: null as unknown as Ref<boolean>,
+}));
+
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
+	const { ref } = await import('vue');
+
+	// Tablet landscape and up unless a test picks tablet portrait
+	mocks.isTabletPortrait = ref(false);
 
 	return {
 		...actual,
-		// The selection column is behind `v-if="isMDDevice"`, and jsdom reports a
-		// narrow viewport, so without this the column under test never renders.
-		useBreakpoints: () => ({ isMDDevice: true }),
+		useSizeClass: () => ({ isTabletPortrait: mocks.isTabletPortrait }),
 	};
 });
 
@@ -126,7 +133,8 @@ describe('UsersTable', (): void => {
 	it('displays "no filtered users" message when filtered results are empty', async (): Promise<void> => {
 		createWrapper({ items: [], totalRows: 2, filtersActive: true });
 
-		expect(wrapper.text()).toContain('usersModule.texts.misc.noFilteredUsers usersModule.buttons.resetFilters.title');
+		expect(wrapper.text()).toContain('usersModule.texts.misc.noFilteredUsers');
+		expect(wrapper.text()).toContain('usersModule.buttons.resetFilters.title');
 	});
 
 	it('handles edit button click', async (): Promise<void> => {
@@ -153,33 +161,52 @@ describe('UsersTable', (): void => {
 		expect(wrapper.emitted('edit')?.[0]).toEqual(['1']);
 	});
 
-	it('handles remove button click', async (): Promise<void> => {
-		createWrapper();
-
-		const table = wrapper.findComponent(ElTable);
-
-		expect(table.exists()).toBe(true);
+	it('removes a user from the row menu, which offers removal only where the backend allows it', async (): Promise<void> => {
+		createWrapper({ currentUserId: '3' });
 
 		await flushPromises();
 
-		const firstRow = table.find('tbody tr');
-		expect(firstRow.exists()).toBe(true);
+		// Remove lives in the row's more menu (spec section 4)
+		const actions = wrapper.findAllComponents(UsersRowActions);
 
-		const lastCell = firstRow.find('td:last-child');
-		expect(lastCell.exists()).toBe(true);
+		expect(actions).toHaveLength(2);
+		expect(actions[0]!.props('removable')).toBe(true);
+		// usersMock[1] is the owner
+		expect(actions[1]!.props('removable')).toBe(false);
 
-		const removeButton = lastCell.findAllComponents(ElButton).at(1);
-		expect(removeButton).toBeTruthy();
+		actions[0]!.vm.$emit('remove', '1');
 
-		await removeButton?.trigger('click');
-
-		expect(wrapper.emitted('remove')).toBeTruthy();
 		expect(wrapper.emitted('remove')?.[0]).toEqual(['1']);
 	});
 
 	// The backend refuses both of these, so offering them for selection only
 	// produces a failure the operator can do nothing about - and "select all"
 	// would always report one.
+	describe('columns', (): void => {
+		const columnProps = (): (string | undefined)[] =>
+			wrapper.findAllComponents(ElTableColumn).map((column) => column.props('prop') as string | undefined);
+
+		afterEach((): void => {
+			mocks.isTabletPortrait.value = false;
+		});
+
+		it('shows the first and last name from tablet landscape up', (): void => {
+			createWrapper();
+
+			expect(columnProps()).toEqual(expect.arrayContaining(['username', 'firstName', 'lastName', 'email', 'role']));
+		});
+
+		it('keeps the username, the email and the role on tablet portrait', (): void => {
+			mocks.isTabletPortrait.value = true;
+
+			createWrapper();
+
+			expect(columnProps()).toEqual(expect.arrayContaining(['username', 'email', 'role']));
+			expect(columnProps()).not.toContain('firstName');
+			expect(columnProps()).not.toContain('lastName');
+		});
+	});
+
 	describe('protected rows', (): void => {
 		const selectableFor = (props: Partial<IUsersTableProps> = {}): ((row: IUser) => boolean) => {
 			createWrapper(props);
@@ -196,7 +223,7 @@ describe('UsersTable', (): void => {
 			expect(isSelectable(usersMock[1]!)).toBe(false);
 		});
 
-		it("does not let the operator select their own account", (): void => {
+		it('does not let the operator select their own account', (): void => {
 			const isSelectable = selectableFor({ currentUserId: '1' });
 
 			expect(isSelectable(usersMock[0]!)).toBe(false);
@@ -214,5 +241,4 @@ describe('UsersTable', (): void => {
 			expect(isSelectable(usersMock[0]!)).toBe(true);
 		});
 	});
-
 });

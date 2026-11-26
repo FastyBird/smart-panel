@@ -195,6 +195,21 @@
     },
     "no": {
       "title": "No"
+    },
+    "more": {
+      "title": "More actions"
+    },
+    "keepEditing": {
+      "title": "Keep editing"
     }
+  },
+  "sections": {
+    "signIn": "Sign-in",
+    "profile": "Profile",
+    "access": "Access"
+  },
+  "aria": {
+    "edit": "Edit {user}",
+    "more": "More actions for {user}"
   }
 }

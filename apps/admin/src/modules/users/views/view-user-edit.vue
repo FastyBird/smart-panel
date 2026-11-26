@@ -16,14 +16,10 @@
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<div
-		v-loading="isLoading || user === null"
-		:element-loading-text="t('usersModule.texts.misc.loadingUser')"
-		class="flex flex-col overflow-hidden h-full"
-	>
+	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar
 			v-if="user !== null"
-			class="grow-1 p-2 md:px-4"
+			class="grow-1 p-2 tp:px-4"
 		>
 			<user-edit-form
 				v-model:remote-form-submit="remoteFormSubmit"
@@ -34,53 +30,24 @@
 			/>
 		</el-scrollbar>
 
-		<div
-			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
-			style="background-color: var(--el-drawer-bg-color)"
-		>
-			<div class="p-2">
-				<el-button
-					v-if="remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onDiscard"
-				>
-					{{ t('usersModule.buttons.discard.title') }}
-				</el-button>
-				<el-button
-					v-if="!remoteFormChanged"
-					link
-					class="mr-2"
-					@click="onClose"
-				>
-					{{ t('usersModule.buttons.close.title') }}
-				</el-button>
+		<state-view
+			v-else
+			kind="loading"
+			icon="mdi:account"
+			:title="t('usersModule.texts.misc.loadingUser')"
+		/>
 
-				<el-button
-					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="isLoading || remoteFormResult !== FormResult.NONE || !remoteFormChanged"
-					type="primary"
-					class="order-2"
-					@click="onSubmit"
-				>
-					<template
-						v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
-						#icon
-					>
-						<icon
-							v-if="remoteFormResult === FormResult.OK"
-							icon="mdi:check-circle"
-						/>
-						<icon
-							v-else-if="remoteFormResult === FormResult.ERROR"
-							icon="mdi:cross-circle"
-						/>
-					</template>
-					{{ t('usersModule.buttons.save.title') }}
-				</el-button>
-			</div>
-		</div>
+		<!-- Wherever the phone app bar is not there to carry Save: in the drawer, and on a page kept open past 720 px -->
+		<form-footer
+			v-if="user !== null"
+			v-show="inDrawer || !isPhone"
+			:dirty="remoteFormChanged"
+			:saving="remoteFormResult === FormResult.WORKING"
+			:can-save="remoteFormChanged && remoteFormResult === FormResult.NONE"
+			@save="onSubmit"
+			@discard="onDiscard"
+			@close="onClose"
+		/>
 	</div>
 </template>
 
@@ -90,11 +57,19 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElMessageBox, ElScrollbar } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
-
-import { AppBreadcrumbs, UserAvatar, ViewHeader, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import {
+	AppBreadcrumbs,
+	FormFooter,
+	StateView,
+	UserAvatar,
+	ViewHeader,
+	useEditDrawer,
+	useFlashMessage,
+	useSizeClass,
+	useUuid,
+} from '../../../common';
 import { UserEditForm } from '../components/components';
 import { useUser } from '../composables/composables';
 import type { IUser } from '../store/users.store.types';
@@ -120,7 +95,9 @@ const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
-const { isMDDevice, isLGDevice } = useBreakpoints();
+// Template 4: in the drawer from tablet portrait up, its own page on phone
+const { inDrawer } = useEditDrawer();
+const { isPhone } = useSizeClass();
 
 // Track if user was previously loaded to detect deletion
 const wasUserLoaded = ref<boolean>(false);
@@ -151,18 +128,29 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
+const backToList = (): void => {
+	if (inDrawer.value) {
+		router.replace({ name: RouteNames.USERS });
+	} else {
+		router.push({ name: RouteNames.USERS });
+	}
+};
+
+// The editor asks before a changed form is left; a confirmed discard, a save or a deleted record lets it go
+const releaseForm = (): void => {
+	remoteFormChanged.value = false;
+	emit('update:remote-form-changed', false);
+};
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('usersModule.texts.misc.confirmDiscard'), t('usersModule.headings.discard'), {
-		confirmButtonText: t('usersModule.buttons.yes.title'),
-		cancelButtonText: t('usersModule.buttons.no.title'),
+		confirmButtonText: t('usersModule.buttons.discard.title'),
+		cancelButtonText: t('usersModule.buttons.keepEditing.title'),
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.USERS });
-			} else {
-				router.push({ name: RouteNames.USERS });
-			}
+			releaseForm();
+			backToList();
 		})
 		.catch((): void => {
 			// Just ignore it
@@ -174,11 +162,7 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
-		router.replace({ name: RouteNames.USERS });
-	} else {
-		router.push({ name: RouteNames.USERS });
-	}
+	backToList();
 };
 
 onBeforeMount(async (): Promise<void> => {
@@ -211,11 +195,9 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.USERS });
-			} else {
-				router.push({ name: RouteNames.USERS });
-			}
+			releaseForm();
+
+			backToList();
 		}
 	}
 );
@@ -239,12 +221,9 @@ watch(
 		} else if (wasUserLoaded.value && !isLoading.value) {
 			// User was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('usersModule.messages.deletedWhileEditing'), { duration: 0 });
-			// Redirect to users list
-			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.USERS });
-			} else {
-				router.push({ name: RouteNames.USERS });
-			}
+
+			releaseForm();
+			backToList();
 		} else if (!isLoading.value && val === null && !wasUserLoaded.value) {
 			// User was never loaded - initial load failed
 			throw new UsersException('User not found');

@@ -195,6 +195,21 @@
     },
     "no": {
       "title": "Nie"
+    },
+    "more": {
+      "title": "Więcej akcji"
+    },
+    "keepEditing": {
+      "title": "Kontynuuj edycję"
     }
+  },
+  "sections": {
+    "signIn": "Logowanie",
+    "profile": "Profil",
+    "access": "Dostęp"
+  },
+  "aria": {
+    "edit": "Edytuj {user}",
+    "more": "Więcej akcji dla {user}"
   }
 }
