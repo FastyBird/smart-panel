@@ -266,6 +266,10 @@ const { sttProviderStatuses: sttProviders, fetchSttProviderStatuses: fetchSttPro
 const { messagingProviderStatuses: messagingProviders, fetchMessagingProviderStatuses: fetchMessagingProviders } = useBuddyMessagingProviders();
 
 const isLoading = ref(false);
+
+// The AI providers were read at least once. The provider step only lets you on after that, so the choice made there
+// (or its skip) is a real one, and a later refresh that fails does not undo it
+const llmProvidersRead = ref(false);
 const currentStep = ref(0);
 const isSavingModuleConfig = ref(false);
 
@@ -609,8 +613,8 @@ const saveModuleConfig = async (includeAll: boolean = false): Promise<boolean> =
 		};
 
 		// A skipped provider step is saved as no provider, not left as the provider set before. Only when the providers
-		// were read: after a failed read nothing was really chosen, and the provider set before stays
-		if (!llmProvidersFailed.value) {
+		// were read: without a read nothing was really chosen, and the provider set before stays
+		if (llmProvidersRead.value) {
 			configData.provider = selectedLlmProvider.value ?? LLM_PROVIDER_NONE;
 		}
 
@@ -704,8 +708,13 @@ const loadAllData = async (): Promise<void> => {
 		const selectedTts = ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected);
 		const selectedStt = sttProviders.value.find((p: IVoiceProviderStatus) => p.selected);
 
-		if (selected && selected.type !== LLM_PROVIDER_NONE) {
+		// Only on the first successful read: a Retry later keeps the provider already picked
+		if (!llmProvidersRead.value && selected && selected.type !== LLM_PROVIDER_NONE) {
 			selectedLlmProvider.value = selected.type;
+		}
+
+		if (!llmProvidersFailed.value) {
+			llmProvidersRead.value = true;
 		}
 
 		if (selectedTts) {
