@@ -457,5 +457,58 @@ void main() {
       expect(_target('24°'), findsOneWidget);
       await finish(tester);
     });
+
+    // Review round 6 reuses this group's page and helpers.
+    group('review round 6', () {
+      testWidgets(
+        'when both of two taps fail the card goes back to the reported target '
+        'and the next tap steps from it',
+        (tester) async {
+          spaces.held = [];
+          await pumpPage(tester, const Size(350, 240));
+
+          await tester.tap(_plus());
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.tap(_plus());
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(_target('24°'), findsOneWidget);
+
+          spaces.held!.first.complete(null);
+          await tester.pump(const Duration(milliseconds: 100));
+          spaces.held!.last.complete(null);
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(_target('22°'), findsOneWidget);
+
+          spaces.held = null;
+          await tester.tap(_plus());
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(spaces.sent.last, 'setpoint 23.0 heat room');
+          await finish(tester);
+        },
+      );
+
+      testWidgets(
+        'when the newer tap fails first and the older one after, the card '
+        'goes back to the reported target',
+        (tester) async {
+          spaces.held = [];
+          await pumpPage(tester, const Size(350, 240));
+
+          await tester.tap(_plus());
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.tap(_plus());
+          await tester.pump(const Duration(milliseconds: 100));
+
+          spaces.held!.last.complete(null);
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(_target('23°'), findsOneWidget);
+
+          spaces.held!.first.complete(null);
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(_target('22°'), findsOneWidget);
+          await finish(tester);
+        },
+      );
+    });
   });
 }

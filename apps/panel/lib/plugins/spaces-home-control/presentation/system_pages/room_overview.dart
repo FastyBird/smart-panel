@@ -35,12 +35,15 @@ class _DomainOptimistic {
   /// The shading position sent, for the Open / 50 % / Close selection.
   final int? shadingPosition;
 
-  /// The request this override belongs to, so a late failure clears only
-  /// its own.
-  final int? request;
+  /// The override this one replaced, put back if this request fails.
+  final _DomainOptimistic? previous;
+
+  /// Set once this override's request has failed, so a later rollback
+  /// never puts it back.
+  bool failed = false;
   final DateTime createdAt;
 
-  const _DomainOptimistic({
+  _DomainOptimistic({
     this.primaryValue,
     this.unit,
     this.isActive,
@@ -48,7 +51,7 @@ class _DomainOptimistic {
     this.targetValue,
     this.target,
     this.shadingPosition,
-    this.request,
+    this.previous,
     required this.createdAt,
   });
 
@@ -101,7 +104,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
   // Optimistic overrides per domain
   final Map<DomainType, _DomainOptimistic> _optimistic = {};
-  int _climateRequest = 0;
   Timer? _optimisticCleanupTimer;
 
   // Error state
@@ -503,7 +505,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     }
   }
 
-  void _setOptimistic(
+  _DomainOptimistic _setOptimistic(
     DomainType domain, {
     String? primaryValue,
     String? unit,
@@ -512,9 +514,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     double? targetValue,
     String? target,
     int? shadingPosition,
-    int? request,
+    _DomainOptimistic? previous,
   }) {
-    _optimistic[domain] = _DomainOptimistic(
+    final override = _DomainOptimistic(
       primaryValue: primaryValue,
       unit: unit,
       isActive: isActive,
@@ -522,11 +524,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       targetValue: targetValue,
       target: target,
       shadingPosition: shadingPosition,
-      request: request,
+      previous: previous,
       createdAt: DateTime.now(),
     );
+    _optimistic[domain] = override;
     _rebuildModel();
     _scheduleOptimisticCleanup();
+    return override;
   }
 
   void _clearConfirmedOverrides(RoomOverviewModel freshModel) {
@@ -780,10 +784,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
               ? target + 1.0
               : target - 1.0;
           final clamped = newTarget.clamp(cs.minSetpoint, cs.maxSetpoint);
-          final request = ++_climateRequest;
           // The card shows the new target at once, keeping a pending mode
           // and on/off state; the room temperature stays as measured.
-          _setOptimistic(
+          final sent = _setOptimistic(
             DomainType.climate,
             isActive: live?.isActive,
             climateMode: live?.climateMode,
@@ -792,7 +795,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
               clamped,
               DisplayUnits.fromLocator().temperature,
             ),
-            request: request,
+            previous: live,
           );
           final result = await spacesService.setSetpoint(
             _roomId,
@@ -802,11 +805,16 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
           if (!mounted) return;
 
           final failed = result == null || !result.success;
-          // A failed request puts back what was pending before it, unless
-          // a newer tap has replaced it since.
-          if (failed && _optimistic[DomainType.climate]?.request == request) {
-            if (live != null && !live.isExpired) {
-              _optimistic[DomainType.climate] = live;
+          if (failed) sent.failed = true;
+          // A failed request puts back the newest earlier override that has
+          // not failed too, unless a newer tap has replaced it since.
+          if (failed && identical(_optimistic[DomainType.climate], sent)) {
+            var restore = sent.previous;
+            while (restore != null && (restore.failed || restore.isExpired)) {
+              restore = restore.previous;
+            }
+            if (restore != null) {
+              _optimistic[DomainType.climate] = restore;
             } else {
               _optimistic.remove(DomainType.climate);
             }
