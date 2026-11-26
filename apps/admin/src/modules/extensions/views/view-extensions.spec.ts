@@ -62,7 +62,6 @@ vi.mock('../components/components', async () => {
 
 	return {
 		ListExtensions: defineComponent({ template: '<div />' }),
-		ListExtensionsAdjust: defineComponent({ template: '<div />' }),
 		ServicesList: defineComponent({
 			props: {
 				activeKind: {

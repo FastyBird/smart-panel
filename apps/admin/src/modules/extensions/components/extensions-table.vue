@@ -1,6 +1,7 @@
 <template>
 	<el-table
-		v-loading="props.loading"
+		ref="tableEl"
+		v-loading="props.loading && props.items.length > 0"
 		:element-loading-text="t('extensionsModule.texts.loadingExtensions')"
 		:data="sortedItems"
 		:default-sort="
@@ -11,108 +12,38 @@
 		table-layout="fixed"
 		row-key="type"
 		class="flex-grow"
-		:style="{ maxHeight: tableHeight + 'px' }"
-		:max-height="tableHeight"
+		:style="{ maxHeight: props.tableHeight + 'px' }"
+		:max-height="props.tableHeight"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
 	>
 		<template #empty>
-			<div
-				v-if="props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:puzzle" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:database-refresh" />
-							</template>
-						</icon-with-child>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="noResults && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:puzzle" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('extensionsModule.texts.noExtensions') }}
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="props.filtersActive && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:puzzle" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-multiple" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('extensionsModule.texts.noFilteredExtensions') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="emit('reset-filters')"
-						>
-							<template #icon>
-								<icon icon="mdi:filter-off" />
-							</template>
-
-							{{ t('extensionsModule.buttons.resetFilters.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
+			<extensions-empty
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				@reset-filters="emit('reset-filters')"
+			/>
 		</template>
 
 		<el-table-column
-			v-if="isMDDevice"
 			type="selection"
-			:width="30"
+			fixed="left"
+			:width="40"
 		/>
 
 		<el-table-column
-			:width="60"
+			:width="56"
 			align="center"
 		>
 			<template #default="scope">
-				<el-avatar :size="32">
-					<icon
-						:icon="scope.row.kind === ExtensionKind.module ? 'mdi:package-variant' : 'mdi:toy-brick'"
-						class="w[20px] h[20px]"
-					/>
-				</el-avatar>
+				<icon
+					:icon="scope.row.kind === ExtensionKind.module ? 'mdi:package-variant' : 'mdi:toy-brick'"
+					width="24"
+					height="24"
+					class="text-secondary"
+					aria-hidden="true"
+				/>
 			</template>
 		</el-table-column>
 
@@ -121,48 +52,35 @@
 			prop="name"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="200"
-			class-name="py-0!"
+			:min-width="220"
 		>
 			<template #default="scope">
-				<template v-if="scope.row.description">
-					<strong class="block">{{ scope.row.name }}</strong>
-					<el-text
-						size="small"
-						class="block leading-4"
-						truncated
-					>
-						{{ scope.row.description }}
-					</el-text>
-				</template>
-				<template v-else>
-					{{ scope.row.name }}
-				</template>
+				<span class="block text-card-title truncate">{{ scope.row.name }}</span>
+				<span
+					v-if="scope.row.description"
+					class="block text-help truncate"
+				>
+					{{ scope.row.description }}
+				</span>
 			</template>
 		</el-table-column>
 
+		<!-- Tablet portrait keeps the name, the kind and the enabled switch; the identifier and version stay on the detail -->
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('extensionsModule.table.columns.type.title')"
 			prop="type"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="200"
+			:width="220"
 		>
 			<template #default="scope">
-				<el-tooltip
-					:content="scope.row.type"
-					placement="top"
-					:show-after="500"
+				<span
+					:title="scope.row.type"
+					class="block text-mono text-secondary truncate"
 				>
-					<el-text
-						size="small"
-						type="info"
-						class="block max-w-[180px]"
-						truncated
-					>
-						{{ scope.row.type }}
-					</el-text>
-				</el-tooltip>
+					{{ scope.row.type }}
+				</span>
 			</template>
 		</el-table-column>
 
@@ -171,60 +89,31 @@
 			prop="kind"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="120"
+			:width="150"
 		>
 			<template #default="scope">
-				<el-tag
-					:type="scope.row.kind === ExtensionKind.module ? 'primary' : 'success'"
-					size="small"
-				>
+				<span class="block text-body">
 					{{ scope.row.kind === ExtensionKind.module ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
-				</el-tag>
+				</span>
+				<span class="block text-caption">
+					{{ scope.row.isCore ? t('extensionsModule.labels.core') : t('extensionsModule.labels.addon') }}
+				</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('extensionsModule.table.columns.version.title')"
 			prop="version"
-			:width="100"
+			:width="160"
 		>
 			<template #default="scope">
-				<el-text
-					v-if="scope.row.version"
-					size="small"
+				<span
+					:title="scope.row.version || undefined"
+					class="block text-mono whitespace-nowrap truncate"
 				>
-					{{ scope.row.version }}
-				</el-text>
-				<el-text
-					v-else
-					size="small"
-					type="info"
-				>
-					-
-				</el-text>
-			</template>
-		</el-table-column>
-
-		<el-table-column
-			:label="t('extensionsModule.table.columns.core.title')"
-			prop="isCore"
-			:width="100"
-		>
-			<template #default="scope">
-				<el-tag
-					v-if="scope.row.isCore"
-					type="warning"
-					size="small"
-				>
-					{{ t('extensionsModule.labels.core') }}
-				</el-tag>
-				<el-tag
-					v-else
-					type="info"
-					size="small"
-				>
-					{{ t('extensionsModule.labels.addon') }}
-				</el-tag>
+					{{ scope.row.version || '—' }}
+				</span>
 			</template>
 		</el-table-column>
 
@@ -233,35 +122,33 @@
 			prop="enabled"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="120"
+			:width="110"
 		>
 			<template #default="scope">
-				<el-switch
-					:model-value="scope.row.enabled"
-					:disabled="!scope.row.canToggleEnabled"
-					size="small"
-					@click.stop
-					@change="(val: string | number | boolean) => onToggleEnabled(scope.row.type, val as boolean)"
-				/>
+				<div @click.stop>
+					<el-switch
+						:model-value="scope.row.enabled"
+						:disabled="!scope.row.canToggleEnabled"
+						:aria-label="t('extensionsModule.aria.enable', { name: scope.row.name })"
+						data-test-id="extension-enabled"
+						@change="(val: string | number | boolean) => onToggleEnabled(scope.row.type, val === true)"
+					/>
+				</div>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			:width="100"
+			:width="110"
 			align="right"
+			fixed="right"
 		>
 			<template #default="scope">
 				<div @click.stop>
 					<el-button
-						size="small"
 						plain
 						data-test-id="detail-extension"
 						@click="emit('detail', scope.row.type)"
 					>
-						<template #icon>
-							<icon icon="mdi:file-search-outline" />
-						</template>
-
 						{{ t('extensionsModule.buttons.detail.title') }}
 					</el-button>
 				</div>
@@ -271,17 +158,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAvatar, ElButton, ElResult, ElSwitch, ElTable, ElTableColumn, ElTag, ElText, ElTooltip, vLoading } from 'element-plus';
+import { ElButton, ElSwitch, ElTable, ElTableColumn, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild, useBreakpoints } from '../../../common';
+import { useSizeClass } from '../../../common';
 import { ExtensionKind } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
 
+import ExtensionsEmpty from './extensions-empty.vue';
 import type { IExtensionsTableProps } from './extensions-table.types';
 
 defineOptions({
@@ -301,9 +189,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+const { isTabletPortrait } = useSizeClass();
 
-const noResults = computed<boolean>((): boolean => props.totalRows === 0);
+const tableEl = ref<InstanceType<typeof ElTable> | null>(null);
 
 // Items are already sorted by the datasource based on user selection
 const sortedItems = computed<IExtension[]>(() => props.items);
@@ -330,4 +218,11 @@ const onToggleEnabled = (type: IExtension['type'], enabled: boolean): void => {
 const onSelectionChange = (selection: IExtension[]): void => {
 	emit('selected-changes', selection);
 };
+
+// The filter bar's Clear selection
+const clearSelection = (): void => {
+	tableEl.value?.clearSelection();
+};
+
+defineExpose({ clearSelection });
 </script>

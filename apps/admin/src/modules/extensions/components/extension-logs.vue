@@ -189,7 +189,7 @@
 				<div class="py-3 text-center">
 					<span
 						v-if="!hasMore"
-						class="text-xs text-gray-400"
+						class="text-xs text-muted"
 					>
 						{{ t('extensionsModule.texts.logs.noMoreEntries') }}
 					</span>
@@ -226,7 +226,7 @@
 				<div class="flex flex-col overflow-hidden h-full">
 					<el-scrollbar
 						v-if="selectedLog"
-						class="grow-1 p-2 md:px-4"
+						class="grow-1 p-2 tp:px-4"
 					>
 						<system-log-detail :system-log="selectedLog" />
 					</el-scrollbar>

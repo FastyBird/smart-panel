@@ -118,7 +118,9 @@
 				"7d": "Últimos 7 días"
 			},
 			"detail": "Detalle del registro"
-		}
+		},
+		"loadingExtension": "Cargando extensión...",
+		"extensionNotFound": "Esta extensión no está instalada"
 	},
 	"buttons": {
 		"actions": "Acciones",
@@ -142,7 +144,10 @@
 			"title": "Restablecer filtros"
 		},
 		"yes": "Sí",
-		"no": "No"
+		"no": "No",
+		"more": {
+			"title": "Más acciones"
+		}
 	},
 	"tooltips": {
 		"coreCannotBeRemoved": "Las extensiones del núcleo no se pueden eliminar",
@@ -268,5 +273,14 @@
 			"extensionDisabled": "Extensión desactivada",
 			"alwaysActiveDescription": "Los servicios siempre activos siguen funcionando aunque su extensión esté desactivada, para mantener disponibles el descubrimiento y la configuración."
 		}
+	},
+	"viewMode": {
+		"title": "Vista",
+		"cards": "Tarjetas",
+		"table": "Tabla"
+	},
+	"aria": {
+		"enable": "Activar {name}",
+		"more": "Más acciones para {name}"
 	}
 }

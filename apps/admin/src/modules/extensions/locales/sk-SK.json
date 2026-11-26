@@ -118,7 +118,9 @@
         "7d": "Posledných 7 dní"
       },
       "detail": "Podrobnosti protokolu"
-    }
+    },
+    "loadingExtension": "Načítavanie rozšírenia...",
+    "extensionNotFound": "Toto rozšírenie nie je nainštalované"
   },
   "buttons": {
     "actions": "Akcie",
@@ -142,7 +144,10 @@
       "title": "Resetovať filtre"
     },
     "yes": "Áno",
-    "no": "Nie"
+    "no": "Nie",
+    "more": {
+      "title": "Ďalšie akcie"
+    }
   },
   "tooltips": {
     "coreCannotBeRemoved": "Jadrové rozšírenia nie je možné odstrániť",
@@ -268,5 +273,14 @@
       "extensionDisabled": "Rozšírenie zakázané",
       "alwaysActiveDescription": "Vždy aktívne služby zostávajú spustené aj pri zakázanom rozšírení, aby bolo vyhľadávanie a nastavenie naďalej dostupné."
     }
+  },
+  "viewMode": {
+    "title": "Zobrazenie",
+    "cards": "Karty",
+    "table": "Tabuľka"
+  },
+  "aria": {
+    "enable": "Zapnúť {name}",
+    "more": "Ďalšie akcie pre {name}"
   }
 }

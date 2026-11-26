@@ -118,7 +118,9 @@
         "7d": "Ostatnie 7 dni"
       },
       "detail": "Szczegóły dziennika"
-    }
+    },
+    "loadingExtension": "Ładowanie rozszerzenia...",
+    "extensionNotFound": "To rozszerzenie nie jest zainstalowane"
   },
   "buttons": {
     "actions": "Akcje",
@@ -142,7 +144,10 @@
       "title": "Resetuj filtry"
     },
     "yes": "Tak",
-    "no": "Nie"
+    "no": "Nie",
+    "more": {
+      "title": "Więcej akcji"
+    }
   },
   "tooltips": {
     "coreCannotBeRemoved": "Rozszerzenia rdzenne nie mogą być usunięte",
@@ -268,5 +273,14 @@
       "extensionDisabled": "Rozszerzenie wyłączone",
       "alwaysActiveDescription": "Usługi zawsze aktywne działają nadal, gdy ich rozszerzenie jest wyłączone, aby wykrywanie i konfiguracja pozostały dostępne."
     }
+  },
+  "viewMode": {
+    "title": "Widok",
+    "cards": "Karty",
+    "table": "Tabela"
+  },
+  "aria": {
+    "enable": "Włącz {name}",
+    "more": "Więcej akcji dla {name}"
   }
 }

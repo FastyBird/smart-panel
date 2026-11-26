@@ -1,44 +1,39 @@
 <template>
-	<el-scrollbar
-		class="h-full"
+	<extensions-empty
+		v-if="props.items.length === 0"
+		:loading="props.loading"
+		:filters-active="props.filtersActive"
+		@reset-filters="emit('reset-filters')"
+	/>
+
+	<!-- Template 2: the catalogue grid adds columns on wide screens rather than growing its cards; one column on phone -->
+	<ul
+		v-else
+		class="grid grid-cols-1 tp:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 m-0 p-0 list-none"
+		data-test-id="extensions-cards"
 	>
-		<el-skeleton
-			v-if="loading && items.length === 0"
-			:rows="5"
-			animated
-		/>
-
-		<el-result
-			v-else-if="items.length === 0"
-			icon="info"
-			:title="emptyMessage"
-		/>
-
-		<div
-			v-else
-			class="grid grid-cols-[repeat(auto-fill,minmax(350px,1fr))] max-sm:grid-cols-1 gap-3"
+		<li
+			v-for="extension in sortedItems"
+			:key="extension.type"
+			class="min-w-0"
 		>
 			<extension-card
-				v-for="extension in sortedItems"
-				:key="extension.type"
 				:extension="extension"
 				@toggle-enabled="onToggleEnabled"
 				@detail="onDetail"
 			/>
-		</div>
-	</el-scrollbar>
+		</li>
+	</ul>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useI18n } from 'vue-i18n';
-
-import { ElResult, ElScrollbar, ElSkeleton } from 'element-plus';
 
 import type { IExtension } from '../store/extensions.store.types';
 
 import ExtensionCard from './extension-card.vue';
 import type { IExtensionsCardsProps } from './extensions-cards.types';
+import ExtensionsEmpty from './extensions-empty.vue';
 
 defineOptions({
 	name: 'ExtensionsCards',
@@ -55,8 +50,6 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 }>();
 
-const { t } = useI18n();
-
 const sortedItems = computed<IExtension[]>(() => {
 	return [...props.items].sort((a, b) => {
 		// Core extensions first
@@ -66,12 +59,6 @@ const sortedItems = computed<IExtension[]>(() => {
 		// Then alphabetically by name
 		return a.name.localeCompare(b.name);
 	});
-});
-
-const emptyMessage = computed<string>(() => {
-	return props.filtersActive
-		? t('extensionsModule.messages.noMatchingExtensions')
-		: t('extensionsModule.messages.noExtensions');
 });
 
 const onToggleEnabled = (type: IExtension['type'], enabled: boolean): void => {

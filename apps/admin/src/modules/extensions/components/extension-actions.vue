@@ -18,7 +18,7 @@
 				:key="category.name"
 			>
 				<div class="mb-4">
-					<h4 class="text-sm font-semibold uppercase tracking-wide mb-2 text-gray-500">
+					<h4 class="text-sm font-semibold uppercase tracking-wide mb-2 text-secondary">
 						{{ t(`extensionsModule.actions.labels.category.${category.name}`) }}
 					</h4>
 
@@ -36,7 +36,7 @@
 								>
 									<icon
 										:icon="action.icon"
-										class="w-6 h-6 text-gray-500"
+										class="w-6 h-6 text-secondary"
 									/>
 								</div>
 
@@ -61,7 +61,7 @@
 
 									<p
 										v-if="action.description"
-										class="text-sm text-gray-500 m-0 mb-3"
+										class="text-sm text-secondary m-0 mb-3"
 									>
 										{{ action.description }}
 									</p>
@@ -188,7 +188,7 @@
 											<div
 												v-for="record in actionHistory[action.id]"
 												:key="record.id"
-												class="flex items-center gap-2 py-1 text-xs text-gray-500 border-b border-gray-100 last:border-b-0"
+												class="flex items-center gap-2 py-1 text-xs text-secondary border-b border-light last:border-b-0"
 											>
 												<icon
 													:icon="record.success ? 'mdi:check-circle' : 'mdi:alert-circle'"
