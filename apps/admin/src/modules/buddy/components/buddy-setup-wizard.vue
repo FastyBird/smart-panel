@@ -4,8 +4,8 @@
 	<wizard-shell
 		:steps="shellSteps"
 		:current="currentStepName"
-		:can-continue="!isLoading && !llmProvidersFailed && !isNextDisabled"
-		:skippable="canSkip && !isLoading && !llmProvidersFailed"
+		:can-continue="!isLoading && !providerStepBlocked && !isNextDisabled"
+		:skippable="canSkip && !isLoading && !providerStepBlocked"
 		:busy="isSavingModuleConfig || togglingPlugins.size > 0"
 		:next-label="currentStepName === 'done' ? t('buddyModule.wizard.buttons.startChatting') : undefined"
 		:cancellable="currentStepName !== 'done'"
@@ -317,6 +317,10 @@ watch(stepSequence, (seq) => {
 		currentStep.value = maxStep;
 	}
 });
+
+// A failed provider read holds the provider step, where it shows with Retry. The other steps go on: a refresh after a
+// voice or messaging config was saved can fail too, and Finish then leaves the provider as it was
+const providerStepBlocked = computed<boolean>(() => llmProvidersFailed.value && currentStepName.value === 'provider');
 
 // Every step before the summary can be skipped: Buddy still makes rule-based suggestions without an AI provider
 const canSkip = computed(() => currentStepName.value !== 'done');
