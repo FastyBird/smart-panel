@@ -65,4 +65,15 @@ describe('SystemHealthBanner', () => {
 		expect(alert.props('title')).toBe('systemModule.health.unknownTitle');
 		expect(alert.props('description')).toBe('systemModule.health.unknownDescription');
 	});
+
+	it('with power and temperature not reported names the update, without calling the system healthy', () => {
+		updateAvailable.value = true;
+		latestVersion.value = '1.4.0';
+
+		const alert = mount(SystemHealthBanner, { props: { throttleStatus: null } }).findComponent(ElAlert);
+
+		expect(alert.props('type')).toBe('info');
+		expect(alert.props('title')).toBe('systemModule.texts.update.available');
+		expect(alert.props('description')).toBe('systemModule.health.unknownDescription');
+	});
 });

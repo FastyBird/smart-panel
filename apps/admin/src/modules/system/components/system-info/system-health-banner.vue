@@ -72,12 +72,13 @@ const description = computed<string>(() => {
 		return problems.value.map((key) => t(`systemModule.systemInfo.${key}`)).join(' · ');
 	}
 
-	if (updateAvailable.value && latestVersion.value) {
-		return t('systemModule.health.updateDescription');
-	}
-
+	// Not knowing the power and temperature outweighs the hint where to install: the update is named in the title
 	if (unknown.value) {
 		return t('systemModule.health.unknownDescription');
+	}
+
+	if (updateAvailable.value && latestVersion.value) {
+		return t('systemModule.health.updateDescription');
 	}
 
 	return t('systemModule.health.okDescription');

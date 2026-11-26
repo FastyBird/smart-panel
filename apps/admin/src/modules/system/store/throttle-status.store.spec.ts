@@ -93,6 +93,27 @@ describe('ThrottleStatus Store', () => {
 		expect(result).toEqual(null);
 	});
 
+	it('drops an earlier reading when the board stops reporting its throttle status', async () => {
+		(backendClient.GET as Mock).mockResolvedValueOnce({
+			data: { data: mockThrottleStatusRes },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await store.get();
+
+		expect(store.data).toEqual(mockThrottleStatus);
+
+		(backendClient.GET as Mock).mockResolvedValueOnce({
+			data: undefined,
+			error: new Error('Bad request'),
+			response: { status: 400 },
+		});
+
+		await expect(store.get()).resolves.toBeNull();
+		expect(store.data).toBeNull();
+	});
+
 	it('should throw error if fetch fails', async () => {
 		(backendClient.GET as Mock).mockResolvedValue({
 			data: undefined,

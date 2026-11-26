@@ -86,7 +86,10 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 						return data.value;
 					}
 
+					// The board does not report its throttle status: no reading, and none from before kept as if current
 					if (response.status === 400) {
+						data.value = null;
+
 						return null;
 					}
 
