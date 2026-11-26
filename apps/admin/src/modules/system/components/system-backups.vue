@@ -307,6 +307,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElMessageBox, ElTable, ElTableColumn, type FormInstance } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
+import { useNow } from '@vueuse/core';
 
 import { SettingsLayout, type SettingsLayoutSection, SettingsSection, StateView, useFlashMessage, useSizeClass } from '../../../common';
 import type { IBackup } from '../composables/useBackups';
@@ -323,7 +324,7 @@ defineOptions({
 	name: 'SystemBackups',
 });
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const flashMessage = useFlashMessage();
 const { isPhone, isTabletPortrait } = useSizeClass();
 
@@ -331,6 +332,9 @@ const { backups, loading, failed, creating, fetchBackups, createBackup, deleteBa
 
 // A backup this old or older gets the banner's reminder
 const STALE_AFTER_DAYS = 30;
+
+// The banner turns stale while the page stays open; a minute is close enough to a 30-day boundary
+const now = useNow({ interval: 60_000 });
 
 const showCreateDialog = ref<boolean>(false);
 const showRestoreDialog = ref<boolean>(false);
@@ -383,7 +387,7 @@ const banner = computed<{ type: 'success' | 'warning'; title: string; descriptio
 
 	const when = formatDate(latest.created_at);
 
-	if (Date.now() - Date.parse(latest.created_at) >= STALE_AFTER_DAYS * 24 * 60 * 60 * 1000) {
+	if (now.value.getTime() - Date.parse(latest.created_at) >= STALE_AFTER_DAYS * 24 * 60 * 60 * 1000) {
 		return {
 			type: 'warning',
 			title: t('systemModule.backups.banner.staleTitle', { days: STALE_AFTER_DAYS }),
@@ -405,7 +409,7 @@ const createForm = reactive<ICreateBackupForm>({
 });
 
 const formatDate = (date: string): string => {
-	return new Intl.DateTimeFormat(undefined, {
+	return new Intl.DateTimeFormat(locale.value, {
 		dateStyle: 'medium',
 		timeStyle: 'short',
 	}).format(new Date(date));

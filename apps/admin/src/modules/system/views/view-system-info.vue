@@ -54,7 +54,7 @@
 		:sections="sections"
 	>
 		<template #banner>
-			<system-health-banner :throttle-status="throttleStatus" />
+			<system-health-banner :throttle-status="currentThrottleStatus" />
 		</template>
 
 		<settings-section
@@ -67,7 +67,7 @@
 
 		<system-info-detail
 			:system-info="systemInfo"
-			:throttle-status="throttleStatus"
+			:throttle-status="currentThrottleStatus"
 		/>
 
 		<settings-section
@@ -101,6 +101,7 @@ import { Icon } from '@iconify/vue';
 import { AppBreadcrumbs, SettingsLayout, type SettingsLayoutSection, SettingsSection, StateView, ViewHeader, useFlashMessage } from '../../../common';
 import { AboutApplication, ManageSystem, SystemHealthBanner, SystemInfoDetail, UpdateStatus } from '../components/components';
 import { useSystemInfo, useThrottleStatus } from '../composables/composables';
+import type { IThrottleStatus } from '../store/throttle-status.store.types';
 import { RouteNames } from '../system.constants';
 
 defineOptions({
@@ -118,6 +119,12 @@ const { throttleStatus, fetchThrottleStatus } = useThrottleStatus();
 const failed = ref<boolean>(false);
 
 const refreshing = ref<boolean>(false);
+
+// The last throttle read failed (or the board does not report it). The store keeps the reading before it, which is no
+// longer current: the banner and the Power section then say the state is not reported instead of showing it
+const throttleFailed = ref<boolean>(false);
+
+const currentThrottleStatus = computed<IThrottleStatus | null>((): IThrottleStatus | null => (throttleFailed.value ? null : throttleStatus.value));
 
 const sections = computed<SettingsLayoutSection[]>((): SettingsLayoutSection[] => [
 	{ id: 'software', label: t('systemModule.headings.update.title'), icon: 'mdi:update' },
@@ -145,9 +152,10 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 const load = async (): Promise<void> => {
 	failed.value = false;
 
-	const [info] = await Promise.allSettled([fetchSystemInfo(), fetchThrottleStatus()]);
+	const [info, throttle] = await Promise.allSettled([fetchSystemInfo(), fetchThrottleStatus()]);
 
 	failed.value = info.status === 'rejected';
+	throttleFailed.value = throttle.status === 'rejected';
 
 	// Information read before stays on screen; the failed refresh says so
 	if (failed.value && systemInfo.value !== null) {
@@ -167,8 +175,10 @@ const onRefresh = (): void => {
 	});
 };
 
+// Through Refresh, so a click while the first read is on its way does not start a second one: the stores refuse a
+// read while one is running, which would read as a failure
 onBeforeMount((): void => {
-	void load();
+	onRefresh();
 });
 
 useMeta({

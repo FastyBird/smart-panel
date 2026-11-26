@@ -151,9 +151,9 @@ const emit = defineEmits<{
 	(e: 'retry'): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const formatRelative = (iso: string): string => formatTimeAgo(new Date(iso));
 
-const formatFull = (iso: string): string => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(iso));
+const formatFull = (iso: string): string => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(iso));
 </script>

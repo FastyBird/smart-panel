@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 vi.mock('../../../common', async () => {
@@ -199,5 +199,25 @@ describe('SystemBackups', () => {
 		await flushPromises();
 
 		expect(mocks.uploadBackup).toHaveBeenCalledWith(file);
+	});
+
+	it('turns the banner stale while the page stays open', async () => {
+		vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+
+		try {
+			// Two minutes short of the 30-day mark
+			mocks.backups.value = [backup('a', 30 - 2 / (24 * 60))];
+
+			const wrapper = mountBackups();
+			await flushPromises();
+
+			expect(wrapper.findComponent(ElAlert).props('type')).toBe('success');
+
+			await vi.advanceTimersByTimeAsync(3 * 60_000);
+
+			expect(wrapper.findComponent(ElAlert).props('type')).toBe('warning');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

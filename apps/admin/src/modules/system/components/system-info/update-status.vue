@@ -7,12 +7,8 @@
 	>
 		<div class="flex flex-wrap items-center gap-3">
 			<status-tag
-				:status="updateAvailable && latestVersion ? 'warn' : 'ok'"
-				:label="
-					updateAvailable && latestVersion
-						? t('systemModule.texts.update.available', { version: latestVersion })
-						: t('systemModule.texts.update.upToDate')
-				"
+				:status="state.status"
+				:label="state.label"
 				data-test-id="update-status-state"
 			/>
 
@@ -139,14 +135,14 @@ import { ElAlert, ElButton, ElDialog, ElNotification, ElProgress, ElText } from 
 
 import { Icon } from '@iconify/vue';
 
-import { KvGrid, type KvGridItem, StatusTag } from '../../../../common';
+import { KvGrid, type KvGridItem, StatusTag, type StatusTagStatus } from '../../../../common';
 import { useUpdateStatus } from '../../composables/composables';
 
 defineOptions({
 	name: 'UpdateStatus',
 });
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const showUpdateDialog = ref<boolean>(false);
 
@@ -181,10 +177,24 @@ const lastCheckedFormatted = computed<string | null>((): string | null => {
 		return null;
 	}
 
-	return new Intl.DateTimeFormat(undefined, {
+	return new Intl.DateTimeFormat(locale.value, {
 		dateStyle: 'medium',
 		timeStyle: 'short',
 	}).format(lastChecked.value);
+});
+
+// "Up to date" only once the backend answered: the installed version is known from its first status response, so
+// without it the state is being checked, or could not be read
+const state = computed<{ status: StatusTagStatus; label: string }>((): { status: StatusTagStatus; label: string } => {
+	if (updateAvailable.value && latestVersion.value) {
+		return { status: 'warn', label: t('systemModule.texts.update.available', { version: latestVersion.value }) };
+	}
+
+	if (currentVersion.value === null) {
+		return { status: 'info', label: loading.value ? t('systemModule.texts.update.checking') : t('systemModule.texts.update.noVersionInfo') };
+	}
+
+	return { status: 'ok', label: t('systemModule.texts.update.upToDate') };
 });
 
 // The latest version carries the size of the step, "1.4.0 (minor)"

@@ -105,4 +105,32 @@ describe('useSystemLogsDataSource', () => {
 
 		vi.useRealTimers();
 	});
+
+	it('clears a failed read once the live tail reads again', async () => {
+		vi.useFakeTimers();
+
+		mockFetch.mockRejectedValueOnce(new Error('offline'));
+
+		const scope = effectScope();
+		let source!: ReturnType<typeof useSystemLogsDataSource>;
+
+		scope.run(() => {
+			source = useSystemLogsDataSource({ syncQuery: false });
+		});
+
+		await expect(source.fetchSystemLogs()).rejects.toThrow('offline');
+		expect(source.failed.value).toBe(true);
+
+		source.live.value = true;
+		await nextTick();
+
+		await vi.advanceTimersByTimeAsync(3000);
+
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+		expect(source.failed.value).toBe(false);
+
+		scope.stop();
+
+		vi.useRealTimers();
+	});
 });

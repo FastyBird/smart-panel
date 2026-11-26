@@ -34,6 +34,8 @@ export interface IUseSystemLogsDataSource {
 	hasMore: Ref<boolean>;
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
+	/** The last read of the entries failed */
+	failed: Ref<boolean>;
 	fetchSystemLogs: () => Promise<void>;
 	loadMoreSystemLogs: () => Promise<void>;
 	filters: Ref<ISystemLogsFilter>;

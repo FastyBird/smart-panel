@@ -87,7 +87,7 @@ defineOptions({
 
 const props = defineProps<ISystemLogsDetailProps>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const flashMessage = useFlashMessage();
 
 const hasArgs = computed<boolean>((): boolean => {
@@ -97,7 +97,7 @@ const hasArgs = computed<boolean>((): boolean => {
 });
 
 const formatDate = (iso: string | null | undefined): string | null =>
-	iso ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(iso)) : null;
+	iso ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(iso)) : null;
 
 // Only what the entry carries: a backend line has no browser, an admin line no ingest time
 const details = computed<KvGridItem[]>((): KvGridItem[] => {

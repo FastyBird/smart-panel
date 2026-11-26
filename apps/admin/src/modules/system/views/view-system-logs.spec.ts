@@ -23,12 +23,13 @@ const mocks = vi.hoisted(() => ({
 	loadMoreSystemLogs: vi.fn(),
 	filters: null as unknown as Ref<ISystemLogsFilter>,
 	systemLogs: null as unknown as Ref<ILogEntry[]>,
+	failed: null as unknown as Ref<boolean>,
 	error: vi.fn(),
 }));
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 vi.mock('vue-meta', () => ({
@@ -74,6 +75,7 @@ vi.mock('../composables/useSystemLogsDataSource', async () => {
 
 	mocks.filters = ref({ search: undefined, levels: [], sources: [], tag: undefined });
 	mocks.systemLogs = ref([]);
+	mocks.failed = ref(false);
 
 	return {
 		useSystemLogsDataSource: () => ({
@@ -81,6 +83,7 @@ vi.mock('../composables/useSystemLogsDataSource', async () => {
 			hasMore: ref(false),
 			areLoading: ref(false),
 			loaded: computed(() => true),
+			failed: mocks.failed,
 			fetchSystemLogs: mocks.fetchSystemLogs,
 			loadMoreSystemLogs: mocks.loadMoreSystemLogs,
 			refreshSystemLogs: mocks.refreshSystemLogs,
@@ -123,6 +126,7 @@ describe('ViewSystemLogs', () => {
 		mocks.route.params = {};
 		mocks.filters.value = { search: undefined, levels: [], sources: [], tag: undefined };
 		mocks.systemLogs.value = [entry('a'), entry('b')];
+		mocks.failed.value = false;
 		mocks.fetchSystemLogs.mockResolvedValue(undefined);
 
 		Element.prototype.scrollTo = vi.fn();
@@ -177,8 +181,16 @@ describe('ViewSystemLogs', () => {
 
 	it('says when the entries cannot be read, and reads them again on retry', async () => {
 		mocks.systemLogs.value = [];
-		mocks.fetchSystemLogs.mockRejectedValue(new Error('offline'));
-		mocks.refreshSystemLogs.mockResolvedValue(undefined);
+		mocks.fetchSystemLogs.mockImplementation(() => {
+			mocks.failed.value = true;
+
+			return Promise.reject(new Error('offline'));
+		});
+		mocks.refreshSystemLogs.mockImplementation(() => {
+			mocks.failed.value = false;
+
+			return Promise.resolve();
+		});
 
 		const wrapper = mountView();
 		await flushPromises();

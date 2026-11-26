@@ -139,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref } from 'vue';
+import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRoute, useRouter } from 'vue-router';
@@ -170,8 +170,19 @@ const flashMessage = useFlashMessage();
 
 const { isPhone, isTabletPortrait } = useSizeClass();
 
-const { fetchSystemLogs, loadMoreSystemLogs, systemLogs, hasMore, filters, live, filtersActive, areLoading, resetFilter, refreshSystemLogs } =
-	useSystemLogsDataSource();
+const {
+	fetchSystemLogs,
+	loadMoreSystemLogs,
+	systemLogs,
+	hasMore,
+	filters,
+	live,
+	filtersActive,
+	areLoading,
+	failed: loadFailed,
+	resetFilter,
+	refreshSystemLogs,
+} = useSystemLogsDataSource();
 
 // Template 7: two panes from tablet landscape; below it the list, then the entry as a page of its own
 const twoPane = computed<boolean>((): boolean => !isPhone.value && !isTabletPortrait.value);
@@ -212,23 +223,14 @@ const onResetFilters = (): void => {
 	resetFilter();
 };
 
-// The last read of the entries failed; with none on screen the list says so and offers a retry
-const loadFailed = ref<boolean>(false);
-
 const reportError = (): void => {
 	flashMessage.error(t('systemModule.messages.misc.requestError'));
 };
 
+// The data source keeps whether the last read failed, the live tail's reads included; the view only tells about the
+// reads someone asked for
 const read = (request: () => Promise<void>): void => {
-	request()
-		.then((): void => {
-			loadFailed.value = false;
-		})
-		.catch((): void => {
-			loadFailed.value = true;
-
-			reportError();
-		});
+	request().catch(reportError);
 };
 
 const onLoadMore = (): void => {
