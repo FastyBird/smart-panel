@@ -41,6 +41,13 @@ class _DomainOptimistic {
   /// Set once this override's request has failed, so a later rollback
   /// never puts it back.
   bool failed = false;
+
+  /// What the room reported when this override was set, and whether it has
+  /// reported anything different since. Only a report after a change can
+  /// confirm the override, so a reversal to what the room still shows is
+  /// not taken as done before the room has moved.
+  Object? baseline;
+  bool roomMoved = false;
   final DateTime createdAt;
 
   _DomainOptimistic({
@@ -546,6 +553,20 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       if (card == null) continue;
 
       final override = entry.value;
+      final reported = (
+        card.primaryValue,
+        card.unit,
+        card.isActive,
+        card.actions.isEmpty ? null : card.actions.first.label,
+        card.target,
+      );
+      if (override.baseline == null) {
+        override.baseline = reported;
+        continue;
+      }
+      if (reported != override.baseline) override.roomMoved = true;
+      if (!override.roomMoved) continue;
+
       // Lights turned on show On until the room reports them on, with
       // whatever brightness it reports.
       final onlyOn =

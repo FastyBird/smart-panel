@@ -185,6 +185,18 @@ ClimateStateModel _heating() => ClimateStateModel.fromJson({
   'is_heating': true,
 }, spaceId: 'room');
 
+/// Cooling to 26° in Cool, with a 22° heating setpoint.
+ClimateStateModel _cooling() => ClimateStateModel.fromJson({
+  'has_climate': true,
+  'mode': 'cool',
+  'current_temperature': 21.5,
+  'heating_setpoint': 22.0,
+  'cooling_setpoint': 26.0,
+  'supports_heating': true,
+  'supports_cooling': true,
+  'is_cooling': true,
+}, spaceId: 'room');
+
 Finder _climate() => find.byKey(const ValueKey('room-card-climate'));
 
 Finder _target(String text) => find.descendant(
@@ -528,6 +540,61 @@ void main() {
         expect(spaces.sent, ['mode cool room', 'mode heat room']);
         final card = tester.widget<RoomDomainCard>(_climate()).card;
         expect(card.actions.first.label, 'Heat');
+        await finish(tester);
+      });
+    });
+
+    group('review round 8', () {
+      String? modeLabel(WidgetTester tester) =>
+          tester.widget<RoomDomainCard>(_climate()).card.actions.first.label;
+
+      Future<void> report(WidgetTester tester, ClimateStateModel state) async {
+        spaces
+          ..climate = state
+          ..notifyListeners();
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      testWidgets(
+        'a reversed mode stays until the room reports it, past the earlier '
+        'mode arriving first',
+        (tester) async {
+          await pumpPage(tester, const Size(800, 480));
+
+          await chooseMode(tester, 'Cool');
+          await tester.tap(
+            find.descendant(of: _climate(), matching: find.text('Cool')),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Heat').last);
+          await tester.pump(const Duration(milliseconds: 100));
+
+          // The earlier Cool lands first; the card keeps the latest choice.
+          await report(tester, _cooling());
+          expect(modeLabel(tester), 'Heat');
+
+          // Heat lands and confirms it, so the override is gone: a later
+          // change made elsewhere shows at once.
+          await report(tester, _heating());
+          expect(modeLabel(tester), 'Heat');
+          await report(tester, _cooling());
+          expect(modeLabel(tester), 'Cool');
+          await finish(tester);
+        },
+      );
+
+      testWidgets('a plain mode change is confirmed by the room reporting it', (
+        tester,
+      ) async {
+        await pumpPage(tester, const Size(800, 480));
+
+        await chooseMode(tester, 'Cool');
+        await report(tester, _cooling());
+        expect(modeLabel(tester), 'Cool');
+
+        // Confirmed, so the room's next report shows at once.
+        await report(tester, _heating());
+        expect(modeLabel(tester), 'Heat');
         await finish(tester);
       });
     });
