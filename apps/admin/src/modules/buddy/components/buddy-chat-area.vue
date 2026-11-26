@@ -1,150 +1,84 @@
 <template>
-	<div class="flex flex-col h-full">
-		<template v-if="isProviderNotConfigured">
-			<div class="flex items-center justify-center h-full">
-				<div class="max-w-md w-full">
-					<!-- No provider selected -->
-					<el-result
-						v-if="!selectedProvider"
-						icon="warning"
-						:title="t('buddyModule.texts.noProviderSelected')"
-						:sub-title="t('buddyModule.texts.noProviderSelectedHint')"
-					>
-						<template #extra>
-							<div class="flex gap-2">
-								<el-button
-									type="primary"
-									@click="wizardVisible = true"
-								>
-									<el-icon class="mr-1">
-										<icon icon="mdi:magic-staff" />
-									</el-icon>
-									{{ t('buddyModule.buttons.setupWizard.title') }}
-								</el-button>
-								<el-button @click="router.push('/config/modules/buddy-module')">
-									{{ t('buddyModule.buttons.configure.title') }}
-								</el-button>
-							</div>
-						</template>
-					</el-result>
+	<div
+		class="flex flex-col flex-1 min-h-0"
+		data-test-id="buddy-chat-area"
+	>
+		<state-view
+			v-if="!props.loaded && props.failed"
+			kind="error"
+			icon="mdi:chat-alert-outline"
+			:title="t('buddyModule.texts.messagesFailed')"
+			data-test-id="buddy-chat-failed"
+		>
+			<template #action>
+				<el-button
+					plain
+					data-test-id="buddy-chat-retry"
+					@click="emit('retry')"
+				>
+					{{ t('buddyModule.buttons.retry.title') }}
+				</el-button>
+			</template>
+		</state-view>
 
-					<!-- Provider selected but not enabled -->
-					<el-result
-						v-else-if="!selectedProvider.enabled"
-						icon="warning"
-						:title="t('buddyModule.texts.providerNotEnabled', { name: selectedProvider.name })"
-						:sub-title="t('buddyModule.texts.providerNotEnabledHint')"
-					>
-						<template #extra>
-							<div class="flex gap-2">
-								<el-button
-									type="primary"
-									@click="wizardVisible = true"
-								>
-									<el-icon class="mr-1">
-										<icon icon="mdi:magic-staff" />
-									</el-icon>
-									{{ t('buddyModule.buttons.setupWizard.title') }}
-								</el-button>
-								<el-button @click="router.push(`/config/plugins/${selectedProvider.type}`)">
-									{{ t('buddyModule.buttons.configure.title') }}
-								</el-button>
-							</div>
-						</template>
-					</el-result>
-
-					<!-- Provider selected & enabled but not configured -->
-					<el-result
-						v-else
-						icon="warning"
-						:title="t('buddyModule.texts.providerMissingConfig', { name: selectedProvider.name })"
-						:sub-title="t('buddyModule.texts.providerMissingConfigHint')"
-					>
-						<template #extra>
-							<div class="flex gap-2">
-								<el-button
-									type="primary"
-									@click="wizardVisible = true"
-								>
-									<el-icon class="mr-1">
-										<icon icon="mdi:magic-staff" />
-									</el-icon>
-									{{ t('buddyModule.buttons.setupWizard.title') }}
-								</el-button>
-								<el-button @click="router.push(`/config/plugins/${selectedProvider.type}`)">
-									{{ t('buddyModule.buttons.configure.title') }}
-								</el-button>
-							</div>
-						</template>
-					</el-result>
-
-					<!-- Other available providers -->
-					<div
-						v-if="otherProviders.length > 0"
-						class="mt-4 px-4"
-					>
-						<div class="text-sm text-[var(--el-text-color-secondary)] mb-2">
-							{{ t('buddyModule.texts.availableProviders') }}
-						</div>
-
-						<div class="flex flex-col gap-1">
-							<div
-								v-for="provider in otherProviders"
-								:key="provider.type"
-								class="flex items-center justify-between text-sm py-1"
-							>
-								<span>{{ provider.name }}</span>
-								<el-tag
-									:type="provider.configured ? 'success' : 'info'"
-									size="small"
-								>
-									{{ provider.configured ? t('buddyModule.texts.configured') : t('buddyModule.texts.notConfigured') }}
-								</el-tag>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</template>
-
-		<template v-else-if="!hasActiveConversation && !isLoadingMessages">
-			<div class="flex items-center justify-center h-full">
-				<empty-state
-					icon="mdi:chat-outline"
-					:description="t('buddyModule.texts.emptyChat')"
-				/>
-			</div>
-		</template>
+		<state-view
+			v-else-if="!props.loaded"
+			kind="loading"
+			icon="mdi:chat-outline"
+			:title="t('buddyModule.texts.loadingMessages')"
+		/>
 
 		<template v-else>
-			<el-scrollbar
-				ref="scrollbarRef"
-				class="grow-1 p-4"
+			<div
+				ref="scrollEl"
+				class="flex-1 min-h-0 overflow-y-auto p-4"
+				data-test-id="buddy-chat-messages"
 			>
-				<div>
-					<empty-state
-						v-if="messages.length === 0 && !isLoadingMessages"
-						icon="mdi:chat-outline"
-						:description="t('buddyModule.texts.startConversation')"
-					/>
+				<state-view
+					v-if="props.messages.length === 0 && !props.isSending"
+					kind="empty"
+					icon="mdi:chat-outline"
+					:title="t('buddyModule.texts.startConversation')"
+				/>
 
-					<buddy-message-bubble
-						v-for="message in messages"
-						:key="message.id"
-						:message="message"
-						:show-speaker="isTtsConfigured && message.role === 'assistant'"
-						:is-playing="playingMessageId === message.id && !audioLoading"
-						:is-loading-audio="playingMessageId === message.id && audioLoading"
-						@play="emit('play-audio', $event)"
-						@stop="emit('stop-audio')"
-					/>
+				<template v-else>
+					<!-- A chronological feed (spec section 5): the latest messages first, earlier ones with Load more -->
+					<div
+						v-if="hiddenCount > 0"
+						class="flex justify-center mb-3"
+					>
+						<el-button
+							plain
+							data-test-id="buddy-chat-load-more"
+							@click="onLoadMore"
+						>
+							{{ t('buddyModule.buttons.loadMore.title') }}
+						</el-button>
+					</div>
 
 					<div
-						v-if="isSending"
-						class="flex justify-start mb-3"
+						role="log"
+						:aria-label="t('buddyModule.aria.messages')"
 					>
-						<div class="bg-[var(--el-fill-color-light)] rounded-lg px-3 py-2">
-							<div class="flex items-center gap-2 text-sm text-[var(--el-text-color-secondary)]">
+						<buddy-message-bubble
+							v-for="message in shownMessages"
+							:key="message.id"
+							:message="message"
+							:show-speaker="props.isTtsConfigured && message.role === 'assistant'"
+							:is-playing="props.playingMessageId === message.id && !props.audioLoading"
+							:is-loading-audio="props.playingMessageId === message.id && props.audioLoading"
+							@play="emit('play-audio', $event)"
+							@stop="emit('stop-audio')"
+						/>
+					</div>
+
+					<div
+						v-if="props.isSending"
+						class="flex justify-start mb-3"
+						role="status"
+					>
+						<div class="bg-fill-light rounded-lg px-3 py-2">
+							<div class="flex items-center gap-2 text-help">
 								<el-icon class="is-loading">
 									<icon icon="mdi:loading" />
 								</el-icon>
@@ -152,101 +86,138 @@
 							</div>
 						</div>
 					</div>
-				</div>
-			</el-scrollbar>
+				</template>
+			</div>
 
-			<div class="flex items-end gap-2 p-3 b-t b-t-solid b-t-[var(--el-border-color-light)]">
+			<form
+				:style="keyboardOffset > 0 ? { transform: `translateY(-${keyboardOffset}px)` } : undefined"
+				class="flex items-end gap-2 p-3 shrink-0 border-t border-t-solid border-light bg-surface"
+				data-test-id="buddy-chat-composer"
+				@submit.prevent="onSend"
+			>
 				<el-input
 					v-model="inputMessage"
 					type="textarea"
 					:autosize="{ minRows: 1, maxRows: 6 }"
 					resize="none"
 					:placeholder="t('buddyModule.fields.message.placeholder')"
-					:disabled="isSending"
+					:aria-label="t('buddyModule.fields.message.title')"
+					:disabled="props.isSending"
 					@keydown.enter.exact.prevent="onSend"
 				/>
-				<el-button
-					type="primary"
-					:disabled="!inputMessage.trim() || isSending"
-					@click="onSend"
+				<el-tooltip
+					:content="t('buddyModule.buttons.send.title')"
+					placement="top"
 				>
-					<el-icon>
-						<icon icon="mdi:send" />
-					</el-icon>
-				</el-button>
-			</div>
+					<el-button
+						:aria-label="t('buddyModule.buttons.send.title')"
+						:disabled="!inputMessage.trim() || props.isSending"
+						type="primary"
+						native-type="submit"
+						data-test-id="buddy-chat-send"
+					>
+						<template #icon>
+							<icon icon="mdi:send" />
+						</template>
+					</el-button>
+				</el-tooltip>
+			</form>
 		</template>
-
-		<buddy-setup-wizard
-			v-model:visible="wizardVisible"
-			@completed="emit('wizard-completed')"
-		/>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElInput, ElResult, ElScrollbar, ElTag } from 'element-plus';
+import { ElButton, ElIcon, ElInput, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import EmptyState from '../../../common/components/empty-state.vue';
+import { StateView } from '../../../common';
+import { useKeyboardOffset } from '../../../common/composables/useKeyboardOffset';
+import { BUDDY_MESSAGES_PAGE_SIZE } from '../buddy.constants';
 import type { IMessage } from '../buddy.types';
-import type { IProviderStatus } from '../composables/useBuddyProviders';
 
 import BuddyMessageBubble from './buddy-message-bubble.vue';
-import BuddySetupWizard from './buddy-setup-wizard.vue';
 
 defineOptions({
 	name: 'BuddyChatArea',
 });
 
-const props = defineProps<{
-	messages: IMessage[];
-	isSending: boolean;
-	isLoadingMessages: boolean;
-	hasActiveConversation: boolean;
-	isProviderNotConfigured: boolean;
-	selectedProvider?: IProviderStatus;
-	providerStatuses: IProviderStatus[];
-	isTtsConfigured?: boolean;
-	playingMessageId?: string | null;
-	audioLoading?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		messages: IMessage[];
+		isSending: boolean;
+		/** The conversation's messages have been read once; until then the chat waits */
+		loaded: boolean;
+		/** Reading the conversation's messages failed; the chat offers to read them again */
+		failed?: boolean;
+		/** The unsent message. The parent keeps it, so it outlives this chat when the layout changes */
+		draft?: string;
+		isTtsConfigured?: boolean;
+		playingMessageId?: string | null;
+		audioLoading?: boolean;
+	}>(),
+	{
+		failed: false,
+		draft: '',
+		isTtsConfigured: false,
+		playingMessageId: null,
+		audioLoading: false,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'send', content: string): void;
 	(e: 'play-audio', messageId: string): void;
 	(e: 'stop-audio'): void;
-	(e: 'wizard-completed'): void;
+	(e: 'retry'): void;
+	(e: 'update:draft', value: string): void;
 }>();
 
 const { t } = useI18n();
-const router = useRouter();
 
-const inputMessage = ref<string>('');
-const scrollbarRef = ref<InstanceType<typeof ElScrollbar> | null>(null);
-const wizardVisible = ref<boolean>(false);
+// The composer rides above the on-screen keyboard like the form footer (spec section 6)
+const { offset: keyboardOffset } = useKeyboardOffset();
 
-const otherProviders = computed<IProviderStatus[]>(() => {
-	return props.providerStatuses.filter((p) => !p.selected);
+const inputMessage = computed<string>({
+	get: (): string => props.draft,
+	set: (value: string): void => emit('update:draft', value),
 });
+const scrollEl = ref<HTMLElement | null>(null);
 
-const scrollToBottom = (): void => {
-	// Double nextTick ensures the DOM has fully rendered new messages
-	// before measuring scrollHeight and scrolling.
+// How many of the earliest messages are left out. Set once the conversation's messages are read, so the chat opens on
+// its latest page; new messages add to the end and leave it as it is
+const hiddenCount = ref<number>(0);
+
+const shownMessages = computed<IMessage[]>(() => props.messages.slice(hiddenCount.value));
+
+const scrollToBottom = (smooth: boolean): void => {
+	// Twice: the first tick renders the messages, the second lets the markdown inside them lay out
 	nextTick(() => {
 		nextTick(() => {
-			const wrapEl = scrollbarRef.value?.wrapRef;
+			const el = scrollEl.value;
 
-			if (wrapEl) {
-				wrapEl.scrollTo({ top: wrapEl.scrollHeight, behavior: 'smooth' });
+			if (el) {
+				el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
 			}
 		});
 	});
+};
+
+const onLoadMore = async (): Promise<void> => {
+	const el = scrollEl.value;
+	const before = el?.scrollHeight ?? 0;
+
+	hiddenCount.value = Math.max(0, hiddenCount.value - BUDDY_MESSAGES_PAGE_SIZE);
+
+	await nextTick();
+
+	// The messages already read stay where they were; the earlier ones open above them
+	if (el) {
+		el.scrollTop += el.scrollHeight - before;
+	}
 };
 
 const onSend = (): void => {
@@ -261,17 +232,37 @@ const onSend = (): void => {
 };
 
 watch(
+	() => props.loaded,
+	(loaded: boolean): void => {
+		if (loaded) {
+			hiddenCount.value = Math.max(0, props.messages.length - BUDDY_MESSAGES_PAGE_SIZE);
+
+			scrollToBottom(false);
+		}
+	},
+	{ immediate: true }
+);
+
+// A message sent or answered: the chat follows it. Re-reading the messages after a send can shorten the list for a
+// moment (the pending message is swapped for the stored one), so the hidden count never passes its end
+watch(
 	() => props.messages.length,
-	() => {
-		scrollToBottom();
+	(length: number, previous: number | undefined): void => {
+		if (hiddenCount.value > length) {
+			hiddenCount.value = Math.max(0, length - BUDDY_MESSAGES_PAGE_SIZE);
+		}
+
+		if (props.loaded && length > (previous ?? 0)) {
+			scrollToBottom(true);
+		}
 	}
 );
 
 watch(
 	() => props.isSending,
-	(val: boolean) => {
-		if (val) {
-			scrollToBottom();
+	(sending: boolean): void => {
+		if (sending) {
+			scrollToBottom(true);
 		}
 	}
 );

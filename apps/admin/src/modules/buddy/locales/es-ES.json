@@ -6,11 +6,13 @@
 		"settings": "Compañero",
 		"chat": "Chat de Buddy",
 		"chats": "Charlas",
-		"aboutBuddy": "Configuración del Buddy IA"
+		"aboutBuddy": "Configuración del Buddy IA",
+		"deleteConversation": "Eliminar chat"
 	},
 	"subHeadings": {
 		"settings": "Configurar los ajustes del asistente Buddy IA",
-		"chat": "Chatea con tu asistente Buddy IA"
+		"chat": "Chatea con tu asistente Buddy IA",
+		"setup": "Elige los proveedores con los que Buddy responde, habla y escucha, y dónde puedes contactarlo"
 	},
 	"messages": {
 		"loadError": "Error al cargar la configuración de Buddy",
@@ -29,7 +31,8 @@
 			"audioPlayback": "Error al reproducir el audio",
 			"loadPersonality": "Error al cargar la personalidad",
 			"savePersonality": "Error al guardar la personalidad"
-		}
+		},
+		"confirmDeleteConversation": "¿Eliminar el chat «{title}»? Sus mensajes se eliminan con él."
 	},
 	"buttons": {
 		"save": {
@@ -58,6 +61,27 @@
 		},
 		"setupWizard": {
 			"title": "Asistente de configuración"
+		},
+		"loadMore": {
+			"title": "Cargar mensajes anteriores"
+		},
+		"send": {
+			"title": "Enviar"
+		},
+		"more": {
+			"title": "Más acciones"
+		},
+		"deleteConversation": {
+			"title": "Eliminar chat"
+		},
+		"backToChats": {
+			"title": "Volver a los chats"
+		},
+		"playAudio": {
+			"title": "Leer en voz alta"
+		},
+		"stopAudio": {
+			"title": "Detener lectura"
 		}
 	},
 	"fields": {
@@ -116,7 +140,8 @@
 			}
 		},
 		"message": {
-			"placeholder": "Escribe un mensaje..."
+			"placeholder": "Escribe un mensaje...",
+			"title": "Mensaje"
 		}
 	},
 	"texts": {
@@ -149,7 +174,13 @@
 		"sttProvidersFetchFailed": "Error al cargar los proveedores de reconocimiento de voz disponibles. La lista de proveedores puede estar incompleta.",
 		"ttsProvidersFetchFailed": "Error al cargar los proveedores de síntesis de voz disponibles. La lista de proveedores puede estar incompleta.",
 		"moduleDisabled": "El módulo Buddy está desactivado",
-		"moduleDisabledHint": "El módulo Buddy IA está actualmente desactivado. Actívalo en la configuración del sistema para usar el chat y las sugerencias."
+		"moduleDisabledHint": "El módulo Buddy IA está actualmente desactivado. Actívalo en la configuración del sistema para usar el chat y las sugerencias.",
+		"noConversations": "Aún no hay chats",
+		"noConversationsHint": "Inicia un chat para preguntar a Buddy sobre tu hogar.",
+		"loadingMessages": "Cargando mensajes...",
+		"conversationNotFound": "Este chat ya no existe",
+		"messagesFailed": "No se pudieron cargar los mensajes de este chat",
+		"chatDataFailed": "No se pudieron cargar los chats"
 	},
 	"wizard": {
 		"title": "Asistente de configuración de Buddy",
@@ -189,7 +220,12 @@
 			"configure": "Configurar",
 			"saveConfig": "Guardar configuración",
 			"startChatting": "Comenzar a chatear"
-		}
+		},
+		"loading": "Cargando proveedores...",
+		"aria": {
+			"enable": "Activar {name}"
+		},
+		"providersFailed": "No se pudieron cargar los proveedores de IA"
 	},
 	"meta": {
 		"settings": {
@@ -197,6 +233,13 @@
 		},
 		"chat": {
 			"title": "Chat de Buddy"
+		},
+		"setup": {
+			"title": "Configuración de Buddy"
 		}
+	},
+	"aria": {
+		"more": "Más acciones para {title}",
+		"messages": "Mensajes"
 	}
 }

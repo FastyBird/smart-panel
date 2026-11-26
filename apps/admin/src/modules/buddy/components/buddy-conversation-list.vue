@@ -1,59 +1,121 @@
 <template>
-	<el-scrollbar class="h-full">
-		<div
-			v-for="conversation in conversations"
-			:key="conversation.id"
-			class="group flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-[var(--el-fill-color-light)]"
-			:class="{ 'bg-[var(--el-fill-color)]': conversation.id === activeId }"
-			@click="emit('select', conversation.id)"
-		>
-			<div class="grow-1 min-w-0">
-				<div class="text-sm truncate">
-					{{ conversation.title || t('buddyModule.texts.newConversation') }}
-				</div>
-				<div class="text-xs text-[var(--el-text-color-secondary)] mt-0.5">
-					{{ formatRelativeTime(conversation.updated_at) }}
-				</div>
-				<div
-					v-if="conversation.space_id"
-					class="text-xs text-[var(--el-text-color-placeholder)] mt-0.5 truncate"
-				>
-					{{ getSpaceName(conversation.space_id) || t('buddyModule.texts.noSpace') }}
-				</div>
-			</div>
+	<div
+		class="flex flex-col"
+		data-test-id="buddy-conversation-list"
+	>
+		<!-- The list side of the chat (template 7): the latest conversation first, the open one highlighted -->
+		<state-view
+			v-if="props.conversations.length === 0 && props.loading"
+			kind="loading"
+			icon="mdi:forum-outline"
+			:title="t('buddyModule.texts.loadingConversations')"
+		/>
 
-			<el-popconfirm
-				:title="t('buddyModule.texts.confirmDelete')"
-				:confirm-button-text="t('buddyModule.buttons.delete.title')"
-				:cancel-button-text="t('buddyModule.buttons.cancel.title')"
-				@confirm="emit('delete', conversation.id)"
+		<state-view
+			v-else-if="props.conversations.length === 0"
+			kind="empty"
+			icon="mdi:forum-outline"
+			:title="t('buddyModule.texts.noConversations')"
+			:description="t('buddyModule.texts.noConversationsHint')"
+		>
+			<template
+				v-if="props.canCreate"
+				#action
 			>
-				<template #reference>
-					<el-button
-						class="hover-reveal"
-						:size="isTouch ? 'large' : 'small'"
-						text
-						@click.stop
+				<el-button
+					type="primary"
+					data-test-id="buddy-conversation-list-new"
+					@click="emit('create')"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+					{{ t('buddyModule.buttons.newChat.title') }}
+				</el-button>
+			</template>
+		</state-view>
+
+		<ul
+			v-else
+			:aria-label="t('buddyModule.headings.chats')"
+			class="m-0 p-0 list-none"
+		>
+			<li
+				v-for="conversation in props.conversations"
+				:key="conversation.id"
+				:class="[
+					'flex items-center gap-2 pl-4 pr-2 py-2 border-b border-b-solid border-light',
+					conversation.id === props.activeId ? 'bg-primary-soft' : '',
+				]"
+				data-test-id="buddy-conversation-row"
+			>
+				<button
+					:aria-current="conversation.id === props.activeId ? 'true' : undefined"
+					class="flex flex-col gap-0.5 flex-1 min-w-0 px-0 py-1 border-0 bg-transparent text-left font-inherit text-inherit cursor-pointer"
+					type="button"
+					data-test-id="buddy-conversation-open"
+					@click="emit('select', conversation.id)"
+				>
+					<span :class="['truncate', conversation.id === props.activeId ? 'text-card-title' : 'text-body']">
+						{{ titleOf(conversation) }}
+					</span>
+					<span class="flex items-center gap-1 min-w-0 text-caption">
+						<span class="shrink-0">{{ formatRelativeTime(conversation.updated_at) }}</span>
+						<template v-if="conversation.space_id">
+							<span aria-hidden="true">·</span>
+							<span class="truncate">{{ getSpaceName(conversation.space_id) || t('buddyModule.texts.noSpace') }}</span>
+						</template>
+					</span>
+				</button>
+
+				<!-- Spec section 4: removing a conversation is destructive, so it lives in the more menu and confirms -->
+				<el-tooltip
+					:content="t('buddyModule.buttons.more.title')"
+					placement="top"
+				>
+					<el-dropdown
+						trigger="click"
+						placement="bottom-end"
+						@command="(command: string) => onCommand(command, conversation.id)"
 					>
-						<el-icon>
-							<icon icon="mdi:delete-outline" />
-						</el-icon>
-					</el-button>
-				</template>
-			</el-popconfirm>
-		</div>
-	</el-scrollbar>
+						<el-button
+							:aria-label="t('buddyModule.aria.more', { title: titleOf(conversation) })"
+							text
+							circle
+							data-test-id="buddy-conversation-more"
+						>
+							<template #icon>
+								<icon icon="mdi:dots-horizontal" />
+							</template>
+						</el-button>
+
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item
+									command="delete"
+									class="text-danger!"
+									data-test-id="buddy-conversation-delete"
+								>
+									{{ t('buddyModule.buttons.delete.title') }}
+								</el-dropdown-item>
+							</el-dropdown-menu>
+						</template>
+					</el-dropdown>
+				</el-tooltip>
+			</li>
+		</ul>
+	</div>
 </template>
 
 <script setup lang="ts">
 import { onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElPopconfirm, ElScrollbar } from 'element-plus';
+import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useSizeClass } from '../../../common/composables/useSizeClass';
+import { StateView } from '../../../common';
 import type { IConversation } from '../buddy.types';
 
 interface ISpace {
@@ -65,11 +127,30 @@ defineOptions({
 	name: 'BuddyConversationList',
 });
 
-const props = defineProps<{
-	conversations: IConversation[];
-	activeId: string | null;
-	spaces: ISpace[];
+const props = withDefaults(
+	defineProps<{
+		conversations: IConversation[];
+		activeId: string | null;
+		spaces: ISpace[];
+		loading?: boolean;
+		/** false while no AI provider is ready: a new chat would have nothing to answer it */
+		canCreate?: boolean;
+	}>(),
+	{
+		loading: false,
+		canCreate: true,
+	}
+);
+
+const emit = defineEmits<{
+	(e: 'select', id: string): void;
+	(e: 'delete', id: string): void;
+	(e: 'create'): void;
 }>();
+
+const { t } = useI18n();
+
+const titleOf = (conversation: IConversation): string => conversation.title || t('buddyModule.texts.newConversation');
 
 const getSpaceName = (spaceId: string | null): string | null => {
 	if (!spaceId) return null;
@@ -79,15 +160,11 @@ const getSpaceName = (spaceId: string | null): string | null => {
 	return space?.name ?? null;
 };
 
-const emit = defineEmits<{
-	(e: 'select', id: string): void;
-	(e: 'delete', id: string): void;
-}>();
-
-const { t } = useI18n();
-
-// The delete action is always shown on touch screens, at the touch size (docs/admin-ui-design-spec.md, section 6)
-const { isTouch } = useSizeClass();
+const onCommand = (command: string, id: string): void => {
+	if (command === 'delete') {
+		emit('delete', id);
+	}
+};
 
 const now = ref(Date.now());
 const timer = setInterval(() => {

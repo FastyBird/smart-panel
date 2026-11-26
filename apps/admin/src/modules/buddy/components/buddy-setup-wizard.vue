@@ -1,626 +1,232 @@
 <template>
-	<el-dialog
-		:model-value="visible"
-		:title="t('buddyModule.wizard.title')"
-		width="640px"
-		:close-on-click-modal="false"
-		@update:model-value="(val: boolean) => emit('update:visible', val)"
+	<!-- Template 9: stepper card, centred step card and the sticky footer. Every step but the summary can be skipped;
+	     each provider opens its plugin's own config form -->
+	<wizard-shell
+		:steps="shellSteps"
+		:current="currentStepName"
+		:can-continue="!isLoading && !providerStepBlocked && !isNextDisabled"
+		:skippable="canSkip && !isLoading && !providerStepBlocked"
+		:busy="isSavingModuleConfig || togglingPlugins.size > 0"
+		:next-label="currentStepName === 'done' ? t('buddyModule.wizard.buttons.startChatting') : undefined"
+		:cancellable="currentStepName !== 'done'"
+		class="flex-1"
+		@back="prevStep"
+		@next="onNext"
+		@skip="handleSkip"
+		@cancel="emit('cancel')"
+		@step="goToStep"
 	>
-		<el-steps
-			v-if="!isLoading"
-			:key="stepSequenceKey"
-			:active="currentStep"
-			finish-status="success"
-			align-center
-			class="mb-6"
-		>
-			<el-step
-				v-for="step in stepSequence"
-				:key="step"
-				:title="t(`buddyModule.wizard.steps.${step}`)"
-			/>
-		</el-steps>
-
-		<el-alert
-			v-if="currentStepName === 'provider'"
-			type="info"
-			:title="t('buddyModule.wizard.providerDescription')"
-			:closable="false"
-			show-icon
-			class="mb-4!"
-		/>
-		<el-alert
-			v-else-if="currentStepName === 'voice'"
-			type="info"
-			:title="t('buddyModule.wizard.voiceDescription')"
-			:closable="false"
-			show-icon
-			class="mb-4!"
-		/>
-		<el-alert
-			v-else-if="currentStepName === 'messaging'"
-			type="info"
-			:title="t('buddyModule.wizard.messagingDescription')"
-			:closable="false"
-			show-icon
-			class="mb-4!"
-		/>
-
 		<div
-			v-loading="isLoading"
-			class="min-h-[200px]"
+			class="flex flex-col gap-4 p-4 tp:p-5"
+			data-test-id="buddy-setup-step"
 		>
-			<!-- Step 1: LLM Provider Selection -->
-			<template v-if="currentStepName === 'provider'">
-				<el-scrollbar max-height="40vh">
-					<div
-						v-if="llmProviders.length === 0 && !isLoading"
-						class="text-center py-8"
-					>
-						<empty-state
-							icon="mdi:robot-outline"
-							:description="t('buddyModule.wizard.noProvidersAvailable')"
-						/>
-					</div>
+			<state-view
+				v-if="isLoading"
+				kind="loading"
+				icon="mdi:robot-outline"
+				:title="t('buddyModule.wizard.loading')"
+			/>
 
-					<div
-						v-else
-						class="flex flex-col gap-3"
-					>
-						<div
-							v-for="provider in llmProviders"
-							:key="provider.type"
-							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
+			<!-- Step 1: AI provider -->
+			<template v-else-if="currentStepName === 'provider'">
+				<p class="text-help m-0">{{ t('buddyModule.wizard.providerDescription') }}</p>
+
+				<!-- A failed read is not an empty list: skipping or finishing then would save "no provider" over the one set -->
+				<state-view
+					v-if="llmProvidersFailed"
+					kind="error"
+					icon="mdi:robot-confused-outline"
+					:title="t('buddyModule.wizard.providersFailed')"
+					data-test-id="buddy-setup-providers-failed"
+				>
+					<template #action>
+						<el-button
+							plain
+							data-test-id="buddy-setup-providers-retry"
+							@click="loadAllData"
 						>
-							<div class="flex items-center gap-3 p-3">
-								<el-radio
-									v-model="selectedLlmProvider"
-									:value="provider.type"
-									:disabled="!provider.enabled"
-									class="mr-0! shrink-0"
-								/>
-								<div
-									class="flex items-center gap-3 flex-1 min-w-0"
-									:class="provider.enabled ? 'cursor-pointer' : ''"
-									@click="provider.enabled && (selectedLlmProvider = provider.type)"
-								>
-									<el-icon
-										:size="32"
-										class="shrink-0"
-										:class="provider.enabled ? 'text-primary' : 'text-secondary'"
-									>
-										<icon :icon="getPluginIcon(provider.type)" />
-									</el-icon>
-									<div class="flex-1 min-w-0">
-										<div class="font-medium">
-											{{ provider.name }}
-											<span
-												v-if="provider.default_model"
-												class="text-xs text-[var(--el-text-color-secondary)] ml-2"
-											>
-												{{ provider.default_model }}
-											</span>
-										</div>
-										<div
-											v-if="provider.description"
-											class="text-xs text-secondary truncate"
-										>
-											{{ provider.description }}
-										</div>
-									</div>
-								</div>
-								<el-switch
-									:model-value="provider.enabled"
-									:disabled="!canTogglePlugin(provider.type) || isTogglingPlugin(provider.type)"
-									:loading="isTogglingPlugin(provider.type)"
-									@update:model-value="(val: string | number | boolean) => toggleLlmPlugin(provider.type, !!val)"
-								/>
-							</div>
+							{{ t('buddyModule.buttons.retry.title') }}
+						</el-button>
+					</template>
+				</state-view>
 
-							<!-- Expanded section when enabled -->
-							<div
-								v-if="provider.enabled"
-								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
-							>
-								<div class="flex items-center gap-2 text-xs min-w-0">
-									<template v-if="provider.configured">
-										<el-icon
-											:size="14"
-											class="text-green-500"
-										>
-											<icon icon="mdi:check-circle" />
-										</el-icon>
-										<span class="text-green-600">
-											{{ t('buddyModule.wizard.configured') }}
-										</span>
-									</template>
-									<template v-else>
-										<el-icon
-											:size="14"
-											class="text-orange-500"
-										>
-											<icon icon="mdi:alert-circle-outline" />
-										</el-icon>
-										<span class="text-orange-600">
-											{{ t('buddyModule.wizard.configRequired') }}
-										</span>
-									</template>
-								</div>
-								<el-button
-									v-if="hasPluginConfigForm(provider.type)"
-									size="small"
-									text
-									type="primary"
-									@click="openConfigDialog(provider.type, provider.name)"
-								>
-									<el-icon
-										:size="14"
-										class="mr-1"
-									>
-										<icon icon="mdi:cog-outline" />
-									</el-icon>
-									{{ t('buddyModule.wizard.buttons.configure') }}
-								</el-button>
-							</div>
-						</div>
-					</div>
-				</el-scrollbar>
+				<state-view
+					v-else-if="llmProviders.length === 0"
+					kind="empty"
+					icon="mdi:robot-outline"
+					:title="t('buddyModule.wizard.noProvidersAvailable')"
+				/>
+
+				<div
+					v-else
+					role="radiogroup"
+					:aria-label="t('buddyModule.wizard.steps.provider')"
+					class="flex flex-col gap-3"
+				>
+					<buddy-provider-option
+						v-for="provider in llmProviders"
+						:key="provider.type"
+						:provider="provider"
+						:model="provider.default_model || undefined"
+						:icon="getPluginIcon(provider.type)"
+						:selected="selectedLlmProvider === provider.type"
+						:can-toggle="canTogglePlugin(provider.type)"
+						:toggling="isTogglingPlugin(provider.type)"
+						:has-config-form="hasPluginConfigForm(provider.type)"
+						group="buddy-llm-provider"
+						@select="selectedLlmProvider = provider.type"
+						@toggle="(enabled: boolean) => toggleLlmPlugin(provider.type, enabled)"
+						@configure="openConfigDialog(provider.type, provider.name)"
+					/>
+				</div>
 			</template>
 
 			<!-- Step 2: Voice (TTS / STT) -->
-			<template v-if="currentStepName === 'voice'">
-				<el-scrollbar max-height="40vh">
-					<!-- TTS -->
-					<h4 class="m-0 mb-2">
-						{{ t('buddyModule.wizard.ttsHeading') }}
-					</h4>
-					<div class="flex flex-col gap-3 mb-4">
-						<div
+			<template v-else-if="currentStepName === 'voice'">
+				<p class="text-help m-0">{{ t('buddyModule.wizard.voiceDescription') }}</p>
+
+				<section
+					v-if="ttsProviders.length > 0"
+					class="flex flex-col gap-3"
+				>
+					<h3 class="text-card-title m-0">{{ t('buddyModule.wizard.ttsHeading') }}</h3>
+					<div
+						role="radiogroup"
+						:aria-label="t('buddyModule.wizard.ttsHeading')"
+						class="flex flex-col gap-3"
+					>
+						<buddy-provider-option
 							v-for="provider in ttsProviders"
 							:key="provider.type"
-							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
-						>
-							<div class="flex items-center gap-3 p-3">
-								<el-radio
-									v-model="selectedTtsProvider"
-									:value="provider.type"
-									:disabled="!provider.enabled"
-									class="mr-0! shrink-0"
-								/>
-								<div
-									class="flex items-center gap-3 flex-1 min-w-0"
-									:class="provider.enabled ? 'cursor-pointer' : ''"
-									@click="provider.enabled && (selectedTtsProvider = provider.type)"
-								>
-									<el-icon
-										:size="32"
-										class="shrink-0"
-										:class="provider.enabled ? 'text-primary' : 'text-secondary'"
-									>
-										<icon :icon="getPluginIcon(provider.type)" />
-									</el-icon>
-									<div class="flex-1 min-w-0">
-										<div class="font-medium">{{ provider.name }}</div>
-										<div
-											v-if="provider.description"
-											class="text-xs text-secondary truncate"
-										>
-											{{ provider.description }}
-										</div>
-									</div>
-								</div>
-								<el-switch
-									:model-value="provider.enabled"
-									:disabled="!canTogglePlugin(provider.type) || isTogglingPlugin(provider.type)"
-									:loading="isTogglingPlugin(provider.type)"
-									@update:model-value="(val: string | number | boolean) => toggleTtsPlugin(provider.type, !!val)"
-								/>
-							</div>
-
-							<div
-								v-if="provider.enabled"
-								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
-							>
-								<div class="flex items-center gap-2 text-xs min-w-0">
-									<template v-if="provider.configured">
-										<el-icon
-											:size="14"
-											class="text-green-500"
-										>
-											<icon icon="mdi:check-circle" />
-										</el-icon>
-										<span class="text-green-600">
-											{{ t('buddyModule.wizard.configured') }}
-										</span>
-									</template>
-									<template v-else>
-										<el-icon
-											:size="14"
-											class="text-orange-500"
-										>
-											<icon icon="mdi:alert-circle-outline" />
-										</el-icon>
-										<span class="text-orange-600">
-											{{ t('buddyModule.wizard.configRequired') }}
-										</span>
-									</template>
-								</div>
-								<el-button
-									v-if="hasPluginConfigForm(provider.type)"
-									size="small"
-									text
-									type="primary"
-									@click="openConfigDialog(provider.type, provider.name)"
-								>
-									<el-icon
-										:size="14"
-										class="mr-1"
-									>
-										<icon icon="mdi:cog-outline" />
-									</el-icon>
-									{{ t('buddyModule.wizard.buttons.configure') }}
-								</el-button>
-							</div>
-						</div>
+							:provider="provider"
+							:icon="getPluginIcon(provider.type)"
+							:selected="selectedTtsProvider === provider.type"
+							:can-toggle="canTogglePlugin(provider.type)"
+							:toggling="isTogglingPlugin(provider.type)"
+							:has-config-form="hasPluginConfigForm(provider.type)"
+							group="buddy-tts-provider"
+							@select="selectedTtsProvider = provider.type"
+							@toggle="(enabled: boolean) => toggleTtsPlugin(provider.type, enabled)"
+							@configure="openConfigDialog(provider.type, provider.name)"
+						/>
 					</div>
+				</section>
 
-					<!-- STT -->
-					<h4 class="m-0 mb-2">
-						{{ t('buddyModule.wizard.sttHeading') }}
-					</h4>
-					<div class="flex flex-col gap-3">
-						<div
+				<section
+					v-if="sttProviders.length > 0"
+					class="flex flex-col gap-3"
+				>
+					<h3 class="text-card-title m-0">{{ t('buddyModule.wizard.sttHeading') }}</h3>
+					<div
+						role="radiogroup"
+						:aria-label="t('buddyModule.wizard.sttHeading')"
+						class="flex flex-col gap-3"
+					>
+						<buddy-provider-option
 							v-for="provider in sttProviders"
 							:key="provider.type"
-							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
-						>
-							<div class="flex items-center gap-3 p-3">
-								<el-radio
-									v-model="selectedSttProvider"
-									:value="provider.type"
-									:disabled="!provider.enabled"
-									class="mr-0! shrink-0"
-								/>
-								<div
-									class="flex items-center gap-3 flex-1 min-w-0"
-									:class="provider.enabled ? 'cursor-pointer' : ''"
-									@click="provider.enabled && (selectedSttProvider = provider.type)"
-								>
-									<el-icon
-										:size="32"
-										class="shrink-0"
-										:class="provider.enabled ? 'text-primary' : 'text-secondary'"
-									>
-										<icon :icon="getPluginIcon(provider.type)" />
-									</el-icon>
-									<div class="flex-1 min-w-0">
-										<div class="font-medium">{{ provider.name }}</div>
-										<div
-											v-if="provider.description"
-											class="text-xs text-secondary truncate"
-										>
-											{{ provider.description }}
-										</div>
-									</div>
-								</div>
-								<el-switch
-									:model-value="provider.enabled"
-									:disabled="!canTogglePlugin(provider.type) || isTogglingPlugin(provider.type)"
-									:loading="isTogglingPlugin(provider.type)"
-									@update:model-value="(val: string | number | boolean) => toggleSttPlugin(provider.type, !!val)"
-								/>
-							</div>
-
-							<div
-								v-if="provider.enabled"
-								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
-							>
-								<div class="flex items-center gap-2 text-xs min-w-0">
-									<template v-if="provider.configured">
-										<el-icon
-											:size="14"
-											class="text-green-500"
-										>
-											<icon icon="mdi:check-circle" />
-										</el-icon>
-										<span class="text-green-600">
-											{{ t('buddyModule.wizard.configured') }}
-										</span>
-									</template>
-									<template v-else>
-										<el-icon
-											:size="14"
-											class="text-orange-500"
-										>
-											<icon icon="mdi:alert-circle-outline" />
-										</el-icon>
-										<span class="text-orange-600">
-											{{ t('buddyModule.wizard.configRequired') }}
-										</span>
-									</template>
-								</div>
-								<el-button
-									v-if="hasPluginConfigForm(provider.type)"
-									size="small"
-									text
-									type="primary"
-									@click="openConfigDialog(provider.type, provider.name)"
-								>
-									<el-icon
-										:size="14"
-										class="mr-1"
-									>
-										<icon icon="mdi:cog-outline" />
-									</el-icon>
-									{{ t('buddyModule.wizard.buttons.configure') }}
-								</el-button>
-							</div>
-						</div>
+							:provider="provider"
+							:icon="getPluginIcon(provider.type)"
+							:selected="selectedSttProvider === provider.type"
+							:can-toggle="canTogglePlugin(provider.type)"
+							:toggling="isTogglingPlugin(provider.type)"
+							:has-config-form="hasPluginConfigForm(provider.type)"
+							group="buddy-stt-provider"
+							@select="selectedSttProvider = provider.type"
+							@toggle="(enabled: boolean) => toggleSttPlugin(provider.type, enabled)"
+							@configure="openConfigDialog(provider.type, provider.name)"
+						/>
 					</div>
-				</el-scrollbar>
+				</section>
 			</template>
 
 			<!-- Step 3: Messaging -->
-			<template v-if="currentStepName === 'messaging'">
-				<el-scrollbar max-height="40vh">
-					<div class="flex flex-col gap-3">
-						<div
-							v-for="provider in messagingProviders"
-							:key="provider.type"
-							class="rounded-lg border transition-all duration-300"
-							:class="provider.enabled ? 'border-primary bg-primary-soft' : 'border-light'"
-						>
-							<div class="flex items-center gap-3 p-3">
-								<el-radio
-									v-model="selectedMessagingProvider"
-									:value="provider.type"
-									:disabled="!provider.enabled"
-									class="mr-0! shrink-0"
-								/>
-								<div
-									class="flex items-center gap-3 flex-1 min-w-0"
-									:class="provider.enabled ? 'cursor-pointer' : ''"
-									@click="provider.enabled && (selectedMessagingProvider = provider.type)"
-								>
-									<el-icon
-										:size="32"
-										class="shrink-0"
-										:class="provider.enabled ? 'text-primary' : 'text-secondary'"
-									>
-										<icon :icon="getPluginIcon(provider.type)" />
-									</el-icon>
-									<div class="flex-1 min-w-0">
-										<div class="font-medium">{{ provider.name }}</div>
-										<div
-											v-if="provider.description"
-											class="text-xs text-secondary truncate"
-										>
-											{{ provider.description }}
-										</div>
-									</div>
-								</div>
-								<el-switch
-									:model-value="provider.enabled"
-									:disabled="!canTogglePlugin(provider.type) || isTogglingPlugin(provider.type)"
-									:loading="isTogglingPlugin(provider.type)"
-									@update:model-value="(val: string | number | boolean) => toggleMessagingPlugin(provider.type, !!val)"
-								/>
-							</div>
+			<template v-else-if="currentStepName === 'messaging'">
+				<p class="text-help m-0">{{ t('buddyModule.wizard.messagingDescription') }}</p>
 
-							<div
-								v-if="provider.enabled"
-								class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
-							>
-								<div class="flex items-center gap-2 text-xs min-w-0">
-									<template v-if="provider.configured">
-										<el-icon
-											:size="14"
-											class="text-green-500"
-										>
-											<icon icon="mdi:check-circle" />
-										</el-icon>
-										<span class="text-green-600">
-											{{ t('buddyModule.wizard.configured') }}
-										</span>
-									</template>
-									<template v-else>
-										<el-icon
-											:size="14"
-											class="text-orange-500"
-										>
-											<icon icon="mdi:alert-circle-outline" />
-										</el-icon>
-										<span class="text-orange-600">
-											{{ t('buddyModule.wizard.configRequired') }}
-										</span>
-									</template>
-								</div>
-								<el-button
-									v-if="hasPluginConfigForm(provider.type)"
-									size="small"
-									text
-									type="primary"
-									@click="openConfigDialog(provider.type, provider.name)"
-								>
-									<el-icon
-										:size="14"
-										class="mr-1"
-									>
-										<icon icon="mdi:cog-outline" />
-									</el-icon>
-									{{ t('buddyModule.wizard.buttons.configure') }}
-								</el-button>
-							</div>
-						</div>
-					</div>
-				</el-scrollbar>
+				<div
+					role="radiogroup"
+					:aria-label="t('buddyModule.wizard.steps.messaging')"
+					class="flex flex-col gap-3"
+				>
+					<buddy-provider-option
+						v-for="provider in messagingProviders"
+						:key="provider.type"
+						:provider="provider"
+						:icon="getPluginIcon(provider.type)"
+						:selected="selectedMessagingProvider === provider.type"
+						:can-toggle="canTogglePlugin(provider.type)"
+						:toggling="isTogglingPlugin(provider.type)"
+						:has-config-form="hasPluginConfigForm(provider.type)"
+						group="buddy-messaging-provider"
+						@select="selectedMessagingProvider = provider.type"
+						@toggle="(enabled: boolean) => toggleMessagingPlugin(provider.type, enabled)"
+						@configure="openConfigDialog(provider.type, provider.name)"
+					/>
+				</div>
 			</template>
 
-			<!-- Step 4: Done -->
-			<template v-if="currentStepName === 'done'">
-				<div class="flex flex-col items-center text-center py-8 px-4">
+			<!-- Step 4: Summary -->
+			<template v-else>
+				<div class="flex flex-col items-center gap-2 text-center pt-2">
 					<el-icon
-						:size="80"
-						class="mb-6 text-green-500"
+						:size="56"
+						aria-hidden="true"
 					>
-						<icon icon="mdi:check-circle-outline" />
+						<icon
+							icon="mdi:check-circle-outline"
+							class="text-success"
+						/>
 					</el-icon>
-
-					<h2 class="text-2xl font-bold mb-4">
-						{{ t('buddyModule.wizard.doneTitle') }}
-					</h2>
-
-					<el-alert
-						type="info"
-						:title="t('buddyModule.wizard.doneDescription')"
-						:closable="false"
-						show-icon
-						class="mb-8! max-w-md"
-					/>
-
-					<div class="flex flex-col gap-3 max-w-sm w-full">
-						<!-- AI Provider -->
-						<div
-							v-if="selectedLlmProvider"
-							class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
-						>
-							<el-icon
-								:size="20"
-								class="text-green-500 shrink-0"
-							>
-								<icon icon="mdi:check" />
-							</el-icon>
-							<span>{{ t('buddyModule.wizard.summaryLlm', { name: selectedLlmProviderName }) }}</span>
-						</div>
-						<div
-							v-else
-							class="flex items-center gap-3 p-3 rounded-lg bg-fill-light"
-						>
-							<el-icon
-								:size="20"
-								class="text-secondary shrink-0"
-							>
-								<icon icon="mdi:minus" />
-							</el-icon>
-							<span class="text-secondary">{{ t('buddyModule.wizard.summaryLlmSkipped') }}</span>
-						</div>
-
-						<!-- Voice -->
-						<div
-							v-if="hasVoiceProviders && voiceSummary"
-							class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
-						>
-							<el-icon
-								:size="20"
-								class="text-green-500 shrink-0"
-							>
-								<icon icon="mdi:check" />
-							</el-icon>
-							<span>{{ t('buddyModule.wizard.summaryVoice', { summary: voiceSummary }) }}</span>
-						</div>
-						<div
-							v-else-if="hasVoiceProviders"
-							class="flex items-center gap-3 p-3 rounded-lg bg-fill-light"
-						>
-							<el-icon
-								:size="20"
-								class="text-secondary shrink-0"
-							>
-								<icon icon="mdi:minus" />
-							</el-icon>
-							<span class="text-secondary">{{ t('buddyModule.wizard.summaryVoiceSkipped') }}</span>
-						</div>
-
-						<!-- Messaging -->
-						<div
-							v-if="hasMessagingProviders && selectedMessagingProvider"
-							class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
-						>
-							<el-icon
-								:size="20"
-								class="text-green-500 shrink-0"
-							>
-								<icon icon="mdi:check" />
-							</el-icon>
-							<span>{{ t('buddyModule.wizard.summaryMessaging', { name: selectedMessagingProviderName }) }}</span>
-						</div>
-						<div
-							v-else-if="hasMessagingProviders"
-							class="flex items-center gap-3 p-3 rounded-lg bg-fill-light"
-						>
-							<el-icon
-								:size="20"
-								class="text-secondary shrink-0"
-							>
-								<icon icon="mdi:minus" />
-							</el-icon>
-							<span class="text-secondary">{{ t('buddyModule.wizard.summaryMessagingSkipped') }}</span>
-						</div>
-					</div>
+					<h2 class="text-section m-0">{{ t('buddyModule.wizard.doneTitle') }}</h2>
+					<p class="text-help m-0 max-w-[480px]">{{ t('buddyModule.wizard.doneDescription') }}</p>
 				</div>
+
+				<ul
+					class="flex flex-col gap-2 m-0 p-0 list-none w-full max-w-[480px] mx-auto"
+					data-test-id="buddy-setup-summary"
+				>
+					<li
+						v-for="item in summary"
+						:key="item.id"
+						:class="['flex items-center gap-3 px-3 py-2 rounded-lg', item.done ? 'bg-success-soft' : 'bg-fill-light']"
+						:data-summary="item.id"
+					>
+						<el-icon
+							:size="20"
+							class="shrink-0"
+							aria-hidden="true"
+						>
+							<icon
+								:icon="item.done ? 'mdi:check' : 'mdi:minus'"
+								:class="item.done ? 'text-success' : 'text-muted'"
+							/>
+						</el-icon>
+						<span :class="item.done ? 'text-body' : 'text-secondary'">{{ item.label }}</span>
+					</li>
+				</ul>
 			</template>
 		</div>
+	</wizard-shell>
 
-		<template #footer>
-			<div class="flex justify-between">
-				<el-button
-					v-if="currentStep > 0"
-					@click="prevStep"
-				>
-					{{ t('buddyModule.wizard.buttons.back') }}
-				</el-button>
-				<div v-else />
-
-				<div class="flex gap-2">
-					<el-button
-						v-if="canSkip"
-						@click="handleSkip"
-					>
-						{{ t('buddyModule.wizard.buttons.skip') }}
-					</el-button>
-
-					<el-button
-						v-if="currentStepName === 'done'"
-						type="primary"
-						@click="handleFinish"
-					>
-						{{ t('buddyModule.wizard.buttons.startChatting') }}
-					</el-button>
-					<el-button
-						v-else
-						type="primary"
-						:disabled="isNextDisabled"
-						:loading="isSavingModuleConfig"
-						@click="handleNext"
-					>
-						{{ t('buddyModule.wizard.buttons.next') }}
-					</el-button>
-				</div>
-			</div>
-		</template>
-
-		<integration-config-dialog
-			v-model:visible="configDialogVisible"
-			:plugin-type="configDialogPluginType"
-			:plugin-name="configDialogPluginName"
-			@saved="onConfigSaved"
-		/>
-	</el-dialog>
+	<integration-config-dialog
+		v-model:visible="configDialogVisible"
+		:plugin-type="configDialogPluginType"
+		:plugin-name="configDialogPluginName"
+		@saved="onConfigSaved"
+	/>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElDialog, ElIcon, ElRadio, ElScrollbar, ElStep, ElSteps, ElSwitch, vLoading } from 'element-plus';
+import { ElButton, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
-import EmptyState from '../../../common/components/empty-state.vue';
+import { StateView, WizardShell, injectStoresManager, useFlashMessage } from '../../../common';
+import type { WizardShellStep } from '../../../common/components/wizard-shell.types';
 import { usePlugins } from '../../config/composables/usePlugins';
 import { CONFIG_MODULE_PLUGIN_TYPE } from '../../config/config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../../config/config.types';
@@ -635,17 +241,15 @@ import { useBuddySttProviders } from '../composables/useBuddySttProviders';
 import { useBuddyTtsProviders } from '../composables/useBuddyTtsProviders';
 import type { IVoiceProviderStatus } from '../composables/useBuddyVoiceProviders';
 
+import BuddyProviderOption from './buddy-provider-option.vue';
+
 defineOptions({
 	name: 'BuddySetupWizard',
 });
 
-const props = defineProps<{
-	visible: boolean;
-}>();
-
 const emit = defineEmits<{
-	(e: 'update:visible', value: boolean): void;
 	(e: 'completed'): void;
+	(e: 'cancel'): void;
 }>();
 
 const { t } = useI18n();
@@ -656,12 +260,16 @@ const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 const extensionsStore = storesManager.getStore(extensionsStoreKey);
 const { getByName } = usePlugins();
 
-const { providerStatuses: llmProviders, fetchProviderStatuses: fetchLlmProviders } = useBuddyProviders();
+const { providerStatuses: llmProviders, providerFetchFailed: llmProvidersFailed, fetchProviderStatuses: fetchLlmProviders } = useBuddyProviders();
 const { ttsProviderStatuses: ttsProviders, fetchTtsProviderStatuses: fetchTtsProviders } = useBuddyTtsProviders();
 const { sttProviderStatuses: sttProviders, fetchSttProviderStatuses: fetchSttProviders } = useBuddySttProviders();
 const { messagingProviderStatuses: messagingProviders, fetchMessagingProviderStatuses: fetchMessagingProviders } = useBuddyMessagingProviders();
 
 const isLoading = ref(false);
+
+// The AI providers were read at least once. The provider step only lets you on after that, so the choice made there
+// (or its skip) is a real one, and a later refresh that fails does not undo it
+const llmProvidersRead = ref(false);
 const currentStep = ref(0);
 const isSavingModuleConfig = ref(false);
 
@@ -701,8 +309,7 @@ const stepSequence = computed<StepName[]>(() => {
 	return steps;
 });
 
-// Key for el-steps to force full re-render when the step set changes
-const stepSequenceKey = computed(() => stepSequence.value.join(','));
+const shellSteps = computed<WizardShellStep[]>(() => stepSequence.value.map((step) => ({ id: step, label: t(`buddyModule.wizard.steps.${step}`) })));
 
 const currentStepName = computed<StepName>(() => stepSequence.value[currentStep.value] ?? 'done');
 
@@ -715,11 +322,12 @@ watch(stepSequence, (seq) => {
 	}
 });
 
-const canSkip = computed(() => {
-	const name = currentStepName.value;
+// A failed provider read holds the provider step, where it shows with Retry. The other steps go on: a refresh after a
+// voice or messaging config was saved can fail too, and Finish then leaves the provider as it was
+const providerStepBlocked = computed<boolean>(() => llmProvidersFailed.value && currentStepName.value === 'provider');
 
-	return name === 'voice' || name === 'messaging';
-});
+// Every step before the summary can be skipped: Buddy still makes rule-based suggestions without an AI provider
+const canSkip = computed(() => currentStepName.value !== 'done');
 
 const isNextDisabled = computed<boolean>(() => {
 	const step = currentStepName.value;
@@ -832,8 +440,44 @@ const voiceSummary = computed<string>(() => {
 	return parts.join(', ');
 });
 
+interface ISummaryItem {
+	id: string;
+	label: string;
+	done: boolean;
+}
+
+// One line per step: what was chosen, or that it was skipped. Voice and messaging only when Buddy has providers for them
+const summary = computed<ISummaryItem[]>(() => {
+	const items: ISummaryItem[] = [
+		selectedLlmProvider.value
+			? { id: 'provider', label: t('buddyModule.wizard.summaryLlm', { name: selectedLlmProviderName.value }), done: true }
+			: { id: 'provider', label: t('buddyModule.wizard.summaryLlmSkipped'), done: false },
+	];
+
+	if (hasVoiceProviders.value) {
+		items.push(
+			voiceSummary.value
+				? { id: 'voice', label: t('buddyModule.wizard.summaryVoice', { summary: voiceSummary.value }), done: true }
+				: { id: 'voice', label: t('buddyModule.wizard.summaryVoiceSkipped'), done: false }
+		);
+	}
+
+	if (hasMessagingProviders.value) {
+		items.push(
+			selectedMessagingProvider.value
+				? { id: 'messaging', label: t('buddyModule.wizard.summaryMessaging', { name: selectedMessagingProviderName.value }), done: true }
+				: { id: 'messaging', label: t('buddyModule.wizard.summaryMessagingSkipped'), done: false }
+		);
+	}
+
+	return items;
+});
+
 // Plugin toggle handlers — auto-select on enable, clear on disable
 const toggleLlmPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	// A provider picked while the switch was on its way stays picked
+	const chosenBefore = selectedLlmProvider.value;
+
 	togglingPlugins.add(type);
 
 	try {
@@ -841,7 +485,10 @@ const toggleLlmPlugin = async (type: string, enabled: boolean): Promise<void> =>
 		await fetchLlmProviders();
 
 		if (enabled) {
-			selectedLlmProvider.value = type;
+			if (selectedLlmProvider.value === chosenBefore) {
+				selectedLlmProvider.value = type;
+			}
+
 			fetchPluginConfig(type);
 		} else if (selectedLlmProvider.value === type) {
 			selectedLlmProvider.value = undefined;
@@ -854,6 +501,9 @@ const toggleLlmPlugin = async (type: string, enabled: boolean): Promise<void> =>
 };
 
 const toggleTtsPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	// A provider picked while the switch was on its way stays picked
+	const chosenBefore = selectedTtsProvider.value;
+
 	togglingPlugins.add(type);
 
 	try {
@@ -861,7 +511,10 @@ const toggleTtsPlugin = async (type: string, enabled: boolean): Promise<void> =>
 		await fetchTtsProviders();
 
 		if (enabled) {
-			selectedTtsProvider.value = type;
+			if (selectedTtsProvider.value === chosenBefore) {
+				selectedTtsProvider.value = type;
+			}
+
 			fetchPluginConfig(type);
 		} else if (selectedTtsProvider.value === type) {
 			selectedTtsProvider.value = undefined;
@@ -874,6 +527,9 @@ const toggleTtsPlugin = async (type: string, enabled: boolean): Promise<void> =>
 };
 
 const toggleSttPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	// A provider picked while the switch was on its way stays picked
+	const chosenBefore = selectedSttProvider.value;
+
 	togglingPlugins.add(type);
 
 	try {
@@ -881,7 +537,10 @@ const toggleSttPlugin = async (type: string, enabled: boolean): Promise<void> =>
 		await fetchSttProviders();
 
 		if (enabled) {
-			selectedSttProvider.value = type;
+			if (selectedSttProvider.value === chosenBefore) {
+				selectedSttProvider.value = type;
+			}
+
 			fetchPluginConfig(type);
 		} else if (selectedSttProvider.value === type) {
 			selectedSttProvider.value = undefined;
@@ -894,6 +553,9 @@ const toggleSttPlugin = async (type: string, enabled: boolean): Promise<void> =>
 };
 
 const toggleMessagingPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	// A provider picked while the switch was on its way stays picked
+	const chosenBefore = selectedMessagingProvider.value;
+
 	togglingPlugins.add(type);
 
 	try {
@@ -901,7 +563,10 @@ const toggleMessagingPlugin = async (type: string, enabled: boolean): Promise<vo
 		await fetchMessagingProviders();
 
 		if (enabled) {
-			selectedMessagingProvider.value = type;
+			if (selectedMessagingProvider.value === chosenBefore) {
+				selectedMessagingProvider.value = type;
+			}
+
 			fetchPluginConfig(type);
 		} else if (selectedMessagingProvider.value === type) {
 			selectedMessagingProvider.value = undefined;
@@ -947,8 +612,10 @@ const saveModuleConfig = async (includeAll: boolean = false): Promise<boolean> =
 			enabled: true,
 		};
 
-		if (selectedLlmProvider.value) {
-			configData.provider = selectedLlmProvider.value;
+		// A skipped provider step is saved as no provider, not left as the provider set before. Only when the providers
+		// were read: without a read nothing was really chosen, and the provider set before stays
+		if (llmProvidersRead.value) {
+			configData.provider = selectedLlmProvider.value ?? LLM_PROVIDER_NONE;
 		}
 
 		if (includeAll) {
@@ -985,8 +652,18 @@ const prevStep = (): void => {
 	}
 };
 
+const goToStep = (id: string): void => {
+	const index = stepSequence.value.indexOf(id as StepName);
+
+	if (index >= 0 && index < currentStep.value) {
+		currentStep.value = index;
+	}
+};
+
 const handleSkip = (): void => {
-	if (currentStepName.value === 'voice') {
+	if (currentStepName.value === 'provider') {
+		selectedLlmProvider.value = undefined;
+	} else if (currentStepName.value === 'voice') {
 		selectedTtsProvider.value = undefined;
 		selectedSttProvider.value = undefined;
 	} else if (currentStepName.value === 'messaging') {
@@ -996,34 +673,48 @@ const handleSkip = (): void => {
 	nextStep();
 };
 
-const handleNext = (): void => {
-	nextStep();
-};
-
 const handleFinish = async (): Promise<void> => {
 	const saved = await saveModuleConfig(true);
 
 	if (!saved) return;
 
-	emit('update:visible', false);
 	emit('completed');
+};
+
+const onNext = (): void => {
+	if (currentStepName.value === 'done') {
+		void handleFinish();
+	} else {
+		nextStep();
+	}
 };
 
 const loadAllData = async (): Promise<void> => {
 	isLoading.value = true;
 
 	try {
-		await Promise.all([extensionsStore.fetch(), fetchLlmProviders(), fetchTtsProviders(), fetchSttProviders(), fetchMessagingProviders()]);
+		// The extensions only say which plugins can be switched off; without them the switches stay available
+		await Promise.all([
+			extensionsStore.fetch().catch(() => undefined),
+			fetchLlmProviders(),
+			fetchTtsProviders(),
+			fetchSttProviders(),
+			fetchMessagingProviders(),
+		]);
 
-		// Pre-select currently selected providers, falling back to first enabled
-		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected) ?? llmProviders.value.find((p: IProviderStatus) => p.enabled);
-		const selectedTts =
-			ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected) ?? ttsProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
-		const selectedStt =
-			sttProviders.value.find((p: IVoiceProviderStatus) => p.selected) ?? sttProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
+		// Pre-select only the providers Buddy is set to use. A saved "none" looks the same as nothing saved yet (no status
+		// is selected), so falling back to the first enabled provider would turn a skipped step back into a choice
+		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected);
+		const selectedTts = ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected);
+		const selectedStt = sttProviders.value.find((p: IVoiceProviderStatus) => p.selected);
 
-		if (selected && selected.type !== LLM_PROVIDER_NONE) {
+		// Only on the first successful read: a Retry later keeps the provider already picked
+		if (!llmProvidersRead.value && selected && selected.type !== LLM_PROVIDER_NONE) {
 			selectedLlmProvider.value = selected.type;
+		}
+
+		if (!llmProvidersFailed.value) {
+			llmProvidersRead.value = true;
 		}
 
 		if (selectedTts) {
@@ -1055,27 +746,7 @@ const loadAllData = async (): Promise<void> => {
 	}
 };
 
-watch(
-	() => props.visible,
-	(val: boolean) => {
-		if (val) {
-			currentStep.value = 0;
-			selectedLlmProvider.value = undefined;
-			selectedTtsProvider.value = undefined;
-			selectedSttProvider.value = undefined;
-			selectedMessagingProvider.value = undefined;
-			isSavingModuleConfig.value = false;
-			configDialogVisible.value = false;
-			togglingPlugins.clear();
-
-			loadAllData();
-		}
-	}
-);
-
 onBeforeMount(() => {
-	if (props.visible) {
-		loadAllData();
-	}
+	void loadAllData();
 });
 </script>

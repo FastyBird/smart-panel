@@ -6,11 +6,13 @@
 		"settings": "Buddy",
 		"chat": "Buddy Chat",
 		"chats": "Chats",
-		"aboutBuddy": "AI Buddy Configuration"
+		"aboutBuddy": "AI Buddy Configuration",
+		"deleteConversation": "Delete chat"
 	},
 	"subHeadings": {
 		"settings": "Configure AI buddy assistant settings",
-		"chat": "Chat with your AI buddy assistant"
+		"chat": "Chat with your AI buddy assistant",
+		"setup": "Choose the providers Buddy uses to answer, speak and listen, and where you can reach it"
 	},
 	"messages": {
 		"loadError": "Failed to load buddy configuration",
@@ -29,7 +31,8 @@
 			"audioPlayback": "Failed to play audio",
 			"loadPersonality": "Failed to load personality",
 			"savePersonality": "Failed to save personality"
-		}
+		},
+		"confirmDeleteConversation": "Delete the chat \"{title}\"? Its messages are removed with it."
 	},
 	"buttons": {
 		"save": {
@@ -58,6 +61,27 @@
 		},
 		"setupWizard": {
 			"title": "Setup Wizard"
+		},
+		"loadMore": {
+			"title": "Load earlier messages"
+		},
+		"send": {
+			"title": "Send"
+		},
+		"more": {
+			"title": "More actions"
+		},
+		"deleteConversation": {
+			"title": "Delete chat"
+		},
+		"backToChats": {
+			"title": "Back to chats"
+		},
+		"playAudio": {
+			"title": "Read aloud"
+		},
+		"stopAudio": {
+			"title": "Stop reading"
 		}
 	},
 	"fields": {
@@ -116,7 +140,8 @@
 			}
 		},
 		"message": {
-			"placeholder": "Type a message..."
+			"placeholder": "Type a message...",
+			"title": "Message"
 		}
 	},
 	"texts": {
@@ -149,7 +174,13 @@
 		"sttProvidersFetchFailed": "Failed to load available speech recognition providers. The provider list may be incomplete.",
 		"ttsProvidersFetchFailed": "Failed to load available voice synthesis providers. The provider list may be incomplete.",
 		"moduleDisabled": "Buddy module is disabled",
-		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
+		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions.",
+		"noConversations": "No chats yet",
+		"noConversationsHint": "Start a chat to ask Buddy about your home.",
+		"loadingMessages": "Loading messages...",
+		"conversationNotFound": "This chat no longer exists",
+		"messagesFailed": "The messages of this chat could not be loaded",
+		"chatDataFailed": "The chats could not be loaded"
 	},
 	"wizard": {
 		"title": "Buddy Setup Wizard",
@@ -189,7 +220,12 @@
 			"configure": "Configure",
 			"saveConfig": "Save Configuration",
 			"startChatting": "Start Chatting"
-		}
+		},
+		"loading": "Loading providers...",
+		"aria": {
+			"enable": "Enable {name}"
+		},
+		"providersFailed": "The AI providers could not be loaded"
 	},
 	"meta": {
 		"settings": {
@@ -197,6 +233,13 @@
 		},
 		"chat": {
 			"title": "Buddy Chat"
+		},
+		"setup": {
+			"title": "Buddy Setup"
 		}
+	},
+	"aria": {
+		"more": "More actions for {title}",
+		"messages": "Messages"
 	}
 }

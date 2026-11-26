@@ -9,7 +9,7 @@ import type { IConversation, IMessage } from '../buddy.types';
 import { type IProviderStatus, useBuddyProviders } from './useBuddyProviders';
 import { useBuddyTtsProviders } from './useBuddyTtsProviders';
 
-interface IUseBuddyChat {
+export interface IUseBuddyChat {
 	conversations: Ref<IConversation[]>;
 	activeConversationId: Ref<string | null>;
 	messages: Ref<IMessage[]>;
@@ -17,6 +17,16 @@ interface IUseBuddyChat {
 	hasActiveConversation: ComputedRef<boolean>;
 	isLoadingConversations: Ref<boolean>;
 	isLoadingMessages: Ref<boolean>;
+	/** The conversation whose messages have been read at least once; until then its chat waits */
+	messagesLoadedFor: Ref<string | null>;
+	/** The conversation whose messages could not be read; its chat offers to read them again */
+	messagesFailedFor: Ref<string | null>;
+	/** The last read of the conversations failed */
+	conversationsFetchFailed: Ref<boolean>;
+	/** The last read of the AI providers failed, so whether one is ready is not known */
+	providerFetchFailed: Ref<boolean>;
+	/** Unsent messages by conversation, kept while the chat's layout changes or another conversation is open */
+	drafts: Ref<Record<string, string>>;
 	isSending: Ref<boolean>;
 	isProviderNotConfigured: ComputedRef<boolean>;
 	providerStatuses: Ref<IProviderStatus[]>;
@@ -29,9 +39,11 @@ interface IUseBuddyChat {
 	fetchTtsProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
 	selectConversation: (id: string) => Promise<void>;
+	closeConversation: () => void;
 	refreshMessages: (conversationId: string) => Promise<void>;
 	sendMessage: (content: string) => Promise<void>;
-	deleteConversation: (id: string) => Promise<void>;
+	/** Resolves true once the conversation is gone */
+	deleteConversation: (id: string) => Promise<boolean>;
 	playMessageAudio: (messageId: string) => Promise<void>;
 	stopAudio: () => void;
 }
@@ -40,7 +52,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const { t } = useI18n();
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
-	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
+	const { providerStatuses, providerStatusesFetched, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 	const { ttsProviderStatuses, ttsProviderStatusesFetched, fetchTtsProviderStatuses } = useBuddyTtsProviders();
 
 	const conversations = ref<IConversation[]>([]);
@@ -49,6 +61,10 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
+	const messagesLoadedFor = ref<string | null>(null);
+	const messagesFailedFor = ref<string | null>(null);
+	const conversationsFetchFailed = ref<boolean>(false);
+	const drafts = ref<Record<string, string>>({});
 	const isSending = ref<boolean>(false);
 
 	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
@@ -56,7 +72,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	});
 
 	const isProviderNotConfigured = computed<boolean>(() => {
-		if (!providerStatusesFetched.value) {
+		// Unknown rather than missing: the chat view offers to read the providers again instead of leading to setup
+		if (!providerStatusesFetched.value || providerFetchFailed.value) {
 			return false;
 		}
 
@@ -83,6 +100,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const fetchConversations = async (): Promise<void> => {
 		isLoadingConversations.value = true;
+		conversationsFetchFailed.value = false;
 
 		try {
 			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
@@ -94,12 +112,16 @@ export const useBuddyChat = (): IUseBuddyChat => {
 					flashMessage.error(t('buddyModule.messages.errors.loadConversations'));
 				}
 
+				conversationsFetchFailed.value = true;
+
 				return;
 			}
 
 			conversations.value = responseData.data as IConversation[];
 		} catch (err: unknown) {
 			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations'));
+
+			conversationsFetchFailed.value = true;
 		} finally {
 			isLoadingConversations.value = false;
 		}
@@ -124,9 +146,14 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			const created = responseData.data as IConversation;
 
+			// The new conversation is open from here on: audio of the one before stops
+			stopAudio();
+
 			conversations.value.unshift(created);
 			activeConversationId.value = created.id;
 			messages.value = [];
+			// A new conversation has no messages to read
+			messagesLoadedFor.value = created.id;
 
 			return created;
 		} catch (err: unknown) {
@@ -139,7 +166,18 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const fetchMessagesInternal = async (conversationId: string, quiet: boolean): Promise<void> => {
 		if (!quiet) {
 			isLoadingMessages.value = true;
+
+			if (messagesFailedFor.value === conversationId) {
+				messagesFailedFor.value = null;
+			}
 		}
+
+		// A read the open conversation is still waiting for failed: its chat shows the failure instead of loading on
+		const markFailed = (): void => {
+			if (!quiet && activeConversationId.value === conversationId && messagesLoadedFor.value !== conversationId) {
+				messagesFailedFor.value = conversationId;
+			}
+		};
 
 		try {
 			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
@@ -156,16 +194,21 @@ export const useBuddyChat = (): IUseBuddyChat => {
 					flashMessage.error(t('buddyModule.messages.errors.loadMessages'));
 				}
 
+				markFailed();
+
 				return;
 			}
 
 			if (activeConversationId.value === conversationId) {
 				messages.value = responseData.data as IMessage[];
+				messagesLoadedFor.value = conversationId;
 			}
 		} catch (err: unknown) {
 			if (!quiet) {
 				flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
 			}
+
+			markFailed();
 		} finally {
 			if (!quiet) {
 				isLoadingMessages.value = false;
@@ -181,6 +224,15 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const fetchMessagesQuiet = (conversationId: string): Promise<void> => fetchMessagesInternal(conversationId, true);
 
 	const selectConversation = async (id: string): Promise<void> => {
+		// Another conversation's messages never show under this one while its own are read
+		if (activeConversationId.value !== id) {
+			stopAudio();
+
+			messages.value = [];
+			messagesLoadedFor.value = null;
+			messagesFailedFor.value = null;
+		}
+
 		activeConversationId.value = id;
 
 		await fetchMessages(id);
@@ -254,7 +306,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		}
 	};
 
-	const deleteConversation = async (id: string): Promise<void> => {
+	// The chat view decides what opens next: the conversation is a route
+	const deleteConversation = async (id: string): Promise<boolean> => {
 		try {
 			const { error: apiError } = await backend.client.DELETE(
 				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}`,
@@ -268,30 +321,24 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			if (apiError) {
 				flashMessage.error(t('buddyModule.messages.errors.deleteConversation'));
 
-				return;
+				return false;
 			}
 
 			conversations.value = conversations.value.filter((c) => c.id !== id);
 
+			delete drafts.value[id];
+
 			if (activeConversationId.value === id) {
 				activeConversationId.value = null;
 				messages.value = [];
-
-				// Select the next available conversation — errors here are
-				// unrelated to the (already successful) deletion.
-				const next = conversations.value[0];
-
-				if (next) {
-					try {
-						await selectConversation(next.id);
-					} catch {
-						// selectConversation failure doesn't affect the delete outcome
-					}
-				}
 			}
+
+			return true;
 		} catch (err: unknown) {
 			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.deleteConversation'));
 		}
+
+		return false;
 	};
 
 	// ============================================
@@ -309,6 +356,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	let currentAudio: HTMLAudioElement | null = null;
 	let currentBlobUrl: string | null = null;
 
+	let currentAbortController: AbortController | null = null;
+	let audioRequestId = 0;
+
 	const stopAudio = (): void => {
 		if (currentAudio) {
 			currentAudio.onended = null;
@@ -322,21 +372,32 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			currentBlobUrl = null;
 		}
 
-		playingMessageId.value = null;
-		audioLoading.value = false;
-	};
-
-	let currentAbortController: AbortController | null = null;
-	let audioRequestId = 0;
-
-	const playMessageAudio = async (messageId: string): Promise<void> => {
-		stopAudio();
-
-		// Abort any in-flight fetch from a previous playMessageAudio call
+		// A read still on its way would start playing after it was stopped, or in another conversation: it is
+		// cancelled, and a later answer to it is ignored
 		if (currentAbortController) {
 			currentAbortController.abort();
 			currentAbortController = null;
 		}
+
+		audioRequestId++;
+
+		playingMessageId.value = null;
+		audioLoading.value = false;
+	};
+
+	// Back on the list (below tablet landscape) no conversation is open
+	const closeConversation = (): void => {
+		stopAudio();
+
+		activeConversationId.value = null;
+		messages.value = [];
+		messagesLoadedFor.value = null;
+		messagesFailedFor.value = null;
+	};
+
+	const playMessageAudio = async (messageId: string): Promise<void> => {
+		// Also cancels a read still on its way for another message
+		stopAudio();
 
 		const conversationId = activeConversationId.value;
 
@@ -403,6 +464,11 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		hasActiveConversation,
 		isLoadingConversations,
 		isLoadingMessages,
+		messagesLoadedFor,
+		messagesFailedFor,
+		conversationsFetchFailed,
+		providerFetchFailed,
+		drafts,
 		isSending,
 		isProviderNotConfigured,
 		providerStatuses,
@@ -415,6 +481,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		fetchTtsProviderStatuses,
 		createConversation,
 		selectConversation,
+		closeConversation,
 		refreshMessages: fetchMessagesQuiet,
 		sendMessage,
 		deleteConversation,

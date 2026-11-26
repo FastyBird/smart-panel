@@ -6,11 +6,13 @@
 		"settings": "Kamarád",
 		"chat": "Buddy Chat",
 		"chats": "Konverzace",
-		"aboutBuddy": "Konfigurace AI Buddy"
+		"aboutBuddy": "Konfigurace AI Buddy",
+		"deleteConversation": "Smazat konverzaci"
 	},
 	"subHeadings": {
 		"settings": "Konfigurace nastavení AI buddy asistenta",
-		"chat": "Chatujte se svým AI buddy asistentem"
+		"chat": "Chatujte se svým AI buddy asistentem",
+		"setup": "Vyberte poskytovatele, se kterými Kamarád odpovídá, mluví a poslouchá, a kde je dostupný"
 	},
 	"messages": {
 		"loadError": "Nepodařilo se načíst konfiguraci buddy",
@@ -29,7 +31,8 @@
 			"audioPlayback": "Nepodařilo se přehrát zvuk",
 			"loadPersonality": "Nepodařilo se načíst osobnost",
 			"savePersonality": "Nepodařilo se uložit osobnost"
-		}
+		},
+		"confirmDeleteConversation": "Smazat konverzaci „{title}“? Smažou se i její zprávy."
 	},
 	"buttons": {
 		"save": {
@@ -58,6 +61,27 @@
 		},
 		"setupWizard": {
 			"title": "Průvodce nastavením"
+		},
+		"loadMore": {
+			"title": "Načíst starší zprávy"
+		},
+		"send": {
+			"title": "Odeslat"
+		},
+		"more": {
+			"title": "Další akce"
+		},
+		"deleteConversation": {
+			"title": "Smazat konverzaci"
+		},
+		"backToChats": {
+			"title": "Zpět na konverzace"
+		},
+		"playAudio": {
+			"title": "Přečíst nahlas"
+		},
+		"stopAudio": {
+			"title": "Zastavit čtení"
 		}
 	},
 	"fields": {
@@ -116,7 +140,8 @@
 			}
 		},
 		"message": {
-			"placeholder": "Napište zprávu..."
+			"placeholder": "Napište zprávu...",
+			"title": "Zpráva"
 		}
 	},
 	"texts": {
@@ -149,7 +174,13 @@
 		"sttProvidersFetchFailed": "Nepodařilo se načíst dostupné poskytovatele rozpoznávání řeči. Seznam poskytovatelů může být neúplný.",
 		"ttsProvidersFetchFailed": "Nepodařilo se načíst dostupné poskytovatele hlasové syntézy. Seznam poskytovatelů může být neúplný.",
 		"moduleDisabled": "Modul Buddy je zakázán",
-		"moduleDisabledHint": "Modul AI buddy je aktuálně zakázán. Povolte ho v konfiguraci systému pro použití chatu a návrhů."
+		"moduleDisabledHint": "Modul AI buddy je aktuálně zakázán. Povolte ho v konfiguraci systému pro použití chatu a návrhů.",
+		"noConversations": "Zatím žádné konverzace",
+		"noConversationsHint": "Začněte konverzaci a zeptejte se Kamaráda na svůj domov.",
+		"loadingMessages": "Načítání zpráv...",
+		"conversationNotFound": "Tato konverzace už neexistuje",
+		"messagesFailed": "Zprávy této konverzace se nepodařilo načíst",
+		"chatDataFailed": "Konverzace se nepodařilo načíst"
 	},
 	"wizard": {
 		"title": "Průvodce nastavením Buddy",
@@ -189,7 +220,12 @@
 			"configure": "Konfigurovat",
 			"saveConfig": "Uložit konfiguraci",
 			"startChatting": "Začít chatovat"
-		}
+		},
+		"loading": "Načítání poskytovatelů...",
+		"aria": {
+			"enable": "Zapnout {name}"
+		},
+		"providersFailed": "Poskytovatele AI se nepodařilo načíst"
 	},
 	"meta": {
 		"settings": {
@@ -197,6 +233,13 @@
 		},
 		"chat": {
 			"title": "Buddy Chat"
+		},
+		"setup": {
+			"title": "Nastavení Kamaráda"
 		}
+	},
+	"aria": {
+		"more": "Další akce pro {title}",
+		"messages": "Zprávy"
 	}
 }
