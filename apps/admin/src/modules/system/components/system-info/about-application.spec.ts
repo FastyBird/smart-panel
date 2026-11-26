@@ -11,7 +11,7 @@ type AboutApplicationInstance = ComponentPublicInstance;
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
-		t: (key: string) => key,
+		t: (key: string, params?: Record<string, string>) => (params?.version ? `Version ${params.version}` : key),
 	}),
 }));
 
@@ -31,10 +31,11 @@ describe('AboutApplication', () => {
 		expect(wrapper.find('[data-test-id="about-info"]').text()).toContain('systemModule.texts.system.about');
 	});
 
-	it('renders social media links', () => {
-		const links = wrapper.findAllComponents({ name: 'ElLink' });
+	it('renders social media links, each opening in a new tab', () => {
+		const links = wrapper.findAll('a');
 
 		expect(links).toHaveLength(4);
+		expect(links.every((link) => link.attributes('target') === '_blank' && link.attributes('rel') === 'noopener noreferrer')).toBe(true);
 
 		expect(links[0]?.attributes('href')).toBe('https://github.com/fastybird');
 		expect(links[1]?.attributes('href')).toBe('https://x.com/fastybird');

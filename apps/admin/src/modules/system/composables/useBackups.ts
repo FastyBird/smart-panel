@@ -18,6 +18,8 @@ export type IBackup = components['schemas']['SystemModuleDataBackup'];
 export interface IUseBackups {
 	backups: Ref<IBackup[]>;
 	loading: Ref<boolean>;
+	/** The last read of the list failed */
+	failed: Ref<boolean>;
 	creating: Ref<boolean>;
 	fetchBackups: () => Promise<void>;
 	createBackup: (name?: string) => Promise<IBackup | null>;
@@ -33,6 +35,7 @@ export const useBackups = (): IUseBackups => {
 
 	const backups = ref<IBackup[]>([]);
 	const loading = ref(false);
+	const failed = ref(false);
 	const creating = ref(false);
 
 	// Ingress-aware base for the two multipart fetch() calls below that bypass the
@@ -47,12 +50,15 @@ export const useBackups = (): IUseBackups => {
 			const { data: responseData, error } = await backend.client.GET('/modules/system/backups', {});
 
 			if (error || !responseData?.data) {
+				failed.value = true;
+
 				return;
 			}
 
 			backups.value = responseData.data;
+			failed.value = false;
 		} catch {
-			// handled by caller
+			failed.value = true;
 		} finally {
 			loading.value = false;
 		}
@@ -181,6 +187,7 @@ export const useBackups = (): IUseBackups => {
 	return {
 		backups,
 		loading,
+		failed,
 		creating,
 		fetchBackups,
 		createBackup,

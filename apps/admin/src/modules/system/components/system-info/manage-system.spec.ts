@@ -20,9 +20,11 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+const push = vi.fn();
+
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
-		push: vi.fn(),
+		push,
 	}),
 }));
 
@@ -57,27 +59,34 @@ describe('ManageSystem.vue', () => {
 		expect(wrapper.find('[data-test-id="factory-reset-info"]').text()).toContain('systemModule.texts.manage.factoryResetDevice');
 	});
 
-	it('calls onServiceRestart when service restart row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[0]?.trigger('click');
+	it('calls onServiceRestart when service restart button is clicked', async () => {
+		await wrapper.get('[data-test-id="service-restart-button"]').trigger('click');
 
 		expect(onServiceRestart).toHaveBeenCalled();
 	});
 
-	it('calls onSystemReboot when system reboot row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[1]?.trigger('click');
+	it('calls onSystemReboot when system reboot button is clicked', async () => {
+		await wrapper.get('[data-test-id="system-reboot-button"]').trigger('click');
 
 		expect(onSystemReboot).toHaveBeenCalled();
 	});
 
-	it('calls onPowerOff when power-off row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[2]?.trigger('click');
+	it('calls onPowerOff when power-off button is clicked', async () => {
+		await wrapper.get('[data-test-id="power-off-button"]').trigger('click');
 
 		expect(onPowerOff).toHaveBeenCalled();
 	});
 
-	it('calls onFactoryReset when factory reset row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[3]?.trigger('click');
+	it('calls onFactoryReset when factory reset button is clicked', async () => {
+		await wrapper.get('[data-test-id="factory-reset-button"]').trigger('click');
 
 		expect(onFactoryReset).toHaveBeenCalled();
+	});
+
+	it('opens backups and logs from their rows', async () => {
+		await wrapper.get('[data-test-id="system-backups-button"]').trigger('click');
+		await wrapper.get('[data-test-id="system-logs-button"]').trigger('click');
+
+		expect(push.mock.calls).toEqual([[{ name: 'system_module-system_backups' }], [{ name: 'system_module-system_logs' }]]);
 	});
 });

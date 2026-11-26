@@ -1,79 +1,53 @@
 <template>
-	<el-card
-		class="md:m-2 xs:my-1"
-		body-class="p-0!"
+	<!-- The software update section: the installed and the latest version, when it was last checked, and the one action
+	     that fits: check, or install what was found -->
+	<div
+		class="flex flex-col gap-4"
+		data-test-id="update-status"
 	>
-		<el-descriptions
-			:label-width="170"
-			:column="1"
-			border
-		>
-			<template #title>
-				<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-					<el-icon
-						class="mr-2"
-						size="28"
-					>
-						<icon icon="mdi:update" />
-					</el-icon>
-					{{ t('systemModule.headings.update.title') }}
-					<el-tag
-						v-if="updateAvailable && latestVersion"
-						type="warning"
-						class="ml-2"
-					>
-						{{ t('systemModule.texts.update.available', { version: latestVersion }) }}
-					</el-tag>
-				</div>
-			</template>
+		<div class="flex flex-wrap items-center gap-3">
+			<status-tag
+				:status="updateAvailable && latestVersion ? 'warn' : 'ok'"
+				:label="
+					updateAvailable && latestVersion
+						? t('systemModule.texts.update.available', { version: latestVersion })
+						: t('systemModule.texts.update.upToDate')
+				"
+				data-test-id="update-status-state"
+			/>
 
-			<el-descriptions-item :label="t('systemModule.labels.update.currentVersion')">
-				{{ currentVersion || '-' }}
-			</el-descriptions-item>
-			<el-descriptions-item :label="t('systemModule.labels.update.latestVersion')">
-				<span v-if="latestVersion">
-					{{ latestVersion }}
-					<el-tag
-						v-if="updateType"
-						size="small"
-						:type="updateTypeColor"
-						class="ml-2"
-					>
-						{{ updateType }}
-					</el-tag>
-				</span>
-				<span v-else>-</span>
-			</el-descriptions-item>
-			<el-descriptions-item :label="t('systemModule.labels.update.lastChecked')">
-				{{ lastCheckedFormatted || '-' }}
-			</el-descriptions-item>
-			<el-descriptions-item :label="t('systemModule.labels.update.actions')">
-				<el-button
-					v-if="!updateAvailable"
-					size="small"
-					:loading="loading"
-					:disabled="isUpdating"
-					@click="onCheckForUpdates"
-				>
-					<template #icon>
-						<icon icon="mdi:refresh" />
-					</template>
-					{{ t('systemModule.buttons.update.checkForUpdates') }}
-				</el-button>
-				<el-button
-					v-else
-					size="small"
-					type="primary"
-					@click="onOpenUpdateDialog"
-				>
-					<template #icon>
-						<icon icon="mdi:download" />
-					</template>
-					{{ t('systemModule.buttons.update.installUpdate') }}
-				</el-button>
-			</el-descriptions-item>
-		</el-descriptions>
-	</el-card>
+			<span class="flex-1" />
+
+			<el-button
+				v-if="!updateAvailable"
+				:loading="loading"
+				:disabled="isUpdating"
+				data-test-id="update-status-check"
+				@click="onCheckForUpdates"
+			>
+				<template #icon>
+					<icon icon="mdi:refresh" />
+				</template>
+				{{ t('systemModule.buttons.update.checkForUpdates') }}
+			</el-button>
+			<el-button
+				v-else
+				type="primary"
+				data-test-id="update-status-install"
+				@click="onOpenUpdateDialog"
+			>
+				<template #icon>
+					<icon icon="mdi:download" />
+				</template>
+				{{ t('systemModule.buttons.update.installUpdate') }}
+			</el-button>
+		</div>
+
+		<kv-grid
+			:items="details"
+			:cols="3"
+		/>
+	</div>
 
 	<el-dialog
 		v-model="showUpdateDialog"
@@ -133,7 +107,6 @@
 		<template #footer>
 			<el-button
 				v-if="!isUpdating && status !== 'complete'"
-				link
 				@click="showUpdateDialog = false"
 			>
 				{{ t('systemModule.buttons.cancel.title') }}
@@ -150,7 +123,6 @@
 			</el-button>
 			<el-button
 				v-if="status === 'complete'"
-				link
 				@click="showUpdateDialog = false"
 			>
 				{{ t('systemModule.buttons.close.title') }}
@@ -163,22 +135,11 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElAlert,
-	ElButton,
-	ElCard,
-	ElDescriptions,
-	ElDescriptionsItem,
-	ElDialog,
-	ElIcon,
-	ElNotification,
-	ElProgress,
-	ElTag,
-	ElText,
-} from 'element-plus';
+import { ElAlert, ElButton, ElDialog, ElNotification, ElProgress, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { KvGrid, type KvGridItem, StatusTag } from '../../../../common';
 import { useUpdateStatus } from '../../composables/composables';
 
 defineOptions({
@@ -215,29 +176,27 @@ watch(showUpdateDialog, (visible, wasVisible): void => {
 	}
 });
 
-const updateTypeColor = computed<'danger' | 'warning' | 'success' | 'info'>((): 'danger' | 'warning' | 'success' | 'info' => {
-	switch (updateType.value) {
-		case 'major':
-			return 'danger';
-		case 'minor':
-			return 'warning';
-		case 'patch':
-			return 'success';
-		default:
-			return 'info';
-	}
-});
-
 const lastCheckedFormatted = computed<string | null>((): string | null => {
 	if (!lastChecked.value) {
 		return null;
 	}
 
-	return new Intl.DateTimeFormat('en-US', {
+	return new Intl.DateTimeFormat(undefined, {
 		dateStyle: 'medium',
 		timeStyle: 'short',
 	}).format(lastChecked.value);
 });
+
+// The latest version carries the size of the step, "1.4.0 (minor)"
+const details = computed<KvGridItem[]>((): KvGridItem[] => [
+	{ label: t('systemModule.labels.update.currentVersion'), value: currentVersion.value, mono: true },
+	{
+		label: t('systemModule.labels.update.latestVersion'),
+		value: latestVersion.value ? (updateType.value ? `${latestVersion.value} (${updateType.value})` : latestVersion.value) : null,
+		mono: true,
+	},
+	{ label: t('systemModule.labels.update.lastChecked'), value: lastCheckedFormatted.value },
+]);
 
 const onOpenUpdateDialog = (): void => {
 	if (!isUpdating.value) {

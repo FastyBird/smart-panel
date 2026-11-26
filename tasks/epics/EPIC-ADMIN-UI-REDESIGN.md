@@ -93,7 +93,7 @@ dark, and updates all six locales.
 | AR-21 | #1678 | 4 | `refactor(admin): move weather onto the page templates` | AR-9, AR-10 | done (#1772, #1773) |
 | AR-22 | #1679 | 4 | `refactor(admin): rebuild the overview as a dashboard` | AR-3, AR-8 | done (#1774); the cameras panel follows UP-11 |
 | AR-23 | #1680 | 4 | `refactor(admin): move buddy onto the two-pane and wizard templates` | AR-5, AR-8 | done (#1775) |
-| AR-24 | #1681 | 4 | `refactor(admin): move users, extensions and system onto the page templates` | AR-3, AR-5, AR-8 | in review (users done in #1776; part 2, extensions, in review; system follows) |
+| AR-24 | #1681 | 4 | `refactor(admin): move users, extensions and system onto the page templates` | AR-3, AR-5, AR-8 | in review (users in #1776 and extensions in #1777 done; part 3, system, in review) |
 | AR-25 | #1682 | 4 | `refactor(admin): move sign-in, system state and onboarding screens onto the standalone template` | AR-4, AR-5 | open |
 | AR-26 | #1683 | 4 | `refactor(admin): move configuration and plugin settings onto the slot contract` | AR-3, AR-4, AR-6, AR-8 | open |
 | AR-27 | #1684 | 4 | `docs(cross): publish the admin slot contract and lint rules for plugin authors` | AR-2, AR-6, AR-26 | open |

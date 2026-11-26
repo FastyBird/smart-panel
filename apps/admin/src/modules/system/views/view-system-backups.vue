@@ -5,40 +5,37 @@
 		:title="t('systemModule.headings.systemBackups.list')"
 		:subtitle="t('systemModule.subHeadings.systemBackups.list')"
 		icon="mdi:backup-restore"
+		:actions="[
+			{ icon: 'mdi:upload', label: t('systemModule.backups.buttons.upload'), handler: () => backupsList?.openUploadPicker() },
+			{ icon: 'mdi:plus', label: t('systemModule.backups.buttons.create'), handler: () => backupsList?.openCreateDialog() },
+		]"
 	>
 		<template #actions>
-			<div class="flex items-center gap-2">
-				<el-upload
-					:auto-upload="true"
-					:show-file-list="false"
-					accept=".tar.gz,.gz"
-					:http-request="handleUpload"
-				>
-					<el-button plain>
-						<template #icon>
-							<icon icon="mdi:upload" />
-						</template>
-						{{ t('systemModule.backups.buttons.upload') }}
-					</el-button>
-				</el-upload>
+			<el-button
+				plain
+				data-test-id="system-backups-header-upload"
+				@click="backupsList?.openUploadPicker()"
+			>
+				<template #icon>
+					<icon icon="mdi:upload" />
+				</template>
+				{{ t('systemModule.backups.buttons.upload') }}
+			</el-button>
 
-				<el-button
-					type="primary"
-					plain
-					@click="backupsList?.openCreateDialog()"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
-					{{ t('systemModule.backups.buttons.create') }}
-				</el-button>
-			</div>
+			<el-button
+				type="primary"
+				data-test-id="system-backups-header-create"
+				@click="backupsList?.openCreateDialog()"
+			>
+				<template #icon>
+					<icon icon="mdi:plus" />
+				</template>
+				{{ t('systemModule.backups.buttons.create') }}
+			</el-button>
 		</template>
 	</view-header>
 
-	<div class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
-		<system-backups ref="backupsList" />
-	</div>
+	<system-backups ref="backupsList" />
 </template>
 
 <script setup lang="ts">
@@ -47,7 +44,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRouter } from 'vue-router';
 
-import { ElButton, ElUpload } from 'element-plus';
+import { ElButton } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -63,10 +60,6 @@ const router = useRouter();
 const { t } = useI18n();
 
 const backupsList = ref<InstanceType<typeof SystemBackups> | null>(null);
-
-const handleUpload = (opts: { file: File }): Promise<void> => {
-	return backupsList.value?.onUploadBackup(opts) ?? Promise.resolve();
-};
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
 	return [

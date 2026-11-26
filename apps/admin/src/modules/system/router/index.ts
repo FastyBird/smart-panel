@@ -119,6 +119,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					title: 'System logs',
 					icon: 'mdi:console',
 				},
+				// Template 7: the list and one entry side by side from tablet landscape; below it the entry is its own page.
+				// The list view stays the parent either way, so it reads the entries for both
 				children: [
 					{
 						path: ':id',

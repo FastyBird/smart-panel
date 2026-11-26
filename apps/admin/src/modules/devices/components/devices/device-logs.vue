@@ -26,7 +26,7 @@
 			</div>
 		</el-card>
 
-		<!-- Logs table card (matches system logs layout) -->
+		<!-- Logs list card (the same rows as the system logs) -->
 		<div class="flex-1 overflow-hidden flex flex-col">
 			<el-card
 				shadow="never"
@@ -34,12 +34,12 @@
 				body-class="p-0! flex-1 overflow-hidden"
 			>
 				<el-scrollbar>
-					<system-logs-table
+					<system-logs-list
 						:items="logs"
 						:loading="isLoading"
 						:has-more="hasMore"
 						:filters-active="false"
-						@detail="onLogDetail"
+						@open="onLogDetail"
 						@load-more="onLoadMore"
 					/>
 				</el-scrollbar>
@@ -84,7 +84,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarScope, ViewHeader } from '../../../../common';
-import { SystemLogDetail, SystemLogsTable } from '../../../../modules/system';
+import { SystemLogDetail, SystemLogsList } from '../../../../modules/system';
 import type { ILogEntry } from '../../../../modules/system/store/logs-entries.store.types';
 import { useDeviceLogs } from '../../composables/composables';
 

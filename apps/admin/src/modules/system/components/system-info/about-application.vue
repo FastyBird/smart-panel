@@ -1,96 +1,64 @@
 <template>
-	<div class="flex flex-col items-center">
-		<icon
-			icon="mdi:cog-outline"
-			class="w[200px] h[200px]"
-		/>
-		<el-text
-			size="large"
-			class="block text-4xl! mt-4!"
-		>
-			FastyBird! Smart Panel
-		</el-text>
-		<el-text class="block text-lg! my-2!">Version {{ appVersion }}</el-text>
+	<!-- The About section: the application, its version, what it is and where to follow it -->
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center gap-4">
+			<div
+				class="flex items-center justify-center shrink-0 w-14 h-14 rounded-lg bg-primary-soft"
+				aria-hidden="true"
+			>
+				<icon
+					icon="mdi:cog-outline"
+					width="32"
+					height="32"
+					class="text-primary"
+				/>
+			</div>
 
-		<el-divider />
+			<div class="flex flex-col gap-0.5 min-w-0">
+				<span class="text-section">FastyBird! Smart Panel</span>
+				<span
+					class="text-secondary"
+					data-test-id="about-version"
+				>
+					{{ t('systemModule.texts.system.version', { version: appVersion }) }}
+				</span>
+			</div>
+		</div>
 
-		<el-text
-			size="large"
-			class="block text-justify max-w-[500px]"
+		<p
+			class="text-body m-0 max-w-[640px]"
 			data-test-id="about-info"
 		>
 			{{ t('systemModule.texts.system.about') }}
-		</el-text>
+		</p>
 
-		<el-divider />
-
-		<div class="flex flex-row justify-center items-center my-4">
-			<el-link
-				underline="never"
-				href="https://github.com/fastybird"
-				target="_blank"
-				class="mx-5"
+		<ul
+			:aria-label="t('systemModule.labels.about.links')"
+			class="flex flex-wrap gap-2 m-0 p-0 list-none"
+		>
+			<li
+				v-for="link in LINKS"
+				:key="link.href"
 			>
-				<template #icon>
-					<el-icon :size="20">
-						<icon icon="mdi:github" />
-					</el-icon>
-				</template>
-			</el-link>
-
-			<el-divider direction="vertical" />
-
-			<el-link
-				underline="never"
-				href="https://x.com/fastybird"
-				target="_blank"
-				class="mx-5"
-			>
-				<template #icon>
-					<el-icon :size="20">
-						<icon icon="fa6-brands:x-twitter" />
-					</el-icon>
-				</template>
-			</el-link>
-
-			<el-divider direction="vertical" />
-
-			<el-link
-				underline="never"
-				href="https://discord.gg/HPRJ2GzK"
-				target="_blank"
-				class="mx-5"
-			>
-				<template #icon>
-					<el-icon :size="20">
-						<icon icon="mdi:discord" />
-					</el-icon>
-				</template>
-			</el-link>
-
-			<el-divider direction="vertical" />
-
-			<el-link
-				underline="never"
-				href="https://www.facebook.com/fastybird"
-				target="_blank"
-				class="mx-5"
-			>
-				<template #icon>
-					<el-icon :size="20">
-						<icon icon="mdi:facebook" />
-					</el-icon>
-				</template>
-			</el-link>
-		</div>
+				<a
+					:href="link.href"
+					class="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--el-border-radius-base)] border border-solid border-default text-regular no-underline hover:border-primary hover:text-primary"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					<icon
+						:icon="link.icon"
+						aria-hidden="true"
+					/>
+					{{ link.label }}
+				</a>
+			</li>
+		</ul>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-
-import { ElDivider, ElIcon, ElLink, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -100,5 +68,13 @@ defineOptions({
 
 const { t } = useI18n();
 
-const appVersion = ref<string>(__APP_VERSION__);
+const appVersion: string = __APP_VERSION__;
+
+// Brand names, the same in every language
+const LINKS: { href: string; icon: string; label: string }[] = [
+	{ href: 'https://github.com/fastybird', icon: 'mdi:github', label: 'GitHub' },
+	{ href: 'https://x.com/fastybird', icon: 'fa6-brands:x-twitter', label: 'X' },
+	{ href: 'https://discord.gg/HPRJ2GzK', icon: 'mdi:discord', label: 'Discord' },
+	{ href: 'https://www.facebook.com/fastybird', icon: 'mdi:facebook', label: 'Facebook' },
+];
 </script>

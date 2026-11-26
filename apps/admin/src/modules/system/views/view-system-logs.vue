@@ -1,96 +1,158 @@
 <template>
-	<app-breadcrumbs :items="breadcrumbs" />
+	<template v-if="twoPane || !detailId">
+		<app-breadcrumbs :items="breadcrumbs" />
 
-	<view-header
-		v-if="isSystemLogsRoute || isLGDevice"
-		:title="t('systemModule.headings.systemLogs.list')"
-		:subtitle="t('systemModule.subHeadings.systemLogs.list')"
-		icon="mdi:console"
-	/>
+		<view-header
+			:title="t('systemModule.headings.systemLogs.list')"
+			:subtitle="t('systemModule.subHeadings.systemLogs.list')"
+			icon="mdi:console"
+			:actions="[
+				{
+					icon: live ? 'mdi:pause' : 'mdi:play',
+					label: live ? t('systemModule.buttons.pauseLiveTail.title') : t('systemModule.buttons.liveTail.title'),
+					handler: () => (live = !live),
+				},
+				{ icon: 'mdi:refresh', label: t('systemModule.buttons.refresh.title'), handler: onRefresh },
+			]"
+		>
+			<template #actions>
+				<el-switch
+					v-model="live"
+					:active-text="t('systemModule.buttons.liveTail.title')"
+					class="mr-3"
+					data-test-id="system-logs-live"
+				/>
 
+				<el-button
+					plain
+					data-test-id="system-logs-refresh"
+					@click="onRefresh"
+				>
+					<template #icon>
+						<icon icon="mdi:refresh" />
+					</template>
+
+					{{ t('systemModule.buttons.refresh.title') }}
+				</el-button>
+			</template>
+		</view-header>
+	</template>
+
+	<!-- Template 7 from tablet landscape: the entries in a 320 px pane and the open one beside it, each scrolling on its
+	     own. Below it the list, and the entry as a page of its own -->
 	<div
-		v-if="isSystemLogsRoute || isLGDevice"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden"
+		v-if="twoPane"
+		class="page-pad flex gap-4 flex-1 min-h-0 box-border"
+		data-test-id="system-logs-two-pane"
 	>
-		<list-system-logs
-			v-model:filters="filters"
-			v-model:live="live"
-			:items="systemLogs"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			:has-more="hasMore"
-			@detail="onLogEntryDetail"
-			@adjust-list="onAdjustList"
-			@reset-filters="onResetFilters"
-			@load-more="onLoadMore"
-			@refresh="onRefresh"
-			@clear="onClearSystemLogs"
-		/>
+		<section
+			:aria-label="t('systemModule.headings.systemLogs.list')"
+			class="flex flex-col w-[320px] shrink-0 min-h-0 bg-surface border border-solid border-light rounded-lg overflow-hidden"
+		>
+			<list-filter-bar
+				v-model:search="search"
+				:search-placeholder="t('systemModule.fields.systemLogs.search.placeholder')"
+				:active-count="activeCount"
+				@reset="onResetFilters"
+			>
+				<template #filters>
+					<system-logs-filters v-model:filters="filters" />
+				</template>
+			</list-filter-bar>
+
+			<div class="flex flex-col flex-1 min-h-0 overflow-y-auto">
+				<system-logs-list
+					:items="systemLogs"
+					:active-id="detailId"
+					:loading="areLoading && !loadFailed"
+					:filters-active="filtersActive"
+					:has-more="hasMore"
+					:failed="loadFailed"
+					@open="onOpen"
+					@load-more="onLoadMore"
+					@reset-filters="onResetFilters"
+					@retry="onRefresh"
+				/>
+			</div>
+		</section>
+
+		<section class="flex flex-col flex-1 min-w-0 min-h-0 bg-surface border border-solid border-light rounded-lg overflow-hidden">
+			<router-view v-slot="{ Component }">
+				<component
+					:is="Component"
+					v-if="Component"
+					:key="detailId ?? undefined"
+					in-pane
+				/>
+				<state-view
+					v-else
+					kind="empty"
+					icon="mdi:note-text-outline"
+					:title="t('systemModule.texts.systemLogs.selectOne')"
+					data-test-id="system-logs-no-selection"
+				/>
+			</router-view>
+		</section>
 	</div>
 
 	<router-view
-		v-else
-		:key="props.id"
+		v-else-if="detailId"
 		v-slot="{ Component }"
 	>
-		<component :is="Component" />
+		<component
+			:is="Component"
+			:key="detailId"
+		/>
 	</router-view>
 
-	<el-drawer
-		v-if="isLGDevice"
-		v-model="showDrawer"
-		:show-close="false"
-		:size="adjustList ? '300px' : '40%'"
-		:with-header="false"
-		:before-close="onCloseDrawer"
+	<div
+		v-else
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<template v-if="showDrawer">
-				<list-system-logs-adjust
-					v-if="adjustList"
-					v-model:filters="filters"
+		<section class="flex flex-col flex-1 min-h-0 bg-surface border border-solid border-light rounded-lg overflow-hidden">
+			<list-filter-bar
+				v-model:search="search"
+				:search-placeholder="t('systemModule.fields.systemLogs.search.placeholder')"
+				:active-count="activeCount"
+				@reset="onResetFilters"
+			>
+				<template #filters>
+					<system-logs-filters v-model:filters="filters" />
+				</template>
+			</list-filter-bar>
+
+			<div class="flex flex-col flex-1 min-h-0 overflow-y-auto">
+				<system-logs-list
+					:items="systemLogs"
+					:loading="areLoading && !loadFailed"
 					:filters-active="filtersActive"
+					:has-more="hasMore"
+					:failed="loadFailed"
+					@open="onOpen"
+					@load-more="onLoadMore"
 					@reset-filters="onResetFilters"
+					@retry="onRefresh"
 				/>
-
-				<view-error v-else>
-					<template #icon>
-						<icon icon="mdi:console" />
-					</template>
-					<template #message>
-						{{ t('systemModule.messages.misc.requestError') }}
-					</template>
-
-					<suspense>
-						<router-view
-							:key="props.id"
-							v-slot="{ Component }"
-						>
-							<component :is="Component" />
-						</router-view>
-					</suspense>
-				</view-error>
-			</template>
-		</app-bar-scope>
-	</el-drawer>
+			</div>
+		</section>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRoute, useRouter } from 'vue-router';
 
-import { ElDrawer } from 'element-plus';
+import { ElButton, ElSwitch } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import { ListSystemLogs, ListSystemLogsAdjust } from '../components/components';
+import { AppBreadcrumbs, ListFilterBar, StateView, ViewHeader, useFlashMessage, useSizeClass } from '../../../common';
+import { SystemLogsFilters, SystemLogsList } from '../components/components';
 import { useSystemLogsDataSource } from '../composables/useSystemLogsDataSource';
 import type { ILogEntry } from '../store/logs-entries.store.types';
 import { RouteNames } from '../system.constants';
-import { SystemException } from '../system.exceptions';
 
 import type { IViewSystemLogsProps } from './view-system-logs.types';
 
@@ -98,136 +160,88 @@ defineOptions({
 	name: 'ViewSystemLogs',
 });
 
-const props = defineProps<IViewSystemLogsProps>();
+// The open entry's id comes with the route too; the view reads it from the route, as the child route may be any
+defineProps<IViewSystemLogsProps>();
 
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
-const { isLGDevice } = useBreakpoints();
+const { isPhone, isTabletPortrait } = useSizeClass();
 
 const { fetchSystemLogs, loadMoreSystemLogs, systemLogs, hasMore, filters, live, filtersActive, areLoading, resetFilter, refreshSystemLogs } =
 	useSystemLogsDataSource();
 
-const mounted = ref<boolean>(false);
+// Template 7: two panes from tablet landscape; below it the list, then the entry as a page of its own
+const twoPane = computed<boolean>((): boolean => !isPhone.value && !isTabletPortrait.value);
 
-const showDrawer = ref<boolean>(false);
-const adjustList = ref<boolean>(false);
+const detailId = computed<ILogEntry['id'] | null>((): ILogEntry['id'] | null =>
+	route.name === RouteNames.SYSTEM_LOG_DETAIL && typeof route.params.id === 'string' ? route.params.id : null
+);
 
-const isSystemLogsRoute = computed<boolean>((): boolean => {
-	return route.name === RouteNames.SYSTEM_LOGS;
+const search = computed<string>({
+	get: (): string => filters.value.search ?? '',
+	set: (value: string): void => {
+		filters.value.search = value === '' ? undefined : value;
+	},
 });
 
-const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
-	return [
-		{
-			label: t('systemModule.breadcrumbs.system.system'),
-			route: router.resolve({ name: RouteNames.SYSTEM }),
-		},
-		{
-			label: t('systemModule.breadcrumbs.systemLogs.list'),
-			route: router.resolve({ name: RouteNames.SYSTEM_LOGS }),
-		},
-	];
-});
+// The drawer's filters, the search left out: it is visible in the bar on its own
+const activeCount = computed<number>(
+	(): number => (filters.value.levels.length > 0 ? 1 : 0) + (filters.value.sources.length > 0 ? 1 : 0) + (filters.value.tag ? 1 : 0)
+);
 
-const onCloseDrawer = (done?: () => void): void => {
-	if (adjustList.value) {
-		showDrawer.value = false;
-		adjustList.value = false;
+const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => [
+	{
+		label: t('systemModule.breadcrumbs.system.system'),
+		route: router.resolve({ name: RouteNames.SYSTEM }),
+	},
+	{
+		label: t('systemModule.breadcrumbs.systemLogs.list'),
+		route: router.resolve({ name: RouteNames.SYSTEM_LOGS }),
+	},
+]);
 
-		done?.();
-	} else {
-		if (isLGDevice.value) {
-			router.replace({
-				name: RouteNames.SYSTEM_LOGS,
-			});
-		} else {
-			router.push({
-				name: RouteNames.SYSTEM_LOGS,
-			});
-		}
-
-		done?.();
-	}
-};
-
-const onLogEntryDetail = (id: ILogEntry['id']): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.SYSTEM_LOG_DETAIL,
-			params: {
-				id,
-			},
-		});
-	} else {
-		router.push({
-			name: RouteNames.SYSTEM_LOG_DETAIL,
-			params: {
-				id,
-			},
-		});
-	}
+// The query carries the list's filters, so the list reads the same when the entry is left again
+const onOpen = (id: ILogEntry['id']): void => {
+	void router.push({ name: RouteNames.SYSTEM_LOG_DETAIL, params: { id }, query: route.query });
 };
 
 const onResetFilters = (): void => {
 	resetFilter();
 };
 
-const onLoadMore = (): void => {
-	loadMoreSystemLogs().catch((error: unknown): void => {
-		const err = error as Error;
+// The last read of the entries failed; with none on screen the list says so and offers a retry
+const loadFailed = ref<boolean>(false);
 
-		throw new SystemException('Something went wrong', err);
-	});
+const reportError = (): void => {
+	flashMessage.error(t('systemModule.messages.misc.requestError'));
+};
+
+const read = (request: () => Promise<void>): void => {
+	request()
+		.then((): void => {
+			loadFailed.value = false;
+		})
+		.catch((): void => {
+			loadFailed.value = true;
+
+			reportError();
+		});
+};
+
+const onLoadMore = (): void => {
+	read(loadMoreSystemLogs);
 };
 
 const onRefresh = (): void => {
-	refreshSystemLogs().catch((error: unknown): void => {
-		const err = error as Error;
-
-		throw new SystemException('Something went wrong', err);
-	});
-};
-
-const onClearSystemLogs = (): void => {
-	// handle clear
-};
-
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-	adjustList.value = true;
+	read(refreshSystemLogs);
 };
 
 onBeforeMount((): void => {
-	fetchSystemLogs().catch((error: unknown): void => {
-		const err = error as Error;
-
-		throw new SystemException('Something went wrong', err);
-	});
-
-	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.SYSTEM_LOG_DETAIL) !== undefined;
+	read(fetchSystemLogs);
 });
-
-onMounted((): void => {
-	mounted.value = true;
-});
-
-watch(
-	(): boolean => areLoading.value,
-	(val: boolean): void => {
-		if (!val && systemLogs.value === null) {
-			throw new SystemException('Something went wrong');
-		}
-	}
-);
-
-watch(
-	(): string => route.path,
-	(): void => {
-		showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.SYSTEM_LOG_DETAIL) !== undefined;
-	}
-);
 
 useMeta({
 	title: t('systemModule.meta.systemLogs.list.title'),

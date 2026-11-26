@@ -1,291 +1,126 @@
 <template>
-	<el-row>
-		<el-col
-			:xs="24"
-			:sm="12"
-			:md="8"
-		>
-			<update-status />
-		</el-col>
+	<!-- The status section cards of the system info page: hardware, power and temperature, the operating system and the
+	     network -->
+	<settings-section
+		id="hardware"
+		:title="t('systemModule.headings.system.hardware')"
+		icon="mdi:chip"
+	>
+		<kv-grid
+			:items="hardware"
+			:cols="2"
+		/>
+	</settings-section>
 
-		<el-col
-			:xs="24"
-			:sm="12"
-			:md="8"
+	<settings-section
+		id="power"
+		:title="t('systemModule.headings.system.power')"
+		:description="t('systemModule.subHeadings.power')"
+		icon="mdi:flash-alert-outline"
+	>
+		<ul
+			class="flex flex-col m-0 p-0 list-none"
+			data-test-id="system-info-power"
 		>
-			<el-card
-				class="md:m-2 xs:my-1"
-				body-class="p-0!"
+			<li
+				v-for="(flag, index) in THROTTLE_FLAGS"
+				:key="flag"
+				:class="['flex items-center justify-between gap-4 py-2.5', index > 0 ? 'border-t border-t-solid border-light' : '']"
+				:data-flag="flag"
 			>
-				<el-descriptions
-					:label-width="170"
-					:column="1"
-					border
+				<span class="text-body">{{ t(`systemModule.systemInfo.${flag}`) }}</span>
+				<status-tag
+					v-if="props.throttleStatus"
+					:status="props.throttleStatus[flag] ? 'danger' : 'ok'"
+					:label="props.throttleStatus[flag] ? t('systemModule.states.error') : t('systemModule.states.ok')"
+				/>
+				<span
+					v-else
+					class="text-secondary"
 				>
-					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-							<el-icon
-								class="mr-2"
-								size="28"
-							>
-								<icon icon="mdi:chip" />
-							</el-icon>
-							Hardware info
-						</div>
-					</template>
+					{{ t('application.value.notAvailable') }}
+				</span>
+			</li>
+		</ul>
+	</settings-section>
 
-					<el-descriptions-item :label="t('systemModule.systemInfo.cpuLoad')">
-						{{ format(props.systemInfo?.cpuLoad ?? 0, { maximumFractionDigits: 2 }) }} %
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.memoryUsage')">
-						{{ format((props.systemInfo?.memory.used ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB /
-						{{ format((props.systemInfo?.memory.total ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB
-					</el-descriptions-item>
-					<el-descriptions-item
-						v-if="props.systemInfo?.temperature.cpu"
-						:label="t('systemModule.systemInfo.cpuTemperature')"
-					>
-						{{ props.systemInfo?.temperature.cpu }} °C
-					</el-descriptions-item>
-					<el-descriptions-item
-						v-else
-						:label="t('systemModule.systemInfo.cpuTemperature')"
-					>
-						{{ t('application.value.notAvailable') }}
-					</el-descriptions-item>
-					<el-descriptions-item
-						v-if="props.systemInfo?.temperature.gpu"
-						:label="t('systemModule.systemInfo.gpuTemperature')"
-					>
-						{{ props.systemInfo?.temperature.gpu }} °C
-					</el-descriptions-item>
-					<el-descriptions-item
-						v-else
-						:label="t('systemModule.systemInfo.gpuTemperature')"
-					>
-						{{ t('application.value.notAvailable') }}
-					</el-descriptions-item>
-				</el-descriptions>
-			</el-card>
-		</el-col>
+	<settings-section
+		id="os"
+		:title="t('systemModule.headings.system.os')"
+		icon="mdi:server-outline"
+	>
+		<kv-grid
+			:items="os"
+			:cols="2"
+		/>
+	</settings-section>
 
-		<el-col
-			:xs="24"
-			:sm="12"
-			:md="8"
-		>
-			<el-card
-				class="md:m-2 xs:my-1"
-				body-class="p-0!"
-			>
-				<el-descriptions
-					:label-width="250"
-					:column="1"
-					border
-				>
-					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-							<el-icon
-								class="mr-2"
-								size="28"
-							>
-								<icon icon="mdi:server-outline" />
-							</el-icon>
-							Operating system
-						</div>
-					</template>
-
-					<el-descriptions-item :label="t('systemModule.systemInfo.osPlatform')">
-						{{ props.systemInfo?.os.platform }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.osDistro')">
-						{{ props.systemInfo?.os.distro }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.osRelease')">
-						{{ props.systemInfo?.os.release }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.uptime')">
-						{{ props.systemInfo?.os.uptime }}
-					</el-descriptions-item>
-				</el-descriptions>
-			</el-card>
-		</el-col>
-
-		<el-col
-			:xs="24"
-			:sm="12"
-			:md="8"
-		>
-			<el-card
-				class="md:m-2 xs:my-1"
-				body-class="p-0!"
-			>
-				<el-descriptions
-					:label-width="170"
-					:column="1"
-					border
-				>
-					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-							<el-icon
-								class="mr-2"
-								size="28"
-							>
-								<icon icon="mdi:local-area-network" />
-							</el-icon>
-							Network
-						</div>
-					</template>
-
-					<el-descriptions-item :label="t('systemModule.systemInfo.networkInterface')">
-						{{ props.systemInfo?.defaultNetwork.interface }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.ip4Address')">
-						{{ props.systemInfo?.defaultNetwork.ip4 }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.ip6Address')">
-						{{ props.systemInfo?.defaultNetwork.ip6 }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.macAddress')">
-						{{ props.systemInfo?.defaultNetwork.mac }}
-					</el-descriptions-item>
-				</el-descriptions>
-			</el-card>
-		</el-col>
-
-		<el-col
-			:xs="24"
-			:sm="12"
-			:md="8"
-		>
-			<el-card
-				class="md:m-2 xs:my-1"
-				body-class="p-0!"
-			>
-				<el-descriptions
-					:label-width="290"
-					:column="1"
-					border
-				>
-					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
-							<el-icon
-								class="mr-2"
-								size="28"
-							>
-								<icon icon="mdi:alert" />
-							</el-icon>
-							Throttle status
-						</div>
-					</template>
-
-					<template v-if="props.throttleStatus">
-						<el-descriptions-item :label="t('systemModule.systemInfo.undervoltage')">
-							<el-tag
-								v-if="props.throttleStatus.undervoltage"
-								type="danger"
-								size="small"
-							>
-								{{ t('systemModule.states.error') }}
-							</el-tag>
-							<el-tag
-								v-else
-								type="success"
-								size="small"
-							>
-								{{ t('systemModule.states.ok') }}
-							</el-tag>
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('systemModule.systemInfo.frequencyCapping')">
-							<el-tag
-								v-if="props.throttleStatus.frequencyCapping"
-								type="danger"
-								size="small"
-							>
-								{{ t('systemModule.states.error') }}
-							</el-tag>
-							<el-tag
-								v-else
-								type="success"
-								size="small"
-							>
-								{{ t('systemModule.states.ok') }}
-							</el-tag>
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('systemModule.systemInfo.throttling')">
-							<el-tag
-								v-if="props.throttleStatus.throttling"
-								type="danger"
-								size="small"
-							>
-								{{ t('systemModule.states.error') }}
-							</el-tag>
-							<el-tag
-								v-else
-								type="success"
-								size="small"
-							>
-								{{ t('systemModule.states.ok') }}
-							</el-tag>
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('systemModule.systemInfo.softTempLimit')">
-							<el-tag
-								v-if="props.throttleStatus.softTempLimit"
-								type="danger"
-								size="small"
-							>
-								{{ t('systemModule.states.error') }}
-							</el-tag>
-							<el-tag
-								v-else
-								type="success"
-								size="small"
-							>
-								{{ t('systemModule.states.ok') }}
-							</el-tag>
-						</el-descriptions-item>
-					</template>
-					<template v-else>
-						<el-descriptions-item :label="t('systemModule.systemInfo.undervoltage')">
-							{{ t('application.value.notAvailable') }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('systemModule.systemInfo.frequencyCapping')">
-							{{ t('application.value.notAvailable') }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('systemModule.systemInfo.throttling')">
-							{{ t('application.value.notAvailable') }}
-						</el-descriptions-item>
-						<el-descriptions-item :label="t('systemModule.systemInfo.softTempLimit')">
-							{{ t('application.value.notAvailable') }}
-						</el-descriptions-item>
-					</template>
-				</el-descriptions>
-			</el-card>
-		</el-col>
-	</el-row>
+	<settings-section
+		id="network"
+		:title="t('systemModule.headings.system.network')"
+		icon="mdi:local-area-network"
+	>
+		<kv-grid
+			:items="network"
+			:cols="2"
+		/>
+	</settings-section>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElIcon, ElRow, ElTag } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { useNumberFormat } from '../../../../common';
-import { Layout } from '../../system.constants';
+import { KvGrid, type KvGridItem, SettingsSection, StatusTag, useNumberFormat } from '../../../../common';
+import type { IThrottleStatus } from '../../store/throttle-status.store.types';
+import { formatUptime } from '../../utils/system.utils';
 
 import type { ISystemInfoDetailProps } from './system-info-detail.types';
-import UpdateStatus from './update-status.vue';
 
 defineOptions({
 	name: 'SystemInfoDetail',
 });
 
-const props = withDefaults(defineProps<ISystemInfoDetailProps>(), {
-	layout: Layout.DEFAULT,
-});
+const props = defineProps<ISystemInfoDetailProps>();
 
 const { t } = useI18n();
 const { format } = useNumberFormat();
+
+const THROTTLE_FLAGS: (keyof IThrottleStatus)[] = ['undervoltage', 'frequencyCapping', 'throttling', 'softTempLimit'];
+
+const megabytes = (bytes: number): string => `${format(bytes / 1024 / 1024, { maximumFractionDigits: 0 })} MB`;
+
+const temperature = (value: number | null | undefined): string | null =>
+	value === null || value === undefined ? null : `${format(value, { maximumFractionDigits: 1 })} °C`;
+
+const hardware = computed<KvGridItem[]>(() => {
+	const info = props.systemInfo;
+
+	return [
+		{
+			label: t('systemModule.systemInfo.cpuLoad'),
+			value: info ? `${format(info.cpuLoad, { maximumFractionDigits: 2 })} %` : null,
+		},
+		{
+			label: t('systemModule.systemInfo.memoryUsage'),
+			value: info ? `${megabytes(info.memory.used)} / ${megabytes(info.memory.total)}` : null,
+		},
+		{ label: t('systemModule.systemInfo.cpuTemperature'), value: temperature(info?.temperature.cpu) },
+		{ label: t('systemModule.systemInfo.gpuTemperature'), value: temperature(info?.temperature.gpu) },
+	];
+});
+
+const os = computed<KvGridItem[]>(() => [
+	{ label: t('systemModule.systemInfo.osPlatform'), value: props.systemInfo?.os.platform },
+	{ label: t('systemModule.systemInfo.osDistro'), value: props.systemInfo?.os.distro },
+	{ label: t('systemModule.systemInfo.osRelease'), value: props.systemInfo?.os.release, mono: true },
+	{ label: t('systemModule.systemInfo.uptime'), value: formatUptime(props.systemInfo?.os.uptime), mono: true },
+]);
+
+const network = computed<KvGridItem[]>(() => [
+	{ label: t('systemModule.systemInfo.networkInterface'), value: props.systemInfo?.defaultNetwork.interface, mono: true },
+	{ label: t('systemModule.systemInfo.ip4Address'), value: props.systemInfo?.defaultNetwork.ip4, mono: true },
+	{ label: t('systemModule.systemInfo.ip6Address'), value: props.systemInfo?.defaultNetwork.ip6, mono: true },
+	{ label: t('systemModule.systemInfo.macAddress'), value: props.systemInfo?.defaultNetwork.mac, mono: true },
+]);
 </script>

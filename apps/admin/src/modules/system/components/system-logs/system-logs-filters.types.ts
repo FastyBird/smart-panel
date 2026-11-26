@@ -1,6 +1,5 @@
 import type { ISystemLogsFilter } from '../../composables/types';
 
-export interface IListSystemLogsAdjustProps {
+export interface ISystemLogsFiltersProps {
 	filters: ISystemLogsFilter;
-	filtersActive: boolean;
 }

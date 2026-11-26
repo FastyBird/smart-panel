@@ -1,274 +1,319 @@
 <template>
-	<el-card
-		shadow="never"
-		class="px-1 py-2 shrink-0"
-		body-class="p-0!"
+	<state-view
+		v-if="loading && backups.length === 0"
+		kind="loading"
+		icon="mdi:backup-restore"
+		:title="t('systemModule.backups.loading')"
+		class="flex-1"
+	/>
+
+	<state-view
+		v-else-if="failed && backups.length === 0"
+		kind="error"
+		icon="mdi:backup-restore"
+		:title="t('systemModule.backups.messages.loadError')"
+		class="flex-1"
+		data-test-id="system-backups-error"
 	>
-		<div class="flex w-full">
-			<el-input
-				v-model="searchQuery"
-				:placeholder="t('systemModule.backups.search.placeholder')"
-				class="max-w[280px] p-1"
-				clearable
+		<template #action>
+			<el-button
+				plain
+				@click="fetchBackups"
 			>
-				<template #suffix>
-					<el-icon>
-						<icon icon="mdi:magnify" />
-					</el-icon>
-				</template>
-			</el-input>
-		</div>
-	</el-card>
+				{{ t('systemModule.buttons.retry.title') }}
+			</el-button>
+		</template>
+	</state-view>
 
-	<div class="flex-grow overflow-hidden">
-		<el-card
-			shadow="never"
-			class="max-h-full flex flex-col overflow-hidden box-border"
-			body-class="p-0! max-h-full overflow-hidden flex flex-col"
-		>
-			<div
-				v-loading="loading"
-				class="min-h-[100px] overflow-auto"
-			>
-				<el-table
-					:data="filteredBackups"
-					class="w-full"
-					table-layout="fixed"
-				>
-					<template #empty>
-						<div
-							v-if="loading"
-							class="h-full w-full leading-normal"
-						>
-							<el-result class="h-full w-full">
-								<template #icon>
-									<icon-with-child :size="80">
-										<template #primary>
-											<icon icon="mdi:backup-restore" />
-										</template>
-										<template #secondary>
-											<icon icon="mdi:database-refresh" />
-										</template>
-									</icon-with-child>
-								</template>
-							</el-result>
-						</div>
-
-						<div
-							v-else
-							class="h-full w-full leading-normal"
-						>
-							<el-result class="h-full w-full">
-								<template #icon>
-									<icon-with-child :size="80">
-										<template #primary>
-											<icon icon="mdi:backup-restore" />
-										</template>
-										<template #secondary>
-											<icon icon="mdi:information" />
-										</template>
-									</icon-with-child>
-								</template>
-
-								<template #title>
-									{{ backups.length === 0 ? t('systemModule.backups.noBackups') : t('systemModule.backups.noMatches') }}
-								</template>
-							</el-result>
-						</div>
-					</template>
-
-					<el-table-column
-						:label="t('systemModule.backups.columns.name')"
-						prop="name"
-						min-width="150"
-					>
-						<template #default="{ row }">
-							<div>
-								<strong class="block">{{ row.name || row.id }}</strong>
-								<el-text
-									v-if="row.contributions && row.contributions.length"
-									size="small"
-									type="info"
-									class="block leading-4"
-									truncated
-								>
-									{{ row.contributions.length }} {{ t('systemModule.backups.contributions') }}
-								</el-text>
-							</div>
-						</template>
-					</el-table-column>
-
-					<el-table-column
-						:label="t('systemModule.backups.columns.version')"
-						prop="version"
-						width="120"
-					/>
-
-					<el-table-column
-						:label="t('systemModule.backups.columns.created')"
-						prop="created_at"
-						width="180"
-					>
-						<template #default="{ row }">
-							{{ formatDate(row.created_at) }}
-						</template>
-					</el-table-column>
-
-					<el-table-column
-						:label="t('systemModule.backups.columns.size')"
-						prop="size_bytes"
-						width="120"
-					>
-						<template #default="{ row }">
-							{{ formatSize(row.size_bytes) }}
-						</template>
-					</el-table-column>
-
-					<el-table-column
-						:label="t('systemModule.backups.columns.actions')"
-						width="240"
-						align="right"
-					>
-						<template #default="{ row }">
-							<div @click.stop>
-								<el-button
-									size="small"
-									plain
-									:loading="downloadingId === row.id"
-									@click="onDownloadBackup(row)"
-								>
-									<template #icon>
-										<icon icon="mdi:download" />
-									</template>
-								</el-button>
-
-								<el-button
-									size="small"
-									type="warning"
-									plain
-									:loading="restoringId === row.id"
-									@click="onRestoreBackup(row)"
-								>
-									<template #icon>
-										<icon icon="mdi:backup-restore" />
-									</template>
-								</el-button>
-
-								<el-button
-									size="small"
-									type="danger"
-									plain
-									:loading="deletingId === row.id"
-									@click="onDeleteBackup(row)"
-								>
-									<template #icon>
-										<icon icon="mdi:delete" />
-									</template>
-								</el-button>
-							</div>
-						</template>
-					</el-table-column>
-				</el-table>
-			</div>
-		</el-card>
-	</div>
-
-	<!-- Create Backup Dialog -->
-		<el-dialog
-			v-model="showCreateDialog"
-			:title="t('systemModule.backups.createDialog.title')"
-			class="max-w-[500px]"
-			@close="onCreateDialogClose"
-		>
-			<el-form
-				ref="createFormEl"
-				:model="createForm"
-				label-position="top"
-			>
-				<el-form-item
-					:label="t('systemModule.backups.createDialog.name')"
-					prop="name"
-				>
-					<el-input
-						v-model="createForm.name"
-						:placeholder="t('systemModule.backups.createDialog.namePlaceholder')"
-					/>
-				</el-form-item>
-			</el-form>
-
-			<template #footer>
-				<el-button @click="showCreateDialog = false">
-					{{ t('systemModule.buttons.cancel.title') }}
-				</el-button>
-				<el-button
-					type="primary"
-					:loading="creating"
-					@click="onCreateBackup"
-				>
-					{{ t('systemModule.backups.createDialog.submit') }}
-				</el-button>
-			</template>
-		</el-dialog>
-
-		<!-- Restore Confirmation Dialog -->
-		<el-dialog
-			v-model="showRestoreDialog"
-			:title="t('systemModule.backups.restoreDialog.title')"
-			class="max-w-[500px]"
-		>
+	<!-- Template 5, settings and status: how recent the last backup is, then the backups and the upload of one -->
+	<settings-layout
+		v-else
+		:sections="sections"
+	>
+		<template #banner>
 			<el-alert
-				:title="t('systemModule.backups.restoreDialog.warning')"
-				type="warning"
+				:type="banner.type"
+				:title="banner.title"
+				:description="banner.description"
 				:closable="false"
 				show-icon
+				data-test-id="system-backups-banner"
 			/>
+		</template>
 
-			<p class="mt-3">
-				{{ t('systemModule.backups.restoreDialog.message', { name: restoreTarget?.name || restoreTarget?.id }) }}
-			</p>
+		<settings-section
+			id="backups"
+			:title="t('systemModule.backups.title')"
+			:description="t('systemModule.backups.description')"
+			icon="mdi:backup-restore"
+		>
+			<el-input
+				v-if="backups.length > 0"
+				v-model="searchQuery"
+				:placeholder="t('systemModule.backups.search.placeholder')"
+				:aria-label="t('systemModule.backups.search.placeholder')"
+				class="max-w-[320px] mb-4"
+				clearable
+				data-test-id="system-backups-search"
+			>
+				<template #prefix>
+					<icon
+						icon="mdi:magnify"
+						aria-hidden="true"
+					/>
+				</template>
+			</el-input>
 
-			<template #footer>
-				<el-button @click="showRestoreDialog = false">
-					{{ t('systemModule.buttons.cancel.title') }}
-				</el-button>
-				<el-button
-					type="danger"
-					:loading="restoringId !== null"
-					@click="onConfirmRestore"
+			<state-view
+				v-if="filteredBackups.length === 0"
+				kind="empty"
+				icon="mdi:backup-restore"
+				:title="backups.length === 0 ? t('systemModule.backups.noBackups') : t('systemModule.backups.noMatches')"
+				data-test-id="system-backups-empty"
+			>
+				<template #action>
+					<el-button
+						v-if="backups.length === 0"
+						type="primary"
+						@click="openCreateDialog"
+					>
+						{{ t('systemModule.backups.buttons.create') }}
+					</el-button>
+					<el-button
+						v-else
+						plain
+						@click="searchQuery = ''"
+					>
+						{{ t('systemModule.buttons.resetFilters.title') }}
+					</el-button>
+				</template>
+			</state-view>
+
+			<!-- Phone: one row per backup, its details under the name -->
+			<ul
+				v-else-if="isPhone"
+				class="flex flex-col m-0 p-0 list-none"
+				data-test-id="system-backups-rows"
+			>
+				<li
+					v-for="(backup, index) in filteredBackups"
+					:key="backup.id"
+					:class="['flex items-start gap-3 py-3', index > 0 ? 'border-t border-t-solid border-light' : '']"
+					data-test-id="system-backups-row"
 				>
-					{{ t('systemModule.backups.restoreDialog.confirm') }}
+					<div class="flex flex-col gap-0.5 flex-1 min-w-0">
+						<span class="text-card-title break-words">{{ backup.name || backup.id }}</span>
+						<span class="text-help">
+							{{ formatDate(backup.created_at) }} · {{ formatSize(backup.size_bytes) }} ·
+							<span class="text-mono">{{ backup.version }}</span>
+						</span>
+					</div>
+
+					<system-backup-actions
+						:backup="backup"
+						:downloading="downloadingId === backup.id"
+						:busy="isBusy(backup)"
+						@download="onDownloadBackup"
+						@restore="onRestoreBackup"
+						@delete="onDeleteBackup"
+					/>
+				</li>
+			</ul>
+
+			<el-table
+				v-else
+				:data="filteredBackups"
+				class="w-full"
+				table-layout="fixed"
+				data-test-id="system-backups-table"
+			>
+				<el-table-column
+					:label="t('systemModule.backups.columns.name')"
+					prop="name"
+					min-width="180"
+				>
+					<template #default="{ row }: { row: IBackup }">
+						<div class="flex flex-col min-w-0">
+							<span class="text-card-title truncate">{{ row.name || row.id }}</span>
+							<span
+								v-if="row.contributions && row.contributions.length"
+								class="text-help truncate"
+							>
+								{{ row.contributions.length }} {{ t('systemModule.backups.contributions') }}
+							</span>
+						</div>
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					v-if="!isTabletPortrait"
+					:label="t('systemModule.backups.columns.version')"
+					prop="version"
+					width="140"
+				>
+					<template #default="{ row }: { row: IBackup }">
+						<span class="text-mono truncate">{{ row.version }}</span>
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('systemModule.backups.columns.created')"
+					prop="created_at"
+					width="180"
+				>
+					<template #default="{ row }: { row: IBackup }">
+						{{ formatDate(row.created_at) }}
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('systemModule.backups.columns.size')"
+					prop="size_bytes"
+					width="100"
+					align="right"
+				>
+					<template #default="{ row }: { row: IBackup }">
+						<span class="tabular-nums">{{ formatSize(row.size_bytes) }}</span>
+					</template>
+				</el-table-column>
+
+				<el-table-column
+					:label="t('systemModule.backups.columns.actions')"
+					width="168"
+					align="right"
+				>
+					<template #default="{ row }: { row: IBackup }">
+						<system-backup-actions
+							:backup="row"
+							:downloading="downloadingId === row.id"
+							:busy="isBusy(row)"
+							@download="onDownloadBackup"
+							@restore="onRestoreBackup"
+							@delete="onDeleteBackup"
+						/>
+					</template>
+				</el-table-column>
+			</el-table>
+		</settings-section>
+
+		<settings-section
+			id="upload"
+			:title="t('systemModule.backups.upload.title')"
+			:description="t('systemModule.backups.upload.description')"
+			icon="mdi:upload"
+		>
+			<div class="flex flex-wrap items-center gap-3">
+				<el-button
+					:loading="uploading"
+					data-test-id="system-backups-upload"
+					@click="openUploadPicker"
+				>
+					<template #icon>
+						<icon icon="mdi:upload" />
+					</template>
+					{{ t('systemModule.backups.buttons.upload') }}
 				</el-button>
-			</template>
-		</el-dialog>
+				<span class="text-help">{{ t('systemModule.backups.upload.hint') }}</span>
+			</div>
+		</settings-section>
+	</settings-layout>
+
+	<input
+		ref="uploadInput"
+		type="file"
+		accept=".tar.gz,.gz"
+		class="hidden"
+		data-test-id="system-backups-upload-input"
+		@change="onUploadPicked"
+	/>
+
+	<el-dialog
+		v-model="showCreateDialog"
+		:title="t('systemModule.backups.createDialog.title')"
+		:width="isPhone ? '100%' : '480px'"
+		append-to-body
+		@close="onCreateDialogClose"
+	>
+		<el-form
+			ref="createFormEl"
+			:model="createForm"
+			label-position="top"
+			@submit.prevent="onCreateBackup"
+		>
+			<el-form-item
+				:label="t('systemModule.backups.createDialog.name')"
+				prop="name"
+			>
+				<el-input
+					v-model="createForm.name"
+					:placeholder="t('systemModule.backups.createDialog.namePlaceholder')"
+					data-test-id="system-backups-create-name"
+				/>
+			</el-form-item>
+		</el-form>
+
+		<template #footer>
+			<el-button @click="showCreateDialog = false">
+				{{ t('systemModule.buttons.cancel.title') }}
+			</el-button>
+			<el-button
+				type="primary"
+				:loading="creating"
+				data-test-id="system-backups-create-submit"
+				@click="onCreateBackup"
+			>
+				{{ t('systemModule.backups.createDialog.submit') }}
+			</el-button>
+		</template>
+	</el-dialog>
+
+	<el-dialog
+		v-model="showRestoreDialog"
+		:title="t('systemModule.backups.restoreDialog.title')"
+		:width="isPhone ? '100%' : '480px'"
+		append-to-body
+	>
+		<el-alert
+			:title="t('systemModule.backups.restoreDialog.warning')"
+			type="warning"
+			:closable="false"
+			show-icon
+		/>
+
+		<p class="text-body mt-3 mb-0">
+			{{ t('systemModule.backups.restoreDialog.message', { name: restoreTarget?.name || restoreTarget?.id }) }}
+		</p>
+
+		<template #footer>
+			<el-button @click="showRestoreDialog = false">
+				{{ t('systemModule.buttons.cancel.title') }}
+			</el-button>
+			<el-button
+				type="danger"
+				:loading="restoringId !== null"
+				data-test-id="system-backups-restore-confirm"
+				@click="onConfirmRestore"
+			>
+				{{ t('systemModule.backups.buttons.restore') }}
+			</el-button>
+		</template>
+	</el-dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElAlert,
-	ElButton,
-	ElCard,
-	ElDialog,
-	ElForm,
-	ElFormItem,
-	ElIcon,
-	ElInput,
-	ElMessageBox,
-	ElResult,
-	ElTable,
-	ElTableColumn,
-	ElText,
-	type FormInstance,
-	vLoading,
-} from 'element-plus';
+import { ElAlert, ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElMessageBox, ElTable, ElTableColumn, type FormInstance } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild, useFlashMessage } from '../../../common';
+import { SettingsLayout, type SettingsLayoutSection, SettingsSection, StateView, useFlashMessage, useSizeClass } from '../../../common';
 import type { IBackup } from '../composables/useBackups';
 import { useBackups } from '../composables/useBackups';
+import { formatSize } from '../utils/system.utils';
+
+import SystemBackupActions from './system-backup-actions.vue';
 
 interface ICreateBackupForm {
 	name: string;
@@ -280,15 +325,22 @@ defineOptions({
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { isPhone, isTabletPortrait } = useSizeClass();
 
-const { backups, loading, creating, fetchBackups, createBackup, deleteBackup, restoreBackup, downloadBackup, uploadBackup } = useBackups();
+const { backups, loading, failed, creating, fetchBackups, createBackup, deleteBackup, restoreBackup, downloadBackup, uploadBackup } = useBackups();
 
-const showCreateDialog = ref(false);
-const showRestoreDialog = ref(false);
+// A backup this old or older gets the banner's reminder
+const STALE_AFTER_DAYS = 30;
+
+const showCreateDialog = ref<boolean>(false);
+const showRestoreDialog = ref<boolean>(false);
 const deletingId = ref<string | null>(null);
 const restoringId = ref<string | null>(null);
 const downloadingId = ref<string | null>(null);
+const uploading = ref<boolean>(false);
 const restoreTarget = ref<IBackup | null>(null);
+
+const uploadInput = ref<HTMLInputElement | null>(null);
 
 const searchQuery = ref<string>('');
 
@@ -301,11 +353,49 @@ const filteredBackups = computed<IBackup[]>((): IBackup[] => {
 
 	return backups.value.filter((backup) => {
 		return (
-			(backup.name ?? '').toLowerCase().includes(query) ||
-			backup.id.toLowerCase().includes(query) ||
-			backup.version.toLowerCase().includes(query)
+			(backup.name ?? '').toLowerCase().includes(query) || backup.id.toLowerCase().includes(query) || backup.version.toLowerCase().includes(query)
 		);
 	});
+});
+
+const sections = computed<SettingsLayoutSection[]>((): SettingsLayoutSection[] => [
+	{ id: 'backups', label: t('systemModule.backups.title'), icon: 'mdi:backup-restore', count: backups.value.length },
+	{ id: 'upload', label: t('systemModule.backups.upload.title'), icon: 'mdi:upload' },
+]);
+
+const latestBackup = computed<IBackup | null>((): IBackup | null =>
+	backups.value.reduce<IBackup | null>(
+		(latest, backup) => (latest === null || Date.parse(backup.created_at) > Date.parse(latest.created_at) ? backup : latest),
+		null
+	)
+);
+
+const banner = computed<{ type: 'success' | 'warning'; title: string; description: string }>(() => {
+	const latest = latestBackup.value;
+
+	if (latest === null) {
+		return {
+			type: 'warning',
+			title: t('systemModule.backups.banner.noneTitle'),
+			description: t('systemModule.backups.banner.noneDescription'),
+		};
+	}
+
+	const when = formatDate(latest.created_at);
+
+	if (Date.now() - Date.parse(latest.created_at) >= STALE_AFTER_DAYS * 24 * 60 * 60 * 1000) {
+		return {
+			type: 'warning',
+			title: t('systemModule.backups.banner.staleTitle', { days: STALE_AFTER_DAYS }),
+			description: t('systemModule.backups.banner.lastBackup', { date: when }),
+		};
+	}
+
+	return {
+		type: 'success',
+		title: t('systemModule.backups.banner.okTitle'),
+		description: t('systemModule.backups.banner.lastBackup', { date: when }),
+	};
 });
 
 const createFormEl = ref<FormInstance | undefined>(undefined);
@@ -321,17 +411,8 @@ const formatDate = (date: string): string => {
 	}).format(new Date(date));
 };
 
-const formatSize = (bytes: number): string => {
-	if (bytes < 1024) {
-		return `${bytes} B`;
-	}
-
-	if (bytes < 1024 * 1024) {
-		return `${(bytes / 1024).toFixed(1)} KB`;
-	}
-
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
+// One action at a time per backup: no download while it is restored or deleted, and so on
+const isBusy = (backup: IBackup): boolean => deletingId.value === backup.id || restoringId.value === backup.id;
 
 const resetCreateForm = (): void => {
 	createForm.name = '';
@@ -343,6 +424,10 @@ const onCreateDialogClose = (): void => {
 };
 
 const onCreateBackup = async (): Promise<void> => {
+	if (creating.value) {
+		return;
+	}
+
 	try {
 		// Treat whitespace-only input as empty so the backend generates a default name
 		// instead of persisting a blank-looking entry that still passes non-empty validation
@@ -367,11 +452,11 @@ const onDeleteBackup = (backup: IBackup): void => {
 		t('systemModule.backups.deleteDialog.message', { name: backup.name || backup.id }),
 		t('systemModule.backups.deleteDialog.title'),
 		{
-			confirmButtonText: t('systemModule.buttons.yes.title'),
+			confirmButtonText: t('systemModule.backups.buttons.delete'),
 			cancelButtonText: t('systemModule.buttons.cancel.title'),
 			type: 'warning',
 			confirmButtonClass: 'el-button--danger',
-		},
+		}
 	)
 		.then(async () => {
 			deletingId.value = backup.id;
@@ -401,7 +486,7 @@ const onRestoreBackup = (backup: IBackup): void => {
 };
 
 const onConfirmRestore = async (): Promise<void> => {
-	if (!restoreTarget.value) {
+	if (!restoreTarget.value || restoringId.value !== null) {
 		return;
 	}
 
@@ -437,9 +522,11 @@ const onDownloadBackup = async (backup: IBackup): Promise<void> => {
 	}
 };
 
-const onUploadBackup = async (options: { file: File }): Promise<void> => {
+const onUploadBackup = async (file: File): Promise<void> => {
+	uploading.value = true;
+
 	try {
-		const result = await uploadBackup(options.file);
+		const result = await uploadBackup(file);
 
 		if (result) {
 			flashMessage.success(t('systemModule.backups.messages.uploaded'));
@@ -448,6 +535,28 @@ const onUploadBackup = async (options: { file: File }): Promise<void> => {
 		}
 	} catch {
 		flashMessage.error(t('systemModule.backups.messages.uploadError'));
+	} finally {
+		uploading.value = false;
+	}
+};
+
+const openUploadPicker = (): void => {
+	if (uploading.value) {
+		return;
+	}
+
+	uploadInput.value?.click();
+};
+
+const onUploadPicked = (event: Event): void => {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0];
+
+	// Cleared, so picking the same file again still reports a change
+	input.value = '';
+
+	if (file) {
+		void onUploadBackup(file);
 	}
 };
 
@@ -455,7 +564,7 @@ const openCreateDialog = (): void => {
 	showCreateDialog.value = true;
 };
 
-defineExpose({ openCreateDialog, onUploadBackup });
+defineExpose({ openCreateDialog, openUploadPicker });
 
 onMounted(async () => {
 	await fetchBackups();
