@@ -1,155 +1,138 @@
 <template>
+	<!-- Template 6: the Logs panel, the latest application log lines -->
 	<el-card
 		shadow="never"
-		header-class="px-3! py-3! font-bold"
-		body-class="p-0!"
+		body-class="flex flex-col gap-3 p-4!"
+		data-test-id="application-logs"
 	>
-		<template #header>
-			<div class="flex flex-row items-center justify-between">
-				{{ t('statsModule.headings.logs') }}
+		<div class="flex flex-wrap items-center gap-2">
+			<span class="text-card-title mr-auto">{{ t('statsModule.headings.logs') }}</span>
 
-				<div>
-					<el-select
-						v-model="innerFilters.levels"
-						size="small"
-						class="mr-1 w-[180px]!"
-						clearable
-						multiple
-						collapse-tags
-						collapse-tags-tooltip
-					>
-						<el-option
-							v-for="l in levels"
-							:key="l"
-							:label="t(`systemModule.levels.${l}`)"
-							:value="l"
-						/>
-					</el-select>
-
-					<el-button
-						size="small"
-						class="px-2! ml-1!"
-						@click="emit('refresh')"
-					>
-						<template #icon>
-							<icon icon="mdi:refresh" />
-						</template>
-					</el-button>
-
-					<el-button
-						size="small"
-						class="px-2! ml-1!"
-						@click="emit('detail')"
-					>
-						<template #icon>
-							<icon icon="mdi:console" />
-						</template>
-					</el-button>
-				</div>
-			</div>
-		</template>
-
-		<div v-loading="loading">
-			<div v-if="filtersActive && systemLogs.length === 0 && !props.loading">
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:console" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-multiple" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('statsModule.texts.noFilteredLogs') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="emit('reset')"
-						>
-							<template #icon>
-								<icon icon="mdi:filter-off" />
-							</template>
-
-							{{ t('statsModule.buttons.resetFilters.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
-
-			<div v-else-if="systemLogs.length === 0 && !props.loading">
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:console" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('statsModule.texts.noLogs') }}
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else
-				class="max-h-[350px] overflow-auto bg-[var(--el-fill-color-light)]"
+			<el-select
+				v-model="innerFilters.levels"
+				:aria-label="t('statsModule.aria.levels')"
+				:placeholder="t('statsModule.fields.logs.levels.placeholder')"
+				class="w-[180px]!"
+				clearable
+				multiple
+				collapse-tags
+				collapse-tags-tooltip
 			>
-				<div
-					v-for="(line, i) in systemLogs"
-					:key="i"
-					class="grid grid-cols-[110px_60px_1fr] gap-x-4 text-xs b-b b-b-solid last:b-b-none mb-1 last:mb-0 px-2 py-1 items-center"
+				<el-option
+					v-for="l in levels"
+					:key="l"
+					:label="t(`systemModule.levels.${l}`)"
+					:value="l"
+				/>
+			</el-select>
+
+			<el-tooltip
+				:content="t('statsModule.buttons.refresh.title')"
+				placement="top"
+			>
+				<el-button
+					:aria-label="t('statsModule.buttons.refresh.title')"
+					class="ml-0!"
+					data-test-id="application-logs-refresh"
+					@click="emit('refresh')"
 				>
-					<el-tooltip
-						:content="formatFull(line.ts)"
-						placement="top-start"
-					>
-						{{ formatRelative(line.ts) }}
-					</el-tooltip>
+					<template #icon>
+						<icon icon="mdi:refresh" />
+					</template>
+				</el-button>
+			</el-tooltip>
 
-					<el-tag
-						v-bind="levelTagProps(line.type)"
-						size="small"
-					>
-						{{ line.type }}
-					</el-tag>
-
-					<div class="truncate">
-						<span
-							v-if="line.tag"
-							class="text-gray-500"
-						>
-							[{{ line.tag }}]
-						</span>
-						<span class="ml-1">{{ line.message }}</span>
-					</div>
-				</div>
-			</div>
+			<el-tooltip
+				:content="t('statsModule.buttons.openLogs.title')"
+				placement="top"
+			>
+				<el-button
+					:aria-label="t('statsModule.buttons.openLogs.title')"
+					class="ml-0!"
+					data-test-id="application-logs-open"
+					@click="emit('detail')"
+				>
+					<template #icon>
+						<icon icon="mdi:console" />
+					</template>
+				</el-button>
+			</el-tooltip>
 		</div>
+
+		<state-view
+			v-if="props.loading && props.systemLogs.length === 0"
+			kind="loading"
+			icon="mdi:console"
+			:title="t('statsModule.texts.loadingLogs')"
+		/>
+
+		<state-view
+			v-else-if="props.filtersActive && props.systemLogs.length === 0"
+			kind="empty"
+			icon="mdi:filter-multiple"
+			:title="t('statsModule.texts.noFilteredLogs')"
+		>
+			<template #action>
+				<el-button
+					plain
+					@click="emit('reset')"
+				>
+					{{ t('statsModule.buttons.resetFilters.title') }}
+				</el-button>
+			</template>
+		</state-view>
+
+		<state-view
+			v-else-if="props.systemLogs.length === 0"
+			kind="empty"
+			icon="mdi:console"
+			:title="t('statsModule.texts.noLogs')"
+		/>
+
+		<ul
+			v-else
+			class="application-logs__list m-0 p-0 list-none max-h-[350px] overflow-auto rounded bg-fill-light"
+		>
+			<li
+				v-for="(line, i) in props.systemLogs"
+				:key="i"
+				class="grid grid-cols-[96px_88px_1fr] gap-x-3 items-center px-3 py-1.5 text-help"
+			>
+				<el-tooltip
+					:content="formatFull(line.ts)"
+					placement="top-start"
+				>
+					<span class="truncate">{{ formatRelative(line.ts) }}</span>
+				</el-tooltip>
+
+				<status-tag
+					:status="levelStatus(line.type)"
+					:label="t(`systemModule.levels.${line.type}`)"
+				/>
+
+				<span class="truncate text-body">
+					<span
+						v-if="line.tag"
+						class="text-secondary"
+					>
+						[{{ line.tag }}]
+					</span>
+					{{ line.message }}
+				</span>
+			</li>
+		</ul>
 	</el-card>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElOption, ElResult, ElSelect, ElTag, ElText, ElTooltip, vLoading } from 'element-plus';
+import { ElButton, ElCard, ElOption, ElSelect, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { formatTimeAgo, useVModel } from '@vueuse/core';
 
-import { IconWithChild } from '../../../common';
+import { StateView, StatusTag, type StatusTagStatus } from '../../../common';
 import { SystemModuleLogEntryType } from '../../../openapi.constants';
 
 import type { IApplicationLogsProps } from './application-logs.types';
@@ -192,22 +175,20 @@ const formatFull = (iso: string): string => {
 	return new Date(iso).toISOString();
 };
 
-const levelTagProps = (lvl: SystemModuleLogEntryType) => {
+// The level as a status tag: failures in the danger colour, warnings in the warning colour, the rest neutral
+const levelStatus = (lvl: SystemModuleLogEntryType): StatusTagStatus => {
 	if ([SystemModuleLogEntryType.fatal, SystemModuleLogEntryType.error, SystemModuleLogEntryType.fail].includes(lvl)) {
-		return { type: 'danger' as const, effect: 'light' as const };
+		return 'danger';
 	}
 
-	if ([SystemModuleLogEntryType.warn].includes(lvl)) {
-		return { type: 'warning' as const, effect: 'light' as const };
+	if (lvl === SystemModuleLogEntryType.warn) {
+		return 'warn';
 	}
 
-	if ([SystemModuleLogEntryType.success, SystemModuleLogEntryType.info, SystemModuleLogEntryType.log].includes(lvl)) {
-		return { type: 'success' as const, effect: 'light' as const };
+	if (lvl === SystemModuleLogEntryType.success) {
+		return 'ok';
 	}
 
-	return {
-		effect: 'plain' as const,
-		class: 'tag-neutral',
-	};
+	return 'info';
 };
 </script>

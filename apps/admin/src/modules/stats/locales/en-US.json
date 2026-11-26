@@ -45,8 +45,7 @@
 				"title": "IPv6"
 			},
 			"configPath": {
-				"title": "Config path",
-				"tooltip": "Config file path:"
+				"title": "Config path"
 			}
 		},
 		"applicationOverview": {
@@ -59,7 +58,6 @@
 			},
 			"webSocket": {
 				"title": "WebSocket",
-				"tooltip": "Avail 5m: {wsAvailability5m} (updated {last})",
 				"state": {
 					"connected": "Connected",
 					"disconnected": "Disconnected"
@@ -81,20 +79,19 @@
 				"title": "Process {uptime}"
 			}
 		},
-		"spaces": {
-			"rooms": "{count} rooms",
-			"zones": "{count} zones"
+		"logs": {
+			"levels": {
+				"placeholder": "All levels"
+			}
 		}
 	},
 	"texts": {
 		"updated": "Updated {time}",
 		"noLogs": "No any application logs were recorded.",
-		"noFilteredLogs": "No any application logs found matching the active filter criteria"
+		"noFilteredLogs": "No any application logs found matching the active filter criteria",
+		"loadingLogs": "Loading the logs…"
 	},
 	"buttons": {
-		"copy": {
-			"title": "Copy"
-		},
 		"spaces": {
 			"title": "Spaces"
 		},
@@ -112,6 +109,15 @@
 		},
 		"resetFilters": {
 			"title": "Reset filters"
+		},
+		"refresh": {
+			"title": "Refresh"
+		},
+		"openLogs": {
+			"title": "Open the system logs"
 		}
+	},
+	"aria": {
+		"levels": "Log levels"
 	}
 }

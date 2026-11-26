@@ -50,6 +50,8 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	// AR-21: weather locations, their detail and forms, the location form frame and the weather provider plugins
 	'src/modules/weather',
 	'src/plugins/weather-*',
+	// AR-22: the overview dashboard
+	'src/modules/stats',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

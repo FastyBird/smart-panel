@@ -1,69 +1,29 @@
 <template>
-	<el-card
-		shadow="never"
-		header-class="px-3! py-3! font-bold"
-	>
-		<template #header>
-			{{ t('statsModule.headings.memory') }}
-		</template>
-
-		<div class="flex flex-col gap-2">
-			<div class="font-bold text-2xl">
-				<el-tooltip
-					v-if="systemModuleSection?.memUsedPct.lastUpdated"
-					:content="t('statsModule.texts.updated', { time: formatRelative(systemModuleSection?.memUsedPct.lastUpdated) })"
-					placement="top-start"
-				>
-					<el-icon :size="18">
-						<icon
-							v-if="isStale"
-							icon="mdi:warning"
-						/>
-						<icon
-							v-else
-							icon="mdi:info-circle-outline"
-						/>
-					</el-icon>
-				</el-tooltip>
-
-				{{ format((systemInfo?.memory.used ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }) }} MB
-			</div>
-
-			<div class="color-[var(--el-text-color-secondary)]">
-				{{
-					t('statsModule.fields.memory.total.title', {
-						total: format((systemInfo?.memory.total ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }),
-						unit: 'MB',
-					})
-				}}
-			</div>
-
-			<el-progress
-				:percentage="percentage"
-				:stroke-width="10"
-				:show-text="false"
-				:color="[
-					{ color: 'var(--el-color-success)', percentage: 60 },
-					{ color: 'var(--el-color-warning)', percentage: 85 },
-					{ color: 'var(--el-color-error)', percentage: 100 },
-				]"
-				class="mt-2"
-			/>
-		</div>
-	</el-card>
+	<stat-tile
+		icon="mdi:memory"
+		:label="t('statsModule.headings.memory')"
+		:value="systemInfo ? `${format(systemInfo.memory.used / 1024 / 1024, { maximumFractionDigits: 0 })} MB` : ''"
+		:hint="
+			t('statsModule.fields.memory.total.title', {
+				total: format((systemInfo?.memory.total ?? 0) / 1024 / 1024, { maximumFractionDigits: 0 }),
+				unit: 'MB',
+			})
+		"
+		:last-updated="systemModuleSection?.memUsedPct.lastUpdated ?? null"
+		:stale="isStale"
+		:progress="percentage"
+		:loading="props.loading"
+	/>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElIcon, ElProgress, ElTooltip } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { formatRelative, useNumberFormat } from '../../../common';
+import { useNumberFormat } from '../../../common';
 import { STALE_MS } from '../stats.constants';
 
+import StatTile from './stat-tile.vue';
 import type { IStatsMemoryProps } from './stats-memory.types';
 
 defineOptions({

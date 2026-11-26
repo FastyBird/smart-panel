@@ -45,8 +45,7 @@
 				"title": "IPv6"
 			},
 			"configPath": {
-				"title": "Ruta de configuración",
-				"tooltip": "Ruta del archivo de configuración:"
+				"title": "Ruta de configuración"
 			}
 		},
 		"applicationOverview": {
@@ -59,7 +58,6 @@
 			},
 			"webSocket": {
 				"title": "WebSocket",
-				"tooltip": "Disp. 5m: {wsAvailability5m} (actualizado {last})",
 				"state": {
 					"connected": "Conectado",
 					"disconnected": "Desconectado"
@@ -81,20 +79,19 @@
 				"title": "Proceso {uptime}"
 			}
 		},
-		"spaces": {
-			"rooms": "{count} habitaciones",
-			"zones": "{count} zonas"
+		"logs": {
+			"levels": {
+				"placeholder": "Todos los niveles"
+			}
 		}
 	},
 	"texts": {
 		"updated": "Actualizado {time}",
 		"noLogs": "No se han registrado registros de la aplicación.",
-		"noFilteredLogs": "No se encontraron registros de la aplicación que coincidan con los criterios de filtro activos"
+		"noFilteredLogs": "No se encontraron registros de la aplicación que coincidan con los criterios de filtro activos",
+		"loadingLogs": "Cargando los registros…"
 	},
 	"buttons": {
-		"copy": {
-			"title": "Copiar"
-		},
 		"spaces": {
 			"title": "Espacios"
 		},
@@ -112,6 +109,15 @@
 		},
 		"resetFilters": {
 			"title": "Restablecer filtros"
+		},
+		"refresh": {
+			"title": "Actualizar"
+		},
+		"openLogs": {
+			"title": "Abrir los registros del sistema"
 		}
+	},
+	"aria": {
+		"levels": "Niveles de registro"
 	}
 }
