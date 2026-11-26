@@ -185,6 +185,18 @@ ClimateStateModel _heating() => ClimateStateModel.fromJson({
   'is_heating': true,
 }, spaceId: 'room');
 
+/// Heating to 22° in Heat, as [_heating], with a new room temperature.
+ClimateStateModel _heatingAt(double temperature) => ClimateStateModel.fromJson({
+  'has_climate': true,
+  'mode': 'heat',
+  'current_temperature': temperature,
+  'heating_setpoint': 22.0,
+  'cooling_setpoint': 26.0,
+  'supports_heating': true,
+  'supports_cooling': true,
+  'is_heating': true,
+}, spaceId: 'room');
+
 /// Cooling to 26° in Cool, with a 22° heating setpoint.
 ClimateStateModel _cooling() => ClimateStateModel.fromJson({
   'has_climate': true,
@@ -597,6 +609,34 @@ void main() {
         expect(modeLabel(tester), 'Heat');
         await finish(tester);
       });
+
+      testWidgets(
+        'a new room temperature does not confirm a reversed mode before the '
+        'earlier mode arrives',
+        (tester) async {
+          await pumpPage(tester, const Size(800, 480));
+
+          await chooseMode(tester, 'Cool');
+          await tester.tap(
+            find.descendant(of: _climate(), matching: find.text('Cool')),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Heat').last);
+          await tester.pump(const Duration(milliseconds: 100));
+
+          // Only the temperature moves; Heat must stay pending.
+          await report(tester, _heatingAt(21.0));
+          expect(modeLabel(tester), 'Heat');
+          await report(tester, _cooling());
+          expect(modeLabel(tester), 'Heat');
+
+          await report(tester, _heating());
+          expect(modeLabel(tester), 'Heat');
+          await report(tester, _cooling());
+          expect(modeLabel(tester), 'Cool');
+          await finish(tester);
+        },
+      );
     });
   });
 }

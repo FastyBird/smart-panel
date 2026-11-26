@@ -42,10 +42,10 @@ class _DomainOptimistic {
   /// never puts it back.
   bool failed = false;
 
-  /// What the room reported when this override was set, and whether it has
-  /// reported anything different since. Only a report after a change can
-  /// confirm the override, so a reversal to what the room still shows is
-  /// not taken as done before the room has moved.
+  /// What the room reported, for the fields this override sets, when it
+  /// was set, and whether any of them has changed since. Only a report
+  /// after such a change can confirm the override, so a reversal to what
+  /// the room still shows is not taken as done before the room has moved.
   Object? baseline;
   bool roomMoved = false;
   final DateTime createdAt;
@@ -553,12 +553,15 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       if (card == null) continue;
 
       final override = entry.value;
+      // Only what the override sets counts: a new room temperature is no
+      // report on a mode or target change.
       final reported = (
-        card.primaryValue,
-        card.unit,
-        card.isActive,
-        card.actions.isEmpty ? null : card.actions.first.label,
-        card.target,
+        override.primaryValue == null ? null : (card.primaryValue, card.unit),
+        override.isActive == null ? null : card.isActive,
+        override.climateMode == null || card.actions.isEmpty
+            ? null
+            : card.actions.first.label,
+        override.target == null ? null : card.target,
       );
       if (override.baseline == null) {
         override.baseline = reported;
