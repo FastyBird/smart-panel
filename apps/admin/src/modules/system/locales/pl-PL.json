@@ -135,7 +135,8 @@
 			"channelNotChanged": "Nie udało się zmienić kanału aktualizacji. Spróbuj ponownie później."
 		},
 		"systemLogs": {
-			"copied": "Wpis logu skopiowano do schowka."
+			"copied": "Wpis logu skopiowano do schowka.",
+			"copyFailed": "Nie udało się skopiować wpisu logu. Zaznacz surowy JSON i skopiuj go ręcznie."
 		}
 	},
 	"texts": {
@@ -625,7 +626,9 @@
 	"health": {
 		"problemTitle": "Wykryto problem z zasilaniem lub temperaturą",
 		"okTitle": "System działa prawidłowo",
-		"okDescription": "Zasilanie i temperatura są w porządku, a oprogramowanie jest aktualne.",
-		"updateDescription": "Zainstaluj ją w sekcji Aktualizacje oprogramowania poniżej."
+		"okDescription": "Zasilanie i temperatura są w porządku.",
+		"updateDescription": "Zainstaluj ją w sekcji Aktualizacje oprogramowania poniżej.",
+		"unknownTitle": "Zasilanie i temperatura nie są raportowane",
+		"unknownDescription": "Płyta nie raportuje zbyt niskiego napięcia ani dławienia albo nie udało się ich odczytać, więc ich stan jest nieznany."
 	}
 }

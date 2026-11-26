@@ -1,5 +1,7 @@
 <template>
-	<!-- Template 5's one health banner: a power or temperature problem first, then an update waiting, else all well -->
+	<!-- Template 5's one health banner: a power or temperature problem first, then an update waiting, then power and
+	     temperature not reported (unsupported board, failed or pending read), else all well. "All well" speaks only of
+	     what was read: the power supply and the temperature -->
 	<el-alert
 		:type="alertType"
 		:title="title"
@@ -34,12 +36,15 @@ const { updateAvailable, latestVersion } = useUpdateStatus();
 
 const problems = computed<(keyof IThrottleStatus)[]>(() => throttleProblems(props.throttleStatus));
 
+// No throttle status: the board does not report it, or it is not read (yet); its health is not known
+const unknown = computed<boolean>(() => props.throttleStatus === null);
+
 const alertType = computed<'success' | 'warning' | 'error' | 'info'>(() => {
 	if (problems.value.length > 0) {
 		return 'error';
 	}
 
-	if (updateAvailable.value && latestVersion.value) {
+	if ((updateAvailable.value && latestVersion.value) || unknown.value) {
 		return 'info';
 	}
 
@@ -55,6 +60,10 @@ const title = computed<string>(() => {
 		return t('systemModule.texts.update.available', { version: latestVersion.value });
 	}
 
+	if (unknown.value) {
+		return t('systemModule.health.unknownTitle');
+	}
+
 	return t('systemModule.health.okTitle');
 });
 
@@ -65,6 +74,10 @@ const description = computed<string>(() => {
 
 	if (updateAvailable.value && latestVersion.value) {
 		return t('systemModule.health.updateDescription');
+	}
+
+	if (unknown.value) {
+		return t('systemModule.health.unknownDescription');
 	}
 
 	return t('systemModule.health.okDescription');

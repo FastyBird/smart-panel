@@ -135,7 +135,8 @@
 			"channelNotChanged": "Kanál aktualizácií sa nepodarilo zmeniť. Skúste to prosím znovu neskôr."
 		},
 		"systemLogs": {
-			"copied": "Záznam logu bol skopírovaný do schránky."
+			"copied": "Záznam logu bol skopírovaný do schránky.",
+			"copyFailed": "Záznam logu sa nepodarilo skopírovať. Označte surový JSON a skopírujte ho ručne."
 		}
 	},
 	"texts": {
@@ -625,7 +626,9 @@
 	"health": {
 		"problemTitle": "Zistený problém s napájaním alebo teplotou",
 		"okTitle": "Systém beží normálne",
-		"okDescription": "Napájanie aj teplota sú v poriadku a softvér je aktuálny.",
-		"updateDescription": "Nainštalujte ju v časti Aktualizácie softvéru nižšie."
+		"okDescription": "Napájanie aj teplota sú v poriadku.",
+		"updateDescription": "Nainštalujte ju v časti Aktualizácie softvéru nižšie.",
+		"unknownTitle": "Napájanie a teplota nie sú hlásené",
+		"unknownDescription": "Doska nehlási podpätie ani obmedzovanie výkonu, alebo sa nedali načítať, takže ich stav nie je známy."
 	}
 }

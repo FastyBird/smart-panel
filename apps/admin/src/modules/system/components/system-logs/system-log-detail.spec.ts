@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 
 import { KvGrid } from '../../../../common';
 import { SystemModuleLogEntrySource, SystemModuleLogEntryType } from '../../../../openapi.constants';
@@ -9,6 +9,14 @@ import type { ILogEntry } from '../../store/logs-entries.store.types';
 import SystemLogDetail from './system-log-detail.vue';
 
 enableAutoUnmount(afterEach);
+
+const flash = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+
+vi.mock('../../../../common', async () => {
+	const actual = await vi.importActual<typeof import('../../../../common')>('../../../../common');
+
+	return { ...actual, useFlashMessage: () => ({ ...flash, info: vi.fn() }) };
+});
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
@@ -85,5 +93,48 @@ describe('SystemLogDetail', () => {
 				.get('[data-test-id="system-log-detail-args"]')
 				.text()
 		).toContain('"retry"');
+	});
+
+	describe('Copy JSON', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		it('confirms a copy that reached the clipboard', async () => {
+			const writeText = vi.fn().mockResolvedValue(undefined);
+
+			vi.stubGlobal('navigator', { clipboard: { writeText } });
+
+			const wrapper = mount(SystemLogDetail, { props: { systemLog: entry() } });
+
+			await wrapper.get('[data-test-id="system-log-detail-copy"]').trigger('click');
+			await flushPromises();
+
+			expect(writeText).toHaveBeenCalledWith(expect.stringContaining('"Socket closed"'));
+			expect(flash.success).toHaveBeenCalledWith('systemModule.messages.systemLogs.copied');
+			expect(flash.error).not.toHaveBeenCalled();
+		});
+
+		it('says so when neither the clipboard nor the fallback copies', async () => {
+			vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } });
+
+			const execCommand = vi.fn().mockReturnValue(false);
+
+			Object.defineProperty(document, 'execCommand', { value: execCommand, configurable: true });
+
+			const wrapper = mount(SystemLogDetail, { props: { systemLog: entry() } });
+
+			await wrapper.get('[data-test-id="system-log-detail-copy"]').trigger('click');
+			await flushPromises();
+
+			expect(execCommand).toHaveBeenCalledWith('copy');
+			expect(flash.success).not.toHaveBeenCalled();
+			expect(flash.error).toHaveBeenCalledWith('systemModule.messages.systemLogs.copyFailed');
+			expect(document.querySelector('textarea')).toBeNull();
+		});
 	});
 });

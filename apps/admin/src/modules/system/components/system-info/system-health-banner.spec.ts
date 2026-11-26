@@ -57,4 +57,12 @@ describe('SystemHealthBanner', () => {
 		expect(alert.props('title')).toBe('systemModule.health.problemTitle');
 		expect(alert.props('description')).toBe('systemModule.systemInfo.undervoltage · systemModule.systemInfo.softTempLimit');
 	});
+
+	it('does not call the system healthy while power and temperature are not reported', () => {
+		const alert = mount(SystemHealthBanner, { props: { throttleStatus: null } }).findComponent(ElAlert);
+
+		expect(alert.props('type')).toBe('info');
+		expect(alert.props('title')).toBe('systemModule.health.unknownTitle');
+		expect(alert.props('description')).toBe('systemModule.health.unknownDescription');
+	});
 });

@@ -135,7 +135,8 @@
 			"channelNotChanged": "Der Update-Kanal konnte nicht geändert werden. Bitte versuchen Sie es später erneut."
 		},
 		"systemLogs": {
-			"copied": "Protokolleintrag in die Zwischenablage kopiert."
+			"copied": "Protokolleintrag in die Zwischenablage kopiert.",
+			"copyFailed": "Der Protokolleintrag konnte nicht kopiert werden. Markieren Sie das Roh-JSON und kopieren Sie es manuell."
 		}
 	},
 	"texts": {
@@ -625,7 +626,9 @@
 	"health": {
 		"problemTitle": "Problem mit Stromversorgung oder Temperatur erkannt",
 		"okTitle": "System läuft normal",
-		"okDescription": "Stromversorgung und Temperatur sind in Ordnung und die Software ist aktuell.",
-		"updateDescription": "Installieren Sie es unten unter Software-Updates."
+		"okDescription": "Stromversorgung und Temperatur sind in Ordnung.",
+		"updateDescription": "Installieren Sie es unten unter Software-Updates.",
+		"unknownTitle": "Stromversorgung und Temperatur nicht gemeldet",
+		"unknownDescription": "Das Board meldet weder Unterspannung noch Drosselung, oder sie konnten nicht gelesen werden; ihr Zustand ist unbekannt."
 	}
 }

@@ -130,9 +130,12 @@ const pretty = (value: unknown): string => {
 	}
 };
 
-const copyText = async (text: string): Promise<void> => {
+// Whether the text reached the clipboard: the legacy fallback reports a refusal by returning false, not by throwing
+const copyText = async (text: string): Promise<boolean> => {
 	try {
 		await navigator.clipboard.writeText(text);
+
+		return true;
 	} catch {
 		// Fallback for Safari / non-HTTPS — use legacy execCommand
 		const textarea = document.createElement('textarea');
@@ -141,14 +144,26 @@ const copyText = async (text: string): Promise<void> => {
 		textarea.style.opacity = '0';
 		document.body.appendChild(textarea);
 		textarea.select();
-		document.execCommand('copy');
-		document.body.removeChild(textarea);
+
+		let copied = false;
+
+		try {
+			copied = document.execCommand('copy');
+		} catch {
+			copied = false;
+		} finally {
+			document.body.removeChild(textarea);
+		}
+
+		return copied;
 	}
 };
 
 const onCopy = async (): Promise<void> => {
-	await copyText(pretty(props.systemLog));
-
-	flashMessage.success(t('systemModule.messages.systemLogs.copied'));
+	if (await copyText(pretty(props.systemLog))) {
+		flashMessage.success(t('systemModule.messages.systemLogs.copied'));
+	} else {
+		flashMessage.error(t('systemModule.messages.systemLogs.copyFailed'));
+	}
 };
 </script>

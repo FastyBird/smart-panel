@@ -135,7 +135,8 @@
 			"channelNotChanged": "No se pudo cambiar el canal de actualizaciones. Por favor, inténtalo de nuevo más tarde."
 		},
 		"systemLogs": {
-			"copied": "Entrada de registro copiada al portapapeles."
+			"copied": "Entrada de registro copiada al portapapeles.",
+			"copyFailed": "No se pudo copiar la entrada de registro. Selecciona el JSON sin procesar y cópialo a mano."
 		}
 	},
 	"texts": {
@@ -625,7 +626,9 @@
 	"health": {
 		"problemTitle": "Se detectó un problema de alimentación o temperatura",
 		"okTitle": "El sistema funciona con normalidad",
-		"okDescription": "La alimentación y la temperatura son correctas y el software está actualizado.",
-		"updateDescription": "Instálala desde Actualizaciones de software, más abajo."
+		"okDescription": "La alimentación y la temperatura son correctas.",
+		"updateDescription": "Instálala desde Actualizaciones de software, más abajo.",
+		"unknownTitle": "Alimentación y temperatura no informadas",
+		"unknownDescription": "La placa no informa de subtensión ni de limitación, o no se pudieron leer, así que su estado es desconocido."
 	}
 }

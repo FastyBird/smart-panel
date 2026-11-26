@@ -135,7 +135,8 @@
       "channelNotChanged": "Failed to change the update channel. Please try again later."
     },
     "systemLogs": {
-      "copied": "Log entry copied to the clipboard."
+      "copied": "Log entry copied to the clipboard.",
+      "copyFailed": "The log entry could not be copied. Select the raw JSON and copy it by hand."
     }
   },
   "texts": {
@@ -625,7 +626,9 @@
   "health": {
     "problemTitle": "Power or temperature problem detected",
     "okTitle": "System running normally",
-    "okDescription": "The power supply and the temperature are fine and the software is up to date.",
-    "updateDescription": "Install it from Software updates below."
+    "okDescription": "The power supply and the temperature are fine.",
+    "updateDescription": "Install it from Software updates below.",
+    "unknownTitle": "Power and temperature not reported",
+    "unknownDescription": "The board does not report undervoltage or throttling, or they could not be read, so their state is not known."
   }
 }
