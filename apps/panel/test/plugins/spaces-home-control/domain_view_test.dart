@@ -258,21 +258,27 @@ void main() {
         const HeroButtonData(label: '75%', optional: true),
         const HeroButtonData(label: '100%'),
       ];
-      // Five fit at 196: (196 − 16) / 5 = 36.
-      expect(HeroButtonRow.fitting(buttons, 196), hasLength(5));
-      // Four need (w − 12) / 4 ≥ 36: 75% goes first.
-      expect(HeroButtonRow.fitting(buttons, 170).map((b) => b.label), [
+      // Text buttons need 48: five fit at 260, (260 − 16) / 5.
+      expect(HeroButtonRow.fitting(buttons, 260), hasLength(5));
+      // Four need (w − 12) / 4 ≥ 48: 75% goes first.
+      expect(HeroButtonRow.fitting(buttons, 210).map((b) => b.label), [
         'Off',
         '25%',
         '50%',
         '100%',
       ]);
       // Then 25%; Off, 50% and 100% always stay.
-      expect(HeroButtonRow.fitting(buttons, 100).map((b) => b.label), [
+      expect(HeroButtonRow.fitting(buttons, 160).map((b) => b.label), [
         'Off',
         '50%',
         '100%',
       ]);
+      // Icon buttons need only the touch target: five fit at 200.
+      final icons = [
+        for (var i = 0; i < 5; i++)
+          HeroButtonData(icon: Icons.add, optional: i.isOdd),
+      ];
+      expect(HeroButtonRow.fitting(icons, 200), hasLength(5));
     });
   });
 

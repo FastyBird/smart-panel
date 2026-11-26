@@ -61,10 +61,17 @@ class DomainViewMetrics {
   /// The leading toggle on a landscape role tile.
   static const double tileToggleIcon = 18;
 
+  /// A landscape tile narrower than this drops its leading toggle, so the
+  /// name keeps its room (the Compact secondary column).
+  static const double tileToggleMinWidth = 160;
+
   // ── Hero buttons ─────────────────────────────────────────────────────
 
   /// Every hero button is at least one touch target wide.
   static const double buttonMinWidth = 36;
+
+  /// A button with a label and no icon needs room for "100%".
+  static const double textButtonMinWidth = 48;
 
   /// A button narrower than this shows its icon alone.
   static const double buttonLabelMinWidth = 72;
@@ -332,6 +339,9 @@ class DomainTile extends StatelessWidget {
   /// What a screen reader hears; defaults to "name, value".
   final String? semanticLabel;
 
+  /// The most of a landscape tile's row its value takes.
+  static const double tileValueShare = 0.6;
+
   /// Overrides for tests and the gallery; default to the screen's.
   final bool? landscape;
   final ScreenSizeClass? sizeClass;
@@ -395,12 +405,21 @@ class DomainTile extends StatelessWidget {
       vertical: AppSpacings.pSm,
     );
     final content = isLandscape
-        ? Row(
-            spacing: AppSpacings.pMd,
-            children: [
-              Expanded(child: nameText),
-              Flexible(child: valueText),
-            ],
+        ? LayoutBuilder(
+            builder: (context, constraints) => Row(
+              spacing: AppSpacings.pMd,
+              children: [
+                // The name ellipsizes; the value keeps its width up to most
+                // of the row, then scales down.
+                Expanded(child: nameText),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth * tileValueShare,
+                  ),
+                  child: FittedBox(fit: BoxFit.scaleDown, child: valueText),
+                ),
+              ],
+            ),
           )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,11 +452,17 @@ class DomainTile extends StatelessWidget {
         shape: shape,
         clipBehavior: Clip.antiAlias,
         child: leading != null && isLandscape
-            ? Row(
-                children: [
-                  leading!,
-                  Expanded(child: body),
-                ],
+            ? LayoutBuilder(
+                builder: (context, constraints) =>
+                    constraints.maxWidth >=
+                        AppSpacings.scale(DomainViewMetrics.tileToggleMinWidth)
+                    ? Row(
+                        children: [
+                          leading!,
+                          Expanded(child: body),
+                        ],
+                      )
+                    : body,
               )
             : body,
       ),
@@ -557,11 +582,18 @@ class HeroButtonRow extends StatelessWidget {
     double width,
   ) {
     final shown = [...buttons];
-    final min = AppSpacings.scale(DomainViewMetrics.buttonMinWidth);
     final gap = AppSpacings.scale(DomainViewMetrics.buttonGap);
-    bool fits() =>
-        shown.isEmpty ||
-        (width - gap * (shown.length - 1)) / shown.length >= min;
+    bool fits() {
+      if (shown.isEmpty) return true;
+      final min = AppSpacings.scale(
+        shown.any((b) => b.icon == null)
+            ? DomainViewMetrics.textButtonMinWidth
+            : DomainViewMetrics.buttonMinWidth,
+      );
+
+      return (width - gap * (shown.length - 1)) / shown.length >= min;
+    }
+
     while (!fits()) {
       final index = shown.lastIndexWhere((b) => b.optional);
       if (index < 0) break;

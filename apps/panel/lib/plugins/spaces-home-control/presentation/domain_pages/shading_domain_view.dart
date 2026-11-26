@@ -816,8 +816,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // HEADER
   // --------------------------------------------------------------------------
 
-  /// The header: the Shading icon tile, the live-state line, the covers
-  /// button, and the mode chip in landscape.
+  /// The header: the Shading icon tile, the live-state line, on the square
+  /// a role button, the covers button, and the mode chip in landscape.
   Widget _buildHeader(
     BuildContext context, {
     String? subtitle,
@@ -838,6 +838,18 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
 
     final actions = <Widget>[
+      // The square has no room for the role tiles, and its hero may be too
+      // short for the badge: the role chooser sits in the header.
+      if (loaded &&
+          _screenService.isSquare &&
+          roles.length > 1 &&
+          effectiveRole != null)
+        HeaderIconButton(
+          key: const ValueKey('shading-roles-button'),
+          icon: MdiIcons.viewGridOutline,
+          semanticLabel: localizations.shading_roles_title,
+          onTap: () => _showRolesChooser(roles, effectiveRole),
+        ),
       if (loaded && totalDevices > 0)
         HeaderIconButton(
           key: const ValueKey('shading-devices-button'),

@@ -1786,6 +1786,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         header: _buildHeader(
           context,
           subtitle: _isLoading ? localizations.state_loading : null,
+          loaded: false,
         ),
         hero: _isLoading
             ? const DomainHeroState.loading()
@@ -1810,6 +1811,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             header: _buildHeader(
               context,
               subtitle: localizations.domain_not_configured_subtitle,
+              loaded: false,
             ),
             hero: DomainHeroState(
               state: AppScreenState.notConfigured,
@@ -1858,9 +1860,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // climate devices (more than one) and the auxiliary devices; the mode chip
   // in landscape.
 
-  Widget _buildHeader(BuildContext context, {String? subtitle}) {
+  Widget _buildHeader(
+    BuildContext context, {
+    String? subtitle,
+    bool loaded = true,
+  }) {
     final localizations = AppLocalizations.of(context)!;
-    final loaded = subtitle == null;
     final hasThermostat = _state.climateDevices.isNotEmpty;
     final showClimateButton = loaded && _state.climateDevices.length > 1;
     // Auxiliary-only rooms list their devices in the hero.
@@ -1885,7 +1890,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     ];
 
     final String? line;
-    if (subtitle != null) {
+    if (subtitle != null || !loaded) {
       line = subtitle;
     } else if (hasThermostat) {
       line = _getStatusLabel(localizations);

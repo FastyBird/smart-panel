@@ -302,12 +302,22 @@ class _HeroSlots extends StatelessWidget {
         }
 
         final inline = hasBadge && available < 50;
-        // Not even the smallest numeral fits: keep every control reachable
-        // and let the card scroll.
-        final cramped = !inline && available < HeroCardMetrics.numeralMin;
-        final numeral = available.isFinite && !cramped
+        // Under the smallest numeral the value takes the inline size, as it
+        // does beside the badge (spec §4, "Physical floors": the square's
+        // known miss), and the feedback line goes. Not even that fits: keep
+        // every control reachable and let the card scroll.
+        final small =
+            !inline &&
+            available < HeroCardMetrics.numeralMin &&
+            available >= HeroCardMetrics.inlineValueSize;
+        final cramped = !inline && available < HeroCardMetrics.inlineValueSize;
+        final numeral = cramped
+            ? HeroCardMetrics.numeralMin
+            : small
+            ? HeroCardMetrics.inlineValueSize
+            : available.isFinite
             ? metrics.numeralFor(available, hasFeedback: feedback != null)
-            : (cramped ? HeroCardMetrics.numeralMin : metrics.numeralMax);
+            : metrics.numeralMax;
         // Cramped (inside its own scroll view) or given no height limit at
         // all (inside a caller's scroll view): the hero takes its content's
         // height, with no flex children.
@@ -335,7 +345,7 @@ class _HeroSlots extends StatelessWidget {
                 ),
               ),
             ),
-            if (feedback != null && !cramped) feedback!,
+            if (feedback != null && !cramped && !small) feedback!,
           ],
         );
 

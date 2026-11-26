@@ -175,8 +175,12 @@ void main() {
       );
 
       final square = size.width == size.height;
-      // The square puts the roles behind the badge; elsewhere they are
-      // tiles.
+      // The square puts the roles behind a header button and the badge;
+      // elsewhere they are tiles.
+      expect(
+        find.byKey(const ValueKey('lights-roles-button')),
+        square ? findsOneWidget : findsNothing,
+      );
       expect(
         find.byKey(const ValueKey('lights-role-main')),
         square ? findsNothing : findsOneWidget,
@@ -216,9 +220,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('the square chooses roles from the badge', (tester) async {
+  testWidgets('the square chooses roles from the header', (tester) async {
     await mountAt(tester, const Size(240, 240));
-    await tester.tap(find.byKey(const ValueKey('lights-hero-badge')));
+    await tester.tap(find.byKey(const ValueKey('lights-roles-button')));
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Ambient').last);
     await tester.pumpAndSettle();

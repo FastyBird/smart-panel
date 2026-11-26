@@ -1619,6 +1619,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             context,
             lightsOn: lightsOn,
             totalLights: totalLights,
+            roles: roles,
+            effectiveRole: roleData.role,
           ),
           hero: _buildHero(context, roles, roleData, heroState),
           tiles: roles.length > 1
@@ -2358,12 +2360,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // --------------------------------------------------------------------------
 
   /// The header: the Lights icon tile in the domain colour, the live-state
-  /// line, the mode chip in landscape, and on Compact a scenes button.
+  /// line, the mode chip in landscape, on the square a role button and on
+  /// Compact a scenes button.
   Widget _buildHeader(
     BuildContext context, {
     int? lightsOn,
     int? totalLights,
     String? subtitle,
+    List<LightingRoleData> roles = const [],
+    LightTargetRole? effectiveRole,
   }) {
     final localizations = AppLocalizations.of(context)!;
     final hasLightsOn = (lightsOn ?? 0) > 0;
@@ -2376,6 +2381,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             : null);
 
     final actions = <Widget>[
+      // The square has no room for the role tiles, and its hero may be too
+      // short for the badge: the role chooser sits in the header.
+      if (_screenService.isSquare && roles.length > 1 && effectiveRole != null)
+        HeaderIconButton(
+          key: const ValueKey('lights-roles-button'),
+          icon: MdiIcons.lightbulbGroupOutline,
+          semanticLabel: localizations.lights_roles_title,
+          onTap: () => _showRolesChooser(roles, effectiveRole),
+        ),
       if (_screenService.isCompact &&
           lightsOn != null &&
           _lightingScenes.isNotEmpty)
