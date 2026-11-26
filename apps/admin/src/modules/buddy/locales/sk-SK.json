@@ -178,7 +178,9 @@
 		"noConversations": "Zatiaľ žiadne chaty",
 		"noConversationsHint": "Začnite chat a opýtajte sa Kamaráta na svoj domov.",
 		"loadingMessages": "Načítavanie správ...",
-		"conversationNotFound": "Tento chat už neexistuje"
+		"conversationNotFound": "Tento chat už neexistuje",
+		"messagesFailed": "Správy tohto chatu sa nepodarilo načítať",
+		"chatDataFailed": "Chaty sa nepodarilo načítať"
 	},
 	"wizard": {
 		"title": "Sprievodca nastavením Buddy",

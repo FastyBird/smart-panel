@@ -178,7 +178,9 @@
 		"noConversations": "Brak czatów",
 		"noConversationsHint": "Rozpocznij czat, aby zapytać Buddy o swój dom.",
 		"loadingMessages": "Ładowanie wiadomości...",
-		"conversationNotFound": "Ten czat już nie istnieje"
+		"conversationNotFound": "Ten czat już nie istnieje",
+		"messagesFailed": "Nie udało się wczytać wiadomości tego czatu",
+		"chatDataFailed": "Nie udało się wczytać czatów"
 	},
 	"wizard": {
 		"title": "Kreator konfiguracji Buddy",

@@ -4,7 +4,25 @@
 		data-test-id="buddy-chat-area"
 	>
 		<state-view
-			v-if="!props.loaded"
+			v-if="!props.loaded && props.failed"
+			kind="error"
+			icon="mdi:chat-alert-outline"
+			:title="t('buddyModule.texts.messagesFailed')"
+			data-test-id="buddy-chat-failed"
+		>
+			<template #action>
+				<el-button
+					plain
+					data-test-id="buddy-chat-retry"
+					@click="emit('retry')"
+				>
+					{{ t('buddyModule.buttons.retry.title') }}
+				</el-button>
+			</template>
+		</state-view>
+
+		<state-view
+			v-else-if="!props.loaded"
 			kind="loading"
 			icon="mdi:chat-outline"
 			:title="t('buddyModule.texts.loadingMessages')"
@@ -133,11 +151,14 @@ const props = withDefaults(
 		isSending: boolean;
 		/** The conversation's messages have been read once; until then the chat waits */
 		loaded: boolean;
+		/** Reading the conversation's messages failed; the chat offers to read them again */
+		failed?: boolean;
 		isTtsConfigured?: boolean;
 		playingMessageId?: string | null;
 		audioLoading?: boolean;
 	}>(),
 	{
+		failed: false,
 		isTtsConfigured: false,
 		playingMessageId: null,
 		audioLoading: false,
@@ -148,6 +169,7 @@ const emit = defineEmits<{
 	(e: 'send', content: string): void;
 	(e: 'play-audio', messageId: string): void;
 	(e: 'stop-audio'): void;
+	(e: 'retry'): void;
 }>();
 
 const { t } = useI18n();

@@ -5,7 +5,7 @@
 		:steps="shellSteps"
 		:current="currentStepName"
 		:can-continue="!isLoading && !isNextDisabled"
-		:skippable="canSkip"
+		:skippable="canSkip && !isLoading"
 		:busy="isSavingModuleConfig"
 		:next-label="currentStepName === 'done' ? t('buddyModule.wizard.buttons.startChatting') : undefined"
 		:cancellable="currentStepName !== 'done'"
@@ -561,9 +561,8 @@ const saveModuleConfig = async (includeAll: boolean = false): Promise<boolean> =
 			enabled: true,
 		};
 
-		if (selectedLlmProvider.value) {
-			configData.provider = selectedLlmProvider.value;
-		}
+		// A skipped provider step is saved as no provider, not left as the provider set before
+		configData.provider = selectedLlmProvider.value ?? LLM_PROVIDER_NONE;
 
 		if (includeAll) {
 			const hasVoiceSelection = !!(selectedTtsProvider.value || selectedSttProvider.value);

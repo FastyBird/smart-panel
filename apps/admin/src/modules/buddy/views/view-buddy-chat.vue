@@ -51,6 +51,31 @@
 		</section>
 	</div>
 
+	<!-- The chats could not be read: nothing below can show, so the screen offers to read them again -->
+	<div
+		v-else-if="chatDataFailed"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
+	>
+		<section class="bg-surface border border-solid border-light rounded-lg">
+			<state-view
+				kind="error"
+				icon="mdi:forum-remove-outline"
+				:title="t('buddyModule.texts.chatDataFailed')"
+				data-test-id="buddy-load-failed"
+			>
+				<template #action>
+					<el-button
+						plain
+						data-test-id="buddy-load-retry"
+						@click="onRetry"
+					>
+						{{ t('buddyModule.buttons.retry.title') }}
+					</el-button>
+				</template>
+			</state-view>
+		</section>
+	</div>
+
 	<!-- Buddy cannot answer without a provider: the whole screen leads to setting one up -->
 	<div
 		v-else-if="isProviderNotConfigured"
@@ -217,6 +242,8 @@ const {
 
 const chatDataLoaded = ref(false);
 
+const chatDataFailed = ref(false);
+
 const isCreating = ref(false);
 
 // The module is on and a provider can answer
@@ -325,20 +352,38 @@ const syncConversation = async (initial = false): Promise<void> => {
 };
 
 const loadChatData = async (): Promise<void> => {
-	await Promise.all([fetchSpaces(), fetchProviderStatuses(), fetchTtsProviderStatuses(), fetchConversations()]);
+	// The spaces only name a conversation's space: without them the chat works on and shows no space names
+	await Promise.all([fetchSpaces().catch(() => undefined), fetchProviderStatuses(), fetchTtsProviderStatuses(), fetchConversations()]);
 
 	chatDataLoaded.value = true;
 
 	await syncConversation(true);
 };
 
-// Read once, whether the module was known to be on at mount or turned out to be on later
+// Read once, whether the module was known to be on at mount or turned out to be on later. A read that failed is
+// forgotten, so Retry, or the module being turned on later, reads again
 let chatDataRequest: Promise<void> | null = null;
 
 const ensureChatData = (): Promise<void> => {
-	chatDataRequest ??= loadChatData();
+	chatDataRequest ??= (async (): Promise<void> => {
+		chatDataFailed.value = false;
+
+		try {
+			await loadChatData();
+		} catch {
+			chatDataRequest = null;
+
+			if (!chatDataLoaded.value) {
+				chatDataFailed.value = true;
+			}
+		}
+	})();
 
 	return chatDataRequest;
+};
+
+const onRetry = (): void => {
+	void ensureChatData();
 };
 
 watch(detailId, (): void => {

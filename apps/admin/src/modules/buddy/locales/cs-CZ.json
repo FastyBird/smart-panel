@@ -178,7 +178,9 @@
 		"noConversations": "Zatím žádné konverzace",
 		"noConversationsHint": "Začněte konverzaci a zeptejte se Kamaráda na svůj domov.",
 		"loadingMessages": "Načítání zpráv...",
-		"conversationNotFound": "Tato konverzace už neexistuje"
+		"conversationNotFound": "Tato konverzace už neexistuje",
+		"messagesFailed": "Zprávy této konverzace se nepodařilo načíst",
+		"chatDataFailed": "Konverzace se nepodařilo načíst"
 	},
 	"wizard": {
 		"title": "Průvodce nastavením Buddy",

@@ -178,7 +178,9 @@
 		"noConversations": "No chats yet",
 		"noConversationsHint": "Start a chat to ask Buddy about your home.",
 		"loadingMessages": "Loading messages...",
-		"conversationNotFound": "This chat no longer exists"
+		"conversationNotFound": "This chat no longer exists",
+		"messagesFailed": "The messages of this chat could not be loaded",
+		"chatDataFailed": "The chats could not be loaded"
 	},
 	"wizard": {
 		"title": "Buddy Setup Wizard",

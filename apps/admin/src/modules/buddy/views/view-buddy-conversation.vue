@@ -36,12 +36,14 @@
 						:messages="messages"
 						:is-sending="isSending"
 						:loaded="messagesLoadedFor === conversation.id"
+						:failed="messagesFailedFor === conversation.id"
 						:is-tts-configured="isTtsConfigured"
 						:playing-message-id="playingMessageId"
 						:audio-loading="audioLoading"
 						@send="sendMessage"
 						@play-audio="playMessageAudio"
 						@stop-audio="stopAudio"
+						@retry="selectConversation(conversation.id)"
 					/>
 				</template>
 
@@ -115,6 +117,7 @@ const {
 	conversations,
 	messages,
 	messagesLoadedFor,
+	messagesFailedFor,
 	isSending,
 	isTtsConfigured,
 	playingMessageId,
@@ -122,6 +125,7 @@ const {
 	sendMessage,
 	playMessageAudio,
 	stopAudio,
+	selectConversation,
 } = injectBuddyChat();
 
 const backRoute: RouteLocationRaw = { name: RouteNames.BUDDY };

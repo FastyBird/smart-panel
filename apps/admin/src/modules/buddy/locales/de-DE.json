@@ -178,7 +178,9 @@
 		"noConversations": "Noch keine Chats",
 		"noConversationsHint": "Starten Sie einen Chat und fragen Sie Buddy zu Ihrem Zuhause.",
 		"loadingMessages": "Nachrichten werden geladen...",
-		"conversationNotFound": "Dieser Chat existiert nicht mehr"
+		"conversationNotFound": "Dieser Chat existiert nicht mehr",
+		"messagesFailed": "Die Nachrichten dieses Chats konnten nicht geladen werden",
+		"chatDataFailed": "Die Chats konnten nicht geladen werden"
 	},
 	"wizard": {
 		"title": "Buddy-Einrichtungsassistent",

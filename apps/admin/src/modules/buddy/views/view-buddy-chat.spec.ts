@@ -78,7 +78,14 @@ vi.mock('../../../common', async () => {
 				() =>
 					h('header', slots.actions?.()),
 		}),
-		StateView: defineVueComponent({ name: 'StateView', props: ['kind', 'title', 'icon', 'description'], setup: () => () => h('div') }),
+		StateView: defineVueComponent({
+			name: 'StateView',
+			props: ['kind', 'title', 'icon', 'description'],
+			setup:
+				(_, { slots }) =>
+				() =>
+					h('div', slots.action?.()),
+		}),
 		useSizeClass: () => ({ isPhone: mocks.isPhone, isTabletPortrait: mocks.isTabletPortrait }),
 	};
 });
@@ -326,6 +333,22 @@ describe('ViewBuddyChat', () => {
 
 			expect(mocks.route).toMatchObject({ name: RouteNames.BUDDY_CONVERSATION, params: { id: 'c-new' } });
 		});
+	});
+
+	it('offers to read the chats again when they could not be read, and opens the chat once they are', async () => {
+		mocks.fetchConversations.mockRejectedValueOnce(new Error('offline'));
+
+		const wrapper = await mountView();
+
+		expect(wrapper.find('[data-test-id="buddy-load-failed"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="buddy-two-pane"]').exists()).toBe(false);
+
+		await wrapper.get('[data-test-id="buddy-load-retry"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.fetchConversations).toHaveBeenCalledTimes(2);
+		expect(wrapper.find('[data-test-id="buddy-load-failed"]').exists()).toBe(false);
+		expect(mocks.route.params).toEqual({ id: 'c-1' });
 	});
 
 	it('leads to setting up a provider instead of the chat while none can answer, and starts no conversation', async () => {

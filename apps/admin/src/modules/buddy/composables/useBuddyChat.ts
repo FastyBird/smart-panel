@@ -19,6 +19,8 @@ export interface IUseBuddyChat {
 	isLoadingMessages: Ref<boolean>;
 	/** The conversation whose messages have been read at least once; until then its chat waits */
 	messagesLoadedFor: Ref<string | null>;
+	/** The conversation whose messages could not be read; its chat offers to read them again */
+	messagesFailedFor: Ref<string | null>;
 	isSending: Ref<boolean>;
 	isProviderNotConfigured: ComputedRef<boolean>;
 	providerStatuses: Ref<IProviderStatus[]>;
@@ -54,6 +56,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
 	const messagesLoadedFor = ref<string | null>(null);
+	const messagesFailedFor = ref<string | null>(null);
 	const isSending = ref<boolean>(false);
 
 	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
@@ -146,7 +149,18 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const fetchMessagesInternal = async (conversationId: string, quiet: boolean): Promise<void> => {
 		if (!quiet) {
 			isLoadingMessages.value = true;
+
+			if (messagesFailedFor.value === conversationId) {
+				messagesFailedFor.value = null;
+			}
 		}
+
+		// A read the open conversation is still waiting for failed: its chat shows the failure instead of loading on
+		const markFailed = (): void => {
+			if (!quiet && activeConversationId.value === conversationId && messagesLoadedFor.value !== conversationId) {
+				messagesFailedFor.value = conversationId;
+			}
+		};
 
 		try {
 			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
@@ -163,6 +177,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 					flashMessage.error(t('buddyModule.messages.errors.loadMessages'));
 				}
 
+				markFailed();
+
 				return;
 			}
 
@@ -174,6 +190,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			if (!quiet) {
 				flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
 			}
+
+			markFailed();
 		} finally {
 			if (!quiet) {
 				isLoadingMessages.value = false;
@@ -195,6 +213,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			messages.value = [];
 			messagesLoadedFor.value = null;
+			messagesFailedFor.value = null;
 		}
 
 		activeConversationId.value = id;
@@ -318,6 +337,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	let currentAudio: HTMLAudioElement | null = null;
 	let currentBlobUrl: string | null = null;
 
+	let currentAbortController: AbortController | null = null;
+	let audioRequestId = 0;
+
 	const stopAudio = (): void => {
 		if (currentAudio) {
 			currentAudio.onended = null;
@@ -331,6 +353,15 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			currentBlobUrl = null;
 		}
 
+		// A read still on its way would start playing after it was stopped, or in another conversation: it is
+		// cancelled, and a later answer to it is ignored
+		if (currentAbortController) {
+			currentAbortController.abort();
+			currentAbortController = null;
+		}
+
+		audioRequestId++;
+
 		playingMessageId.value = null;
 		audioLoading.value = false;
 	};
@@ -342,19 +373,12 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		activeConversationId.value = null;
 		messages.value = [];
 		messagesLoadedFor.value = null;
+		messagesFailedFor.value = null;
 	};
 
-	let currentAbortController: AbortController | null = null;
-	let audioRequestId = 0;
-
 	const playMessageAudio = async (messageId: string): Promise<void> => {
+		// Also cancels a read still on its way for another message
 		stopAudio();
-
-		// Abort any in-flight fetch from a previous playMessageAudio call
-		if (currentAbortController) {
-			currentAbortController.abort();
-			currentAbortController = null;
-		}
 
 		const conversationId = activeConversationId.value;
 
@@ -422,6 +446,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isLoadingConversations,
 		isLoadingMessages,
 		messagesLoadedFor,
+		messagesFailedFor,
 		isSending,
 		isProviderNotConfigured,
 		providerStatuses,

@@ -22,7 +22,14 @@ vi.mock('../../../common', async () => {
 	const { defineComponent: defineVueComponent, h } = await import('vue');
 
 	return {
-		StateView: defineVueComponent({ name: 'StateView', props: ['kind', 'title', 'icon'], setup: () => () => h('div') }),
+		StateView: defineVueComponent({
+			name: 'StateView',
+			props: ['kind', 'title', 'icon', 'description'],
+			setup:
+				(_, { slots }) =>
+				() =>
+					h('div', slots.action?.()),
+		}),
 	};
 });
 
@@ -48,7 +55,7 @@ const message = (index: number): IMessage => ({
 
 const messages = (count: number): IMessage[] => Array.from({ length: count }, (_, index) => message(index));
 
-const mountArea = (props: { messages: IMessage[]; loaded: boolean; isSending?: boolean }) =>
+const mountArea = (props: { messages: IMessage[]; loaded: boolean; failed?: boolean; isSending?: boolean }) =>
 	mount(BuddyChatArea, { props: { isSending: false, ...props } });
 
 const shownIds = (wrapper: ReturnType<typeof mountArea>): string[] =>
@@ -60,6 +67,16 @@ describe('BuddyChatArea', () => {
 
 		expect(wrapper.findComponent({ name: 'StateView' }).props('kind')).toBe('loading');
 		expect(wrapper.find('[data-test-id="buddy-chat-composer"]').exists()).toBe(false);
+	});
+
+	it('offers to read the messages again when they could not be read', async () => {
+		const wrapper = mountArea({ messages: [], loaded: false, failed: true });
+
+		expect(wrapper.findComponent({ name: 'StateView' }).props('kind')).toBe('error');
+
+		await wrapper.get('[data-test-id="buddy-chat-retry"]').trigger('click');
+
+		expect(wrapper.emitted('retry')).toHaveLength(1);
 	});
 
 	it('opens on the latest messages and shows earlier ones with Load more', async () => {
