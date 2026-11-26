@@ -80,6 +80,8 @@ void main() {
       () => spaces.removeListener(any()),
     ).thenAnswer((call) => listeners.remove(call.positionalArguments.first));
     when(() => spaces.getCoversState(roomId)).thenAnswer((_) => current);
+    // The grouped covers list the room's covers as member tiles.
+    when(() => devices.devicesList).thenReturn(const []);
     when(
       () => spaces.fetchCoversState(roomId),
     ).thenAnswer((_) async => current);
@@ -232,4 +234,76 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  group('the redesigned view at the canvas checkpoints', () {
+    Future<void> mountAt(WidgetTester tester, Size size) async {
+      // One design px is one logical px at DPR 2 and density 1.0.
+      await locator.unregister<ScreenService>();
+      locator.registerSingleton<ScreenService>(
+        ScreenService(
+          screenWidth: size.width * 2,
+          screenHeight: size.height * 2,
+          pixelRatio: 2,
+        ),
+        dispose: (s) => s.dispose(),
+      );
+      tester.view.physicalSize = size * 2;
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<DevicesService>.value(value: devices),
+            // The landscape header's mode chip watches it, as in the deck.
+            ChangeNotifierProvider<BottomNavModeNotifier>.value(value: modes),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const ShadingDomainViewPage(viewItem: item),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      bus.fire(DeckPageActivatedEvent(itemId: item.id, item: item));
+      await tester.pumpAndSettle();
+    }
+
+    for (final size in const [
+      Size(240, 240),
+      Size(208, 304),
+      Size(356, 240),
+      Size(876, 540),
+    ]) {
+      testWidgets('$size shows the hero with Open, Stop and Close', (
+        tester,
+      ) async {
+        await mountAt(tester, size);
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const ValueKey('shading-hero')), findsOneWidget);
+        // Fully open: the numeral reads 100 and Open is selected.
+        expect(find.text('100 %'), findsOneWidget);
+        for (final operation in ['open', 'stop', 'close']) {
+          final button = find.byKey(ValueKey('shading-$operation'));
+          expect(button, findsOneWidget, reason: '$operation on $size');
+          expect(tester.getSize(button).width, greaterThanOrEqualTo(36));
+        }
+        Toast.dismiss();
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+    }
+
+    testWidgets('grouped covers keep the layout with the group buttons', (
+      tester,
+    ) async {
+      current = state(grouped: true);
+      await mountAt(tester, const Size(208, 304));
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('room-cover-hero')), findsOneWidget);
+      expect(find.byKey(const ValueKey('room-cover-open')), findsOneWidget);
+      Toast.dismiss();
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
 }

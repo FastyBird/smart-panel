@@ -60,6 +60,9 @@ class HeroCardMetrics {
   /// Room the feedback line under the numeral takes.
   static const double feedbackHeight = 20;
 
+  /// A tappable feedback line is one touch target high.
+  static const double feedbackTapHeight = 36;
+
   final ScreenSizeClass sizeClass;
   final double padding;
   final double gap;
@@ -123,9 +126,17 @@ class HeroCard extends StatelessWidget {
   /// The orientation to render for; defaults to the screen's.
   final Orientation? orientation;
 
+  /// Takes the size its parent gives it in portrait too, instead of
+  /// [fraction] of the screen: for layouts that give the hero the height
+  /// left over (the domain views).
+  final bool fill;
+
   // Slots ([HeroCard.slots] only).
   final String? value;
   final String? unit;
+
+  /// A colour dot after the value, such as the light's colour.
+  final Color? swatch;
   final Widget? badge;
   final Widget? feedback;
   final Widget? slider;
@@ -148,8 +159,10 @@ class HeroCard extends StatelessWidget {
     this.maxHeight,
     this.sizeClass,
     this.orientation,
+    this.fill = false,
   }) : value = null,
        unit = null,
+       swatch = null,
        badge = null,
        feedback = null,
        slider = null,
@@ -162,6 +175,7 @@ class HeroCard extends StatelessWidget {
     super.key,
     required String this.value,
     this.unit,
+    this.swatch,
     this.badge,
     this.feedback,
     this.slider,
@@ -173,6 +187,7 @@ class HeroCard extends StatelessWidget {
     this.maxHeight,
     this.sizeClass,
     this.orientation,
+    this.fill = false,
   }) : child = null;
 
   @override
@@ -186,6 +201,9 @@ class HeroCard extends StatelessWidget {
         final metrics = HeroCardMetrics.of(resolvedClass);
         final isLandscape =
             (orientation ?? screenService.orientation) == Orientation.landscape;
+        // A square screen counts as landscape but keeps the badge: the role
+        // list sits behind it there (design canvas, the square boards).
+        final isSquare = orientation == null && screenService.isSquare;
 
         final card = BaseCard(
           width: double.infinity,
@@ -195,9 +213,12 @@ class HeroCard extends StatelessWidget {
               _HeroSlots(
                 metrics: metrics,
                 showBadge:
-                    !(resolvedClass == ScreenSizeClass.compact && isLandscape),
+                    !(resolvedClass == ScreenSizeClass.compact &&
+                        isLandscape &&
+                        !isSquare),
                 value: value!,
                 unit: unit,
+                swatch: swatch,
                 badge: badge,
                 feedback: feedback,
                 slider: slider,
@@ -208,7 +229,7 @@ class HeroCard extends StatelessWidget {
               ),
         );
 
-        if (isLandscape) {
+        if (isLandscape || fill) {
           return card;
         }
 
@@ -227,6 +248,7 @@ class _HeroSlots extends StatelessWidget {
     required this.showBadge,
     required this.value,
     required this.unit,
+    required this.swatch,
     required this.badge,
     required this.feedback,
     required this.slider,
@@ -240,6 +262,7 @@ class _HeroSlots extends StatelessWidget {
   final bool showBadge;
   final String value;
   final String? unit;
+  final Color? swatch;
   final Widget? badge;
   final Widget? feedback;
   final Widget? slider;
@@ -305,6 +328,7 @@ class _HeroSlots extends StatelessWidget {
                 child: _HeroValue(
                   value: value,
                   unit: unit,
+                  swatch: swatch,
                   size: numeral,
                   weight: AppNumeralFont.display,
                   color: valueColor,
@@ -329,14 +353,17 @@ class _HeroSlots extends StatelessWidget {
               SizedBox(
                 height: AppSpacings.scale(metrics.badgeHeight),
                 child: Row(
+                  // The badge keeps its own width; only the value pushes it
+                  // to ellipsize (a Spacer would take half of what is left).
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   spacing: AppSpacings.pMd,
                   children: [
                     Flexible(child: badge!),
-                    const Spacer(),
                     if (inline)
                       _HeroValue(
                         value: value,
                         unit: unit,
+                        swatch: swatch,
                         size: HeroCardMetrics.inlineValueSize,
                         weight: AppNumeralFont.value,
                         color: valueColor,
@@ -373,6 +400,7 @@ class _HeroValue extends StatelessWidget {
   const _HeroValue({
     required this.value,
     required this.unit,
+    required this.swatch,
     required this.size,
     required this.weight,
     required this.color,
@@ -380,6 +408,7 @@ class _HeroValue extends StatelessWidget {
 
   final String value;
   final String? unit;
+  final Color? swatch;
 
   /// In design px.
   final double size;
@@ -412,6 +441,25 @@ class _HeroValue extends StatelessWidget {
                 fontSize: unitFontSize,
                 fontWeight: AppNumeralFont.value,
                 color: Theme.of(context).neutrals.textSecondary,
+              ),
+            ),
+          if (swatch != null)
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: EdgeInsetsDirectional.only(start: fontSize * 0.14),
+                child: Container(
+                  width: fontSize * 0.32,
+                  height: fontSize * 0.32,
+                  decoration: BoxDecoration(
+                    color: swatch,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).neutrals.borderBase,
+                      width: AppSpacings.scale(2),
+                    ),
+                  ),
+                ),
               ),
             ),
         ],
@@ -515,11 +563,20 @@ class HeroFeedback extends StatelessWidget {
     super.key,
     required this.text,
     this.icon,
+    this.onTap,
+    this.semanticLabel,
     this.sizeClass,
   });
 
   final String text;
   final IconData? icon;
+
+  /// Makes the line a button with a chevron, such as the light property
+  /// chooser; it is then one touch target high.
+  final VoidCallback? onTap;
+
+  /// What a screen reader hears when [onTap] is set; defaults to [text].
+  final String? semanticLabel;
 
   /// The class to render at; defaults to the screen's.
   final ScreenSizeClass? sizeClass;
@@ -531,7 +588,7 @@ class HeroFeedback extends StatelessWidget {
       sizeClass ?? locator<ScreenService>().sizeClass,
     );
 
-    return SizedBox(
+    final line = SizedBox(
       height: AppSpacings.scale(16),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -550,7 +607,38 @@ class HeroFeedback extends StatelessWidget {
               ),
             ),
           ),
+          if (onTap != null)
+            Icon(
+              MdiIcons.chevronDown,
+              size: AppSpacings.scale(12),
+              color: color,
+            ),
         ],
+      ),
+    );
+
+    if (onTap == null) return line;
+
+    return Semantics(
+      button: true,
+      label: semanticLabel ?? text,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: AppSpacings.scale(HeroCardMetrics.feedbackTapHeight),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+              child: Center(widthFactor: 1, child: line),
+            ),
+          ),
+        ),
       ),
     );
   }

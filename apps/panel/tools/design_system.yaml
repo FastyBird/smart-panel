@@ -68,6 +68,12 @@ strict:
   - lib/modules/deck/presentation/widgets/sky/sky_look.dart
   - lib/modules/deck/presentation/widgets/sky/sky_backdrop.dart
   - lib/modules/deck/presentation/widgets/sky/sky_panel.dart
+  # DR-12: the Lights, Climate and Shading views and the grouped covers.
+  # Their shared layout and the room temperature notice sit in widgets/.
+  - lib/plugins/spaces-home-control/presentation/domain_pages/lights_domain_view.dart
+  - lib/plugins/spaces-home-control/presentation/domain_pages/climate_domain_view.dart
+  - lib/plugins/spaces-home-control/presentation/domain_pages/shading_domain_view.dart
+  - lib/plugins/spaces-home-control/presentation/domain_pages/grouped_covers_room_controls.dart
 
 # Generated code is never checked.
 exclude:

@@ -219,6 +219,19 @@ DeviceView groupDevice(String profile) => DeviceView(
     ),
   ],
 );
+
+/// Whether the grouped covers' [operation] button can be tapped.
+bool coverButtonEnabled(WidgetTester tester, String operation) =>
+    tester
+        .widget<InkWell>(
+          find.descendant(
+            of: find.byKey(ValueKey('room-cover-$operation')),
+            matching: find.byType(InkWell),
+          ),
+        )
+        .onTap !=
+    null;
+
 void main() {
   setUpAll(registerTestScreenService);
 
@@ -408,15 +421,13 @@ void main() {
       expect(reads, 3);
       after.complete(state(false));
       await tester.pumpAndSettle();
+      expect(coverButtonEnabled(tester, 'open'), isFalse);
+      // The refusal reason sits in the details layer (spec §8).
+      await tester.tap(find.textContaining('Command readiness unavailable'));
+      await tester.pumpAndSettle();
       expect(
         find.textContaining('position_unavailable_uncalibrated'),
         findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<FilledButton>(find.byKey(const ValueKey('room-cover-open')))
-            .onPressed,
-        isNull,
       );
       await tester.pumpWidget(const SizedBox());
     },
@@ -627,13 +638,12 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Unknown'), findsOneWidget);
+      expect(coverButtonEnabled(tester, 'stop'), isFalse);
+      await tester.tap(find.textContaining('Command readiness unavailable'));
+      await tester.pumpAndSettle();
       expect(find.textContaining('tag_unavailable'), findsOneWidget);
-      expect(
-        tester
-            .widget<FilledButton>(find.byKey(const ValueKey('room-cover-stop')))
-            .onPressed,
-        isNull,
-      );
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('room-cover-open')));
       await tester.pump();
       expect(find.text('Pending'), findsOneWidget);
@@ -662,6 +672,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(sends, 1);
       expect(find.text('Unknown'), findsOneWidget);
+      // No device moved, so the command failed; the member outcomes sit
+      // behind its pill.
+      await tester.tap(find.textContaining('Failed'));
+      await tester.pumpAndSettle();
       expect(find.textContaining('b: Unavailable'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },

@@ -5521,5 +5521,130 @@
         "type": "String"
       }
     }
+  },
+  "lights_scenes_label": "Lighting scenes",
+  "@lights_scenes_label": {
+    "description": "Label over the lighting scene pills in the Lights view, and the header button that opens them"
+  },
+  "lights_roles_title": "Light roles",
+  "@lights_roles_title": {
+    "description": "Title of the role chooser on the square panel, and its header button"
+  },
+  "lights_role_turn_on": "Turn {role} on",
+  "@lights_role_turn_on": {
+    "description": "Screen reader label of a role tile's on/off button while the role is off",
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "lights_role_turn_off": "Turn {role} off",
+  "@lights_role_turn_off": {
+    "description": "Screen reader label of a role tile's on/off button while the role is on",
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "lights_scene_run": "Run scene {scene}",
+  "@lights_scene_run": {
+    "description": "Screen reader label of a lighting scene pill",
+    "placeholders": {
+      "scene": {
+        "type": "String"
+      }
+    }
+  },
+  "lights_property_title": "Light property",
+  "@lights_property_title": {
+    "description": "Title of the chooser between brightness, colour temperature, colour and white in the Lights hero"
+  },
+  "lights_property_choose": "{property}. Choose what to set",
+  "@lights_property_choose": {
+    "description": "Screen reader label of the Lights hero's property line when it opens the property chooser",
+    "placeholders": {
+      "property": {
+        "type": "String"
+      }
+    }
+  },
+  "climate_aux_only_title": "No heating or cooling in this room",
+  "@climate_aux_only_title": {
+    "description": "Climate view of a room with only air devices (fans, purifiers, humidifiers)"
+  },
+  "climate_aux_only_message": "Air devices here work on their own.",
+  "@climate_aux_only_message": {
+    "description": "Line under climate_aux_only_title"
+  },
+  "climate_aux_on_count": "{on} of {total} on",
+  "@climate_aux_on_count": {
+    "description": "Climate header line of a room with only air devices",
+    "placeholders": {
+      "on": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "climate_aux_power": "{name} power",
+  "@climate_aux_power": {
+    "description": "Screen reader label of an air device's switch",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "climate_target_lower": "Lower target by {step}",
+  "@climate_target_lower": {
+    "description": "Screen reader label of the Climate hero's minus button; step is 0.5 °C or 1 °F",
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "climate_target_raise": "Raise target by {step}",
+  "@climate_target_raise": {
+    "description": "Screen reader label of the Climate hero's plus button; step is 0.5 °C or 1 °F",
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "shading_roles_title": "Cover roles",
+  "@shading_roles_title": {
+    "description": "Title of the cover role chooser on the square panel, and its header button"
+  },
+  "shading_role_open": "Open {role}",
+  "@shading_role_open": {
+    "description": "Screen reader label of a cover role tile's button while the role is mostly closed",
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "shading_role_close": "Close {role}",
+  "@shading_role_close": {
+    "description": "Screen reader label of a cover role tile's button while the role is mostly open",
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "shading_group_label": "Cover group",
+  "@shading_group_label": {
+    "description": "Shading header line of a room whose covers form a group"
+  },
+  "shading_group_positions_differ": "positions differ",
+  "@shading_group_positions_differ": {
+    "description": "Added to shading_group_label when the group's covers report different positions"
   }
 }

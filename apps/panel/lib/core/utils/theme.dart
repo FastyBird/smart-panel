@@ -871,6 +871,64 @@ class AppClimateColors {
       brightness == Brightness.dark ? heatingDark : heatingLight;
 }
 
+/// The hero slider tracks of the domain views (design canvas, "3 · Domain
+/// views"). Each runs from the slider's start to its end; the stops are
+/// spread evenly.
+class AppHeroTracks {
+  AppHeroTracks._();
+
+  /// Brightness: dim amber to the Lights colour to pale amber.
+  static List<Color> brightness(Brightness brightness) => [
+    brightness == Brightness.dark
+        ? const Color(0xFF4A3D26)
+        : const Color(0xFF6B5A3A),
+    const Color(0xFFF0A742),
+    const Color(0xFFFFE2A8),
+  ];
+
+  /// Colour temperature: warm to cool.
+  static const List<Color> colorTemperature = [
+    Color(0xFFFFB45E),
+    Color(0xFFFFF1DC),
+    Color(0xFFCFE3FF),
+  ];
+
+  /// Colour: the hue wheel, red back to red.
+  static const List<Color> hue = [
+    Color(0xFFFF4D4D),
+    Color(0xFFFFD24D),
+    Color(0xFF5FE35F),
+    Color(0xFF4DD9E3),
+    Color(0xFF5A78FF),
+    Color(0xFFD35AFF),
+    Color(0xFFFF4D4D),
+  ];
+
+  /// Saturation: white to the light's own hue.
+  static List<Color> saturation(Color hue) => [AppColors.white, hue];
+
+  /// The white channel: dark grey to warm white.
+  static const List<Color> white = [Color(0xFF4A4A4A), Color(0xFFFFFAF0)];
+
+  /// The climate target: cool to warm.
+  static const List<Color> climate = [
+    Color(0xFF4FB3E8),
+    Color(0xFFE9D9A6),
+    Color(0xFFE8703A),
+  ];
+
+  /// The colour at [t] (0–1) along [colors].
+  static Color sample(List<Color> colors, double t) {
+    final clamped = t.clamp(0.0, 1.0);
+    if (colors.length == 1) return colors.first;
+    final segments = colors.length - 1;
+    final segment = (clamped * segments).floor().clamp(0, segments - 1);
+    final local = (clamped * segments - segment).clamp(0.0, 1.0);
+
+    return Color.lerp(colors[segment], colors[segment + 1], local)!;
+  }
+}
+
 /// Control colours that are not a neutral, status, domain or accent token.
 class AppControlColors {
   /// The track of a switch that is off (design canvas, Settings and the
