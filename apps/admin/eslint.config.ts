@@ -56,6 +56,7 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	'src/modules/buddy',
 	// AR-24: the users list, add and edit
 	'src/modules/users',
+	'src/modules/extensions',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

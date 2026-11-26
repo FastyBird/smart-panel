@@ -1,94 +1,67 @@
 <template>
-	<el-card
-		shadow="never"
-		class="service-item"
-		body-class="p-3!"
+	<article
+		:aria-label="extensionName ?? service.extensionType"
+		class="flex flex-col gap-3 p-4 bg-surface border border-solid border-light rounded-lg"
+		:data-service="`${service.extensionType}:${service.serviceId}`"
+		data-test-id="service-item"
 	>
-		<div class="flex flex-col gap-3">
-			<!-- Header: Extension, service ID, and status -->
-			<div class="flex items-center justify-between gap-4">
-				<div class="flex items-center gap-3 min-w-0 flex-1">
-					<!-- Service Icon -->
-					<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800">
-						<icon
-							:icon="serviceIcon"
-							class="w-5 h-5"
-							:class="iconColorClass"
+		<!-- Header: the extension and service, their state, and the actions the state allows -->
+		<div class="flex flex-wrap items-start justify-between gap-3">
+			<div class="flex items-start gap-3 min-w-0 flex-[1_1_280px]">
+				<span
+					class="flex items-center justify-center shrink-0 w-10 h-10 rounded-lg bg-fill"
+					aria-hidden="true"
+				>
+					<icon
+						:icon="serviceIcon"
+						width="20"
+						height="20"
+						:class="iconColorClass"
+					/>
+				</span>
+
+				<div class="flex flex-col gap-1 min-w-0 flex-1">
+					<div class="flex items-center gap-2 flex-wrap min-w-0">
+						<h3 class="text-card-title m-0 truncate">{{ extensionName ?? service.extensionType }}</h3>
+						<span class="text-mono text-secondary">{{ service.serviceId }}</span>
+					</div>
+					<span class="text-caption text-mono truncate">{{ service.extensionType }}</span>
+					<div class="flex items-center gap-2 flex-wrap">
+						<status-tag
+							:status="stateStatus"
+							:label="stateLabel"
+						/>
+						<status-tag
+							v-if="!service.enabled"
+							status="warn"
+							:label="t('extensionsModule.services.texts.extensionDisabled')"
+						/>
+						<status-tag
+							v-if="isAlwaysActive"
+							status="primary"
+							:label="t('extensionsModule.services.activationPolicies.always')"
+						/>
+						<status-tag
+							v-if="service.healthy !== undefined"
+							:status="service.healthy ? 'ok' : 'danger'"
+							:label="service.healthy ? t('extensionsModule.services.labels.healthy') : t('extensionsModule.services.labels.unhealthy')"
 						/>
 					</div>
-
-					<!-- Service Info -->
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center gap-2 flex-wrap">
-							<span class="font-medium text-base truncate">{{ extensionName ?? service.extensionType }}</span>
-							<el-tag
-								size="small"
-								type="info"
-							>
-								{{ service.serviceId }}
-							</el-tag>
-						</div>
-						<div class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
-							{{ service.extensionType }}
-						</div>
-						<div class="flex items-center gap-2 mt-1 flex-wrap">
-							<el-tag
-								:type="stateTagType"
-								size="small"
-								effect="light"
-							>
-								<template #default>
-									<div class="flex items-center gap-1">
-										<icon
-											v-if="isTransitioning"
-											icon="mdi:loading"
-											class="animate-spin w-3 h-3"
-										/>
-										{{ stateLabel }}
-									</div>
-								</template>
-							</el-tag>
-							<el-tag
-								v-if="!service.enabled"
-								type="warning"
-								size="small"
-								effect="light"
-							>
-								{{ t('extensionsModule.services.texts.extensionDisabled') }}
-							</el-tag>
-							<el-tag
-								v-if="isAlwaysActive"
-								type="primary"
-								size="small"
-								effect="light"
-							>
-								{{ t('extensionsModule.services.activationPolicies.always') }}
-							</el-tag>
-							<el-tag
-								v-if="service.healthy !== undefined"
-								:type="service.healthy ? 'success' : 'danger'"
-								size="small"
-								effect="light"
-							>
-								{{ service.healthy ? t('extensionsModule.services.labels.healthy') : t('extensionsModule.services.labels.unhealthy') }}
-							</el-tag>
-						</div>
-					</div>
 				</div>
+			</div>
 
-				<!-- Actions -->
-				<div class="flex items-center gap-2">
-					<el-tooltip
-						v-if="canStart"
-						:content="startTooltip"
-						placement="top"
-					>
+			<div class="flex items-center gap-2 shrink-0">
+				<el-tooltip
+					v-if="canStart"
+					:content="startTooltip"
+					placement="top"
+				>
+					<span>
 						<el-button
-							type="success"
-							size="small"
 							plain
 							:disabled="!canStartAction"
 							:loading="acting"
+							data-test-id="service-start"
 							@click="onStart"
 						>
 							<template #icon>
@@ -96,19 +69,20 @@
 							</template>
 							{{ t('extensionsModule.services.buttons.start') }}
 						</el-button>
-					</el-tooltip>
+					</span>
+				</el-tooltip>
 
-					<el-tooltip
-						v-if="canStop"
-						:content="stopTooltip"
-						placement="top"
-					>
+				<el-tooltip
+					v-if="canStop"
+					:content="stopTooltip"
+					placement="top"
+				>
+					<span>
 						<el-button
-							type="danger"
-							size="small"
 							plain
 							:disabled="!canStopAction"
 							:loading="acting"
+							data-test-id="service-stop"
 							@click="onStop"
 						>
 							<template #icon>
@@ -116,19 +90,20 @@
 							</template>
 							{{ t('extensionsModule.services.buttons.stop') }}
 						</el-button>
-					</el-tooltip>
+					</span>
+				</el-tooltip>
 
-					<el-tooltip
-						v-if="canRestart"
-						:content="restartTooltip"
-						placement="top"
-					>
+				<el-tooltip
+					v-if="canRestart"
+					:content="restartTooltip"
+					placement="top"
+				>
+					<span>
 						<el-button
-							type="primary"
-							size="small"
 							plain
 							:disabled="!canRestartAction"
 							:loading="acting"
+							data-test-id="service-restart"
 							@click="onRestart"
 						>
 							<template #icon>
@@ -136,75 +111,80 @@
 							</template>
 							{{ t('extensionsModule.services.buttons.restart') }}
 						</el-button>
-					</el-tooltip>
-				</div>
+					</span>
+				</el-tooltip>
 			</div>
-
-			<!-- Details Row -->
-			<div class="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
-				<div
-					v-if="service.state === 'started' && service.uptimeMs !== undefined"
-					class="flex items-center gap-1"
-				>
-					<icon
-						icon="mdi:clock-outline"
-						class="w-4 h-4"
-					/>
-					<span>{{ t('extensionsModule.services.labels.uptime') }}: {{ formattedUptime }}</span>
-				</div>
-
-				<div
-					v-if="service.startCount > 0"
-					class="flex items-center gap-1"
-				>
-					<icon
-						icon="mdi:counter"
-						class="w-4 h-4"
-					/>
-					<span>{{ t('extensionsModule.services.labels.startCount') }}: {{ service.startCount }}</span>
-				</div>
-
-				<div
-					v-if="service.lastStartedAt"
-					class="flex items-center gap-1"
-				>
-					<icon
-						icon="mdi:play-circle-outline"
-						class="w-4 h-4"
-					/>
-					<span>{{ t('extensionsModule.services.labels.lastStarted') }}: {{ formattedLastStarted }}</span>
-				</div>
-
-				<div class="flex items-center gap-1">
-					<icon
-						icon="mdi:target"
-						class="w-4 h-4"
-					/>
-					<span>{{ t('extensionsModule.services.labels.desiredState') }}: {{ desiredStateLabel }}</span>
-				</div>
-			</div>
-
-			<!-- Error Display -->
-			<el-alert
-				v-if="service.lastError"
-				:type="service.state === ExtensionsModuleServiceState.error ? 'error' : 'warning'"
-				:title="t('extensionsModule.services.labels.lastError')"
-				:description="service.lastError"
-				show-icon
-				:closable="false"
-			/>
 		</div>
-	</el-card>
+
+		<!-- Details -->
+		<dl class="flex flex-wrap items-center gap-x-6 gap-y-1 m-0 text-help">
+			<div
+				v-if="service.state === 'started' && service.uptimeMs !== undefined"
+				class="flex items-center gap-1"
+			>
+				<icon
+					icon="mdi:clock-outline"
+					aria-hidden="true"
+				/>
+				<dt>{{ t('extensionsModule.services.labels.uptime') }}:</dt>
+				<dd class="m-0">{{ formattedUptime }}</dd>
+			</div>
+
+			<div
+				v-if="service.startCount > 0"
+				class="flex items-center gap-1"
+			>
+				<icon
+					icon="mdi:counter"
+					aria-hidden="true"
+				/>
+				<dt>{{ t('extensionsModule.services.labels.startCount') }}:</dt>
+				<dd class="m-0">{{ service.startCount }}</dd>
+			</div>
+
+			<div
+				v-if="service.lastStartedAt"
+				class="flex items-center gap-1"
+			>
+				<icon
+					icon="mdi:play-circle-outline"
+					aria-hidden="true"
+				/>
+				<dt>{{ t('extensionsModule.services.labels.lastStarted') }}:</dt>
+				<dd class="m-0">{{ formattedLastStarted }}</dd>
+			</div>
+
+			<div class="flex items-center gap-1">
+				<icon
+					icon="mdi:target"
+					aria-hidden="true"
+				/>
+				<dt>{{ t('extensionsModule.services.labels.desiredState') }}:</dt>
+				<dd class="m-0">{{ desiredStateLabel }}</dd>
+			</div>
+		</dl>
+
+		<el-alert
+			v-if="service.lastError"
+			:type="service.state === ExtensionsModuleServiceState.error ? 'error' : 'warning'"
+			:title="t('extensionsModule.services.labels.lastError')"
+			:description="service.lastError"
+			show-icon
+			:closable="false"
+		/>
+	</article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCard, ElTag, ElTooltip } from 'element-plus';
+import { ElAlert, ElButton, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { StatusTag } from '../../../common';
+import type { StatusTagStatus } from '../../../common/components/status-tag.types';
 import {
 	ExtensionsModuleServiceActivationPolicy,
 	ExtensionsModuleServiceDesiredState,
@@ -309,15 +289,13 @@ const desiredStateLabel = computed<string>(() => {
 	return t(`extensionsModule.services.desiredStates.${props.service.desiredState}`);
 });
 
-const stateTagType = computed<'success' | 'info' | 'warning' | 'danger'>(() => {
+const stateStatus = computed<StatusTagStatus>(() => {
 	switch (props.service.state) {
 		case ExtensionsModuleServiceState.started:
-			return 'success';
-		case ExtensionsModuleServiceState.stopped:
-			return 'info';
+			return 'ok';
 		case ExtensionsModuleServiceState.starting:
 		case ExtensionsModuleServiceState.stopping:
-			return 'warning';
+			return 'warn';
 		case ExtensionsModuleServiceState.error:
 			return 'danger';
 		default:
@@ -344,16 +322,14 @@ const serviceIcon = computed<string>(() => {
 const iconColorClass = computed<string>(() => {
 	switch (props.service.state) {
 		case ExtensionsModuleServiceState.started:
-			return 'text-green-500';
-		case ExtensionsModuleServiceState.stopped:
-			return 'text-gray-400';
+			return 'text-success';
 		case ExtensionsModuleServiceState.starting:
 		case ExtensionsModuleServiceState.stopping:
-			return 'text-yellow-500 animate-spin';
+			return 'text-warning animate-spin';
 		case ExtensionsModuleServiceState.error:
-			return 'text-red-500';
+			return 'text-danger';
 		default:
-			return 'text-gray-400';
+			return 'text-muted';
 	}
 });
 

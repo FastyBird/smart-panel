@@ -1,16 +1,16 @@
 <template>
 	<div class="h-full flex flex-col gap-3 overflow-hidden">
-		<!-- Loading state -->
-		<el-skeleton
+		<state-view
 			v-if="loading && services.length === 0"
-			:rows="5"
-			animated
+			kind="loading"
+			icon="mdi:cog-play"
+			:title="t('extensionsModule.services.texts.loadingServices')"
 		/>
 
-		<!-- Empty state -->
-		<el-result
+		<state-view
 			v-else-if="services.length === 0"
-			icon="info"
+			kind="empty"
+			icon="mdi:cog-play"
 			:title="t('extensionsModule.services.texts.noServices')"
 		/>
 
@@ -42,9 +42,10 @@
 					</template>
 
 					<el-scrollbar class="h-full">
-						<el-result
+						<state-view
 							v-if="tab.services.length === 0"
-							icon="info"
+							kind="empty"
+							icon="mdi:cog-play"
 							:title="t('extensionsModule.services.texts.noServices')"
 						/>
 
@@ -74,10 +75,11 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElResult, ElScrollbar, ElSkeleton, ElTabPane, ElTabs } from 'element-plus';
+import { ElAlert, ElScrollbar, ElTabPane, ElTabs } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { StateView } from '../../../common';
 import { ExtensionsModuleServiceOwnerKind } from '../../../openapi.constants';
 import { getServiceKey } from '../store/services.store.types';
 import type { IService } from '../store/services.store.types';

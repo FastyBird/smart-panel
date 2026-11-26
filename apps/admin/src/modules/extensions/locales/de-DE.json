@@ -118,7 +118,9 @@
 				"7d": "Letzte 7 Tage"
 			},
 			"detail": "Protokoll-Detail"
-		}
+		},
+		"loadingExtension": "Erweiterung wird geladen...",
+		"extensionNotFound": "Diese Erweiterung ist nicht installiert"
 	},
 	"buttons": {
 		"actions": "Aktionen",
@@ -142,7 +144,10 @@
 			"title": "Filter zurücksetzen"
 		},
 		"yes": "Ja",
-		"no": "Nein"
+		"no": "Nein",
+		"more": {
+			"title": "Weitere Aktionen"
+		}
 	},
 	"tooltips": {
 		"coreCannotBeRemoved": "Kernerweiterungen können nicht entfernt werden",
@@ -268,5 +273,14 @@
 			"extensionDisabled": "Erweiterung deaktiviert",
 			"alwaysActiveDescription": "Immer aktive Dienste laufen weiter, auch wenn ihre Erweiterung deaktiviert ist, damit Erkennung und Einrichtung verfügbar bleiben."
 		}
+	},
+	"viewMode": {
+		"title": "Ansicht",
+		"cards": "Karten",
+		"table": "Tabelle"
+	},
+	"aria": {
+		"enable": "{name} aktivieren",
+		"more": "Weitere Aktionen für {name}"
 	}
 }

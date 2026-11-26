@@ -1,10 +1,10 @@
 export { default as ExtensionActions } from './extension-actions.vue';
 export { default as ExtensionCard } from './extension-card.vue';
 export { default as ExtensionLogs } from './extension-logs.vue';
+export { default as ExtensionSummary } from './extension-summary.vue';
 export { default as ExtensionsCards } from './extensions-cards.vue';
-export { default as ExtensionsFilter } from './extensions-filter.vue';
+export { default as ExtensionsEmpty } from './extensions-empty.vue';
 export { default as ExtensionsTable } from './extensions-table.vue';
 export { default as ListExtensions } from './list-extensions.vue';
-export { default as ListExtensionsAdjust } from './list-extensions-adjust.vue';
 export { default as ServiceItem } from './service-item.vue';
 export { default as ServicesList } from './services-list.vue';

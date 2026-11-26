@@ -118,7 +118,9 @@
         "7d": "Posledních 7 dní"
       },
       "detail": "Podrobnosti protokolu"
-    }
+    },
+    "loadingExtension": "Načítání rozšíření...",
+    "extensionNotFound": "Toto rozšíření není nainstalované"
   },
   "buttons": {
     "actions": "Akce",
@@ -142,7 +144,10 @@
       "title": "Resetovat filtry"
     },
     "yes": "Ano",
-    "no": "Ne"
+    "no": "Ne",
+    "more": {
+      "title": "Další akce"
+    }
   },
   "tooltips": {
     "coreCannotBeRemoved": "Rozšíření jádra nelze odebrat",
@@ -268,5 +273,14 @@
       "extensionDisabled": "Rozšíření zakázáno",
       "alwaysActiveDescription": "Vždy aktivní služby zůstávají spuštěné i při zakázaném rozšíření, aby zůstalo dostupné vyhledávání a nastavení."
     }
+  },
+  "viewMode": {
+    "title": "Zobrazení",
+    "cards": "Karty",
+    "table": "Tabulka"
+  },
+  "aria": {
+    "enable": "Zapnout {name}",
+    "more": "Další akce pro {name}"
   }
 }

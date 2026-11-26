@@ -5,83 +5,106 @@
 		:title="t('extensionsModule.headings.list')"
 		:subtitle="t('extensionsModule.subHeadings.list')"
 		icon="mdi:puzzle"
-	/>
-
-	<el-tabs
-		v-model="activeTab"
-		class="grow-1 overflow-hidden flex-1 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+		:actions="activeTab === 'extensions' ? [{ icon: 'mdi:magnify', label: t('extensionsModule.fields.search.placeholder'), handler: onSearch }] : []"
 	>
-		<el-tab-pane
-			name="extensions"
-			class="h-full overflow-hidden flex flex-col gap-2"
+		<!-- Cards or table; phone always shows the cards -->
+		<template
+			v-if="activeTab === 'extensions'"
+			#actions
 		>
-			<template #label>
-				<div class="flex items-center gap-2">
-					<icon icon="mdi:puzzle" />
-					{{ t('extensionsModule.tabs.all') }}
-				</div>
-			</template>
+			<el-radio-group
+				v-model="viewMode"
+				:aria-label="t('extensionsModule.viewMode.title')"
+				data-test-id="extensions-view-mode"
+			>
+				<el-radio-button value="cards">
+					<span class="inline-flex items-center gap-1.5">
+						<icon
+							icon="mdi:view-grid-outline"
+							aria-hidden="true"
+						/>
+						{{ t('extensionsModule.viewMode.cards') }}
+					</span>
+				</el-radio-button>
+				<el-radio-button value="table">
+					<span class="inline-flex items-center gap-1.5">
+						<icon
+							icon="mdi:table"
+							aria-hidden="true"
+						/>
+						{{ t('extensionsModule.viewMode.table') }}
+					</span>
+				</el-radio-button>
+			</el-radio-group>
+		</template>
+	</view-header>
 
-			<list-extensions
-				v-model:filters="filters"
-				v-model:view-mode="viewMode"
-				v-model:paginate-size="paginateSize"
-				v-model:paginate-page="paginatePage"
-				v-model:sort-by="sortBy"
-				v-model:sort-dir="sortDir"
-				:items="extensionsPaginated"
-				:all-items="extensions"
-				:total-rows="totalRows"
-				:loading="areLoading"
-				:filters-active="filtersActive"
-				@toggle-enabled="onToggleEnabled"
-				@detail="onExtensionDetail"
-				@adjust-list="onAdjustList"
-				@reset-filters="onResetFilters"
-				@bulk-action="onBulkAction"
-			/>
-		</el-tab-pane>
-
-		<el-tab-pane
-			name="services"
-			class="h-full overflow-hidden flex flex-col"
+	<div class="page-pad flex flex-col flex-1 min-h-0 box-border">
+		<el-tabs
+			v-model="activeTab"
+			class="flex flex-col flex-1 min-h-0 [&>.el-tabs__content]:flex-1 [&>.el-tabs__content]:min-h-0"
 		>
-			<template #label>
-				<div class="flex items-center gap-2">
-					<icon icon="mdi:cog-play" />
-					{{ t('extensionsModule.tabs.services') }}
-				</div>
-			</template>
+			<el-tab-pane
+				name="extensions"
+				class="h-full flex flex-col"
+			>
+				<template #label>
+					<span class="flex items-center gap-2">
+						<icon
+							icon="mdi:puzzle"
+							aria-hidden="true"
+						/>
+						{{ t('extensionsModule.tabs.all') }}
+					</span>
+				</template>
 
-			<services-list
-				v-model:active-kind="activeServiceKind"
-				:services="services"
-				:loading="areServicesLoading"
-				:extension-names="serviceExtensionNames"
-				:is-acting="isActingOnService"
-				@start="onStartService"
-				@stop="onStopService"
-				@restart="onRestartService"
-			/>
-		</el-tab-pane>
-	</el-tabs>
+				<list-extensions
+					ref="list"
+					v-model:filters="filters"
+					v-model:paginate-size="paginateSize"
+					v-model:paginate-page="paginatePage"
+					v-model:sort-by="sortBy"
+					v-model:sort-dir="sortDir"
+					:view-mode="viewMode"
+					:items="extensionsPaginated"
+					:all-items="extensions"
+					:total-rows="totalRows"
+					:loading="areLoading"
+					:filters-active="filtersActive"
+					@toggle-enabled="onToggleEnabled"
+					@detail="onExtensionDetail"
+					@reset-filters="onResetFilters"
+					@bulk-action="onBulkAction"
+				/>
+			</el-tab-pane>
 
-	<el-drawer
-		v-model="showDrawer"
-		:show-close="false"
-		size="300px"
-		:with-header="false"
-		:before-close="onCloseDrawer"
-	>
-		<app-bar-scope @close="onCloseDrawer()">
-			<list-extensions-adjust
-				v-if="showDrawer"
-				v-model:filters="filters"
-				:filters-active="filtersActive"
-				@reset-filters="onResetFilters"
-			/>
-		</app-bar-scope>
-	</el-drawer>
+			<el-tab-pane
+				name="services"
+				class="h-full flex flex-col"
+			>
+				<template #label>
+					<span class="flex items-center gap-2">
+						<icon
+							icon="mdi:cog-play"
+							aria-hidden="true"
+						/>
+						{{ t('extensionsModule.tabs.services') }}
+					</span>
+				</template>
+
+				<services-list
+					v-model:active-kind="activeServiceKind"
+					:services="services"
+					:loading="areServicesLoading"
+					:extension-names="serviceExtensionNames"
+					:is-acting="isActingOnService"
+					@start="onStartService"
+					@stop="onStopService"
+					@restart="onRestartService"
+				/>
+			</el-tab-pane>
+		</el-tabs>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -90,13 +113,13 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElDrawer, ElTabPane, ElTabs } from 'element-plus';
+import { ElRadioButton, ElRadioGroup, ElTabPane, ElTabs } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarScope, AppBreadcrumbs, ViewHeader } from '../../../common';
+import { AppBreadcrumbs, ViewHeader } from '../../../common';
 import { ExtensionKind, ExtensionsModuleServiceOwnerKind } from '../../../openapi.constants';
-import { ListExtensions, ListExtensionsAdjust, ServicesList } from '../components/components';
+import { ListExtensions, ServicesList } from '../components/components';
 import { useExtensionActions, useExtensionsDataSource, useServiceActions, useServices } from '../composables/composables';
 import { RouteNames } from '../extensions.constants';
 import { ExtensionsException } from '../extensions.exceptions';
@@ -150,7 +173,7 @@ const serviceExtensionNames = computed<Record<string, string>>(() => {
 	);
 });
 
-const showDrawer = ref<boolean>(false);
+const list = ref<InstanceType<typeof ListExtensions> | null>(null);
 const servicesLoaded = ref<boolean>(false);
 
 const isServiceKind = (value: unknown): value is ExtensionsModuleServiceOwnerKind => {
@@ -255,13 +278,9 @@ const onExtensionDetail = (type: IExtension['type']): void => {
 	});
 };
 
-const onAdjustList = (): void => {
-	showDrawer.value = true;
-};
-
-const onCloseDrawer = (done?: () => void): void => {
-	showDrawer.value = false;
-	done?.();
+// The phone app bar's Search action
+const onSearch = (): void => {
+	list.value?.focusSearch();
 };
 
 // Service actions

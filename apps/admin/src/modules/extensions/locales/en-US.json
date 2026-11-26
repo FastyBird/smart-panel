@@ -118,7 +118,9 @@
 				"24h": "Last 24 hours",
 				"7d": "Last 7 days"
 			}
-		}
+		},
+		"loadingExtension": "Loading extension...",
+		"extensionNotFound": "This extension is not installed"
 	},
 	"buttons": {
 		"actions": "Actions",
@@ -142,7 +144,10 @@
 			"title": "Reset Filters"
 		},
 		"yes": "Yes",
-		"no": "No"
+		"no": "No",
+		"more": {
+			"title": "More actions"
+		}
 	},
 	"tooltips": {
 		"coreCannotBeRemoved": "Core extensions cannot be removed",
@@ -268,5 +273,14 @@
 			"extensionDisabled": "Extension disabled",
 			"alwaysActiveDescription": "Always-active services keep running even when their owning extension is disabled, so discovery and setup remain available."
 		}
+	},
+	"viewMode": {
+		"title": "View",
+		"cards": "Cards",
+		"table": "Table"
+	},
+	"aria": {
+		"enable": "Enable {name}",
+		"more": "More actions for {name}"
 	}
 }
