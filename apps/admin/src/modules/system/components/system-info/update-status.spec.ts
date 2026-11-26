@@ -30,6 +30,7 @@ vi.mock('../../composables/composables', () => ({
 		progressPercent: ref(100),
 		error,
 		loading: ref(false),
+		readFailed: ref(false),
 		waitingForRestart,
 		isUpdating: computed(() => ['downloading', 'stopping', 'installing', 'migrating', 'starting'].includes(status.value)),
 		fetchStatus: vi.fn(),

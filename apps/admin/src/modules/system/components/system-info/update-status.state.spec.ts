@@ -14,6 +14,7 @@ const currentVersion = ref<string | null>(null);
 const latestVersion = ref<string | null>(null);
 const updateAvailable = ref(false);
 const loading = ref(false);
+const readFailed = ref(false);
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
@@ -32,6 +33,7 @@ vi.mock('../../composables/composables', () => ({
 		progressPercent: ref(null),
 		error: ref(null),
 		loading,
+		readFailed,
 		waitingForRestart: ref(false),
 		isUpdating: computed(() => false),
 		fetchStatus: vi.fn(),
@@ -48,6 +50,7 @@ describe('UpdateStatus state', () => {
 		latestVersion.value = null;
 		updateAvailable.value = false;
 		loading.value = false;
+		readFailed.value = false;
 	});
 
 	it('says it is checking until the backend has answered', () => {
@@ -63,6 +66,14 @@ describe('UpdateStatus state', () => {
 	it('does not call the system up to date when the latest version could not be looked up', () => {
 		// The backend answers a failed upstream lookup with the installed version, no latest one and no update
 		currentVersion.value = '1.1.0';
+
+		expect(tag().props()).toMatchObject({ status: 'info', label: 'systemModule.texts.update.noVersionInfo' });
+	});
+
+	it('does not keep calling the system up to date when a later read fails', () => {
+		currentVersion.value = '1.1.0';
+		latestVersion.value = '1.1.0';
+		readFailed.value = true;
 
 		expect(tag().props()).toMatchObject({ status: 'info', label: 'systemModule.texts.update.noVersionInfo' });
 	});

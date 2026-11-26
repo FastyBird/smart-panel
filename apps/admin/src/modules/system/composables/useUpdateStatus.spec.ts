@@ -376,4 +376,28 @@ describe('useUpdateStatus', () => {
 		expect(mockGet).not.toHaveBeenCalled();
 		expect(api.status.value).toBe('downloading');
 	});
+
+	it('marks the versions as not current when a refresh fails after a good read', async () => {
+		const { api } = consumer();
+
+		await vi.advanceTimersByTimeAsync(6_000);
+		mockGet.mockResolvedValueOnce(response({ status: 'idle', current_version: '1.1.0', latest_version: '1.1.0', update_available: false }));
+		await api.fetchStatus();
+
+		expect(api.currentVersion.value).toBe('1.1.0');
+		expect(api.readFailed.value).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(6_000);
+		mockGet.mockRejectedValueOnce(new Error('Backend offline'));
+		await api.fetchStatus();
+
+		// The versions read before stay, but no longer count as current
+		expect(api.currentVersion.value).toBe('1.1.0');
+		expect(api.readFailed.value).toBe(true);
+
+		mockPost.mockResolvedValueOnce(response({ current_version: '1.1.0', latest_version: '1.1.0', update_available: false }));
+		await api.checkForUpdates();
+
+		expect(api.readFailed.value).toBe(false);
+	});
 });

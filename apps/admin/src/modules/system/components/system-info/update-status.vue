@@ -157,6 +157,7 @@ const {
 	progressPercent,
 	error,
 	loading,
+	readFailed,
 	waitingForRestart,
 	isUpdating,
 	fetchStatus,
@@ -185,13 +186,14 @@ const lastCheckedFormatted = computed<string | null>((): string | null => {
 
 // "Up to date" only once the backend answered with both versions: without the installed one the state is being
 // checked or could not be read, and without the latest one the backend could not look it up (it then answers with
-// `latest_version: null` and no update), so whether there is one is not known
+// `latest_version: null` and no update), so whether there is one is not known. A failed read after a good one keeps
+// the versions read before, which are no longer current
 const state = computed<{ status: StatusTagStatus; label: string }>((): { status: StatusTagStatus; label: string } => {
 	if (updateAvailable.value && latestVersion.value) {
 		return { status: 'warn', label: t('systemModule.texts.update.available', { version: latestVersion.value }) };
 	}
 
-	if (currentVersion.value === null || latestVersion.value === null) {
+	if (currentVersion.value === null || latestVersion.value === null || readFailed.value) {
 		return { status: 'info', label: loading.value ? t('systemModule.texts.update.checking') : t('systemModule.texts.update.noVersionInfo') };
 	}
 

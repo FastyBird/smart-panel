@@ -33,6 +33,8 @@ const progressPercent = ref<number | null>(null);
 const error = ref<string | null>(null);
 
 const loading = ref<boolean>(false);
+// The last status read or check failed: the versions above are then the ones read before, not the current ones
+const readFailed = ref<boolean>(false);
 const installing = ref<boolean>(false);
 const waitingForRestart = ref<boolean>(false);
 
@@ -241,15 +243,22 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 					applyInfoResponse(responseData.data);
 
+					readFailed.value = false;
+
 					if (status.value === 'complete' || status.value === 'failed') {
 						waitingForRestart.value = false;
 						stopReconnectPoll();
 					} else if (isUpdating.value && !monitoring) {
 						startReconnectPoll();
 					}
+				} else if (generation === observerGeneration) {
+					readFailed.value = true;
 				}
 			} catch {
-				// Silently fail - endpoint may not exist yet
+				// Silently fail - endpoint may not exist yet; the screen shows the update state as unknown
+				if (generation === observerGeneration) {
+					readFailed.value = true;
+				}
 			} finally {
 				// A superseded request must not clear the newer shared request.
 				if (lastFetchGeneration === generation) {
@@ -270,9 +279,14 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 			if (responseData?.data) {
 				applyInfoResponse(responseData.data);
+
+				readFailed.value = false;
+			} else {
+				readFailed.value = true;
 			}
 		} catch (err) {
 			error.value = 'systemModule.messages.update.checkFailed';
+			readFailed.value = true;
 
 			throw err;
 		} finally {
@@ -441,6 +455,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		progressPercent,
 		error,
 		loading,
+		readFailed,
 		installing,
 		waitingForRestart,
 		isUpdating,

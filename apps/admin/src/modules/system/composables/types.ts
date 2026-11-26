@@ -62,6 +62,8 @@ export interface IUseUpdateStatus {
 	progressPercent: Ref<number | null>;
 	error: Ref<string | null>;
 	loading: Ref<boolean>;
+	/** The last status read or check failed, so the versions are not current */
+	readFailed: Ref<boolean>;
 	installing: Ref<boolean>;
 	waitingForRestart: Ref<boolean>;
 	isUpdating: ComputedRef<boolean>;
