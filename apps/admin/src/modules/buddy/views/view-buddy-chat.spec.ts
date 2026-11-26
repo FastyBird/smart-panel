@@ -343,6 +343,37 @@ describe('ViewBuddyChat', () => {
 		});
 	});
 
+	it('offers no new chat until the chats are read, so the list on its way cannot drop it', async () => {
+		toPhone();
+
+		let finish!: () => void;
+
+		mocks.fetchConversations.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finish = resolve;
+				})
+		);
+
+		const wrapper = mount(ViewBuddyChat, { global: { stubs: { RouterView: RouterViewStub } } });
+
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="buddy-new-chat"]').exists()).toBe(false);
+		expect(list(wrapper).props('canCreate')).toBe(false);
+
+		list(wrapper).vm.$emit('create');
+		await flushPromises();
+
+		expect(mocks.createConversation).not.toHaveBeenCalled();
+
+		finish();
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="buddy-new-chat"]').exists()).toBe(true);
+		expect(list(wrapper).props('canCreate')).toBe(true);
+	});
+
 	it('offers to read the chats again when they could not be read, and opens the chat once they are', async () => {
 		// As the composable does: the read resolves and reports its failure in a flag, and the list stays empty
 		const conversations = mocks.conversations.value;
