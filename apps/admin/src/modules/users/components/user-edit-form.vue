@@ -6,111 +6,117 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('usersModule.fields.username.title')"
-			:prop="['username']"
-		>
-			<el-input
-				v-model="model.username"
-				name="username"
-				readonly
-				disabled
+		<plugin-form-section :title="t('usersModule.sections.signIn')">
+			<el-form-item
+				:label="t('usersModule.fields.username.title')"
+				:prop="['username']"
 			>
-				<template #append>
-					<el-button
-						type="primary"
-						class="px-3!"
-						@click="onChangeUsername"
-					>
-						<template #icon>
-							<icon icon="mdi:pencil" />
-						</template>
-					</el-button>
-				</template>
-			</el-input>
-		</el-form-item>
+				<el-input
+					v-model="model.username"
+					name="username"
+					readonly
+					disabled
+				>
+					<template #append>
+						<el-button
+							:aria-label="t('usersModule.headings.changeUsername')"
+							:title="t('usersModule.headings.changeUsername')"
+							type="primary"
+							data-test-id="change-username"
+							@click="onChangeUsername"
+						>
+							<template #icon>
+								<icon icon="mdi:pencil" />
+							</template>
+						</el-button>
+					</template>
+				</el-input>
+			</el-form-item>
 
-		<el-form-item
-			:label="t('usersModule.fields.password.title')"
-			:prop="['password']"
-		>
-			<el-input
-				v-model="model.password"
-				name="password"
-				type="password"
-				readonly
-				disabled
-				show-password
+			<el-form-item
+				:label="t('usersModule.fields.password.title')"
+				:prop="['password']"
 			>
-				<template #append>
-					<el-button
-						type="primary"
-						class="px-3!"
-						@click="onChangePassword"
-					>
-						<template #icon>
-							<icon icon="mdi:pencil" />
-						</template>
-					</el-button>
-				</template>
-			</el-input>
-		</el-form-item>
+				<el-input
+					v-model="model.password"
+					name="password"
+					type="password"
+					readonly
+					disabled
+					show-password
+				>
+					<template #append>
+						<el-button
+							:aria-label="t('usersModule.headings.changePassword')"
+							:title="t('usersModule.headings.changePassword')"
+							type="primary"
+							data-test-id="change-password"
+							@click="onChangePassword"
+						>
+							<template #icon>
+								<icon icon="mdi:pencil" />
+							</template>
+						</el-button>
+					</template>
+				</el-input>
+			</el-form-item>
+		</plugin-form-section>
 
-		<el-divider />
-
-		<el-form-item
-			:label="t('usersModule.fields.email.title')"
-			:prop="['email']"
-		>
-			<el-input
-				v-model="model.email"
-				:placeholder="t('usersModule.fields.email.placeholder')"
-				name="email"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('usersModule.fields.firstName.title')"
-			:prop="['firstName']"
-		>
-			<el-input
-				v-model="model.firstName"
-				:placeholder="t('usersModule.fields.firstName.placeholder')"
-				name="firstName"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('usersModule.fields.lastName.title')"
-			:prop="['lastName']"
-		>
-			<el-input
-				v-model="model.lastName"
-				:placeholder="t('usersModule.fields.lastName.placeholder')"
-				name="lastName"
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('usersModule.fields.role.title')"
-			:prop="['role']"
-		>
-			<el-select
-				v-model="model.role"
-				:placeholder="t('usersModule.fields.role.placeholder')"
-				:disabled="isRoleDisabled"
-				name="role"
+		<plugin-form-section :title="t('usersModule.sections.profile')">
+			<el-form-item
+				:label="t('usersModule.fields.email.title')"
+				:prop="['email']"
 			>
-				<el-option
-					v-for="item in roleOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
+				<el-input
+					v-model="model.email"
+					:placeholder="t('usersModule.fields.email.placeholder')"
+					name="email"
 				/>
-			</el-select>
-		</el-form-item>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('usersModule.fields.firstName.title')"
+				:prop="['firstName']"
+			>
+				<el-input
+					v-model="model.firstName"
+					:placeholder="t('usersModule.fields.firstName.placeholder')"
+					name="firstName"
+				/>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('usersModule.fields.lastName.title')"
+				:prop="['lastName']"
+			>
+				<el-input
+					v-model="model.lastName"
+					:placeholder="t('usersModule.fields.lastName.placeholder')"
+					name="lastName"
+				/>
+			</el-form-item>
+		</plugin-form-section>
+
+		<plugin-form-section :title="t('usersModule.sections.access')">
+			<el-form-item
+				:label="t('usersModule.fields.role.title')"
+				:prop="['role']"
+			>
+				<el-select
+					v-model="model.role"
+					:placeholder="t('usersModule.fields.role.placeholder')"
+					:disabled="isRoleDisabled"
+					name="role"
+				>
+					<el-option
+						v-for="item in roleOptions"
+						:key="item.value"
+						:label="item.label"
+						:value="item.value"
+					/>
+				</el-select>
+			</el-form-item>
+		</plugin-form-section>
 	</el-form>
 
 	<el-dialog
@@ -172,10 +178,11 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { PluginFormSection } from '../../../common';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { useSession } from '../../auth/composables/composables';
 import { type IUserEditForm, useUserEditForm } from '../composables/composables';

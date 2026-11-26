@@ -1,106 +1,36 @@
 <template>
 	<el-table
-		v-loading="props.loading"
+		ref="tableEl"
+		v-loading="props.loading && props.items.length > 0"
 		:element-loading-text="t('usersModule.texts.misc.loadingUsers')"
 		:data="props.items"
-		:default-sort="{ prop: props.sortBy, order: props.sortDir || 'ascending' }"
+		:default-sort="props.sortDir !== null ? { prop: props.sortBy, order: props.sortDir } : undefined"
 		table-layout="fixed"
 		row-key="id"
 		class="flex-grow"
-		:style="{ maxHeight: tableHeight + 'px' }"
-		:max-height="tableHeight"
+		:style="{ maxHeight: props.tableHeight + 'px' }"
+		:max-height="props.tableHeight"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
 	>
 		<template #empty>
-			<div
-				v-if="props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:users-group" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:database-refresh" />
-							</template>
-						</icon-with-child>
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="noResults && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:users-group" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('usersModule.texts.misc.noUsers') }}
-					</template>
-				</el-result>
-			</div>
-
-			<div
-				v-else-if="props.filtersActive && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:users-group" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:filter-multiple" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('usersModule.texts.misc.noFilteredUsers') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="emit('reset-filters')"
-						>
-							<template #icon>
-								<icon icon="mdi:filter-off" />
-							</template>
-
-							{{ t('usersModule.buttons.resetFilters.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
+			<users-empty
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				@reset-filters="emit('reset-filters')"
+			/>
 		</template>
 
 		<el-table-column
-			v-if="isMDDevice"
 			type="selection"
-			:width="30"
+			fixed="left"
+			:width="40"
 			:selectable="isSelectable"
 		/>
 
 		<el-table-column
-			:width="60"
+			:width="56"
 			align="center"
 		>
 			<template #default="scope">
@@ -116,34 +46,37 @@
 			prop="username"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="150"
+			:min-width="160"
 		>
 			<template #default="scope">
-				{{ scope.row.username }}
+				<span class="block text-card-title truncate">{{ scope.row.username }}</span>
 			</template>
 		</el-table-column>
 
+		<!-- Tablet portrait keeps the username, the email and the role; the names stay in the editor -->
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('usersModule.table.columns.firstName.title')"
 			prop="firstName"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="150"
+			:min-width="140"
 		>
 			<template #default="scope">
-				{{ scope.row.firstName }}
+				<span class="block text-body truncate">{{ scope.row.firstName ?? '—' }}</span>
 			</template>
 		</el-table-column>
 
 		<el-table-column
+			v-if="!isTabletPortrait"
 			:label="t('usersModule.table.columns.lastName.title')"
 			prop="lastName"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="150"
+			:min-width="140"
 		>
 			<template #default="scope">
-				{{ scope.row.lastName }}
+				<span class="block text-body truncate">{{ scope.row.lastName ?? '—' }}</span>
 			</template>
 		</el-table-column>
 
@@ -152,10 +85,10 @@
 			prop="email"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="150"
+			:min-width="200"
 		>
 			<template #default="scope">
-				{{ scope.row.email }}
+				<span class="block text-body truncate">{{ scope.row.email ?? '—' }}</span>
 			</template>
 		</el-table-column>
 
@@ -164,79 +97,49 @@
 			prop="role"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
+			:width="120"
 		>
 			<template #default="scope">
-				<el-link
-					:type="innerFilters.roles.includes(scope.row.role) ? 'danger' : undefined"
-					underline="never"
-					class="font-400!"
-					@click.stop="onFilterBy('role', scope.row.role, !innerFilters.roles.includes(scope.row.role))"
-				>
-					<el-icon class="el-icon--left">
-						<icon
-							v-if="innerFilters.roles.includes(scope.row.role)"
-							icon="mdi:filter-minus"
-						/>
-						<icon
-							v-else
-							icon="mdi:filter-plus"
-						/>
-					</el-icon>
-
-					{{ t(`usersModule.role.${scope.row.role}`) }}
-				</el-link>
+				<status-tag
+					:status="roleStatus(scope.row.role)"
+					:label="t(`usersModule.role.${scope.row.role}`)"
+				/>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			:width="120"
+			:width="96"
 			align="right"
+			fixed="right"
 		>
 			<template #default="scope">
-				<div @click.stop>
-					<el-button
-						size="small"
-						plain
-						data-test-id="edit-user"
-						@click="emit('edit', scope.row.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:pencil" />
-						</template>
-					</el-button>
-					<el-button
-						size="small"
-						type="danger"
-						plain
-						class="ml-1!"
-						data-test-id="remove-user"
-						@click="emit('remove', scope.row.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:trash" />
-						</template>
-					</el-button>
-				</div>
+				<users-row-actions
+					:user="scope.row"
+					:removable="isSelectable(scope.row)"
+					@edit="(id: IUser['id']) => emit('edit', id)"
+					@remove="(id: IUser['id']) => emit('remove', id)"
+				/>
 			</template>
 		</el-table-column>
 	</el-table>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
+import { ElTable, ElTableColumn, vLoading } from 'element-plus';
 
-import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { IconWithChild, UserAvatar, useBreakpoints } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi.constants';
+import { StatusTag, UserAvatar, useSizeClass } from '../../../common';
 import type { IUsersFilter } from '../composables/types';
 import type { IUser } from '../store/users.store.types';
 
+import UsersEmpty from './users-empty.vue';
+import UsersRowActions from './users-row-actions.vue';
 import type { IUsersTableProps } from './users-table.types';
+import { canRemoveUser, roleStatus } from './users.utils';
 
 defineOptions({
 	name: 'UsersTable',
@@ -256,32 +159,14 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
+const { isTabletPortrait } = useSizeClass();
 
-/**
- * The backend refuses to delete either of these, so offering them for selection
- * only produces a failure the operator can do nothing about - and a bulk delete
- * of "everything" would always report one.
- *
- * Same two rules the edit form already applies to the role field.
- */
-const isSelectable = (row: IUser): boolean => {
-	// Users cannot delete their own account
-	if (typeof props.currentUserId === 'string' && props.currentUserId === row.id) {
-		return false;
-	}
+const tableEl = ref<InstanceType<typeof ElTable> | null>(null);
 
-	// The owner account cannot be deleted
-	if (row.role === UsersModuleUserRole.owner) {
-		return false;
-	}
+// The owner and the operator's own account cannot be removed, so they cannot be picked for a bulk delete either
+const isSelectable = (row: IUser): boolean => canRemoveUser(row, props.currentUserId);
 
-	return true;
-};
-
-const noResults = computed<boolean>((): boolean => props.totalRows === 0);
-
-const innerFilters = useVModel(props, 'filters', emit);
+useVModel(props, 'filters', emit);
 
 const onSortData = ({
 	prop,
@@ -302,17 +187,10 @@ const onRowClick = (row: IUser): void => {
 	emit('edit', row.id);
 };
 
-const onFilterBy = (column: string, data: string, add?: boolean): void => {
-	if (column === 'role') {
-		let filteredRoles = innerFilters.value.roles;
-
-		if (add === true) {
-			filteredRoles.push(data as UsersModuleUserRole);
-		} else {
-			filteredRoles = innerFilters.value.roles.filter((item) => item !== data);
-		}
-
-		innerFilters.value.roles = Array.from(new Set(filteredRoles));
-	}
+// The filter bar's Clear selection
+const clearSelection = (): void => {
+	tableEl.value?.clearSelection();
 };
+
+defineExpose({ clearSelection });
 </script>

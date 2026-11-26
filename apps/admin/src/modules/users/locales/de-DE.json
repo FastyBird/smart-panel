@@ -195,6 +195,21 @@
 		},
 		"no": {
 			"title": "Nein"
+		},
+		"more": {
+			"title": "Weitere Aktionen"
+		},
+		"keepEditing": {
+			"title": "Weiter bearbeiten"
 		}
+	},
+	"sections": {
+		"signIn": "Anmeldung",
+		"profile": "Profil",
+		"access": "Zugriff"
+	},
+	"aria": {
+		"edit": "{user} bearbeiten",
+		"more": "Weitere Aktionen für {user}"
 	}
 }

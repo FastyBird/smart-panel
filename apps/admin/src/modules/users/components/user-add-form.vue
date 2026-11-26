@@ -6,94 +6,96 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('usersModule.fields.username.title')"
-			:prop="['username']"
-		>
-			<el-input
-				v-model="model.username"
-				name="username"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('usersModule.fields.password.title')"
-			:prop="['password']"
-		>
-			<el-input
-				v-model="model.password"
-				name="password"
-				type="password"
-				show-password
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('usersModule.fields.repeatPassword.title')"
-			:prop="['repeatPassword']"
-		>
-			<el-input
-				v-model="model.repeatPassword"
-				name="repeatPassword"
-				type="password"
-				show-password
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('usersModule.fields.email.title')"
-			:prop="['email']"
-		>
-			<el-input
-				v-model="model.email"
-				:placeholder="t('usersModule.fields.email.placeholder')"
-				name="email"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('usersModule.fields.firstName.title')"
-			:prop="['firstName']"
-		>
-			<el-input
-				v-model="model.firstName"
-				:placeholder="t('usersModule.fields.firstName.placeholder')"
-				name="firstName"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('usersModule.fields.lastName.title')"
-			:prop="['lastName']"
-		>
-			<el-input
-				v-model="model.lastName"
-				:placeholder="t('usersModule.fields.lastName.placeholder')"
-				name="lastName"
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('usersModule.fields.role.title')"
-			:prop="['role']"
-		>
-			<el-select
-				v-model="model.role"
-				:placeholder="t('usersModule.fields.role.placeholder')"
-				name="role"
+		<plugin-form-section :title="t('usersModule.sections.signIn')">
+			<el-form-item
+				:label="t('usersModule.fields.username.title')"
+				:prop="['username']"
 			>
-				<el-option
-					v-for="item in roleOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
+				<el-input
+					v-model="model.username"
+					name="username"
 				/>
-			</el-select>
-		</el-form-item>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('usersModule.fields.password.title')"
+				:prop="['password']"
+			>
+				<el-input
+					v-model="model.password"
+					name="password"
+					type="password"
+					show-password
+				/>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('usersModule.fields.repeatPassword.title')"
+				:prop="['repeatPassword']"
+			>
+				<el-input
+					v-model="model.repeatPassword"
+					name="repeatPassword"
+					type="password"
+					show-password
+				/>
+			</el-form-item>
+		</plugin-form-section>
+
+		<plugin-form-section :title="t('usersModule.sections.profile')">
+			<el-form-item
+				:label="t('usersModule.fields.email.title')"
+				:prop="['email']"
+			>
+				<el-input
+					v-model="model.email"
+					:placeholder="t('usersModule.fields.email.placeholder')"
+					name="email"
+				/>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('usersModule.fields.firstName.title')"
+				:prop="['firstName']"
+			>
+				<el-input
+					v-model="model.firstName"
+					:placeholder="t('usersModule.fields.firstName.placeholder')"
+					name="firstName"
+				/>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('usersModule.fields.lastName.title')"
+				:prop="['lastName']"
+			>
+				<el-input
+					v-model="model.lastName"
+					:placeholder="t('usersModule.fields.lastName.placeholder')"
+					name="lastName"
+				/>
+			</el-form-item>
+		</plugin-form-section>
+
+		<plugin-form-section :title="t('usersModule.sections.access')">
+			<el-form-item
+				:label="t('usersModule.fields.role.title')"
+				:prop="['role']"
+			>
+				<el-select
+					v-model="model.role"
+					:placeholder="t('usersModule.fields.role.placeholder')"
+					name="role"
+				>
+					<el-option
+						v-for="item in roleOptions"
+						:key="item.value"
+						:label="item.label"
+						:value="item.value"
+					/>
+				</el-select>
+			</el-form-item>
+		</plugin-form-section>
 	</el-form>
 </template>
 
@@ -102,8 +104,9 @@ import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { InternalRuleItem } from 'async-validator';
-import { ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
+import { PluginFormSection } from '../../../common';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { type IUserAddForm, useUserAddForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
