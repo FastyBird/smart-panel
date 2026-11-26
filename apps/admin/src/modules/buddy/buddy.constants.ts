@@ -11,7 +11,12 @@ export enum EventType {
 
 export enum RouteNames {
 	BUDDY = 'buddy_module-chat',
+	BUDDY_CONVERSATION = 'buddy_module-conversation',
+	BUDDY_SETUP = 'buddy_module-setup',
 }
+
+// The chat opens on its latest messages; Load more reveals this many earlier ones at a time
+export const BUDDY_MESSAGES_PAGE_SIZE = 30;
 
 export const LLM_PROVIDER_NONE = 'none';
 

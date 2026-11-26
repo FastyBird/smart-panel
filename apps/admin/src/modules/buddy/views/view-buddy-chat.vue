@@ -1,118 +1,148 @@
 <template>
 	<view-header
+		v-if="!conversationPage"
 		:title="t('buddyModule.headings.chat')"
 		:subtitle="t('buddyModule.subHeadings.chat')"
-		:icon="'mdi:robot-happy'"
-	/>
-
-	<template v-if="isModuleEnabled">
-		<div
-			v-loading="isLoadingConversations"
-			:element-loading-text="t('buddyModule.texts.loadingConversations')"
-			class="flex overflow-hidden grow-1 min-h-0 lt-sm:mx-1 sm:mx-2 lt-sm:my-1 sm:my-2 gap-4"
+		:actions="chatAvailable ? [{ icon: 'mdi:plus', label: t('buddyModule.buttons.newChat.title'), handler: onCreateConversation }] : []"
+		icon="mdi:robot-happy"
+	>
+		<template
+			v-if="chatAvailable"
+			#actions
 		>
-			<el-card
-				shadow="never"
-				class="w-[250px] shrink-0 flex flex-col"
-				body-class="p-0! flex-1 min-h-0 overflow-hidden"
+			<el-button
+				:loading="isCreating"
+				type="primary"
+				data-test-id="buddy-new-chat"
+				@click="onCreateConversation"
 			>
-				<template #header>
-					<div class="flex items-center justify-between">
-						<span class="font-bold">{{ t('buddyModule.headings.chats') }}</span>
-						<el-button
-							type="primary"
-							size="small"
-							@click="onCreateConversation"
-						>
-							<el-icon class="mr-1">
-								<icon icon="mdi:plus" />
-							</el-icon>
-							{{ t('buddyModule.buttons.newChat.title') }}
-						</el-button>
-					</div>
+				<template #icon>
+					<icon icon="mdi:plus" />
 				</template>
+				{{ t('buddyModule.buttons.newChat.title') }}
+			</el-button>
+		</template>
+	</view-header>
 
+	<div
+		v-if="!isModuleEnabled"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
+	>
+		<section class="bg-surface border border-solid border-light rounded-lg">
+			<state-view
+				kind="empty"
+				icon="mdi:robot-off"
+				:title="t('buddyModule.texts.moduleDisabled')"
+				:description="t('buddyModule.texts.moduleDisabledHint')"
+				data-test-id="buddy-module-disabled"
+			>
+				<template #action>
+					<el-button
+						type="primary"
+						@click="router.push(moduleEditRoute)"
+					>
+						<template #icon>
+							<icon icon="mdi:cog" />
+						</template>
+						{{ t('buddyModule.buttons.goToSettings.title') }}
+					</el-button>
+				</template>
+			</state-view>
+		</section>
+	</div>
+
+	<!-- Buddy cannot answer without a provider: the whole screen leads to setting one up -->
+	<div
+		v-else-if="isProviderNotConfigured"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border overflow-y-auto"
+	>
+		<section class="bg-surface border border-solid border-light rounded-lg">
+			<buddy-provider-setup
+				:selected-provider="selectedProviderStatus"
+				:provider-statuses="providerStatuses"
+			/>
+		</section>
+	</div>
+
+	<!-- Template 7 from tablet landscape: the chats in a 320 px pane and the open conversation beside it, each scrolling
+	     on its own. Below it the chats, and the conversation as a page of its own -->
+	<div
+		v-else-if="twoPane"
+		class="page-pad flex gap-4 flex-1 min-h-0 box-border"
+		data-test-id="buddy-two-pane"
+	>
+		<section
+			:aria-label="t('buddyModule.headings.chats')"
+			class="flex flex-col w-[320px] shrink-0 min-h-0 bg-surface border border-solid border-light rounded-lg overflow-hidden"
+		>
+			<div class="flex-1 min-h-0 overflow-y-auto">
 				<buddy-conversation-list
 					:conversations="conversations"
-					:active-id="activeConversationId"
+					:active-id="detailId"
 					:spaces="spacesForList"
-					@select="selectConversation"
-					@delete="deleteConversation"
+					:loading="!chatDataLoaded || isLoadingConversations"
+					@select="onOpen"
+					@delete="onDelete"
+					@create="onCreateConversation"
 				/>
-			</el-card>
+			</div>
+		</section>
 
-			<el-card
-				shadow="never"
-				class="flex-1 min-h-0 flex flex-col"
-				body-class="p-0! flex-1 min-h-0 flex flex-col"
-			>
-				<template #header>
-					<div class="flex items-center gap-2">
-						<span class="font-bold">{{ activeConversationTitle }}</span>
-						<span
-							v-if="activeConversationSpace"
-							class="text-sm text-[var(--el-text-color-secondary)]"
-						>
-							&middot; {{ activeConversationSpace }}
-						</span>
-					</div>
-				</template>
-
-				<buddy-chat-area
-					:messages="messages"
-					:is-sending="isSending"
-					:is-loading-messages="isLoadingMessages"
-					:has-active-conversation="hasActiveConversation"
-					:is-provider-not-configured="isProviderNotConfigured"
-					:selected-provider="selectedProviderStatus"
-					:provider-statuses="providerStatuses"
-					:is-tts-configured="isTtsConfigured"
-					:playing-message-id="playingMessageId"
-					:audio-loading="audioLoading"
-					@send="sendMessage"
-					@play-audio="playMessageAudio"
-					@stop-audio="stopAudio"
-					@wizard-completed="loadChatData"
+		<section class="flex flex-col flex-1 min-w-0 min-h-0 bg-surface border border-solid border-light rounded-lg overflow-hidden">
+			<router-view v-slot="{ Component }">
+				<component
+					:is="Component"
+					v-if="Component"
+					:loading="!chatDataLoaded"
+					in-pane
 				/>
-			</el-card>
-		</div>
-	</template>
+				<state-view
+					v-else-if="!chatDataLoaded"
+					kind="loading"
+					icon="mdi:forum-outline"
+					:title="t('buddyModule.texts.loadingConversations')"
+				/>
+				<state-view
+					v-else
+					kind="empty"
+					icon="mdi:chat-outline"
+					:title="t('buddyModule.texts.emptyChat')"
+					data-test-id="buddy-no-selection"
+				/>
+			</router-view>
+		</section>
+	</div>
+
+	<router-view
+		v-else-if="detailId"
+		v-slot="{ Component }"
+	>
+		<component
+			:is="Component"
+			:loading="!chatDataLoaded"
+		/>
+	</router-view>
 
 	<div
 		v-else
-		class="flex items-center justify-center grow-1 min-h-0 lt-sm:mx-1 sm:mx-2 lt-sm:my-1 sm:my-2"
+		class="page-pad flex flex-col flex-1 min-h-0 box-border"
 	>
-		<el-card
-			shadow="never"
-			class="max-w-md text-center"
+		<section
+			:aria-label="t('buddyModule.headings.chats')"
+			class="flex flex-col flex-1 min-h-0 bg-surface border border-solid border-light rounded-lg overflow-hidden"
 		>
-			<div class="flex flex-col items-center gap-4 py-4">
-				<el-icon
-					:size="48"
-					color="var(--el-text-color-secondary)"
-				>
-					<icon icon="mdi:robot-off" />
-				</el-icon>
-
-				<h3 class="text-lg font-semibold m-0">
-					{{ t('buddyModule.texts.moduleDisabled') }}
-				</h3>
-
-				<p class="text-[var(--el-text-color-secondary)] m-0">
-					{{ t('buddyModule.texts.moduleDisabledHint') }}
-				</p>
-
-				<el-button
-					type="primary"
-					@click="router.push(moduleEditRoute)"
-				>
-					<el-icon class="mr-1">
-						<icon icon="mdi:cog" />
-					</el-icon>
-					{{ t('buddyModule.buttons.goToSettings.title') }}
-				</el-button>
+			<div class="flex-1 min-h-0 overflow-y-auto">
+				<buddy-conversation-list
+					:conversations="conversations"
+					:active-id="null"
+					:spaces="spacesForList"
+					:loading="!chatDataLoaded || isLoadingConversations"
+					@select="onOpen"
+					@delete="onDelete"
+					@create="onCreateConversation"
+				/>
 			</div>
-		</el-card>
+		</section>
 	</div>
 </template>
 
@@ -120,31 +150,38 @@
 import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElIcon, vLoading } from 'element-plus';
+import { ElButton, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { ViewHeader } from '../../../common';
+import { StateView, ViewHeader, useSizeClass } from '../../../common';
 import { useConfigModules } from '../../config/composables/useConfigModules';
 import { RouteNames as ConfigRouteNames } from '../../config/config.constants';
 import { useSpaces } from '../../spaces/composables/useSpaces';
-import { BUDDY_MODULE_NAME } from '../buddy.constants';
-import BuddyChatArea from '../components/buddy-chat-area.vue';
+import { BUDDY_MODULE_NAME, RouteNames } from '../buddy.constants';
 import BuddyConversationList from '../components/buddy-conversation-list.vue';
+import BuddyProviderSetup from '../components/buddy-provider-setup.vue';
 import { useBuddyChat } from '../composables/useBuddyChat';
+import { provideBuddyChat } from '../composables/useBuddyChatContext';
 
 defineOptions({
 	name: 'ViewBuddyChat',
 });
 
+const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
 useMeta({
 	title: t('buddyModule.meta.chat.title'),
 });
+
+const { isPhone, isTabletPortrait } = useSizeClass();
+
+// Template 7: two panes from tablet landscape; below it the chats, then the conversation as a page of its own
+const twoPane = computed<boolean>((): boolean => !isPhone.value && !isTabletPortrait.value);
 
 const { enabled, loaded: modulesLoaded, fetchConfigModules } = useConfigModules();
 // Optimistic for template — prevents flashing the "disabled" card before config loads
@@ -157,69 +194,163 @@ const { spaces, fetchSpaces } = useSpaces();
 
 const spacesForList = computed(() => spaces.value.map((s) => ({ id: s.id, name: s.name })));
 
+const chat = useBuddyChat();
+
+provideBuddyChat(chat);
+
 const {
 	conversations,
 	activeConversationId,
-	activeConversation,
-	messages,
-	hasActiveConversation,
+	messagesLoadedFor,
 	isLoadingConversations,
-	isLoadingMessages,
-	isSending,
 	isProviderNotConfigured,
 	providerStatuses,
 	selectedProviderStatus,
-	isTtsConfigured,
-	playingMessageId,
-	audioLoading,
 	fetchConversations,
 	fetchProviderStatuses,
 	fetchTtsProviderStatuses,
 	createConversation,
 	selectConversation,
-	sendMessage,
+	closeConversation,
 	deleteConversation,
-	playMessageAudio,
-	stopAudio,
-} = useBuddyChat();
+} = chat;
 
-const activeConversationTitle = computed(() => {
-	if (!activeConversation.value) {
-		return t('buddyModule.texts.noActiveConversation');
-	}
+const chatDataLoaded = ref(false);
 
-	return activeConversation.value.title || t('buddyModule.texts.newConversation');
-});
+const isCreating = ref(false);
 
-const activeConversationSpace = computed<string | null>(() => {
-	const spaceId = activeConversation.value?.space_id;
+// The module is on and a provider can answer
+const chatAvailable = computed<boolean>(() => isModuleEnabled.value && !isProviderNotConfigured.value);
 
-	if (!spaceId) {
-		return null;
-	}
+// The open conversation is the conversation route's: the list, a shared link and New chat all open the same route
+const detailId = computed<string | null>((): string | null =>
+	route.name === RouteNames.BUDDY_CONVERSATION && typeof route.params.id === 'string' ? route.params.id : null
+);
 
-	const space = spacesForList.value.find((s) => s.id === spaceId);
+// Below tablet landscape the open conversation is a page of its own, with its own header
+const conversationPage = computed<boolean>(() => !twoPane.value && detailId.value !== null && chatAvailable.value);
 
-	return space?.name ?? null;
-});
+const onOpen = (id: string): void => {
+	void router.push({ name: RouteNames.BUDDY_CONVERSATION, params: { id } });
+};
 
 const onCreateConversation = async (): Promise<void> => {
-	await createConversation();
+	if (isCreating.value) {
+		return;
+	}
+
+	isCreating.value = true;
+
+	try {
+		const created = await createConversation();
+
+		if (created) {
+			onOpen(created.id);
+		}
+	} finally {
+		isCreating.value = false;
+	}
+};
+
+const titleOf = (id: string): string => conversations.value.find((c) => c.id === id)?.title || t('buddyModule.texts.newConversation');
+
+const onDelete = async (id: string): Promise<void> => {
+	const title = titleOf(id);
+
+	try {
+		await ElMessageBox.confirm(t('buddyModule.messages.confirmDeleteConversation', { title }), t('buddyModule.headings.deleteConversation'), {
+			confirmButtonText: t('buddyModule.buttons.deleteConversation.title'),
+			cancelButtonText: t('buddyModule.buttons.cancel.title'),
+			confirmButtonType: 'danger',
+			type: 'warning',
+		});
+	} catch {
+		return;
+	}
+
+	const deleted = await deleteConversation(id);
+
+	// The open conversation going away leaves nothing to show: two panes open the latest one, a single pane the list
+	if (deleted && detailId.value === id) {
+		const next = conversations.value[0];
+
+		if (twoPane.value && next) {
+			void router.replace({ name: RouteNames.BUDDY_CONVERSATION, params: { id: next.id } });
+		} else {
+			void router.replace({ name: RouteNames.BUDDY });
+		}
+	}
+};
+
+// Two panes open on the latest conversation. Opening Buddy with no conversations at all starts one, so there is
+// something to type into; a conversation removed later leaves the pane empty instead
+const openDefaultConversation = async (startNew: boolean): Promise<void> => {
+	const first = conversations.value[0];
+
+	if (first) {
+		await router.replace({ name: RouteNames.BUDDY_CONVERSATION, params: { id: first.id } });
+	} else if (startNew && !isProviderNotConfigured.value) {
+		await onCreateConversation();
+	}
+};
+
+// The route says which conversation is open; its messages are read when it changes
+const syncConversation = async (initial = false): Promise<void> => {
+	if (!chatDataLoaded.value) {
+		return;
+	}
+
+	const id = detailId.value;
+
+	if (id === null) {
+		closeConversation();
+
+		if (twoPane.value && chatAvailable.value) {
+			await openDefaultConversation(initial);
+		}
+
+		return;
+	}
+
+	if (!conversations.value.some((c) => c.id === id)) {
+		// The conversation view shows "not found"
+		closeConversation();
+
+		return;
+	}
+
+	if (activeConversationId.value !== id || messagesLoadedFor.value !== id) {
+		await selectConversation(id);
+	}
 };
 
 const loadChatData = async (): Promise<void> => {
 	await Promise.all([fetchSpaces(), fetchProviderStatuses(), fetchTtsProviderStatuses(), fetchConversations()]);
 
-	const first = conversations.value[0];
+	chatDataLoaded.value = true;
 
-	if (first) {
-		await selectConversation(first.id);
-	} else if (!isProviderNotConfigured.value) {
-		await createConversation();
-	}
+	await syncConversation(true);
 };
 
-const chatDataLoaded = ref(false);
+// Read once, whether the module was known to be on at mount or turned out to be on later
+let chatDataRequest: Promise<void> | null = null;
+
+const ensureChatData = (): Promise<void> => {
+	chatDataRequest ??= loadChatData();
+
+	return chatDataRequest;
+};
+
+watch(detailId, (): void => {
+	void syncConversation();
+});
+
+// Widening the window to two panes on the list opens a conversation beside it
+watch(twoPane, (value: boolean): void => {
+	if (value && detailId.value === null) {
+		void syncConversation();
+	}
+});
 
 onBeforeMount(async (): Promise<void> => {
 	if (!modulesLoaded.value) {
@@ -230,14 +361,12 @@ onBeforeMount(async (): Promise<void> => {
 		return;
 	}
 
-	await loadChatData();
-	chatDataLoaded.value = true;
+	await ensureChatData();
 });
 
 watch(isModuleConfirmedEnabled, async (confirmed): Promise<void> => {
-	if (confirmed && !chatDataLoaded.value) {
-		await loadChatData();
-		chatDataLoaded.value = true;
+	if (confirmed) {
+		await ensureChatData();
 	}
 });
 </script>

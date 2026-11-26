@@ -6,11 +6,13 @@
 		"settings": "Kumpel",
 		"chat": "Czat Buddy",
 		"chats": "Czaty",
-		"aboutBuddy": "Konfiguracja AI Buddy"
+		"aboutBuddy": "Konfiguracja AI Buddy",
+		"deleteConversation": "Usuń czat"
 	},
 	"subHeadings": {
 		"settings": "Skonfiguruj ustawienia asystenta AI Buddy",
-		"chat": "Rozmawiaj ze swoim asystentem AI Buddy"
+		"chat": "Rozmawiaj ze swoim asystentem AI Buddy",
+		"setup": "Wybierz dostawców, z którymi Buddy odpowiada, mówi i słucha, oraz gdzie można się z nim skontaktować"
 	},
 	"messages": {
 		"loadError": "Nie udało się wczytać konfiguracji buddy",
@@ -29,7 +31,8 @@
 			"audioPlayback": "Nie udało się odtworzyć audio",
 			"loadPersonality": "Nie udało się wczytać osobowości",
 			"savePersonality": "Nie udało się zapisać osobowości"
-		}
+		},
+		"confirmDeleteConversation": "Usunąć czat „{title}”? Jego wiadomości zostaną usunięte razem z nim."
 	},
 	"buttons": {
 		"save": {
@@ -58,6 +61,27 @@
 		},
 		"setupWizard": {
 			"title": "Kreator konfiguracji"
+		},
+		"loadMore": {
+			"title": "Wczytaj starsze wiadomości"
+		},
+		"send": {
+			"title": "Wyślij"
+		},
+		"more": {
+			"title": "Więcej akcji"
+		},
+		"deleteConversation": {
+			"title": "Usuń czat"
+		},
+		"backToChats": {
+			"title": "Wróć do czatów"
+		},
+		"playAudio": {
+			"title": "Czytaj na głos"
+		},
+		"stopAudio": {
+			"title": "Zatrzymaj czytanie"
 		}
 	},
 	"fields": {
@@ -116,7 +140,8 @@
 			}
 		},
 		"message": {
-			"placeholder": "Wpisz wiadomość..."
+			"placeholder": "Wpisz wiadomość...",
+			"title": "Wiadomość"
 		}
 	},
 	"texts": {
@@ -149,7 +174,11 @@
 		"sttProvidersFetchFailed": "Nie udało się wczytać dostępnych dostawców rozpoznawania mowy. Lista dostawców może być niekompletna.",
 		"ttsProvidersFetchFailed": "Nie udało się wczytać dostępnych dostawców syntezy mowy. Lista dostawców może być niekompletna.",
 		"moduleDisabled": "Moduł Buddy jest wyłączony",
-		"moduleDisabledHint": "Moduł AI buddy jest aktualnie wyłączony. Włącz go w konfiguracji systemu, aby korzystać z czatu i sugestii."
+		"moduleDisabledHint": "Moduł AI buddy jest aktualnie wyłączony. Włącz go w konfiguracji systemu, aby korzystać z czatu i sugestii.",
+		"noConversations": "Brak czatów",
+		"noConversationsHint": "Rozpocznij czat, aby zapytać Buddy o swój dom.",
+		"loadingMessages": "Ładowanie wiadomości...",
+		"conversationNotFound": "Ten czat już nie istnieje"
 	},
 	"wizard": {
 		"title": "Kreator konfiguracji Buddy",
@@ -189,6 +218,10 @@
 			"configure": "Skonfiguruj",
 			"saveConfig": "Zapisz konfigurację",
 			"startChatting": "Rozpocznij czat"
+		},
+		"loading": "Ładowanie dostawców...",
+		"aria": {
+			"enable": "Włącz {name}"
 		}
 	},
 	"meta": {
@@ -197,6 +230,13 @@
 		},
 		"chat": {
 			"title": "Czat Buddy"
+		},
+		"setup": {
+			"title": "Konfiguracja Buddy"
 		}
+	},
+	"aria": {
+		"more": "Więcej akcji dla {title}",
+		"messages": "Wiadomości"
 	}
 }

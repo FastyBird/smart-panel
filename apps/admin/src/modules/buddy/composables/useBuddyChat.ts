@@ -9,7 +9,7 @@ import type { IConversation, IMessage } from '../buddy.types';
 import { type IProviderStatus, useBuddyProviders } from './useBuddyProviders';
 import { useBuddyTtsProviders } from './useBuddyTtsProviders';
 
-interface IUseBuddyChat {
+export interface IUseBuddyChat {
 	conversations: Ref<IConversation[]>;
 	activeConversationId: Ref<string | null>;
 	messages: Ref<IMessage[]>;
@@ -17,6 +17,8 @@ interface IUseBuddyChat {
 	hasActiveConversation: ComputedRef<boolean>;
 	isLoadingConversations: Ref<boolean>;
 	isLoadingMessages: Ref<boolean>;
+	/** The conversation whose messages have been read at least once; until then its chat waits */
+	messagesLoadedFor: Ref<string | null>;
 	isSending: Ref<boolean>;
 	isProviderNotConfigured: ComputedRef<boolean>;
 	providerStatuses: Ref<IProviderStatus[]>;
@@ -29,9 +31,11 @@ interface IUseBuddyChat {
 	fetchTtsProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
 	selectConversation: (id: string) => Promise<void>;
+	closeConversation: () => void;
 	refreshMessages: (conversationId: string) => Promise<void>;
 	sendMessage: (content: string) => Promise<void>;
-	deleteConversation: (id: string) => Promise<void>;
+	/** Resolves true once the conversation is gone */
+	deleteConversation: (id: string) => Promise<boolean>;
 	playMessageAudio: (messageId: string) => Promise<void>;
 	stopAudio: () => void;
 }
@@ -49,6 +53,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
+	const messagesLoadedFor = ref<string | null>(null);
 	const isSending = ref<boolean>(false);
 
 	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
@@ -127,6 +132,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			conversations.value.unshift(created);
 			activeConversationId.value = created.id;
 			messages.value = [];
+			// A new conversation has no messages to read
+			messagesLoadedFor.value = created.id;
 
 			return created;
 		} catch (err: unknown) {
@@ -161,6 +168,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			if (activeConversationId.value === conversationId) {
 				messages.value = responseData.data as IMessage[];
+				messagesLoadedFor.value = conversationId;
 			}
 		} catch (err: unknown) {
 			if (!quiet) {
@@ -181,6 +189,14 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const fetchMessagesQuiet = (conversationId: string): Promise<void> => fetchMessagesInternal(conversationId, true);
 
 	const selectConversation = async (id: string): Promise<void> => {
+		// Another conversation's messages never show under this one while its own are read
+		if (activeConversationId.value !== id) {
+			stopAudio();
+
+			messages.value = [];
+			messagesLoadedFor.value = null;
+		}
+
 		activeConversationId.value = id;
 
 		await fetchMessages(id);
@@ -254,7 +270,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		}
 	};
 
-	const deleteConversation = async (id: string): Promise<void> => {
+	// The chat view decides what opens next: the conversation is a route
+	const deleteConversation = async (id: string): Promise<boolean> => {
 		try {
 			const { error: apiError } = await backend.client.DELETE(
 				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}`,
@@ -268,7 +285,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			if (apiError) {
 				flashMessage.error(t('buddyModule.messages.errors.deleteConversation'));
 
-				return;
+				return false;
 			}
 
 			conversations.value = conversations.value.filter((c) => c.id !== id);
@@ -276,22 +293,14 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			if (activeConversationId.value === id) {
 				activeConversationId.value = null;
 				messages.value = [];
-
-				// Select the next available conversation — errors here are
-				// unrelated to the (already successful) deletion.
-				const next = conversations.value[0];
-
-				if (next) {
-					try {
-						await selectConversation(next.id);
-					} catch {
-						// selectConversation failure doesn't affect the delete outcome
-					}
-				}
 			}
+
+			return true;
 		} catch (err: unknown) {
 			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.deleteConversation'));
 		}
+
+		return false;
 	};
 
 	// ============================================
@@ -324,6 +333,15 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 		playingMessageId.value = null;
 		audioLoading.value = false;
+	};
+
+	// Back on the list (below tablet landscape) no conversation is open
+	const closeConversation = (): void => {
+		stopAudio();
+
+		activeConversationId.value = null;
+		messages.value = [];
+		messagesLoadedFor.value = null;
 	};
 
 	let currentAbortController: AbortController | null = null;
@@ -403,6 +421,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		hasActiveConversation,
 		isLoadingConversations,
 		isLoadingMessages,
+		messagesLoadedFor,
 		isSending,
 		isProviderNotConfigured,
 		providerStatuses,
@@ -415,6 +434,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		fetchTtsProviderStatuses,
 		createConversation,
 		selectConversation,
+		closeConversation,
 		refreshMessages: fetchMessagesQuiet,
 		sendMessage,
 		deleteConversation,

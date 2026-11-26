@@ -6,11 +6,13 @@
 		"settings": "Kumpel",
 		"chat": "Buddy-Chat",
 		"chats": "Chats",
-		"aboutBuddy": "KI-Buddy-Konfiguration"
+		"aboutBuddy": "KI-Buddy-Konfiguration",
+		"deleteConversation": "Chat löschen"
 	},
 	"subHeadings": {
 		"settings": "KI-Buddy-Assistenten-Einstellungen konfigurieren",
-		"chat": "Mit Ihrem KI-Buddy-Assistenten chatten"
+		"chat": "Mit Ihrem KI-Buddy-Assistenten chatten",
+		"setup": "Wählen Sie die Anbieter, mit denen Buddy antwortet, spricht und zuhört, und wo er erreichbar ist"
 	},
 	"messages": {
 		"loadError": "Buddy-Konfiguration konnte nicht geladen werden",
@@ -29,7 +31,8 @@
 			"audioPlayback": "Audiowiedergabe fehlgeschlagen",
 			"loadPersonality": "Persönlichkeit konnte nicht geladen werden",
 			"savePersonality": "Persönlichkeit konnte nicht gespeichert werden"
-		}
+		},
+		"confirmDeleteConversation": "Den Chat „{title}“ löschen? Seine Nachrichten werden mit gelöscht."
 	},
 	"buttons": {
 		"save": {
@@ -58,6 +61,27 @@
 		},
 		"setupWizard": {
 			"title": "Einrichtungsassistent"
+		},
+		"loadMore": {
+			"title": "Ältere Nachrichten laden"
+		},
+		"send": {
+			"title": "Senden"
+		},
+		"more": {
+			"title": "Weitere Aktionen"
+		},
+		"deleteConversation": {
+			"title": "Chat löschen"
+		},
+		"backToChats": {
+			"title": "Zurück zu den Chats"
+		},
+		"playAudio": {
+			"title": "Vorlesen"
+		},
+		"stopAudio": {
+			"title": "Vorlesen beenden"
 		}
 	},
 	"fields": {
@@ -116,7 +140,8 @@
 			}
 		},
 		"message": {
-			"placeholder": "Nachricht eingeben..."
+			"placeholder": "Nachricht eingeben...",
+			"title": "Nachricht"
 		}
 	},
 	"texts": {
@@ -149,7 +174,11 @@
 		"sttProvidersFetchFailed": "Verfügbare Spracherkennungsanbieter konnten nicht geladen werden. Die Anbieterliste ist möglicherweise unvollständig.",
 		"ttsProvidersFetchFailed": "Verfügbare Sprachsyntheseanbieter konnten nicht geladen werden. Die Anbieterliste ist möglicherweise unvollständig.",
 		"moduleDisabled": "Buddy-Modul ist deaktiviert",
-		"moduleDisabledHint": "Das KI-Buddy-Modul ist derzeit deaktiviert. Aktivieren Sie es in der Systemkonfiguration, um Chat und Vorschläge zu nutzen."
+		"moduleDisabledHint": "Das KI-Buddy-Modul ist derzeit deaktiviert. Aktivieren Sie es in der Systemkonfiguration, um Chat und Vorschläge zu nutzen.",
+		"noConversations": "Noch keine Chats",
+		"noConversationsHint": "Starten Sie einen Chat und fragen Sie Buddy zu Ihrem Zuhause.",
+		"loadingMessages": "Nachrichten werden geladen...",
+		"conversationNotFound": "Dieser Chat existiert nicht mehr"
 	},
 	"wizard": {
 		"title": "Buddy-Einrichtungsassistent",
@@ -189,6 +218,10 @@
 			"configure": "Konfigurieren",
 			"saveConfig": "Konfiguration speichern",
 			"startChatting": "Chat starten"
+		},
+		"loading": "Anbieter werden geladen...",
+		"aria": {
+			"enable": "{name} aktivieren"
 		}
 	},
 	"meta": {
@@ -197,6 +230,13 @@
 		},
 		"chat": {
 			"title": "Buddy-Chat"
+		},
+		"setup": {
+			"title": "Buddy-Einrichtung"
 		}
+	},
+	"aria": {
+		"more": "Weitere Aktionen für {title}",
+		"messages": "Nachrichten"
 	}
 }

@@ -52,6 +52,8 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	'src/plugins/weather-*',
 	// AR-22: the overview dashboard
 	'src/modules/stats',
+	// AR-23: the Buddy chat (two panes) and the Buddy setup wizard
+	'src/modules/buddy',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */
