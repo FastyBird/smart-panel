@@ -324,6 +324,7 @@ describe('useUpdateStatus', () => {
 		first.scope.stop();
 		const second = consumer();
 		await second.api.fetchStatus();
+		expect(second.api.readFailed.value).toBe(true);
 		const calls = mockGet.mock.calls.length;
 		await vi.advanceTimersByTimeAsync(4_000);
 		expect(mockGet).toHaveBeenCalledTimes(calls + 1);
@@ -331,6 +332,8 @@ describe('useUpdateStatus', () => {
 		mockGet.mockResolvedValue(completed);
 		await vi.advanceTimersByTimeAsync(8_000);
 		expect(second.api.status.value).toBe('complete');
+		// The reconnect poll's confirmed answer makes the versions current again
+		expect(second.api.readFailed.value).toBe(false);
 	});
 
 	it.each(['complete', 'failed'])('keeps an authoritative %s socket event when an older GET resolves', async (status) => {

@@ -108,7 +108,10 @@ const isUnconfirmedClearedStatus = (data: Record<string, unknown>, targetVersion
 	return (!data.status || data.status === 'idle') && (!targetVersion || data.current_version !== targetVersion);
 };
 
+// Every accepted status response goes through here (the mount read, a check, the reconnect poll), so here the
+// versions become current again
 const applyInfoResponse = (data: Record<string, unknown>): void => {
+	readFailed.value = false;
 	currentVersion.value = (data.current_version as string) ?? null;
 	latestVersion.value = (data.latest_version as string) ?? null;
 	updateAvailable.value = (data.update_available as boolean) ?? false;
@@ -243,8 +246,6 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 					applyInfoResponse(responseData.data);
 
-					readFailed.value = false;
-
 					if (status.value === 'complete' || status.value === 'failed') {
 						waitingForRestart.value = false;
 						stopReconnectPoll();
@@ -279,8 +280,6 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 			if (responseData?.data) {
 				applyInfoResponse(responseData.data);
-
-				readFailed.value = false;
 			} else {
 				readFailed.value = true;
 			}
