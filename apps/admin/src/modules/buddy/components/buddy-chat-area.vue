@@ -153,12 +153,15 @@ const props = withDefaults(
 		loaded: boolean;
 		/** Reading the conversation's messages failed; the chat offers to read them again */
 		failed?: boolean;
+		/** The unsent message. The parent keeps it, so it outlives this chat when the layout changes */
+		draft?: string;
 		isTtsConfigured?: boolean;
 		playingMessageId?: string | null;
 		audioLoading?: boolean;
 	}>(),
 	{
 		failed: false,
+		draft: '',
 		isTtsConfigured: false,
 		playingMessageId: null,
 		audioLoading: false,
@@ -170,6 +173,7 @@ const emit = defineEmits<{
 	(e: 'play-audio', messageId: string): void;
 	(e: 'stop-audio'): void;
 	(e: 'retry'): void;
+	(e: 'update:draft', value: string): void;
 }>();
 
 const { t } = useI18n();
@@ -177,7 +181,10 @@ const { t } = useI18n();
 // The composer rides above the on-screen keyboard like the form footer (spec section 6)
 const { offset: keyboardOffset } = useKeyboardOffset();
 
-const inputMessage = ref<string>('');
+const inputMessage = computed<string>({
+	get: (): string => props.draft,
+	set: (value: string): void => emit('update:draft', value),
+});
 const scrollEl = ref<HTMLElement | null>(null);
 
 // How many of the earliest messages are left out. Set once the conversation's messages are read, so the chat opens on

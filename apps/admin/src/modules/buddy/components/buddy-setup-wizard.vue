@@ -6,7 +6,7 @@
 		:current="currentStepName"
 		:can-continue="!isLoading && !isNextDisabled"
 		:skippable="canSkip && !isLoading"
-		:busy="isSavingModuleConfig"
+		:busy="isSavingModuleConfig || togglingPlugins.size > 0"
 		:next-label="currentStepName === 'done' ? t('buddyModule.wizard.buttons.startChatting') : undefined"
 		:cancellable="currentStepName !== 'done'"
 		class="flex-1"

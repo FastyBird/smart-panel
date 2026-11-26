@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
 	activeConversationId: null as unknown as Ref<string | null>,
 	messagesLoadedFor: null as unknown as Ref<string | null>,
 	providerNotConfigured: null as unknown as Ref<boolean>,
+	conversationsFetchFailed: null as unknown as Ref<boolean>,
+	providerFetchFailed: null as unknown as Ref<boolean>,
 	isPhone: null as unknown as Ref<boolean>,
 	isTabletPortrait: null as unknown as Ref<boolean>,
 	route: null as unknown as { name: string; params: Record<string, string> },
@@ -113,6 +115,8 @@ vi.mock('../composables/useBuddyChat', async () => {
 	mocks.activeConversationId = vueRef<string | null>(null);
 	mocks.messagesLoadedFor = vueRef<string | null>(null);
 	mocks.providerNotConfigured = vueRef(false);
+	mocks.conversationsFetchFailed = vueRef(false);
+	mocks.providerFetchFailed = vueRef(false);
 
 	return {
 		useBuddyChat: () => ({
@@ -121,6 +125,8 @@ vi.mock('../composables/useBuddyChat', async () => {
 			messagesLoadedFor: mocks.messagesLoadedFor,
 			isLoadingConversations: vueRef(false),
 			isProviderNotConfigured: vueComputed(() => mocks.providerNotConfigured.value),
+			conversationsFetchFailed: mocks.conversationsFetchFailed,
+			providerFetchFailed: mocks.providerFetchFailed,
 			providerStatuses: vueRef([]),
 			selectedProviderStatus: vueComputed(() => undefined),
 			fetchConversations: mocks.fetchConversations,
@@ -225,6 +231,8 @@ describe('ViewBuddyChat', () => {
 		mocks.activeConversationId.value = null;
 		mocks.messagesLoadedFor.value = null;
 		mocks.providerNotConfigured.value = false;
+		mocks.conversationsFetchFailed.value = false;
+		mocks.providerFetchFailed.value = false;
 		mocks.isPhone.value = false;
 		mocks.isTabletPortrait.value = false;
 		mocks.route.name = RouteNames.BUDDY;
@@ -336,9 +344,26 @@ describe('ViewBuddyChat', () => {
 	});
 
 	it('offers to read the chats again when they could not be read, and opens the chat once they are', async () => {
-		mocks.fetchConversations.mockRejectedValueOnce(new Error('offline'));
+		// As the composable does: the read resolves and reports its failure in a flag, and the list stays empty
+		const conversations = mocks.conversations.value;
+
+		mocks.conversations.value = [];
+		mocks.fetchConversations.mockImplementationOnce(() => {
+			mocks.conversationsFetchFailed.value = true;
+
+			return Promise.resolve();
+		});
+		mocks.fetchConversations.mockImplementationOnce(() => {
+			mocks.conversationsFetchFailed.value = false;
+			mocks.conversations.value = conversations;
+
+			return Promise.resolve();
+		});
 
 		const wrapper = await mountView();
+
+		// An empty list read by mistake starts no chat
+		expect(mocks.createConversation).not.toHaveBeenCalled();
 
 		expect(wrapper.find('[data-test-id="buddy-load-failed"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="buddy-two-pane"]').exists()).toBe(false);
@@ -349,6 +374,19 @@ describe('ViewBuddyChat', () => {
 		expect(mocks.fetchConversations).toHaveBeenCalledTimes(2);
 		expect(wrapper.find('[data-test-id="buddy-load-failed"]').exists()).toBe(false);
 		expect(mocks.route.params).toEqual({ id: 'c-1' });
+	});
+
+	it('offers to read the providers again rather than leading to setup when they could not be read', async () => {
+		mocks.fetchConversations.mockImplementation(() => {
+			mocks.providerFetchFailed.value = true;
+
+			return Promise.resolve();
+		});
+
+		const wrapper = await mountView();
+
+		expect(wrapper.find('[data-test-id="buddy-load-failed"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'BuddyProviderSetup' }).exists()).toBe(false);
 	});
 
 	it('leads to setting up a provider instead of the chat while none can answer, and starts no conversation', async () => {

@@ -21,6 +21,12 @@ export interface IUseBuddyChat {
 	messagesLoadedFor: Ref<string | null>;
 	/** The conversation whose messages could not be read; its chat offers to read them again */
 	messagesFailedFor: Ref<string | null>;
+	/** The last read of the conversations failed */
+	conversationsFetchFailed: Ref<boolean>;
+	/** The last read of the AI providers failed, so whether one is ready is not known */
+	providerFetchFailed: Ref<boolean>;
+	/** Unsent messages by conversation, kept while the chat's layout changes or another conversation is open */
+	drafts: Ref<Record<string, string>>;
 	isSending: Ref<boolean>;
 	isProviderNotConfigured: ComputedRef<boolean>;
 	providerStatuses: Ref<IProviderStatus[]>;
@@ -46,7 +52,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const { t } = useI18n();
 	const backend = useBackend();
 	const flashMessage = useFlashMessage();
-	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
+	const { providerStatuses, providerStatusesFetched, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 	const { ttsProviderStatuses, ttsProviderStatusesFetched, fetchTtsProviderStatuses } = useBuddyTtsProviders();
 
 	const conversations = ref<IConversation[]>([]);
@@ -57,6 +63,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const isLoadingMessages = ref<boolean>(false);
 	const messagesLoadedFor = ref<string | null>(null);
 	const messagesFailedFor = ref<string | null>(null);
+	const conversationsFetchFailed = ref<boolean>(false);
+	const drafts = ref<Record<string, string>>({});
 	const isSending = ref<boolean>(false);
 
 	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
@@ -64,7 +72,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	});
 
 	const isProviderNotConfigured = computed<boolean>(() => {
-		if (!providerStatusesFetched.value) {
+		// Unknown rather than missing: the chat view offers to read the providers again instead of leading to setup
+		if (!providerStatusesFetched.value || providerFetchFailed.value) {
 			return false;
 		}
 
@@ -91,6 +100,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const fetchConversations = async (): Promise<void> => {
 		isLoadingConversations.value = true;
+		conversationsFetchFailed.value = false;
 
 		try {
 			const { data: responseData, error: apiError, response: res } = await backend.client.GET(
@@ -102,12 +112,16 @@ export const useBuddyChat = (): IUseBuddyChat => {
 					flashMessage.error(t('buddyModule.messages.errors.loadConversations'));
 				}
 
+				conversationsFetchFailed.value = true;
+
 				return;
 			}
 
 			conversations.value = responseData.data as IConversation[];
 		} catch (err: unknown) {
 			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations'));
+
+			conversationsFetchFailed.value = true;
 		} finally {
 			isLoadingConversations.value = false;
 		}
@@ -309,6 +323,8 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			conversations.value = conversations.value.filter((c) => c.id !== id);
 
+			delete drafts.value[id];
+
 			if (activeConversationId.value === id) {
 				activeConversationId.value = null;
 				messages.value = [];
@@ -447,6 +463,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isLoadingMessages,
 		messagesLoadedFor,
 		messagesFailedFor,
+		conversationsFetchFailed,
+		providerFetchFailed,
+		drafts,
 		isSending,
 		isProviderNotConfigured,
 		providerStatuses,

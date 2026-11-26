@@ -227,6 +227,8 @@ const {
 	conversations,
 	activeConversationId,
 	messagesLoadedFor,
+	conversationsFetchFailed,
+	providerFetchFailed,
 	isLoadingConversations,
 	isProviderNotConfigured,
 	providerStatuses,
@@ -354,6 +356,12 @@ const syncConversation = async (initial = false): Promise<void> => {
 const loadChatData = async (): Promise<void> => {
 	// The spaces only name a conversation's space: without them the chat works on and shows no space names
 	await Promise.all([fetchSpaces().catch(() => undefined), fetchProviderStatuses(), fetchTtsProviderStatuses(), fetchConversations()]);
+
+	// These reads report a failure through their flags rather than by throwing. Without the chats, an empty list would
+	// start a new chat; without the providers, the screen would lead to setup. Voice only adds the speaker buttons
+	if (conversationsFetchFailed.value || providerFetchFailed.value) {
+		throw new Error('The Buddy chats or providers could not be read');
+	}
 
 	chatDataLoaded.value = true;
 

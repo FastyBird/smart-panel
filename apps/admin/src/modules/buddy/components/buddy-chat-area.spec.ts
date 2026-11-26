@@ -55,8 +55,19 @@ const message = (index: number): IMessage => ({
 
 const messages = (count: number): IMessage[] => Array.from({ length: count }, (_, index) => message(index));
 
-const mountArea = (props: { messages: IMessage[]; loaded: boolean; failed?: boolean; isSending?: boolean }) =>
-	mount(BuddyChatArea, { props: { isSending: false, ...props } });
+// The parent keeps the draft (v-model:draft), as the conversation view does
+const mountArea = (props: { messages: IMessage[]; loaded: boolean; failed?: boolean; isSending?: boolean; draft?: string }) => {
+	const wrapper = mount(BuddyChatArea, {
+		props: {
+			isSending: false,
+			draft: '',
+			...props,
+			'onUpdate:draft': (value: string) => wrapper.setProps({ draft: value }),
+		},
+	});
+
+	return wrapper;
+};
 
 const shownIds = (wrapper: ReturnType<typeof mountArea>): string[] =>
 	wrapper.findAll('[data-message]').map((item) => item.attributes('data-message') as string);
@@ -116,6 +127,12 @@ describe('BuddyChatArea', () => {
 
 		expect(wrapper.emitted('send')).toEqual([['Turn on the lights']]);
 		expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('');
+	});
+
+	it('shows the draft the parent kept, so an unsent message outlives a change of layout', () => {
+		const wrapper = mountArea({ messages: messages(2), loaded: true, draft: 'Half-written question' });
+
+		expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('Half-written question');
 	});
 
 	it('does not send while an answer is on its way', async () => {

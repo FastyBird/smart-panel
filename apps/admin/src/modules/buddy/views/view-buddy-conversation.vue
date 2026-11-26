@@ -37,6 +37,7 @@
 						:is-sending="isSending"
 						:loaded="messagesLoadedFor === conversation.id"
 						:failed="messagesFailedFor === conversation.id"
+						:draft="drafts[conversation.id] ?? ''"
 						:is-tts-configured="isTtsConfigured"
 						:playing-message-id="playingMessageId"
 						:audio-loading="audioLoading"
@@ -44,6 +45,7 @@
 						@play-audio="playMessageAudio"
 						@stop-audio="stopAudio"
 						@retry="selectConversation(conversation.id)"
+						@update:draft="onDraft"
 					/>
 				</template>
 
@@ -118,6 +120,7 @@ const {
 	messages,
 	messagesLoadedFor,
 	messagesFailedFor,
+	drafts,
 	isSending,
 	isTtsConfigured,
 	playingMessageId,
@@ -137,6 +140,12 @@ const conversation = computed<IConversation | undefined>(() => {
 
 	return typeof id === 'string' ? conversations.value.find((c) => c.id === id) : undefined;
 });
+
+const onDraft = (value: string): void => {
+	if (conversation.value) {
+		drafts.value[conversation.value.id] = value;
+	}
+};
 
 const title = computed<string>(() => {
 	if (conversation.value) {
