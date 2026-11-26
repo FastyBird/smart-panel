@@ -147,11 +147,7 @@ describe('ListExtensions', () => {
 		const filters = defaultFilters();
 		const wrapper = mountList({ filters });
 
-		expect(
-			bar(wrapper)
-				.props('quickFilters')
-				.map((filter: { id: string }) => filter.id)
-		).toEqual(['kind', 'enabled', 'isCore']);
+		expect((bar(wrapper).props('quickFilters') ?? []).map((filter) => filter.id)).toEqual(['kind', 'enabled', 'isCore']);
 		expect(bar(wrapper).props('activeCount')).toBe(0);
 
 		bar(wrapper).vm.$emit('quick-filter', 'kind', ExtensionKind.module);
