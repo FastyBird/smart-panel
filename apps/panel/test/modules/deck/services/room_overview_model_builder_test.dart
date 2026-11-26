@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -339,7 +340,7 @@ void main() {
       });
 
       test(
-        'should show Custom as primary value when lights are on without intent',
+        'lights on without a known brightness show On, not a lighting mode',
         () {
           final input = RoomOverviewBuildInput(
             display: createDisplay(),
@@ -360,8 +361,200 @@ void main() {
           final lightsCard = model.domainCards.firstWhere(
             (c) => c.domain == DomainType.lights,
           );
-          expect(lightsCard.primaryValue, 'Custom');
+          expect(lightsCard.primaryValue, 'On');
+          expect(lightsCard.unit, isNull);
           expect(lightsCard.isActive, true);
+        },
+      );
+
+      test(
+        'lights show their brightness even while a lighting mode is active',
+        () {
+          final model = buildRoomOverviewModel(
+            RoomOverviewBuildInput(
+              display: createDisplay(),
+              room: createRoom(),
+              deviceCategories: [
+                DevicesModuleDeviceCategory.lighting,
+                DevicesModuleDeviceCategory.lighting,
+              ],
+              lightingState: LightingStateModel.fromJson({
+                'has_lights': true,
+                'detected_mode': 'relax',
+                'mode_confidence': 'exact',
+                'is_mode_from_intent': true,
+                'total_lights': 4,
+                'lights_on': 3,
+                'average_brightness': 50.4,
+              }, spaceId: _roomUuid),
+              scenes: [],
+              now: DateTime(2024, 6, 15, 12, 0),
+              localizations: _l,
+            ),
+          );
+          final card = model.domainCards.firstWhere(
+            (c) => c.domain == DomainType.lights,
+          );
+
+          // Cards show state, never a domain mode name (spec §9).
+          expect(card.primaryValue, '50');
+          expect(card.unit, ' %');
+          expect(card.primaryValue, isNot(_l.space_lighting_mode_relax));
+          expect(card.subtitle, _l.room_overview_lights_active(3, 4));
+          expect(card.actions.map((a) => a.label), ['Off', '50%', '100%']);
+          expect(card.actions.map((a) => a.selected), [false, true, false]);
+          // A narrow card keeps Off and On.
+          expect(card.compactActions.map((a) => a.type), [
+            QuickActionType.lightsOff,
+            QuickActionType.lightsOn,
+          ]);
+          expect(card.compactActions.last.selected, isTrue);
+        },
+      );
+
+      test('shading shows its position, never a covers mode', () {
+        final model = buildRoomOverviewModel(
+          RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.windowCovering],
+            coversState: CoversStateModel.fromJson({
+              'has_covers': true,
+              'detected_mode': 'privacy',
+              'is_mode_from_intent': true,
+              'average_position': 40,
+              'any_open': true,
+              'all_closed': false,
+            }, spaceId: _roomUuid),
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+          ),
+        );
+        final card = model.domainCards.firstWhere(
+          (c) => c.domain == DomainType.shading,
+        );
+
+        expect(card.primaryValue, '40');
+        expect(card.unit, ' %');
+        expect(card.primaryValue, isNot(_l.covers_mode_privacy));
+        // A narrow card keeps open and close as icons, with spoken labels.
+        expect(card.compactActions.map((a) => a.label), [null, null]);
+        expect(card.compactActions.map((a) => a.semanticLabel), [
+          _l.room_card_open_shading,
+          _l.room_card_close_shading,
+        ]);
+      });
+
+      test('climate shows the room temperature and what it is doing', () {
+        final model = buildRoomOverviewModel(
+          RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+            climateState: ClimateStateModel.fromJson({
+              'has_climate': true,
+              'mode': 'heat',
+              'current_temperature': 21.5,
+              'heating_setpoint': 22.0,
+              'supports_heating': true,
+              'is_heating': true,
+            }, spaceId: _roomUuid),
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+          ),
+        );
+        final card = model.domainCards.firstWhere(
+          (c) => c.domain == DomainType.climate,
+        );
+
+        expect(card.primaryValue, '21.5');
+        expect(card.unit, '\u00B0');
+        // The state line says what it does; the target sits under the value
+        // and screen readers hear both.
+        expect(card.subtitle, _l.thermostat_state_heating);
+        expect(card.target, '22\u00B0');
+        expect(card.spokenSubtitle, _l.thermostat_state_heating_to('22\u00B0'));
+        expect(card.actions.first.label, _l.thermostat_mode_heat);
+        expect(card.actions.first.selected, isTrue);
+        expect(card.compactActions.map((a) => a.type), [
+          QuickActionType.climateMinus,
+          QuickActionType.climatePlus,
+        ]);
+      });
+
+      test('an idle climate card speaks its target; an off one does not', () {
+        ClimateStateModel state(String mode) => ClimateStateModel.fromJson({
+          'has_climate': true,
+          'mode': mode,
+          'current_temperature': 21.5,
+          'heating_setpoint': 22.0,
+          'supports_heating': true,
+          'is_heating': false,
+        }, spaceId: _roomUuid);
+        DomainCardInfo card(String mode) => buildRoomOverviewModel(
+          RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+            climateState: state(mode),
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+          ),
+        ).domainCards.firstWhere((card) => card.domain == DomainType.climate);
+
+        final idle = card('heat');
+        expect(idle.subtitle, _l.thermostat_state_idling);
+        expect(idle.target, '22\u00B0');
+        expect(idle.spokenSubtitle, 'Idling, target 22\u00B0');
+
+        final off = card('off');
+        expect(off.target, isNull);
+        expect(off.spokenSubtitle, isNull);
+      });
+
+      test(
+        'a coverage warning reaches screen readers while heating to a target',
+        () {
+          for (final status in ['coverage_conflict', 'coverage_stale']) {
+            final model = buildRoomOverviewModel(
+              RoomOverviewBuildInput(
+                display: createDisplay(),
+                room: createRoom(),
+                deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+                climateState: ClimateStateModel.fromJson({
+                  'has_climate': true,
+                  'mode': 'heat',
+                  'current_temperature': null,
+                  'heating_setpoint': 22.0,
+                  'supports_heating': true,
+                  'is_heating': true,
+                  'temperature_contribution': {
+                    'status': status,
+                    'selected_property_ids': ['aggregate'],
+                    'unavailable_property_ids': ['aggregate'],
+                  },
+                }, spaceId: _roomUuid),
+                scenes: [],
+                now: DateTime(2024, 6, 15, 12, 0),
+                localizations: _l,
+              ),
+            );
+            final card = model.domainCards.firstWhere(
+              (card) => card.domain == DomainType.climate,
+            );
+            final warning = status == 'coverage_conflict'
+                ? _l.climate_temperature_coverage_conflict
+                : _l.climate_temperature_coverage_unavailable;
+
+            expect(card.subtitle, warning);
+            expect(card.target, isNull);
+            // No "Heating to 22°": the card reads the warning out instead.
+            expect(card.spokenSubtitle, isNull);
+            expect(card.spokenSubtitle ?? card.subtitle, warning);
+          }
         },
       );
 
@@ -409,7 +602,7 @@ void main() {
         },
       );
 
-      test('should show temperature with unit as climate primary value', () {
+      test('should show the room temperature as the climate value', () {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
@@ -425,7 +618,8 @@ void main() {
         final climateCard = model.domainCards.firstWhere(
           (c) => c.domain == DomainType.climate,
         );
-        expect(climateCard.primaryValue, '21.5\u00B0C');
+        expect(climateCard.primaryValue, '21.5');
+        expect(climateCard.unit, '\u00B0');
         expect(climateCard.isActive, true);
       });
     });
@@ -952,6 +1146,181 @@ void main() {
 
       expect(action.actionType, SuggestedActionType.turnOffLights);
       expect(action.sceneId, isNull);
+    });
+  });
+  group('optimisticCard', () {
+    DomainCardInfo lightsOff() => DomainCardInfo(
+      domain: DomainType.lights,
+      icon: DomainType.lights.icon,
+      title: 'Lights',
+      primaryValue: 'Off',
+      subtitle: '4 lights',
+      actions: [
+        QuickActionInfo(
+          type: QuickActionType.lightsOff,
+          icon: MdiIcons.lightbulbOff,
+          label: 'Off',
+          selected: true,
+        ),
+        QuickActionInfo(
+          type: QuickActionType.lightsHalf,
+          icon: MdiIcons.brightnessAuto,
+          label: '50%',
+        ),
+        QuickActionInfo(
+          type: QuickActionType.lightsFull,
+          icon: MdiIcons.brightness7,
+          label: '100%',
+        ),
+      ],
+      compactActions: [
+        QuickActionInfo(
+          type: QuickActionType.lightsOff,
+          icon: MdiIcons.lightbulbOff,
+          label: 'Off',
+          selected: true,
+        ),
+        QuickActionInfo(
+          type: QuickActionType.lightsOn,
+          icon: MdiIcons.lightbulbOn,
+          label: 'On',
+        ),
+      ],
+    );
+
+    test('On shows On at once and moves the selection to On', () {
+      final card = optimisticCard(
+        lightsOff(),
+        primaryValue: 'On',
+        isActive: true,
+      );
+
+      expect(card.primaryValue, 'On');
+      expect(card.unit, isNull);
+      expect(card.isActive, isTrue);
+      expect(card.compactActions.map((a) => a.selected), [false, true]);
+      expect(card.actions.map((a) => a.selected), [false, false, false]);
+    });
+
+    test(
+      'a new climate mode changes its spoken label with its visible one',
+      () {
+        final heat = DomainCardInfo(
+          domain: DomainType.climate,
+          icon: DomainType.climate.icon,
+          title: 'Climate',
+          primaryValue: '21.5',
+          unit: '\u00B0',
+          subtitle: 'Heating',
+          actions: [
+            QuickActionInfo(
+              type: QuickActionType.climateMode,
+              icon: MdiIcons.fire,
+              label: 'Heat',
+              selected: true,
+              semanticLabel: _l.room_card_climate_mode('Heat'),
+            ),
+          ],
+        );
+
+        final cool = optimisticCard(
+          heat,
+          climateMode: (
+            label: 'Cool',
+            icon: MdiIcons.snowflake,
+            semanticLabel: _l.room_card_climate_mode('Cool'),
+            on: true,
+          ),
+        );
+
+        expect(cool.actions.single.label, 'Cool');
+        expect(
+          cool.actions.single.semanticLabel,
+          _l.room_card_climate_mode('Cool'),
+        );
+        // The value and its unit stay.
+        expect((cool.primaryValue, cool.unit), ('21.5', '\u00B0'));
+      },
+    );
+
+    test('shading selections follow the position sent, keeping disabled', () {
+      QuickActionInfo action(
+        QuickActionType type, {
+        bool selected = false,
+        bool disabled = false,
+      }) => QuickActionInfo(
+        type: type,
+        icon: MdiIcons.arrowUp,
+        selected: selected,
+        disabled: disabled,
+      );
+      final closed = DomainCardInfo(
+        domain: DomainType.shading,
+        icon: DomainType.shading.icon,
+        title: 'Shading',
+        primaryValue: '0',
+        unit: ' %',
+        subtitle: 'Fully closed',
+        actions: [
+          action(QuickActionType.coversOpen),
+          action(QuickActionType.coversHalf, disabled: true),
+          action(QuickActionType.coversClose, selected: true),
+        ],
+        compactActions: [
+          action(QuickActionType.coversOpen),
+          action(QuickActionType.coversClose, selected: true),
+        ],
+      );
+
+      final opened = optimisticCard(
+        closed,
+        primaryValue: '100',
+        unit: ' %',
+        isActive: true,
+        shadingPosition: 100,
+      );
+
+      expect(opened.actions.map((a) => a.selected), [true, false, false]);
+      expect(opened.compactActions.map((a) => a.selected), [true, false]);
+      expect(opened.actions.map((a) => a.disabled), [false, true, false]);
+
+      final half = optimisticCard(closed, shadingPosition: 50);
+      expect(half.actions.map((a) => a.selected), [false, true, false]);
+      expect(half.compactActions.map((a) => a.selected), [false, false]);
+    });
+
+    test('a new climate target replaces the shown and spoken one', () {
+      DomainCardInfo climate({String? target}) => DomainCardInfo(
+        domain: DomainType.climate,
+        icon: DomainType.climate.icon,
+        title: 'Climate',
+        primaryValue: '21.5',
+        unit: '\u00B0',
+        target: target,
+        subtitle: target == null ? 'No temperature' : 'Heating',
+        spokenSubtitle: target == null
+            ? null
+            : _l.thermostat_state_heating_to(target),
+      );
+
+      final raised = optimisticCard(
+        climate(target: '22\u00B0'),
+        target: '23\u00B0',
+        spokenTarget: _l.thermostat_state_heating_to('23\u00B0'),
+      );
+      expect(raised.target, '23\u00B0');
+      expect(raised.spokenSubtitle, _l.thermostat_state_heating_to('23\u00B0'));
+      // The room temperature stays as measured.
+      expect((raised.primaryValue, raised.unit), ('21.5', '\u00B0'));
+
+      // A card showing no target (a coverage warning) does not get one.
+      final warned = optimisticCard(
+        climate(),
+        target: '23\u00B0',
+        spokenTarget: _l.thermostat_state_heating_to('23\u00B0'),
+      );
+      expect(warned.target, isNull);
+      expect(warned.spokenSubtitle, isNull);
     });
   });
 }

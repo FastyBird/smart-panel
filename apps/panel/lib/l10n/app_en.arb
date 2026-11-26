@@ -5149,7 +5149,7 @@
   "space_activity_partial": "Selected · some commands could not complete",
   "space_activity_failed": "Selected · commands failed",
   "space_activity_interrupted": "Selected · interrupted",
-  "space_activity_pending": "Sending request…",
+  "space_activity_pending": "Sending",
   "space_activity_details": "Mode details",
   "space_activity_security": "Security",
   "space_activity_commands_sent": "Commands completed",
@@ -5314,5 +5314,212 @@
   "outcome_details_note": "Results of the commands sent, not what the devices are doing now.",
   "@outcome_details_note": {
     "description": "Note under the rows of the outcome details sheet (spec §8)"
+  },
+  "sky_weather_open": "Weather, {condition}. Open forecast",
+  "@sky_weather_open": {
+    "description": "Screen reader label of the weather card on the sky; it opens the forecast",
+    "placeholders": {
+      "condition": {
+        "type": "String"
+      }
+    }
+  },
+  "room_card_open": "{title}, {value}. Open {title}",
+  "@room_card_open": {
+    "description": "Screen reader label of a domain card's head on the room overview",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "room_card_lower_target": "Lower the target temperature",
+  "@room_card_lower_target": {
+    "description": "Screen reader label of the climate card's minus quick action"
+  },
+  "room_card_raise_target": "Raise the target temperature",
+  "@room_card_raise_target": {
+    "description": "Screen reader label of the climate card's plus quick action"
+  },
+  "room_card_climate_mode": "Climate mode {mode}. Change",
+  "@room_card_climate_mode": {
+    "description": "Screen reader label of the climate card's mode quick action",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "room_card_open_shading": "Open shading",
+  "@room_card_open_shading": {
+    "description": "Screen reader label of the shading card's open quick action"
+  },
+  "room_card_close_shading": "Close shading",
+  "@room_card_close_shading": {
+    "description": "Screen reader label of the shading card's close quick action"
+  },
+  "room_card_media_play": "Play",
+  "@room_card_media_play": {
+    "description": "Screen reader label of the media card's play quick action"
+  },
+  "room_card_media_pause": "Pause",
+  "@room_card_media_pause": {
+    "description": "Screen reader label of the media card's pause quick action"
+  },
+  "room_card_media_stop": "Stop",
+  "@room_card_media_stop": {
+    "description": "Screen reader label of the media card's stop quick action"
+  },
+  "room_mode_title": "Room mode",
+  "@room_mode_title": {
+    "description": "The room mode control's label (spec §8)"
+  },
+  "room_mode_unavailable": "Modes are unavailable",
+  "@room_mode_unavailable": {
+    "description": "Room mode outcome when modes could not be loaded"
+  },
+  "room_mode_part_unfinished": "{domain} did not finish",
+  "@room_mode_part_unfinished": {
+    "description": "After 'Partial': the first part of the room mode that did not complete",
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "room_mode_button": "Room mode {mode}. Change room mode",
+  "@room_mode_button": {
+    "description": "Screen reader label of the Compact room mode button",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "room_mode_details_title": "Room mode: {mode}",
+  "@room_mode_details_title": {
+    "description": "Title of the room mode details layer",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "room_mode_retry": "Retry {mode}",
+  "@room_mode_retry": {
+    "description": "Action in the room mode details that sends the mode again (spec §8)",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "room_schedule_paused": "Schedule paused · clock not set",
+  "@room_schedule_paused": {
+    "description": "Room mode schedule line when the clock is not set"
+  },
+  "room_schedule_failed": "{mode} at {time} failed",
+  "@room_schedule_failed": {
+    "description": "Room mode schedule line when the last scheduled attempt failed or was interrupted; it never claims the mode did not start",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "room_schedule_at": "{mode} at {time}",
+  "@room_schedule_at": {
+    "description": "Room mode schedule line: the next scheduled mode (spec §8: 'Sleep at 22:30')",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "room_occupancy_unknown": "Occupancy unknown",
+  "@room_occupancy_unknown": {
+    "description": "Room mode occupancy line when occupancy is not known"
+  },
+  "room_occupancy_manual": "Manual · automation paused",
+  "@room_occupancy_manual": {
+    "description": "Room mode occupancy line while a manual selection pauses the automation"
+  },
+  "room_occupancy_automation_on": "automation on",
+  "@room_occupancy_automation_on": {
+    "description": "After 'Vacant' on the occupancy line: the occupancy automation is on"
+  },
+  "room_scene_run": "Run scene {name}",
+  "@room_scene_run": {
+    "description": "Screen reader label of a scene pill",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "room_energy_open": "Energy, {value}. Open energy",
+  "@room_energy_open": {
+    "description": "Screen reader label of the energy pill in the status strip",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "room_card_idling_target": "Idling, target {temperature}",
+  "@room_card_idling_target": {
+    "description": "Screen reader state of an idle climate card with its target",
+    "placeholders": {
+      "temperature": {
+        "type": "String",
+        "example": "22°"
+      }
+    }
+  },
+  "room_overview_error_title": "This room did not load",
+  "@room_overview_error_title": {
+    "description": "Room overview error title (design canvas)"
+  },
+  "room_overview_error_message": "The gateway answered with an error. The clock and weather still work.",
+  "@room_overview_error_message": {
+    "description": "Room overview error line (design canvas)"
+  },
+  "room_overview_try_again": "Try again",
+  "@room_overview_try_again": {
+    "description": "Room overview error action (design canvas)"
+  },
+  "room_overview_empty_title": "Nothing to control here",
+  "@room_overview_empty_title": {
+    "description": "Room overview empty state: devices but no domain cards (spec §8)"
+  },
+  "room_overview_empty_message": "Lights, climate, shading and media appear here once they are in this room.",
+  "@room_overview_empty_message": {
+    "description": "Room overview empty state line"
+  },
+  "room_overview_not_set_up_title": "This room is not set up yet",
+  "@room_overview_not_set_up_title": {
+    "description": "Room overview when the room has no devices at all (spec §8)"
+  },
+  "room_overview_not_set_up_message": "Add devices to this room in the admin app and give them a role, and they will show up here.",
+  "@room_overview_not_set_up_message": {
+    "description": "Room overview line when the room has no devices at all"
+  },
+  "sky_room_readings": "In the room: {readings}",
+  "@sky_room_readings": {
+    "description": "Screen reader label of the sky card that holds only the room readings (no weather location)",
+    "placeholders": {
+      "readings": {
+        "type": "String"
+      }
+    }
   }
 }

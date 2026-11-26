@@ -135,7 +135,11 @@ class ClimateStateModel {
       hasClimate && (supportsHeating || supportsCooling);
 
   /// Get the effective target temperature based on mode
-  double? get effectiveTargetTemperature {
+  double? get effectiveTargetTemperature => targetFor(mode);
+
+  /// The target [mode] works to: the heating setpoint for Heat, the cooling
+  /// one for Cool, their midpoint for Auto.
+  double? targetFor(ClimateMode? mode) {
     switch (mode) {
       case ClimateMode.heat:
         return heatingSetpoint;

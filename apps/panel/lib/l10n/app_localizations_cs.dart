@@ -4862,7 +4862,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get space_activity_interrupted => 'Vybráno · přerušeno';
 
   @override
-  String get space_activity_pending => 'Odesílání požadavku…';
+  String get space_activity_pending => 'Odesílání';
 
   @override
   String get space_activity_details => 'Podrobnosti režimu';
@@ -5156,4 +5156,133 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get outcome_details_note =>
       'Výsledky odeslaných příkazů, ne to, co zařízení dělají právě teď.';
+
+  @override
+  String sky_weather_open(String condition) {
+    return 'Počasí, $condition. Otevřít předpověď';
+  }
+
+  @override
+  String room_card_open(String title, String value) {
+    return '$title, $value. Otevřít $title';
+  }
+
+  @override
+  String get room_card_lower_target => 'Snížit cílovou teplotu';
+
+  @override
+  String get room_card_raise_target => 'Zvýšit cílovou teplotu';
+
+  @override
+  String room_card_climate_mode(String mode) {
+    return 'Režim klimatu $mode. Změnit';
+  }
+
+  @override
+  String get room_card_open_shading => 'Otevřít stínění';
+
+  @override
+  String get room_card_close_shading => 'Zavřít stínění';
+
+  @override
+  String get room_card_media_play => 'Přehrát';
+
+  @override
+  String get room_card_media_pause => 'Pozastavit';
+
+  @override
+  String get room_card_media_stop => 'Zastavit';
+
+  @override
+  String get room_mode_title => 'Režim místnosti';
+
+  @override
+  String get room_mode_unavailable => 'Režimy nejsou k dispozici';
+
+  @override
+  String room_mode_part_unfinished(String domain) {
+    return '$domain nedokončeno';
+  }
+
+  @override
+  String room_mode_button(String mode) {
+    return 'Režim místnosti $mode. Změnit režim místnosti';
+  }
+
+  @override
+  String room_mode_details_title(String mode) {
+    return 'Režim místnosti: $mode';
+  }
+
+  @override
+  String room_mode_retry(String mode) {
+    return 'Zkusit znovu: $mode';
+  }
+
+  @override
+  String get room_schedule_paused =>
+      'Plán pozastaven · hodiny nejsou nastaveny';
+
+  @override
+  String room_schedule_failed(String mode, String time) {
+    return '$mode v $time selhal';
+  }
+
+  @override
+  String room_schedule_at(String mode, String time) {
+    return '$mode v $time';
+  }
+
+  @override
+  String get room_occupancy_unknown => 'Obsazenost neznámá';
+
+  @override
+  String get room_occupancy_manual => 'Ručně · automatika pozastavena';
+
+  @override
+  String get room_occupancy_automation_on => 'automatika zapnutá';
+
+  @override
+  String room_scene_run(String name) {
+    return 'Spustit scénu $name';
+  }
+
+  @override
+  String room_energy_open(String value) {
+    return 'Energie, $value. Otevřít energii';
+  }
+
+  @override
+  String room_card_idling_target(String temperature) {
+    return 'V klidu, cíl $temperature';
+  }
+
+  @override
+  String get room_overview_error_title => 'Místnost se nenačetla';
+
+  @override
+  String get room_overview_error_message =>
+      'Brána odpověděla chybou. Hodiny a počasí fungují dál.';
+
+  @override
+  String get room_overview_try_again => 'Zkusit znovu';
+
+  @override
+  String get room_overview_empty_title => 'Není tu co ovládat';
+
+  @override
+  String get room_overview_empty_message =>
+      'Světla, klima, stínění a média se tu objeví, jakmile budou v této místnosti.';
+
+  @override
+  String get room_overview_not_set_up_title => 'Místnost zatím není nastavená';
+
+  @override
+  String get room_overview_not_set_up_message =>
+      'Přidejte do této místnosti zařízení v administraci a přiřaďte jim roli, pak se tu objeví.';
+
+  @override
+  String sky_room_readings(String readings) {
+    return 'V místnosti: $readings';
+  }
 }

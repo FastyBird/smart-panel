@@ -13,7 +13,8 @@ import 'package:fastybird_smart_panel/plugins/spaces-home-control/module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/occupancy_section.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/room_mode.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/occupancy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -344,17 +345,28 @@ void main() {
     'renders manual presence and real vacant/unknown transitions without control buttons',
     (tester) async {
       await tester.runAsync(() => repository.bind('room'));
+      final l = lookupAppLocalizations(const Locale('en'));
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: OccupancySection(spaceId: 'room', repository: repository),
+            body: RoomModeDetails(
+              sources: RoomModeSources(
+                spaceId: 'room',
+                activity: ActivityModesRepository(dio: dio),
+                occupancy: repository,
+              ),
+              automations: false,
+              sizeClass: ScreenSizeClass.regular,
+            ),
           ),
         ),
       );
       await tester.pumpAndSettle();
       expect(find.text('Occupied'), findsOneWidget);
+      // The overview's line: a manual selection pauses the automation.
+      expect(roomOccupancyLine(l, repository), 'Manual · automation paused');
       expect(find.byKey(const ValueKey('occupancy-manual')), findsOneWidget);
       expect(find.byType(ElevatedButton), findsNothing);
       adapter.status = 'vacant';
@@ -363,10 +375,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Vacant'), findsOneWidget);
       expect(find.byKey(const ValueKey('occupancy-automatic')), findsOneWidget);
+      expect(roomOccupancyLine(l, repository), 'Vacant · automation on');
       repository.markStale();
       await tester.pump();
       expect(find.text('Occupancy unknown or unavailable'), findsOneWidget);
       expect(find.text('Vacant'), findsNothing);
+      expect(roomOccupancyLine(l, repository), 'Occupancy unknown');
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -375,13 +389,26 @@ void main() {
     (tester) async {
       adapter.enabled = false;
       final registry = OccupancyRegistry(dio: dio);
+      final activities = ActivityModesRegistry(dio: Dio());
       locator.registerSingleton(registry);
+      locator.registerSingleton(activities);
       try {
         await tester.pumpWidget(
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const Scaffold(body: OccupancySection(spaceId: 'room')),
+            home: Scaffold(
+              body: RoomModeScope(
+                spaceId: 'room',
+                builder: (context, sources) => sources == null
+                    ? const SizedBox.shrink()
+                    : RoomModeDetails(
+                        sources: sources,
+                        automations: false,
+                        sizeClass: ScreenSizeClass.regular,
+                      ),
+              ),
+            ),
           ),
         );
         await tester.runAsync(() => Future<void>.delayed(Duration.zero));
@@ -397,7 +424,9 @@ void main() {
         expect(adapter.requests.length, count);
       } finally {
         registry.dispose();
+        activities.dispose();
         locator.unregister<OccupancyRegistry>();
+        locator.unregister<ActivityModesRegistry>();
       }
     },
   );

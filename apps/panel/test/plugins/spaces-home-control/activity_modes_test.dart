@@ -19,7 +19,8 @@ import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/activity_modes_section.dart';
+import 'package:fastybird_smart_panel/core/widgets/outcome_details_sheet.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/room_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -90,6 +91,35 @@ DisplayModel activityDisplayFor(String spaceId) => DisplayModel(
   createdAt: DateTime(2026, 1, 1),
 );
 
+/// The room mode as the overview shows it on Regular: the chip row with
+/// its outcome and details button.
+Widget roomMode({
+  Key? key,
+  required String spaceId,
+  ActivityModesRepository? repository,
+}) => RoomModeScope(
+  key: key,
+  spaceId: spaceId,
+  sources: repository == null
+      ? null
+      : RoomModeSources(spaceId: spaceId, activity: repository),
+  builder: (context, sources) =>
+      sources == null || !RoomModeStatus.visible(sources.activity)
+      ? const SizedBox.shrink()
+      : RoomModePanel(
+          sources: sources,
+          sizeClass: ScreenSizeClass.regular,
+          landscape: false,
+        ),
+);
+
+RoomModeChip chipOf(WidgetTester tester, String label) =>
+    tester.widget<RoomModeChip>(find.widgetWithText(RoomModeChip, label));
+
+bool attentionOf(WidgetTester tester) => tester
+    .widget<RoomModeDetailsButton>(find.byType(RoomModeDetailsButton))
+    .attention;
+
 Widget retainedActivityViews(
   ActivityModesRepository first,
   ActivityModesRepository second,
@@ -101,12 +131,12 @@ Widget retainedActivityViews(
     body: IndexedStack(
       index: index,
       children: [
-        ActivityModesSection(
+        roomMode(
           key: const ValueKey('retained-first'),
           spaceId: space,
           repository: first,
         ),
-        ActivityModesSection(
+        roomMode(
           key: const ValueKey('retained-second'),
           spaceId: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c9',
           repository: second,
@@ -217,6 +247,26 @@ class ActivityAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+/// Counts the sessions the scope opens and releases.
+class CountingActivityModesRegistry extends ActivityModesRegistry {
+  CountingActivityModesRegistry({required super.dio});
+
+  int live = 0;
+
+  @override
+  ActivityModesRepository create() {
+    live++;
+
+    return super.create();
+  }
+
+  @override
+  void release(ActivityModesRepository session) {
+    live--;
+    super.release(session);
+  }
 }
 
 void main() {
@@ -544,15 +594,16 @@ void main() {
         expect(second.canSubmit, isTrue);
         expect(first.state, isNull);
         expect(second.state, isNull);
+        // Work, Relax and Manual.
         final chips = find.descendant(
           of: find.byKey(const ValueKey('retained-first')),
-          matching: find.byType(FilterChip),
+          matching: find.byType(RoomModeChip),
         );
-        expect(chips, findsNWidgets(2));
+        expect(chips, findsNWidgets(3));
         expect(
           tester
-              .widgetList<FilterChip>(chips)
-              .every((chip) => chip.onSelected != null),
+              .widgetList<RoomModeChip>(chips)
+              .every((chip) => chip.onTap != null),
           isTrue,
         );
         await tester.runAsync(() async {
@@ -702,8 +753,8 @@ void main() {
             home: Scaffold(
               body: Column(
                 children: [
-                  ActivityModesSection(spaceId: space, repository: first),
-                  ActivityModesSection(spaceId: other, repository: second),
+                  roomMode(spaceId: space, repository: first),
+                  roomMode(spaceId: other, repository: second),
                 ],
               ),
             ),
@@ -815,12 +866,12 @@ void main() {
     },
   );
 
-  for (final scenario in <(String?, String)>[
-    ('active', 'Selected · commands completed'),
-    ('failed', 'Selected · commands failed'),
-    ('interrupted', 'Selected · interrupted'),
-    ('deactivated', 'Manual'),
-    (null, 'Manual'),
+  for (final scenario in <(String?, String?)>[
+    ('active', 'Completed'),
+    ('failed', 'Failed'),
+    ('interrupted', 'Replaced by a newer request'),
+    ('deactivated', null),
+    (null, null),
   ]) {
     testWidgets(
       'actual section displays persisted ${scenario.$1 ?? 'null'} state',
@@ -838,24 +889,26 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
-              body: ActivityModesSection(
-                spaceId: space,
-                repository: repository,
-              ),
+              body: roomMode(spaceId: space, repository: repository),
             ),
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text(scenario.$2), findsOneWidget);
-        final work = tester.widget<FilterChip>(
-          find.widgetWithText(FilterChip, 'Work'),
-        );
-        expect(work.selected, status != null && status != 'deactivated');
+        if (scenario.$2 != null) {
+          expect(find.text(scenario.$2!), findsOneWidget);
+        }
+        // A failed request leaves no chip selected; no selection is Manual.
         expect(
-          find.byIcon(Icons.warning_amber_rounded),
-          status == 'failed' || status == 'interrupted'
-              ? findsOneWidget
-              : findsNothing,
+          chipOf(tester, 'Work').selected,
+          status == 'active' || status == 'interrupted',
+        );
+        expect(
+          chipOf(tester, 'Manual').selected,
+          status == null || status == 'deactivated',
+        );
+        expect(
+          attentionOf(tester),
+          status == 'failed' || status == 'interrupted',
         );
         expect(
           adapter.requests.every((request) => request.method == 'GET'),
@@ -875,14 +928,14 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: ActivityModesSection(spaceId: space, repository: repository),
+            body: roomMode(spaceId: space, repository: repository),
           ),
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(FilterChip, 'Away'), findsNothing);
-      expect(find.text('Away · Selected · commands completed'), findsOneWidget);
-      expect(find.widgetWithText(ActionChip, 'Manual'), findsOneWidget);
+      expect(find.widgetWithText(RoomModeChip, 'Away'), findsNothing);
+      expect(find.text('Away · Completed'), findsOneWidget);
+      expect(chipOf(tester, 'Manual').selected, isFalse);
       expect(
         adapter.requests.every((request) => request.method == 'GET'),
         isTrue,
@@ -899,7 +952,7 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: ActivityModesSection(spaceId: space, repository: repository),
+            body: roomMode(spaceId: space, repository: repository),
           ),
         ),
       );
@@ -908,13 +961,11 @@ void main() {
       await tester.tap(find.text('Work'));
       await tester.pump(const Duration(milliseconds: 1));
       expect(repository.busy, isTrue);
-      expect(find.text('Sending request…'), findsOneWidget);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      final work = tester.widget<FilterChip>(
-        find.widgetWithText(FilterChip, 'Work'),
-      );
+      expect(find.text('Sending'), findsOneWidget);
+      final work = chipOf(tester, 'Work');
       expect(work.selected, isFalse);
-      expect(work.onSelected, isNull);
+      expect(work.busy, isTrue);
+      expect(work.onTap, isNull);
       await tester.tap(find.text('Relax'));
       await tester.pump(const Duration(milliseconds: 1));
       expect(
@@ -924,17 +975,9 @@ void main() {
       adapter.postGate!.complete();
       await tester.pumpAndSettle();
       expect(repository.busy, isFalse);
-      expect(find.text('Sending request…'), findsNothing);
-      expect(
-        tester
-            .widget<FilterChip>(find.widgetWithText(FilterChip, 'Work'))
-            .selected,
-        isTrue,
-      );
-      expect(
-        find.text('Selected · some commands could not complete'),
-        findsOneWidget,
-      );
+      expect(find.text('Sending'), findsNothing);
+      expect(chipOf(tester, 'Work').selected, isTrue);
+      expect(find.text('Partial · Climate did not finish'), findsOneWidget);
       final post = adapter.requests.singleWhere(
         (request) => request.method == 'POST',
       );
@@ -959,7 +1002,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: ActivityModesSection(spaceId: space, repository: repository),
+          body: roomMode(spaceId: space, repository: repository),
         ),
       ),
     );
@@ -994,14 +1037,13 @@ void main() {
             home: Scaffold(
               body: Column(
                 children: [
-                  const ActivityModesSection(spaceId: space),
+                  roomMode(spaceId: space),
                   Builder(
                     builder: (context) => TextButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const Scaffold(
-                            body: ActivityModesSection(spaceId: secondSpace),
-                          ),
+                          builder: (_) =>
+                              Scaffold(body: roomMode(spaceId: secondSpace)),
                         ),
                       ),
                       child: const Text('Open other room'),
@@ -1013,51 +1055,71 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(
-          find.text('Selected · some commands could not complete'),
-          findsOneWidget,
-        );
-        expect(
-          tester
-              .widget<FilterChip>(find.widgetWithText(FilterChip, 'Work'))
-              .selected,
-          isTrue,
-        );
+        expect(find.text('Partial · Climate did not finish'), findsOneWidget);
+        expect(chipOf(tester, 'Work').selected, isTrue);
         await tester.tap(find.text('Open other room'));
         await tester.pumpAndSettle();
-        expect(find.text('Selected · commands failed'), findsOneWidget);
+        // A failed request selects no chip; its space keeps its own state.
+        expect(find.text('Failed'), findsOneWidget);
+        expect(chipOf(tester, 'Relax').selected, isFalse);
+        expect(attentionOf(tester), isTrue);
         expect(
-          tester
-              .widget<FilterChip>(find.widgetWithText(FilterChip, 'Relax'))
-              .selected,
-          isTrue,
-        );
-        expect(
-          find.byType(ActivityModesSection, skipOffstage: false),
+          find.byType(RoomModeScope, skipOffstage: false),
           findsNWidgets(2),
         );
         navigator.currentState!.pop();
         await tester.pumpAndSettle();
-        expect(
-          find.text('Selected · some commands could not complete'),
-          findsOneWidget,
-        );
-        expect(
-          tester
-              .widget<FilterChip>(find.widgetWithText(FilterChip, 'Work'))
-              .selected,
-          isTrue,
-        );
-        expect(
-          tester
-              .widget<FilterChip>(find.widgetWithText(FilterChip, 'Relax'))
-              .selected,
-          isFalse,
-        );
+        expect(find.text('Partial · Climate did not finish'), findsOneWidget);
+        expect(chipOf(tester, 'Work').selected, isTrue);
+        expect(chipOf(tester, 'Relax').selected, isFalse);
         expect(
           adapter.requests.every((request) => request.method == 'GET'),
           isTrue,
         );
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        locator.unregister<ActivityModesRegistry>();
+        registry.dispose();
+      }
+    },
+  );
+
+  testWidgets(
+    'the scope opens its own sessions when sources go away and releases them '
+    'when sources come back',
+    (tester) async {
+      final registry = CountingActivityModesRegistry(dio: dio);
+      locator.registerSingleton<ActivityModesRegistry>(registry);
+      Widget app({ActivityModesRepository? supplied}) => MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: roomMode(
+            key: const ValueKey('scope'),
+            spaceId: space,
+            repository: supplied,
+          ),
+        ),
+      );
+      try {
+        await tester.runAsync(() => repository.bind(space));
+        await tester.pumpWidget(app(supplied: repository));
+        await tester.pumpAndSettle();
+        expect(registry.live, 0);
+        expect(find.byType(RoomModeChip), findsWidgets);
+
+        // Same scope, no sources: it opens and binds its own.
+        await tester.pumpWidget(app());
+        await tester.pumpAndSettle();
+        expect(registry.live, 1);
+        expect(find.byType(RoomModeChip), findsWidgets);
+
+        // Sources again: its own are released, so they stop polling.
+        await tester.pumpWidget(app(supplied: repository));
+        await tester.pumpAndSettle();
+        expect(registry.live, 0);
+        expect(find.byType(RoomModeChip), findsWidgets);
         expect(tester.takeException(), isNull);
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
@@ -1083,18 +1145,15 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: ActivityModesSection(spaceId: space, repository: repository),
+            body: roomMode(spaceId: space, repository: repository),
           ),
         ),
       );
       await tester.pump();
-      expect(
-        find.text(
-          'Request unconfirmed. Check the current selection before trying again.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Sending request…'), findsNothing);
+      // Not confirmed never looks like Sending.
+      expect(find.text('Not confirmed'), findsOneWidget);
+      expect(find.text('Sending'), findsNothing);
+      expect(attentionOf(tester), isTrue);
       expect(
         adapter.requests.where((request) => request.method == 'POST').length,
         1,
@@ -1129,18 +1188,30 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: ActivityModesSection(spaceId: space, repository: repository),
+            body: roomMode(spaceId: space, repository: repository),
           ),
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Mode details'));
+      await tester.tap(find.byType(RoomModeDetailsButton));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(find.text('Unknown: Unknown'), findsOneWidget);
-      expect(find.textContaining('Security:'), findsNothing);
-      expect(find.textContaining('Commands sent'), findsNothing);
-      await tester.tap(find.text('Close'));
+      // The unknown part is named Unknown with an Unknown status.
+      final details = find.byType(RoomModeDetails);
+      final rows = find.byType(OutcomeDetailsList);
+      expect(
+        find.descendant(
+          of: rows,
+          matching: find.textContaining('Unknown', findRichText: true),
+        ),
+        findsNWidgets(2),
+      );
+      expect(find.text('Security'), findsNothing);
+      expect(
+        find.textContaining('Completed', findRichText: true),
+        findsNothing,
+      );
+      Navigator.of(tester.element(details)).pop();
       await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -1158,7 +1229,7 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: ActivityModesSection(spaceId: space, repository: repository),
+            body: roomMode(spaceId: space, repository: repository),
           ),
         ),
       );
@@ -1169,18 +1240,29 @@ void main() {
         tester.getTopLeft(find.text('Work')).dx,
         lessThan(tester.getTopLeft(find.text('Relax')).dx),
       );
+      // Manual comes last.
       expect(
-        find.text('Selected · some commands could not complete'),
+        tester.getTopLeft(find.text('Relax')).dx,
+        lessThan(tester.getTopLeft(find.text('Manual')).dx),
+      );
+      expect(find.text('Partial · Climate did not finish'), findsOneWidget);
+      await tester.tap(find.byType(RoomModeDetailsButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Room mode: Work'), findsOneWidget);
+      expect(
+        find.textContaining('Not supported', findRichText: true),
         findsOneWidget,
       );
-      await tester.tap(find.byTooltip('Mode details'));
+      expect(find.text('Retry Work'), findsOneWidget);
+      Navigator.of(tester.element(find.byType(RoomModeDetails))).pop();
       await tester.pumpAndSettle();
-      expect(find.textContaining('Not supported'), findsOneWidget);
-      await tester.tap(find.text('Close'));
+      // The selected chip does nothing; Manual clears the selection.
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
+      expect(adapter.requests.where((r) => r.method == 'POST'), isEmpty);
       // Gesture callbacks run in the widget binding's fake zone. Pump its
       // scheduled Dio work instead of awaiting a real-zone completer.
-      await tester.tap(find.text('Work'));
+      await tester.tap(find.text('Manual'));
       await tester.pumpAndSettle();
       expect(repository.busy, isFalse);
       expect(adapter.requests.last.data, {

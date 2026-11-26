@@ -4868,7 +4868,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get space_activity_interrupted => 'Seleccionado · interrumpido';
 
   @override
-  String get space_activity_pending => 'Enviando solicitud…';
+  String get space_activity_pending => 'Enviando';
 
   @override
   String get space_activity_details => 'Detalles del modo';
@@ -5172,4 +5172,133 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get outcome_details_note =>
       'Resultados de los comandos enviados, no lo que hacen los dispositivos ahora.';
+
+  @override
+  String sky_weather_open(String condition) {
+    return 'Tiempo, $condition. Abrir previsión';
+  }
+
+  @override
+  String room_card_open(String title, String value) {
+    return '$title, $value. Abrir $title';
+  }
+
+  @override
+  String get room_card_lower_target => 'Bajar la temperatura objetivo';
+
+  @override
+  String get room_card_raise_target => 'Subir la temperatura objetivo';
+
+  @override
+  String room_card_climate_mode(String mode) {
+    return 'Modo de clima $mode. Cambiar';
+  }
+
+  @override
+  String get room_card_open_shading => 'Abrir persianas';
+
+  @override
+  String get room_card_close_shading => 'Cerrar persianas';
+
+  @override
+  String get room_card_media_play => 'Reproducir';
+
+  @override
+  String get room_card_media_pause => 'Pausa';
+
+  @override
+  String get room_card_media_stop => 'Detener';
+
+  @override
+  String get room_mode_title => 'Modo de la habitación';
+
+  @override
+  String get room_mode_unavailable => 'Los modos no están disponibles';
+
+  @override
+  String room_mode_part_unfinished(String domain) {
+    return '$domain no terminó';
+  }
+
+  @override
+  String room_mode_button(String mode) {
+    return 'Modo de la habitación $mode. Cambiar el modo';
+  }
+
+  @override
+  String room_mode_details_title(String mode) {
+    return 'Modo de la habitación: $mode';
+  }
+
+  @override
+  String room_mode_retry(String mode) {
+    return 'Reintentar $mode';
+  }
+
+  @override
+  String get room_schedule_paused => 'Programa en pausa · reloj sin ajustar';
+
+  @override
+  String room_schedule_failed(String mode, String time) {
+    return '$mode a las $time falló';
+  }
+
+  @override
+  String room_schedule_at(String mode, String time) {
+    return '$mode a las $time';
+  }
+
+  @override
+  String get room_occupancy_unknown => 'Ocupación desconocida';
+
+  @override
+  String get room_occupancy_manual => 'Manual · automatización en pausa';
+
+  @override
+  String get room_occupancy_automation_on => 'automatización activa';
+
+  @override
+  String room_scene_run(String name) {
+    return 'Ejecutar la escena $name';
+  }
+
+  @override
+  String room_energy_open(String value) {
+    return 'Energía, $value. Abrir energía';
+  }
+
+  @override
+  String room_card_idling_target(String temperature) {
+    return 'En reposo, objetivo $temperature';
+  }
+
+  @override
+  String get room_overview_error_title => 'La habitación no se cargó';
+
+  @override
+  String get room_overview_error_message =>
+      'La pasarela respondió con un error. El reloj y el tiempo siguen funcionando.';
+
+  @override
+  String get room_overview_try_again => 'Intentar de nuevo';
+
+  @override
+  String get room_overview_empty_title => 'Aquí no hay nada que controlar';
+
+  @override
+  String get room_overview_empty_message =>
+      'Las luces, el clima, las persianas y los medios aparecen aquí cuando estén en esta habitación.';
+
+  @override
+  String get room_overview_not_set_up_title =>
+      'La habitación aún no está configurada';
+
+  @override
+  String get room_overview_not_set_up_message =>
+      'Añade dispositivos a esta habitación en la app de administración y asígnales un rol; aparecerán aquí.';
+
+  @override
+  String sky_room_readings(String readings) {
+    return 'En la habitación: $readings';
+  }
 }
