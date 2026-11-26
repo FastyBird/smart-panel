@@ -11,9 +11,11 @@ import SystemLogsList from './system-logs-list.vue';
 
 enableAutoUnmount(afterEach);
 
+const i18n = vi.hoisted(() => ({ locale: { value: 'en-US' } }));
+
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
-	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
+	useI18n: () => ({ t: (key: string) => key, locale: i18n.locale }),
 }));
 
 const entry = (id: string, overrides: Partial<ILogEntry> = {}): ILogEntry =>
@@ -98,5 +100,49 @@ describe('SystemLogsList', () => {
 		await wrapper.get('[data-test-id="system-logs-error"] button').trigger('click');
 
 		expect(wrapper.emitted('retry')).toHaveLength(1);
+	});
+
+	it('keeps Load more when the filters match none of the entries read so far', async () => {
+		const wrapper = mountList({ filtersActive: true, hasMore: true });
+
+		await wrapper.get('[data-test-id="system-logs-no-matches-load-more"]').trigger('click');
+
+		expect(wrapper.emitted('load-more')).toHaveLength(1);
+
+		await wrapper.setProps({ hasMore: false });
+
+		expect(wrapper.find('[data-test-id="system-logs-no-matches-load-more"]').exists()).toBe(false);
+	});
+
+	describe('relative times', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+			i18n.locale.value = 'en-US';
+		});
+
+		const time = (wrapper: ReturnType<typeof mountList>): string => wrapper.get('[data-test-id="system-logs-row"] time').text();
+
+		it('says them in the interface language', () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(new Date('2026-11-26T10:05:00.000Z'));
+
+			i18n.locale.value = 'cs-CZ';
+
+			expect(time(mountList({ items: [entry('a')] }))).toBe(new Intl.RelativeTimeFormat('cs-CZ', { numeric: 'auto' }).format(-5, 'minute'));
+		});
+
+		it('moves them on while the list stays open', async () => {
+			vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+			vi.setSystemTime(new Date('2026-11-26T10:00:10.000Z'));
+
+			const wrapper = mountList({ items: [entry('a')] });
+			const format = new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' });
+
+			expect(time(wrapper)).toBe(format.format(0, 'second'));
+
+			await vi.advanceTimersByTimeAsync(10 * 60_000);
+
+			expect(time(wrapper)).toBe(format.format(-10, 'minute'));
+		});
 	});
 });

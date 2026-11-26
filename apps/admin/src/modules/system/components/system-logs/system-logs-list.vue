@@ -30,7 +30,16 @@
 		:title="t('systemModule.texts.systemLogs.noFilteredLogs')"
 		data-test-id="system-logs-no-matches"
 	>
+		<!-- The filters apply to the entries read so far: older ones may still match, so Load more stays -->
 		<template #action>
+			<el-button
+				v-if="props.hasMore"
+				:loading="props.loading"
+				data-test-id="system-logs-no-matches-load-more"
+				@click="emit('load-more')"
+			>
+				{{ t('systemModule.buttons.loadMore.title') }}
+			</el-button>
 			<el-button
 				plain
 				@click="emit('reset-filters')"
@@ -127,9 +136,10 @@ import { useI18n } from 'vue-i18n';
 
 import { ElButton } from 'element-plus';
 
-import { formatTimeAgo } from '@vueuse/core';
+import { useNow } from '@vueuse/core';
 
 import { StateView, StatusTag } from '../../../../common';
+import { formatRelativeTime } from '../../../notifications/notifications.utils';
 import type { ILogEntry } from '../../store/logs-entries.store.types';
 import { logLevelStatus } from '../../utils/system.utils';
 
@@ -153,7 +163,10 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n();
 
-const formatRelative = (iso: string): string => formatTimeAgo(new Date(iso));
+// The relative times move on while the list stays open, live tail or not
+const now = useNow({ interval: 30_000 });
+
+const formatRelative = (iso: string): string => formatRelativeTime(new Date(iso), locale.value, now.value);
 
 const formatFull = (iso: string): string => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(iso));
 </script>

@@ -60,6 +60,13 @@ describe('UpdateStatus state', () => {
 		expect(tag().props()).toMatchObject({ status: 'info', label: 'systemModule.texts.update.noVersionInfo' });
 	});
 
+	it('does not call the system up to date when the latest version could not be looked up', () => {
+		// The backend answers a failed upstream lookup with the installed version, no latest one and no update
+		currentVersion.value = '1.1.0';
+
+		expect(tag().props()).toMatchObject({ status: 'info', label: 'systemModule.texts.update.noVersionInfo' });
+	});
+
 	it('is up to date only after an answer without an update', () => {
 		currentVersion.value = '1.1.0';
 		latestVersion.value = '1.1.0';
