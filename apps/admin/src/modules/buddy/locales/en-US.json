@@ -224,7 +224,8 @@
 		"loading": "Loading providers...",
 		"aria": {
 			"enable": "Enable {name}"
-		}
+		},
+		"providersFailed": "The AI providers could not be loaded"
 	},
 	"meta": {
 		"settings": {

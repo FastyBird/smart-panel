@@ -248,8 +248,8 @@ const chatDataFailed = ref(false);
 
 const isCreating = ref(false);
 
-// The module is on and a provider can answer
-const chatAvailable = computed<boolean>(() => isModuleEnabled.value && !isProviderNotConfigured.value);
+// The module is on, the chats were read and a provider can answer
+const chatAvailable = computed<boolean>(() => isModuleEnabled.value && !chatDataFailed.value && !isProviderNotConfigured.value);
 
 // The open conversation is the conversation route's: the list, a shared link and New chat all open the same route
 const detailId = computed<string | null>((): string | null =>

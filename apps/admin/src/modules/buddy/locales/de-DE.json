@@ -224,7 +224,8 @@
 		"loading": "Anbieter werden geladen...",
 		"aria": {
 			"enable": "{name} aktivieren"
-		}
+		},
+		"providersFailed": "Die KI-Anbieter konnten nicht geladen werden"
 	},
 	"meta": {
 		"settings": {

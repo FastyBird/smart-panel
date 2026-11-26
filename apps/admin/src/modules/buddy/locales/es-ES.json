@@ -224,7 +224,8 @@
 		"loading": "Cargando proveedores...",
 		"aria": {
 			"enable": "Activar {name}"
-		}
+		},
+		"providersFailed": "No se pudieron cargar los proveedores de IA"
 	},
 	"meta": {
 		"settings": {

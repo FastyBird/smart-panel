@@ -364,6 +364,8 @@ describe('ViewBuddyChat', () => {
 
 		// An empty list read by mistake starts no chat
 		expect(mocks.createConversation).not.toHaveBeenCalled();
+		// Nor can one be started by hand while the real list is unknown
+		expect(wrapper.find('[data-test-id="buddy-new-chat"]').exists()).toBe(false);
 
 		expect(wrapper.find('[data-test-id="buddy-load-failed"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="buddy-two-pane"]').exists()).toBe(false);

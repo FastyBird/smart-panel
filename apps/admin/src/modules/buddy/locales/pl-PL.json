@@ -224,7 +224,8 @@
 		"loading": "Ładowanie dostawców...",
 		"aria": {
 			"enable": "Włącz {name}"
-		}
+		},
+		"providersFailed": "Nie udało się wczytać dostawców AI"
 	},
 	"meta": {
 		"settings": {

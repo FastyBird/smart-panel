@@ -224,7 +224,8 @@
 		"loading": "Načítavanie poskytovateľov...",
 		"aria": {
 			"enable": "Zapnúť {name}"
-		}
+		},
+		"providersFailed": "Poskytovateľov AI sa nepodarilo načítať"
 	},
 	"meta": {
 		"settings": {

@@ -146,6 +146,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			const created = responseData.data as IConversation;
 
+			// The new conversation is open from here on: audio of the one before stops
+			stopAudio();
+
 			conversations.value.unshift(created);
 			activeConversationId.value = created.id;
 			messages.value = [];

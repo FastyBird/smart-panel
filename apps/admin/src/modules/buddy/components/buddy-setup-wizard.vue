@@ -4,8 +4,8 @@
 	<wizard-shell
 		:steps="shellSteps"
 		:current="currentStepName"
-		:can-continue="!isLoading && !isNextDisabled"
-		:skippable="canSkip && !isLoading"
+		:can-continue="!isLoading && !llmProvidersFailed && !isNextDisabled"
+		:skippable="canSkip && !isLoading && !llmProvidersFailed"
 		:busy="isSavingModuleConfig || togglingPlugins.size > 0"
 		:next-label="currentStepName === 'done' ? t('buddyModule.wizard.buttons.startChatting') : undefined"
 		:cancellable="currentStepName !== 'done'"
@@ -31,8 +31,27 @@
 			<template v-else-if="currentStepName === 'provider'">
 				<p class="text-help m-0">{{ t('buddyModule.wizard.providerDescription') }}</p>
 
+				<!-- A failed read is not an empty list: skipping or finishing then would save "no provider" over the one set -->
 				<state-view
-					v-if="llmProviders.length === 0"
+					v-if="llmProvidersFailed"
+					kind="error"
+					icon="mdi:robot-confused-outline"
+					:title="t('buddyModule.wizard.providersFailed')"
+					data-test-id="buddy-setup-providers-failed"
+				>
+					<template #action>
+						<el-button
+							plain
+							data-test-id="buddy-setup-providers-retry"
+							@click="loadAllData"
+						>
+							{{ t('buddyModule.buttons.retry.title') }}
+						</el-button>
+					</template>
+				</state-view>
+
+				<state-view
+					v-else-if="llmProviders.length === 0"
 					kind="empty"
 					icon="mdi:robot-outline"
 					:title="t('buddyModule.wizard.noProvidersAvailable')"
@@ -202,7 +221,7 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElIcon } from 'element-plus';
+import { ElButton, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -241,7 +260,7 @@ const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 const extensionsStore = storesManager.getStore(extensionsStoreKey);
 const { getByName } = usePlugins();
 
-const { providerStatuses: llmProviders, fetchProviderStatuses: fetchLlmProviders } = useBuddyProviders();
+const { providerStatuses: llmProviders, providerFetchFailed: llmProvidersFailed, fetchProviderStatuses: fetchLlmProviders } = useBuddyProviders();
 const { ttsProviderStatuses: ttsProviders, fetchTtsProviderStatuses: fetchTtsProviders } = useBuddyTtsProviders();
 const { sttProviderStatuses: sttProviders, fetchSttProviderStatuses: fetchSttProviders } = useBuddySttProviders();
 const { messagingProviderStatuses: messagingProviders, fetchMessagingProviderStatuses: fetchMessagingProviders } = useBuddyMessagingProviders();
@@ -448,6 +467,9 @@ const summary = computed<ISummaryItem[]>(() => {
 
 // Plugin toggle handlers — auto-select on enable, clear on disable
 const toggleLlmPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	// A provider picked while the switch was on its way stays picked
+	const chosenBefore = selectedLlmProvider.value;
+
 	togglingPlugins.add(type);
 
 	try {
@@ -455,7 +477,10 @@ const toggleLlmPlugin = async (type: string, enabled: boolean): Promise<void> =>
 		await fetchLlmProviders();
 
 		if (enabled) {
-			selectedLlmProvider.value = type;
+			if (selectedLlmProvider.value === chosenBefore) {
+				selectedLlmProvider.value = type;
+			}
+
 			fetchPluginConfig(type);
 		} else if (selectedLlmProvider.value === type) {
 			selectedLlmProvider.value = undefined;
@@ -468,6 +493,9 @@ const toggleLlmPlugin = async (type: string, enabled: boolean): Promise<void> =>
 };
 
 const toggleTtsPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	// A provider picked while the switch was on its way stays picked
+	const chosenBefore = selectedTtsProvider.value;
+
 	togglingPlugins.add(type);
 
 	try {
@@ -475,7 +503,10 @@ const toggleTtsPlugin = async (type: string, enabled: boolean): Promise<void> =>
 		await fetchTtsProviders();
 
 		if (enabled) {
-			selectedTtsProvider.value = type;
+			if (selectedTtsProvider.value === chosenBefore) {
+				selectedTtsProvider.value = type;
+			}
+
 			fetchPluginConfig(type);
 		} else if (selectedTtsProvider.value === type) {
 			selectedTtsProvider.value = undefined;
@@ -488,6 +519,9 @@ const toggleTtsPlugin = async (type: string, enabled: boolean): Promise<void> =>
 };
 
 const toggleSttPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	// A provider picked while the switch was on its way stays picked
+	const chosenBefore = selectedSttProvider.value;
+
 	togglingPlugins.add(type);
 
 	try {
@@ -495,7 +529,10 @@ const toggleSttPlugin = async (type: string, enabled: boolean): Promise<void> =>
 		await fetchSttProviders();
 
 		if (enabled) {
-			selectedSttProvider.value = type;
+			if (selectedSttProvider.value === chosenBefore) {
+				selectedSttProvider.value = type;
+			}
+
 			fetchPluginConfig(type);
 		} else if (selectedSttProvider.value === type) {
 			selectedSttProvider.value = undefined;
@@ -508,6 +545,9 @@ const toggleSttPlugin = async (type: string, enabled: boolean): Promise<void> =>
 };
 
 const toggleMessagingPlugin = async (type: string, enabled: boolean): Promise<void> => {
+	// A provider picked while the switch was on its way stays picked
+	const chosenBefore = selectedMessagingProvider.value;
+
 	togglingPlugins.add(type);
 
 	try {
@@ -515,7 +555,10 @@ const toggleMessagingPlugin = async (type: string, enabled: boolean): Promise<vo
 		await fetchMessagingProviders();
 
 		if (enabled) {
-			selectedMessagingProvider.value = type;
+			if (selectedMessagingProvider.value === chosenBefore) {
+				selectedMessagingProvider.value = type;
+			}
+
 			fetchPluginConfig(type);
 		} else if (selectedMessagingProvider.value === type) {
 			selectedMessagingProvider.value = undefined;
@@ -561,8 +604,11 @@ const saveModuleConfig = async (includeAll: boolean = false): Promise<boolean> =
 			enabled: true,
 		};
 
-		// A skipped provider step is saved as no provider, not left as the provider set before
-		configData.provider = selectedLlmProvider.value ?? LLM_PROVIDER_NONE;
+		// A skipped provider step is saved as no provider, not left as the provider set before. Only when the providers
+		// were read: after a failed read nothing was really chosen, and the provider set before stays
+		if (!llmProvidersFailed.value) {
+			configData.provider = selectedLlmProvider.value ?? LLM_PROVIDER_NONE;
+		}
 
 		if (includeAll) {
 			const hasVoiceSelection = !!(selectedTtsProvider.value || selectedSttProvider.value);
@@ -648,12 +694,11 @@ const loadAllData = async (): Promise<void> => {
 			fetchMessagingProviders(),
 		]);
 
-		// Pre-select currently selected providers, falling back to first enabled
-		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected) ?? llmProviders.value.find((p: IProviderStatus) => p.enabled);
-		const selectedTts =
-			ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected) ?? ttsProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
-		const selectedStt =
-			sttProviders.value.find((p: IVoiceProviderStatus) => p.selected) ?? sttProviders.value.find((p: IVoiceProviderStatus) => p.enabled);
+		// Pre-select only the providers Buddy is set to use. A saved "none" looks the same as nothing saved yet (no status
+		// is selected), so falling back to the first enabled provider would turn a skipped step back into a choice
+		const selected = llmProviders.value.find((p: IProviderStatus) => p.selected);
+		const selectedTts = ttsProviders.value.find((p: IVoiceProviderStatus) => p.selected);
+		const selectedStt = sttProviders.value.find((p: IVoiceProviderStatus) => p.selected);
 
 		if (selected && selected.type !== LLM_PROVIDER_NONE) {
 			selectedLlmProvider.value = selected.type;
