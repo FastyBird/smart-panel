@@ -124,7 +124,7 @@ describe('StateChangedEventService', () => {
 
 		await service.handle(event);
 		await jest.runAllTimersAsync();
-		expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
+		expect(httpService.getDiscoveredDevices).not.toHaveBeenCalled();
 		expect(mapperService.mapFromHA).not.toHaveBeenCalled();
 	});
 
@@ -135,7 +135,7 @@ describe('StateChangedEventService', () => {
 			({
 				context,
 				data: {
-					old_state: { entity_id: entity, state: previous, last_changed: new Date(at.getTime() - 60_000) },
+					old_state: { entity_id: entity, state: previous, attributes, last_changed: new Date(at.getTime() - 60_000) },
 					new_state: { entity_id: entity, state: next, context, last_changed: at, attributes },
 				},
 			}) as unknown as HomeAssistantStateChangedEventDto;
@@ -419,6 +419,178 @@ describe('StateChangedEventService', () => {
 			});
 		});
 
+		it.each(['unknown', 'unavailable'])(
+			'uses a recovered %s temperature as a presentation baseline until the next physical change',
+			async (previous) => {
+				const sensor = 'sensor.room';
+				const attributes = { device_class: 'temperature', unit_of_measurement: '°C' };
+				arrange(sensor, 20, PropertyCategory.TEMPERATURE);
+				await service.handle(event(sensor, previous, '20', attributes), ingress());
+				await jest.advanceTimersByTimeAsync(500);
+				expect(channelsPropertiesService.reportSample).not.toHaveBeenCalled();
+				expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+					'property',
+					expect.objectContaining({ value: 20 }),
+				);
+				arrange(sensor, 21, PropertyCategory.TEMPERATURE);
+				await service.handle(event(sensor, '20', '21', attributes), ingress());
+				expect(channelsPropertiesService.reportSample.mock.calls[0][1].value).toBe(21);
+			},
+		);
+
+		it.each(['unknown', 'unavailable'])(
+			'withdraws OFF evidence on a retained relay baseline following %s',
+			async (previous) => {
+				arrange('switch.heater', false);
+				await service.handle(event('switch.heater', 'on', 'off'), ingress());
+				const guard = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
+				await service.handle(event('switch.heater', previous, 'off'), ingress());
+				expect(guard()).toBe(false);
+				await jest.advanceTimersByTimeAsync(500);
+				expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(1);
+				expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+					'property',
+					expect.objectContaining({ value: false }),
+				);
+			},
+		);
+
+		it.each(['future', 'invalid', 'before previous state', 'older than accepted sample'])(
+			'withdraws contradictory evidence immediately for a %s timestamp and accepts a later valid transition',
+			async (timing) => {
+				const heater = 'switch.heater';
+				arrange(heater, false);
+				await service.handle(event(heater, 'on', 'off'), ingress());
+				const original = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
+				const attribute = event(heater, 'off', 'off', { revision: 2 });
+				attribute.context = { ...context, user_id: 'attribute writer' };
+				await service.handle(attribute, ingress());
+				expect(original()).toBe(true);
+				arrange(heater, true);
+				const contradictory = event(heater, 'off', 'on');
+				contradictory.data.new_state.last_changed = new Date(
+					timing === 'future'
+						? at.getTime() + 3_000
+						: timing === 'invalid'
+							? NaN
+							: at.getTime() - (timing === 'before previous state' ? 70_000 : 5_000),
+				);
+				await service.handle(contradictory, ingress());
+				expect(original()).toBe(false);
+				await jest.advanceTimersByTimeAsync(500);
+				expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(1);
+				expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+					'property',
+					expect.objectContaining({ value: true }),
+				);
+				arrange(heater, false);
+				const valid = event(heater, 'on', 'off');
+				valid.data.new_state.last_changed = new Date(at.getTime() + 1_000);
+				await service.handle(valid, ingress());
+				expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(2);
+				expect(channelsPropertiesService.reportSample.mock.calls[1][2].sourceIsCurrent()).toBe(true);
+				expect(original()).toBe(false);
+			},
+		);
+
+		it.each([false, true])(
+			'routes a directly adopted temperature entity with other registry devices=%s',
+			async (withRegistry) => {
+				const sensor = 'sensor.room';
+				const attributes = { device_class: 'temperature', unit_of_measurement: '°C' };
+				arrange(sensor, 20, PropertyCategory.TEMPERATURE);
+				const standalone = { id: 'standalone', enabled: true, haDeviceId: sensor } as HomeAssistantDeviceEntity;
+				const relay = { id: 'relay', enabled: true, haDeviceId: 'registry-device' } as HomeAssistantDeviceEntity;
+				devicesService.findAll.mockResolvedValue(withRegistry ? [standalone, relay] : [standalone]);
+				httpService.getDiscoveredDevices.mockResolvedValue(
+					withRegistry
+						? [{ id: 'registry-device', entities: ['switch.relay'] } as HomeAssistantDiscoveredDeviceModel]
+						: [],
+				);
+				await service.handle(event(sensor, '19', '20', attributes), ingress());
+				expect(mapperService.mapFromHA.mock.calls[0][0]).toBe(standalone);
+				expect(channelsPropertiesService.reportSample.mock.calls[0][1].value).toBe(20);
+				if (withRegistry) {
+					await service.handle(event('switch.relay', 'off', 'on'), ingress());
+					expect(mapperService.mapFromHA.mock.calls[1][0]).toBe(relay);
+				} else expect(httpService.getDiscoveredDevices).not.toHaveBeenCalled();
+			},
+		);
+
+		it('keeps direct adoptions available during a registry discovery failure and retries the remote device', async () => {
+			arrange('sensor.room', 20, PropertyCategory.TEMPERATURE);
+			const standalone = { id: 'standalone', enabled: true, haDeviceId: 'sensor.room' } as HomeAssistantDeviceEntity;
+			const relay = { id: 'relay', enabled: true, haDeviceId: 'registry-device' } as HomeAssistantDeviceEntity;
+			devicesService.findAll.mockResolvedValue([standalone, relay]);
+			httpService.getDiscoveredDevices
+				.mockRejectedValueOnce(new Error('discovery unavailable'))
+				.mockResolvedValue([
+					{ id: 'registry-device', entities: ['switch.relay'] } as HomeAssistantDiscoveredDeviceModel,
+				]);
+			await service.handle(
+				event('sensor.room', '19', '20', { device_class: 'temperature', unit_of_measurement: '°C' }),
+				ingress(),
+			);
+			expect(mapperService.mapFromHA.mock.calls[0][0]).toBe(standalone);
+			expect(channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent()).toBe(true);
+			await service.handle(event('switch.relay', 'off', 'on'), ingress());
+			expect(mapperService.mapFromHA.mock.calls[1][0]).toBe(relay);
+		});
+
+		it('keeps unrelated evidence across local edits and registry changes and retires the original binding on re-adoption', async () => {
+			const heater = 'switch.heater';
+			arrange(heater, false);
+			await service.handle(event(heater, 'on', 'off'), ingress());
+			const original = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
+			service.handleRegistryChange({ entityIds: ['sensor.renamed', 'sensor.old'] });
+			service.handleRegistryChange({ deviceId: 'other device' });
+			service.handleDevicesUpdatedEvent({
+				type: 'devices-home-assistant',
+				id: 'other-property',
+				haEntityId: 'sensor.other',
+			});
+			expect(original()).toBe(true);
+			service.handleDevicesUpdatedEvent({
+				type: 'devices-home-assistant',
+				id: 'panel-device',
+				haDeviceId: 'original-device',
+			});
+			expect(original()).toBe(false);
+			const replacement = {
+				id: 'readopted',
+				enabled: true,
+				haDeviceId: 'original-device',
+			} as HomeAssistantDeviceEntity;
+			devicesService.findAll.mockResolvedValue([replacement]);
+			await service.handle(event(heater, 'on', 'off'), ingress());
+			const successor = channelsPropertiesService.reportSample.mock.calls[1][2].sourceIsCurrent;
+			expect(mapperService.mapFromHA.mock.calls[1][0]).toBe(replacement);
+			expect(successor()).toBe(true);
+			expect(original()).toBe(false);
+			service.handleDevicesUpdatedEvent({
+				type: 'devices-home-assistant',
+				id: 'property',
+				haEntityId: 'switch.rebound',
+			});
+			expect(successor()).toBe(false);
+		});
+
+		it('aborts the mapping discovery and drains the pending state worker on teardown', async () => {
+			arrange('switch.heater', false);
+			const started = gate();
+			let request: AbortSignal;
+			httpService.getDiscoveredDevices.mockImplementation((signal) => {
+				request = signal;
+				started.release();
+				return new Promise((resolve) => signal.addEventListener('abort', () => resolve([]), { once: true }));
+			});
+			const worker = service.handle(event('switch.heater', 'on', 'off'), ingress());
+			await started.promise;
+			await Promise.all([service.onModuleDestroy(), worker]);
+			expect(request.aborted).toBe(true);
+			expect(mapperService.mapFromHA).not.toHaveBeenCalled();
+		});
+
 		it('publishes an independent physical switch transition at its own timestamp and original socket ingress', async () => {
 			arrange('switch.heater', false);
 			const source = ingress();
@@ -524,11 +696,63 @@ describe('StateChangedEventService', () => {
 			states: [],
 		};
 
+		const hardware = toInstance(
+			HomeAssistantStateChangedEventDto,
+			{
+				data: {
+					old_state: { entity_id: 'event.button_1', state: 'previous' },
+					new_state: {
+						entity_id: 'event.button_1',
+						state: '2026-05-08T12:01:00Z',
+						attributes: { event_type: 'press' },
+					},
+				},
+			},
+			{ excludeExtraneousValues: false },
+		);
+
 		beforeEach(() => {
 			httpService.getDiscoveredDevices.mockResolvedValue([haDevice]);
 			devicesService.findAll.mockResolvedValue([device]);
 			channelsService.findAll.mockResolvedValue([channel]);
 			channelsPropertiesService.findAll.mockResolvedValue([property]);
+		});
+
+		it.each(['unrelated entity', 'unrelated device', 'renamed entity', 'changed device', 'unknown scope'])(
+			'preserves a pending button press only outside the affected %s registry scope',
+			async (scope) => {
+				const started = gate();
+				const release = gate();
+				channelsService.findAll.mockImplementationOnce(async () => {
+					started.release();
+					await release.promise;
+					return [channel];
+				});
+				const worker = service.handle(hardware);
+				await started.promise;
+				if (scope === 'unrelated entity') service.handleRegistryChange({ entityIds: ['sensor.new', 'sensor.old'] });
+				if (scope === 'unrelated device') service.handleRegistryChange({ deviceId: 'other' });
+				if (scope === 'renamed entity') service.handleRegistryChange({ entityIds: ['event.new', 'event.button_1'] });
+				if (scope === 'changed device') service.handleRegistryChange({ deviceId: device.haDeviceId });
+				if (scope === 'unknown scope') service.handleRegistryChange(null);
+				release.release();
+				await worker;
+				expect(inputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(scope.startsWith('unrelated') ? 1 : 0);
+			},
+		);
+
+		it.each(['same', 'other'])('rechecks a pending discovery after a change to the %s device', async (scope) => {
+			const started = gate();
+			httpService.getDiscoveredDevices.mockImplementationOnce((signal) => {
+				started.release();
+				return new Promise((resolve) => signal.addEventListener('abort', () => resolve([haDevice]), { once: true }));
+			});
+			const worker = service.handle(hardware);
+			await started.promise;
+			service.handleRegistryChange({ deviceId: scope === 'same' ? device.haDeviceId : 'unrelated' });
+			await worker;
+			expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
+			expect(inputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(scope === 'same' ? 0 : 1);
 		});
 
 		it('skips event occurrence on startup snapshot when old_state is null', async () => {

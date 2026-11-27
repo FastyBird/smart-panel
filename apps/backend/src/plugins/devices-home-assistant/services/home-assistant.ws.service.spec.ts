@@ -135,7 +135,7 @@ describe('HomeAssistantWsService', () => {
 		expect(() => service.registerEventsHandler('test', handler)).toThrow(DevicesHomeAssistantException);
 	});
 
-	it.each(['state_changed', 'entity_registry_updated', 'core_config_updated'])(
+	it.each(['state_changed', 'entity_registry_updated', 'device_registry_updated', 'core_config_updated'])(
 		'keeps native capture unavailable if HA rejects the %s subscription',
 		async (rejected) => {
 			const starting = service.start();
@@ -180,7 +180,11 @@ describe('HomeAssistantWsService', () => {
 	});
 
 	it('ties physical state ingress to the original socket and adopted entity registry', async () => {
-		const handler = { event: 'state_changed', handle: jest.fn<Promise<void>, [unknown, HomeAssistantEventIngress?]>() };
+		const handler = {
+			event: 'state_changed',
+			handleRegistryChange: jest.fn(),
+			handle: jest.fn<Promise<void>, [unknown, HomeAssistantEventIngress?]>(),
+		};
 		service.registerEventsHandler(handler.event, handler);
 		const starting = service.start();
 		await flush();
@@ -195,6 +199,25 @@ describe('HomeAssistantWsService', () => {
 		await service['handleMessage'](JSON.stringify(report));
 		const first = handler.handle.mock.calls[0][1] as { isCurrent(): boolean; ingressSequence: number; session: string };
 		expect(first.isCurrent()).toBe(true);
+		await service['handleMessage'](
+			JSON.stringify({
+				type: 'event',
+				event: {
+					event_type: 'entity_registry_updated',
+					data: { entity_id: 'sensor.new', old_entity_id: 'sensor.old' },
+				},
+			}),
+		);
+		expect(handler.handleRegistryChange).toHaveBeenLastCalledWith({ entityIds: ['sensor.new', 'sensor.old'] });
+		await service['handleMessage'](
+			JSON.stringify({
+				type: 'event',
+				event: { event_type: 'device_registry_updated', data: { device_id: 'registry-device' } },
+			}),
+		);
+		expect(handler.handleRegistryChange).toHaveBeenLastCalledWith({ deviceId: 'registry-device' });
+		expect(first.isCurrent()).toBe(true);
+
 		await service['handleMessage'](JSON.stringify({ type: 'event', event: { event_type: 'entity_registry_updated' } }));
 		expect(first.isCurrent()).toBe(false);
 		await service['handleMessage'](JSON.stringify(report));
