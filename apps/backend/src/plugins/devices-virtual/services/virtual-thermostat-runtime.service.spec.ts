@@ -1365,8 +1365,9 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('retains a potentially sent ON as unknown and immediately attempts mandatory OFF', async () => {
-		await settle();
 		clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
+		packetTick = useThermostatPacketClock();
+		await settle();
 		onOutcome = 'unknown';
 		proofAllowed = () => false;
 		sample(sensorId, 18);
@@ -1376,16 +1377,33 @@ describe('virtual thermostat durable runtime', () => {
 			expect.objectContaining({ status: 'unknown', fault: 'command_execution_unknown' }),
 		]);
 		expect(sends).toEqual([false, true, false]);
+		const release = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+			controllerId,
+			action: 'off',
+			status: 'accepted',
+		});
+		const retryAt = release.preparedAt.getTime() + 1000;
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('heating_unresolved_on');
 		expect(runtime.readDiagnostics(controllerId)?.branches[0]).toMatchObject({
 			pending_on: true,
 			release_proven: false,
+			next_release_at: new Date(retryAt).toISOString(),
 		});
+
+		jest.setSystemTime(retryAt - 1);
+		await runtime.request(controllerId, false);
+		await settle();
+		expect(sends).toEqual([false, true, false]);
+		jest.setSystemTime(retryAt);
+		await runtime.request(controllerId, false);
+		await settle();
+		expect(sends).toEqual([false, true, false, false]);
 	});
 
 	it('retains a refused OFF and its releasing claim until qualified release proof exists', async () => {
-		await settle();
 		clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
+		packetTick = useThermostatPacketClock();
+		await settle();
 		sample(sensorId, 18);
 		void runtime.request(controllerId);
 		await settle();
