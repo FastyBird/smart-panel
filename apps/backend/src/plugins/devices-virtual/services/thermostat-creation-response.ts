@@ -441,6 +441,7 @@ function pin() {
 			'group_identity',
 			'provider_profile',
 			'provider_profile_version',
+			'independent_protection_acknowledged',
 			'id',
 			'role',
 			'source_property',

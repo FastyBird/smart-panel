@@ -23,7 +23,7 @@ import {
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
-import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
+import { DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME } from '../devices-shelly-ng.constants';
 import { StageThermostatInstallationDto, ThermostatInstallationRevisionDto } from '../dto/thermostat-installation.dto';
 import {
 	ThermostatInstallationModel,
@@ -32,7 +32,7 @@ import {
 import { ThermostatInstallationLoaderService } from '../services/thermostat-installation-loader.service';
 import { ThermostatInstallationService } from '../services/thermostat-installation.service';
 
-@ApiTags(DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME)
+@ApiTags(DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME)
 @Controller('producers/thermostat-installations')
 @Roles(UserRole.OWNER, UserRole.ADMIN)
 export class ThermostatInstallationController {
@@ -41,7 +41,7 @@ export class ThermostatInstallationController {
 		private readonly loader: ThermostatInstallationLoaderService,
 	) {}
 	@ApiOperation({
-		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
 		summary: 'Inspect thermostat installation',
 		description:
 			'Review expected equipment, operator attestations, machine observations, artifact and readiness blockers.',
@@ -58,7 +58,7 @@ export class ThermostatInstallationController {
 		return this.response(claim);
 	}
 	@ApiOperation({
-		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
 		summary: 'Stage thermostat installation',
 		description:
 			'CAS persist explicit equipment and human attestations. Revokes queued ON and requests runtime safety release before replacing a profile. Never deploys scripts or changes device configuration.',
@@ -107,7 +107,7 @@ export class ThermostatInstallationController {
 		return this.response(claim);
 	}
 	@ApiOperation({
-		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
 		summary: 'Verify and activate thermostat installation',
 		description:
 			'Read actual device identity, firmware, full script hash, fresh HTTP status and floor/switch configuration. Metadata inspection performs only reads. Successful explicit user-session activation is durably audited and resumes the runtime, which may issue safety OFF/fence and honor configured intent. Does not deploy scripts or certify physical equipment.',
@@ -132,7 +132,7 @@ export class ThermostatInstallationController {
 		return this.response(claim);
 	}
 	@ApiOperation({
-		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
 		summary: 'Revoke installation',
 		description:
 			'CAS revoke ON eligibility before persisting revocation. Requests runtime safety release, retains ownership and never fabricates OFF/drain proof. A rejected change leaves prior stored activation intact; reload the current profile and retry. Only the running process remains conservatively paused after failure.',

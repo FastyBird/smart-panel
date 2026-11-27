@@ -7,11 +7,6 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
-import { hasQualifiedRawVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
-import {
-	ShellyNgChannelPropertyEntity,
-	ShellyNgDeviceEntity,
-} from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { VirtualDeviceMode, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
@@ -119,16 +114,12 @@ export function transformContractErrors(
 		) &&
 		((source.category !== PropertyCategory.VOLTAGE &&
 			!(
-				source instanceof ShellyNgChannelPropertyEntity &&
-				(source.channel as ChannelEntity)?.device instanceof ShellyNgDeviceEntity &&
 				(source.channel as ChannelEntity).category === ChannelCategory.ANALOG_INPUT &&
 				source.category === PropertyCategory.VALUE &&
-				source.identifier === 'voltage' &&
 				source.permissions?.includes(PermissionType.READ_ONLY) &&
 				!source.permissions.some((permission) =>
 					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
-				) &&
-				hasQualifiedRawVoltageIdentity((source.channel as ChannelEntity).identifier)
+				)
 			)) ||
 			unit !== 'V' ||
 			config.quantity !== String(PropertyCategory.TEMPERATURE) ||

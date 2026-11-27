@@ -1,5 +1,4 @@
 import { AsyncResource } from 'node:async_hooks';
-import { performance } from 'node:perf_hooks';
 import { DataSource, Not, QueryRunner } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
@@ -15,13 +14,9 @@ import {
 	PropertyCommandAdmissionRegistryService,
 	PropertyCommandAdmissionSnapshot,
 } from '../../../modules/devices/services/property-command-admission.registry.service';
-import { guardScriptReadiness } from '../../devices-shelly-ng/contracts/guard-script.contract';
-import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
-import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
-import { qualifiedRemoteDewPointBlockers } from '../../devices-shelly-ng/services/remote-dew-point-qualification';
 import {
-	SHELLY_GUARDED_PROFILE,
-	SHELLY_GUARDED_PROFILE_VERSION,
+	SUPERVISED_SWITCH_PROFILE,
+	SUPERVISED_SWITCH_PROFILE_VERSION,
 	ThermostatProtectiveQualification,
 	thermostatHasOpposedBranches,
 } from '../contracts/thermostat-actuation.contract';
@@ -30,6 +25,12 @@ import {
 	VirtualThermostatConfigEntity,
 } from '../entities/virtual-thermostat.entity';
 
+import { ThermostatActuationRegistry } from './thermostat-actuation-registry.service';
+import {
+	captureThermostatBindings,
+	publishThermostatBindings,
+	thermostatActuatorBinding,
+} from './thermostat-binding-events';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 
@@ -41,7 +42,8 @@ export interface ThermostatCommandAuthority {
 	readonly physicalIdentity: string;
 	readonly action: 'on' | 'off';
 }
-export type ThermostatInstalledQualification = ThermostatProtectiveQualification<ShellyProtectiveQualification>;
+export type ThermostatInstalledQualification<Profile extends object = object> =
+	ThermostatProtectiveQualification<Profile>;
 export interface ThermostatReleaseProof {
 	readonly claimId: string;
 	readonly revision: number;
@@ -51,6 +53,7 @@ export interface ThermostatReleaseProof {
 /** Durable reservations are independent of intent, device enabled state and expiry of command windows. */
 @Injectable()
 export class VirtualThermostatClaimsService implements OnApplicationBootstrap, OnModuleDestroy {
+	readonly allowsStructureLockedDispatch = true;
 	private readonly authorities = new WeakSet<object>();
 	private readonly authorityEpochs = new WeakMap<object, number>();
 	private readonly proofs = new WeakMap<
@@ -65,8 +68,9 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			contractFingerprint: string;
 		}
 	>();
-	private readonly qualifications = new Map<string, ThermostatInstalledQualification>();
-	private readonly remoteDeadlines = new WeakMap<ThermostatInstalledQualification, number>();
+	private readonly qualifications = new Map<string, Map<string, ThermostatInstalledQualification>>();
+	private readonly qualifiedRegistrations = new WeakMap<ThermostatInstalledQualification, object>();
+	private readonly supervised = new Map<string, ThermostatInstalledQualification>();
 	private readonly releaseWrites = new WeakMap<QueryRunner, { query: string; parameters: readonly unknown[] }>();
 	private readonly reservations = new Map<string, VirtualThermostatActuatorClaimEntity>();
 	private readonly byProperty = new Map<string, VirtualThermostatActuatorClaimEntity>();
@@ -94,6 +98,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		private readonly admission: PropertyCommandAdmissionRegistryService,
 		private readonly events: EventEmitter2,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
+		private readonly extensions: ThermostatActuationRegistry = new ThermostatActuationRegistry(),
 	) {}
 
 	async onApplicationBootstrap(): Promise<void> {
@@ -112,6 +117,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	}
 	onModuleDestroy(): void {
 		this.destroyed = true;
+		this.qualifications.clear();
+		this.supervised.clear();
 		this.cancelRetry();
 		this.retryContext.emitDestroy();
 		this.unregister?.();
@@ -166,6 +173,17 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			if (epoch !== this.epoch) {
 				this.scheduleRetry();
 				return;
+			}
+			const active = new Map(rows.map((row) => [row.id, row]));
+			for (const [id, evidence] of this.supervised) {
+				const row = active.get(id);
+				if (
+					!row ||
+					row.providerProfile !== SUPERVISED_SWITCH_PROFILE ||
+					row.qualificationGeneration !== evidence.qualificationGeneration ||
+					row.physicalIdentity !== evidence.physicalIdentity
+				)
+					this.supervised.delete(id);
 			}
 			this.reservations.clear();
 			this.byProperty.clear();
@@ -250,151 +268,116 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 
 	/** Only an explicit hardware qualification task may install evidence; no public DTO exposes this method. */
 	recordQualification(evidence: ThermostatInstalledQualification): void {
-		const profile = evidence.profile;
-		if (evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE) {
-			const remote = profile.remoteDewPoint;
-			if (
-				!profile.evidenceId ||
-				!Number.isSafeInteger(profile.revision) ||
-				profile.revision < 1 ||
-				(evidence.contractVersion !== undefined && evidence.contractVersion !== 1) ||
-				evidence.providerProfile.version !== 1 ||
-				qualifiedRemoteDewPointBlockers(remote).length ||
-				evidence.physicalIdentity !== remote?.artifact.binding.physicalActuator ||
-				!evidence.qualificationGeneration ||
-				typeof evidence.machineLeaseIsCurrent !== 'function' ||
-				!evidence.machineLeaseIsCurrent() ||
-				!evidence.upstreamWritersExcluded ||
-				!profile.releaseOrderingQualified ||
-				!profile.independentProtectionQualified ||
-				profile.guardScript ||
-				profile.deviceId !== remote.artifact.binding.deviceId ||
-				profile.model !== remote.artifact.binding.model ||
-				profile.firmware !== remote.artifact.binding.firmware ||
-				profile.componentId !== remote.artifact.binding.switchId ||
-				profile.testedLeaseSeconds.min * 1000 !== remote.artifact.binding.timing.minimumLifetimeMs ||
-				profile.testedLeaseSeconds.max * 1000 !== remote.artifact.binding.timing.maximumLeaseMs
-			)
-				throw new DevicesValidationException('Separate installed remote cooling qualification is incomplete.');
-			this.qualifications.set(
-				evidence.physicalIdentity,
-				Object.freeze({
-					...evidence,
-					providerProfile: Object.freeze({ id: REMOTE_DEW_POINT_PROFILE, version: 1 }),
-					profile: Object.freeze({
-						...profile,
-						testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
-						remoteDewPoint: Object.freeze({
-							...remote,
-							authenticatedStatus: Object.freeze({ ...remote.authenticatedStatus }),
-							installation: Object.freeze({
-								...remote.installation,
-								surface: Object.freeze({ ...remote.installation.surface }),
-								restartDrainObservation: Object.freeze({
-									...remote.installation.restartDrainObservation,
-									coveredJournalIds: Object.freeze([...remote.installation.restartDrainObservation.coveredJournalIds]),
-								}),
-								measuredTiming: Object.freeze({ ...remote.installation.measuredTiming }),
-							}),
-						}),
-					}),
-				}),
-			);
-			this.remoteDeadlines.set(
-				this.qualifications.get(evidence.physicalIdentity),
-				performance.now() + Math.max(0, remote.installation.expiresAt - Date.now()),
-			);
-			this.epoch++;
-			return;
-		}
+		const registration = this.extensions.get(evidence.providerProfile?.id, evidence.providerProfile?.version);
 		if (
-			!evidence.physicalIdentity ||
-			!!profile.remoteDewPoint ||
-			(evidence.contractVersion !== undefined && evidence.contractVersion !== 1) ||
-			(evidence.providerProfile !== undefined &&
-				(evidence.providerProfile.id !== SHELLY_GUARDED_PROFILE ||
-					evidence.providerProfile.version !== SHELLY_GUARDED_PROFILE_VERSION)) ||
-			!profile.evidenceId ||
-			!profile.firmware ||
-			!profile.deviceId ||
-			profile.model !== 'SNSW-001P16EU' ||
-			!profile.releaseOrderingQualified ||
-			!profile.independentProtectionQualified ||
-			!evidence.upstreamWritersExcluded ||
-			(profile.guardScript !== undefined &&
-				(guardScriptReadiness(profile.guardScript).length > 0 ||
-					profile.guardScript.evidenceId !== profile.evidenceId)) ||
-			!Number.isSafeInteger(profile.revision) ||
-			profile.revision < 1 ||
-			!Number.isFinite(profile.testedLeaseSeconds.min) ||
-			!Number.isFinite(profile.testedLeaseSeconds.max) ||
-			profile.testedLeaseSeconds.min <= 0 ||
-			profile.testedLeaseSeconds.max < profile.testedLeaseSeconds.min
+			!registration ||
+			evidence.contractVersion !== 1 ||
+			!evidence.qualificationGeneration ||
+			!evidence.physicalIdentity
 		)
-			throw new DevicesValidationException('Installed actuator qualification is incomplete.');
-		this.qualifications.set(
-			evidence.physicalIdentity,
-			Object.freeze({
-				...evidence,
-				contractVersion: 1,
-				providerProfile: Object.freeze({ id: SHELLY_GUARDED_PROFILE, version: SHELLY_GUARDED_PROFILE_VERSION }),
-				profile: Object.freeze({
-					...profile,
-					testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
-					...(profile.guardScript
-						? {
-								guardScript: Object.freeze({
-									...profile.guardScript,
-									...(profile.guardScript.installationMetadata
-										? { installationMetadata: Object.freeze({ ...profile.guardScript.installationMetadata }) }
-										: {}),
-								}),
-							}
-						: {}),
-				}),
-			}),
-		);
+			throw new DevicesValidationException(
+				'The selected thermostat safety extension or its installed evidence is missing.',
+			);
+		const qualified = registration.extension.qualify(evidence);
+		if (
+			qualified.contractVersion !== evidence.contractVersion ||
+			qualified.providerProfile.id !== evidence.providerProfile.id ||
+			qualified.providerProfile.version !== evidence.providerProfile.version ||
+			qualified.physicalIdentity !== evidence.physicalIdentity ||
+			qualified.qualificationGeneration !== evidence.qualificationGeneration
+		)
+			throw new DevicesValidationException('Installed thermostat safety evidence changed its binding.');
+		const profiles =
+			this.qualifications.get(qualified.physicalIdentity) ?? new Map<string, ThermostatInstalledQualification>();
+		profiles.set(registration.key, qualified);
+		this.qualifications.set(qualified.physicalIdentity, profiles);
+		this.qualifiedRegistrations.set(qualified, registration);
 		this.epoch++;
 	}
+
 	/** Revoke dispatch leases without discarding unchanged durable reservations. Recovery invalidates its bindings separately. */
-	revokeQualification(physicalIdentity: string): void {
-		this.qualifications.delete(physicalIdentity);
+	revokeQualification(physicalIdentity: string, profileId?: string): void {
+		if (profileId === undefined) this.qualifications.delete(physicalIdentity);
+		else if (!this.removeProfile(physicalIdentity, profileId)) return;
 		this.epoch++;
+	}
+	private removeProfile(physicalIdentity: string, profileId: string): boolean {
+		const profiles = this.qualifications.get(physicalIdentity);
+		if (!profiles) return false;
+		let removed = false;
+		for (const [key, installed] of profiles) {
+			if (installed.providerProfile.id !== profileId) continue;
+			profiles.delete(key);
+			removed = true;
+		}
+		if (!profiles.size) this.qualifications.delete(physicalIdentity);
+		return removed;
 	}
 	/** Installation operations revoke every captured qualification before entering any async lock/read. */
-	revokeAllQualifications(): void {
-		this.qualifications.clear();
+	revokeAllQualifications(profileId?: string): void {
+		if (profileId === undefined) this.qualifications.clear();
+		else {
+			let removed = false;
+			for (const identity of this.qualifications.keys()) if (this.removeProfile(identity, profileId)) removed = true;
+			if (!removed) return;
+		}
 		this.epoch++;
 	}
 	qualification(
 		claim: VirtualThermostatActuatorClaimEntity,
 		opposed: boolean,
 	): ThermostatInstalledQualification | null {
-		const evidence = this.qualifications.get(claim.physicalIdentity);
+		if (claim.providerProfile === SUPERVISED_SWITCH_PROFILE) {
+			const reservation = this.reservations.get(claim.physicalIdentity);
+			if (
+				claim.providerProfileVersion !== SUPERVISED_SWITCH_PROFILE_VERSION ||
+				!reservation ||
+				reservation.id !== claim.id ||
+				reservation.revision !== claim.revision ||
+				reservation.providerProfile !== claim.providerProfile ||
+				reservation.providerProfileVersion !== claim.providerProfileVersion ||
+				reservation.qualificationGeneration !== claim.qualificationGeneration ||
+				!claim.qualificationGeneration
+			)
+				return null;
+			let installed = this.supervised.get(claim.id);
+			if (
+				!installed ||
+				installed.physicalIdentity !== claim.physicalIdentity ||
+				installed.qualificationGeneration !== claim.qualificationGeneration
+			) {
+				installed = Object.freeze({
+					contractVersion: 1,
+					physicalIdentity: claim.physicalIdentity,
+					qualificationGeneration: claim.qualificationGeneration,
+					providerProfile: Object.freeze({ id: SUPERVISED_SWITCH_PROFILE, version: SUPERVISED_SWITCH_PROFILE_VERSION }),
+					profile: Object.freeze({}),
+					// Supervision only makes promises about the panel's own commands.
+					upstreamWritersExcluded: false,
+					opposedOutputsInterlocked: false,
+					machineLeaseIsCurrent: () => this.supervised.get(claim.id) === installed,
+				});
+				this.supervised.set(claim.id, installed);
+			}
+			return installed;
+		}
+		const registration = this.extensions.get(claim.providerProfile, claim.providerProfileVersion);
+		const evidence = registration && this.qualifications.get(claim.physicalIdentity)?.get(registration.key);
 		opposed ||= thermostatHasOpposedBranches(
 			[...this.reservations.values()].filter((row) => row.controllerId === claim.controllerId),
 		);
-		if (
-			!evidence ||
-			(claim.providerProfile ?? SHELLY_GUARDED_PROFILE) !== (evidence?.providerProfile?.id ?? SHELLY_GUARDED_PROFILE) ||
-			(claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION) !==
-				(evidence?.providerProfile?.version ?? SHELLY_GUARDED_PROFILE_VERSION) ||
-			(evidence?.providerProfile?.id === REMOTE_DEW_POINT_PROFILE &&
-				(claim.role !== 'cooling' ||
-					(this.remoteDeadlines.get(evidence) ?? -Infinity) <= performance.now() ||
-					qualifiedRemoteDewPointBlockers(evidence.profile.remoteDewPoint).length > 0)) ||
-			(!!claim.qualificationGeneration && evidence.qualificationGeneration !== claim.qualificationGeneration) ||
-			(evidence.machineLeaseIsCurrent && !evidence.machineLeaseIsCurrent()) ||
-			(opposed &&
-				(!evidence.opposedOutputsInterlocked ||
-					(evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE &&
-						!evidence.profile.remoteDewPoint?.installation.opposedOutputInterlockAuditId))) ||
-			claim.leaseSeconds < evidence.profile.testedLeaseSeconds.min ||
-			claim.leaseSeconds > evidence.profile.testedLeaseSeconds.max
-		)
-			return null;
-		return evidence;
+		return evidence &&
+			registration &&
+			this.qualifiedRegistrations.get(evidence) === registration &&
+			claim.qualificationGeneration &&
+			evidence.qualificationGeneration === claim.qualificationGeneration &&
+			(!evidence.machineLeaseIsCurrent || evidence.machineLeaseIsCurrent()) &&
+			(!opposed || evidence.opposedOutputsInterlocked) &&
+			registration.extension.allows(claim, evidence, opposed)
+			? evidence
+			: null;
 	}
+
 	/** VD2-8 supplies durable startup/interlock admission. Until then energizing remains closed. */
 	registerRuntimeAdmission(admission: (claim: VirtualThermostatActuatorClaimEntity) => boolean): () => void {
 		if (this.runtimeAdmission) throw new Error('Thermostat runtime admission already registered');
@@ -411,7 +394,10 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			!this.ready ||
 			!claim ||
 			(action === 'on' &&
-				(claim.state !== 'reserved' || !this.qualification(claim, false) || !this.runtimeAdmission?.(claim)))
+				(claim.state !== 'reserved' ||
+					(claim.providerProfile === SUPERVISED_SWITCH_PROFILE && !claim.independentProtectionAcknowledged) ||
+					!this.qualification(claim, false) ||
+					!this.runtimeAdmission?.(claim)))
 		)
 			throw new DevicesValidationException('Thermostat actuator is not admitted for this action.');
 		const authority = Object.freeze({
@@ -443,6 +429,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			(authority.action === 'off' ||
 				(claim.state === 'reserved' &&
 					update.device.enabled &&
+					(claim.providerProfile !== SUPERVISED_SWITCH_PROFILE || claim.independentProtectionAcknowledged) &&
 					!!this.qualification(claim, false) &&
 					!!this.runtimeAdmission?.(claim)))
 		);
@@ -525,17 +512,18 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				throw new DevicesValidationException('Qualified release proof is no longer current.');
 		};
 		await this.structureLock.runExclusive(async () => {
-			await this.graph.withStructuralWrite(async (manager) => {
+			const membership = await this.graph.withStructuralWrite(async (manager) => {
 				const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: proof.claimId });
 				const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: claim.controllerId });
 				if (config?.revision !== binding.controllerRevision)
 					throw new DevicesValidationException('Qualified release configuration scope changed.');
 				assertCurrent(claim);
+				const state = claim.reason === 'device_disabled' ? 'suspended' : 'released';
 				const update = manager
 					.createQueryBuilder()
 					.update(VirtualThermostatActuatorClaimEntity)
 					.set({
-						state: claim.reason === 'device_disabled' ? 'suspended' : 'released',
+						state,
 						revision: claim.revision + 1,
 						releasedAt: new Date(),
 						releaseEvidence: { evidenceId: proof.evidenceId, outputConfirmedOff: true, pendingOnDrained: true },
@@ -552,8 +540,13 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				} finally {
 					this.releaseWrites.delete(runner);
 				}
+				if (state === 'suspended') return null;
+				const event = await captureThermostatBindings(manager, config, 'updated', [thermostatActuatorBinding(claim)]);
+				assertCurrent(claim);
+				return event;
 			});
 			this.invalidate();
+			if (membership) publishThermostatBindings(this.events, membership);
 			await this.refresh();
 		});
 	}

@@ -3,27 +3,19 @@ import { randomUUID } from 'node:crypto';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
-import { AuthenticatedShellyScriptHttp } from '../../devices-shelly-ng/services/authenticated-shelly-script-http';
 import {
-	REMOTE_DEW_POINT_PROFILE,
-	RemoteDewPointDeadline,
-} from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
-import { qualifiedRemoteDewPointBlockers } from '../../devices-shelly-ng/services/remote-dew-point-qualification';
-import { RemoteDewPointSession } from '../../devices-shelly-ng/services/remote-dew-point-session';
-import { ThermostatActuationAdapter } from '../contracts/thermostat-actuation.contract';
-import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
+	RemoteCoolingFrame,
+	ThermostatActuationAdapter,
+} from '../../devices-virtual/contracts/thermostat-actuation.contract';
+import { VirtualThermostatActuatorClaimEntity } from '../../devices-virtual/entities/virtual-thermostat.entity';
+import { thermostatActuatorIdentity } from '../../devices-virtual/services/virtual-thermostat-contract.utils';
+import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
-import { ThermostatInstalledQualification } from './virtual-thermostat-claims.service';
-import { thermostatActuatorIdentity } from './virtual-thermostat-contract.utils';
-
-export interface RemoteCoolingFrame {
-	readonly threshold: number;
-	readonly expiresAt: number;
-	readonly controllerRevision: number;
-	readonly protectionFingerprint: string;
-	readonly isCurrent: () => boolean;
-}
+import { AuthenticatedShellyScriptHttp } from './authenticated-shelly-script-http';
+import { REMOTE_DEW_POINT_PROFILE, RemoteDewPointDeadline } from './remote-dew-point-lease.contract';
+import { qualifiedRemoteDewPointBlockers } from './remote-dew-point-qualification';
+import { RemoteDewPointSession } from './remote-dew-point-session';
+import type { ShellyThermostatQualification as ThermostatInstalledQualification } from './shelly-thermostat-qualification';
 
 /** Provider implementation is separate from legacy heating; only installed structured evidence admits ON/drain. */
 export class ThermostatRemoteCoolingAdapter implements ThermostatActuationAdapter<ThermostatInstalledQualification> {

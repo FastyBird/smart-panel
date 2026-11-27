@@ -91,7 +91,7 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		database = await createSqliteDataSource({ ...options, migrations });
 		const upgraded = await database.runMigrations({ transaction: 'each' });
 		expect(upgraded.length).toBe(migrations.length - baseline.length);
-		expect(upgraded.at(-1).name).toBe('AddUnifiProtectIdentity1000000000060');
+		expect(upgraded.at(-1).name).toBe('AddSupervisedThermostatOutputs1000000000061');
 		expect(await database.query('SELECT id,name,type,displayOrder,statusWidgets FROM spaces_module_spaces')).toEqual(
 			originalRooms,
 		);
@@ -129,6 +129,27 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		await database.destroy();
 		database = await createSqliteDataSource({ ...options, migrations });
 		expect(await database.runMigrations({ transaction: 'each' })).toEqual([]);
+		const claimColumns = () =>
+			database.query<{ name: string; dflt_value: string | null }[]>(
+				'PRAGMA table_info("devices_virtual_thermostat_actuator_claims")',
+			);
+		expect(await claimColumns()).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: 'providerProfile', dflt_value: "'supervised-switch'" }),
+				expect.objectContaining({ name: 'independentProtectionAcknowledged', dflt_value: '0' }),
+			]),
+		);
+		await database.undoLastMigration({ transaction: 'each' });
+		expect(await claimColumns()).toContainEqual(
+			expect.objectContaining({ name: 'providerProfile', dflt_value: "'shelly-ng.guarded-switch'" }),
+		);
+		expect((await claimColumns()).map(({ name }) => name)).not.toContain('independentProtectionAcknowledged');
+		expect(
+			await database.query(
+				"SELECT sql FROM sqlite_master WHERE type='trigger' AND name='virtual_thermostat_device_contract'",
+			),
+		).toEqual([{ sql: expect.stringContaining('canonicalMac') }]);
+		expect(await database.runMigrations({ transaction: 'each' })).toHaveLength(1);
 		expect(await database.query('SELECT count(*) AS count FROM devices_virtual_thermostat_override_clocks')).toEqual([
 			{ count: 0 },
 		]);

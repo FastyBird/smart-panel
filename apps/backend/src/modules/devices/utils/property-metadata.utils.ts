@@ -1,11 +1,6 @@
-import { ChannelCategory, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
 import { getPropertyMetadata } from './schema.utils';
-
-export function hasQualifiedRawVoltageIdentity(channelIdentifier: string): boolean {
-	return /^raw-voltage:voltmeter:\d+:[a-f0-9]{64}$/.test(channelIdentifier);
-}
 
 export function resolvePropertyUnit(property: ChannelPropertyEntity): string | null {
 	const channel = property.channel;
@@ -13,15 +8,8 @@ export function resolvePropertyUnit(property: ChannelPropertyEntity): string | n
 	if (!channel || typeof channel === 'string') {
 		return null;
 	}
-	// The adopted Shelly voltmeter has a dynamic UNIT property; its fingerprinted channel
-	// fixes the raw VALUE semantics so configuration and runtime agree on physical volts.
-	if (
-		channel.category === ChannelCategory.ANALOG_INPUT &&
-		property.category === PropertyCategory.VALUE &&
-		property.identifier === 'voltage' &&
-		hasQualifiedRawVoltageIdentity(channel.identifier ?? '')
-	)
-		return 'V';
+	const unit = property.measurementUnit?.(channel);
+	if (unit) return unit;
 
 	const metadata = getPropertyMetadata(channel.category, property.category);
 

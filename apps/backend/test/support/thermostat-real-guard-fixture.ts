@@ -27,6 +27,7 @@ import { PropertyValueService } from '../../src/modules/devices/services/propert
 import { ManagedServiceManagerService } from '../../src/modules/extensions/services/managed-service-manager.service';
 import { NotificationsService } from '../../src/modules/notifications/services/notifications.service';
 import { StorageService } from '../../src/modules/storage/services/storage.service';
+import { ShellyProtectiveQualification } from '../../src/plugins/devices-shelly-ng/contracts/protective-switch.contract';
 import { DelegatesManagerService } from '../../src/plugins/devices-shelly-ng/delegates/delegates-manager.service';
 import { ShellyDeviceDelegate } from '../../src/plugins/devices-shelly-ng/delegates/shelly-device.delegate';
 import { UpdateShellyNgChannelPropertyDto } from '../../src/plugins/devices-shelly-ng/dto/update-channel-property.dto';
@@ -44,10 +45,12 @@ import { GuardedShellyRpcHandler } from '../../src/plugins/devices-shelly-ng/ser
 import { PollPlacementDiagnosticsService } from '../../src/plugins/devices-shelly-ng/services/poll-placement-diagnostics.service';
 import { ShellyNgService } from '../../src/plugins/devices-shelly-ng/services/shelly-ng.service';
 import { ShellyWsServerService } from '../../src/plugins/devices-shelly-ng/services/shelly-ws-server.service';
+import type { thermostatInstallationArtifact } from '../../src/plugins/devices-shelly-ng/services/thermostat-installation-artifact';
 import { VirtualThermostatActuatorClaimEntity } from '../../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
-import type { thermostatInstallationArtifact } from '../../src/plugins/devices-virtual/services/thermostat-installation-artifact';
 import { ThermostatInstalledQualification } from '../../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatTransportService } from '../../src/plugins/devices-virtual/services/virtual-thermostat-transport.service';
+
+import { shellyThermostatActuationFixture } from './thermostat-actuation-fixture';
 
 const activeFixtureCleanups = new Set<() => Promise<void>>();
 
@@ -153,15 +156,12 @@ export async function realThermostatGuardFixture(
 	);
 	const members = new Map<
 		string,
-		{ property: string; epoch: number; output: boolean; profile: ThermostatInstalledQualification['profile'] }
+		{ property: string; epoch: number; output: boolean; profile: ShellyProtectiveQualification }
 	>();
 	const sdkDevices: Device[] = [];
 	const rpcs: GuardedShellyRpcHandler[] = [];
 	const delegates: ShellyDeviceDelegate[] = [];
-	const targets = new Map<
-		string,
-		{ device: ShellyNgDeviceEntity; profile: ThermostatInstalledQualification['profile'] }
-	>();
+	const targets = new Map<string, { device: ShellyNgDeviceEntity; profile: ShellyProtectiveQualification }>();
 	const code = 'offline test script: no hardware qualification';
 	const controls = {
 		beforeFence: null as ((property: string) => Promise<void>) | null,
@@ -233,7 +233,11 @@ export async function realThermostatGuardFixture(
 	const platform = new ShellyNgDevicePlatform(manager);
 	const registration = platforms.register(platform);
 	if (!registration) throw new Error('Original offline platform registration required');
-	const transport = new VirtualThermostatTransportService(platforms, values);
+	const transport = new VirtualThermostatTransportService(
+		platforms,
+		values,
+		shellyThermostatActuationFixture(platforms, values),
+	);
 	lifecycleManager.register(connector);
 	const startManaged = () =>
 		lifecycleManager.startServiceManually(connector.owner.kind, connector.owner.type, connector.serviceId);
@@ -318,7 +322,7 @@ export async function realThermostatGuardFixture(
 				while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--;
 				return { data: bytes.subarray(params.offset, end).toString('utf8'), left: bytes.length - end };
 			};
-			const profile: ThermostatInstalledQualification['profile'] = installation?.qualification ?? {
+			const profile: ShellyProtectiveQualification = installation?.qualification ?? {
 				deviceId: device.identifier,
 				model: 'SNSW-001P16EU',
 				firmware: 'fixture-only',
@@ -343,6 +347,10 @@ export async function realThermostatGuardFixture(
 				},
 			};
 			qualifications.set(claim.physicalIdentity, {
+				contractVersion: 1,
+				providerProfile: { id: claim.providerProfile, version: claim.providerProfileVersion },
+				qualificationGeneration: claim.qualificationGeneration,
+				machineLeaseIsCurrent: () => !retired,
 				physicalIdentity: claim.physicalIdentity,
 				profile,
 				upstreamWritersExcluded: true,

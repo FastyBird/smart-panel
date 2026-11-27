@@ -12,7 +12,7 @@ import {
 	UpdateEvent,
 } from 'typeorm';
 
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 
 import {
 	SqliteNoMutationWindow,
@@ -26,6 +26,7 @@ import { captureCreation } from '../../../modules/devices/services/creation-capt
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 import { initializeThermostatCreationCatalog } from '../services/thermostat-creation-catalog';
 import { THERMOSTAT_OVERRIDE_CLOCK_TRIGGERS } from '../services/thermostat-override-clock.sql';
+import { ThermostatSafetyCatalog } from '../services/thermostat-safety-catalog.service';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
 import {
 	THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
@@ -41,6 +42,7 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly claims: VirtualThermostatClaimsService,
+		@Optional() private readonly safetyCatalog: ThermostatSafetyCatalog = new ThermostatSafetyCatalog(),
 	) {
 		this.dataSource.subscribers.push(this);
 	}
@@ -134,25 +136,30 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 			await this.dataSource.query(`CREATE TRIGGER IF NOT EXISTS "${name}" ${sql}`);
 		this.installed = true;
 	}
-	private isCatalogMutation(query: string): boolean {
-		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties|climate_automation_slots)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings|member_protection)|devices_virtual_transform_[a-z_]+|devices_shelly_ng_sample_sources)["`\]]?\b/i.test(
-			query,
-		);
+	private catalogMutation(query: string): 'bindings' | 'qualification' | null {
+		const table = /^\s*(?:UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`\[]?(\w+)/i.exec(query)?.[1]?.toLowerCase();
+		if (!table) return null;
+		if (
+			/^devices_virtual_(?:thermostat_(?:configs|sources|actuator_claims|member_protection)$|transform_)/.test(table) ||
+			this.safetyCatalog.invalidatesQualification(table)
+		)
+			return 'qualification';
+		return /^(?:devices_module_(?:devices|channels|channels_properties|climate_automation_slots)|devices_virtual_thermostat_settings)$/.test(
+			table,
+		)
+			? 'bindings'
+			: null;
 	}
 	beforeQuery(event: BeforeQueryEvent<unknown>): void {
-		if (!this.installed || !this.isCatalogMutation(event.query)) return;
+		const mutation = this.installed && this.catalogMutation(event.query);
+		if (!mutation) return;
 		this.dirtyRunners.add(event.queryRunner);
 		if (this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters)) return;
 		this.claims.invalidate();
-		if (
-			/devices_virtual_(?:thermostat_(?:configs|sources|actuator_claims|member_protection)|transform_)|devices_shelly_ng_sample_sources/i.test(
-				event.query,
-			)
-		)
-			this.claims.revokeAllQualifications();
+		if (mutation === 'qualification') this.claims.revokeAllQualifications();
 	}
 	async afterQuery(event: AfterQueryEvent<unknown>): Promise<void> {
-		if (this.installed && !event.queryRunner.isTransactionActive && this.isCatalogMutation(event.query))
+		if (this.installed && !event.queryRunner.isTransactionActive && this.catalogMutation(event.query))
 			await this.reconcileRunner(event.queryRunner, 'catalog write');
 	}
 	async afterTransactionCommit(event: TransactionCommitEvent): Promise<void> {
@@ -210,7 +217,7 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 			if (!owned.length) return;
 			if (
 				[...event.updatedColumns, ...event.updatedRelations].some((column) =>
-					['identifier', 'canonicalMac', 'category', 'type'].includes(column.propertyName),
+					['identifier', 'category', 'type'].includes(column.propertyName),
 				)
 			)
 				throw new DevicesValidationException(

@@ -32,7 +32,6 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { NativeThermostatController } from './controllers/native-thermostat.controller';
 import { ThermostatAuthoringContextController } from './controllers/thermostat-authoring-context.controller';
-import { ThermostatInstallationController } from './controllers/thermostat-installation.controller';
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
 import { VirtualDewPointConfigController } from './controllers/virtual-dew-point-config.controller';
 import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
@@ -73,10 +72,6 @@ import {
 } from './entities/devices-virtual.entity';
 import { NativeThermostatEntity, NativeThermostatRequestEntity } from './entities/native-thermostat.entity';
 import { ThermostatCoolingDependencyEntity } from './entities/thermostat-cooling-dependency.entity';
-import {
-	ThermostatInstallationAuditEntity,
-	ThermostatInstallationEntity,
-} from './entities/thermostat-installation.entity';
 import { ThermostatMemberProtectionEntity } from './entities/thermostat-member-protection.entity';
 import { ThermostatOverrideClockEntity } from './entities/thermostat-override-clock.entity';
 import { VIRTUAL_PRODUCER_ENTITIES, VirtualGraphRevisionEntity } from './entities/virtual-producer.entity';
@@ -99,11 +94,10 @@ import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
 import { NativeThermostatService } from './services/native-thermostat.service';
+import { ThermostatActuationRegistry } from './services/thermostat-actuation-registry.service';
 import { ThermostatAuthoringContextService } from './services/thermostat-authoring-context.service';
-import { ThermostatInstallationBindingsService } from './services/thermostat-installation-bindings.service';
-import { ThermostatInstallationLoaderService } from './services/thermostat-installation-loader.service';
-import { ThermostatInstallationService } from './services/thermostat-installation.service';
 import { ThermostatMemberProtectionService } from './services/thermostat-member-protection.service';
+import { ThermostatSafetyCatalog } from './services/thermostat-safety-catalog.service';
 import { VirtualAggregateRuntimeService } from './services/virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
@@ -162,8 +156,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			...VIRTUAL_PRODUCER_ENTITIES,
 			ThermostatMemberProtectionEntity,
 			ThermostatCoolingDependencyEntity,
-			ThermostatInstallationEntity,
-			ThermostatInstallationAuditEntity,
+
 			VirtualThermostatConfigEntity,
 			VirtualThermostatActuatorClaimEntity,
 			VirtualThermostatRecoveryEntity,
@@ -182,7 +175,15 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		// presents it, and the energy module has no way to know that without being told.
 		EnergyModule,
 	],
+	exports: [
+		ThermostatActuationRegistry,
+		ThermostatSafetyCatalog,
+		VirtualThermostatClaimsService,
+		VirtualThermostatRuntimeService,
+	],
 	providers: [
+		ThermostatActuationRegistry,
+		ThermostatSafetyCatalog,
 		NativeThermostatService,
 		VirtualDewPointConfigService,
 		VirtualDewPointRuntimeService,
@@ -191,9 +192,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualNumericOperatorRegistry,
 		VirtualNumericOperatorHostService,
 		VirtualTransformResolver,
-		ThermostatInstallationService,
-		ThermostatInstallationBindingsService,
-		ThermostatInstallationLoaderService,
+
 		VirtualThermostatAutomationService,
 		VirtualThermostatClaimsService,
 		VirtualThermostatConfigService,
@@ -235,7 +234,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 	controllers: [
 		NativeThermostatController,
 		VirtualDewPointConfigController,
-		ThermostatInstallationController,
+
 		ThermostatAuthoringContextController,
 		VirtualThermostatConfigController,
 		VirtualThermostatComfortController,

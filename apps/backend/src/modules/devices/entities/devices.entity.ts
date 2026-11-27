@@ -62,6 +62,9 @@ export class DeviceConnectionStatus {
 @Unique('UQ_devices_identifier_type', ['identifier', 'type'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class DeviceEntity extends BaseEntity {
+	/** Optional stable switch identity for providers that can recognize the same output after re-adoption. */
+	getPhysicalSwitchIdentity?(channel: ChannelEntity, property: ChannelPropertyEntity): string | null;
+
 	@ApiHideProperty()
 	@Exclude()
 	@Column({ type: 'integer', nullable: true, select: false, insert: false, update: false })
@@ -438,6 +441,9 @@ export class ChannelControlEntity extends BaseEntity {
 @Unique('UQ_channels_properties_identifier_type', ['identifier', 'channel'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class ChannelPropertyEntity extends BaseEntity {
+	/** A provider may supply the unit for a dynamically typed measurement in its catalog. */
+	measurementUnit?(channel: ChannelEntity): string | null;
+
 	@ApiHideProperty()
 	@Exclude()
 	@Column({ type: 'integer', nullable: true, select: false, insert: false, update: false })

@@ -360,6 +360,12 @@ describe('PropertyCommandDispatchService', () => {
 		entry.dispose();
 	});
 
+	it('requires prepared dispatch for a guard that cannot be maintained under the structure lock', async () => {
+		ownershipGuard();
+		await expect(service.dispatchBatch([update()])).resolves.toMatchObject({ success: false });
+		expect(platform.processBatch).not.toHaveBeenCalled();
+	});
+
 	it('routes ordinary projected physical leaves through prepared guarded I/O without changing boolean acceptance', async () => {
 		ownershipGuard();
 		const alias = { ...sourceProperty, id: 'alias' } as ChannelPropertyEntity;
@@ -528,6 +534,21 @@ describe('PropertyCommandDispatchService', () => {
 						complete([]);
 						await refreshing;
 					}
+				}
+			},
+		);
+
+		it.each([false, true])(
+			'dispatches an unclaimed switch when the provider offers no prepared batch (optional method: %s)',
+			async (hasMethod) => {
+				sourceProperty.category = PropertyCategory.ON;
+				try {
+					if (hasMethod)
+						platform.prepareCompositeBatch = jest.fn((_updates: IDevicePropertyData[]) => Promise.resolve(null));
+					await expect(service.dispatchBatch([update()])).resolves.toEqual({ success: true });
+					expect(platform.processBatch).toHaveBeenCalledTimes(1);
+				} finally {
+					delete sourceProperty.category;
 				}
 			},
 		);

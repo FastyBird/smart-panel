@@ -4,6 +4,10 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { VirtualNumericTransformOperator } from '../../devices-virtual/services/virtual-numeric-transform.utils';
+import { VirtualThermostatClaimsService } from '../../devices-virtual/services/virtual-thermostat-claims.service';
+import { VirtualThermostatRuntimeService } from '../../devices-virtual/services/virtual-thermostat-runtime.service';
+import { SHELLY_GUARDED_PROFILE } from '../contracts/thermostat-actuation.constants';
 import {
 	ThermostatInstallationAuditEntity,
 	ThermostatInstallationEntity,
@@ -20,9 +24,6 @@ import {
 	ThermostatMemberGuardSetup,
 	ThermostatOperatorAttestation,
 } from './thermostat-installation.types';
-import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
-import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
-import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
 
 @Injectable()
 export class ThermostatInstallationService {
@@ -183,13 +184,13 @@ export class ThermostatInstallationService {
 	}
 	private beginMutation(claimId: string): () => void {
 		const release = this.claims.holdRecoveryFence();
-		this.claims.revokeAllQualifications();
+		this.claims.revokeAllQualifications(SHELLY_GUARDED_PROFILE);
 		this.onChanging?.(claimId);
 		this.runtime.fenceMember?.(claimId);
 		return release;
 	}
 	private invalidate(identity: string, controllerId: string): void {
-		this.claims.revokeQualification(identity);
+		this.claims.revokeQualification(identity, SHELLY_GUARDED_PROFILE);
 		void this.runtime.request(controllerId);
 	}
 	async inspect(claimId: string) {

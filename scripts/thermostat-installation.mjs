@@ -20,7 +20,7 @@ export async function runInstallationCli(args, environment, request = fetch, out
 			throw new Error('Setup file accepts only setup and operator_attestations; no qualification/proof flags.');
 		body = { expected_revision: revision, ...input };
 	} else if (revision !== undefined) body = { expected_revision: revision };
-	const url = new URL(`/api/v1/plugins/devices-virtual/producers/thermostat-installations/${claim}${['verify', 'revoke'].includes(action) ? '/' + action : ''}`, base);
+	const url = new URL(`/api/v1/plugins/devices-shelly-ng/producers/thermostat-installations/${claim}${['verify', 'revoke'].includes(action) ? '/' + action : ''}`, base);
 	const result = await request(url, {
 		method: action === 'stage' ? 'PUT' : ['verify', 'revoke'].includes(action) ? 'POST' : 'GET',
 		redirect: 'error', signal: AbortSignal.timeout(15000),

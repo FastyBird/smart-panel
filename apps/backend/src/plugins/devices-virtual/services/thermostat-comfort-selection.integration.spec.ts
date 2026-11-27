@@ -9,6 +9,7 @@ import { AfterQueryEvent, BeforeQueryEvent, EntityManager, QueryRunner, UpdateEv
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { shellyThermostatActuationFixture } from '../../../../test/support/thermostat-actuation-fixture';
 import {
 	SqliteCommitGuardReceipt,
 	SqliteDataSource,
@@ -29,6 +30,7 @@ import { captureCreation } from '../../../modules/devices/services/creation-capt
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { SHELLY_GUARDED_PROFILE } from '../../devices-shelly-ng/contracts/thermostat-actuation.constants';
 import { ConfigureThermostatComfortDto, CreateThermostatOverrideDto } from '../dto/thermostat-comfort.dto';
 import {
 	VirtualChannelEntity,
@@ -359,6 +361,8 @@ describe('manual thermostat selection: reserved native intent', () => {
 			dependency,
 			new PropertyCommandAdmissionRegistryService(),
 			emitter,
+			undefined,
+			shellyThermostatActuationFixture(),
 		);
 		services.push(ownership);
 		if (setup) setupStage(setup, 'ownership-bootstrap');
@@ -1345,6 +1349,8 @@ describe('manual thermostat selection: reserved native intent', () => {
 				id: randomUUID(),
 				controllerId: id,
 				physicalIdentity: 'reserved-fixture',
+				providerProfile: SHELLY_GUARDED_PROFILE,
+				qualificationGeneration: randomUUID(),
 				role: 'heating',
 				state: 'missing',
 				sourcePropertyId: null,
@@ -1403,6 +1409,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 				[id],
 			);
 			claims.recordQualification({
+				contractVersion: 1,
+				providerProfile: { id: claim.providerProfile, version: claim.providerProfileVersion },
+				qualificationGeneration: claim.qualificationGeneration,
 				physicalIdentity: claim.physicalIdentity,
 				upstreamWritersExcluded: true,
 				opposedOutputsInterlocked: false,
@@ -3636,6 +3645,8 @@ describe('manual thermostat selection: reserved native intent', () => {
 				id: randomUUID(),
 				controllerId: id,
 				physicalIdentity: 'reserved-fixture',
+				providerProfile: SHELLY_GUARDED_PROFILE,
+				qualificationGeneration: randomUUID(),
 				role: 'heating',
 				state: 'missing',
 				sourcePropertyId: null,
@@ -4749,6 +4760,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 				group_identity: id + ':heating',
 				provider_profile: 'shelly-ng.guarded-switch',
 				provider_profile_version: 1,
+				independent_protection_acknowledged: false,
 				role: 'heating',
 				source_property: name === 'a-bound' ? property : null,
 				source_identity: 'property-' + name,

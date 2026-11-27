@@ -5,22 +5,27 @@ import { Injectable } from '@nestjs/common';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
-import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
-import { thermostatHasOpposedBranches } from '../contracts/thermostat-actuation.contract';
-import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
+import { thermostatHasOpposedBranches } from '../../devices-virtual/contracts/thermostat-actuation.contract';
+import { ThermostatMemberProtectionEntity } from '../../devices-virtual/entities/thermostat-member-protection.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 	VirtualThermostatSourceEntity,
-} from '../entities/virtual-thermostat.entity';
-import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
-
-import { ThermostatProtectionSource, resolveThermostatProtectionSource } from './thermostat-protection-source.utils';
+} from '../../devices-virtual/entities/virtual-thermostat.entity';
+import {
+	VirtualTransformConfigEntity,
+	VirtualTransformSourceEntity,
+} from '../../devices-virtual/entities/virtual-transform.entity';
+import { resolveThermostatProtectionSource } from '../../devices-virtual/services/thermostat-protection-source.utils';
 import {
 	thermostatActuatorIdentity,
 	thermostatFingerprint,
 	thermostatPropertyContract,
-} from './virtual-thermostat-contract.utils';
+} from '../../devices-virtual/services/virtual-thermostat-contract.utils';
+import { SHELLY_GUARDED_PROFILE, SHELLY_GUARDED_PROFILE_VERSION } from '../contracts/thermostat-actuation.constants';
+import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
+
+import { qualifyShellyProtectionSource } from './shelly-thermostat-protection-source';
 
 @Injectable()
 export class ThermostatInstallationBindingsService {
@@ -28,30 +33,41 @@ export class ThermostatInstallationBindingsService {
 		manager: EntityManager,
 		claimId: string,
 	): Promise<
-		Awaited<ReturnType<ThermostatInstallationBindingsService['legacy']>> & {
+		Awaited<ReturnType<ThermostatInstallationBindingsService['controllerFloor']>> & {
 			memberProtection?: ThermostatMemberProtectionEntity;
-			protectionSource?: ThermostatProtectionSource;
+			protectionSource?: Awaited<ReturnType<typeof qualifyShellyProtectionSource>>;
 		}
 	> {
+		const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId });
+		if (
+			claim.providerProfile !== SHELLY_GUARDED_PROFILE ||
+			claim.providerProfileVersion !== SHELLY_GUARDED_PROFILE_VERSION ||
+			!claim.qualificationGeneration
+		)
+			throw new DevicesValidationException(
+				'Select the Shelly guard profile for this actuator before staging its installation.',
+			);
 		const member = await manager.findOneBy(ThermostatMemberProtectionEntity, { claimId });
 		if (!member) {
-			const legacyClaim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId });
 			const heating = await manager.countBy(VirtualThermostatActuatorClaimEntity, {
-				controllerId: legacyClaim.controllerId,
+				controllerId: claim.controllerId,
 				role: 'heating',
 				state: Not('released'),
 			});
-			if (legacyClaim.role === 'heating' && heating > 1)
+			if (claim.role === 'heating' && heating > 1)
 				throw new DevicesValidationException(
 					'Every nonreleased parallel heating member requires explicit local protection before installation.',
 				);
-			return this.legacy(manager, claimId);
+			return this.controllerFloor(manager, claim);
 		}
-		const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId });
 		const config = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: claim.controllerId });
 		if (claim.state === 'released' || claim.role !== 'heating' || !member.sourcePropertyId || !config.policy.floor)
 			throw new DevicesValidationException('Retained member protection is incomplete.');
-		const source = await resolveThermostatProtectionSource(manager, member.sourcePropertyId, claim.physicalIdentity);
+		const source = await qualifyShellyProtectionSource(
+			manager,
+			await resolveThermostatProtectionSource(manager, member.sourcePropertyId),
+			claim.sourceDeviceId,
+		);
 		if (source.fingerprint !== member.contractFingerprint)
 			throw new DevicesValidationException(
 				'Protection source contract changed; explicit repair and restaging required.',
@@ -78,7 +94,7 @@ export class ThermostatInstallationBindingsService {
 		const protectionTopology = [];
 		for (const sibling of topology) {
 			const binding = await manager.findOneBy(ThermostatMemberProtectionEntity, { claimId: sibling.id });
-			if (sibling.role === 'heating' && !binding)
+			if (sibling.role === 'heating' && sibling.providerProfile === SHELLY_GUARDED_PROFILE && !binding)
 				throw new DevicesValidationException('Every active heating member requires explicit local protection.');
 			protectionTopology.push({
 				claim: {
@@ -147,9 +163,9 @@ export class ThermostatInstallationBindingsService {
 			}),
 		};
 	}
-	private async legacy(
+	private async controllerFloor(
 		manager: EntityManager,
-		claimId: string,
+		claim: VirtualThermostatActuatorClaimEntity,
 	): Promise<{
 		claim: VirtualThermostatActuatorClaimEntity;
 		config: VirtualThermostatConfigEntity;
@@ -160,7 +176,6 @@ export class ThermostatInstallationBindingsService {
 		floorLeaf: ChannelPropertyEntity;
 		floorTransform: VirtualTransformConfigEntity | null;
 	}> {
-		const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId });
 		const config = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: claim.controllerId });
 		const property =
 			claim.sourcePropertyId &&

@@ -9,6 +9,7 @@ import {
 	PropertyCategory,
 } from '../../src/modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../src/modules/devices/entities/devices.entity';
+import { PlatformRegistryService } from '../../src/modules/devices/services/platform.registry.service';
 import {
 	nativeTemperatureIdentity,
 	nativeVoltmeterVoltageIdentity,
@@ -19,6 +20,8 @@ import {
 	ShellyNgDeviceEntity,
 } from '../../src/plugins/devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { ShellySampleSourceEntity } from '../../src/plugins/devices-shelly-ng/entities/shelly-sample-source.entity';
+import { ShellyThermostatSafetyCatalog } from '../../src/plugins/devices-shelly-ng/services/shelly-thermostat-safety-catalog.service';
+import { ThermostatMemberGuardSetup } from '../../src/plugins/devices-shelly-ng/services/thermostat-installation.types';
 import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
@@ -30,8 +33,16 @@ import {
 	VirtualTransformConfigEntity,
 	VirtualTransformSourceEntity,
 } from '../../src/plugins/devices-virtual/entities/virtual-transform.entity';
-import { ThermostatMemberGuardSetup } from '../../src/plugins/devices-virtual/services/thermostat-installation.types';
+import { ThermostatSafetyCatalog } from '../../src/plugins/devices-virtual/services/thermostat-safety-catalog.service';
 import { VirtualNumericTransformOperator } from '../../src/plugins/devices-virtual/services/virtual-numeric-transform.utils';
+
+export function createShellyThermostatSafetyCatalog(
+	platforms = new PlatformRegistryService(),
+): ThermostatSafetyCatalog {
+	const catalog = new ThermostatSafetyCatalog();
+	new ShellyThermostatSafetyCatalog(catalog, platforms).onModuleInit();
+	return catalog;
+}
 
 /** Offline catalog fixture only. It supplies no physical qualification or sample freshness. */
 export async function createProtectionProbe(db: DataSource, actuatorProperty: string, converted = false) {

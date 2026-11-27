@@ -110,10 +110,12 @@ export class VirtualThermostatActuatorClaimEntity {
 	role: ThermostatActuatorRole;
 	@Column({ type: 'text' })
 	physicalIdentity: string;
-	@Column({ type: 'text', default: 'shelly-ng.guarded-switch' })
+	@Column({ type: 'text', default: 'supervised-switch' })
 	providerProfile: string;
 	@Column({ type: 'integer', default: 1 })
 	providerProfileVersion: number;
+	@Column({ type: 'boolean', default: false })
+	independentProtectionAcknowledged: boolean;
 	@Column({ type: 'varchar', nullable: true })
 	sourcePropertyId: string | null;
 	@ManyToOne(() => ChannelPropertyEntity, { nullable: true, onDelete: 'SET NULL' })

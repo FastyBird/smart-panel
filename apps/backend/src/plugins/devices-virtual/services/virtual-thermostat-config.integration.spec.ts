@@ -11,6 +11,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
+import { shellyThermostatActuationFixture } from '../../../../test/support/thermostat-actuation-fixture';
 import { createProtectionProbe } from '../../../../test/support/thermostat-protection-fixture';
 import { SqliteDataSource, hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
@@ -20,6 +21,7 @@ import { AddVirtualThermostatRecoveries1000000000034 } from '../../../migrations
 import { AddVirtualThermostatComfort1000000000039 } from '../../../migrations/1000000000039-AddVirtualThermostatComfort';
 import { AddThermostatBranchGroups1000000000040 } from '../../../migrations/1000000000040-AddThermostatBranchGroups';
 import { AddThermostatMemberProtection1000000000041 } from '../../../migrations/1000000000041-AddThermostatMemberProtection';
+import { AddSupervisedThermostatOutputs1000000000061 } from '../../../migrations/1000000000061-AddSupervisedThermostatOutputs';
 import { OpenApiResponseInterceptor } from '../../../modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import {
@@ -38,6 +40,7 @@ import { ClimateAutomationLedgerService } from '../../../modules/devices/service
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
@@ -45,17 +48,34 @@ import { ChannelPropertyEntitySubscriber } from '../../../modules/devices/subscr
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { SceneActionEntity, SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
 import { SceneExecutorService } from '../../../modules/scenes/services/scene-executor.service';
+import {
+	ModbusChannelEntity,
+	ModbusChannelPropertyEntity,
+	ModbusDeviceEntity,
+} from '../../devices-modbus/entities/devices-modbus.entity';
 import { nativeVoltmeterVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
+import { SHELLY_GUARDED_PROFILE } from '../../devices-shelly-ng/contracts/thermostat-actuation.constants';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ShellyThermostatIdentityGuard } from '../../devices-shelly-ng/services/shelly-thermostat-identity-guard';
+import { ShellyThermostatSafetyCatalog } from '../../devices-shelly-ng/services/shelly-thermostat-safety-catalog.service';
+import {
+	Zigbee2mqttChannelEntity,
+	Zigbee2mqttChannelPropertyEntity,
+	Zigbee2mqttDeviceEntity,
+} from '../../devices-zigbee2mqtt/entities/devices-zigbee2mqtt.entity';
 import { LocalScenePlatform } from '../../scenes-local/platforms/local-scene.platform';
 import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
 import { ClimateIntentService } from '../../spaces-home-control/services/climate-intent.service';
 import { PrimaryClimateDevice } from '../../spaces-home-control/services/space-climate-state.service';
 import { ClimateIntentType, ClimateMode, ClimateRole } from '../../spaces-home-control/spaces-home-control.constants';
+import {
+	VIRTUAL_DEVICE_BINDINGS_CHANGED,
+	VirtualDeviceBindingsEvent,
+} from '../contracts/virtual-device-bindings.event';
 import { VirtualThermostatConfigController } from '../controllers/virtual-thermostat-config.controller';
 import { ConfigureVirtualThermostatDto } from '../dto/thermostat-config.dto';
 import {
@@ -77,6 +97,8 @@ import { VirtualThermostatConfigurationModel } from '../models/thermostat-respon
 import { VirtualDevicePlatform } from '../platforms/virtual-device.platform';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
+import { ThermostatActuationRegistry } from './thermostat-actuation-registry.service';
+import { ThermostatSafetyCatalog } from './thermostat-safety-catalog.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualNumericOperatorRegistry } from './virtual-numeric-operator.registry';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
@@ -103,6 +125,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 	let values: PropertyValueService;
 	let structure: DeviceStructureLockService;
 	let graph: VirtualDependencyGraphService;
+	let extensions: ThermostatActuationRegistry;
+	let catalog: ThermostatSafetyCatalog;
 	beforeEach(async () => {
 		directory = await mkdtemp(join(tmpdir(), 'vd2-thermostat-'));
 		const options = {
@@ -118,14 +142,30 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		events = new EventEmitter2();
 		structure = new DeviceStructureLockService();
 		graph = new VirtualDependencyGraphService(database);
-		claims = new VirtualThermostatClaimsService(database, structure, graph, registry, events);
+		extensions = shellyThermostatActuationFixture();
+		catalog = new ThermostatSafetyCatalog();
+		const platforms = new PlatformRegistryService();
+		new ShellyThermostatSafetyCatalog(catalog, platforms).onModuleInit();
+		claims = new VirtualThermostatClaimsService(database, structure, graph, registry, events, undefined, extensions);
 		values = {
 			write: jest.fn().mockResolvedValue(true),
 			readLatest: jest.fn().mockResolvedValue(null),
 		} as unknown as PropertyValueService;
-		configs = new VirtualThermostatConfigService(database, structure, graph, claims, events, values);
+		configs = new VirtualThermostatConfigService(
+			database,
+			structure,
+			graph,
+			claims,
+			events,
+			values,
+			undefined,
+			undefined,
+			undefined,
+			catalog,
+		);
 		await claims.onApplicationBootstrap();
-		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
+		await new VirtualThermostatOwnershipSubscriber(database, claims, catalog).onApplicationBootstrap();
+		await new ShellyThermostatIdentityGuard(database).onApplicationBootstrap();
 	});
 	afterEach(async () => {
 		claims?.onModuleDestroy();
@@ -244,8 +284,133 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		contactOpeningMs: 0,
 		contactClosingMs: 0,
 		sources: [{ role: 'ambient', sourcePropertyId: sensor, maximumAgeSeconds: 300 }],
-		actuators: [{ role: 'heating', sourcePropertyId: heat, leaseSeconds: 30 }],
+		actuators: [{ role: 'heating', sourcePropertyId: heat, providerProfile: SHELLY_GUARDED_PROFILE, leaseSeconds: 30 }],
 		settings: [],
+	});
+
+	const zigbee = {
+		device: Zigbee2mqttDeviceEntity,
+		channel: Zigbee2mqttChannelEntity,
+		property: Zigbee2mqttChannelPropertyEntity,
+	};
+	const modbus = { device: ModbusDeviceEntity, channel: ModbusChannelEntity, property: ModbusChannelPropertyEntity };
+	it.each([
+		{ name: 'Zigbee2MQTT sensor and Modbus heating relay', source: zigbee, output: modbus, role: 'heating' as const },
+		{ name: 'Modbus sensor and Zigbee2MQTT cooling relay', source: modbus, output: zigbee, role: 'cooling' as const },
+	])('binds a $name and publishes only committed memberships', async ({ source, output, role }) => {
+		const controller = await owner();
+		const roomDevice = uuid(),
+			roomChannel = uuid(),
+			sensor = uuid();
+		const relayDevice = uuid(),
+			relayChannel = uuid(),
+			relay = uuid();
+		await database.manager.insert<DeviceEntity>(source.device, {
+			id: roomDevice,
+			name: 'Room sensor',
+			category: DeviceCategory.SENSOR,
+			enabled: true,
+		});
+		await database.manager.insert<ChannelEntity>(source.channel, {
+			id: roomChannel,
+			device: roomDevice,
+			name: 'Room temperature',
+			category: ChannelCategory.TEMPERATURE,
+		});
+		await database.manager.insert<ChannelPropertyEntity>(source.property, {
+			id: sensor,
+			channel: roomChannel,
+			identifier: 'temperature',
+			category: PropertyCategory.TEMPERATURE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+		});
+		await database.manager.insert<DeviceEntity>(output.device, {
+			id: relayDevice,
+			name: 'Relay',
+			category: DeviceCategory.SWITCHER,
+			enabled: true,
+		});
+		await database.manager.insert<ChannelEntity>(output.channel, {
+			id: relayChannel,
+			device: relayDevice,
+			name: 'Output',
+			category: ChannelCategory.SWITCHER,
+		});
+		await database.manager.insert<ChannelPropertyEntity>(output.property, {
+			id: relay,
+			channel: relayChannel,
+			identifier: role === 'heating' ? 'coil-12' : 'state',
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		});
+		const changes: VirtualDeviceBindingsEvent[] = [];
+		events.on(VIRTUAL_DEVICE_BINDINGS_CHANGED, (event: VirtualDeviceBindingsEvent) => changes.push(event));
+		const input = dto(sensor, relay);
+		if (role === 'cooling') {
+			input.policy.heatingSetpoint = null;
+			input.policy.coolingSetpoint = 25;
+		}
+		input.actuators = [{ role, sourcePropertyId: relay }];
+		const draft = await configs.preview(controller, input);
+		expect(draft.actuators[0]).toMatchObject({
+			provider_profile: 'supervised-switch',
+			independent_protection_acknowledged: false,
+			lease_seconds: 0,
+		});
+		expect(draft.reasons).toContain(`${role}_independent_protection_not_acknowledged`);
+		await expect(
+			configs.configure(controller, {
+				...input,
+				actuators: [{ ...input.actuators[0], providerProfile: SHELLY_GUARDED_PROFILE, leaseSeconds: 20 }],
+			}),
+		).rejects.toThrow('extension');
+		expect(changes).toHaveLength(0);
+		const {
+			actuators: [claim],
+			revision,
+		} = await configs.configure(controller, input);
+		expect(changes).toEqual([
+			expect.objectContaining({
+				action: 'created',
+				deviceId: controller,
+				revision,
+				bindings: expect.arrayContaining([
+					{
+						role,
+						deviceId: relayDevice,
+						propertyId: relay,
+						claimId: claim.id,
+						physicalIdentity: claim.physical_identity,
+						providerProfile: 'supervised-switch',
+					},
+					{ role: 'ambient', deviceId: roomDevice, propertyId: sensor },
+				]),
+			}),
+		]);
+		const acknowledged = await configs.configure(controller, {
+			...input,
+			expectedRevision: revision,
+			actuators: [{ ...input.actuators[0], independentProtectionAcknowledged: true }],
+		});
+		expect(acknowledged.actuators[0].independent_protection_acknowledged).toBe(true);
+		expect(changes.map((event) => event.action)).toEqual(['created', 'updated']);
+		await expect(configs.configure(controller, { ...input, expectedRevision: revision })).rejects.toThrow(
+			'revision changed',
+		);
+		expect(changes).toHaveLength(2);
+		// The device removal entry point emits DEVICE_DELETED after the SQL ownership trigger permits deletion.
+		const parent = await database.manager.findOneByOrFail(VirtualDeviceEntity, { id: controller });
+		await expect(database.manager.delete(VirtualDeviceEntity, controller)).rejects.toThrow('reserved');
+		await database.manager.update(VirtualThermostatActuatorClaimEntity, claim.id, { state: 'released' });
+		await database.manager.delete(VirtualDeviceEntity, controller);
+		await configs.onDeviceDeleted(parent);
+		expect(changes.at(-1)).toMatchObject({
+			action: 'deleted',
+			deviceId: controller,
+			bindings: expect.arrayContaining([expect.objectContaining({ claimId: claim.id, deviceId: relayDevice })]),
+		});
 	});
 
 	it('preserves all native configuration rows on an exact repeat and at MAX while retaining entry and final maintenance', async () => {
@@ -510,6 +675,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			values,
 			undefined,
 			automation,
+			undefined,
+			catalog,
 		);
 		let release: () => void;
 		let entered: () => void;
@@ -564,6 +731,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			values,
 			undefined,
 			automation,
+			undefined,
+			catalog,
 		);
 		const beforeGraph = await graph.revision();
 		let inserted = false;
@@ -785,7 +954,12 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			first = await actuator(),
 			secondRelay = await actuator('A8032ABE5099');
 		const input = dto(sensor, first);
-		input.actuators.push({ role: 'heating', sourcePropertyId: secondRelay, leaseSeconds: 30 });
+		input.actuators.push({
+			role: 'heating',
+			sourcePropertyId: secondRelay,
+			providerProfile: SHELLY_GUARDED_PROFILE,
+			leaseSeconds: 30,
+		});
 		await expect(configs.configure(controller, input)).rejects.toThrow(/protection|floor source/);
 		await protectMembers(input);
 		const configured = await configs.configure(controller, input);
@@ -811,7 +985,12 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			first = await actuator(),
 			secondRelay = await actuator('A8032ABE5099');
 		const input = dto(sensor, first);
-		input.actuators.push({ role: 'heating', sourcePropertyId: secondRelay, leaseSeconds: 30 });
+		input.actuators.push({
+			role: 'heating',
+			sourcePropertyId: secondRelay,
+			providerProfile: SHELLY_GUARDED_PROFILE,
+			leaseSeconds: 30,
+		});
 		await protectMembers(input);
 		input.sources.push({ role: 'floor', sourcePropertyId: globalFloor, maximumAgeSeconds: 5 });
 		const configured = await configs.configure(controller, input);
@@ -834,7 +1013,12 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			Array.from({ length: 9 }, (_, index) => actuator(`A8032ABE50${String(index).padStart(2, '0')}`)),
 		);
 		const input = dto(sensor, members[0]);
-		input.actuators = members.map((sourcePropertyId) => ({ role: 'heating', sourcePropertyId, leaseSeconds: 30 }));
+		input.actuators = members.map((sourcePropertyId) => ({
+			role: 'heating',
+			sourcePropertyId,
+			providerProfile: SHELLY_GUARDED_PROFILE,
+			leaseSeconds: 30,
+		}));
 		await expect(configs.configure(controller, input)).rejects.toThrow('branches');
 		const mixed: ConfigureVirtualThermostatDto = {
 			...input,
@@ -853,8 +1037,10 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			id: configured.actuators[0].id,
 		});
 		claims.recordQualification({
-			physicalIdentity: retained.physicalIdentity,
+			contractVersion: 1,
+			providerProfile: { id: SHELLY_GUARDED_PROFILE, version: 1 },
 			qualificationGeneration: retained.qualificationGeneration,
+			physicalIdentity: retained.physicalIdentity,
 			upstreamWritersExcluded: true,
 			opposedOutputsInterlocked: false,
 			profile: {
@@ -951,6 +1137,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await runner.query('DROP TABLE "devices_virtual_thermostat_member_protection"');
 		await runner.query('ALTER TABLE "devices_shelly_ng_sample_sources" DROP COLUMN "installationSnapshot"');
 		await new AddThermostatMemberProtection1000000000041().up(runner);
+		await new AddSupervisedThermostatOutputs1000000000061().up(runner);
 		expect(
 			(
 				(await runner.query('SELECT * FROM "devices_virtual_thermostat_branch_runtime"')) as Record<string, unknown>[]
@@ -972,9 +1159,16 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			string,
 			unknown
 		>[];
-		expect(afterClaims.map(({ providerProfile: _profile, providerProfileVersion: _version, ...row }) => row)).toEqual(
-			beforeClaims,
-		);
+		expect(
+			afterClaims.map(
+				({
+					independentProtectionAcknowledged: _ack,
+					providerProfile: _profile,
+					providerProfileVersion: _version,
+					...row
+				}) => row,
+			),
+		).toEqual(beforeClaims);
 		await claims.refresh();
 		expect((await configs.get(controller)).actuators[0]).toMatchObject({
 			id: claimId,
@@ -994,7 +1188,12 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			first = await actuator(),
 			second = await actuator('A8032ABE5099');
 		const input = dto(sensor, first);
-		input.actuators.push({ role: 'heating', sourcePropertyId: second, leaseSeconds: 30 });
+		input.actuators.push({
+			role: 'heating',
+			sourcePropertyId: second,
+			providerProfile: SHELLY_GUARDED_PROFILE,
+			leaseSeconds: 30,
+		});
 		await protectMembers(input);
 		const configured = await configs.configure(controller, input);
 		await expect(database.manager.delete(DeviceEntity, { id: controller })).rejects.toThrow('reserved');
@@ -1054,7 +1253,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				{ role: 'ambient', source_property: sensor, maximum_age_seconds: 300 },
 				{ role: 'floor', source_property: floor, maximum_age_seconds: 120 },
 			],
-			actuators: [{ role: 'heating', source_property: relay, lease_seconds: 30 }],
+			actuators: [
+				{ role: 'heating', source_property: relay, provider_profile: SHELLY_GUARDED_PROFILE, lease_seconds: 30 },
+			],
 			settings: [{ property: heatingSetting, setting: 'heating_setpoint' }],
 		};
 		// These authoring routes do not inspect or activate runtime; auth guards are outside this harness.
@@ -1080,6 +1281,17 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			);
 			await app.init();
 			const url = `/producers/thermostats/${controller}`;
+			for (const invalid of ['false', 'true', 1, null]) {
+				const response = await app.inject({
+					method: 'PUT',
+					url,
+					payload: {
+						...payload,
+						actuators: [{ role: 'heating', source_property: relay, independent_protection_acknowledged: invalid }],
+					},
+				});
+				expect(response.statusCode).toBe(400);
+			}
 			const preview = await app.inject({ method: 'POST', url: `${url}/preview`, payload });
 			expect(preview.statusCode).toBe(201);
 			expect(preview.json<{ data: VirtualThermostatConfigurationModel }>().data).toMatchObject({
@@ -1275,6 +1487,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			secondGraph,
 			new PropertyCommandAdmissionRegistryService(),
 			new EventEmitter2(),
+			undefined,
+			extensions,
 		);
 		const secondConfigs = new VirtualThermostatConfigService(
 			second,
@@ -1283,6 +1497,10 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			secondClaims,
 			new EventEmitter2(),
 			values,
+			undefined,
+			undefined,
+			undefined,
+			catalog,
 		);
 		const outcomes = await Promise.allSettled([
 			configs.configure(controllerA, dto(sensor, relay)),
@@ -1414,7 +1632,12 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		const heatSetting = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE);
 		const input = dto(sensor, heat);
 		input.policy.coolingSetpoint = 24;
-		input.actuators.push({ role: 'cooling', sourcePropertyId: cool, leaseSeconds: 30 });
+		input.actuators.push({
+			role: 'cooling',
+			sourcePropertyId: cool,
+			providerProfile: SHELLY_GUARDED_PROFILE,
+			leaseSeconds: 30,
+		});
 		input.settings = [{ propertyId: heatSetting, setting: 'heating_setpoint' }];
 		await configs.configure(controller, input);
 		expect((await target(heatSetting, 22)).property.permissions).toEqual([PermissionType.READ_WRITE]);
@@ -1453,7 +1676,12 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		);
 		const input = dto(sensor, heat);
 		input.policy.coolingSetpoint = 24;
-		input.actuators.push({ role: 'cooling', sourcePropertyId: cool, leaseSeconds: 30 });
+		input.actuators.push({
+			role: 'cooling',
+			sourcePropertyId: cool,
+			providerProfile: SHELLY_GUARDED_PROFILE,
+			leaseSeconds: 30,
+		});
 		input.settings = [
 			{ propertyId: heatOn, setting: 'heating_enabled' },
 			{ propertyId: heatSetpoint, setting: 'heating_setpoint' },
@@ -1759,6 +1987,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		const configured = await configs.configure(controller, dto(sensor, oldProperty));
 		const oldClaim = configured.actuators[0];
 		const priorQualification: ThermostatInstalledQualification = {
+			contractVersion: 1,
+			providerProfile: { id: SHELLY_GUARDED_PROFILE, version: 1 },
+			qualificationGeneration: oldClaim.qualification_generation,
 			physicalIdentity: oldClaim.physical_identity,
 			upstreamWritersExcluded: true,
 			opposedOutputsInterlocked: false,
@@ -1875,6 +2106,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			new VirtualDependencyGraphService(second),
 			new PropertyCommandAdmissionRegistryService(),
 			new EventEmitter2(),
+			undefined,
+			extensions,
 		);
 		await restarted.refresh();
 		const restoredClaim = await second.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: old.id });
@@ -1885,7 +2118,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			qualificationGeneration: restoredClaim.qualificationGeneration,
 			profile: { ...priorQualification.profile, evidenceId: 'new-installation' },
 		});
-		expect(restarted.qualification(restoredClaim, false)?.profile.evidenceId).toBe('new-installation');
+		expect(restarted.qualification(restoredClaim, false)?.profile).toMatchObject({ evidenceId: 'new-installation' });
 		const restoredTarget = await target(replacement, true);
 		expect(() => restarted.assertAllowed(restoredTarget)).toThrow('reserved');
 		await expect(second.manager.countBy(VirtualThermostatRecoveryEntity, { claimId: old.id })).resolves.toBe(1);
@@ -2048,6 +2281,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		const configured = await configs.configure(controller, input);
 		const claim = configured.actuators[0];
 		claims.recordQualification({
+			contractVersion: 1,
+			providerProfile: { id: SHELLY_GUARDED_PROFILE, version: 1 },
+			qualificationGeneration: claim.qualification_generation,
 			physicalIdentity: claim.physical_identity,
 			upstreamWritersExcluded: true,
 			opposedOutputsInterlocked: false,
@@ -2413,6 +2649,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				events,
 				values,
 				new VirtualTransformResolver(operators),
+				undefined,
+				undefined,
+				catalog,
 			);
 			await expect(customConfigs.preview(controller, input)).rejects.toThrow('Transformed thermostat temperatures');
 			await expect(customConfigs.configure(controller, input)).rejects.toThrow('Transformed thermostat temperatures');
@@ -2436,6 +2675,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		const pending = await configs.requestRelease(controller, 1);
 		const claim = pending.actuators[0];
 		claims.recordQualification({
+			contractVersion: 1,
+			providerProfile: { id: SHELLY_GUARDED_PROFILE, version: 1 },
+			qualificationGeneration: claim.qualification_generation,
 			physicalIdentity: claim.physical_identity,
 			upstreamWritersExcluded: true,
 			opposedOutputsInterlocked: false,
@@ -2494,6 +2736,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				id: pending.actuators[0].id,
 			});
 			claims.recordQualification({
+				contractVersion: 1,
+				providerProfile: { id: SHELLY_GUARDED_PROFILE, version: 1 },
+				qualificationGeneration: claim.qualificationGeneration,
 				physicalIdentity: claim.physicalIdentity,
 				upstreamWritersExcluded: true,
 				opposedOutputsInterlocked: false,
@@ -2590,6 +2835,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		});
 		expect(claim).toMatchObject({ state: 'releasing', reason: 'device_disabled' });
 		claims.recordQualification({
+			contractVersion: 1,
+			providerProfile: { id: SHELLY_GUARDED_PROFILE, version: 1 },
+			qualificationGeneration: claim.qualificationGeneration,
 			physicalIdentity: claim.physicalIdentity,
 			upstreamWritersExcluded: true,
 			opposedOutputsInterlocked: false,
@@ -2713,6 +2961,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await runner.query('ALTER TABLE "devices_virtual_thermostat_branch_runtime" DROP COLUMN "floorLatched"');
 		await runner.query('ALTER TABLE "devices_shelly_ng_sample_sources" DROP COLUMN "installationSnapshot"');
 		await new AddThermostatMemberProtection1000000000041().up(runner);
+		await new AddSupervisedThermostatOutputs1000000000061().up(runner);
 		const indexes = await runner.query('PRAGMA index_list("devices_virtual_thermostat_actuator_claims")');
 		expect(indexes).toEqual(
 			expect.arrayContaining([
@@ -2729,6 +2978,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: controller }))
 				.sourcePropertyId,
 		).toBeNull();
+		await new AddSupervisedThermostatOutputs1000000000061().down(runner);
 		await new AddThermostatMemberProtection1000000000041().down(runner);
 		await branchMigration.down(runner);
 		const cleanupRunner = database.createQueryRunner();

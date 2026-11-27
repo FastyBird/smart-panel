@@ -1,12 +1,11 @@
 import { Check, Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 
+import { VirtualThermostatActuatorClaimEntity } from '../../devices-virtual/entities/virtual-thermostat.entity';
 import {
 	ThermostatGuardSetup,
 	ThermostatMachineObservation,
 	ThermostatOperatorAttestation,
 } from '../services/thermostat-installation.types';
-
-import { VirtualThermostatActuatorClaimEntity } from './virtual-thermostat.entity';
 
 @Entity('devices_virtual_thermostat_installations')
 @Check(

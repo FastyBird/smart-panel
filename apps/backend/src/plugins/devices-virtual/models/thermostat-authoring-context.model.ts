@@ -19,8 +19,35 @@ export class ThermostatProtectionCandidateModel {
 	@Expose()
 	snapshot: object | null;
 }
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatSafetyExtension' })
+export class ThermostatSafetyExtensionModel {
+	@ApiProperty() @Expose() id: string;
+	@ApiProperty() @Expose() version: number;
+	@ApiProperty() @Expose() name: string;
+	@ApiProperty({ enum: ['heating', 'cooling'], enumName: 'DevicesVirtualPluginThermostatActuatorRole', isArray: true })
+	@Expose()
+	roles: ('heating' | 'cooling')[];
+	@ApiProperty() @Expose() requires_cooling_protection: boolean;
+	@ApiProperty({ type: String, nullable: true }) @Expose() installation_path: string | null;
+	@ApiProperty({ type: [ThermostatProtectionCandidateModel] })
+	@Expose()
+	@Type(() => ThermostatProtectionCandidateModel)
+	candidates: ThermostatProtectionCandidateModel[];
+	@ApiProperty({ type: String, nullable: true }) @Expose() device_hardware_id: string | null;
+	@ApiProperty({ type: String, nullable: true }) @Expose() firmware: string | null;
+	@ApiProperty({ type: String, nullable: true }) @Expose() switch_configuration_json: string | null;
+	@ApiProperty({ type: [String] }) @Expose() reasons: string[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatAuthoringContext' })
 export class ThermostatAuthoringContextModel {
+	@ApiProperty({
+		type: [ThermostatSafetyExtensionModel],
+		description: 'Optional safety profiles offered by the actuator integration',
+	})
+	@Expose()
+	@Type(() => ThermostatSafetyExtensionModel)
+	safety_extensions: ThermostatSafetyExtensionModel[];
 	@ApiProperty({ description: 'Canonical physical actuator identity' }) @Expose() physical_identity: string;
 	@ApiProperty({
 		type: Number,
@@ -35,7 +62,7 @@ export class ThermostatAuthoringContextModel {
 	@ApiProperty({ description: 'Current structural graph revision' }) @Expose() graph_revision: number;
 	@ApiProperty({
 		type: [ThermostatProtectionCandidateModel],
-		description: 'Only server-qualified sources on this physical Shelly',
+		description: 'Celsius sources eligible for software floor and cooled-surface protection',
 	})
 	@Expose()
 	@Type(() => ThermostatProtectionCandidateModel)

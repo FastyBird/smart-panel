@@ -2,11 +2,16 @@ import { randomUUID } from 'node:crypto';
 
 import { Test } from '@nestjs/testing';
 
+import { shellyThermostatActuationFixture } from '../../../../test/support/thermostat-actuation-fixture';
 import { DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import {
+	SHELLY_GUARDED_PROFILE,
+	SHELLY_GUARDED_PROFILE_VERSION,
+} from '../../devices-shelly-ng/contracts/thermostat-actuation.constants';
 import { DelegatesManagerService } from '../../devices-shelly-ng/delegates/delegates-manager.service';
 import {
 	ShellyNgChannelEntity,
@@ -18,14 +23,11 @@ import {
 	ShellyGuardFenceReadback,
 	ShellyGuardRpcSession,
 } from '../../devices-shelly-ng/services/shelly-guard-rpc-session';
-import {
-	CapturedThermostatReconcileReadinessV1,
-	SHELLY_GUARDED_PROFILE,
-	SHELLY_GUARDED_PROFILE_VERSION,
-} from '../contracts/thermostat-actuation.contract';
+import type { ShellyThermostatQualification as ThermostatInstalledQualification } from '../../devices-shelly-ng/services/shelly-thermostat-qualification';
+import { CapturedThermostatReconcileReadinessV1 } from '../contracts/thermostat-actuation.contract';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
-import { ThermostatInstalledQualification } from './virtual-thermostat-claims.service';
+import { ThermostatActuationRegistry } from './thermostat-actuation-registry.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { ThermostatActuationAdapter, VirtualThermostatTransportService } from './virtual-thermostat-transport.service';
 
@@ -53,6 +55,9 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 		});
 		target = { device, channel, property, value: false };
 		qualification = {
+			contractVersion: 1,
+			providerProfile: { id: SHELLY_GUARDED_PROFILE, version: 1 },
+			qualificationGeneration: 'fixture-installed',
 			physicalIdentity: thermostatActuatorIdentity(property, channel, device),
 			upstreamWritersExcluded: true,
 			opposedOutputsInterlocked: false,
@@ -124,12 +129,21 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 		platform = new ShellyNgDevicePlatform(manager);
 		const platforms = new PlatformRegistryService();
 		platforms.register(platform);
-		transport = new VirtualThermostatTransportService(platforms, {
-			readQualifiedSample: () => accepted,
-		} as unknown as PropertyValueService);
+		const values = { readQualifiedSample: () => accepted } as unknown as PropertyValueService;
+		transport = new VirtualThermostatTransportService(
+			platforms,
+			values,
+			shellyThermostatActuationFixture(platforms, values),
+		);
 	});
 	it('exposes the versioned real Shelly profile and refuses unsupported claim profiles', () => {
-		const adapter = transport.get(target);
+		const adapter = transport.get(
+			target,
+			Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+				providerProfile: SHELLY_GUARDED_PROFILE,
+				providerProfileVersion: 1,
+			}),
+		);
 		expect(adapter.contractVersion).toBe(1);
 		expect(adapter.providerProfile).toEqual({ id: 'shelly-ng.guarded-switch', version: 1 });
 		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
@@ -143,7 +157,16 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 	});
 	it('retains the original adapter dispatch and cannot dispose or adopt a successor registration', async () => {
 		const originalSend = jest.fn().mockResolvedValue({ outcome: 'refused', reasons: ['fixture-only'] });
-		const original = { ...transport.get(target), send: originalSend };
+		const original = {
+			...transport.get(
+				target,
+				Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+					providerProfile: SHELLY_GUARDED_PROFILE,
+					providerProfileVersion: 1,
+				}),
+			),
+			send: originalSend,
+		};
 		const dispose = transport.register(target.device.type, original);
 		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
 			providerProfile: 'shelly-ng.guarded-switch',
@@ -299,9 +322,12 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 		const capture = jest.spyOn(ownedPlatform, 'captureOwnedGuardFenceSample');
 		const registry = new PlatformRegistryService();
 		registry.register(ownedPlatform);
-		const ownedTransport = new VirtualThermostatTransportService(registry, {
-			readQualifiedSample: () => accepted,
-		} as unknown as PropertyValueService);
+		const values = { readQualifiedSample: () => accepted } as unknown as PropertyValueService;
+		const ownedTransport = new VirtualThermostatTransportService(
+			registry,
+			values,
+			shellyThermostatActuationFixture(registry, values),
+		);
 		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
 			physicalIdentity: qualification.physicalIdentity,
 			providerProfile: 'shelly-ng.guarded-switch',
@@ -355,7 +381,13 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 
 	it('requires an ordered script qualification before permitting any ON', async () => {
 		delete (qualification.profile as unknown as Record<string, unknown>).guardScript;
-		const adapter = transport.get(target);
+		const adapter = transport.get(
+			target,
+			Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+				providerProfile: SHELLY_GUARDED_PROFILE,
+				providerProfileVersion: 1,
+			}),
+		);
 		expect(adapter.canReconcile(target, qualification)).toBe(false);
 		expect(
 			await adapter.send(
@@ -368,7 +400,13 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 		expect(session.on).not.toHaveBeenCalled();
 	});
 	it('admits newly observed OFF through core storage and matches the accepted sample before constructing scoped proof', async () => {
-		const adapter = transport.get(target);
+		const adapter = transport.get(
+			target,
+			Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+				providerProfile: SHELLY_GUARDED_PROFILE,
+				providerProfileVersion: 1,
+			}),
+		);
 		const old = accepted;
 		const scope = {
 			controllerId: 'controller',
@@ -391,7 +429,13 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 	});
 	it('never mints release proof from unaccepted, retained, or changed-source readback', async () => {
 		admittedSample.mockImplementation(() => Promise.resolve());
-		const adapter = transport.get(target);
+		const adapter = transport.get(
+			target,
+			Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+				providerProfile: SHELLY_GUARDED_PROFILE,
+				providerProfileVersion: 1,
+			}),
+		);
 		const scope = {
 			controllerId: 'controller',
 			controllerRevision: 4,
@@ -420,6 +464,12 @@ describe('captured thermostat transport readiness continuity', () => {
 		const readSample = jest.fn();
 		const module = await Test.createTestingModule({
 			providers: [
+				{
+					provide: ThermostatActuationRegistry,
+					useValue: shellyThermostatActuationFixture(registry, {
+						readQualifiedSample: readSample,
+					} as unknown as PropertyValueService),
+				},
 				VirtualThermostatTransportService,
 				{ provide: PlatformRegistryService, useValue: registry },
 				{ provide: PropertyValueService, useValue: { readQualifiedSample: readSample } },
@@ -886,7 +936,7 @@ describe('captured thermostat transport readiness continuity', () => {
 				disposeA();
 				expect(original.isCurrent()).toBe(false);
 				expect(successor.isCurrent()).toBe(true);
-				expect(f.transport.get(f.target)).toBe(b.adapter);
+				expect(f.transport.get(f.target, f.claim)).toBe(b.adapter);
 			} finally {
 				await f.module.close();
 			}
@@ -899,8 +949,8 @@ describe('captured thermostat transport readiness continuity', () => {
 		try {
 			const original = f.requiredCapture();
 			expect(b.prepare).toHaveBeenCalledTimes(1);
-			const wrapperA = f.transport.get(f.target),
-				wrapperB = f.transport.get(f.target);
+			const wrapperA = f.transport.get(f.target, f.claim),
+				wrapperB = f.transport.get(f.target, f.claim);
 			expect(wrapperA).not.toBe(wrapperB);
 			expect(original.isCurrent()).toBe(true);
 			expect(original.isCurrent()).toBe(true);
@@ -922,7 +972,7 @@ describe('captured thermostat transport readiness continuity', () => {
 			const original = f.requiredCapture();
 			b.firstState.current = false;
 			b.replaceSession();
-			expect(f.transport.get(f.target).canReconcile(f.target, f.qualification)).toBe(true);
+			expect(f.transport.get(f.target, f.claim).canReconcile(f.target, f.qualification)).toBe(true);
 			const afterOrdinary = b.prepare.mock.calls.length;
 			expect(original.isCurrent()).toBe(false);
 			expect(b.prepare).toHaveBeenCalledTimes(afterOrdinary);
@@ -1111,7 +1161,7 @@ describe('captured thermostat transport readiness continuity', () => {
 			f.transport.onModuleDestroy();
 			expect(original.isCurrent()).toBe(false);
 			expect(f.capture()).toBeNull();
-			expect(f.transport.get(f.target)).toBeNull();
+			expect(f.transport.get(f.target, f.claim)).toBeNull();
 			expect(() => f.transport.register(f.target.device.type, p.adapter)).toThrow('destroyed');
 		} finally {
 			await f.module.close();
@@ -1251,7 +1301,7 @@ describe('captured thermostat transport readiness continuity', () => {
 		},
 	);
 	it.each([
-		{ name: 'SQL-null claim and omitted evidence', claim: null, evidence: undefined, own: false, opens: true },
+		{ name: 'SQL-null claim and omitted evidence', claim: null, evidence: undefined, own: false, opens: false },
 		{
 			name: 'matching original generation',
 			claim: 'synthetic-existing-generation',
@@ -1281,7 +1331,7 @@ describe('captured thermostat transport readiness continuity', () => {
 			opens: false,
 		},
 		{ name: 'explicit-null evidence remains malformed', claim: null, evidence: null, own: true, opens: false },
-		{ name: 'supplementary loader own-data undefined', claim: null, evidence: undefined, own: true, opens: true },
+		{ name: 'supplementary loader own-data undefined', claim: null, evidence: undefined, own: true, opens: false },
 	])('preserves consumed OFF metadata and built-in readiness generation policy: $name', async (row) => {
 		const f = await fixture(),
 			b = await f.builtin();
@@ -1308,19 +1358,7 @@ describe('captured thermostat transport readiness continuity', () => {
 			expect(f.readSample).not.toHaveBeenCalled();
 			const readiness = f.capture();
 			expect(readiness !== null).toBe(row.opens);
-			if (row.opens && row.claim === null) {
-				expect(readiness).toMatchObject({ capabilityVersion: 2, qualificationBinding: 'legacy-null-managed-shelly' });
-				expect(Object.hasOwn(readiness, 'qualificationGeneration')).toBe(false);
-				expect(Object.isFrozen(readiness)).toBe(true);
-				expect(Object.isFrozen(readiness.providerProfile)).toBe(true);
-				expect(readiness.isCurrent()).toBe(true);
-				// Equal values with different presence cannot revive the original capture.
-				if (row.own) Reflect.deleteProperty(f.qualification, 'qualificationGeneration');
-				else
-					Object.defineProperty(f.qualification, 'qualificationGeneration', { value: undefined, configurable: true });
-				expect(readiness.isCurrent()).toBe(false);
-				expect(metadata.isCurrent()).toBe(false);
-			}
+			if (row.opens) expect(readiness).toMatchObject({ capabilityVersion: 1, qualificationGeneration: row.claim });
 			if (!row.opens) {
 				expect(machine).not.toHaveBeenCalled();
 				expect(b.prepare).not.toHaveBeenCalled();

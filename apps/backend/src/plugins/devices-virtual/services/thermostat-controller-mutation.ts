@@ -41,6 +41,7 @@ const claimColumns = [
 	'physicalIdentity',
 	'providerProfile',
 	'providerProfileVersion',
+	'independentProtectionAcknowledged',
 	'sourcePropertyId',
 	'sourcePropertyIdentity',
 	'sourceDeviceId',

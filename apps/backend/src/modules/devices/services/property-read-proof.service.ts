@@ -24,12 +24,14 @@ export type PropertyReadProofOutcome =
 	| Readonly<{ status: 'reported'; sample: AcceptedPropertySample; read: PropertyReadDispatch }>
 	| Readonly<{ status: 'timed_out' | 'cancelled'; read: PropertyReadDispatch }>;
 
-export interface PropertyReadProofOptions {
-	/** How long to wait for the report. */
-	readonly timeoutMs: number;
-	/** Stops waiting, for example when the caller's own state moved on. */
-	readonly signal?: AbortSignal;
-}
+/** A caller may own the wait through an AbortSignal for devices with infrequent unsolicited reports. */
+export type PropertyReadProofOptions = (
+	| { readonly timeoutMs: number; readonly signal?: AbortSignal }
+	| { readonly timeoutMs?: undefined; readonly signal: AbortSignal }
+) & {
+	/** Discard a delayed observation known to have been measured before this action began. */
+	readonly minimumSampledAt?: Date;
+};
 
 /**
  * Proves a property's current device state by the first device report that arrives after a boundary.
@@ -52,6 +54,7 @@ export class PropertyReadProofService {
 		options: PropertyReadProofOptions,
 	): Promise<PropertyReadProofOutcome> {
 		const propertyId = target.property.id;
+		const minimumSampledAt = options.minimumSampledAt?.getTime();
 		let read: PropertyReadDispatch = 'pending';
 		/** Arrival number after which a report counts; none counts until it is known. */
 		let boundary: number | null = null;
@@ -68,16 +71,21 @@ export class PropertyReadProofService {
 			};
 			const onSample = (payload?: { propertyId?: string; sample?: AcceptedPropertySample }): void => {
 				const sample = payload?.sample;
-				if (boundary === null || payload?.propertyId !== propertyId || !sample) return;
+				if (boundary === null || payload?.propertyId !== propertyId || sample?.propertyId !== propertyId) return;
 				if (sample.provenance !== 'live' || sample.replay === true || sample.commandEcho === true) return;
-				if (sample.ingressSequence === undefined || sample.ingressSequence <= boundary) return;
+				if (!Number.isSafeInteger(sample.ingressSequence) || sample.ingressSequence <= boundary) return;
+				if (
+					minimumSampledAt !== undefined &&
+					!(sample.sampledAt instanceof Date && sample.sampledAt.getTime() >= minimumSampledAt)
+				)
+					return;
 				finish(Object.freeze({ status: 'reported', sample, read }));
 			};
 			const onAbort = (): void => finish(Object.freeze({ status: 'cancelled', read }));
-			const timer = setTimeout(
-				() => finish(Object.freeze({ status: 'timed_out', read })),
-				Math.max(0, options.timeoutMs),
-			);
+			const timer =
+				options.timeoutMs === undefined
+					? undefined
+					: setTimeout(() => finish(Object.freeze({ status: 'timed_out', read })), Math.max(0, options.timeoutMs));
 
 			if (options.signal?.aborted) {
 				read = 'not_sent';

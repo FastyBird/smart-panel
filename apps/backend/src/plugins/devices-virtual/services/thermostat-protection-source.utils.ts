@@ -1,18 +1,10 @@
 import { EntityManager } from 'typeorm';
 
+import { PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import {
-	hasQualifiedFloorSourceIdentity,
-	hasQualifiedRawVoltageIdentity,
-	nativeTemperatureIdentity,
-	nativeVoltmeterVoltageIdentity,
-} from '../../devices-shelly-ng/contracts/native-temperature.contract';
-import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
-import { ShellySampleSourceEntity } from '../../devices-shelly-ng/entities/shelly-sample-source.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
-import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import {
 	isThermostatTemperature,
 	thermostatFingerprint,
@@ -22,103 +14,78 @@ import { transformContractErrors } from './virtual-transform-contract.utils';
 
 const reject = (): never => {
 	throw new DevicesValidationException(
-		'Protection requires a qualified Celsius sensor or reviewed single physical voltage converter on the actuator Shelly, with finite domain.',
+		'Protection requires a readable Celsius sensor or a valid Celsius conversion from a single physical sensor.',
 	);
 };
-export async function resolveThermostatProtectionSource(
-	manager: EntityManager,
-	sourceId: string,
-	actuatorIdentity: string,
-) {
-	const property = await manager.findOne(ChannelPropertyEntity, {
-		where: { id: sourceId },
-		relations: ['channel', 'channel.device'],
-	});
+type ProtectionProperty = ChannelPropertyEntity & {
+	transform: VirtualTransformConfigEntity | null;
+	transformBinding: VirtualTransformSourceEntity | null;
+	transformLeaf: ChannelPropertyEntity | null;
+};
+
+function sourceQuery(manager: EntityManager) {
+	return manager
+		.createQueryBuilder(ChannelPropertyEntity, 'property')
+		.leftJoinAndSelect('property.channel', 'channel')
+		.leftJoinAndSelect('channel.device', 'device')
+		.leftJoinAndMapOne(
+			'property.transform',
+			VirtualTransformConfigEntity,
+			'transform',
+			'transform.outputPropertyId = property.id',
+		)
+		.leftJoinAndMapOne(
+			'property.transformBinding',
+			VirtualTransformSourceEntity,
+			'binding',
+			'binding.outputPropertyId = property.id',
+		)
+		.leftJoinAndMapOne('property.transformLeaf', ChannelPropertyEntity, 'leaf', 'leaf.id = binding.sourcePropertyId')
+		.leftJoinAndSelect('leaf.channel', 'leafChannel')
+		.leftJoinAndSelect('leafChannel.device', 'leafDevice');
+}
+
+function describeSource(property: ChannelPropertyEntity | null) {
 	if (!property) return reject();
+	const { transform, transformBinding: transformSource, transformLeaf } = property as ProtectionProperty;
 	const channel = property.channel as ChannelEntity;
 	const device = channel.device as DeviceEntity;
 	if (!isThermostatTemperature(property, channel)) return reject();
 	let leaf = property;
-	const transform = await manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId: property.id });
-	const transformSource = await manager.findOneBy(VirtualTransformSourceEntity, { outputPropertyId: property.id });
 	if (device.type === 'virtual') {
 		if (!transform || !transformSource?.sourcePropertyId) return reject();
-		leaf = await manager.findOne(ChannelPropertyEntity, {
-			where: { id: transformSource.sourcePropertyId },
-			relations: ['channel', 'channel.device'],
-		});
+		leaf = transformLeaf;
 		const contractErrors = leaf
 			? transformContractErrors(transform, property, leaf, transformSource)
 			: ['missing_leaf'];
 		if (contractErrors.length)
 			throw new DevicesValidationException(`Protection converter contract: ${contractErrors.join(', ')}`);
-		if (
-			!leaf ||
-			transform.quantity !== 'temperature' ||
-			transform.unit !== '°C' ||
-			transform.policy.operator !== VirtualNumericTransformOperator.STEINHART_HART ||
-			contractErrors.length
-		)
-			return reject();
+		if (!leaf || transform.quantity !== 'temperature' || transform.unit !== '°C') return reject();
 	} else if (transform || transformSource) return reject();
 	const leafChannel = leaf.channel as ChannelEntity;
 	const leafDevice = leafChannel.device as DeviceEntity;
-	if (
-		!(leafDevice instanceof ShellyNgDeviceEntity) ||
-		!leafDevice.canonicalMac ||
-		!actuatorIdentity.startsWith(`shelly-ng:${leafDevice.canonicalMac.toUpperCase()}:switch:`)
-	)
-		return reject();
-	if (
-		transform
-			? !hasQualifiedRawVoltageIdentity(leafChannel.identifier)
-			: !hasQualifiedFloorSourceIdentity(leafChannel.identifier)
-	)
-		return reject();
-	const metadata = await manager.findOneBy(ShellySampleSourceEntity, { propertyId: leaf.id, active: true });
-	if (!metadata || metadata.deviceId !== leafDevice.id || !leafChannel.identifier.endsWith(`:${metadata.fingerprint}`))
-		return reject();
-	if (metadata.installationSnapshot) {
-		const snapshot = metadata.installationSnapshot;
-		const identity = transform
-			? nativeVoltmeterVoltageIdentity(
-					metadata.componentKey,
-					snapshot.configuration,
-					snapshot.peripherals,
-					leafDevice.canonicalMac,
-				)
-			: nativeTemperatureIdentity(metadata.componentKey, snapshot.configuration, snapshot.peripherals);
+	const format = transform?.policy.outputRange
+		? [transform.policy.outputRange.minimum, transform.policy.outputRange.maximum]
+		: property.format;
+	let domain: { minimum: number; maximum: number } | null = null;
+	if (format != null) {
+		if (!Array.isArray(format) || format.length !== 2) return reject();
+		const [minimum, maximum] = format;
 		if (
-			!identity ||
-			identity.fingerprint !== metadata.fingerprint ||
-			identity.channelIdentifier !== leafChannel.identifier ||
-			identity.attribute !== leaf.identifier ||
-			identity.unit !== metadata.unit ||
-			JSON.stringify(identity.configuration) !== JSON.stringify(metadata.configuration) ||
-			JSON.stringify(identity.peripheral) !== JSON.stringify(metadata.peripheral)
+			typeof minimum !== 'number' ||
+			typeof maximum !== 'number' ||
+			!Number.isFinite(minimum) ||
+			!Number.isFinite(maximum) ||
+			minimum >= maximum
 		)
 			return reject();
+		domain = { minimum, maximum };
 	}
-	const domain =
-		transform?.policy.outputRange ??
-		(Array.isArray(property.format) && property.format.length === 2
-			? { minimum: property.format[0], maximum: property.format[1] }
-			: null);
-	if (
-		!domain ||
-		typeof domain.minimum !== 'number' ||
-		typeof domain.maximum !== 'number' ||
-		!Number.isFinite(domain.minimum) ||
-		!Number.isFinite(domain.maximum) ||
-		domain.minimum >= domain.maximum
-	)
-		return reject();
 	const fingerprint = thermostatFingerprint({
 		property: thermostatPropertyContract(property, channel, device),
 		leaf: thermostatPropertyContract(leaf, leafChannel, leafDevice),
 		transform,
 		transformSource,
-		metadata,
 		domain,
 	});
 	return {
@@ -126,24 +93,44 @@ export async function resolveThermostatProtectionSource(
 		leaf,
 		transform,
 		transformSource,
-		metadata,
-		domain: { minimum: domain.minimum, maximum: domain.maximum },
+		domain,
 		fingerprint,
 		enabled: device.enabled && leafDevice.enabled,
 	};
 }
+export async function resolveThermostatProtectionSource(manager: EntityManager, sourceId: string) {
+	const property = await sourceQuery(manager).where('property.id = :sourceId', { sourceId }).getOne();
+	return describeSource(property);
+}
+
+/** One catalog read covers physical probes and their reviewed conversion lineages across integrations. */
+export async function listThermostatProtectionSources(manager: EntityManager): Promise<ThermostatProtectionSource[]> {
+	const properties = await sourceQuery(manager)
+		.where('property.category = :category', { category: PropertyCategory.TEMPERATURE })
+		.orderBy('property.id', 'ASC')
+		.getMany();
+	const result: ThermostatProtectionSource[] = [];
+	for (const property of properties) {
+		try {
+			const source = describeSource(property);
+			if (source.enabled) result.push(source);
+		} catch (error) {
+			if (!(error instanceof DevicesValidationException)) throw error;
+		}
+	}
+	return result;
+}
+
 export type ThermostatProtectionSource = Awaited<ReturnType<typeof resolveThermostatProtectionSource>>;
 export function protectionBoundsValid(
-	domain: { minimum: number; maximum: number },
+	domain: { minimum: number; maximum: number } | null,
 	cutoff: number,
 	hysteresis: number,
 ): boolean {
 	return (
 		[cutoff, hysteresis, cutoff - hysteresis].every(Number.isFinite) &&
 		hysteresis > 0 &&
-		cutoff <= domain.maximum &&
-		cutoff > domain.minimum &&
-		cutoff - hysteresis > domain.minimum
+		(!domain || (cutoff <= domain.maximum && cutoff > domain.minimum && cutoff - hysteresis > domain.minimum))
 	);
 }
 
