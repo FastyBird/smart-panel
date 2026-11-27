@@ -46,6 +46,13 @@ describe('StandaloneLayout.vue', () => {
 
 		expect(link.exists()).toBe(true);
 		expect(link.attributes('aria-label')).toBe('Go to sign in');
+
+		// A link must be named, so without a label the mark stays plain
+		expect(
+			render({ title: 'Sign in', logoTo: { name: 'home' } })
+				.find('a[data-test-id="standalone-layout-logo"]')
+				.exists()
+		).toBe(false);
 	});
 
 	it('shows the project links and the copyright, each named and opening apart', () => {

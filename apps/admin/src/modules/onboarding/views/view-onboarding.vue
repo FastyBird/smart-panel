@@ -32,24 +32,27 @@
 				@next="onNext"
 				@skip="nextStep"
 			>
-				<step-welcome v-if="currentStep === OnboardingStep.WELCOME" />
+				<!-- While a step saves, its fields wait too: the account is registered and signed in with what was submitted -->
+				<div v-loading="isLoading">
+					<step-welcome v-if="currentStep === OnboardingStep.WELCOME" />
 
-				<step-account
-					v-else-if="currentStep === OnboardingStep.ACCOUNT"
-					ref="stepAccountEl"
-					@submit="handleAccountNext"
-				/>
+					<step-account
+						v-else-if="currentStep === OnboardingStep.ACCOUNT"
+						ref="stepAccountEl"
+						@submit="handleAccountNext"
+					/>
 
-				<step-location v-else-if="currentStep === OnboardingStep.LOCATION" />
+					<step-location v-else-if="currentStep === OnboardingStep.LOCATION" />
 
-				<step-integrations v-else-if="currentStep === OnboardingStep.INTEGRATIONS" />
+					<step-integrations v-else-if="currentStep === OnboardingStep.INTEGRATIONS" />
 
-				<step-spaces v-else-if="currentStep === OnboardingStep.SPACES" />
+					<step-spaces v-else-if="currentStep === OnboardingStep.SPACES" />
 
-				<step-complete
-					v-else-if="currentStep === OnboardingStep.COMPLETE"
-					:location-configured="hasLocationData"
-				/>
+					<step-complete
+						v-else-if="currentStep === OnboardingStep.COMPLETE"
+						:location-configured="hasLocationData"
+					/>
+				</div>
 			</wizard-shell>
 		</div>
 	</div>
@@ -59,6 +62,8 @@
 import { type ComponentPublicInstance, computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+
+import { vLoading } from 'element-plus';
 
 import { RouteNames as AppRouteNames } from '../../../app.constants';
 import Logo from '../../../assets/images/fb_bird.svg?component';

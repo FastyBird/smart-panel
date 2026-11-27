@@ -11,7 +11,7 @@
 		>
 			<div class="flex flex-col items-center gap-3 text-center">
 				<router-link
-					v-if="props.logoTo"
+					v-if="props.logoTo && props.logoLabel"
 					:to="props.logoTo"
 					:aria-label="props.logoLabel"
 					class="flex"

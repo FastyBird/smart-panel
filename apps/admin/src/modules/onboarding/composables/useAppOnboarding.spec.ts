@@ -7,6 +7,8 @@ import { useAppOnboarding } from './useAppOnboarding';
 const mockGet = vi.fn();
 const mockPost = vi.fn();
 const mockPatch = vi.fn();
+const mockRegister = vi.fn();
+const mockSignIn = vi.fn();
 
 // Mocked at each composable's own file, not the '../../../common' barrel: useOnboardingStatus()
 // (called internally by useAppOnboarding()) independently imports useBackend from the barrel too,
@@ -16,7 +18,7 @@ vi.mock('../../../common/composables/useBackend', () => ({
 }));
 
 vi.mock('../../../common/services/store', () => ({
-	injectStoresManager: () => ({ getStore: () => ({}) }),
+	injectStoresManager: () => ({ getStore: () => ({ register: mockRegister, create: mockSignIn }) }),
 }));
 
 vi.mock('../../../common/composables/useFlashMessage', () => ({
@@ -96,6 +98,41 @@ describe('useAppOnboarding', () => {
 
 			await expect(saveLocation()).resolves.toBe(true);
 			expect(mockPatch).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createAccount', () => {
+		beforeEach(() => {
+			const { reset } = useAppOnboarding();
+
+			reset();
+		});
+
+		it('signs in with the credentials it registered, even if the fields change meanwhile', async () => {
+			const { accountData, accountCreated, createAccount } = useAppOnboarding();
+
+			accountData.username = 'owner';
+			accountData.password = 'secret-1';
+
+			let finishRegistration: () => void = () => {};
+			mockRegister.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					finishRegistration = resolve;
+				})
+			);
+			mockSignIn.mockResolvedValueOnce(undefined);
+
+			const created = createAccount();
+
+			accountData.username = 'someone-else';
+			accountData.password = 'secret-2';
+			finishRegistration();
+
+			await expect(created).resolves.toBe(true);
+
+			expect(mockRegister).toHaveBeenCalledWith({ data: expect.objectContaining({ username: 'owner', password: 'secret-1' }) });
+			expect(mockSignIn).toHaveBeenCalledWith({ data: { username: 'owner', password: 'secret-1' } });
+			expect(accountCreated.value).toBe(true);
 		});
 	});
 });

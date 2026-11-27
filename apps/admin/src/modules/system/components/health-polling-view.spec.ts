@@ -60,4 +60,21 @@ describe('HealthPollingView', () => {
 
 		expect(onSuccess).toHaveBeenCalledTimes(1);
 	});
+
+	it('gives Try again the whole wait again', async () => {
+		fetchMock.mockRejectedValue(new Error('down'));
+		const wrapper = render();
+
+		await vi.advanceTimersByTimeAsync(9_000);
+		await wrapper.find('[data-test-id="health-polling-retry"]').trigger('click');
+
+		// Still down: one poll in, the new wait has not run out
+		await vi.advanceTimersByTimeAsync(3_000);
+
+		expect(wrapper.find('[data-test-id="health-polling-waiting"]').exists()).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(3_000);
+
+		expect(wrapper.find('[data-test-id="health-polling-timeout"]').exists()).toBe(true);
+	});
 });

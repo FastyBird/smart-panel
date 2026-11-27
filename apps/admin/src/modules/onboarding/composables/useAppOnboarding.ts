@@ -136,6 +136,9 @@ export const useAppOnboarding = () => {
 	const createAccount = async (): Promise<boolean> => {
 		if (accountCreated.value) return true;
 
+		// Registration and the sign-in after it use the credentials as submitted, even if the fields change meanwhile
+		const credentials = { username: accountData.username, password: accountData.password };
+
 		isLoading.value = true;
 
 		try {
@@ -143,8 +146,8 @@ export const useAppOnboarding = () => {
 			if (!accountRegistered.value) {
 				await sessionStore.register({
 					data: {
-						username: accountData.username,
-						password: accountData.password,
+						username: credentials.username,
+						password: credentials.password,
 						firstName: accountData.firstName,
 						lastName: accountData.lastName,
 						email: accountData.email || undefined,
@@ -157,8 +160,8 @@ export const useAppOnboarding = () => {
 			// Auto-login after registration
 			await sessionStore.create({
 				data: {
-					username: accountData.username,
-					password: accountData.password,
+					username: credentials.username,
+					password: credentials.password,
 				},
 			});
 
