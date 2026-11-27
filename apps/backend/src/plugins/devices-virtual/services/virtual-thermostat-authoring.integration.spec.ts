@@ -83,6 +83,7 @@ import {
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { ShellyThermostatSafetyCatalog } from '../../devices-shelly-ng/services/shelly-thermostat-safety-catalog.service';
+import { SUPERVISED_SWITCH_PROFILE } from '../contracts/thermostat-actuation.contract';
 import {
 	VIRTUAL_DEVICE_BINDINGS_CHANGED,
 	VirtualDeviceBindingsEvent,
@@ -1307,7 +1308,9 @@ describe('atomic virtual thermostat authoring', () => {
 			deletionEvents.push({ device, transactionActive: isSqliteTransactionActive(database) });
 		};
 		events.on(EventType.DEVICE_DELETED, deletionListener);
+		const unregisterAdmission = claims.registerRuntimeAdmission(() => true);
 		try {
+			input.configuration.actuators[0].independentProtectionAcknowledged = true;
 			await authoring.create(input);
 			const initial = {
 				...(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id })),
@@ -1362,6 +1365,13 @@ describe('atomic virtual thermostat authoring', () => {
 				}
 				return;
 			}
+			const originalClaim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+				controllerId: id,
+				state: 'reserved',
+			});
+			const originalQualification = claims.qualification(originalClaim, false);
+			expect(originalQualification?.machineLeaseIsCurrent?.()).toBe(true);
+			expect(claims.mintAuthority(originalClaim.id, 'on').claimId).toBe(originalClaim.id);
 			const oldDeletion = await ledger.captureControllerDeletion(id);
 			// The fixture starts deletion from a terminal reservation. This does not assert physical OFF qualification.
 			await lock.runExclusive(() =>
@@ -1375,9 +1385,6 @@ describe('atomic virtual thermostat authoring', () => {
 			const oldJournal = new ThermostatRuntimeJournal(database, lock);
 			let oldRuntime: VirtualThermostatRuntimeEntity | undefined;
 			if (scenario === 'runtime_history' || scenario.startsWith('history_')) {
-				const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
-					controllerId: id,
-				});
 				await lock.runExclusive(() =>
 					database.transaction(async (manager) => {
 						await manager.insert(VirtualThermostatRuntimeEntity, {
@@ -1391,7 +1398,7 @@ describe('atomic virtual thermostat authoring', () => {
 							evaluatedAt: new Date(),
 						});
 						await manager.insert(VirtualThermostatBranchRuntimeEntity, {
-							claimId: claim.id,
+							claimId: originalClaim.id,
 							activity: 'unknown',
 							lastVerifiedOffAt: null,
 							releaseProofId: null,
@@ -1404,8 +1411,8 @@ describe('atomic virtual thermostat authoring', () => {
 						await manager.insert(VirtualThermostatCommandEntity, {
 							id: uuid(),
 							controllerId: id,
-							claimId: claim.id,
-							claimRevision: claim.revision,
+							claimId: originalClaim.id,
+							claimRevision: originalClaim.revision,
 							configurationRevision: 1,
 							decisionRevision: scenario === 'history_overflow' ? Number.MAX_SAFE_INTEGER : 7,
 							action: 'on',
@@ -1424,7 +1431,11 @@ describe('atomic virtual thermostat authoring', () => {
 					}),
 				);
 				if (scenario === 'history_reservation')
-					await database.manager.update(VirtualThermostatActuatorClaimEntity, { id: claim.id }, { state: 'releasing' });
+					await database.manager.update(
+						VirtualThermostatActuatorClaimEntity,
+						{ id: originalClaim.id },
+						{ state: 'releasing' },
+					);
 				priorHistory = {
 					runtime: await database.query<object[]>('SELECT * FROM devices_virtual_thermostat_runtime'),
 					branches: await database.query<object[]>('SELECT * FROM devices_virtual_thermostat_branch_runtime'),
@@ -1794,12 +1805,27 @@ describe('atomic virtual thermostat authoring', () => {
 				state: 'reserved',
 			});
 			expect(freshClaims).toHaveLength(1);
-			expect(freshClaims[0].qualificationGeneration).toMatch(/^[0-9a-f-]{36}$/);
-			expect(claims.qualification(freshClaims[0], false)).toBeNull();
+			const [fresh] = freshClaims;
+			expect(fresh.id).not.toBe(originalClaim.id);
+			expect(fresh.qualificationGeneration).toMatch(/^[0-9a-f-]{36}$/);
+			expect(fresh.qualificationGeneration).not.toBe(originalClaim.qualificationGeneration);
+			expect(originalQualification?.machineLeaseIsCurrent?.()).toBe(false);
+			expect(claims.qualification(originalClaim, false)).toBeNull();
+			expect(claims.qualification(fresh, false)).toMatchObject({
+				physicalIdentity: originalClaim.physicalIdentity,
+				qualificationGeneration: fresh.qualificationGeneration,
+				providerProfile: { id: SUPERVISED_SWITCH_PROFILE },
+			});
+			expect(fresh.independentProtectionAcknowledged).toBe(false);
+			expect(() => claims.mintAuthority(fresh.id, 'on')).toThrow(
+				'Thermostat actuator is not admitted for this action.',
+			);
+			expect(claims.mintAuthority(fresh.id, 'off').claimId).toBe(fresh.id);
 			expect(configuration.comfort?.automation_enabled ?? false).toBe(false);
 			expect(configuration.comfort?.automation_baseline ?? null).toBeNull();
 			expect(publications.filter((event) => event === EventType.DEVICE_CREATED)).toHaveLength(1);
 		} finally {
+			unregisterAdmission();
 			events.off(EventType.DEVICE_DELETED, deletionListener);
 			automation.onModuleDestroy();
 			automationRegistry.onModuleDestroy();
