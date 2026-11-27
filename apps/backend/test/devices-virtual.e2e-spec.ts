@@ -617,6 +617,12 @@ async function verifyThermostatWire(
 			originalHook = mapping.beforeCreate;
 		const values = moduleRef.get(PropertyValueService);
 		const ambientProperty = await dataSource.manager.findOneByOrFail(ChannelPropertyEntity, { id: ambient });
+		if (storageAudit) {
+			// Influx SELECT * projects measurement-wide fields, including those used only by other properties.
+			// Persist a boolean relay reading so the first ambient snapshot already has the stringValue column.
+			const relayProperty = await dataSource.manager.findOneByOrFail(ChannelPropertyEntity, { id: relay });
+			await values.write(relayProperty, false);
+		}
 		await values.write(ambientProperty, 18);
 		const historyBefore = await values.readLatest(ambientProperty);
 		expect(historyBefore?.value).toBe(18);
