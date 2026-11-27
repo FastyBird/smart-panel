@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -58,8 +58,14 @@ function independentContext(context: HomeAssistantStateDto['context']): boolean 
 	return !!context?.id && context.user_id === null && context.parent_id === null;
 }
 
+interface EntityStateWork {
+	generation: number;
+	timer?: NodeJS.Timeout;
+	tail?: Promise<void>;
+}
+
 @Injectable()
-export class StateChangedEventService implements WsEventService {
+export class StateChangedEventService implements WsEventService, OnModuleDestroy {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 		'StateChangedEventService',
@@ -74,7 +80,8 @@ export class StateChangedEventService implements WsEventService {
 
 	private devices: HomeAssistantDeviceEntity[] = [];
 
-	private debounceTimers = new Map<string, NodeJS.Timeout>();
+	private readonly entityWork = new Map<string, EntityStateWork>();
+	private destroyed = false;
 
 	// Cache for channels by device ID
 	private channelsByDeviceId: Map<string, HomeAssistantChannelEntity[]> = new Map();
@@ -93,12 +100,8 @@ export class StateChangedEventService implements WsEventService {
 		private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 	) {}
 
-	// Invalidate cache on structural changes (create/delete/update).
-	// This ensures that when users modify property metadata like haEntityId or haAttribute
-	// through the API, the cache is refreshed and new mappings take effect immediately.
-	// Note: While value updates also trigger CHANNEL_PROPERTY_UPDATED, this is acceptable
-	// because the cache reload fetches the latest metadata from the database, and HA state
-	// values are always applied fresh from incoming WebSocket events.
+	// Structural changes invalidate mappings and work received against them.
+	// Value-only updates emit CHANNEL_PROPERTY_VALUE_SET and keep the current mapping.
 	@OnEvent(DevicesModuleEventType.DEVICE_CREATED)
 	@OnEvent(DevicesModuleEventType.DEVICE_UPDATED)
 	@OnEvent(DevicesModuleEventType.DEVICE_DELETED)
@@ -116,6 +119,17 @@ export class StateChangedEventService implements WsEventService {
 		this.entityIdToHaDevice = null;
 		this.channelsByDeviceId.clear();
 		this.propertiesByChannelId.clear();
+		for (const [entityId, work] of this.entityWork) {
+			clearTimeout(work.timer);
+			work.timer = undefined;
+			if (work.tail === undefined) this.entityWork.delete(entityId);
+		}
+	}
+
+	async onModuleDestroy(): Promise<void> {
+		this.destroyed = true;
+		this.handleDevicesUpdatedEvent();
+		await Promise.all(Array.from(this.entityWork.values(), (work) => work.tail));
 	}
 
 	get event(): string {
@@ -123,7 +137,7 @@ export class StateChangedEventService implements WsEventService {
 	}
 
 	async handle(event: HomeAssistantStateChangedEventDto, ingress?: HomeAssistantEventIngress): Promise<void> {
-		if (ingress && !ingress.isCurrent()) return;
+		if (this.destroyed || (ingress && !ingress.isCurrent())) return;
 		if (ingress && this.reportSession !== ingress.session) {
 			this.handleDevicesUpdatedEvent();
 			this.reportSession = ingress.session;
@@ -141,9 +155,22 @@ export class StateChangedEventService implements WsEventService {
 			independentContext(state.context) &&
 			independentContext(event.context);
 		if (!old || !trusted) this.sourceEpochs.delete(entityId);
-		if (!state) return;
+		const work: EntityStateWork = this.entityWork.get(entityId) ?? { generation: 0 };
+		clearTimeout(work.timer);
+		work.timer = undefined;
+		if (!state) {
+			work.generation++;
+			if (work.tail === undefined) this.entityWork.delete(entityId);
+			return;
+		}
+		this.entityWork.set(entityId, work);
 
 		const generation = this.mappingGeneration;
+		const entityGeneration = work.generation;
+		const isCurrent = (): boolean =>
+			this.mappingGeneration === generation &&
+			work.generation === entityGeneration &&
+			(!ingress || ingress.isCurrent());
 		const changedAt = state.last_changed;
 		// HA last_updated and last_reported can advance for attributes alone. Only a change of
 		// the adopted entity's own main state carries a new measurement at last_changed.
@@ -167,30 +194,29 @@ export class StateChangedEventService implements WsEventService {
 			this.mappingGeneration === generation &&
 			this.sourceEpochs.get(entityId) === epoch;
 
-		if (!(await this.initializeMappings()) || (ingress && !ingress.isCurrent())) return;
-		if (entityId.startsWith('event.')) {
-			await this.handleHardwareEventEntity(event);
-			return;
-		}
-		const haDevice = this.entityIdToHaDevice?.get(entityId);
-		const device = haDevice && this.devices.find((item) => item.haDeviceId === haDevice.id);
-		if (!device) {
-			if (this.sourceEpochs.get(entityId) === epoch) this.sourceEpochs.delete(entityId);
-			return;
-		}
-
-		clearTimeout(this.debounceTimers.get(entityId));
-		this.debounceTimers.delete(entityId);
+		const hardwareEvent = entityId.startsWith('event.');
 		const process = async (): Promise<void> => {
-			if (ingress && !ingress.isCurrent()) return;
+			if (!isCurrent()) return;
+			if (!(await this.initializeMappings()) || !isCurrent()) return;
+			if (hardwareEvent) {
+				await this.handleHardwareEventEntity(event, isCurrent);
+				return;
+			}
+			const haDevice = this.entityIdToHaDevice?.get(entityId);
+			const device = haDevice && this.devices.find((item) => item.haDeviceId === haDevice.id);
+			if (!device) {
+				if (this.sourceEpochs.get(entityId) === epoch) this.sourceEpochs.delete(entityId);
+				return;
+			}
+
 			const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [state]);
 			for (const entries of resultMaps) {
 				for (const { property, value } of entries) {
+					if (!isCurrent()) return;
 					const update = toInstance(UpdateHomeAssistantChannelPropertyDto, {
 						type: DEVICES_HOME_ASSISTANT_TYPE,
 						value,
 					});
-					if (ingress && (!ingress.isCurrent() || this.mappingGeneration !== generation)) return;
 					if (
 						transition &&
 						device.enabled &&
@@ -214,32 +240,49 @@ export class StateChangedEventService implements WsEventService {
 					}
 				}
 			}
-			await this.updateVirtualPropertiesForEntity(device.id, entityId, state);
+			if (isCurrent()) await this.updateVirtualPropertiesForEntity(device.id, entityId, state, isCurrent);
 		};
-		const run = (): Promise<void> =>
-			process().catch((error: unknown) =>
+		// Claim the entity's place before any asynchronous lookup or mapping. A newer
+		// transition can cancel a pending presentation, including one waiting in the queue.
+		if (transition || hardwareEvent) {
+			await this.enqueue(entityId, work, process);
+			return;
+		}
+		const timer = setTimeout(() => {
+			void this.enqueue(entityId, work, async () => {
+				if (work.timer !== timer) return;
+				work.timer = undefined;
+				await process();
+			});
+		}, 500);
+		work.timer = timer;
+	}
+
+	private enqueue(entityId: string, work: EntityStateWork, process: () => Promise<void>): Promise<void> {
+		const result = (work.tail ?? Promise.resolve())
+			.then(process)
+			.catch((error: unknown) =>
 				this.logger.warn('Failed to process Home Assistant state', {
 					message: error instanceof Error ? error.message : 'unknown error',
 				}),
-			);
-		if (transition) {
-			await run();
-			return;
-		}
-		this.debounceTimers.set(
-			entityId,
-			setTimeout(() => {
-				this.debounceTimers.delete(entityId);
-				void run();
-			}, 500),
-		);
+			)
+			.finally(() => {
+				if (work.tail !== result) return;
+				work.tail = undefined;
+				if (!work.timer) this.entityWork.delete(entityId);
+			});
+		work.tail = result;
+		return result;
 	}
 
 	/**
 	 * Handles Home Assistant event.* entities, publishing hardware input occurrences
 	 * independently of property state and without debounce delay.
 	 */
-	private async handleHardwareEventEntity(event: HomeAssistantStateChangedEventDto): Promise<void> {
+	private async handleHardwareEventEntity(
+		event: HomeAssistantStateChangedEventDto,
+		isCurrent: () => boolean,
+	): Promise<void> {
 		if (event.data.new_state === null) {
 			return;
 		}
@@ -286,7 +329,9 @@ export class StateChangedEventService implements WsEventService {
 		}
 
 		const channels = await this.getChannelsForDevice(device.id);
+		if (!isCurrent()) return;
 		const properties = await this.getPropertiesForChannels(channels);
+		if (!isCurrent()) return;
 
 		// Find property mapped to this entityId with EVENT category
 		const eventProp = properties.find((p) => p.haEntityId === entityId && p.category === PropertyCategory.EVENT);
@@ -339,11 +384,12 @@ export class StateChangedEventService implements WsEventService {
 		deviceId: string,
 		entityId: string,
 		state: HomeAssistantStateDto,
+		isCurrent: () => boolean,
 	): Promise<void> {
 		// Get channels from cache or load and cache them
 		const channels = await this.getChannelsForDevice(deviceId);
 
-		if (channels.length === 0) {
+		if (!isCurrent() || channels.length === 0) {
 			return;
 		}
 
@@ -409,6 +455,7 @@ export class StateChangedEventService implements WsEventService {
 
 			// Update each virtual property
 			for (const virtualProp of virtualProps) {
+				if (!isCurrent()) return;
 				const virtualDef = virtualDefs.find((vd) => vd.propertyCategory === virtualProp.category);
 
 				if (!virtualDef || virtualDef.virtualType === 'command') {
@@ -483,7 +530,9 @@ export class StateChangedEventService implements WsEventService {
 		let channels = this.channelsByDeviceId.get(deviceId);
 
 		if (!channels) {
+			const generation = this.mappingGeneration;
 			channels = await this.channelsService.findAll<HomeAssistantChannelEntity>(deviceId, DEVICES_HOME_ASSISTANT_TYPE);
+			if (this.mappingGeneration !== generation) return [];
 			this.channelsByDeviceId.set(deviceId, channels);
 		}
 
@@ -511,10 +560,12 @@ export class StateChangedEventService implements WsEventService {
 
 		// Load uncached properties in batch
 		if (uncachedChannelIds.length > 0) {
+			const generation = this.mappingGeneration;
 			const newProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
 				uncachedChannelIds,
 				DEVICES_HOME_ASSISTANT_TYPE,
 			);
+			if (this.mappingGeneration !== generation) return [];
 
 			// Group by channel and cache
 			for (const channelId of uncachedChannelIds) {
