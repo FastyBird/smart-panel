@@ -2403,12 +2403,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           semanticLabel: localizations.lights_roles_title,
           onTap: () => _showRolesChooser(roles, effectiveRole),
         ),
-      // Compact landscape drops the hero badge (spec §4, "Domain hero"),
-      // which is how a role's lights open elsewhere: the header takes it.
+      // The hero badge is how a role's lights open elsewhere. Compact
+      // landscape drops it (spec §4, "Domain hero"), and on the square it
+      // chooses the role, when there are several, or may not fit: the
+      // header takes the lights.
       if (_screenService.isCompact &&
           _screenService.isLandscape &&
-          !_screenService.isSquare &&
-          selectedRole != null)
+          selectedRole != null &&
+          (!_screenService.isSquare || roles.length > 1))
         HeaderIconButton(
           key: const ValueKey('lights-role-lights-button'),
           icon: MdiIcons.lightbulbGroup,

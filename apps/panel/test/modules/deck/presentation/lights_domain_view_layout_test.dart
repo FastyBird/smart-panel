@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:event_bus/event_bus.dart';
+import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_light_target_role.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -15,6 +16,9 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
+import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
+import 'package:fastybird_smart_panel/modules/scenes/service.dart';
+import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/light_targets/light_target.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
@@ -35,6 +39,8 @@ class _Light extends Mock implements LightingDeviceView {}
 class _Channel extends Mock implements LightChannelView {}
 
 class _OnProp extends Mock implements OnChannelPropertyView {}
+
+class _Scenes extends Mock implements ScenesService {}
 
 const _room = '00000000-0000-4000-8000-000000000001';
 const _item = DomainViewItem(
@@ -128,7 +134,9 @@ void main() {
     await locator.reset();
   });
 
-  Future<void> mountAt(WidgetTester tester, Size size) async {
+  /// Mounts the view on a [size] screen, in the [view] the deck's dock or
+  /// bar leaves it (the whole screen when null).
+  Future<void> mountAt(WidgetTester tester, Size size, {Size? view}) async {
     // One design px is one logical px at DPR 2 and density 1.0.
     locator.registerSingleton<ScreenService>(
       ScreenService(
@@ -151,7 +159,15 @@ void main() {
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const LightsDomainViewPage(viewItem: _item),
+          home: view == null
+              ? const LightsDomainViewPage(viewItem: _item)
+              : Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox.fromSize(
+                    size: view,
+                    child: const LightsDomainViewPage(viewItem: _item),
+                  ),
+                ),
         ),
       ),
     );
@@ -186,13 +202,13 @@ void main() {
         compactLandscape ? findsNothing : findsOneWidget,
       );
 
-      // Without the badge, the header opens the role's lights.
+      final square = size.width == size.height;
+      // Where the badge drops, or chooses the role on the square, the header
+      // opens the role's lights.
       expect(
         find.byKey(const ValueKey('lights-role-lights-button')),
-        compactLandscape ? findsOneWidget : findsNothing,
+        compactLandscape || square ? findsOneWidget : findsNothing,
       );
-
-      final square = size.width == size.height;
       // The square puts the roles behind a header button and the badge;
       // elsewhere they are tiles.
       expect(
@@ -360,6 +376,51 @@ void main() {
       // Ambient's one light, in the drawer.
       expect(find.text('Light 2'), findsWidgets);
       expect(find.text('Light 1'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('the square opens the selected role\'s lights from a full '
+        'header', (tester) async {
+      tunableWhite();
+      // The fullest square header: the mode chip, the roles, the lights and
+      // the scenes.
+      final scenes = _Scenes();
+      when(() => scenes.addListener(any())).thenReturn(null);
+      when(() => scenes.removeListener(any())).thenReturn(null);
+      when(() => scenes.getScenesForSpace(_room)).thenReturn([
+        for (final (id, name) in [('1', 'Relax'), ('2', 'Reading')])
+          SceneView(
+            model: SceneModel(
+              id: '00000000-0000-4000-8000-00000000004$id',
+              name: name,
+              description: null,
+              enabled: true,
+              triggerable: true,
+              editable: true,
+              order: 0,
+              category: ScenesModuleDataSceneCategory.lighting,
+              actions: const [],
+            ),
+          ),
+      ]);
+      locator.registerSingleton<ScenesService>(scenes);
+
+      // 240 × 240 less the 40 px bar.
+      await mountAt(tester, const Size(240, 240), view: const Size(240, 200));
+      expect(tester.takeException(), isNull);
+      for (final key in [
+        'lights-roles-button',
+        'lights-role-lights-button',
+        'lights-scenes-button',
+      ]) {
+        expect(find.byKey(ValueKey(key)), findsOneWidget, reason: key);
+      }
+
+      await tester.tap(find.byKey(const ValueKey('lights-role-lights-button')));
+      await tester.pumpAndSettle();
+      // Main's one light, in the drawer.
+      expect(find.text('Light 1'), findsWidgets);
+      expect(find.text('Light 2'), findsNothing);
       await unmount(tester);
     });
 
