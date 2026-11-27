@@ -31,16 +31,20 @@ export type PropertyReadProofOptions = (
 ) & {
 	/** Discard a delayed observation known to have been measured before this action began. */
 	readonly minimumSampledAt?: Date;
+	/** If no read is dispatched, recover a current unsolicited report received during the preceding action. */
+	readonly unsolicited?: {
+		readonly afterIngress: number;
+		readonly latest: () => AcceptedPropertySample | null;
+	};
 };
 
 /**
  * Proves a property's current device state by the first device report that arrives after a boundary.
  *
  * The platform is asked for a fresh read when it supports one; the boundary is the moment it sends the read
- * (after settling earlier commands). Without read support, or when the read is not sent, the boundary is the
- * moment that is known, and the proof waits for the device's next report or poll, so every plugin can be
- * used. Reports that arrived before the boundary, command acknowledgements (`commandEcho`), replays of
- * earlier state and non-live samples never count.
+ * (after settling earlier commands). If no read is dispatched, the caller can supply the preceding action's
+ * ingress boundary. Otherwise the wait starts when the platform declines the read. Command acknowledgements,
+ * replays, non-live samples and reports received before the applicable boundary never count.
  */
 @Injectable()
 export class PropertyReadProofService {
@@ -103,10 +107,18 @@ export class PropertyReadProofService {
 					},
 				})
 				.then((sent) => {
-					// A platform that never marked its dispatch: only later reports can answer it.
-					boundary ??= currentSampleIngress();
+					if (settled) return;
 					read = sent ? 'sent' : 'not_sent';
-				});
+					if (!sent && boundary === null && options.unsolicited) {
+						// The command can trigger the device's only report while the caller is awaiting dispatch.
+						boundary = options.unsolicited.afterIngress;
+						const sample = options.unsolicited.latest();
+						if (sample) onSample({ propertyId, sample });
+					} else {
+						boundary ??= currentSampleIngress();
+					}
+				})
+				.catch(() => finish(Object.freeze({ status: 'cancelled', read })));
 		});
 	}
 }

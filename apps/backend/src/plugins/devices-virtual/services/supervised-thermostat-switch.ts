@@ -5,6 +5,7 @@ import { IDevicePropertyData } from '../../../modules/devices/platforms/device.p
 import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyReadProofService } from '../../../modules/devices/services/property-read-proof.service';
+import { currentSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import {
 	CapturedThermostatReconcileReadinessV1,
@@ -164,11 +165,13 @@ export class SupervisedThermostatSwitch {
 						this.observations.get(identity)?.cancel.abort();
 						this.observations.delete(identity);
 						const submittedAt = new Date();
+						const beforeDispatch = currentSampleIngress();
 						const accepted = prepared
 							? await prepared.dispatch(() => admitted() && prepared.isCurrent())
 							: await methods.values.processBatch.call(platform, [update]);
 						if (!accepted) return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
-						if (desired === false && isCurrent()) this.observeOff(update, claim, commandId, submittedAt, isCurrent);
+						if (desired === false && isCurrent())
+							this.observeOff(update, claim, commandId, submittedAt, beforeDispatch, isCurrent);
 						return { outcome: 'accepted', outputConfirmed: false, pendingOnDrained: false };
 					} finally {
 						prepared?.dispose?.();
@@ -229,6 +232,7 @@ export class SupervisedThermostatSwitch {
 		claim: VirtualThermostatActuatorClaimEntity,
 		commandId: string,
 		submittedAt: Date,
+		beforeDispatch: number,
 		current: () => boolean,
 	): void {
 		const observation: PendingOffObservation = {
@@ -245,7 +249,17 @@ export class SupervisedThermostatSwitch {
 		const identity = claim.physicalIdentity;
 		this.observations.set(identity, observation);
 		void this.reports
-			.observeNextReport(update, { signal: observation.cancel.signal, minimumSampledAt: submittedAt })
+			.observeNextReport(update, {
+				signal: observation.cancel.signal,
+				minimumSampledAt: submittedAt,
+				unsolicited: {
+					afterIngress: beforeDispatch,
+					latest: () => {
+						const sample = this.values.readQualifiedSample(update.property, 30_000);
+						return sample?.value === false && sample.quality === 'good' ? sample : null;
+					},
+				},
+			})
 			.then((result) => {
 				observation.waiting = false;
 				if (this.observations.get(identity) !== observation) return;

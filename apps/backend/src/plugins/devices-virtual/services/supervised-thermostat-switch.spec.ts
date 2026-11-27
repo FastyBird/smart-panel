@@ -19,7 +19,7 @@ import { SupervisedThermostatSwitch } from './supervised-thermostat-switch';
 import { thermostatActuatorIdentity } from './virtual-thermostat-contract.utils';
 
 describe('a software-supervised switch from a new device plugin', () => {
-	const fixture = (readable: boolean, noPreparedBatch = false) => {
+	const fixture = (readable: boolean, preparation?: 'declined' | 'prepared') => {
 		const registry = new PlatformRegistryService();
 		const events = new EventEmitter2();
 		let sample: QualifiedPropertySample | null = null;
@@ -72,11 +72,15 @@ describe('a software-supervised switch from a new device plugin', () => {
 			return Promise.resolve(true);
 		});
 		const processBatch = jest.fn((_updates: IDevicePropertyData[]) => Promise.resolve(true));
+		const dispatch = jest.fn(() => Promise.resolve(true));
 		const platform: IDevicePlatform = {
 			getType: () => device.type,
 			process: jest.fn(),
 			processBatch,
-			...(noPreparedBatch ? { prepareCompositeBatch: jest.fn(() => Promise.resolve(null)) } : {}),
+			...(preparation && {
+				prepareCompositeBatch: (updates: IDevicePropertyData[]) =>
+					Promise.resolve(preparation === 'prepared' ? { updates, isCurrent: () => true, dispatch } : null),
+			}),
 			...(readable ? { requestPropertyRead: request } : {}),
 		};
 		const registration = registry.registerOwned(platform);
@@ -111,6 +115,7 @@ describe('a software-supervised switch from a new device plugin', () => {
 			source,
 			request,
 			processBatch,
+			dispatch,
 			platform,
 			drain,
 		};
@@ -133,6 +138,73 @@ describe('a software-supervised switch from a new device plugin', () => {
 			expect(proof?.externalWriterBarrier).toBeUndefined();
 			f.registration.dispose();
 			expect(proof?.sourceIsCurrent()).toBe(false);
+		} finally {
+			f.supervisor.destroy();
+		}
+	});
+
+	it.each(['ordinary batch', 'prepared batch', 'unsupported property read'] as const)(
+		'uses a physical OFF received during %s only after dispatch succeeds',
+		async (path) => {
+			const f = fixture(path === 'unsupported property read', path === 'prepared batch' ? 'prepared' : undefined);
+			f.request.mockResolvedValue(false);
+			let complete: (sent: boolean) => void;
+			let emitted: (sample: QualifiedPropertySample) => void;
+			const duringDispatch = new Promise<QualifiedPropertySample>((resolve) => {
+				emitted = resolve;
+			});
+			const send = () =>
+				new Promise<boolean>((resolve) => {
+					complete = resolve;
+					emitted(f.report());
+				});
+			if (path === 'prepared batch') f.dispatch.mockImplementationOnce(send);
+			else f.processBatch.mockImplementationOnce(send);
+			try {
+				const command = f.adapter.send(f.target, f.claim, f.evidence, () => true, { commandId: 'off' });
+				const off = await duringDispatch;
+				await expect(f.drain(off)).resolves.toBeNull();
+				complete(true);
+				await expect(command).resolves.toMatchObject({ outcome: 'accepted' });
+				expect((await f.drain(off))?.supervisedOffCommandId).toBe('off');
+			} finally {
+				f.supervisor.destroy();
+			}
+		},
+	);
+
+	it.each(['declined', 'threw'] as const)('discards an early OFF when the dispatch %s', async (outcome) => {
+		const f = fixture(false);
+		let off: QualifiedPropertySample;
+		f.processBatch.mockImplementationOnce(() => {
+			off = f.report();
+			return outcome === 'declined' ? Promise.resolve(false) : Promise.reject(new Error('dispatch failed'));
+		});
+		try {
+			const command = f.adapter.send(f.target, f.claim, f.evidence, () => true, { commandId: 'off' });
+			if (outcome === 'declined') await expect(command).resolves.toMatchObject({ outcome: 'unknown' });
+			else await expect(command).rejects.toThrow('dispatch failed');
+			await expect(f.drain(off)).resolves.toBeNull();
+			expect(f.supervisor.awaitingReport(f.claim)).toBe(false);
+		} finally {
+			f.supervisor.destroy();
+		}
+	});
+
+	it('keeps the read dispatch boundary when the platform sends an explicit read', async () => {
+		const f = fixture(true);
+		let early: QualifiedPropertySample;
+		f.processBatch.mockImplementationOnce(() => {
+			early = f.report();
+			return Promise.resolve(true);
+		});
+		try {
+			await f.adapter.send(f.target, f.claim, f.evidence, () => true, { commandId: 'off' });
+			expect(f.request).toHaveBeenCalledTimes(1);
+			await expect(f.drain(early)).resolves.toBeNull();
+			const afterRead = f.report();
+			await Promise.resolve();
+			expect((await f.drain(afterRead))?.supervisedOffCommandId).toBe('off');
 		} finally {
 			f.supervisor.destroy();
 		}
@@ -173,7 +245,7 @@ describe('a software-supervised switch from a new device plugin', () => {
 
 	it('waits for an in-flight ON before sending OFF and requires a report after that OFF', async () => {
 		// Some plugins implement prepared dispatch only for a subset of their properties.
-		const f = fixture(false, true);
+		const f = fixture(false, 'declined');
 		let completeOn: (result: boolean) => void;
 		let notifyOn: () => void;
 		const onStarted = new Promise<void>((resolve) => {
