@@ -1,292 +1,70 @@
 <template>
-	<el-row
-		justify="center"
-		class="cursor-pointer"
-		@click="onServiceRestart"
+	<!-- The Manage system section: one row per action, its consequence spelled out, the button naming the verb. Each
+	     action confirms in a dialog first; power off and factory reset are the destructive ones. On phone the button
+	     wraps under the text, lined up with it -->
+	<ul
+		class="flex flex-col m-0 p-0 list-none"
+		data-test-id="manage-system"
 	>
-		<el-col
-			:span="3"
-			class="text-center"
+		<li
+			v-for="(action, index) in actions"
+			:key="action.id"
+			:class="['flex flex-wrap items-center gap-x-4 gap-y-2 py-3', index > 0 ? 'border-t border-t-solid border-light' : '']"
+			:data-action-id="action.id"
 		>
-			<div class="flex justify-center items-center h-full">
-				<el-avatar :size="32">
-					<icon
-						icon="mdi:restart"
-						class="w[20px] h[20px]"
-					/>
-				</el-avatar>
-			</div>
-		</el-col>
-		<el-col :span="19">
-			<el-text
-				size="large"
-				class="block font-600 text-lg"
+			<div
+				:class="['flex items-center justify-center shrink-0 w-10 h-10 rounded-full', action.danger ? 'bg-danger-soft' : 'bg-fill-light']"
+				aria-hidden="true"
 			>
-				{{ t('systemModule.headings.manage.serviceRestart') }}
-			</el-text>
-			<el-text
-				class="block"
-				data-test-id="service-restart-info"
-			>
-				{{ t('systemModule.texts.manage.serviceRestartDevice') }}
-			</el-text>
-		</el-col>
-		<el-col
-			:span="2"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
 				<icon
-					icon="mdi:keyboard-arrow-right"
-					class="w[32px] h[32px]"
+					:icon="action.icon"
+					width="22"
+					height="22"
+					:class="action.danger ? 'text-danger' : 'text-secondary'"
 				/>
 			</div>
-		</el-col>
-	</el-row>
 
-	<el-divider />
+			<div class="flex flex-col gap-0.5 flex-[1_1_240px] min-w-0">
+				<span class="text-card-title">{{ action.title }}</span>
+				<span
+					class="text-help"
+					:data-test-id="`${action.id}-info`"
+				>
+					{{ action.description }}
+				</span>
+			</div>
 
-	<el-row
-		justify="center"
-		class="cursor-pointer"
-		@click="onSystemReboot"
-	>
-		<el-col
-			:span="3"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<el-avatar :size="32">
-					<icon
-						icon="mdi:restart-alert"
-						class="w[20px] h[20px]"
-					/>
-				</el-avatar>
-			</div>
-		</el-col>
-		<el-col :span="19">
-			<el-text
-				size="large"
-				class="block font-600 text-lg"
+			<el-button
+				v-if="action.handler"
+				:type="action.danger ? 'danger' : undefined"
+				plain
+				class="ml-14 tp:ml-0"
+				:data-test-id="`${action.id}-button`"
+				@click="action.handler"
 			>
-				{{ t('systemModule.headings.manage.systemReboot') }}
-			</el-text>
-			<el-text
-				class="block"
-				data-test-id="system-reboot-info"
+				{{ action.button }}
+			</el-button>
+			<el-button
+				v-else-if="action.route"
+				class="ml-14 tp:ml-0"
+				:data-test-id="`${action.id}-button`"
+				@click="router.push(action.route)"
 			>
-				{{ isGateway ? t('systemModule.texts.manage.rebootGateway') : t('systemModule.texts.manage.rebootDevice') }}
-			</el-text>
-		</el-col>
-		<el-col
-			:span="2"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<icon
-					icon="mdi:keyboard-arrow-right"
-					class="w[32px] h[32px]"
-				/>
-			</div>
-		</el-col>
-	</el-row>
-
-	<el-divider />
-
-	<el-row
-		justify="center"
-		class="cursor-pointer"
-		@click="onPowerOff"
-	>
-		<el-col
-			:span="3"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<el-avatar :size="32">
-					<icon
-						icon="mdi:power-settings-new"
-						class="w[20px] h[20px]"
-					/>
-				</el-avatar>
-			</div>
-		</el-col>
-		<el-col :span="19">
-			<el-text
-				size="large"
-				class="block font-600 text-lg"
-			>
-				{{ t('systemModule.headings.manage.powerOff') }}
-			</el-text>
-			<el-text
-				class="block"
-				data-test-id="power-off-info"
-			>
-				{{ isGateway ? t('systemModule.texts.manage.powerOffGateway') : t('systemModule.texts.manage.powerOffDevice') }}
-			</el-text>
-		</el-col>
-		<el-col
-			:span="2"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<icon
-					icon="mdi:keyboard-arrow-right"
-					class="w[32px] h[32px]"
-				/>
-			</div>
-		</el-col>
-	</el-row>
-
-	<el-divider />
-
-	<el-row
-		justify="center"
-		class="mb-4 cursor-pointer"
-		@click="onFactoryReset"
-	>
-		<el-col
-			:span="3"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<el-avatar :size="32">
-					<icon
-						icon="mdi:vacuum-cleaner"
-						class="w[20px] h[20px]"
-					/>
-				</el-avatar>
-			</div>
-		</el-col>
-		<el-col :span="19">
-			<el-text
-				size="large"
-				class="block font-600 text-lg"
-			>
-				{{ t('systemModule.headings.manage.factoryReset') }}
-			</el-text>
-			<el-text
-				class="block"
-				data-test-id="factory-reset-info"
-			>
-				{{ isGateway ? t('systemModule.texts.manage.factoryResetGateway') : t('systemModule.texts.manage.factoryResetDevice') }}
-			</el-text>
-		</el-col>
-		<el-col
-			:span="2"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<icon
-					icon="mdi:keyboard-arrow-right"
-					class="w[32px] h[32px]"
-				/>
-			</div>
-		</el-col>
-	</el-row>
-
-	<el-divider />
-
-	<el-row
-		justify="center"
-		class="cursor-pointer"
-		@click="onShowBackups"
-	>
-		<el-col
-			:span="3"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<el-avatar :size="32">
-					<icon
-						icon="mdi:backup-restore"
-						class="w[20px] h[20px]"
-					/>
-				</el-avatar>
-			</div>
-		</el-col>
-		<el-col :span="19">
-			<el-text
-				size="large"
-				class="block font-600 text-lg"
-			>
-				{{ t('systemModule.headings.manage.systemBackups') }}
-			</el-text>
-			<el-text
-				class="block"
-				data-test-id="system-backups-info"
-			>
-				{{ t('systemModule.texts.manage.systemBackups') }}
-			</el-text>
-		</el-col>
-		<el-col
-			:span="2"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<icon
-					icon="mdi:keyboard-arrow-right"
-					class="w[32px] h[32px]"
-				/>
-			</div>
-		</el-col>
-	</el-row>
-
-	<el-divider />
-
-	<el-row
-		justify="center"
-		class="mb-4 cursor-pointer"
-		@click="onShowLogs"
-	>
-		<el-col
-			:span="3"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<el-avatar :size="32">
-					<icon
-						icon="mdi:console"
-						class="w[20px] h[20px]"
-					/>
-				</el-avatar>
-			</div>
-		</el-col>
-		<el-col :span="19">
-			<el-text
-				size="large"
-				class="block font-600 text-lg"
-			>
-				{{ t('systemModule.headings.manage.systemLogs') }}
-			</el-text>
-			<el-text
-				class="block"
-				data-test-id="system-logs-info"
-			>
-				{{ t('systemModule.texts.manage.systemLogs') }}
-			</el-text>
-		</el-col>
-		<el-col
-			:span="2"
-			class="text-center"
-		>
-			<div class="flex justify-center items-center h-full">
-				<icon
-					icon="mdi:keyboard-arrow-right"
-					class="w[32px] h[32px]"
-				/>
-			</div>
-		</el-col>
-	</el-row>
+				{{ action.button }}
+				<template #icon>
+					<icon icon="mdi:chevron-right" />
+				</template>
+			</el-button>
+		</li>
+	</ul>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { type RouteLocationRaw, useRouter } from 'vue-router';
 
-import { ElAvatar, ElCol, ElDivider, ElRow, ElText } from 'element-plus';
+import { ElButton } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -299,9 +77,16 @@ defineOptions({
 	name: 'ManageSystem',
 });
 
-const emit = defineEmits<{
-	(e: 'close'): void;
-}>();
+interface IManageAction {
+	id: string;
+	icon: string;
+	title: string;
+	description: string;
+	button: string;
+	danger?: boolean;
+	handler?: () => void;
+	route?: RouteLocationRaw;
+}
 
 const { t } = useI18n();
 const router = useRouter();
@@ -316,15 +101,56 @@ const isGateway = computed<boolean>((): boolean => {
 
 const { onServiceRestart, onSystemReboot, onPowerOff, onFactoryReset } = useSystemActions();
 
-const onShowBackups = (): void => {
-	emit('close');
-
-	router.push({ name: RouteNames.SYSTEM_BACKUPS });
-};
-
-const onShowLogs = (): void => {
-	emit('close');
-
-	router.push({ name: RouteNames.SYSTEM_LOGS });
-};
+const actions = computed<IManageAction[]>((): IManageAction[] => [
+	{
+		id: 'service-restart',
+		icon: 'mdi:restart',
+		title: t('systemModule.headings.manage.serviceRestart'),
+		description: t('systemModule.texts.manage.serviceRestartDevice'),
+		button: t('systemModule.buttons.manage.serviceRestart'),
+		handler: onServiceRestart,
+	},
+	{
+		id: 'system-reboot',
+		icon: 'mdi:restart-alert',
+		title: t('systemModule.headings.manage.systemReboot'),
+		description: isGateway.value ? t('systemModule.texts.manage.rebootGateway') : t('systemModule.texts.manage.rebootDevice'),
+		button: t('systemModule.buttons.manage.systemReboot'),
+		handler: onSystemReboot,
+	},
+	{
+		id: 'power-off',
+		icon: 'mdi:power-settings-new',
+		title: t('systemModule.headings.manage.powerOff'),
+		description: isGateway.value ? t('systemModule.texts.manage.powerOffGateway') : t('systemModule.texts.manage.powerOffDevice'),
+		button: t('systemModule.buttons.manage.powerOff'),
+		danger: true,
+		handler: onPowerOff,
+	},
+	{
+		id: 'factory-reset',
+		icon: 'mdi:vacuum-cleaner',
+		title: t('systemModule.headings.manage.factoryReset'),
+		description: isGateway.value ? t('systemModule.texts.manage.factoryResetGateway') : t('systemModule.texts.manage.factoryResetDevice'),
+		button: t('systemModule.buttons.manage.factoryReset'),
+		danger: true,
+		handler: onFactoryReset,
+	},
+	{
+		id: 'system-backups',
+		icon: 'mdi:backup-restore',
+		title: t('systemModule.headings.manage.systemBackups'),
+		description: t('systemModule.texts.manage.systemBackups'),
+		button: t('systemModule.buttons.manage.open'),
+		route: { name: RouteNames.SYSTEM_BACKUPS },
+	},
+	{
+		id: 'system-logs',
+		icon: 'mdi:console',
+		title: t('systemModule.headings.manage.systemLogs'),
+		description: t('systemModule.texts.manage.systemLogs'),
+		button: t('systemModule.buttons.manage.open'),
+		route: { name: RouteNames.SYSTEM_LOGS },
+	},
+]);
 </script>

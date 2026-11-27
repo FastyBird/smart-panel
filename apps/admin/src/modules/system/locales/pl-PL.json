@@ -41,7 +41,11 @@
 	"headings": {
 		"system": {
 			"system": "System",
-			"about": "O aplikacji"
+			"about": "O aplikacji",
+			"hardware": "Sprzęt",
+			"power": "Zasilanie i temperatura",
+			"os": "System operacyjny",
+			"network": "Sieć"
 		},
 		"update": {
 			"title": "Aktualizacje oprogramowania",
@@ -82,7 +86,8 @@
 		},
 		"systemBackups": {
 			"list": "Twórz, przywracaj i zarządzaj kopiami zapasowymi systemu"
-		}
+		},
+		"power": "Zbyt niskie napięcie i dławienie zgłaszane przez płytę"
 	},
 	"messages": {
 		"config": {
@@ -115,7 +120,8 @@
 			"offline": "Urządzenie nie ma połączenia sieciowego. Sprawdź konfigurację Wi-Fi lub kabel."
 		},
 		"misc": {
-			"requestError": "Coś poszło nie tak, spróbuj ponownie później."
+			"requestError": "Coś poszło nie tak, spróbuj ponownie później.",
+			"systemInfoError": "Nie udało się wczytać informacji o systemie."
 		},
 		"update": {
 			"confirmInstall": "Czy na pewno chcesz zaktualizować do wersji {version}?",
@@ -127,12 +133,17 @@
 			"checkFailed": "Nie udało się sprawdzić aktualizacji. Spróbuj ponownie później.",
 			"installFailed": "Nie udało się rozpocząć aktualizacji. Spróbuj ponownie później.",
 			"channelNotChanged": "Nie udało się zmienić kanału aktualizacji. Spróbuj ponownie później."
+		},
+		"systemLogs": {
+			"copied": "Wpis logu skopiowano do schowka.",
+			"copyFailed": "Nie udało się skopiować wpisu logu. Zaznacz surowy JSON i skopiuj go ręcznie."
 		}
 	},
 	"texts": {
 		"system": {
 			"loadingSystemInfo": "Ładowanie informacji o systemie...",
-			"about": "FastyBird Smart Panel to aplikacja automatyzacji domu, która umożliwia bezproblemową integrację z inteligentnymi urządzeniami, oferując zaawansowane możliwości sterowania i monitorowania."
+			"about": "FastyBird Smart Panel to aplikacja automatyzacji domu, która umożliwia bezproblemową integrację z inteligentnymi urządzeniami, oferując zaawansowane możliwości sterowania i monitorowania.",
+			"version": "Wersja {version}"
 		},
 		"manage": {
 			"serviceRestartDevice": "Szybki restart usługi aplikacji. Ustawienia są zachowane.",
@@ -166,7 +177,11 @@
 			"noLogs": "Nie zarejestrowano żadnych logów aplikacji.",
 			"noFilteredLogs": "Nie znaleziono logów aplikacji pasujących do aktywnych kryteriów filtra",
 			"noMessage": "Ten wpis logu nie zawiera dodatkowej wiadomości",
-			"noMoreEntries": "Brak więcej wpisów w logach"
+			"noMoreEntries": "Brak więcej wpisów w logach",
+			"loadError": "Nie udało się wczytać logów aplikacji.",
+			"loadingLog": "Wczytywanie wpisu logu...",
+			"logNotFound": "Nie znaleziono tego wpisu logu.",
+			"selectOne": "Wybierz wpis logu, aby zobaczyć szczegóły"
 		},
 		"aboutLanguageSettings": "Skonfiguruj język interfejsu, strefę czasową, format czasu i jednostki miar Smart Panel. Te ustawienia wpływają na sposób wyświetlania dat, godzin, temperatur i miar w całym systemie.",
 		"aboutSystemSettings": "Zarządzaj ogólnosystemową konfiguracją logowania. Wybierz, które poziomy ważności logów mają być monitorowane i wyświetlane w logach aplikacji.",
@@ -420,7 +435,12 @@
 			"title": "O aplikacji"
 		},
 		"manage": {
-			"title": "Zarządzaj systemem"
+			"title": "Zarządzaj systemem",
+			"serviceRestart": "Uruchom usługę ponownie",
+			"systemReboot": "Uruchom system ponownie",
+			"powerOff": "Wyłącz",
+			"factoryReset": "Przywróć ustawienia fabryczne",
+			"open": "Otwórz"
 		},
 		"resetFilters": {
 			"title": "Resetuj filtry"
@@ -465,6 +485,18 @@
 			"checkForUpdates": "Sprawdź aktualizacje",
 			"installUpdate": "Zainstaluj aktualizację",
 			"headerAction": "Aktualizuj"
+		},
+		"refresh": {
+			"title": "Odśwież"
+		},
+		"retry": {
+			"title": "Spróbuj ponownie"
+		},
+		"pauseLiveTail": {
+			"title": "Wstrzymaj podgląd na żywo"
+		},
+		"backToLogs": {
+			"title": "Wróć do logów"
 		}
 	},
 	"labels": {
@@ -475,6 +507,9 @@
 			"updateStatus": "Status",
 			"actions": "Akcje",
 			"channel": "Kanał aktualizacji"
+		},
+		"about": {
+			"links": "Linki"
 		}
 	},
 	"systemInfo": {
@@ -561,11 +596,39 @@
 			"restoreError": "Nie udało się przywrócić kopii zapasowej. Spróbuj ponownie.",
 			"downloadError": "Nie udało się pobrać kopii zapasowej. Spróbuj ponownie.",
 			"uploaded": "Kopia zapasowa została pomyślnie przesłana.",
-			"uploadError": "Nie udało się przesłać kopii zapasowej. Spróbuj ponownie."
+			"uploadError": "Nie udało się przesłać kopii zapasowej. Spróbuj ponownie.",
+			"loadError": "Nie udało się wczytać kopii zapasowych."
 		},
 		"buttons": {
 			"create": "Utwórz kopię",
-			"upload": "Prześlij kopię"
+			"upload": "Prześlij kopię",
+			"download": "Pobierz",
+			"restore": "Przywróć kopię",
+			"delete": "Usuń kopię",
+			"more": "Więcej działań dla {name}",
+			"moreTooltip": "Więcej działań"
+		},
+		"loading": "Wczytywanie kopii zapasowych...",
+		"description": "Każda kopia zawiera konfigurację i dane tego Smart Panelu.",
+		"upload": {
+			"title": "Prześlij kopię",
+			"description": "Dodaj kopię wykonaną na tym lub innym Smart Panelu, a następnie przywróć ją z listy.",
+			"hint": "Archiwum .tar.gz"
+		},
+		"banner": {
+			"noneTitle": "Brak kopii zapasowych",
+			"noneDescription": "Utwórz kopię przed aktualizacją lub większą zmianą, aby można było przywrócić konfigurację.",
+			"staleTitle": "Ostatnia kopia jest starsza niż {days} dni",
+			"okTitle": "Kopie zapasowe są aktualne",
+			"lastBackup": "Ostatnia kopia: {date}"
 		}
+	},
+	"health": {
+		"problemTitle": "Wykryto problem z zasilaniem lub temperaturą",
+		"okTitle": "System działa prawidłowo",
+		"okDescription": "Zasilanie i temperatura są w porządku.",
+		"updateDescription": "Zainstaluj ją w sekcji Aktualizacje oprogramowania poniżej.",
+		"unknownTitle": "Zasilanie i temperatura nie są raportowane",
+		"unknownDescription": "Płyta nie raportuje zbyt niskiego napięcia ani dławienia albo nie udało się ich odczytać, więc ich stan jest nieznany."
 	}
 }

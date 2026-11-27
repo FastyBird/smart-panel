@@ -33,6 +33,8 @@ const progressPercent = ref<number | null>(null);
 const error = ref<string | null>(null);
 
 const loading = ref<boolean>(false);
+// The last status read or check failed: the versions above are then the ones read before, not the current ones
+const readFailed = ref<boolean>(false);
 const installing = ref<boolean>(false);
 const waitingForRestart = ref<boolean>(false);
 
@@ -106,7 +108,10 @@ const isUnconfirmedClearedStatus = (data: Record<string, unknown>, targetVersion
 	return (!data.status || data.status === 'idle') && (!targetVersion || data.current_version !== targetVersion);
 };
 
+// Every accepted status response goes through here (the mount read, a check, the reconnect poll), so here the
+// versions become current again
 const applyInfoResponse = (data: Record<string, unknown>): void => {
+	readFailed.value = false;
 	currentVersion.value = (data.current_version as string) ?? null;
 	latestVersion.value = (data.latest_version as string) ?? null;
 	updateAvailable.value = (data.update_available as boolean) ?? false;
@@ -247,9 +252,14 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 					} else if (isUpdating.value && !monitoring) {
 						startReconnectPoll();
 					}
+				} else if (generation === observerGeneration) {
+					readFailed.value = true;
 				}
 			} catch {
-				// Silently fail - endpoint may not exist yet
+				// Silently fail - endpoint may not exist yet; the screen shows the update state as unknown
+				if (generation === observerGeneration) {
+					readFailed.value = true;
+				}
 			} finally {
 				// A superseded request must not clear the newer shared request.
 				if (lastFetchGeneration === generation) {
@@ -263,16 +273,31 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 	};
 
 	const checkForUpdates = async (): Promise<void> => {
+		// A check left behind by a disposed consumer, or by a terminal event, must not overwrite what the current one read
+		const generation = observerGeneration;
+		const isCurrent = (): boolean => !disposed && generation === observerGeneration;
+
 		loading.value = true;
 
 		try {
 			const { data: responseData } = await backend.client.POST(UPDATE_CHECK_PATH);
 
+			if (!isCurrent()) {
+				return;
+			}
+
 			if (responseData?.data) {
 				applyInfoResponse(responseData.data);
+			} else {
+				readFailed.value = true;
 			}
 		} catch (err) {
+			if (!isCurrent()) {
+				return;
+			}
+
 			error.value = 'systemModule.messages.update.checkFailed';
+			readFailed.value = true;
 
 			throw err;
 		} finally {
@@ -441,6 +466,7 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		progressPercent,
 		error,
 		loading,
+		readFailed,
 		installing,
 		waitingForRestart,
 		isUpdating,

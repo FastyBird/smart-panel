@@ -41,7 +41,11 @@
   "headings": {
     "system": {
       "system": "System",
-      "about": "About application"
+      "about": "About application",
+      "hardware": "Hardware",
+      "power": "Power and temperature",
+      "os": "Operating system",
+      "network": "Network"
     },
     "update": {
       "title": "Software Updates",
@@ -82,7 +86,8 @@
     },
     "systemBackups": {
       "list": "Create, restore, and manage system backups"
-    }
+    },
+    "power": "Undervoltage and throttling reported by the board"
   },
   "messages": {
     "config": {
@@ -115,7 +120,8 @@
       "offline": "The device has no network connection. Check your Wi-Fi configuration or cable."
     },
     "misc": {
-      "requestError": "Something went wrong, please try again later."
+      "requestError": "Something went wrong, please try again later.",
+      "systemInfoError": "System information could not be loaded."
     },
     "update": {
       "confirmInstall": "Are you sure you want to update to version {version}?",
@@ -127,12 +133,17 @@
       "checkFailed": "Failed to check for updates. Please try again later.",
       "installFailed": "Failed to start the update. Please try again later.",
       "channelNotChanged": "Failed to change the update channel. Please try again later."
+    },
+    "systemLogs": {
+      "copied": "Log entry copied to the clipboard.",
+      "copyFailed": "The log entry could not be copied. Select the raw JSON and copy it by hand."
     }
   },
   "texts": {
     "system": {
       "loadingSystemInfo": "Loading system information...",
-      "about": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities."
+      "about": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities.",
+      "version": "Version {version}"
     },
     "manage": {
       "serviceRestartDevice": "Quick restart of the application service. Settings are preserved.",
@@ -166,7 +177,11 @@
       "noLogs": "No any application logs were recorded.",
       "noFilteredLogs": "No any application logs found matching the active filter criteria",
       "noMessage": "This log entry is without additional message",
-      "noMoreEntries": "No more log entries"
+      "noMoreEntries": "No more log entries",
+      "loadError": "Application logs could not be loaded.",
+      "loadingLog": "Loading log entry...",
+      "logNotFound": "This log entry was not found.",
+      "selectOne": "Select a log entry to see its details"
     },
     "aboutLanguageSettings": "Configure the interface language, timezone, time format, and measurement units for the Smart Panel. These settings affect how dates, times, temperatures, and measurements are displayed throughout the system.",
     "aboutSystemSettings": "Manage system-wide logging configuration. Select which log severity levels to monitor and display in the application logs.",
@@ -420,7 +435,12 @@
       "title": "About application"
     },
     "manage": {
-      "title": "Manage system"
+      "title": "Manage system",
+      "serviceRestart": "Restart service",
+      "systemReboot": "Restart system",
+      "powerOff": "Power off",
+      "factoryReset": "Reset to factory settings",
+      "open": "Open"
     },
     "resetFilters": {
       "title": "Reset filters"
@@ -465,6 +485,18 @@
       "checkForUpdates": "Check for Updates",
       "installUpdate": "Install Update",
       "headerAction": "Update"
+    },
+    "refresh": {
+      "title": "Refresh"
+    },
+    "retry": {
+      "title": "Try again"
+    },
+    "pauseLiveTail": {
+      "title": "Pause live tail"
+    },
+    "backToLogs": {
+      "title": "Back to logs"
     }
   },
   "labels": {
@@ -475,6 +507,9 @@
       "updateStatus": "Status",
       "actions": "Actions",
       "channel": "Update channel"
+    },
+    "about": {
+      "links": "Links"
     }
   },
   "systemInfo": {
@@ -561,11 +596,39 @@
       "restoreError": "Failed to restore backup. Please try again.",
       "downloadError": "Failed to download backup. Please try again.",
       "uploaded": "Backup has been uploaded successfully.",
-      "uploadError": "Failed to upload backup. Please try again."
+      "uploadError": "Failed to upload backup. Please try again.",
+      "loadError": "Backups could not be loaded."
     },
     "buttons": {
       "create": "Create Backup",
-      "upload": "Upload Backup"
+      "upload": "Upload Backup",
+      "download": "Download",
+      "restore": "Restore backup",
+      "delete": "Delete backup",
+      "more": "More actions for {name}",
+      "moreTooltip": "More actions"
+    },
+    "loading": "Loading backups...",
+    "description": "Each backup holds the configuration and data of this Smart Panel.",
+    "upload": {
+      "title": "Upload a backup",
+      "description": "Add a backup made on this or another Smart Panel, then restore it from the list.",
+      "hint": "A .tar.gz archive"
+    },
+    "banner": {
+      "noneTitle": "No backups yet",
+      "noneDescription": "Create a backup before an update or a bigger change, so the setup can be restored.",
+      "staleTitle": "The last backup is more than {days} days old",
+      "okTitle": "Backups are up to date",
+      "lastBackup": "Last backup: {date}"
     }
+  },
+  "health": {
+    "problemTitle": "Power or temperature problem detected",
+    "okTitle": "System running normally",
+    "okDescription": "The power supply and the temperature are fine.",
+    "updateDescription": "Install it from Software updates below.",
+    "unknownTitle": "Power and temperature not reported",
+    "unknownDescription": "The board does not report undervoltage or throttling, or they could not be read, so their state is not known."
   }
 }

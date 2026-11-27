@@ -41,7 +41,11 @@
 	"headings": {
 		"system": {
 			"system": "Systém",
-			"about": "O aplikácii"
+			"about": "O aplikácii",
+			"hardware": "Hardvér",
+			"power": "Napájanie a teplota",
+			"os": "Operačný systém",
+			"network": "Sieť"
 		},
 		"update": {
 			"title": "Aktualizácie softvéru",
@@ -82,7 +86,8 @@
 		},
 		"systemBackups": {
 			"list": "Vytvárajte, obnovujte a spravujte systémové zálohy"
-		}
+		},
+		"power": "Podpätie a obmedzovanie výkonu hlásené doskou"
 	},
 	"messages": {
 		"config": {
@@ -115,7 +120,8 @@
 			"offline": "Zariadenie nemá sieťové pripojenie. Skontrolujte konfiguráciu Wi-Fi alebo kábel."
 		},
 		"misc": {
-			"requestError": "Niečo sa pokazilo, skúste to prosím neskôr."
+			"requestError": "Niečo sa pokazilo, skúste to prosím neskôr.",
+			"systemInfoError": "Informácie o systéme sa nepodarilo načítať."
 		},
 		"update": {
 			"confirmInstall": "Naozaj chcete aktualizovať na verziu {version}?",
@@ -127,12 +133,17 @@
 			"checkFailed": "Nepodarilo sa skontrolovať aktualizácie. Skúste to prosím neskôr.",
 			"installFailed": "Nepodarilo sa spustiť aktualizáciu. Skúste to prosím neskôr.",
 			"channelNotChanged": "Kanál aktualizácií sa nepodarilo zmeniť. Skúste to prosím znovu neskôr."
+		},
+		"systemLogs": {
+			"copied": "Záznam logu bol skopírovaný do schránky.",
+			"copyFailed": "Záznam logu sa nepodarilo skopírovať. Označte surový JSON a skopírujte ho ručne."
 		}
 	},
 	"texts": {
 		"system": {
 			"loadingSystemInfo": "Načítavanie systémových informácií...",
-			"about": "FastyBird Smart Panel je aplikácia na automatizáciu domácnosti, ktorá umožňuje bezproblémovú integráciu s vašimi inteligentnými zariadeniami a ponúka vylepšené možnosti ovládania a monitorovania."
+			"about": "FastyBird Smart Panel je aplikácia na automatizáciu domácnosti, ktorá umožňuje bezproblémovú integráciu s vašimi inteligentnými zariadeniami a ponúka vylepšené možnosti ovládania a monitorovania.",
+			"version": "Verzia {version}"
 		},
 		"manage": {
 			"serviceRestartDevice": "Rýchly reštart služby aplikácie. Nastavenia sú zachované.",
@@ -166,7 +177,11 @@
 			"noLogs": "Neboli zaznamenané žiadne aplikačné logy.",
 			"noFilteredLogs": "Neboli nájdené žiadne aplikačné logy zodpovedajúce aktívnym filtrom",
 			"noMessage": "Tento záznam logu je bez dodatočnej správy",
-			"noMoreEntries": "Žiadne ďalšie záznamy logov"
+			"noMoreEntries": "Žiadne ďalšie záznamy logov",
+			"loadError": "Logy aplikácie sa nepodarilo načítať.",
+			"loadingLog": "Načítava sa záznam logu...",
+			"logNotFound": "Tento záznam logu sa nenašiel.",
+			"selectOne": "Vyberte záznam logu a zobrazte jeho podrobnosti"
 		},
 		"aboutLanguageSettings": "Nakonfigurujte jazyk rozhrania, časové pásmo, formát času a merné jednotky pre Smart Panel. Tieto nastavenia ovplyvňujú spôsob zobrazovania dátumov, časov, teplôt a meraní v celom systéme.",
 		"aboutSystemSettings": "Spravujte celosystémovú konfiguráciu logovania. Vyberte, ktoré úrovne závažnosti logov sa majú monitorovať a zobrazovať v aplikačných logoch.",
@@ -420,7 +435,12 @@
 			"title": "O aplikácii"
 		},
 		"manage": {
-			"title": "Spravovať systém"
+			"title": "Spravovať systém",
+			"serviceRestart": "Reštartovať službu",
+			"systemReboot": "Reštartovať systém",
+			"powerOff": "Vypnúť",
+			"factoryReset": "Obnoviť továrenské nastavenia",
+			"open": "Otvoriť"
 		},
 		"resetFilters": {
 			"title": "Resetovať filtre"
@@ -465,6 +485,18 @@
 			"checkForUpdates": "Skontrolovať aktualizácie",
 			"installUpdate": "Inštalovať aktualizáciu",
 			"headerAction": "Aktualizovať"
+		},
+		"refresh": {
+			"title": "Obnoviť"
+		},
+		"retry": {
+			"title": "Skúsiť znova"
+		},
+		"pauseLiveTail": {
+			"title": "Pozastaviť živý výpis"
+		},
+		"backToLogs": {
+			"title": "Späť na logy"
 		}
 	},
 	"labels": {
@@ -475,6 +507,9 @@
 			"updateStatus": "Stav",
 			"actions": "Akcie",
 			"channel": "Kanál aktualizácií"
+		},
+		"about": {
+			"links": "Odkazy"
 		}
 	},
 	"systemInfo": {
@@ -561,11 +596,39 @@
 			"restoreError": "Nepodarilo sa obnoviť zálohu. Prosím, skúste to znova.",
 			"downloadError": "Nepodarilo sa stiahnuť zálohu. Prosím, skúste to znova.",
 			"uploaded": "Záloha bola úspešne nahraná.",
-			"uploadError": "Nepodarilo sa nahrať zálohu. Prosím, skúste to znova."
+			"uploadError": "Nepodarilo sa nahrať zálohu. Prosím, skúste to znova.",
+			"loadError": "Zálohy sa nepodarilo načítať."
 		},
 		"buttons": {
 			"create": "Vytvoriť zálohu",
-			"upload": "Nahrať zálohu"
+			"upload": "Nahrať zálohu",
+			"download": "Stiahnuť",
+			"restore": "Obnoviť zálohu",
+			"delete": "Zmazať zálohu",
+			"more": "Ďalšie akcie pre {name}",
+			"moreTooltip": "Ďalšie akcie"
+		},
+		"loading": "Načítavajú sa zálohy...",
+		"description": "Každá záloha obsahuje konfiguráciu a dáta tohto Smart Panelu.",
+		"upload": {
+			"title": "Nahrať zálohu",
+			"description": "Pridajte zálohu z tohto alebo iného Smart Panelu a potom ju obnovte zo zoznamu.",
+			"hint": "Archív .tar.gz"
+		},
+		"banner": {
+			"noneTitle": "Zatiaľ žiadne zálohy",
+			"noneDescription": "Pred aktualizáciou alebo väčšou zmenou vytvorte zálohu, aby sa nastavenie dalo obnoviť.",
+			"staleTitle": "Posledná záloha je staršia ako {days} dní",
+			"okTitle": "Zálohy sú aktuálne",
+			"lastBackup": "Posledná záloha: {date}"
 		}
+	},
+	"health": {
+		"problemTitle": "Zistený problém s napájaním alebo teplotou",
+		"okTitle": "Systém beží normálne",
+		"okDescription": "Napájanie aj teplota sú v poriadku.",
+		"updateDescription": "Nainštalujte ju v časti Aktualizácie softvéru nižšie.",
+		"unknownTitle": "Napájanie a teplota nie sú hlásené",
+		"unknownDescription": "Doska nehlási podpätie ani obmedzovanie výkonu, alebo sa nedali načítať, takže ich stav nie je známy."
 	}
 }

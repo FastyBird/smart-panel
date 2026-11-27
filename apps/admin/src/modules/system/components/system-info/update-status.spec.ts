@@ -14,7 +14,8 @@ const reload = vi.fn();
 const installUpdate = vi.fn();
 
 vi.mock('vue-i18n', () => ({
-	useI18n: () => ({ t: (key: string) => key }),
+	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
+	useI18n: () => ({ t: (key: string) => key, locale: { value: 'en-US' } }),
 }));
 
 vi.mock('../../composables/composables', () => ({
@@ -29,6 +30,7 @@ vi.mock('../../composables/composables', () => ({
 		progressPercent: ref(100),
 		error,
 		loading: ref(false),
+		readFailed: ref(false),
 		waitingForRestart,
 		isUpdating: computed(() => ['downloading', 'stopping', 'installing', 'migrating', 'starting'].includes(status.value)),
 		fetchStatus: vi.fn(),

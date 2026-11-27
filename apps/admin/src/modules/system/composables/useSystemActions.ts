@@ -33,8 +33,8 @@ export const useSystemActions = (): IUseSystemActions => {
 			: t('systemModule.messages.manage.confirmServiceRestart');
 
 		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.serviceRestart'), {
-			confirmButtonText: t('systemModule.buttons.yes.title'),
-			cancelButtonText: t('systemModule.buttons.no.title'),
+			confirmButtonText: t('systemModule.buttons.manage.serviceRestart'),
+			cancelButtonText: t('systemModule.buttons.cancel.title'),
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
@@ -58,8 +58,8 @@ export const useSystemActions = (): IUseSystemActions => {
 			: t('systemModule.messages.manage.confirmReboot');
 
 		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.systemReboot'), {
-			confirmButtonText: t('systemModule.buttons.yes.title'),
-			cancelButtonText: t('systemModule.buttons.no.title'),
+			confirmButtonText: t('systemModule.buttons.manage.systemReboot'),
+			cancelButtonText: t('systemModule.buttons.cancel.title'),
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
@@ -83,9 +83,10 @@ export const useSystemActions = (): IUseSystemActions => {
 			: t('systemModule.messages.manage.confirmPowerOff');
 
 		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.powerOff'), {
-			confirmButtonText: t('systemModule.buttons.yes.title'),
-			cancelButtonText: t('systemModule.buttons.no.title'),
+			confirmButtonText: t('systemModule.buttons.manage.powerOff'),
+			cancelButtonText: t('systemModule.buttons.cancel.title'),
 			type: 'warning',
+			confirmButtonClass: 'el-button--danger',
 		})
 			.then(async (): Promise<void> => {
 				systemActions.powerOff();
@@ -108,9 +109,10 @@ export const useSystemActions = (): IUseSystemActions => {
 			: t('systemModule.messages.manage.confirmFactoryReset');
 
 		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.factoryReset'), {
-			confirmButtonText: t('systemModule.buttons.yes.title'),
-			cancelButtonText: t('systemModule.buttons.no.title'),
+			confirmButtonText: t('systemModule.buttons.manage.factoryReset'),
+			cancelButtonText: t('systemModule.buttons.cancel.title'),
 			type: 'warning',
+			confirmButtonClass: 'el-button--danger',
 		})
 			.then(async (): Promise<void> => {
 				// Fire command (don't await — server will restart before ack)

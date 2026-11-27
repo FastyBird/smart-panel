@@ -69,19 +69,37 @@ export const useSystemLogsDataSource = (props?: IUseSystemLogsDataSourceProps): 
 			);
 	});
 
+	// Whether the last read of the entries failed. Every read updates it, the live tail's too, so a backend that answers
+	// again clears the error without a manual retry
+	const failed = ref<boolean>(false);
+
+	const track = async (request: Promise<unknown>): Promise<void> => {
+		try {
+			await request;
+
+			failed.value = false;
+		} catch (error: unknown) {
+			failed.value = true;
+
+			throw error;
+		}
+	};
+
 	const fetchSystemLogs = async (): Promise<void> => {
-		await logsStore.fetch();
+		await track(logsStore.fetch());
 	};
 
 	const loadMoreSystemLogs = async (): Promise<void> => {
-		await logsStore.fetch({
-			afterId: nextCursor.value,
-			append: true,
-		});
+		await track(
+			logsStore.fetch({
+				afterId: nextCursor.value,
+				append: true,
+			})
+		);
 	};
 
 	const refreshSystemLogs = async (): Promise<void> => {
-		await logsStore.fetch();
+		await track(logsStore.fetch());
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
@@ -111,7 +129,7 @@ export const useSystemLogsDataSource = (props?: IUseSystemLogsDataSourceProps): 
 						return;
 					}
 
-					logsStore.fetch({ append: true }).catch((): void => undefined);
+					track(logsStore.fetch({ append: true })).catch((): void => undefined);
 				}, 3000);
 			}
 		}
@@ -131,6 +149,7 @@ export const useSystemLogsDataSource = (props?: IUseSystemLogsDataSourceProps): 
 		hasMore,
 		areLoading,
 		loaded,
+		failed,
 		fetchSystemLogs,
 		loadMoreSystemLogs,
 		filters,

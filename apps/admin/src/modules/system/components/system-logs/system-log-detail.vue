@@ -1,131 +1,83 @@
 <template>
+	<!-- One log entry: its level and message first, then where it came from, then its arguments and the raw record -->
 	<div
-		:class="[ns.b()]"
-		class="space-y-4"
+		class="flex flex-col gap-4"
+		data-test-id="system-log-detail"
 	>
-		<el-descriptions
-			:column="1"
-			border
-			label-width="140px"
-			class-name="log-detail-descriptions"
+		<div class="flex flex-col gap-2">
+			<div class="flex flex-wrap items-center gap-2">
+				<status-tag
+					:status="logLevelStatus(props.systemLog.type)"
+					:label="t(`systemModule.levels.${props.systemLog.type}`)"
+					data-test-id="system-log-detail-level"
+				/>
+				<span class="text-help">{{ t(`systemModule.sources.${props.systemLog.source}`) }}</span>
+				<span
+					v-if="props.systemLog.tag"
+					class="text-help"
+				>
+					· {{ props.systemLog.tag }}
+				</span>
+			</div>
+
+			<p
+				:class="['m-0 break-words whitespace-pre-wrap', props.systemLog.message ? 'text-body' : 'text-secondary']"
+				data-test-id="system-log-detail-message"
+			>
+				{{ props.systemLog.message ?? t('systemModule.fields.systemLogs.message.noMessage') }}
+			</p>
+		</div>
+
+		<kv-grid
+			:items="details"
+			:cols="2"
+		/>
+
+		<section
+			v-if="hasArgs"
+			class="flex flex-col gap-2"
 		>
-			<el-descriptions-item :label="t('systemModule.fields.systemLogs.timestamp.title')">
-				<span class="font-mono">{{ systemLog.ts }}</span>
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				v-if="systemLog.ingestedAt"
-				:label="t('systemModule.fields.systemLogs.ingestedAt.title')"
+			<h3 class="m-0 text-card-title">{{ t('systemModule.fields.systemLogs.args.title') }}</h3>
+			<pre
+				class="m-0 p-3 rounded-[var(--el-border-radius-base)] bg-fill-light text-mono text-[12px] leading-[18px] overflow-auto"
+				data-test-id="system-log-detail-args"
+				>{{ pretty(props.systemLog.args) }}</pre
 			>
-				<span class="font-mono">{{ systemLog.ingestedAt }}</span>
-			</el-descriptions-item>
+		</section>
 
-			<el-descriptions-item :label="t('systemModule.fields.systemLogs.source.title')">
-				<el-tag
+		<section class="flex flex-col gap-2">
+			<div class="flex items-center gap-2">
+				<h3 class="m-0 text-card-title flex-1">{{ t('systemModule.fields.systemLogs.rawJson.title') }}</h3>
+				<el-button
 					size="small"
-					effect="plain"
-					class="justify-self-start"
+					data-test-id="system-log-detail-copy"
+					@click="onCopy"
 				>
-					{{ systemLog.source }}
-				</el-tag>
-			</el-descriptions-item>
-
-			<el-descriptions-item :label="t('systemModule.fields.systemLogs.level.title')">
-				<el-tag
-					v-bind="levelTagProps(systemLog.type)"
-					size="small"
-					class="justify-self-start"
-				>
-					{{ systemLog.type }}
-				</el-tag>
-			</el-descriptions-item>
-
-			<el-descriptions-item :label="t('systemModule.fields.systemLogs.message.title')">
-				{{ systemLog.message ?? `(${t('systemModule.fields.systemLogs.message.noMessage')})` }}
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				v-if="systemLog.tag"
-				:label="t('systemModule.fields.systemLogs.tag.title')"
+					<template #icon>
+						<icon icon="mdi:content-copy" />
+					</template>
+					{{ t('systemModule.buttons.copyJson.title') }}
+				</el-button>
+			</div>
+			<pre
+				class="m-0 p-3 rounded-[var(--el-border-radius-base)] bg-fill-light text-mono text-[12px] leading-[18px] overflow-auto max-h-[360px]"
+				data-test-id="system-log-detail-raw"
+				>{{ pretty(props.systemLog) }}</pre
 			>
-				{{ systemLog.tag }}
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				v-if="systemLog.user?.id"
-				:label="t('systemModule.fields.systemLogs.user.title')"
-			>
-				<span class="font-mono">{{ systemLog.user.id }}</span>
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				v-if="systemLog.context?.appVersion"
-				:label="t('systemModule.fields.systemLogs.appVersion.title')"
-			>
-				{{ systemLog.context?.appVersion }}
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				v-if="systemLog.context?.url"
-				:label="t('systemModule.fields.systemLogs.url.title')"
-			>
-				<a
-					:href="systemLog.context.url"
-					target="_blank"
-					class="text-primary hover:underline"
-				>
-					{{ systemLog.context.url }}
-				</a>
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				v-if="systemLog.context?.userAgent"
-				:label="t('systemModule.fields.systemLogs.userAgent.title')"
-			>
-				<span class="text-xs">{{ systemLog.context?.userAgent }}</span>
-			</el-descriptions-item>
-
-			<el-descriptions-item
-				v-if="systemLog.context?.locale"
-				:label="t('systemModule.fields.systemLogs.locale.title')"
-			>
-				{{ systemLog.context.locale }}
-			</el-descriptions-item>
-		</el-descriptions>
-
-		<el-tabs
-			type="card"
-			class="mt-2"
-		>
-			<el-tab-pane
-				v-if="systemLog.args"
-				:label="t('systemModule.fields.systemLogs.args.title')"
-			>
-				<pre class="p-2 bg-[var(--el-fill-color-light)] rounded text-xs overflow-auto">{{ pretty(systemLog.args) }}</pre>
-			</el-tab-pane>
-
-			<el-tab-pane :label="t('systemModule.fields.systemLogs.rawJson.title')">
-				<pre class="p-2 bg-[var(--el-fill-color-light)] rounded text-xs overflow-auto">{{ pretty(systemLog) }}</pre>
-
-				<div class="flex gap-2">
-					<el-button
-						size="small"
-						@click="copy(pretty(systemLog))"
-					>
-						{{ t('systemModule.buttons.copyJson.title') }}
-					</el-button>
-				</div>
-			</el-tab-pane>
-		</el-tabs>
+		</section>
 	</div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDescriptions, ElDescriptionsItem, ElTabPane, ElTabs, ElTag, useNamespace } from 'element-plus';
+import { ElButton } from 'element-plus';
 
-import { SystemModuleLogEntryType } from '../../../../openapi.constants';
+import { Icon } from '@iconify/vue';
+
+import { KvGrid, type KvGridItem, StatusTag, useFlashMessage } from '../../../../common';
+import { logLevelStatus } from '../../utils/system.utils';
 
 import type { ISystemLogsDetailProps } from './system-log-detail.types';
 
@@ -133,22 +85,57 @@ defineOptions({
 	name: 'SystemLogDetail',
 });
 
-defineProps<ISystemLogsDetailProps>();
+const props = defineProps<ISystemLogsDetailProps>();
 
-const ns = useNamespace('system-log-detail');
-const { t } = useI18n();
+const { t, locale } = useI18n();
+const flashMessage = useFlashMessage();
 
-const pretty = (v: unknown): string => {
+const hasArgs = computed<boolean>((): boolean => {
+	const args = props.systemLog.args;
+
+	return Array.isArray(args) ? args.length > 0 : args !== null && args !== undefined;
+});
+
+const formatDate = (iso: string | null | undefined): string | null =>
+	iso ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(iso)) : null;
+
+// Only what the entry carries: a backend line has no browser, an admin line no ingest time
+const details = computed<KvGridItem[]>((): KvGridItem[] => {
+	const entry = props.systemLog;
+
+	const items: KvGridItem[] = [
+		{ label: t('systemModule.fields.systemLogs.timestamp.title'), value: formatDate(entry.ts) },
+		{ label: t('systemModule.fields.systemLogs.ingestedAt.title'), value: formatDate(entry.ingestedAt) },
+		{ label: t('systemModule.fields.systemLogs.user.title'), value: entry.user?.id, mono: true },
+		{ label: t('systemModule.fields.systemLogs.appVersion.title'), value: entry.context?.appVersion, mono: true },
+		// A link only to a web page: the URL is whatever the reporting client sent
+		{
+			label: t('systemModule.fields.systemLogs.url.title'),
+			value: entry.context?.url,
+			href: entry.context?.url && /^https?:\/\//i.test(entry.context.url) ? entry.context.url : undefined,
+		},
+		{ label: t('systemModule.fields.systemLogs.userAgent.title'), value: entry.context?.userAgent },
+		{ label: t('systemModule.fields.systemLogs.locale.title'), value: entry.context?.locale },
+	];
+
+	// The time is always there; the rest only when the entry has it
+	return items.filter((item, index) => index === 0 || (item.value !== null && item.value !== undefined && item.value !== ''));
+});
+
+const pretty = (value: unknown): string => {
 	try {
-		return JSON.stringify(v, null, 2);
+		return JSON.stringify(value, null, 2);
 	} catch {
-		return String(v);
+		return String(value);
 	}
 };
 
-const copy = async (text: string): Promise<void> => {
+// Whether the text reached the clipboard: the legacy fallback reports a refusal by returning false, not by throwing
+const copyText = async (text: string): Promise<boolean> => {
 	try {
 		await navigator.clipboard.writeText(text);
+
+		return true;
 	} catch {
 		// Fallback for Safari / non-HTTPS — use legacy execCommand
 		const textarea = document.createElement('textarea');
@@ -157,33 +144,26 @@ const copy = async (text: string): Promise<void> => {
 		textarea.style.opacity = '0';
 		document.body.appendChild(textarea);
 		textarea.select();
-		document.execCommand('copy');
-		document.body.removeChild(textarea);
+
+		let copied = false;
+
+		try {
+			copied = document.execCommand('copy');
+		} catch {
+			copied = false;
+		} finally {
+			document.body.removeChild(textarea);
+		}
+
+		return copied;
 	}
 };
 
-const levelTagProps = (lvl: SystemModuleLogEntryType) => {
-	const s = lvl.toLowerCase();
-
-	if (['fatal', 'error', 'fail'].includes(s)) {
-		return { type: 'danger' as const, effect: 'light' as const };
+const onCopy = async (): Promise<void> => {
+	if (await copyText(pretty(props.systemLog))) {
+		flashMessage.success(t('systemModule.messages.systemLogs.copied'));
+	} else {
+		flashMessage.error(t('systemModule.messages.systemLogs.copyFailed'));
 	}
-
-	if (['warn', 'box'].includes(s)) {
-		return { type: 'warning' as const, effect: 'light' as const };
-	}
-
-	if (['success', 'ready', 'start', 'info', 'log'].includes(s)) {
-		return { type: 'success' as const, effect: 'light' as const };
-	}
-
-	return {
-		effect: 'plain' as const,
-		class: 'tag-neutral',
-	};
 };
 </script>
-
-<style rel="stylesheet/scss" lang="scss" scoped>
-@use 'system-log-detail.scss';
-</style>

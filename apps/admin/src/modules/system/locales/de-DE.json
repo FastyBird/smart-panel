@@ -41,7 +41,11 @@
 	"headings": {
 		"system": {
 			"system": "System",
-			"about": "Über die Anwendung"
+			"about": "Über die Anwendung",
+			"hardware": "Hardware",
+			"power": "Stromversorgung und Temperatur",
+			"os": "Betriebssystem",
+			"network": "Netzwerk"
 		},
 		"update": {
 			"title": "Software-Updates",
@@ -82,7 +86,8 @@
 		},
 		"systemBackups": {
 			"list": "Backups erstellen, wiederherstellen und verwalten"
-		}
+		},
+		"power": "Unterspannung und Drosselung, vom Board gemeldet"
 	},
 	"messages": {
 		"config": {
@@ -115,7 +120,8 @@
 			"offline": "Das Gerät hat keine Netzwerkverbindung. Überprüfen Sie Ihre WLAN-Konfiguration oder das Kabel."
 		},
 		"misc": {
-			"requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut."
+			"requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut.",
+			"systemInfoError": "Die Systeminformationen konnten nicht geladen werden."
 		},
 		"update": {
 			"confirmInstall": "Sind Sie sicher, dass Sie auf Version {version} aktualisieren möchten?",
@@ -127,12 +133,17 @@
 			"checkFailed": "Prüfung auf Updates fehlgeschlagen. Bitte versuchen Sie es später erneut.",
 			"installFailed": "Start der Aktualisierung fehlgeschlagen. Bitte versuchen Sie es später erneut.",
 			"channelNotChanged": "Der Update-Kanal konnte nicht geändert werden. Bitte versuchen Sie es später erneut."
+		},
+		"systemLogs": {
+			"copied": "Protokolleintrag in die Zwischenablage kopiert.",
+			"copyFailed": "Der Protokolleintrag konnte nicht kopiert werden. Markieren Sie das Roh-JSON und kopieren Sie es manuell."
 		}
 	},
 	"texts": {
 		"system": {
 			"loadingSystemInfo": "Systeminformationen werden geladen...",
-			"about": "FastyBird Smart Panel ist eine Hausautomatisierungs-App, die nahtlose Integration mit Ihren Smart-Geräten ermöglicht und erweiterte Steuerungs- und Überwachungsmöglichkeiten bietet."
+			"about": "FastyBird Smart Panel ist eine Hausautomatisierungs-App, die nahtlose Integration mit Ihren Smart-Geräten ermöglicht und erweiterte Steuerungs- und Überwachungsmöglichkeiten bietet.",
+			"version": "Version {version}"
 		},
 		"manage": {
 			"serviceRestartDevice": "Schneller Neustart des Anwendungsdienstes. Einstellungen bleiben erhalten.",
@@ -166,7 +177,11 @@
 			"noLogs": "Es wurden keine Anwendungsprotokolle aufgezeichnet.",
 			"noFilteredLogs": "Keine Anwendungsprotokolle gefunden, die den aktiven Filterkriterien entsprechen",
 			"noMessage": "Dieser Protokolleintrag hat keine zusätzliche Nachricht",
-			"noMoreEntries": "Keine weiteren Protokolleinträge"
+			"noMoreEntries": "Keine weiteren Protokolleinträge",
+			"loadError": "Die Anwendungsprotokolle konnten nicht geladen werden.",
+			"loadingLog": "Protokolleintrag wird geladen...",
+			"logNotFound": "Dieser Protokolleintrag wurde nicht gefunden.",
+			"selectOne": "Wählen Sie einen Protokolleintrag, um die Details zu sehen"
 		},
 		"aboutLanguageSettings": "Konfigurieren Sie die Oberflächensprache, Zeitzone, das Zeitformat und die Maßeinheiten für das Smart Panel. Diese Einstellungen beeinflussen, wie Datum, Uhrzeit, Temperaturen und Messungen im gesamten System angezeigt werden.",
 		"aboutSystemSettings": "Verwalten Sie die systemweite Protokollierungskonfiguration. Wählen Sie, welche Protokollschweregrade überwacht und in den Anwendungsprotokollen angezeigt werden sollen.",
@@ -420,7 +435,12 @@
 			"title": "Über die Anwendung"
 		},
 		"manage": {
-			"title": "System verwalten"
+			"title": "System verwalten",
+			"serviceRestart": "Dienst neu starten",
+			"systemReboot": "System neu starten",
+			"powerOff": "Ausschalten",
+			"factoryReset": "Auf Werkseinstellungen zurücksetzen",
+			"open": "Öffnen"
 		},
 		"resetFilters": {
 			"title": "Filter zurücksetzen"
@@ -465,6 +485,18 @@
 			"checkForUpdates": "Nach Updates suchen",
 			"installUpdate": "Update installieren",
 			"headerAction": "Aktualisieren"
+		},
+		"refresh": {
+			"title": "Aktualisieren"
+		},
+		"retry": {
+			"title": "Erneut versuchen"
+		},
+		"pauseLiveTail": {
+			"title": "Live-Verfolgung anhalten"
+		},
+		"backToLogs": {
+			"title": "Zurück zu den Protokollen"
 		}
 	},
 	"labels": {
@@ -475,6 +507,9 @@
 			"updateStatus": "Status",
 			"actions": "Aktionen",
 			"channel": "Update-Kanal"
+		},
+		"about": {
+			"links": "Links"
 		}
 	},
 	"systemInfo": {
@@ -561,11 +596,39 @@
 			"restoreError": "Die Wiederherstellung des Backups ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
 			"downloadError": "Das Herunterladen des Backups ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
 			"uploaded": "Das Backup wurde erfolgreich hochgeladen.",
-			"uploadError": "Das Hochladen des Backups ist fehlgeschlagen. Bitte versuchen Sie es erneut."
+			"uploadError": "Das Hochladen des Backups ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+			"loadError": "Die Sicherungen konnten nicht geladen werden."
 		},
 		"buttons": {
 			"create": "Backup erstellen",
-			"upload": "Backup hochladen"
+			"upload": "Backup hochladen",
+			"download": "Herunterladen",
+			"restore": "Sicherung wiederherstellen",
+			"delete": "Sicherung löschen",
+			"more": "Weitere Aktionen für {name}",
+			"moreTooltip": "Weitere Aktionen"
+		},
+		"loading": "Sicherungen werden geladen...",
+		"description": "Jede Sicherung enthält die Konfiguration und die Daten dieses Smart Panels.",
+		"upload": {
+			"title": "Sicherung hochladen",
+			"description": "Fügen Sie eine Sicherung dieses oder eines anderen Smart Panels hinzu und stellen Sie sie dann aus der Liste wieder her.",
+			"hint": "Ein .tar.gz-Archiv"
+		},
+		"banner": {
+			"noneTitle": "Noch keine Sicherungen",
+			"noneDescription": "Erstellen Sie vor einem Update oder einer größeren Änderung eine Sicherung, damit sich die Einrichtung wiederherstellen lässt.",
+			"staleTitle": "Die letzte Sicherung ist älter als {days} Tage",
+			"okTitle": "Sicherungen sind aktuell",
+			"lastBackup": "Letzte Sicherung: {date}"
 		}
+	},
+	"health": {
+		"problemTitle": "Problem mit Stromversorgung oder Temperatur erkannt",
+		"okTitle": "System läuft normal",
+		"okDescription": "Stromversorgung und Temperatur sind in Ordnung.",
+		"updateDescription": "Installieren Sie es unten unter Software-Updates.",
+		"unknownTitle": "Stromversorgung und Temperatur nicht gemeldet",
+		"unknownDescription": "Das Board meldet weder Unterspannung noch Drosselung, oder sie konnten nicht gelesen werden; ihr Zustand ist unbekannt."
 	}
 }

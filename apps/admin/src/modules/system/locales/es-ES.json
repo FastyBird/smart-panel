@@ -41,7 +41,11 @@
 	"headings": {
 		"system": {
 			"system": "Sistema",
-			"about": "Acerca de la aplicación"
+			"about": "Acerca de la aplicación",
+			"hardware": "Hardware",
+			"power": "Alimentación y temperatura",
+			"os": "Sistema operativo",
+			"network": "Red"
 		},
 		"update": {
 			"title": "Actualizaciones de software",
@@ -82,7 +86,8 @@
 		},
 		"systemBackups": {
 			"list": "Cree, restaure y administre copias de seguridad del sistema"
-		}
+		},
+		"power": "Subtensión y limitación informadas por la placa"
 	},
 	"messages": {
 		"config": {
@@ -115,7 +120,8 @@
 			"offline": "El dispositivo no tiene conexión de red. Verifique la configuración de Wi-Fi o el cable."
 		},
 		"misc": {
-			"requestError": "Algo salió mal, por favor inténtalo de nuevo más tarde."
+			"requestError": "Algo salió mal, por favor inténtalo de nuevo más tarde.",
+			"systemInfoError": "No se pudo cargar la información del sistema."
 		},
 		"update": {
 			"confirmInstall": "¿Estás seguro de que deseas actualizar a la versión {version}?",
@@ -127,12 +133,17 @@
 			"checkFailed": "No se pudo verificar si hay actualizaciones. Por favor, inténtalo de nuevo más tarde.",
 			"installFailed": "No se pudo iniciar la actualización. Por favor, inténtalo de nuevo más tarde.",
 			"channelNotChanged": "No se pudo cambiar el canal de actualizaciones. Por favor, inténtalo de nuevo más tarde."
+		},
+		"systemLogs": {
+			"copied": "Entrada de registro copiada al portapapeles.",
+			"copyFailed": "No se pudo copiar la entrada de registro. Selecciona el JSON sin procesar y cópialo a mano."
 		}
 	},
 	"texts": {
 		"system": {
 			"loadingSystemInfo": "Cargando información del sistema...",
-			"about": "FastyBird Smart Panel es una aplicación de domótica que permite la integración perfecta con tus dispositivos inteligentes, ofreciendo capacidades mejoradas de control y monitorización."
+			"about": "FastyBird Smart Panel es una aplicación de domótica que permite la integración perfecta con tus dispositivos inteligentes, ofreciendo capacidades mejoradas de control y monitorización.",
+			"version": "Versión {version}"
 		},
 		"manage": {
 			"serviceRestartDevice": "Reinicio rápido del servicio de la aplicación. Se conservan las configuraciones.",
@@ -166,7 +177,11 @@
 			"noLogs": "No se han registrado registros de la aplicación.",
 			"noFilteredLogs": "No se encontraron registros de la aplicación que coincidan con los criterios de filtro activos",
 			"noMessage": "Esta entrada de registro no tiene mensaje adicional",
-			"noMoreEntries": "No hay más entradas de registro"
+			"noMoreEntries": "No hay más entradas de registro",
+			"loadError": "No se pudieron cargar los registros de la aplicación.",
+			"loadingLog": "Cargando entrada de registro...",
+			"logNotFound": "No se encontró esta entrada de registro.",
+			"selectOne": "Selecciona una entrada de registro para ver sus detalles"
 		},
 		"aboutLanguageSettings": "Configura el idioma de la interfaz, la zona horaria, el formato de hora y las unidades de medida del panel inteligente. Estos ajustes afectan cómo se muestran las fechas, horas, temperaturas y medidas en todo el sistema.",
 		"aboutSystemSettings": "Administra la configuración de registros a nivel de sistema. Selecciona qué niveles de severidad de registro monitorear y mostrar en los registros de la aplicación.",
@@ -420,7 +435,12 @@
 			"title": "Acerca de la aplicación"
 		},
 		"manage": {
-			"title": "Administrar sistema"
+			"title": "Administrar sistema",
+			"serviceRestart": "Reiniciar servicio",
+			"systemReboot": "Reiniciar sistema",
+			"powerOff": "Apagar",
+			"factoryReset": "Restablecer valores de fábrica",
+			"open": "Abrir"
 		},
 		"resetFilters": {
 			"title": "Restablecer filtros"
@@ -465,6 +485,18 @@
 			"checkForUpdates": "Buscar actualizaciones",
 			"installUpdate": "Instalar actualización",
 			"headerAction": "Actualizar"
+		},
+		"refresh": {
+			"title": "Actualizar"
+		},
+		"retry": {
+			"title": "Reintentar"
+		},
+		"pauseLiveTail": {
+			"title": "Pausar seguimiento en vivo"
+		},
+		"backToLogs": {
+			"title": "Volver a los registros"
 		}
 	},
 	"labels": {
@@ -475,6 +507,9 @@
 			"updateStatus": "Estado",
 			"actions": "Acciones",
 			"channel": "Canal de actualizaciones"
+		},
+		"about": {
+			"links": "Enlaces"
 		}
 	},
 	"systemInfo": {
@@ -561,11 +596,39 @@
 			"restoreError": "No se pudo restaurar la copia de seguridad. Intente de nuevo.",
 			"downloadError": "No se pudo descargar la copia de seguridad. Intente de nuevo.",
 			"uploaded": "La copia de seguridad se cargó correctamente.",
-			"uploadError": "No se pudo cargar la copia de seguridad. Intente de nuevo."
+			"uploadError": "No se pudo cargar la copia de seguridad. Intente de nuevo.",
+			"loadError": "No se pudieron cargar las copias de seguridad."
 		},
 		"buttons": {
 			"create": "Crear copia",
-			"upload": "Subir copia"
+			"upload": "Subir copia",
+			"download": "Descargar",
+			"restore": "Restaurar copia",
+			"delete": "Eliminar copia",
+			"more": "Más acciones para {name}",
+			"moreTooltip": "Más acciones"
+		},
+		"loading": "Cargando copias de seguridad...",
+		"description": "Cada copia contiene la configuración y los datos de este Smart Panel.",
+		"upload": {
+			"title": "Subir una copia",
+			"description": "Añade una copia hecha en este u otro Smart Panel y restáurala desde la lista.",
+			"hint": "Un archivo .tar.gz"
+		},
+		"banner": {
+			"noneTitle": "Aún no hay copias de seguridad",
+			"noneDescription": "Crea una copia antes de una actualización o un cambio importante para poder restaurar la configuración.",
+			"staleTitle": "La última copia tiene más de {days} días",
+			"okTitle": "Las copias de seguridad están al día",
+			"lastBackup": "Última copia: {date}"
 		}
+	},
+	"health": {
+		"problemTitle": "Se detectó un problema de alimentación o temperatura",
+		"okTitle": "El sistema funciona con normalidad",
+		"okDescription": "La alimentación y la temperatura son correctas.",
+		"updateDescription": "Instálala desde Actualizaciones de software, más abajo.",
+		"unknownTitle": "Alimentación y temperatura no informadas",
+		"unknownDescription": "La placa no informa de subtensión ni de limitación, o no se pudieron leer, así que su estado es desconocido."
 	}
 }
