@@ -41,8 +41,12 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import { ShellyDevicePropertyValue } from '../interfaces/shellies.interface';
-import { NormalizedDeviceEvent, RegisteredDevice, ShellyDevice } from '../interfaces/shellies.interface';
+import {
+	NormalizedDeviceEvent,
+	RegisteredDevice,
+	ShellyDevice,
+	ShellyDevicePropertyValue,
+} from '../interfaces/shellies.interface';
 import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import { findShellyV1Descriptor, getShellyV1Bindings } from '../utils/descriptor.utils';
 import { getSyntheticProperties, isSyntheticProperty } from '../utils/synthetic-properties.utils';
@@ -58,13 +62,12 @@ import {
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 import { ShellyV1InputTrackerService } from './shelly-v1-input-tracker.service';
 
-type RelayReading = { value: boolean; evidence: PropertySampleEvidence };
+type DiscoveryReading = { value: NonNullable<ShellyDevicePropertyValue>; evidence: PropertySampleEvidence };
 type DiscoverySnapshot = {
 	type: string;
 	host: string;
 	mode: ShellyDevice['mode'];
-	values: Record<string, ShellyDevice[string]>;
-	relayReading: (key: string, newlyCreated: boolean) => Promise<RelayReading | null>;
+	readBinding: (binding: PropertyBinding, newlyCreated: boolean) => Promise<DiscoveryReading | null>;
 };
 
 @Injectable()
@@ -219,16 +222,19 @@ export class DeviceMapperService {
 			type,
 			host,
 			mode,
-			values,
-			relayReading: async (key, newlyCreated) => {
+			readBinding: async (binding, newlyCreated) => {
+				const key = binding.shelliesProperty;
+				if (!newlyCreated && values[key] == null) return null;
 				await assertVerifiedEndpoint();
 				const raw = newlyCreated ? shellyDevice[key] : values[key];
 				const seen = newlyCreated ? shellyDevice.lastSeen : lastSeen;
 				const isCurrent = () => isEndpointCurrent() && shellyDevice.lastSeen === seen && shellyDevice[key] === raw;
-				if (!isCurrent() || (typeof raw !== 'boolean' && raw !== 0 && raw !== 1)) return null;
+				if (!isCurrent()) return null;
+				const value = this.discoveryValue(binding, raw);
+				if (value === null) return null;
 				const sampledAt = seen == null ? captured : new Date(Number(seen));
 				return {
-					value: Boolean(raw),
+					value,
 					evidence: {
 						sampledAt,
 						receivedAt: new Date(),
@@ -593,74 +599,8 @@ export class DeviceMapperService {
 			});
 		}
 
-		// Create properties for the channel with initial values from the device state
+		// Publish cached device values only after the catalog operation, with the observation guard.
 		for (const binding of bindings) {
-			const rawValue = shellyDevice.values[binding.shelliesProperty];
-			// Filter out function values (methods on the device object)
-			let initialValue: ShellyDevicePropertyValue = typeof rawValue === 'function' ? undefined : rawValue;
-
-			if (binding.dataType === DataTypeType.BOOL && typeof initialValue === 'number') {
-				initialValue = Boolean(initialValue);
-			}
-
-			// Apply value mapping for ENUM properties (data-driven via binding.valueMap)
-			if (
-				binding.dataType === DataTypeType.ENUM &&
-				binding.valueMap &&
-				initialValue !== undefined &&
-				initialValue !== null
-			) {
-				const valueMapConfig = VALUE_MAP_REGISTRY[binding.valueMap];
-
-				if (valueMapConfig) {
-					const mappedValue = mapValueToCanonical(
-						initialValue,
-						valueMapConfig.forward,
-						`${channel.identifier}.${binding.propertyIdentifier}`,
-					);
-
-					if (mappedValue !== null) {
-						// Validate mapped value is in format
-						if (binding.format && validateEnumValue(mappedValue, binding.format, binding.propertyIdentifier)) {
-							initialValue = mappedValue;
-						} else {
-							// Invalid mapped value, skip setting it
-							this.logger.warn(
-								`Mapped value "${mappedValue}" for ${binding.propertyIdentifier} is not in format, skipping`,
-								{ resource: device.id },
-							);
-							initialValue = null;
-						}
-					} else {
-						// Unknown raw value, skip setting it
-						this.logger.warn(`Unknown raw value "${String(rawValue)}" for ${binding.propertyIdentifier}, skipping`, {
-							resource: device.id,
-						});
-						initialValue = null;
-					}
-				} else {
-					this.logger.warn(`Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`, {
-						resource: device.id,
-					});
-				}
-			}
-
-			// For ENUM properties, validate value is in format
-			if (
-				binding.dataType === DataTypeType.ENUM &&
-				binding.format &&
-				initialValue !== undefined &&
-				initialValue !== null
-			) {
-				if (!validateEnumValue(initialValue, binding.format, binding.propertyIdentifier)) {
-					this.logger.warn(`Value "${initialValue}" for ${binding.propertyIdentifier} is not in format, skipping`, {
-						resource: device.id,
-					});
-					initialValue = null;
-				}
-			}
-
-			const isRelay = binding.category === PropertyCategory.ON && /^relay\d+$/.test(binding.shelliesProperty);
 			await this.createOrUpdateProperty(
 				channel,
 				{
@@ -670,9 +610,8 @@ export class DeviceMapperService {
 					dataType: binding.dataType,
 					permissions: binding.permissions,
 					format: binding.format,
-					value: isRelay ? undefined : initialValue,
 				},
-				isRelay ? (newlyCreated) => shellyDevice.relayReading(binding.shelliesProperty, newlyCreated) : undefined,
+				(newlyCreated) => shellyDevice.readBinding(binding, newlyCreated),
 			);
 		}
 
@@ -683,6 +622,34 @@ export class DeviceMapperService {
 		await this.ensureSyntheticProperties(channel, shellyDevice);
 
 		return channel;
+	}
+
+	private discoveryValue(
+		binding: PropertyBinding,
+		raw: ShellyDevice[string],
+	): NonNullable<ShellyDevicePropertyValue> | null {
+		if (raw == null || typeof raw === 'function') return null;
+		if (binding.category === PropertyCategory.ON && /^relay\d+$/.test(binding.shelliesProperty))
+			return typeof raw === 'boolean' || raw === 0 || raw === 1 ? Boolean(raw) : null;
+		if (binding.dataType === DataTypeType.BOOL && typeof raw === 'number') return Boolean(raw);
+		if (binding.dataType !== DataTypeType.ENUM) return raw;
+
+		let value = raw;
+		if (binding.valueMap) {
+			const mapping = VALUE_MAP_REGISTRY[binding.valueMap];
+			if (mapping) {
+				const mapped = mapValueToCanonical(
+					raw,
+					mapping.forward,
+					`${binding.channelIdentifier}.${binding.propertyIdentifier}`,
+				);
+				if (mapped === null || !binding.format) return null;
+				value = mapped;
+			} else {
+				this.logger.warn(`Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`);
+			}
+		}
+		return !binding.format || validateEnumValue(value, binding.format, binding.propertyIdentifier) ? value : null;
 	}
 
 	/**
@@ -823,7 +790,7 @@ export class DeviceMapperService {
 			format?: number[] | string[];
 			value?: string | number | boolean | null;
 		},
-		relayReading?: (newlyCreated: boolean) => Promise<RelayReading | null>,
+		readBinding?: (newlyCreated: boolean) => Promise<DiscoveryReading | null>,
 	): Promise<void> {
 		// Check if a property already exists
 		const existingProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
@@ -866,8 +833,8 @@ export class DeviceMapperService {
 				}),
 			);
 		}
-		if (!property?.id || !relayReading) return;
-		const reading = await relayReading(!existingProperty);
+		if (!property?.id || !readBinding) return;
+		const reading = await readBinding(!existingProperty);
 		if (reading)
 			await this.channelsPropertiesService.reportSample(
 				property.id,
