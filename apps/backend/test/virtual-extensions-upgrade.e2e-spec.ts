@@ -126,6 +126,7 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 				'AddUnifiProtectIdentity1000000000060',
 				'AddShellyV1AdoptedIdentity1000000000062',
 				'AddShellyV1VerifiedHost1000000000063',
+				'AddShellyV1IdentityRevision1000000000064',
 			]),
 		);
 		expect(

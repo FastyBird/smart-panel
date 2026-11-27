@@ -29,6 +29,8 @@ import { HomeAssistantEventIngress, HomeAssistantRegistryChange, WsEventService 
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext } from './virtual-property.types';
 
+const DISCOVERY_RETRY_MS = 5_000;
+
 /** Normalized main-state value of the physical entities supported by this reporter. */
 function physicalMainValue(state?: HomeAssistantStateDto | null): number | boolean | null {
 	if (typeof state?.entity_id !== 'string' || typeof state.state !== 'string') return null;
@@ -81,6 +83,10 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 
 	private mappingLoad: Promise<Map<string, HomeAssistantDeviceEntity> | null> | null = null;
 	private discoveryRequest?: AbortController;
+	private nextDiscoveryAt = 0;
+	private wakeDiscovery?: () => void;
+	private readonly changedEntityIds = new Set<string>();
+	private missingDevices = new Set<string>();
 	private mappingsReady = false;
 	private mappingRevision = 0;
 	private bindingGeneration = 0;
@@ -161,13 +167,27 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		for (const [id, device] of this.entityDevices) {
 			if (device.id === panelDeviceId || device.haDeviceId === change?.deviceId) affected.add(id);
 		}
+		if (!change || panelDeviceId || (change.deviceId && this.missingDevices.has(change.deviceId))) {
+			this.allowDiscoveryNow();
+		} else if (performance.now() < this.nextDiscoveryAt) {
+			// A named registry change can expedite its own next state event without lifting
+			// the retry limit for unrelated entities on the socket.
+			for (const id of affected) this.changedEntityIds.add(id);
+		}
 		if (!change) {
 			this.bindingGeneration++;
-			this.entityDevices.clear();
+			this.missingDevices.clear();
 			this.deviceRevisions.clear();
-			this.sourceEpochs.clear();
-			this.propertyEntities.clear();
-		} else {
+		}
+		this.retireBindings(change ? affected : undefined);
+		// A request already reading unchanged metadata can finish for its original entity.
+		// Replacing these maps keeps an old read from filling the refreshed cache.
+		this.channelsByDeviceId = new Map();
+		this.propertiesByChannelId = new Map();
+	}
+
+	private retireBindings(affected?: Set<string>): void {
+		if (affected) {
 			for (const id of affected) {
 				this.sourceEpochs.delete(id);
 				this.entityDevices.delete(id);
@@ -175,13 +195,13 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			for (const [propertyId, id] of this.propertyEntities) {
 				if (affected.has(id)) this.propertyEntities.delete(propertyId);
 			}
+		} else {
+			this.entityDevices.clear();
+			this.sourceEpochs.clear();
+			this.propertyEntities.clear();
 		}
-		// A request already reading unchanged metadata can finish for its original entity.
-		// Replacing these maps keeps an old read from filling the refreshed cache.
-		this.channelsByDeviceId = new Map();
-		this.propertiesByChannelId = new Map();
 		for (const [id, work] of this.entityWork) {
-			if (change && !affected.has(id)) continue;
+			if (affected && !affected.has(id)) continue;
 			work.generation++;
 			clearTimeout(work.timer);
 			work.timer = undefined;
@@ -272,10 +292,19 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			if (!isCurrent()) return;
 			const device = await this.findAdoptedDevice(entityId, isCurrent);
 			if (!isCurrent()) return;
-			const ownerIsCurrent = (): boolean =>
-				!!device &&
-				(this.deviceRevisions.get(device.id) ?? 0) <= revision &&
-				(this.deviceRevisions.get(device.haDeviceId) ?? 0) <= revision;
+			const panelId = device?.id;
+			const remoteId = device?.haDeviceId;
+			const ownerIsCurrent = (): boolean => {
+				const current = this.entityDevices.get(entityId);
+				return (
+					!!device &&
+					!!current &&
+					current.id === panelId &&
+					current.haDeviceId === remoteId &&
+					(this.deviceRevisions.get(panelId) ?? 0) <= revision &&
+					(this.deviceRevisions.get(remoteId) ?? 0) <= revision
+				);
+			};
 			if (!ownerIsCurrent()) {
 				if (this.sourceEpochs.get(entityId) === epoch) this.sourceEpochs.delete(entityId);
 				return;
@@ -554,6 +583,28 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		}
 	}
 
+	private allowDiscoveryNow(): void {
+		this.nextDiscoveryAt = 0;
+		this.changedEntityIds.clear();
+		this.wakeDiscovery?.();
+	}
+
+	private waitForDiscovery(signal: AbortSignal): Promise<void> {
+		const remaining = Math.ceil(this.nextDiscoveryAt - performance.now());
+		if (remaining <= 0 || signal.aborted) return Promise.resolve();
+		return new Promise((resolve) => {
+			const wake = () => {
+				clearTimeout(timer);
+				signal.removeEventListener('abort', wake);
+				if (this.wakeDiscovery === wake) this.wakeDiscovery = undefined;
+				resolve();
+			};
+			const timer = setTimeout(wake, remaining);
+			this.wakeDiscovery = wake;
+			signal.addEventListener('abort', wake, { once: true });
+		});
+	}
+
 	private async findAdoptedDevice(
 		entityId: string,
 		isCurrent: () => boolean,
@@ -561,6 +612,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		while (isCurrent()) {
 			const cached = this.entityDevices.get(entityId);
 			if (cached || this.mappingsReady) return cached;
+			if (this.changedEntityIds.has(entityId)) this.allowDiscoveryNow();
 			const revision = this.mappingRevision;
 			if (this.mappingLoad === null) {
 				const request = new AbortController();
@@ -583,11 +635,15 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		signal: AbortSignal,
 	): Promise<Map<string, HomeAssistantDeviceEntity> | null> {
 		const routes = new Map<string, HomeAssistantDeviceEntity>();
+		const missingDevices = new Set<string>();
 		try {
+			await this.waitForDiscovery(signal);
+			if (signal.aborted) return null;
+			this.changedEntityIds.clear();
+			if (this.nextDiscoveryAt > 0) this.nextDiscoveryAt = performance.now() + DISCOVERY_RETRY_MS;
 			const panelDevices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
-			if (signal.aborted || !panelDevices?.length) return null;
+			if (signal.aborted) return null;
 			const bySource = new Map(panelDevices.map((device) => [device.haDeviceId, device]));
-			const missingDevices = new Set<string>();
 			for (const [id, device] of bySource) {
 				if (isHaEntityId(id)) routes.set(id, device);
 				else missingDevices.add(id);
@@ -613,8 +669,10 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 				}
 			}
 			if (revision !== this.mappingRevision) return null;
-			this.entityDevices = routes;
+			this.installRoutes(routes);
+			this.missingDevices = missingDevices;
 			this.mappingsReady = missingDevices.size === 0;
+			this.nextDiscoveryAt = this.mappingsReady ? 0 : performance.now() + DISCOVERY_RETRY_MS;
 			return routes;
 		} catch (error) {
 			if (signal.aborted || revision !== this.mappingRevision) return null;
@@ -622,9 +680,28 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 				message: error instanceof Error ? error.message : 'unknown error',
 			});
 			// Local helper adoptions are already authoritative. Retry discovery for registry-backed devices.
-			for (const [id, device] of routes) this.entityDevices.set(id, device);
+			this.installRoutes(new Map([...this.entityDevices, ...routes]));
+			this.missingDevices = missingDevices;
+			this.nextDiscoveryAt = performance.now() + DISCOVERY_RETRY_MS;
 			return routes;
 		}
+	}
+
+	private installRoutes(routes: Map<string, HomeAssistantDeviceEntity>): void {
+		const retired = new Set<string>();
+		for (const [id, previous] of this.entityDevices) {
+			const current = routes.get(id);
+			if (
+				!current ||
+				current.id !== previous.id ||
+				current.haDeviceId !== previous.haDeviceId ||
+				current.enabled !== previous.enabled
+			)
+				retired.add(id);
+		}
+		// Retire the old lifetime permanently, including when the same IDs are later re-adopted.
+		if (retired.size) this.retireBindings(retired);
+		this.entityDevices = routes;
 	}
 
 	/**

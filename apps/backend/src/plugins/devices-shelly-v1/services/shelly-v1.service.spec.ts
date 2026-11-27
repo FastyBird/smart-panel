@@ -131,7 +131,7 @@ describe('ShellyV1Service', () => {
 						temperature: jest.fn(),
 					},
 				},
-				{ provide: ShellyV1AdoptedIdentityService, useValue: { expected: jest.fn() } },
+				{ provide: ShellyV1AdoptedIdentityService, useValue: { findPin: jest.fn(), captureDevice: jest.fn() } },
 				ShellyV1Service,
 				{
 					provide: ChannelInputOccurrencesService,
@@ -520,10 +520,15 @@ describe('ShellyV1Service', () => {
 			http.getDeviceInfo.mockResolvedValue(info);
 			http.getLoginSettings.mockResolvedValue({ username: 'operator', enabled: true, unprotected: false });
 			http.getDeviceStatus.mockResolvedValue(status);
-			identities.expected.mockResolvedValue(expected);
+			const pin = expected
+				? { deviceId: device.id, mac: expected, verifiedHost: configuredHost, revision: 1, device }
+				: null;
+			identities.findPin.mockResolvedValue(pin);
+			const adoption = { id: device.id, identifier: device.identifier, hostname: device.hostname, pin };
+			identities.captureDevice.mockResolvedValue(adoption);
 			channelsService.findOneBy.mockResolvedValue(mockDeviceInfoChannel);
 			channelsPropertiesService.findOneBy.mockResolvedValue(mockProperty);
-			return { registration, peer, device, info, status, http, identities, reports, source };
+			return { registration, peer, device, info, status, http, identities, reports, source, pin, adoption };
 		}
 
 		it.each([
@@ -545,7 +550,7 @@ describe('ShellyV1Service', () => {
 			expect(f.http.getDeviceStatus).not.toHaveBeenCalled();
 			release(f.info);
 			await updating;
-			expect(f.identities.expected).toHaveBeenCalledWith(f.device.id, f.device.identifier);
+			expect(f.identities.findPin).toHaveBeenCalledWith(f.device.id);
 			expect(f.http.getLoginSettings).toHaveBeenCalledWith(host);
 			expect(f.http.getDeviceStatus).toHaveBeenCalledTimes(1);
 			expect(f.http.getDeviceStatus).toHaveBeenCalledWith(host, undefined, 'operator', f.device.password);
@@ -560,6 +565,13 @@ describe('ShellyV1Service', () => {
 				configuredHost: host,
 				expected: mac,
 				reportedMac: foreign,
+				type: 'SHSW-PM',
+			},
+			{
+				label: 'stored pin for a previous identifier',
+				configuredHost: host,
+				expected: 'AABBCCDDEEFF',
+				reportedMac: mac,
 				type: 'SHSW-PM',
 			},
 			{ label: 'wrong model', configuredHost: host, expected: mac, reportedMac: mac, type: 'SHHT-1' },
@@ -588,9 +600,9 @@ describe('ShellyV1Service', () => {
 
 		it('revokes a replaced registration during identity lookup and a moved peer during login fallback', async () => {
 			const f = await arrange();
-			f.identities.expected.mockImplementationOnce(() => {
+			f.identities.findPin.mockImplementationOnce(() => {
 				shelliesAdapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
-				return Promise.resolve(mac);
+				return Promise.resolve(f.pin);
 			});
 			await poll();
 			expect(f.http.getLoginSettings).not.toHaveBeenCalled();
@@ -604,6 +616,25 @@ describe('ShellyV1Service', () => {
 			expect(f.http.getDeviceStatus).not.toHaveBeenCalled();
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
+
+		it.each(['pin moved and returned', 'legacy host changed', 'legacy row replaced'])(
+			'ends the pending login when the %s',
+			async (change) => {
+				const f = await arrange(host, change === 'pin moved and returned' ? mac : null);
+				f.http.getLoginSettings.mockImplementationOnce(() => {
+					const updated = { ...f.adoption };
+					if (change === 'pin moved and returned') updated.pin = { ...f.pin, revision: 3 };
+					if (change === 'legacy host changed') updated.hostname = previousHost;
+					if (change === 'legacy row replaced') updated.id = 'new-device-uuid';
+					f.identities.captureDevice.mockResolvedValue(updated);
+					return Promise.resolve({ username: 'operator', enabled: true, unprotected: false });
+				});
+				await poll();
+				expect(f.http.getLoginSettings).toHaveBeenCalledTimes(1);
+				expect(f.http.getDeviceStatus).not.toHaveBeenCalled();
+				expect(f.reports.publish).not.toHaveBeenCalled();
+			},
+		);
 
 		it.each(['different MAC', 'replaced peer'])(
 			'withdraws a status response with %s before publishing',

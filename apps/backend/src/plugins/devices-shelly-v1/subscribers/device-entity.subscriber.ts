@@ -12,6 +12,7 @@ import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 import {
 	ShellyV1AdoptedIdentityService,
 	shellyV1Address,
+	shellyV1PinMatches,
 	shellyV1ReportedMac,
 } from '../services/shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
@@ -41,27 +42,50 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		return ShellyV1DeviceEntity;
 	}
 
-	private async configureCredentials(device: ShellyV1DeviceEntity, settings: CredentialSettings): Promise<void> {
-		const { id, hostname: host, identifier, password } = device;
-		if (!host || !identifier || !password) return;
+	private credentialTarget(identifier: string, hostname: string | null) {
 		const registration = this.shelliesAdapter.getRegisteredDevice(identifier);
-		const peer = registration && this.shelliesAdapter.getDevice(registration.type, identifier);
-		if (!peer || peer.host !== host || registration.host !== host) return;
-		const current = (): boolean =>
-			this.settings.get(id) === settings &&
-			this.shelliesAdapter.getRegisteredDevice(identifier) === registration &&
-			this.shelliesAdapter.getDevice(registration.type, identifier) === peer &&
-			peer.host === host;
-		const pin = shellyV1Address(identifier)?.length === 6 ? await this.identities.findPin(id) : null;
-		if (!current()) return;
+		const host = hostname ?? (shellyV1Address(identifier)?.length === 12 ? registration?.host : null);
+		if (!host || !registration || registration.host !== host) return null;
+		const { type } = registration;
+		const peer = this.shelliesAdapter.getDevice(type, identifier);
+		if (!peer || peer.host !== host || peer.id !== identifier || peer.type !== type) return null;
+		return {
+			peer,
+			host,
+			isCurrent: () =>
+				this.shelliesAdapter.getRegisteredDevice(identifier) === registration &&
+				this.shelliesAdapter.getDevice(type, identifier) === peer &&
+				registration.host === host &&
+				registration.type === type &&
+				peer.type === type &&
+				peer.host === host,
+		};
+	}
+
+	private async configureCredentials(device: ShellyV1DeviceEntity, settings: CredentialSettings): Promise<void> {
+		const { id, identifier, password } = device;
+		if (!identifier || !password) return;
+		const target = this.credentialTarget(identifier, device.hostname);
+		if (!target) return;
+		const { peer, host } = target;
+		const current = () => this.settings.get(id) === settings && target.isCurrent();
+		const pin = await this.identities.findPin(id);
+		if (!current() || (pin && !shellyV1PinMatches(identifier, pin.mac))) return;
 		if (pin && pin.verifiedHost !== host) {
 			const info = await this.httpClient.getDeviceInfo(host).catch((): null => null);
 			if (!current() || shellyV1ReportedMac(identifier, peer.type, info) !== pin.mac) return;
-			if (!(await this.identities.confirmHost(id, pin.mac, host, pin.verifiedHost)) || !current()) return;
 		}
 		const login = await this.httpClient.getLoginSettings(host).catch((): null => null);
-		if (current())
-			this.shelliesAdapter.setDeviceAuthCredentials(peer, host, login?.username || SHELLY_AUTH_USERNAME, password);
+		if (!current()) return;
+		if (pin && pin.verifiedHost !== host) {
+			if (!(await this.identities.confirmHost(id, pin.mac, host, pin.verifiedHost, pin.revision))) return;
+		} else {
+			const latest = await this.identities.findPin(id);
+			if (latest?.mac !== pin?.mac || latest?.revision !== pin?.revision || latest?.verifiedHost !== pin?.verifiedHost)
+				return;
+		}
+		if (!current()) return;
+		this.shelliesAdapter.setDeviceAuthCredentials(peer, host, login?.username || SHELLY_AUTH_USERNAME, password);
 	}
 
 	private snapshot(device: ShellyV1DeviceEntity): CredentialSettings {
@@ -88,11 +112,10 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 			this.settings.set(previous.id, this.snapshot(previous));
 	}
 
-	private clearCredentials(identifier: string | null, host: string | null): void {
-		if (!identifier || !host) return;
-		const registration = this.shelliesAdapter.getRegisteredDevice(identifier);
-		const peer = registration && this.shelliesAdapter.getDevice(registration.type, identifier);
-		if (peer?.host === host) this.shelliesAdapter.setDeviceAuthCredentials(peer, host, SHELLY_AUTH_USERNAME, null);
+	private clearCredentials(identifier: string | null, hostname: string | null): void {
+		if (!identifier) return;
+		const target = this.credentialTarget(identifier, hostname);
+		if (target) this.shelliesAdapter.setDeviceAuthCredentials(target.peer, target.host, SHELLY_AUTH_USERNAME, null);
 	}
 
 	@OnEvent(EventType.DEVICE_CREATED)

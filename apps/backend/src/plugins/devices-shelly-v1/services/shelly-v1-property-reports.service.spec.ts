@@ -43,11 +43,12 @@ function setup(temperature = false, id = 'AABBCCDDEEFF') {
 	const findChannel = jest.fn(() => Promise.resolve(channel));
 	const findDevice = jest.fn(() => Promise.resolve(device));
 	const expected = jest.fn(() => Promise.resolve<string | null>('AABBCCDDEEFF'));
-	const pin: { mac: string; verifiedHost: string | null } = { mac: 'AABBCCDDEEFF', verifiedHost: registration.host };
-	const findPin = jest.fn(() => Promise.resolve<{ mac: string; verifiedHost: string | null } | null>({ ...pin }));
-	const confirmHost = jest.fn((_id: string, mac: string, host: string, previous: string | null) => {
-		if (mac !== pin.mac || previous !== pin.verifiedHost) return Promise.resolve(false);
+	const pin = { mac: 'AABBCCDDEEFF', verifiedHost: registration.host, revision: 1 };
+	const findPin = jest.fn(() => Promise.resolve<typeof pin | null>({ ...pin }));
+	const confirmHost = jest.fn((_id: string, mac: string, host: string, previous: string | null, revision: number) => {
+		if (mac !== pin.mac || previous !== pin.verifiedHost || revision !== pin.revision) return Promise.resolve(false);
 		pin.verifiedHost = host;
+		pin.revision++;
 		return Promise.resolve(true);
 	});
 	const info: ShellyInfoResponse = { type: registration.type, mac: pin.mac, auth: false, fw: '1.14', longid: 0 };
@@ -253,11 +254,16 @@ describe('Shelly Gen1 physical property reports', () => {
 	it('drops a pre-reboot report while its channel lookup is pending', async () => {
 		const f = setup(true);
 		let current = true;
+		let started: () => void;
+		const lookup = new Promise<void>((resolve) => {
+			started = resolve;
+		});
 		let release: () => void;
 		const wait = new Promise<void>((resolve) => {
 			release = resolve;
 		});
 		f.findChannel.mockImplementationOnce(async () => {
+			started();
 			await wait;
 			return { id: 'channel', identifier: 'temperature_0' };
 		});
@@ -269,8 +275,7 @@ describe('Shelly Gen1 physical property reports', () => {
 			isCurrent: () => current,
 			isLatest: () => true,
 		});
-		await Promise.resolve();
-		expect(f.findChannel).toHaveBeenCalled();
+		await lookup;
 		current = false;
 		release();
 		await admission;
@@ -315,7 +320,7 @@ describe('Shelly Gen1 physical property reports', () => {
 			await expect(f.service.temperature(report)).resolves.toBe(false);
 			expect(f.reportSample).not.toHaveBeenCalled();
 			await f.service.temperature(report);
-			expect(f.confirmHost).toHaveBeenCalledWith(f.device.id, f.pin.mac, f.peer.host, previousHost);
+			expect(f.confirmHost).toHaveBeenCalledWith(f.device.id, f.pin.mac, f.peer.host, previousHost, 1);
 			expect(f.reportSample).toHaveBeenCalledWith(
 				'property',
 				expect.objectContaining({ value: 20 }),
@@ -326,6 +331,16 @@ describe('Shelly Gen1 physical property reports', () => {
 			expect(f.getDeviceInfo).toHaveBeenCalledTimes(2);
 		},
 	);
+
+	it('withholds full-address temperature reports when the catalog row pins another sensor', async () => {
+		const f = setup(true, '112233DDEEFF');
+		await f.service.temperature(temperatureReport(f.id, 1));
+		expect(f.reportSample).not.toHaveBeenCalled();
+		f.findPin.mockResolvedValue(null);
+		await f.service.temperature(temperatureReport(f.id, 2));
+		expect(f.reportSample).toHaveBeenCalledTimes(1);
+		expect(f.getDeviceInfo).not.toHaveBeenCalled();
+	});
 
 	it('shares a pending identity read and discards it if registration changes before it completes', async () => {
 		const f = setup(true, 'DDEEFF');

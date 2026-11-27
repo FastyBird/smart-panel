@@ -19,6 +19,7 @@ import { ShelliesAdapterService } from './shellies-adapter.service';
 import {
 	ShellyV1AdoptedIdentityService,
 	shellyV1Address,
+	shellyV1PinMatches,
 	shellyV1ReportedMac,
 } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -233,7 +234,7 @@ export class ShellyV1PropertyReportsService {
 			address !== shellyV1Address(origin.source.device.identifier)
 		)
 			return false;
-		if (address.length === 6 && !(await this.verifyTemperatureHost(origin.source, address))) return false;
+		if (!(await this.verifyTemperatureHost(origin.source, address))) return false;
 		if (!origin.source.isCurrent() || !report.isLatest()) return false;
 		return this.reportBinding(origin.source, origin.binding, report.value, report.receivedAt, undefined, report);
 	}
@@ -241,10 +242,10 @@ export class ShellyV1PropertyReportsService {
 	private async verifyTemperatureHost(source: StatusObservation, address: string): Promise<boolean> {
 		const { device, registration, host, isCurrent } = source;
 		const pin = await this.identities.findPin(device.id);
-		if (!isCurrent()) return false;
+		if (!isCurrent() || (pin && !shellyV1PinMatches(address, pin.mac))) return false;
+		if (address.length === 12) return true;
 		// A legacy installation may keep using its configured sensor until explicitly adopted.
 		if (!pin) return !!host && device.hostname === host;
-		if (!/^[0-9A-F]{12}$/.test(pin.mac) || !pin.mac.endsWith(address)) return false;
 		if (pin.verifiedHost === host) return true;
 
 		let probe = this.temperatureProbes.get(registration);
@@ -257,7 +258,7 @@ export class ShellyV1PropertyReportsService {
 		}
 		const reported = shellyV1ReportedMac(address, registration.type, await probe);
 		if (reported !== pin.mac || !isCurrent()) return false;
-		return this.identities.confirmHost(device.id, pin.mac, host, pin.verifiedHost);
+		return this.identities.confirmHost(device.id, pin.mac, host, pin.verifiedHost, pin.revision);
 	}
 
 	async publish(

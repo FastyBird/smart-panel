@@ -230,4 +230,28 @@ describe('ShellyV1InputTrackerService', () => {
 		expect(tracker.getLastCounter('dev-1', 0)).toBeUndefined();
 		expect(tracker.getLastCounter('dev-2', 0)).toBe(10);
 	});
+
+	it('allows a lower discovery baseline after a genuine idle reset and fences older commits', () => {
+		tracker.baseline('dev', 0, 80);
+		const old = tracker.trackEvent('dev', 0, 81, 'S');
+		const discovery = tracker.captureBaseline();
+		tracker.trackEvent('dev', 1, 9, 'S');
+		tracker.baseline('dev', 0, 1, discovery);
+		old.commit();
+		expect(tracker.getLastCounter('dev', 0)).toBe(1);
+		const next = tracker.trackEvent('dev', 0, 2, 'S');
+		expect(next).toMatchObject({ shouldPublish: true, resetGeneration: 1 });
+		next.commit();
+		expect(tracker.getLastCounter('dev', 0)).toBe(2);
+	});
+
+	it('keeps a reboot observation that arrived after discovery even when the old snapshot has a larger counter', () => {
+		tracker.baseline('dev', 0, 80);
+		const discovery = tracker.captureBaseline();
+		const reset = tracker.trackEvent('dev', 0, 1, 'S');
+		tracker.baseline('dev', 0, 80, discovery);
+		reset.commit();
+		expect(tracker.getLastCounter('dev', 0)).toBe(1);
+		expect(tracker.trackEvent('dev', 0, 1, 'S')).toMatchObject({ shouldPublish: false, resetGeneration: 1 });
+	});
 });

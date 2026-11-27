@@ -14,6 +14,7 @@ interface ChannelCounterState {
 	lastCounter: number;
 	isInitialized: boolean;
 	resetGeneration: number;
+	lastObservation: number;
 }
 
 /**
@@ -31,6 +32,12 @@ export class ShellyV1InputTrackerService {
 	 * Map of deviceId:channelIndex -> counter state
 	 */
 	private readonly states = new Map<string, ChannelCounterState>();
+	private observation = 0;
+
+	/** Capture before discovery waits for its per-device queue or performs any reads. */
+	captureBaseline(): number {
+		return this.observation;
+	}
 
 	private getKey(deviceId: string, channelIndex: number): string {
 		return `${deviceId}:${channelIndex}`;
@@ -40,13 +47,15 @@ export class ShellyV1InputTrackerService {
 	 * Baseline stale status on startup, discovery, or initial read.
 	 * Marks the counter as initialized so the existing counter is not emitted as an event.
 	 */
-	baseline(deviceId: string, channelIndex: number, counter: number): void {
+	baseline(deviceId: string, channelIndex: number, counter: number, capturedAt = this.observation): void {
 		const key = this.getKey(deviceId, channelIndex);
 		const existing = this.states.get(key);
+		if (existing && existing.lastObservation > capturedAt) return;
 		this.states.set(key, {
 			lastCounter: counter,
 			isInitialized: true,
-			resetGeneration: existing?.resetGeneration ?? 0,
+			resetGeneration: (existing?.resetGeneration ?? 0) + (existing && counter < existing.lastCounter ? 1 : 0),
+			lastObservation: existing?.lastObservation ?? 0,
 		});
 		this.logger.debug(`Baselined input counter for ${key} at ${counter}`);
 	}
@@ -57,6 +66,7 @@ export class ShellyV1InputTrackerService {
 	trackEvent(deviceId: string, channelIndex: number, counter: number, rawEvent: string): InputTrackResult {
 		const key = this.getKey(deviceId, channelIndex);
 		const state = this.states.get(key);
+		const observation = ++this.observation;
 
 		const noopCommit = (): void => {};
 
@@ -67,12 +77,15 @@ export class ShellyV1InputTrackerService {
 				lastCounter: counter,
 				isInitialized: true,
 				resetGeneration: 0,
+				lastObservation: observation,
 			});
 			this.logger.debug(`Initial state baseline for ${key} at counter=${counter}, suppressing event`);
 			return { shouldPublish: false, isReset: false, resetGeneration: 0, commit: noopCommit };
 		}
 
 		// Counter unchanged: repeated status read, periodic CoAP multicast, or reconnect without new events
+		// Record receipt before a publisher can await or fail. A late baseline must preserve its commit.
+		state.lastObservation = observation;
 		if (counter === state.lastCounter) {
 			return { shouldPublish: false, isReset: false, resetGeneration: state.resetGeneration, commit: noopCommit };
 		}

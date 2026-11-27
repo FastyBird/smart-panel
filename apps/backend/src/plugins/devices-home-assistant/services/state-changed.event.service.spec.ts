@@ -606,7 +606,9 @@ describe('StateChangedEventService', () => {
 				await jest.advanceTimersByTimeAsync(500);
 				if (initial === 'partial') await service.handle(event(relay, 'off', 'on'), ingress());
 				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
-				await service.handle(event(fan, 'off', 'on'), ingress());
+				const discoveringFan = service.handle(event(fan, 'off', 'on'), ingress());
+				await jest.advanceTimersByTimeAsync(5_000);
+				await discoveringFan;
 				expect(mapperService.mapFromHA.mock.calls.at(-1)[0]).toBe(adopted[2]);
 				const laterRelay = event(relay, 'on', 'off');
 				laterRelay.data.old_state.last_changed = at;
@@ -630,7 +632,9 @@ describe('StateChangedEventService', () => {
 				.mockResolvedValueOnce([{ id: 'remote-a', entities: [a] } as HomeAssistantDiscoveredDeviceModel])
 				.mockResolvedValue([{ id: 'remote-b', entities: [b] } as HomeAssistantDiscoveredDeviceModel]);
 			await service.handle(event(a, 'off', 'on'), ingress());
-			await service.handle(event(b, 'off', 'on'), ingress());
+			const discoveringB = service.handle(event(b, 'off', 'on'), ingress());
+			await jest.advanceTimersByTimeAsync(5_000);
+			await discoveringB;
 			await service.handle(event(a, 'on', 'on'), ingress());
 			await jest.advanceTimersByTimeAsync(500);
 			expect(mapperService.mapFromHA.mock.calls.map(([device]) => device)).toEqual([
@@ -657,8 +661,184 @@ describe('StateChangedEventService', () => {
 			);
 			expect(mapperService.mapFromHA.mock.calls[0][0]).toBe(standalone);
 			expect(channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent()).toBe(true);
-			await service.handle(event('switch.relay', 'off', 'on'), ingress());
+			const retry = service.handle(event('switch.relay', 'off', 'on'), ingress());
+			await jest.advanceTimersByTimeAsync(5_000);
+			await retry;
 			expect(mapperService.mapFromHA.mock.calls[1][0]).toBe(relay);
+		});
+
+		describe('incomplete registry discovery', () => {
+			const known = 'switch.known';
+			const relay = 'switch.relay';
+			const discovered = (id: string, ...entities: string[]) =>
+				({ id, entities }) as HomeAssistantDiscoveredDeviceModel;
+			const setAdoptions = (...ids: string[]) => {
+				// Each DB lookup returns new ORM instances for the same adopted rows.
+				devicesService.findAll.mockImplementation(() =>
+					Promise.resolve(
+						ids.map(
+							(haDeviceId) => ({ id: 'local-' + haDeviceId, haDeviceId, enabled: true }) as HomeAssistantDeviceEntity,
+						),
+					),
+				);
+			};
+			const setupPartial = () => {
+				mapperService.mapFromHA.mockImplementation((_device, [state]) =>
+					Promise.resolve([
+						[
+							{
+								property: {
+									id: state.entity_id,
+									haEntityId: state.entity_id,
+									category: PropertyCategory.ON,
+									haAttribute: 'fb.main_state',
+								} as HomeAssistantChannelPropertyEntity,
+								value: state.state === 'on',
+							},
+						],
+					]),
+				);
+				setAdoptions(known, 'remote-relay');
+				httpService.getDiscoveredDevices
+					.mockResolvedValueOnce([])
+					.mockResolvedValue([discovered('remote-relay', relay)]);
+			};
+
+			it('coalesces different misses at most once per retry interval and keeps known routes live', async () => {
+				setupPartial();
+				httpService.getDiscoveredDevices
+					.mockReset()
+					.mockResolvedValueOnce([])
+					.mockResolvedValueOnce([])
+					.mockResolvedValue([discovered('remote-relay', relay)]);
+				await service.handle(event(known, 'off', 'on'), ingress());
+				const burst = ['switch.unknown_a', 'switch.unknown_b', 'switch.unknown_c'].map((id) =>
+					service.handle(event(id, 'off', 'on'), ingress()),
+				);
+				await jest.advanceTimersByTimeAsync(1000);
+				const attributes = event(known, 'on', 'on');
+				await service.handle(attributes, ingress());
+				await jest.advanceTimersByTimeAsync(500);
+				expect(mapperService.mapFromHA.mock.calls.at(-1)[1]).toEqual([attributes.data.new_state]);
+				expect(devicesService.findAll).toHaveBeenCalledTimes(1);
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
+				await jest.advanceTimersByTimeAsync(3499);
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
+				await jest.advanceTimersByTimeAsync(1);
+				await Promise.all(burst);
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
+
+				const arrival = { ...ingress(), ingressSequence: 99 };
+				const change = event(relay, 'on', 'off');
+				const waiting = service.handle(change, arrival);
+				await jest.advanceTimersByTimeAsync(4999);
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
+				await jest.advanceTimersByTimeAsync(1);
+				await waiting;
+				expect(mapperService.mapFromHA.mock.calls.at(-1)[0].haDeviceId).toBe('remote-relay');
+				const [property, update, evidence] = channelsPropertiesService.reportSample.mock.calls.at(-1);
+				expect([property, update.value]).toEqual([relay, false]);
+				expect(evidence).toMatchObject({
+					sampledAt: change.data.new_state.last_changed,
+					receivedAt: arrival.receivedAt,
+					ingressSequence: 99,
+				});
+				expect(evidence.sourceIsCurrent()).toBe(true);
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(3);
+			});
+
+			it.each(['entity registry', 'device registry', 'reconnect'])(
+				'expedites a matching %s change and keeps unrelated misses throttled',
+				async (change) => {
+					setupPartial();
+					await service.handle(event(known, 'off', 'on'), ingress());
+					const old = service.handle(event('switch.other_unknown', 'off', 'on'), ingress());
+					await jest.advanceTimersByTimeAsync(1000);
+					service.handleRegistryChange({ entityIds: ['switch.unrelated', 'switch.old_unrelated'] });
+					await jest.advanceTimersByTimeAsync(0);
+					expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
+					if (change === 'entity registry') service.handleRegistryChange({ entityIds: [relay] });
+					if (change === 'device registry') service.handleRegistryChange({ deviceId: 'remote-relay' });
+					const source = ingress();
+					if (change === 'reconnect') source.session = 'new socket';
+					const fresh = service.handle(event(relay, 'on', 'off'), source);
+					await jest.advanceTimersByTimeAsync(0);
+					const requestsImmediately = httpService.getDiscoveredDevices.mock.calls.length;
+					await jest.advanceTimersByTimeAsync(5000);
+					await Promise.all([old, fresh]);
+					expect(requestsImmediately).toBe(2);
+					expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
+					expect(mapperService.mapFromHA.mock.calls.at(-1)[0].haDeviceId).toBe('remote-relay');
+				},
+			);
+
+			it('cancels a delayed shared lookup during teardown', async () => {
+				setupPartial();
+				await service.handle(event(known, 'off', 'on'), ingress());
+				const miss = service.handle(event(relay, 'on', 'off'), ingress());
+				await jest.advanceTimersByTimeAsync(0);
+				await Promise.all([service.onModuleDestroy(), miss]);
+				await jest.advanceTimersByTimeAsync(6_000);
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
+			});
+
+			it('permanently revokes the replaced owner during a refresh while preserving stable observations', async () => {
+				const mapped = gate();
+				const release = gate();
+				setAdoptions('owner-a', 'owner-b', 'stable', 'unresolved');
+				const stable = discovered('stable', known);
+				httpService.getDiscoveredDevices
+					.mockResolvedValueOnce([discovered('owner-a', relay), stable])
+					.mockResolvedValueOnce([discovered('owner-b', relay), stable])
+					.mockResolvedValue([discovered('owner-a', relay), stable]);
+				mapperService.mapFromHA.mockImplementation(async (device, [state]) => {
+					if (state.attributes.pending) {
+						mapped.release();
+						await release.promise;
+					}
+					return [
+						[
+							{
+								property: {
+									id: device.id + '/' + state.entity_id,
+									category: PropertyCategory.ON,
+									haEntityId: state.entity_id,
+									haAttribute: 'fb.main_state',
+								} as HomeAssistantChannelPropertyEntity,
+								value: state.state === 'on',
+							},
+						],
+					];
+				});
+				await service.handle(event(relay, 'on', 'off'), ingress());
+				await service.handle(event(known, 'on', 'off'), ingress());
+				const original = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
+				const unchanged = channelsPropertiesService.reportSample.mock.calls[1][2].sourceIsCurrent;
+				await service.handle(event(relay, 'off', 'off', { pending: true }), ingress());
+				await jest.advanceTimersByTimeAsync(500);
+				await mapped.promise;
+				const refresh = service.handle(event('switch.trigger_a', 'off', 'on'), ingress());
+				await jest.advanceTimersByTimeAsync(4500);
+				await refresh;
+				const originalAfterMove = original();
+				const unchangedAfterMove = unchanged();
+				release.release();
+				await jest.advanceTimersByTimeAsync(0);
+				expect(originalAfterMove).toBe(false);
+				expect(unchangedAfterMove).toBe(true);
+				expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+
+				await service.handle(event(relay, 'off', 'on'), ingress());
+				const [property, , sample] = channelsPropertiesService.reportSample.mock.calls[2];
+				expect(property).toBe('local-owner-b/' + relay);
+				expect(sample.sourceIsCurrent()).toBe(true);
+				const refreshAgain = service.handle(event('switch.trigger_b', 'off', 'on'), ingress());
+				await jest.advanceTimersByTimeAsync(5000);
+				await refreshAgain;
+				expect(original()).toBe(false);
+				expect(sample.sourceIsCurrent()).toBe(false);
+				expect(unchanged()).toBe(true);
+			});
 		});
 
 		it('keeps unrelated evidence across local edits and registry changes and retires the original binding on re-adoption', async () => {
@@ -877,6 +1057,41 @@ describe('StateChangedEventService', () => {
 			await worker;
 			expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
 			expect(inputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(scope === 'same' ? 0 : 1);
+		});
+
+		it('delivers original button presses in order when discovery was temporarily incomplete', async () => {
+			httpService.getDiscoveredDevices.mockResolvedValueOnce([]).mockResolvedValue([haDevice]);
+			const unknown = toInstance(
+				HomeAssistantStateChangedEventDto,
+				{
+					data: {
+						old_state: { entity_id: 'event.unadopted', state: 'old' },
+						new_state: { entity_id: 'event.unadopted', state: 'new', attributes: { event_type: 'press' } },
+					},
+				},
+				{ excludeExtraneousValues: false },
+			);
+			await service.handle(unknown);
+			const second = toInstance(
+				HomeAssistantStateChangedEventDto,
+				{
+					data: {
+						old_state: hardware.data.new_state,
+						new_state: { ...hardware.data.new_state, state: '2026-05-08T12:01:01Z' },
+					},
+				},
+				{ excludeExtraneousValues: false },
+			);
+			const presses = [service.handle(hardware), service.handle(second)];
+			await jest.advanceTimersByTimeAsync(4999);
+			expect(inputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+			await jest.advanceTimersByTimeAsync(1);
+			await Promise.all(presses);
+			expect(inputOccurrencesService.publishOccurrence.mock.calls.map(([press]) => press.sourceTimestamp)).toEqual([
+				hardware.data.new_state.state,
+				second.data.new_state.state,
+			]);
+			expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
 		});
 
 		it('skips event occurrence on startup snapshot when old_state is null', async () => {
