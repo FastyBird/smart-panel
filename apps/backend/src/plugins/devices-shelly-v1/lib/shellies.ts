@@ -16,6 +16,11 @@ const shellies = require('shellies') as ShelliesLibrary;
 
 export default shellies;
 
+/** shellies stores Basic auth on the peer's request defaults and retains them when its host changes. */
+export function clearShellyCredentials(peer: ShellyDevice): void {
+	peer._request = null;
+}
+
 type StatusRequest = PromiseLike<{ body: ShellyStatusResponse }> & {
 	once(event: 'request', handler: (request: { req: ClientRequest }) => void): void;
 	redirects(max: number): StatusRequest;

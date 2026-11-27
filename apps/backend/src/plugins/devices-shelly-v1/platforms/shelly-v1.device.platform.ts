@@ -20,6 +20,12 @@ import {
 } from '../entities/devices-shelly-v1.entity';
 import { ShellyColorOptions, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
+import {
+	ShellyV1AdoptedIdentityService,
+	shellyV1Address,
+	shellyV1ReportedMac,
+} from '../services/shelly-v1-adopted-identity.service';
+import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
 import { ShellyV1PropertyReportsService } from '../services/shelly-v1-property-reports.service';
 import { findShellyV1Descriptor, getShellyV1Bindings } from '../utils/descriptor.utils';
 import { ROLLER_COMMAND_VALUE_MAP, validateEnumValue } from '../utils/value-mapping.utils';
@@ -29,6 +35,8 @@ export type IShellyV1DevicePropertyData = IDevicePropertyData & {
 	channel: ShellyV1ChannelEntity;
 	property: ShellyV1ChannelPropertyEntity;
 };
+
+type CommandTarget = { peer: ShellyDevice; host: string; isCurrent: () => boolean };
 
 /**
  * Device platform for Shelly V1 devices
@@ -49,6 +57,8 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 	constructor(
 		private readonly shelliesAdapter: ShelliesAdapterService,
 		private readonly reports: ShellyV1PropertyReportsService,
+		private readonly identities: ShellyV1AdoptedIdentityService,
+		private readonly http: ShellyV1HttpClientService,
 	) {}
 
 	requestPropertyRead(request: PropertyReadRequest): Promise<boolean> {
@@ -89,6 +99,24 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 			return false;
 		}
+		const { id, type, host } = registered;
+		const target: CommandTarget = {
+			peer: shellyDevice,
+			host,
+			isCurrent: () =>
+				!!host &&
+				device.enabled &&
+				device.identifier === id &&
+				registered.enabled &&
+				registered.id === id &&
+				registered.type === type &&
+				registered.host === host &&
+				shellyDevice.id === id &&
+				shellyDevice.type === type &&
+				shellyDevice.host === host &&
+				this.shelliesAdapter.getRegisteredDevice(id) === registered &&
+				this.shelliesAdapter.getDevice(type, id) === shellyDevice,
+		};
 
 		// Group updates by channel for batch processing
 		const byChannel = new Map<
@@ -120,7 +148,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		// Process each channel's property updates
 		for (const { channel, props } of byChannel.values()) {
 			try {
-				const success = await this.executeCommand(device, channel, Array.from(props.values()), shellyDevice);
+				const success = await this.executeCommand(device, channel, Array.from(props.values()), target);
 
 				results.push(success);
 			} catch (error) {
@@ -157,9 +185,10 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		device: ShellyV1DeviceEntity,
 		channel: ShellyV1ChannelEntity,
 		propertyUpdates: Array<{ property: ShellyV1ChannelPropertyEntity; value: string | number | boolean }>,
-		shellyDevice: ShellyDevice,
+		target: CommandTarget,
 	): Promise<boolean> {
 		// Find the device descriptor
+		const shellyDevice = target.peer;
 		const descriptor = findShellyV1Descriptor(shellyDevice.type);
 
 		if (!descriptor) {
@@ -192,7 +221,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		try {
 			if (relayMatch) {
 				// Relay command
-				return await this.executeRelayCommand(device, shellyDevice, parseInt(relayMatch[1], 10), propertyUpdates);
+				return await this.executeRelayCommand(device, target, parseInt(relayMatch[1], 10), propertyUpdates);
 			} else if (lightMatch) {
 				// Light command
 				return await this.executeLightCommand(
@@ -220,10 +249,11 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 	 */
 	private async executeRelayCommand(
 		device: ShellyV1DeviceEntity,
-		shellyDevice: ShellyDevice,
+		target: CommandTarget,
 		index: number,
 		propertyUpdates: Array<{ property: ShellyV1ChannelPropertyEntity; value: string | number | boolean }>,
 	): Promise<boolean> {
+		const shellyDevice = target.peer;
 		if (!shellyDevice.setRelay) {
 			this.logger.warn(`Device ${device.identifier} does not support setRelay method`, { resource: device.id });
 
@@ -233,19 +263,41 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		// Find the state property
 		const stateUpdate = propertyUpdates.find((u) => u.property.identifier === 'state');
 
-		if (!stateUpdate) {
+		if (!stateUpdate || !target.isCurrent()) {
 			return false;
 		}
 
 		const boolValue = coerceBooleanSafe(stateUpdate.value);
+		const address = shellyV1Address(device.identifier);
+		if (!address || (address.length === 6 && !(await this.shortRelayHostMatches(device, target, address))))
+			return false;
 
 		this.logger.log(`Setting relay ${index} to ${boolValue ? 'ON' : 'OFF'} on device ${device.identifier}`, {
 			resource: device.id,
 		});
 
+		if (!target.isCurrent()) return false;
 		await shellyDevice.setRelay(index, boolValue);
 
 		return true;
+	}
+
+	private async shortRelayHostMatches(
+		device: ShellyV1DeviceEntity,
+		target: CommandTarget,
+		address: string,
+	): Promise<boolean> {
+		const pin = await this.identities.findPin(device.id);
+		if (!target.isCurrent()) return false;
+		if (!pin) return device.hostname === target.host;
+		if (!/^[0-9A-F]{12}$/.test(pin.mac) || !pin.mac.endsWith(address)) return false;
+		if (pin.verifiedHost === target.host) return true;
+		if (pin.verifiedHost !== null || device.hostname !== target.host) return false;
+
+		// Pins from older installations can be confirmed only at the configured endpoint.
+		const info = await this.http.getDeviceInfo(target.host);
+		if (!target.isCurrent() || shellyV1ReportedMac(address, target.peer.type, info) !== pin.mac) return false;
+		return this.identities.confirmHost(device.id, pin.mac, target.host, null);
 	}
 
 	/**

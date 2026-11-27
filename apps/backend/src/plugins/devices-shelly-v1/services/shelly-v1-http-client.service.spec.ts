@@ -78,6 +78,7 @@ describe('ShellyV1HttpClientService', () => {
 				'http://192.168.1.100/shelly',
 				expect.objectContaining({
 					method: 'GET',
+					redirect: 'error',
 					headers: {
 						'Content-Type': 'application/json',
 					},
@@ -207,6 +208,26 @@ describe('ShellyV1HttpClientService', () => {
 	});
 
 	describe('Error handling', () => {
+		it('times out while reading the response body, even after the headers arrive', async () => {
+			jest.useFakeTimers();
+			try {
+				(global.fetch as jest.Mock).mockImplementationOnce((_url: string, options: RequestInit) =>
+					Promise.resolve({
+						ok: true,
+						json: () =>
+							new Promise((_resolve, reject) =>
+								options.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))),
+							),
+					}),
+				);
+				const result = expect(service.getDeviceInfo('192.168.1.100', 50)).rejects.toThrow('Request timeout');
+				await jest.advanceTimersByTimeAsync(50);
+				await result;
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
 		it('should throw exception on HTTP error', async () => {
 			mockFetchError(401, 'Unauthorized');
 

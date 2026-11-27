@@ -15,8 +15,10 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import { ShellyDevice } from '../interfaces/shellies.interface';
+import { RegisteredDevice, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
+import { ShellyV1AdoptedIdentityService } from '../services/shelly-v1-adopted-identity.service';
+import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
 import { ShellyV1PropertyReportsService } from '../services/shelly-v1-property-reports.service';
 
 import { ShellyV1DevicePlatform } from './shelly-v1.device.platform';
@@ -29,7 +31,7 @@ describe('ShellyV1DevicePlatform', () => {
 	afterAll(() => {});
 
 	const makeDevice = (id = 'dev-1', identifier = 'shelly1pm-ABC123', enabled = true): ShellyV1DeviceEntity =>
-		Object.assign(new ShellyV1DeviceEntity(), { id, identifier, enabled });
+		Object.assign(new ShellyV1DeviceEntity(), { id, identifier, enabled, hostname: '192.168.1.100' });
 
 	const makeChannel = (id = 'channel-1', identifier = 'relay_0'): ShellyV1ChannelEntity =>
 		Object.assign(new ShellyV1ChannelEntity(), { id, identifier });
@@ -55,17 +57,30 @@ describe('ShellyV1DevicePlatform', () => {
 		} as any;
 	};
 
-	const makePlatform = (opts?: { getDevice?: jest.Mock }) => {
+	const makePlatform = (opts?: { getDevice?: jest.Mock; getRegisteredDevice?: jest.Mock }) => {
+		const registrations = new Map<string, RegisteredDevice>();
 		const shelliesAdapter = {
 			getDevice: opts?.getDevice ?? jest.fn(),
-			getRegisteredDevice: (id: string) => ({ type: 'registered-model', id, enabled: true }),
+			getRegisteredDevice:
+				opts?.getRegisteredDevice ??
+				((id: string) => {
+					if (!registrations.has(id))
+						registrations.set(id, { type: 'SHSW-PM', id, host: '192.168.1.100', enabled: true });
+					return registrations.get(id);
+				}),
 		} as unknown as ShelliesAdapterService;
-
+		const identities = { findPin: jest.fn().mockResolvedValue(null), confirmHost: jest.fn().mockResolvedValue(true) };
+		const http = { getDeviceInfo: jest.fn() };
 		return {
-			platform: new ShellyV1DevicePlatform(shelliesAdapter, {
-				read: jest.fn(),
-			} as unknown as ShellyV1PropertyReportsService),
+			platform: new ShellyV1DevicePlatform(
+				shelliesAdapter,
+				{ read: jest.fn() } as unknown as ShellyV1PropertyReportsService,
+				identities as unknown as ShellyV1AdoptedIdentityService,
+				http as unknown as ShellyV1HttpClientService,
+			),
 			shelliesAdapter,
+			identities,
+			http,
 		};
 	};
 
@@ -92,7 +107,7 @@ describe('ShellyV1DevicePlatform', () => {
 		});
 
 		expect(ok).toBe(true);
-		expect(getDevice).toHaveBeenCalledWith('registered-model', 'shelly1pm-ABC123');
+		expect(getDevice).toHaveBeenCalledWith('SHSW-PM', 'shelly1pm-ABC123');
 		expect(shellyDevice.setRelay).toHaveBeenCalledWith(0, true);
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
 			`[ShellyV1DevicePlatform] Successfully processed all property updates for device id=${device.id}`,
@@ -141,6 +156,152 @@ describe('ShellyV1DevicePlatform', () => {
 	});
 
 	describe('Relay commands', () => {
+		const originalHost = '192.168.1.100';
+		const movedHost = '192.168.1.101';
+		const mac = 'AABBCCABC123';
+		const gate = () => {
+			let release: () => void;
+			const promise = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			return { promise, release: () => release() };
+		};
+		const relay = (identifier = 'shelly1pm-ABC123') => {
+			const device = makeDevice('catalog-relay', identifier);
+			const peer = makeShellyDevice('SHSW-PM', identifier);
+			const registration = { type: peer.type, id: peer.id, host: peer.host, enabled: true };
+			const getDevice = jest.fn().mockReturnValue(peer);
+			const getRegisteredDevice = jest.fn().mockReturnValue(registration);
+			const { platform, identities, http } = makePlatform({ getDevice, getRegisteredDevice });
+			const write = (value: boolean) =>
+				platform.process({ device, channel: makeChannel(), property: makeProp(), value });
+			return { device, peer, registration, getDevice, getRegisteredDevice, platform, identities, http, write };
+		};
+
+		it.each([true, false])(
+			'rejects a moved short-ID peer for value %s until its full identity has been verified there',
+			async (value) => {
+				const { peer, registration, identities, http, write } = relay();
+				peer.host = movedHost;
+				registration.host = movedHost;
+				identities.findPin.mockResolvedValue({ mac, verifiedHost: originalHost });
+				expect(await write(value)).toBe(false);
+				expect(peer.setRelay).not.toHaveBeenCalled();
+				expect(http.getDeviceInfo).not.toHaveBeenCalled();
+				identities.findPin.mockResolvedValue({ mac, verifiedHost: movedHost });
+				expect(await write(value)).toBe(true);
+				expect(peer.setRelay).toHaveBeenCalledWith(0, value);
+			},
+		);
+
+		it.each(['other suffix', 'malformed MAC', 'unconfigured legacy', 'moved legacy'])(
+			'rejects %s before sending a relay command',
+			async (kind) => {
+				const { device, peer, registration, identities, write } = relay();
+				if (kind === 'other suffix')
+					identities.findPin.mockResolvedValue({ mac: 'AABBCC123456', verifiedHost: originalHost });
+				if (kind === 'malformed MAC')
+					identities.findPin.mockResolvedValue({ mac: 'ABC123', verifiedHost: originalHost });
+				if (kind === 'unconfigured legacy') device.hostname = null;
+				if (kind === 'moved legacy') registration.host = peer.host = movedHost;
+				expect(await write(true)).toBe(false);
+				expect(peer.setRelay).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['match', 'wrong full MAC', 'wrong model', 'lost confirmation', 'unconfirmed move'])(
+			'handles an upgraded pin with %s at the captured endpoint',
+			async (kind) => {
+				const { device, peer, registration, identities, http, write } = relay();
+				identities.findPin.mockResolvedValue({ mac, verifiedHost: null });
+				http.getDeviceInfo.mockResolvedValue({
+					type: kind === 'wrong model' ? 'SHSW-1' : peer.type,
+					mac: kind === 'wrong full MAC' ? 'DDEEFFABC123' : mac,
+				});
+				if (kind === 'lost confirmation') identities.confirmHost.mockResolvedValue(false);
+				if (kind === 'unconfirmed move') registration.host = peer.host = movedHost;
+				expect(await write(true)).toBe(kind === 'match');
+				expect(peer.setRelay).toHaveBeenCalledTimes(kind === 'match' ? 1 : 0);
+				if (kind === 'unconfirmed move') expect(http.getDeviceInfo).not.toHaveBeenCalled();
+				else expect(http.getDeviceInfo).toHaveBeenCalledWith(originalHost);
+				if (kind === 'match' || kind === 'lost confirmation')
+					expect(identities.confirmHost).toHaveBeenCalledWith(device.id, mac, originalHost, null);
+				else expect(identities.confirmHost).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['registration', 'peer', 'host', 'disabled'])(
+			'rejects a %s change during the identity lookup',
+			async (change) => {
+				const { peer, registration, getRegisteredDevice, getDevice, identities, write } = relay();
+				const entered = gate();
+				const release = gate();
+				identities.findPin.mockImplementationOnce(async () => {
+					entered.release();
+					await release.promise;
+					return { mac, verifiedHost: originalHost };
+				});
+				const pending = write(false);
+				await entered.promise;
+				const replacement = makeShellyDevice();
+				if (change === 'registration') getRegisteredDevice.mockReturnValue({ ...registration });
+				if (change === 'peer') getDevice.mockReturnValue(replacement);
+				if (change === 'host') registration.host = peer.host = movedHost;
+				if (change === 'disabled') registration.enabled = false;
+				release.release();
+				expect(await pending).toBe(false);
+				expect(peer.setRelay).not.toHaveBeenCalled();
+				expect(replacement.setRelay).not.toHaveBeenCalled();
+			},
+		);
+
+		it('rechecks the capture immediately before dispatch after an upgraded pin is persisted', async () => {
+			const { peer, registration, getRegisteredDevice, identities, http, write } = relay();
+			const entered = gate();
+			const release = gate();
+			identities.findPin.mockResolvedValue({ mac, verifiedHost: null });
+			http.getDeviceInfo.mockResolvedValue({ type: peer.type, mac });
+			identities.confirmHost.mockImplementationOnce(async () => {
+				entered.release();
+				await release.promise;
+				return true;
+			});
+			const pending = write(true);
+			await entered.promise;
+			getRegisteredDevice.mockReturnValue({ ...registration });
+			release.release();
+			expect(await pending).toBe(false);
+			expect(peer.setRelay).not.toHaveBeenCalled();
+		});
+
+		it('uses the current full-address relay through the normal write path', async () => {
+			const { device, peer, identities, http, write } = relay('shelly1pm-' + mac);
+			device.hostname = null;
+			expect(await write(true)).toBe(true);
+			expect(peer.setRelay).toHaveBeenCalledWith(0, true);
+			expect(identities.findPin).not.toHaveBeenCalled();
+			expect(http.getDeviceInfo).not.toHaveBeenCalled();
+		});
+
+		it('keeps one captured endpoint for every relay in a batch', async () => {
+			const { platform, device, peer, registration, getRegisteredDevice } = relay();
+			const entered = gate();
+			const release = gate();
+			peer.setRelay.mockImplementationOnce(async () => {
+				entered.release();
+				await release.promise;
+			});
+			const pending = platform.processBatch([
+				{ device, channel: makeChannel('first', 'relay_0'), property: makeProp('first-state'), value: true },
+				{ device, channel: makeChannel('second', 'relay_1'), property: makeProp('second-state'), value: false },
+			]);
+			await entered.promise;
+			getRegisteredDevice.mockReturnValue({ ...registration });
+			release.release();
+			expect(await pending).toBe(false);
+			expect(peer.setRelay.mock.calls).toEqual([[0, true]]);
+		});
+
 		it('should execute relay ON command', async () => {
 			const shellyDevice = makeShellyDevice();
 			const getDevice = jest.fn().mockReturnValue(shellyDevice);

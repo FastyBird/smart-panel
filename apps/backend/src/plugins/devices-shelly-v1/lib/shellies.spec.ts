@@ -2,23 +2,38 @@ import { EventEmitter } from 'events';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ShellyTemperatureReport } from '../interfaces/shellies.interface';
+import { ShellyInfoResponse } from '../interfaces/shelly-http.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
 
 import shellies, { readShellyTemperature, subscribeShellyTemperatures } from './shellies';
 
+function setupTimedAdapter(http: Partial<ShellyV1HttpClientService> = {}) {
+	jest.useFakeTimers();
+	const library = shellies as typeof shellies & { _listener: EventEmitter };
+	const start = jest.spyOn(library, 'start').mockImplementation(() => {});
+	const stop = jest.spyOn(library, 'stop').mockImplementation(() => {});
+	const adapter = new ShelliesAdapterService(
+		{
+			getPluginConfig: () => ({ timeouts: { requestTimeout: 5, staleTimeout: 1 }, discovery: {} }),
+		} as unknown as ConfigService,
+		http as ShellyV1HttpClientService,
+	);
+	return {
+		library,
+		adapter,
+		cleanup: () => {
+			adapter.stop();
+			start.mockRestore();
+			stop.mockRestore();
+			jest.useRealTimers();
+		},
+	};
+}
+
 describe('raw Shelly Gen1 CoIoT temperature ingress', () => {
 	it('cancels the installed library’s stale timer before rediscovering the same peer after restart', async () => {
-		jest.useFakeTimers();
-		const library = shellies as typeof shellies & { _listener: EventEmitter };
-		const start = jest.spyOn(library, 'start').mockImplementation(() => {});
-		const stop = jest.spyOn(library, 'stop').mockImplementation(() => {});
-		const adapter = new ShelliesAdapterService(
-			{
-				getPluginConfig: () => ({ timeouts: { requestTimeout: 5, staleTimeout: 1 }, discovery: {} }),
-			} as unknown as ConfigService,
-			{} as ShellyV1HttpClientService,
-		);
+		const { library, adapter, cleanup } = setupTimedAdapter();
 		const packet = {
 			deviceType: 'SHHT-1',
 			deviceId: 'TEMP',
@@ -67,9 +82,87 @@ describe('raw Shelly Gen1 CoIoT temperature ingress', () => {
 			expect(library.getDevice(packet.deviceType, packet.deviceId)).toBe(successor);
 			expect(adapter.getRegisteredDevice(packet.deviceId)).toBeDefined();
 		} finally {
-			adapter.stop();
-			start.mockRestore();
-			stop.mockRestore();
+			cleanup();
+		}
+	});
+
+	it.each([true, false])(
+		'discards an older HTTP ping (%s) if CoIoT reported while a second peer was being checked',
+		async (alive) => {
+			const pings = new Map<string, (reachable: boolean) => void>();
+			const { library, adapter, cleanup } = setupTimedAdapter({
+				getDeviceInfo: (host) =>
+					new Promise<ShellyInfoResponse>((resolve, reject) => {
+						pings.set(host, (reachable) => {
+							if (reachable) resolve({ type: 'SHHT-1', mac: 'AABBCCDDEEFF', auth: false, fw: '1', longid: 1 });
+							else reject(new Error('HTTP unreachable'));
+						});
+					}),
+			});
+			const first = { deviceType: 'SHHT-1', deviceId: 'AABBCCDDEEFF', host: '127.0.0.1', serial: 250 };
+			const second = { ...first, deviceId: 'AABBCCDDEE00', host: '127.0.0.2' };
+			const offline = jest.fn();
+			adapter.setCallbacks({ onDeviceOffline: offline });
+			try {
+				await adapter.start();
+				library._listener.emit('statusUpdate', first);
+				library._listener.emit('statusUpdate', second);
+				await jest.advanceTimersByTimeAsync(1001);
+				const updated = library.getDevice(first.deviceType, first.deviceId);
+				const unaffected = library.getDevice(second.deviceType, second.deviceId);
+				const previous = unaffected.lastSeen;
+				const check = adapter.checkDevicesStatus();
+				expect([...pings.keys()]).toEqual([first.host, second.host]);
+				pings.get(first.host)(alive);
+				await jest.advanceTimersByTimeAsync(10);
+				// The unchanged CoIoT packet still marks this peer alive.
+				library._listener.emit('statusUpdate', first);
+				const lastReport = updated.lastSeen;
+				await jest.advanceTimersByTimeAsync(1001);
+				pings.get(second.host)(!alive);
+				await check;
+				expect(updated.online).toBe(true);
+				expect(updated.lastSeen).toBe(lastReport);
+				expect(unaffected.online).toBe(!alive);
+				expect(unaffected.lastSeen).toBe(alive ? previous : Date.now());
+				expect(offline).toHaveBeenCalledTimes(alive ? 1 : 0);
+				if (alive) expect(offline).toHaveBeenCalledWith(expect.objectContaining({ id: second.deviceId }));
+			} finally {
+				cleanup();
+			}
+		},
+	);
+
+	it('sets the new host and changes the lastSeen object before delivering the raw temperature', () => {
+		jest.useFakeTimers();
+		const library = shellies as typeof shellies & { _listener: EventEmitter };
+		const packet = {
+			deviceType: 'SHHT-1',
+			deviceId: 'AABBCCDDEEFF',
+			host: '127.0.0.1',
+			serial: 250,
+			payload: { G: [[0, 3101, 20]] },
+		};
+		library._listener.emit('statusUpdate', packet);
+		const peer = library.getDevice(packet.deviceType, packet.deviceId);
+		const original = peer.lastSeen;
+		const observations: Array<{ event: string; host: string; seen: typeof original }> = [];
+		peer.on('change:host', () => observations.push({ event: 'host', host: peer.host, seen: peer.lastSeen }));
+		const unsubscribe = subscribeShellyTemperatures((current) => {
+			observations.push({ event: 'temperature', host: current.host, seen: current.lastSeen });
+		});
+		try {
+			library._listener.emit('statusUpdate', { ...packet, host: '127.0.0.2' });
+			expect(observations.map(({ event, host }) => [event, host])).toEqual([
+				['host', '127.0.0.2'],
+				['temperature', '127.0.0.2'],
+			]);
+			expect(observations[0].seen).toBe(original);
+			expect(observations[1].seen).not.toBe(original);
+			expect(Number(observations[1].seen)).toBe(Number(original));
+		} finally {
+			unsubscribe();
+			library.removeAllDevices();
 			jest.useRealTimers();
 		}
 	});

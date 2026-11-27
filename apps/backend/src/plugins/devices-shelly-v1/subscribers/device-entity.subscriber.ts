@@ -1,12 +1,18 @@
 import { DataSource, EntitySubscriberInterface, UpdateEvent } from 'typeorm';
-import { InsertEvent } from 'typeorm/subscriber/event/InsertEvent';
 
 import { Injectable } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { EventType } from '../../../modules/devices/devices.constants';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME, SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
+import {
+	ShellyV1AdoptedIdentityService,
+	shellyV1Address,
+	shellyV1ReportedMac,
+} from '../services/shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
 
 @Injectable()
@@ -20,6 +26,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		private readonly dataSource: DataSource,
 		private readonly shelliesAdapter: ShelliesAdapterService,
 		private readonly httpClient: ShellyV1HttpClientService,
+		private readonly identities: ShellyV1AdoptedIdentityService,
 	) {
 		this.dataSource.subscribers.push(this);
 	}
@@ -28,115 +35,46 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		return ShellyV1DeviceEntity;
 	}
 
-	/**
-	 * Fetches the username from the device's login settings
-	 * Falls back to the default constant if the fetch fails
-	 */
-	private async fetchDeviceUsername(host: string): Promise<string> {
-		try {
-			const loginSettings = await this.httpClient.getLoginSettings(host);
-			return loginSettings.username || SHELLY_AUTH_USERNAME;
-		} catch {
-			// Fallback to default username if login endpoint fails
-			return SHELLY_AUTH_USERNAME;
-		}
-	}
-
-	async afterInsert(event: InsertEvent<ShellyV1DeviceEntity>): Promise<void> {
-		const device = event.entity;
-
-		if (!device.identifier) {
-			this.logger.warn(`Device ${device.id} has no identifier, skipping auth setup`);
+	private async configureCredentials(device: ShellyV1DeviceEntity): Promise<void> {
+		const { hostname: host, identifier, password } = device;
+		if (!host || !identifier) return;
+		const registration = this.shelliesAdapter.getRegisteredDevice(identifier);
+		const peer = registration && this.shelliesAdapter.getDevice(registration.type, identifier);
+		if (!peer || peer.host !== host || registration.host !== host) return;
+		const current = (): boolean =>
+			this.shelliesAdapter.getRegisteredDevice(identifier) === registration &&
+			this.shelliesAdapter.getDevice(registration.type, identifier) === peer &&
+			peer.host === host;
+		if (!password) {
+			this.shelliesAdapter.setDeviceAuthCredentials(peer, host, SHELLY_AUTH_USERNAME, null);
 			return;
 		}
-
-		try {
-			// Set auth credentials if a password is provided
-			if (device.password) {
-				const registeredDevice = this.shelliesAdapter.getRegisteredDevice(device.identifier);
-
-				if (registeredDevice) {
-					// Fetch username from a device, fallback to default constant
-					const username = await this.fetchDeviceUsername(registeredDevice.host);
-
-					this.shelliesAdapter.setDeviceAuthCredentials(
-						registeredDevice.type,
-						device.identifier,
-						username,
-						device.password,
-					);
-				} else {
-					// Intentionally empty - registered device not found
-				}
-			}
-
-			// Set enabled status
-			this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, device.enabled);
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to finalize newly created device=${device.id}`, {
-				message: err.message,
-				stack: err.stack,
-			});
+		const pin = shellyV1Address(identifier)?.length === 6 ? await this.identities.findPin(device.id) : null;
+		if (!current()) return;
+		if (pin && pin.verifiedHost !== host) {
+			const info = await this.httpClient.getDeviceInfo(host).catch((): null => null);
+			if (!current() || shellyV1ReportedMac(identifier, peer.type, info) !== pin.mac) return;
+			if (!(await this.identities.confirmHost(device.id, pin.mac, host, pin.verifiedHost)) || !current()) return;
 		}
+		const login = await this.httpClient.getLoginSettings(host).catch((): null => null);
+		if (current())
+			this.shelliesAdapter.setDeviceAuthCredentials(peer, host, login?.username || SHELLY_AUTH_USERNAME, password);
+	}
+
+	// Atomic adoption publishes DEVICE_CREATED only after its row and hardware identity have committed.
+	@OnEvent(EventType.DEVICE_CREATED)
+	async deviceCreated(device: ShellyV1DeviceEntity): Promise<void> {
+		if (!(device instanceof ShellyV1DeviceEntity) || !device.identifier) return;
+		this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, device.enabled);
+		await this.configureCredentials(device);
 	}
 
 	async afterUpdate(event: UpdateEvent<ShellyV1DeviceEntity>): Promise<void> {
-		const device = event.databaseEntity;
-
-		if (!device || !device.identifier) {
-			this.logger.warn('Cannot process update - device has no identifier');
-			return;
-		}
-
-		let credentialsUpdated = false;
-		let enabledUpdated = false;
-
-		for (const updatedColumn of event.updatedColumns) {
-			const columnName = updatedColumn.databaseName.toLowerCase();
-
-			if (['password', 'hostname'].includes(columnName)) {
-				credentialsUpdated = true;
-			}
-
-			if (columnName === 'enabled') {
-				enabledUpdated = true;
-			}
-		}
-
-		try {
-			// Handle enabled status change
-			if (enabledUpdated) {
-				this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, device.enabled);
-			}
-
-			// Handle credentials update
-			if (credentialsUpdated && device.password) {
-				const registeredDevice = this.shelliesAdapter.getRegisteredDevice(device.identifier);
-
-				if (registeredDevice) {
-					// Fetch username from a device, fallback to default constant
-					const username = await this.fetchDeviceUsername(registeredDevice.host);
-
-					this.shelliesAdapter.setDeviceAuthCredentials(
-						registeredDevice.type,
-						device.identifier,
-						username,
-						device.password,
-					);
-				} else {
-					this.logger.warn(`Device ${device.identifier} not found in adapter, cannot update credentials`);
-				}
-			}
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to finalize updated device=${device.id}`, {
-				message: err.message,
-				stack: err.stack,
-			});
-		}
+		if (!event.databaseEntity?.identifier) return;
+		const device = { ...event.databaseEntity, ...event.entity } as ShellyV1DeviceEntity;
+		const columns = event.updatedColumns.map((column) => column.databaseName.toLowerCase());
+		if (columns.includes('enabled')) this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, device.enabled);
+		if (columns.includes('password') || columns.includes('hostname')) await this.configureCredentials(device);
 	}
 
 	afterRemove(event: { entity?: ShellyV1DeviceEntity }): void {

@@ -8,6 +8,9 @@ eslint-disable @typescript-eslint/no-unsafe-assignment,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+
 import { Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -18,6 +21,7 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 // Mock the shellies library
 jest.mock('../lib/shellies', () => ({
+	clearShellyCredentials: jest.requireActual('../lib/shellies').clearShellyCredentials,
 	subscribeShellyTemperatures: jest.fn().mockReturnValue(() => {}),
 	readShellyTemperature: jest.fn().mockResolvedValue(null),
 	on: jest.fn(),
@@ -28,6 +32,7 @@ jest.mock('../lib/shellies', () => ({
 	getDevice: jest.fn(),
 	request: {
 		timeout: jest.fn(),
+		redirects: jest.fn(),
 	},
 	staleTimeout: 0,
 }));
@@ -107,6 +112,7 @@ describe('ShelliesAdapterService', () => {
 			await service.start();
 
 			expect(mockShelliesLibrary.request.timeout).toHaveBeenCalledWith(5000); // 5s * 1000
+			expect(mockShelliesLibrary.request.redirects).toHaveBeenCalledWith(0);
 			expect(mockShelliesLibrary.staleTimeout).toBe(60000); // 60s * 1000
 			expect(mockShelliesLibrary.on).toHaveBeenCalledWith('add', expect.any(Function));
 			expect(mockShelliesLibrary.start).toHaveBeenCalledWith(null);
@@ -288,28 +294,70 @@ describe('ShelliesAdapterService', () => {
 	});
 
 	describe('setDeviceAuthCredentials', () => {
+		it('revokes the installed SDK credentials before the same peer sends a request to its next host', async () => {
+			const received: (string | undefined)[][] = [[], []];
+			const servers = received.map((requests) =>
+				createServer((req, res) => {
+					requests.push(req.headers.authorization);
+					res.setHeader('Content-Type', 'application/json');
+					res.end('{}');
+				}),
+			);
+			const [a, b] = await Promise.all(
+				servers.map(
+					(server) =>
+						new Promise<string>((resolve) =>
+							server.listen(0, '127.0.0.1', () => resolve(`127.0.0.1:${(server.address() as AddressInfo).port}`)),
+						),
+				),
+			);
+			try {
+				await service.start();
+				const { create } = jest.requireActual<{ create(type: string, id: string, host: string): ShellyDevice }>(
+					'shellies/lib/devices',
+				);
+				const device = create('SHSW-PM', 'DDEEFF', a);
+				mockShelliesLibrary.getDevice.mockReturnValue(device);
+				mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'add')[1](device);
+				service.setDeviceAuthCredentials(device, a, 'admin', 'fixture');
+				await device.getStatus();
+				device.host = b;
+				service.setDeviceAuthCredentials(device, a, 'admin', 'fixture');
+				await device.getStatus();
+				expect(received).toEqual([['Basic ' + Buffer.from('admin:fixture').toString('base64')], [undefined]]);
+				expect(callbacks.onDeviceDiscovered).toHaveBeenLastCalledWith(expect.objectContaining({ host: b }));
+			} finally {
+				await Promise.all(
+					servers.map(
+						(server) =>
+							new Promise<void>((resolve) => {
+								server.closeAllConnections();
+								server.close(() => resolve());
+							}),
+					),
+				);
+			}
+		});
+
 		it('should set auth credentials on device', async () => {
 			await service.start();
 
 			const device = makeShellyDevice('shelly1pm-ABC123', 'SHSW-PM');
 			mockShelliesLibrary.getDevice.mockReturnValue(device);
 
-			service.setDeviceAuthCredentials('SHSW-PM', 'shelly1pm-ABC123', 'admin', 'password123');
+			service.setDeviceAuthCredentials(device as ShellyDevice, device.host, 'admin', 'password123');
 
 			expect(device.setAuthCredentials).toHaveBeenCalledWith('admin', 'password123');
 		});
 
-		it('should log warning when device not found', async () => {
+		it('withholds credentials after the captured peer has been replaced', async () => {
 			await service.start();
-
-			mockShelliesLibrary.getDevice.mockReturnValue(undefined);
-
-			service.setDeviceAuthCredentials('SHSW-PM', 'unknown-device', 'admin', 'password123');
-
-			expect(Logger.prototype.warn).toHaveBeenCalledWith(
-				'[ShelliesAdapterService] Cannot set auth credentials - device not found: unknown-device',
-				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
-			);
+			const old = makeShellyDevice();
+			const replacement = makeShellyDevice();
+			mockShelliesLibrary.getDevice.mockReturnValue(replacement);
+			service.setDeviceAuthCredentials(old as ShellyDevice, old.host, 'admin', 'password123');
+			expect(old.setAuthCredentials).not.toHaveBeenCalled();
+			expect(replacement.setAuthCredentials).not.toHaveBeenCalled();
 		});
 
 		it('should handle device without setAuthCredentials method', async () => {
@@ -319,7 +367,7 @@ describe('ShelliesAdapterService', () => {
 			device.setAuthCredentials = undefined as any;
 			mockShelliesLibrary.getDevice.mockReturnValue(device);
 
-			service.setDeviceAuthCredentials('SHSW-PM', 'shelly1pm-ABC123', 'admin', 'password123');
+			service.setDeviceAuthCredentials(device as ShellyDevice, device.host, 'admin', 'password123');
 
 			expect(Logger.prototype.debug).not.toHaveBeenCalledWith(expect.stringContaining('Set auth credentials'));
 		});
@@ -527,6 +575,49 @@ describe('ShelliesAdapterService', () => {
 				expect(next.isCurrent()).toBe(false);
 				mockShelliesLibrary.readShellyTemperature.mockResolvedValueOnce({ serial: 1, value: 18 });
 				push(1001, 73);
+				await new Promise(setImmediate);
+				expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([20, 21, 18]);
+			},
+		);
+
+		it.each(['published', 'pending'])(
+			'keeps the serial but revokes a %s observation across disable/re-enable',
+			async (state) => {
+				const { peer, push } = await temperatureProbe();
+				let finish: (admitted: boolean) => void;
+				if (state === 'pending') {
+					callbacks.onTemperatureReport.mockImplementationOnce(
+						() =>
+							new Promise<boolean>((resolve) => {
+								finish = resolve;
+							}),
+					);
+				}
+				push(250, 20);
+				await new Promise(setImmediate);
+				const original = callbacks.onTemperatureReport.mock.lastCall[0];
+				push(250, 80);
+				service.updateDeviceEnabledStatus(peer.id, false);
+				expect(original.isCurrent()).toBe(false);
+				push(250, 81);
+				service.updateDeviceEnabledStatus(peer.id, true);
+				if (finish) finish(false);
+				await new Promise(setImmediate);
+				push(250, 82);
+				expect(original.isCurrent()).toBe(false);
+				expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
+				push(251, 21);
+				const next = callbacks.onTemperatureReport.mock.lastCall[0];
+				expect(next.value).toBe(21);
+				expect(next.isCurrent()).toBe(true);
+				const read = mockShelliesLibrary.readShellyTemperature;
+				expect(read).not.toHaveBeenCalled();
+				read.mockResolvedValueOnce({ serial: 1, value: 18 });
+				push(1, 83);
+				await new Promise(setImmediate);
+				expect(next.isCurrent()).toBe(false);
+				read.mockResolvedValueOnce({ serial: 1, value: 18 });
+				push(250, 84);
 				await new Promise(setImmediate);
 				expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([20, 21, 18]);
 			},

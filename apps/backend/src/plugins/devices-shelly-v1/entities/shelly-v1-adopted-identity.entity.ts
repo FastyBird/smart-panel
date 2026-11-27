@@ -13,4 +13,7 @@ export class ShellyV1AdoptedIdentityEntity {
 
 	@Column('varchar')
 	mac: string;
+
+	@Column({ type: 'varchar', nullable: true })
+	verifiedHost: string | null;
 }

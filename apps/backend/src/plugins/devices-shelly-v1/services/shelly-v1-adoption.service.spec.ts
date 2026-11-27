@@ -1,9 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import { AdoptDeviceDto } from '../dto/adopt-devices.dto';
+import { CreateShellyV1DeviceDto } from '../dto/create-device.dto';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 
 import { ShellyV1AdoptedIdentityService } from './shelly-v1-adopted-identity.service';
@@ -13,7 +15,11 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 describe('ShellyV1AdoptionService', () => {
 	let module: TestingModule | undefined;
 	let service: ShellyV1AdoptionService;
-	let devicesService: { findOneBy: jest.Mock; create: jest.Mock; update: jest.Mock };
+	let devicesService: {
+		findOneBy: jest.Mock;
+		create: jest.Mock<Promise<ShellyV1DeviceEntity>, [CreateShellyV1DeviceDto]>;
+		update: jest.Mock;
+	};
 	let adoptMac: jest.Mock;
 	let getDeviceInfo: jest.Mock;
 
@@ -30,7 +36,9 @@ describe('ShellyV1AdoptionService', () => {
 	beforeEach(async () => {
 		devicesService = {
 			findOneBy: jest.fn().mockResolvedValue(null),
-			create: jest.fn().mockImplementation(() => Promise.resolve({ id: 'new-device' } as ShellyV1DeviceEntity)),
+			create: jest
+				.fn<Promise<ShellyV1DeviceEntity>, [CreateShellyV1DeviceDto]>()
+				.mockResolvedValue(Object.assign(new ShellyV1DeviceEntity(), { id: 'new-device' })),
 			update: jest.fn().mockImplementation(() => Promise.resolve({ id: 'existing' } as ShellyV1DeviceEntity)),
 		};
 
@@ -39,8 +47,12 @@ describe('ShellyV1AdoptionService', () => {
 		module = await Test.createTestingModule({
 			providers: [
 				ShellyV1AdoptionService,
+				DeviceProvisionQueueService,
 				{ provide: DevicesService, useValue: devicesService },
-				{ provide: ShellyV1AdoptedIdentityService, useValue: { adopt: adoptMac } },
+				{
+					provide: ShellyV1AdoptedIdentityService,
+					useValue: { adopt: adoptMac, createDevice: (dto: CreateShellyV1DeviceDto) => devicesService.create(dto) },
+				},
 				{ provide: ShellyV1HttpClientService, useValue: { getDeviceInfo } },
 			],
 		}).compile();
@@ -60,7 +72,7 @@ describe('ShellyV1AdoptionService', () => {
 			getDeviceInfo.mockResolvedValue({ mac: 'aabbccddeeff' });
 			adoptMac.mockResolvedValue(matches ? 'AABBCCDDEEFF' : '112233DDEEFF');
 			const [result] = await service.adopt([chosen]);
-			expect(adoptMac).toHaveBeenCalledWith('legacy', 'DDEEFF', 'AABBCCDDEEFF');
+			expect(adoptMac).toHaveBeenCalledWith('legacy', 'DDEEFF', 'AABBCCDDEEFF', chosen.hostname);
 			expect(result.status).toBe(matches ? 'updated' : 'failed');
 			expect(devicesService.update).toHaveBeenCalledTimes(matches ? 1 : 0);
 		},

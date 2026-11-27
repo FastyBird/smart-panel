@@ -10,13 +10,18 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { DEVICES_SHELLY_V1_TYPE, PropertyBinding } from '../devices-shelly-v1.constants';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
-import { ShellyDevice, ShellyTemperatureReport } from '../interfaces/shellies.interface';
-import { ShellyStatusResponse } from '../interfaces/shelly-http.interface';
+import { RegisteredDevice, ShellyDevice, ShellyTemperatureReport } from '../interfaces/shellies.interface';
+import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import { readShellyRelayStatus } from '../lib/shellies';
 import { findShellyV1Descriptor, getShellyV1Bindings } from '../utils/descriptor.utils';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
-import { ShellyV1AdoptedIdentityService, shellyV1Address } from './shelly-v1-adopted-identity.service';
+import {
+	ShellyV1AdoptedIdentityService,
+	shellyV1Address,
+	shellyV1ReportedMac,
+} from './shelly-v1-adopted-identity.service';
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 type Metadata = { id?: string; type?: string; channel?: string | Metadata; device?: string | Metadata };
 type PendingRefresh = { next?: ShellyV1DeviceEntity; completion: Promise<boolean> };
@@ -24,6 +29,8 @@ type PendingRefresh = { next?: ShellyV1DeviceEntity; completion: Promise<boolean
 type StatusObservation = {
 	device: ShellyV1DeviceEntity;
 	peer: ShellyDevice;
+	registration: RegisteredDevice;
+	host: string;
 	bindings: PropertyBinding[];
 	isCurrent: () => boolean;
 	isBindingCurrent: (channelId: string, propertyId: string) => boolean;
@@ -38,6 +45,7 @@ export class ShellyV1PropertyReportsService {
 	private unknownChange = 0;
 	private readonly changed = new Map<string, number>();
 	private readonly pending = new Map<string, PendingRefresh>();
+	private readonly temperatureProbes = new WeakMap<RegisteredDevice, Promise<ShellyInfoResponse | null>>();
 
 	constructor(
 		private readonly adapter: ShelliesAdapterService,
@@ -45,6 +53,7 @@ export class ShellyV1PropertyReportsService {
 		private readonly channels: ChannelsService,
 		private readonly properties: ChannelsPropertiesService,
 		private readonly identities: ShellyV1AdoptedIdentityService,
+		private readonly http: ShellyV1HttpClientService,
 	) {}
 
 	@OnEvent(EventType.DEVICE_UPDATED)
@@ -92,7 +101,8 @@ export class ShellyV1PropertyReportsService {
 		const registration = this.adapter.getRegisteredDevice(device.identifier);
 		const peer = registration && this.adapter.getDevice(registration.type, registration.id);
 		const descriptor = peer && findShellyV1Descriptor(peer.type);
-		if (!device.enabled || !registration?.enabled || !peer?.online || !descriptor) return null;
+		if (!device.enabled || !registration?.enabled || !peer?.online || !descriptor || registration.host !== peer.host)
+			return null;
 		const bindings = getShellyV1Bindings(descriptor, peer).filter((binding) => this.supports(binding));
 		if (!bindings.length) return null;
 		const host = peer.host;
@@ -111,6 +121,8 @@ export class ShellyV1PropertyReportsService {
 		return {
 			device,
 			peer,
+			registration,
+			host,
 			bindings,
 			isCurrent,
 			isBindingCurrent: (channelId, propertyId) => unchanged('channel', channelId) && unchanged('property', propertyId),
@@ -214,7 +226,38 @@ export class ShellyV1PropertyReportsService {
 			this.temperatureOrigins.set(report, origin);
 		}
 		if (!origin.source.isCurrent() || !report.isLatest() || origin.mappedIsCurrent?.() === false) return false;
+		const address = shellyV1Address(report.deviceId);
+		if (
+			!address ||
+			address !== shellyV1Address(origin.source.peer.id) ||
+			address !== shellyV1Address(origin.source.device.identifier)
+		)
+			return false;
+		if (address.length === 6 && !(await this.verifyTemperatureHost(origin.source, address))) return false;
+		if (!origin.source.isCurrent() || !report.isLatest()) return false;
 		return this.reportBinding(origin.source, origin.binding, report.value, report.receivedAt, undefined, report);
+	}
+
+	private async verifyTemperatureHost(source: StatusObservation, address: string): Promise<boolean> {
+		const { device, registration, host, isCurrent } = source;
+		const pin = await this.identities.findPin(device.id);
+		if (!isCurrent()) return false;
+		// A legacy installation may keep using its configured sensor until explicitly adopted.
+		if (!pin) return !!host && device.hostname === host;
+		if (!/^[0-9A-F]{12}$/.test(pin.mac) || !pin.mac.endsWith(address)) return false;
+		if (pin.verifiedHost === host) return true;
+
+		let probe = this.temperatureProbes.get(registration);
+		if (probe === undefined) {
+			probe = this.http
+				.getDeviceInfo(host)
+				.catch((): null => null)
+				.finally(() => this.temperatureProbes.delete(registration));
+			this.temperatureProbes.set(registration, probe);
+		}
+		const reported = shellyV1ReportedMac(address, registration.type, await probe);
+		if (reported !== pin.mac || !isCurrent()) return false;
+		return this.identities.confirmHost(device.id, pin.mac, host, pin.verifiedHost);
 	}
 
 	async publish(
