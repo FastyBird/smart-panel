@@ -651,20 +651,27 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			if (missingDevices.size) {
 				const devices = await this.homeAssistantHttpService.getDiscoveredDevices(signal);
 				const reportedDevices = new Set(devices.map((device) => device.id));
+				const reportedEntities = new Set<string>();
 				for (const remote of devices) {
 					const adopted = bySource.get(remote.id);
-					if (!adopted) continue;
 					for (const id of remote.entities) {
 						if (!isHaEntityId(id)) continue;
+						reportedEntities.add(id);
+						if (!adopted) continue;
 						routes.set(id, adopted);
 						missingDevices.delete(remote.id);
 					}
 				}
 				// One incomplete inventory can omit a device that an earlier inventory resolved.
-				// Keep its known entities only while the original local adoption still owns them.
+				// Restore its cached route only if the inventory also omits the entity itself.
 				for (const [id, cached] of this.entityDevices) {
 					const adopted = bySource.get(cached.haDeviceId);
-					if (adopted?.id === cached.id && !reportedDevices.has(cached.haDeviceId) && !routes.has(id))
+					if (
+						adopted?.id === cached.id &&
+						!reportedDevices.has(cached.haDeviceId) &&
+						!reportedEntities.has(id) &&
+						!routes.has(id)
+					)
 						routes.set(id, adopted);
 				}
 			}
