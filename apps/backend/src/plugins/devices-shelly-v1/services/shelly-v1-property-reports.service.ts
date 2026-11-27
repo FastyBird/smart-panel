@@ -7,7 +7,12 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
-import { DEVICES_SHELLY_V1_TYPE, PropertyBinding } from '../devices-shelly-v1.constants';
+import {
+	DEVICES_SHELLY_V1_TYPE,
+	PropertyBinding,
+	SHELLY_V1_CHANNEL_IDENTIFIERS,
+	SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS,
+} from '../devices-shelly-v1.constants';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 import { ShellyDevice, ShellyTemperatureReport } from '../interfaces/shellies.interface';
 import { ShellyStatusResponse } from '../interfaces/shelly-http.interface';
@@ -136,15 +141,28 @@ export class ShellyV1PropertyReportsService {
 	): Promise<void> {
 		const mac = status?.mac?.toUpperCase();
 		const id = source.peer.id.split('-').at(-1)?.toUpperCase();
-		if (
-			!mac ||
-			!/^[0-9A-F]{12}$/.test(mac) ||
-			!id ||
-			!/^(?:[0-9A-F]{6}|[0-9A-F]{12})$/.test(id) ||
-			!mac.endsWith(id) ||
-			!source.isCurrent()
-		)
-			return;
+		if (!mac || !/^[0-9A-F]{12}$/.test(mac) || !id || !source.isCurrent()) return;
+		if (id !== mac) {
+			// Older CoIoT identities may contain only the last three bytes. The original
+			// adopted serial number identifies the hardware behind a reused IP address.
+			if (!/^[0-9A-F]{6}$/.test(id) || !mac.endsWith(id)) return;
+			const info = await this.channels.findOneBy(
+				'identifier',
+				SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
+				source.device.id,
+				DEVICES_SHELLY_V1_TYPE,
+			);
+			const serial =
+				info &&
+				(await this.properties.findOneBy(
+					'identifier',
+					SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
+					info.id,
+					DEVICES_SHELLY_V1_TYPE,
+				));
+			const expected = serial?.value?.value;
+			if (typeof expected !== 'string' || expected.toUpperCase() !== mac || !source.isCurrent()) return;
+		}
 		for (const binding of source.bindings) {
 			if (
 				target &&
