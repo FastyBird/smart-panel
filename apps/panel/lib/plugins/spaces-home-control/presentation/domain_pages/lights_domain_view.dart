@@ -1925,8 +1925,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// The hero's preset buttons for [mode]: Off and four levels for
-  /// brightness, warm to cool for colour temperature, named colours for hue.
-  /// An on/off-only role gets Off and On.
+  /// brightness, Off and warm to cool for colour temperature, Off and named
+  /// colours for hue. Every property leads with Off, and a preset on an off
+  /// role turns it on first, so the role's power is one tap away whichever
+  /// property the hero shows. An on/off-only role gets Off and On.
   List<HeroButtonData> _heroButtons(
     LightingRoleData roleData,
     _LightHeroState state,
@@ -1938,10 +1940,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       _toggleRoleLights(roleData, on);
     }
 
-    void set(LightHeroCapability m, double v) {
-      HapticFeedback.selectionClick();
-      _onHeroValueChanged(m, v, roleData.role, state);
-    }
+    // An off role turns on, then takes the value.
+    VoidCallback preset(LightHeroCapability m, double v) => () async {
+          if (!state.isOn) {
+            await _toggleRoleLights(roleData, true);
+            if (!mounted) return;
+          }
+          HapticFeedback.selectionClick();
+          _onHeroValueChanged(m, v, roleData.role, state);
+        };
 
     final off = HeroButtonData(
       label: localizations.light_state_off,
@@ -1961,18 +1968,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ];
       case LightHeroCapability.brightness:
         HeroButtonData level(int v, {bool optional = false}) => HeroButtonData(
-          label: '$v%',
-          optional: optional,
-          selected: state.isOn && state.brightness.round() == v,
-          // An off role turns on, then takes the level.
-          onTap: () async {
-            if (!state.isOn) {
-              await _toggleRoleLights(roleData, true);
-              if (!mounted) return;
-            }
-            set(LightHeroCapability.brightness, v.toDouble());
-          },
-        );
+              label: '$v%',
+              optional: optional,
+              selected: state.isOn && state.brightness.round() == v,
+              onTap: preset(LightHeroCapability.brightness, v.toDouble()),
+            );
 
         return [
           off,
@@ -1984,12 +1984,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       case LightHeroCapability.colorTemp:
         final mid = (state.minColorTemp + state.maxColorTemp) / 2;
         HeroButtonData temp(String label, double v) => HeroButtonData(
-          label: label,
-          selected: state.isOn && (state.colorTemp - v).abs() < 100,
-          onTap: state.isOn ? () => set(LightHeroCapability.colorTemp, v) : null,
-        );
+              label: label,
+              selected: state.isOn && (state.colorTemp - v).abs() < 100,
+              onTap: preset(LightHeroCapability.colorTemp, v),
+            );
 
         return [
+          off,
           temp(localizations.light_preset_warm, state.minColorTemp),
           temp(localizations.light_preset_neutral, mid),
           temp(localizations.light_preset_cool, state.maxColorTemp),
@@ -2001,11 +2002,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             label: label,
             optional: optional,
             selected: state.isOn && math.min(distance, 360 - distance) < 15,
-            onTap: state.isOn ? () => set(LightHeroCapability.hue, v) : null,
+            onTap: preset(LightHeroCapability.hue, v),
           );
         }
 
         return [
+          off,
           colour(localizations.light_color_red, 10),
           colour(localizations.light_color_orange, 30, optional: true),
           colour(localizations.light_color_green, 120),
@@ -2014,29 +2016,29 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ];
       case LightHeroCapability.saturation:
         HeroButtonData sat(int v, {bool optional = false}) => HeroButtonData(
-          label: '$v%',
-          optional: optional,
-          selected: state.isOn && state.saturation.round() == v,
-          onTap: state.isOn
-              ? () => set(LightHeroCapability.saturation, v.toDouble())
-              : null,
-        );
-
-        return [sat(25, optional: true), sat(50), sat(75, optional: true), sat(100)];
-      case LightHeroCapability.whiteChannel:
-        HeroButtonData white(String label, int v) => HeroButtonData(
-          label: label,
-          selected: state.isOn && state.whiteChannel.round() == v,
-          onTap: state.isOn
-              ? () => set(LightHeroCapability.whiteChannel, v.toDouble())
-              : null,
-        );
+              label: '$v%',
+              optional: optional,
+              selected: state.isOn && state.saturation.round() == v,
+              onTap: preset(LightHeroCapability.saturation, v.toDouble()),
+            );
 
         return [
-          white(localizations.light_state_off, 0),
-          white('50%', 50),
-          white('100%', 100),
+          off,
+          sat(25, optional: true),
+          sat(50),
+          sat(75, optional: true),
+          sat(100),
         ];
+      case LightHeroCapability.whiteChannel:
+        // The white channel's own 0 is "0%", not Off: Off is the role's
+        // power.
+        HeroButtonData white(int v) => HeroButtonData(
+              label: '$v%',
+              selected: state.isOn && state.whiteChannel.round() == v,
+              onTap: preset(LightHeroCapability.whiteChannel, v.toDouble()),
+            );
+
+        return [off, white(0), white(50), white(100)];
     }
   }
 

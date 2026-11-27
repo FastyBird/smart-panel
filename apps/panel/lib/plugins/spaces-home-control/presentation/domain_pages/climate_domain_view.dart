@@ -78,6 +78,7 @@ import 'package:fastybird_smart_panel/core/widgets/app_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/list_row.dart';
 import 'package:fastybird_smart_panel/core/widgets/outcome_indicator.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/domain_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
@@ -1857,8 +1858,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // HEADER
   // --------------------------------------------------------------------------
   // Title "Climate", the live-state line, the Climate icon tile; trailing: the
-  // climate devices (more than one) and the auxiliary devices; the mode chip
-  // in landscape.
+  // sensors (on the square, which has no room for their tiles), the climate
+  // devices (more than one) and the auxiliary devices; the mode chip in
+  // landscape.
 
   Widget _buildHeader(
     BuildContext context, {
@@ -1871,8 +1873,19 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Auxiliary-only rooms list their devices in the hero.
     final showAuxiliaryButton =
         loaded && hasThermostat && _state.auxiliaryDevices.isNotEmpty;
+    // The square drops the sensor tiles (DomainViewLayout keeps the hero
+    // alone), so their readings move behind a header button.
+    final showSensorsButton =
+        loaded && _screenService.isSquare && _state.sensors.isNotEmpty;
 
     final actions = <Widget>[
+      if (showSensorsButton)
+        HeaderIconButton(
+          key: const ValueKey('climate-sensors-button'),
+          icon: MdiIcons.eyeSettings,
+          semanticLabel: localizations.device_sensors,
+          onTap: _showSensorsSheet,
+        ),
       if (showAuxiliaryButton)
         HeaderIconButton(
           key: const ValueKey('climate-auxiliary-button'),
@@ -2186,6 +2199,54 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             isDeviceOnline: sensor.isOnline,
           ),
         ));
+  }
+
+  /// The room's sensors in a sheet (a drawer in landscape): the square's way
+  /// to the readings its layout has no room to tile. A row opens the
+  /// sensor's detail.
+  void _showSensorsSheet() {
+    final sensors = _state.sensors;
+    if (sensors.isEmpty) return;
+    final localizations = AppLocalizations.of(context)!;
+
+    Widget row(BuildContext sheetContext, int index) {
+      final sensor = sensors[index];
+      final open = _sensorTapCallback(sensor);
+
+      return AppListRow(
+        key: ValueKey('climate-sensors-row-${sensor.id}'),
+        icon: sensor.icon,
+        title: _translateSensorLabel(localizations, sensor),
+        subtitle: sensor.isOnline
+            ? sensor.value
+            : localizations.device_status_offline,
+        trailing: open != null ? Icon(MdiIcons.chevronRight) : null,
+        onTap: open == null
+            ? null
+            : () {
+                Navigator.pop(sheetContext);
+                open();
+              },
+      );
+    }
+
+    if (_screenService.isLandscape) {
+      DeckItemDrawer.showItemDrawer(
+        context,
+        title: localizations.device_sensors,
+        icon: MdiIcons.eyeSettings,
+        itemCount: sensors.length,
+        itemBuilder: row,
+      );
+    } else {
+      DeckItemSheet.showItemSheet(
+        context,
+        title: localizations.device_sensors,
+        icon: MdiIcons.eyeSettings,
+        itemCount: sensors.length,
+        itemBuilder: row,
+      );
+    }
   }
 
   /// Localized label for sensor type (e.g. temperature, humidity) or [sensor.label].

@@ -10,6 +10,8 @@ import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_noti
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/light_targets/light_target.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/lights_domain_view.dart';
@@ -23,6 +25,10 @@ import 'package:provider/provider.dart';
 class _Spaces extends Mock implements SpacesService {}
 
 class _Devices extends Mock implements DevicesService {}
+
+class _Light extends Mock implements LightingDeviceView {}
+
+class _Channel extends Mock implements LightChannelView {}
 
 const _room = '00000000-0000-4000-8000-000000000001';
 const _item = DomainViewItem(
@@ -234,6 +240,97 @@ void main() {
       findsOneWidget,
     );
     await unmount(tester);
+  });
+
+  group('every light property keeps the role power', () {
+    /// Both roles' lights dim and take a colour temperature.
+    void tunableWhite() {
+      for (final (n, on) in [(1, true), (2, false)]) {
+        final device = _Light();
+        final channel = _Channel();
+        when(
+          () => device.id,
+        ).thenReturn('00000000-0000-4000-8000-00000000001$n');
+        when(() => device.name).thenReturn('Light $n');
+        when(() => device.isOnline).thenReturn(true);
+        when(() => device.lightChannels).thenReturn([channel]);
+        when(
+          () => channel.id,
+        ).thenReturn('00000000-0000-4000-8000-00000000002$n');
+        when(() => channel.hasBrightness).thenReturn(true);
+        when(() => channel.hasTemperature).thenReturn(true);
+        when(() => channel.temperatureProp).thenReturn(null);
+        when(() => channel.hasColor).thenReturn(false);
+        when(() => channel.hasHue).thenReturn(false);
+        when(() => channel.hasSaturation).thenReturn(false);
+        when(() => channel.hasColorWhite).thenReturn(false);
+        when(() => channel.on).thenReturn(on);
+        when(() => channel.brightness).thenReturn(on ? 50 : 0);
+        when(
+          () => devices.getDevice('00000000-0000-4000-8000-00000000001$n'),
+        ).thenReturn(device);
+      }
+      when(() => spaces.turnRoleOn(_room, any())).thenAnswer((_) async => null);
+      when(
+        () => spaces.turnRoleOff(_room, any()),
+      ).thenAnswer((_) async => null);
+    }
+
+    Future<void> showTemperature(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('lights-hero-property')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Temp').last);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('lights-hero')),
+          matching: find.text('Warm'),
+        ),
+        findsOneWidget,
+      );
+    }
+
+    setUpAll(() => registerFallbackValue(LightingStateRole.main));
+
+    testWidgets('Off turns an on role off from colour temperature', (
+      tester,
+    ) async {
+      tunableWhite();
+      await mountAt(tester, const Size(584, 360));
+      await showTemperature(tester);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('lights-hero')),
+          matching: find.text('Off'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      verify(() => spaces.turnRoleOff(_room, LightingStateRole.main)).called(1);
+      await unmount(tester);
+    });
+
+    testWidgets('a colour temperature preset turns an off role on', (
+      tester,
+    ) async {
+      tunableWhite();
+      await mountAt(tester, const Size(584, 360));
+      await tester.tap(find.byKey(const ValueKey('lights-role-ambient')));
+      await tester.pumpAndSettle();
+      await showTemperature(tester);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('lights-hero')),
+          matching: find.text('Warm'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      verify(
+        () => spaces.turnRoleOn(_room, LightingStateRole.ambient),
+      ).called(1);
+      await unmount(tester);
+    });
   });
 
   testWidgets('the mode chip and popup name the domain in its colour', (

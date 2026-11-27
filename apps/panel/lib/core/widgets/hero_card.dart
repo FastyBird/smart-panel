@@ -276,6 +276,12 @@ class _HeroSlots extends StatelessWidget {
     final neutrals = Theme.of(context).neutrals;
     final gap = AppSpacings.scale(metrics.gap);
     final wantsBadge = badge != null && showBadge;
+    // A tappable feedback line (the light property chooser) is a control,
+    // not a caption: it keeps its place in every layout below.
+    final feedbackAction = switch (feedback) {
+      HeroFeedback(:final onTap) => onTap != null,
+      _ => false,
+    };
     final valueColor = (dimmed || offline)
         ? neutrals.textSecondary
         : neutrals.textPrimary;
@@ -288,7 +294,10 @@ class _HeroSlots extends StatelessWidget {
             (offline ? OfflineNote.height + metrics.gap : 0) +
             (badge ? metrics.badgeHeight + metrics.gap : 0) +
             (slider != null ? metrics.sliderHeight + metrics.gap : 0) +
-            (buttons != null ? metrics.buttonsHeight + metrics.gap : 0);
+            (buttons != null ? metrics.buttonsHeight + metrics.gap : 0) +
+            (feedbackAction
+                ? HeroCardMetrics.feedbackTapHeight + metrics.gap
+                : 0);
         final height = constraints.hasBoundedHeight
             ? AppSpacings.unscale(constraints.maxHeight)
             : double.infinity;
@@ -304,8 +313,9 @@ class _HeroSlots extends StatelessWidget {
         final inline = hasBadge && available < 50;
         // Under the smallest numeral the value takes the inline size, as it
         // does beside the badge (spec §4, "Physical floors": the square's
-        // known miss), and the feedback line goes. Not even that fits: keep
-        // every control reachable and let the card scroll.
+        // known miss), and a plain feedback line goes (a tappable one is
+        // counted with the controls). Not even that fits: keep every control
+        // reachable and let the card scroll.
         final small =
             !inline &&
             available < HeroCardMetrics.numeralMin &&
@@ -316,7 +326,10 @@ class _HeroSlots extends StatelessWidget {
             : small
             ? HeroCardMetrics.inlineValueSize
             : available.isFinite
-            ? metrics.numeralFor(available, hasFeedback: feedback != null)
+            ? metrics.numeralFor(
+                available,
+                hasFeedback: feedback != null && !feedbackAction,
+              )
             : metrics.numeralMax;
         // Cramped (inside its own scroll view) or given no height limit at
         // all (inside a caller's scroll view): the hero takes its content's
@@ -345,7 +358,8 @@ class _HeroSlots extends StatelessWidget {
                 ),
               ),
             ),
-            if (feedback != null && !cramped && !small) feedback!,
+            if (feedback != null && (feedbackAction || (!cramped && !small)))
+              feedback!,
           ],
         );
 
@@ -381,9 +395,10 @@ class _HeroSlots extends StatelessWidget {
                   ],
                 ),
               ),
-            if (inline)
-              const Spacer()
-            else if (shrink)
+            if (inline) ...[
+              const Spacer(),
+              if (feedbackAction) feedback!,
+            ] else if (shrink)
               bigValue
             else
               Expanded(child: bigValue),

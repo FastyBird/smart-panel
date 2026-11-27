@@ -87,6 +87,7 @@ Widget _hero(
   bool offline = false,
   bool dimmed = false,
   Orientation orientation = Orientation.landscape,
+  VoidCallback? onFeedbackTap,
 }) =>
     SizedBox(
       width: 600,
@@ -108,7 +109,7 @@ Widget _hero(
                 sizeClass: sizeClass,
               )
             : null,
-        feedback: HeroFeedback(text: 'Brightness · Main', sizeClass: sizeClass),
+        feedback: HeroFeedback(text: 'Brightness · Main', onTap: onFeedbackTap, sizeClass: sizeClass),
         slider: const SizedBox.expand(key: ValueKey('slider')),
         buttons: const SizedBox.expand(key: ValueKey('buttons')),
       ),
@@ -248,6 +249,32 @@ void main() {
       expect(find.text('Brightness · Main'), findsNothing);
       expect(tester.takeException(), isNull);
     });
+
+    for (final (sizeClass, orientation) in [
+      (ScreenSizeClass.compact, Orientation.landscape),
+      (ScreenSizeClass.regular, Orientation.landscape),
+      (ScreenSizeClass.compact, Orientation.portrait),
+    ]) {
+      testWidgets('keeps a tappable feedback line reachable at every height at ${sizeClass.name} ${orientation.name}',
+          (tester) async {
+        // The light property chooser lives on this line: the inline, small
+        // and scrolling layouts must not drop it like a plain caption.
+        for (var height = 120.0; height <= 300; height += 6) {
+          var taps = 0;
+          await _pump(
+            tester,
+            _hero(sizeClass, height: height, orientation: orientation, onFeedbackTap: () => taps++),
+          );
+          expect(tester.takeException(), isNull, reason: 'at $height');
+          final line = find.text('Brightness · Main');
+          expect(line, findsOneWidget, reason: 'at $height');
+          await tester.ensureVisible(line);
+          await tester.pumpAndSettle();
+          await tester.tap(line);
+          expect(taps, 1, reason: 'at $height');
+        }
+      });
+    }
 
     testWidgets('drops the role badge in Compact landscape only', (tester) async {
       await _pump(tester, _hero(ScreenSizeClass.compact, height: 320));
