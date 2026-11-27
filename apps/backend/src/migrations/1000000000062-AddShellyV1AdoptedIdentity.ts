@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddShellyV1AdoptedIdentity1000000000062 implements MigrationInterface {
+	name = 'AddShellyV1AdoptedIdentity1000000000062';
+
 	async up(runner: QueryRunner): Promise<void> {
 		// Historical serial_number values were overwritten during discovery and cannot establish identity.
 		await runner.query(`CREATE TABLE "devices_shelly_v1_adopted_identities" (
