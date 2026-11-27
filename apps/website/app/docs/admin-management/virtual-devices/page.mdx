@@ -58,6 +58,10 @@ Older Shelly Gen1 relays can have a six-character device ID. If the thermostat c
 open Shelly Gen1 discovery, verify the relay's address, and select the registered device for adoption again. This
 records its full hardware MAC and keeps its existing device and thermostat bindings.
 
+If an adopted Shelly Gen1 sensor with a six-character ID changes network address, Smart Panel checks its full hardware MAC
+and model before using temperature readings from the new address. A battery sensor can then send each reading and
+go back to sleep. An adopted short-ID relay also waits for address verification before accepting a thermostat command.
+
 ## Room readings and input freshness
 
 Room climate readings count an aggregate's physical sources once. To include a sensor-role aggregate, use the room's

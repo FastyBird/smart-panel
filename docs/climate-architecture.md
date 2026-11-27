@@ -74,6 +74,10 @@ state, the first usable value establishes a display baseline. A subsequent indep
 
 Shelly Gen1 verifies a relay's full MAC on status readback. For an existing six-character ID, adoption through
 the Shelly discovery wizard records the full MAC against the existing device row. Rediscovery preserves this pin.
+For a short-ID temperature sensor, the plugin also remembers the address where it verified that MAC and model.
+A change of address requires a fresh identity check before a CoIoT temperature or sensor fault can affect the
+controller. Subsequent samples at the verified address retain their original receipt times and require no HTTP read.
+The same verified address determines where the plugin can send a short-ID relay command.
 
 ### Extending another plugin's device bindings
 
