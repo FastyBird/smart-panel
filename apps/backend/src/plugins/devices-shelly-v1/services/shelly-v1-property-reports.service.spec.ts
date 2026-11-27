@@ -7,15 +7,22 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { currentSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
-import { ShellyStatusResponse } from '../interfaces/shelly-http.interface';
+import { ShellyTemperatureReport } from '../interfaces/shellies.interface';
+import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import * as shelly from '../lib/shellies';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1AdoptedIdentityService } from './shelly-v1-adopted-identity.service';
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 import { ShellyV1PropertyReportsService } from './shelly-v1-property-reports.service';
 
 function setup(temperature = false, id = 'AABBCCDDEEFF') {
-	const device = Object.assign(new ShellyV1DeviceEntity(), { id: 'panel-device', identifier: id, enabled: true });
+	const device = Object.assign(new ShellyV1DeviceEntity(), {
+		id: 'panel-device',
+		identifier: id,
+		enabled: true,
+		hostname: '192.168.1.5',
+	});
 	const registration = { id, type: temperature ? 'SHHT-1' : 'SHSW-1', host: '192.168.1.5', enabled: true };
 	const peer = { ...registration, online: true, relay0: true, getStatus: jest.fn<Promise<ShellyStatusResponse>, []>() };
 	const channel = { id: 'channel', identifier: temperature ? 'temperature_0' : 'relay_0' };
@@ -36,6 +43,19 @@ function setup(temperature = false, id = 'AABBCCDDEEFF') {
 	const findChannel = jest.fn(() => Promise.resolve(channel));
 	const findDevice = jest.fn(() => Promise.resolve(device));
 	const expected = jest.fn(() => Promise.resolve<string | null>('AABBCCDDEEFF'));
+	const pin: { mac: string; verifiedHost: string | null } = { mac: 'AABBCCDDEEFF', verifiedHost: registration.host };
+	const findPin = jest.fn(() => Promise.resolve<{ mac: string; verifiedHost: string | null } | null>({ ...pin }));
+	const confirmHost = jest.fn((_id: string, mac: string, host: string, previous: string | null) => {
+		if (mac !== pin.mac || previous !== pin.verifiedHost) return Promise.resolve(false);
+		pin.verifiedHost = host;
+		return Promise.resolve(true);
+	});
+	const info: ShellyInfoResponse = { type: registration.type, mac: pin.mac, auth: false, fw: '1.14', longid: 0 };
+	const getDeviceInfo = jest.fn((_host: string) => Promise.resolve(info));
+	const move = (host: string) => {
+		peer.host = host;
+		adapter.getRegisteredDevice.mockReturnValue({ ...registration, host });
+	};
 	jest.spyOn(shelly, 'readShellyRelayStatus').mockImplementation(async (source, dispatching) => {
 		dispatching();
 		try {
@@ -52,7 +72,8 @@ function setup(temperature = false, id = 'AABBCCDDEEFF') {
 			findOneBy: () => Promise.resolve(property),
 			reportSample,
 		} as unknown as ChannelsPropertiesService,
-		{ expected } as unknown as ShellyV1AdoptedIdentityService,
+		{ expected, findPin, confirmHost } as unknown as ShellyV1AdoptedIdentityService,
+		{ getDeviceInfo } as unknown as ShellyV1HttpClientService,
 	);
 	let boundary = -1;
 	const target = {
@@ -70,6 +91,12 @@ function setup(temperature = false, id = 'AABBCCDDEEFF') {
 		findChannel,
 		findDevice,
 		expected,
+		pin,
+		findPin,
+		confirmHost,
+		info,
+		getDeviceInfo,
+		move,
 		registration,
 		peer,
 		target,
@@ -77,6 +104,14 @@ function setup(temperature = false, id = 'AABBCCDDEEFF') {
 		service,
 		boundary: () => boundary,
 	};
+}
+
+function temperatureReport(
+	deviceId: string,
+	ingressSequence: number,
+	value: number | null = 20,
+): ShellyTemperatureReport {
+	return { deviceId, value, receivedAt: new Date(), ingressSequence, isCurrent: () => true, isLatest: () => true };
 }
 
 describe('Shelly Gen1 physical property reports', () => {
@@ -240,6 +275,98 @@ describe('Shelly Gen1 physical property reports', () => {
 		release();
 		await admission;
 		expect(f.reportSample).not.toHaveBeenCalled();
+	});
+
+	it('reads a sleeping short-ID sensor passively at its confirmed address, including after a failed move', async () => {
+		const f = setup(true, 'DDEEFF');
+		await f.service.temperature(temperatureReport(f.id, 1));
+		await f.service.temperature(temperatureReport(f.id, 2));
+		expect(f.getDeviceInfo).not.toHaveBeenCalled();
+		expect(f.reportSample).toHaveBeenCalledTimes(2);
+		const evidence = f.reportSample.mock.calls[1][2];
+		f.move('192.168.1.6');
+		f.device.hostname = f.peer.host;
+		expect(evidence.sourceIsCurrent()).toBe(false);
+		f.getDeviceInfo
+			.mockResolvedValueOnce({ ...f.info, mac: '112233DDEEFF' })
+			.mockResolvedValueOnce({ ...f.info, type: 'SHSW-1' })
+			.mockRejectedValueOnce(new Error('sleeping'));
+		await f.service.temperature(temperatureReport(f.id, 3));
+		await f.service.temperature(temperatureReport(f.id, 4, null));
+		await f.service.temperature(temperatureReport(f.id, 5));
+		expect(f.getDeviceInfo.mock.calls).toEqual(Array(3).fill(['192.168.1.6']));
+		expect(f.confirmHost).not.toHaveBeenCalled();
+		expect(f.reportSample).toHaveBeenCalledTimes(2);
+		f.move(f.registration.host);
+		await f.service.temperature(temperatureReport(f.id, 6));
+		expect(f.reportSample).toHaveBeenCalledTimes(3);
+		expect(f.getDeviceInfo).toHaveBeenCalledTimes(3);
+	});
+
+	it.each([null, '192.168.1.5'])(
+		'verifies the hardware once when the last verified host was %s and preserves sample time',
+		async (previousHost) => {
+			const f = setup(true, 'DDEEFF');
+			f.pin.verifiedHost = previousHost;
+			f.move('192.168.1.6');
+			f.device.hostname = f.peer.host;
+			const report = temperatureReport(f.id, 9);
+			f.getDeviceInfo.mockRejectedValueOnce(new Error('sleeping'));
+			await expect(f.service.temperature(report)).resolves.toBe(false);
+			expect(f.reportSample).not.toHaveBeenCalled();
+			await f.service.temperature(report);
+			expect(f.confirmHost).toHaveBeenCalledWith(f.device.id, f.pin.mac, f.peer.host, previousHost);
+			expect(f.reportSample).toHaveBeenCalledWith(
+				'property',
+				expect.objectContaining({ value: 20 }),
+				expect.objectContaining({ receivedAt: report.receivedAt, sampledAt: report.receivedAt, ingressSequence: 9 }),
+			);
+			await f.service.temperature(temperatureReport(f.id, 10));
+			expect(f.reportSample).toHaveBeenCalledTimes(2);
+			expect(f.getDeviceInfo).toHaveBeenCalledTimes(2);
+		},
+	);
+
+	it('shares a pending identity read and discards it if registration changes before it completes', async () => {
+		const f = setup(true, 'DDEEFF');
+		f.move('192.168.1.6');
+		let finish: (info: ShellyInfoResponse) => void;
+		let started: () => void;
+		const probing = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		f.getDeviceInfo.mockImplementationOnce(() => {
+			started();
+			return new Promise((resolve) => {
+				finish = resolve;
+			});
+		});
+		const first = f.service.temperature(temperatureReport(f.id, 41));
+		const second = f.service.temperature(temperatureReport(f.id, 42));
+		await probing;
+		f.move('192.168.1.7');
+		finish(f.info);
+		expect(await Promise.all([first, second])).toEqual([false, false]);
+		expect(f.getDeviceInfo).toHaveBeenCalledTimes(1);
+		expect(f.confirmHost).not.toHaveBeenCalled();
+		expect(f.reportSample).not.toHaveBeenCalled();
+	});
+
+	it('keeps unpinned legacy sensors on their configured host and withholds input when verification loses its race', async () => {
+		const f = setup(true, 'DDEEFF');
+		f.findPin.mockResolvedValue(null);
+		await f.service.temperature(temperatureReport(f.id, 1));
+		f.move('192.168.1.6');
+		await f.service.temperature(temperatureReport(f.id, 2));
+		f.device.hostname = null;
+		await f.service.temperature(temperatureReport(f.id, 3));
+		expect(f.reportSample).toHaveBeenCalledTimes(1);
+		expect(f.getDeviceInfo).not.toHaveBeenCalled();
+		f.findPin.mockResolvedValue(f.pin);
+		f.confirmHost.mockResolvedValueOnce(false);
+		await f.service.temperature(temperatureReport(f.id, 4));
+		expect(f.reportSample).toHaveBeenCalledTimes(1);
+		expect(f.getDeviceInfo).toHaveBeenCalledWith('192.168.1.6');
 	});
 
 	it.each([21.75, null])(

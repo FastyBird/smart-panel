@@ -39,6 +39,11 @@ import { findShellyV1Descriptor } from '../utils/descriptor.utils';
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import {
+	ShellyV1AdoptedIdentityService,
+	shellyV1Address,
+	shellyV1ReportedMac,
+} from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 import { ShellyV1InputTrackerService } from './shelly-v1-input-tracker.service';
 import { ShellyV1PropertyReportsService } from './shelly-v1-property-reports.service';
@@ -77,6 +82,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly httpClient: ShellyV1HttpClientService,
 		private readonly reports: ShellyV1PropertyReportsService,
+		private readonly identities: ShellyV1AdoptedIdentityService,
 		@Optional() private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 		@Optional() private readonly inputTracker?: ShellyV1InputTrackerService,
 	) {
@@ -768,7 +774,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 
 	/**
 	 * Periodically update signal strength (RSSI) and firmware version for all devices
-	 * Runs every minute to keep device information up to date
+	 * Runs every five minutes to keep device information up to date.
 	 */
 	@Cron(CronExpression.EVERY_5_MINUTES)
 	private async updateDevicesSignalStrength(): Promise<void> {
@@ -791,52 +797,50 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 					continue;
 				}
 
-				// Skip offline devices — HTTP calls will time out and waste time
+				const host = registeredDevice.host;
 				const shellyDevice = this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id);
-
-				if (shellyDevice && !shellyDevice.online) {
-					continue;
-				}
+				const isCurrent = (): boolean =>
+					this.state === 'started' &&
+					this.shelliesAdapter.isRunning() &&
+					this.shelliesAdapter.getRegisteredDevice(registeredDevice.id) === registeredDevice &&
+					this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id) === shellyDevice &&
+					shellyDevice?.online === true &&
+					shellyDevice.id === registeredDevice.id &&
+					shellyDevice.type === registeredDevice.type &&
+					shellyDevice.host === host &&
+					registeredDevice.host === host;
+				if (!isCurrent()) continue;
 
 				try {
-					// Find the device in a database first to get credentials
 					const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
 						'identifier',
 						registeredDevice.id,
 						DEVICES_SHELLY_V1_TYPE,
 					);
 
-					if (!device) {
-						continue;
-					}
+					if (!device?.enabled || !isCurrent()) continue;
+					const info = await this.httpClient.getDeviceInfo(host);
+					const mac = shellyV1ReportedMac(device.identifier, registeredDevice.type, info);
+					if (!mac || !isCurrent()) continue;
+					const expected = await this.identities.expected(device.id, device.identifier);
+					// Legacy short identities without a full MAC can use their explicitly configured host.
+					const matches = expected
+						? expected === mac
+						: device.hostname === host && shellyV1Address(device.identifier)?.length === 6;
+					if (!matches || !isCurrent()) continue;
 
-					// Get credentials if the password is set
+					const password = device.password || undefined;
 					let username: string | undefined;
-					let password: string | undefined;
-
-					if (device.password) {
-						try {
-							const loginSettings = await this.httpClient.getLoginSettings(registeredDevice.host);
-							username = loginSettings.username || SHELLY_AUTH_USERNAME;
-							password = device.password;
-						} catch {
-							// Fallback to default username if login endpoint fails
-							username = SHELLY_AUTH_USERNAME;
-							password = device.password;
-						}
+					if (password) {
+						const login = await this.httpClient.getLoginSettings(host).catch((): null => null);
+						username = login?.username || SHELLY_AUTH_USERNAME;
 					}
-
-					// Fetch device info and status from HTTP API in parallel
-					const observation = this.reports.capture(device);
-					const [info, status] = await Promise.all([
-						this.httpClient.getDeviceInfo(registeredDevice.host),
-						this.httpClient
-							.getDeviceStatus(registeredDevice.host, undefined, username, password)
-							.then(async (status) => {
-								if (observation) await this.reports.publish(observation, status, new Date());
-								return status;
-							}),
-					]);
+					if (!isCurrent()) continue;
+					const observation = expected ? this.reports.capture(device) : null;
+					const status = await this.httpClient.getDeviceStatus(host, undefined, username, password);
+					if (!isCurrent() || typeof status?.mac !== 'string' || status.mac.toUpperCase() !== mac) continue;
+					if (observation) await this.reports.publish(observation, status, new Date());
+					if (!isCurrent()) continue;
 
 					// Get the device_information channel
 					const deviceInfoChannel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
@@ -846,7 +850,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 						DEVICES_SHELLY_V1_TYPE,
 					);
 
-					if (!deviceInfoChannel) {
+					if (!deviceInfoChannel || !isCurrent()) {
 						continue;
 					}
 
@@ -859,7 +863,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 							DEVICES_SHELLY_V1_TYPE,
 						);
 
-						if (linkQualityProperty) {
+						if (linkQualityProperty && isCurrent()) {
 							const quality = this.rssiToQuality(status.wifi_sta.rssi);
 
 							await this.channelsPropertiesService.update<
@@ -878,7 +882,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 					}
 
 					// Update firmware version
-					if (info.fw) {
+					if (info.fw && isCurrent()) {
 						const firmwareProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
 							'identifier',
 							SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_VERSION,
@@ -886,7 +890,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 							DEVICES_SHELLY_V1_TYPE,
 						);
 
-						if (firmwareProperty) {
+						if (firmwareProperty && isCurrent()) {
 							await this.channelsPropertiesService.update<
 								ShellyV1ChannelPropertyEntity,
 								UpdateShellyV1ChannelPropertyDto

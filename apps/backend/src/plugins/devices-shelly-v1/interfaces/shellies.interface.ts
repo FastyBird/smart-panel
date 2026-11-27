@@ -61,6 +61,7 @@ export interface ShelliesLibrary extends EventEmitter {
 
 	request: {
 		timeout: (timeout: number) => void;
+		redirects: (max: number) => void;
 	};
 
 	// Events emitted:

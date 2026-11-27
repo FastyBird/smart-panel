@@ -16,7 +16,7 @@ import {
 	ShellyDevice,
 	ShellyTemperatureReport,
 } from '../interfaces/shellies.interface';
-import shellies, { readShellyTemperature, subscribeShellyTemperatures } from '../lib/shellies';
+import shellies, { clearShellyCredentials, readShellyTemperature, subscribeShellyTemperatures } from '../lib/shellies';
 import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -117,6 +117,7 @@ export class ShelliesAdapterService {
 			this.shellies = shellies;
 
 			shellies.request.timeout(this.config.timeouts.requestTimeout * 1000);
+			shellies.request.redirects(0);
 			shellies.staleTimeout = this.config.timeouts.staleTimeout * 1000;
 
 			// Register event handlers
@@ -277,21 +278,25 @@ export class ShelliesAdapterService {
 		const device = this.devicesRegistry.get(deviceId);
 
 		if (device && device.enabled !== enabled) {
-			this.devicesRegistry.set(deviceId, { ...device, enabled });
+			this.renewRegistration(device, enabled);
 		}
+	}
+
+	/** A connection or enablement change revokes callbacks, but the same physical peer still owns its counter. */
+	private renewRegistration(device: RegisteredDevice, enabled = device.enabled): void {
+		const next = { ...device, enabled };
+		const session = this.temperatureSessions.get(device);
+		if (session) this.temperatureSessions.set(next, temperatureBaseline(session));
+		this.devicesRegistry.set(device.id, next);
 	}
 
 	/**
 	 * Set authentication credentials for a device
 	 */
-	setDeviceAuthCredentials(deviceType: string, deviceId: string, username: string, password: string): void {
-		const device = this.getDevice(deviceType, deviceId);
-
-		if (device && device.setAuthCredentials) {
-			device.setAuthCredentials(username, password);
-		} else if (!device) {
-			this.logger.warn(`Cannot set auth credentials - device not found: ${deviceId}`, { resource: deviceId });
-		}
+	setDeviceAuthCredentials(peer: ShellyDevice, host: string, username: string, password: string | null): void {
+		if (peer.host !== host || this.getDevice(peer.type, peer.id) !== peer) return;
+		clearShellyCredentials(peer);
+		if (password) peer.setAuthCredentials?.(username, password);
 	}
 
 	/**
@@ -356,12 +361,20 @@ export class ShelliesAdapterService {
 		oldValue: string | number | boolean | null,
 	): void {
 		const registered = this.devicesRegistry.get(device.id);
+		if (property === 'host') clearShellyCredentials(device);
 		if (
 			(property === 'host' || property === 'mode') &&
 			registered &&
 			this.getDevice(registered.type, registered.id) === device
 		) {
 			this.devicesRegistry.set(device.id, { ...registered, host: device.host });
+			if (property === 'host' && registered.enabled)
+				void this.callbacks.onDeviceDiscovered?.({
+					id: device.id,
+					type: device.type,
+					host: device.host,
+					online: device.online,
+				});
 		}
 		const normalizedEvent: NormalizedDeviceChangeEvent = {
 			id: device.id,
@@ -475,13 +488,7 @@ export class ShelliesAdapterService {
 	private handleDeviceOffline(device: ShellyDevice): void {
 		const registered = this.devicesRegistry.get(device.id);
 		if (registered && this.getDevice(registered.type, registered.id) === device) {
-			const next = { ...registered };
-			const previous = this.temperatureSessions.get(registered);
-			if (previous) {
-				// Connectivity revokes captured observations. The same hardware still owns its counter.
-				this.temperatureSessions.set(next, temperatureBaseline(previous));
-			}
-			this.devicesRegistry.set(device.id, next);
+			this.renewRegistration(registered);
 		}
 
 		const normalizedEvent: NormalizedDeviceEvent = {
@@ -562,13 +569,18 @@ export class ShelliesAdapterService {
 				device.online && device.lastSeen != null && at - Number(device.lastSeen) > staleTimeout;
 
 			// Collect stale devices that need an HTTP ping
-			const staleCandidates: Array<{ device: ShellyDevice; registration: RegisteredDevice }> = [];
+			const staleCandidates: Array<{
+				device: ShellyDevice;
+				registration: RegisteredDevice;
+				lastSeen: ShellyDevice['lastSeen'];
+			}> = [];
 
 			for (const registeredDevice of this.devicesRegistry.values()) {
 				const device = this.shellies.getDevice(registeredDevice.type, registeredDevice.id);
 
+				// shellies replaces the Date object even for unchanged CoIoT data in the same millisecond.
 				if (device && device.host === registeredDevice.host && isStale(device, now))
-					staleCandidates.push({ device, registration: registeredDevice });
+					staleCandidates.push({ device, registration: registeredDevice, lastSeen: device.lastSeen });
 			}
 
 			if (staleCandidates.length === 0) {
@@ -585,12 +597,13 @@ export class ShelliesAdapterService {
 
 			const recheckNow = Date.now();
 
-			for (const { device, registration, alive } of results) {
+			for (const { device, registration, lastSeen, alive } of results) {
 				if (
 					this.statusCheck !== check ||
 					this.devicesRegistry.get(registration.id) !== registration ||
 					this.getDevice(registration.type, registration.id) !== device ||
 					device.host !== registration.host ||
+					device.lastSeen !== lastSeen ||
 					!isStale(device, recheckNow)
 				) {
 					continue;

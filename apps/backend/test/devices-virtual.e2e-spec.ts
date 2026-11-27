@@ -5161,6 +5161,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			expect(expectedNames).toContain('AddDetectionCategories1000000000059');
 			expect(expectedNames).toContain('AddUnifiProtectIdentity1000000000060');
 			expect(expectedNames).toContain('AddShellyV1AdoptedIdentity1000000000062');
+			expect(expectedNames).toContain('AddShellyV1VerifiedHost1000000000063');
 			const applied = await prepared.runMigrations({ transaction: 'each' });
 			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {
