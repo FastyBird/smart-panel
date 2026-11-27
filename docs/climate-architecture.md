@@ -69,7 +69,11 @@ opposite branch stay in place.
 Zigbee2MQTT can request a fresh value through `/get` when the device supports it. Modbus uses the relay's read
 mapping and Shelly uses its status endpoint. Home Assistant can supply an independent live entity state change.
 If Home Assistant has only its cached state after an idempotent OFF, the operator sees the same unconfirmed status
-as for an integration still waiting on its next device report.
+as for an integration still waiting on its next device report. After an unavailable or unknown Home Assistant
+state, the first usable value establishes a display baseline. A subsequent independent state change can confirm OFF.
+
+Shelly Gen1 verifies a relay's full MAC on status readback. For an existing six-character ID, adoption through
+the Shelly discovery wizard records the full MAC against the existing device row. Rediscovery preserves this pin.
 
 ### Extending another plugin's device bindings
 
