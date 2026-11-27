@@ -11,13 +11,14 @@ enableAutoUnmount(afterEach);
 
 const updateAvailable = ref(false);
 const latestVersion = ref<string | null>(null);
+const readFailed = ref(false);
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string) => key }),
 }));
 
 vi.mock('../../composables/composables', () => ({
-	useUpdateStatus: () => ({ updateAvailable, latestVersion }),
+	useUpdateStatus: () => ({ updateAvailable, latestVersion, readFailed }),
 }));
 
 const OK = { undervoltage: false, frequencyCapping: false, throttling: false, softTempLimit: false };
@@ -26,6 +27,7 @@ describe('SystemHealthBanner', () => {
 	afterEach(() => {
 		updateAvailable.value = false;
 		latestVersion.value = null;
+		readFailed.value = false;
 	});
 
 	it('is all well with no problem and nothing to install', () => {
@@ -43,6 +45,17 @@ describe('SystemHealthBanner', () => {
 
 		expect(alert.props('type')).toBe('info');
 		expect(alert.props('title')).toBe('systemModule.texts.update.available');
+	});
+
+	it('does not name an update found before once a later read fails', () => {
+		updateAvailable.value = true;
+		latestVersion.value = '1.4.0';
+		readFailed.value = true;
+
+		const alert = mount(SystemHealthBanner, { props: { throttleStatus: OK } }).findComponent(ElAlert);
+
+		expect(alert.props('type')).toBe('success');
+		expect(alert.props('title')).toBe('systemModule.health.okTitle');
 	});
 
 	it('puts a power or temperature problem first, naming each flag', () => {

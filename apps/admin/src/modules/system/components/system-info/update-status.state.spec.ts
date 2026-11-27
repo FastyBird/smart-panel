@@ -78,6 +78,15 @@ describe('UpdateStatus state', () => {
 		expect(tag().props()).toMatchObject({ status: 'info', label: 'systemModule.texts.update.noVersionInfo' });
 	});
 
+	it('does not keep naming an update found before when a later read fails', () => {
+		currentVersion.value = '1.1.0';
+		latestVersion.value = '1.2.0';
+		updateAvailable.value = true;
+		readFailed.value = true;
+
+		expect(tag().props()).toMatchObject({ status: 'info', label: 'systemModule.texts.update.noVersionInfo' });
+	});
+
 	it('is up to date only after an answer without an update', () => {
 		currentVersion.value = '1.1.0';
 		latestVersion.value = '1.1.0';

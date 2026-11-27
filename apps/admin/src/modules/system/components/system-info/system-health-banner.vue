@@ -32,7 +32,10 @@ const props = defineProps<{
 
 const { t } = useI18n();
 
-const { updateAvailable, latestVersion } = useUpdateStatus();
+const { updateAvailable, latestVersion, readFailed } = useUpdateStatus();
+
+// An update found before stays unnamed once a later read fails: whether it is still the latest is not known
+const pendingUpdate = computed<string | null>(() => (updateAvailable.value && !readFailed.value ? latestVersion.value : null));
 
 const problems = computed<(keyof IThrottleStatus)[]>(() => throttleProblems(props.throttleStatus));
 
@@ -44,7 +47,7 @@ const alertType = computed<'success' | 'warning' | 'error' | 'info'>(() => {
 		return 'error';
 	}
 
-	if ((updateAvailable.value && latestVersion.value) || unknown.value) {
+	if (pendingUpdate.value !== null || unknown.value) {
 		return 'info';
 	}
 
@@ -56,8 +59,8 @@ const title = computed<string>(() => {
 		return t('systemModule.health.problemTitle');
 	}
 
-	if (updateAvailable.value && latestVersion.value) {
-		return t('systemModule.texts.update.available', { version: latestVersion.value });
+	if (pendingUpdate.value !== null) {
+		return t('systemModule.texts.update.available', { version: pendingUpdate.value });
 	}
 
 	if (unknown.value) {
@@ -77,7 +80,7 @@ const description = computed<string>(() => {
 		return t('systemModule.health.unknownDescription');
 	}
 
-	if (updateAvailable.value && latestVersion.value) {
+	if (pendingUpdate.value !== null) {
 		return t('systemModule.health.updateDescription');
 	}
 
