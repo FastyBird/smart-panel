@@ -155,8 +155,10 @@ describe('ShellyV1AdoptionService', () => {
 	});
 
 	it('adopts the rest of the selection after one device fails', async () => {
-		devicesService.create.mockImplementation((dto: { identifier: string }) =>
-			dto.identifier === 'bad' ? Promise.reject(new Error('nope')) : Promise.resolve({ id: dto.identifier }),
+		devicesService.create.mockImplementation((dto) =>
+			dto.identifier === 'bad'
+				? Promise.reject(new Error('nope'))
+				: Promise.resolve(Object.assign(new ShellyV1DeviceEntity(), { id: dto.identifier })),
 		);
 
 		const outcomes = await service.adopt([

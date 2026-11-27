@@ -90,8 +90,18 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		await database.destroy();
 		database = await createSqliteDataSource({ ...options, migrations });
 		const upgraded = await database.runMigrations({ transaction: 'each' });
-		expect(upgraded.length).toBe(migrations.length - baseline.length);
-		expect(upgraded.at(-1).name).toBe('AddUnifiProtectIdentity1000000000060');
+		const expectedVersions = migrations.slice(baseline.length).map((file) => Number(basename(file).slice(0, 13)));
+		expect(upgraded.map((migration) => migration.timestamp)).toEqual(expectedVersions);
+		expect(upgraded.map((migration) => migration.name)).toEqual(
+			expect.arrayContaining([
+				'AddUnifiProtectIdentity1000000000060',
+				'AddShellyV1AdoptedIdentity1000000000062',
+				'AddShellyV1VerifiedHost1000000000063',
+			]),
+		);
+		expect(
+			await database.query('SELECT deviceId, mac, verifiedHost FROM devices_shelly_v1_adopted_identities'),
+		).toEqual([]);
 		expect(await database.query('SELECT id,name,type,displayOrder,statusWidgets FROM spaces_module_spaces')).toEqual(
 			originalRooms,
 		);
