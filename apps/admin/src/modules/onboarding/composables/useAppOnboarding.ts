@@ -82,6 +82,9 @@ export const ROOM_DEFINITIONS: IRoomDefinition[] = [
 const currentStep = ref<OnboardingStep>(OnboardingStep.WELCOME);
 const isLoading = ref(false);
 const accountRegistered = ref(false);
+// The credentials the account was registered with, kept until the sign-in after it succeeds: a retry after a failed
+// sign-in must sign in as the account that exists, whatever the fields say by then
+let registeredCredentials: { username: string; password: string } | null = null;
 const accountCreated = ref(false);
 const locationConfigured = ref(false);
 const savedSpacesCount = ref(0);
@@ -137,7 +140,7 @@ export const useAppOnboarding = () => {
 		if (accountCreated.value) return true;
 
 		// Registration and the sign-in after it use the credentials as submitted, even if the fields change meanwhile
-		const credentials = { username: accountData.username, password: accountData.password };
+		const credentials = registeredCredentials ?? { username: accountData.username, password: accountData.password };
 
 		isLoading.value = true;
 
@@ -155,6 +158,7 @@ export const useAppOnboarding = () => {
 				});
 
 				accountRegistered.value = true;
+				registeredCredentials = credentials;
 			}
 
 			// Auto-login after registration
@@ -166,6 +170,7 @@ export const useAppOnboarding = () => {
 			});
 
 			accountCreated.value = true;
+			registeredCredentials = null;
 
 			// Clear passwords from memory — no longer needed after auto-login
 			accountData.password = '';
@@ -460,6 +465,7 @@ export const useAppOnboarding = () => {
 	const reset = (): void => {
 		currentStep.value = OnboardingStep.WELCOME;
 		accountRegistered.value = false;
+		registeredCredentials = null;
 		accountCreated.value = false;
 		locationConfigured.value = false;
 		savedSpacesCount.value = 0;
@@ -485,6 +491,7 @@ export const useAppOnboarding = () => {
 	return {
 		currentStep,
 		isLoading,
+		accountRegistered,
 		accountCreated,
 		hasLocationData,
 		accountData,

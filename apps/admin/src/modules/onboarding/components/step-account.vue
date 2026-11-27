@@ -22,7 +22,7 @@
 				ref="formEl"
 				:model="accountData"
 				:rules="rules"
-				:disabled="isLoading"
+				:disabled="isLoading || accountRegistered"
 				label-position="top"
 				status-icon
 			>
@@ -135,7 +135,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { accountData, accountCreated, isLoading } = useAppOnboarding();
+// Once the account exists only signing in to it is left, so its fields stay as registered
+const { accountData, accountCreated, accountRegistered, isLoading } = useAppOnboarding();
 
 const formEl = ref<FormInstance | undefined>(undefined);
 const lastNameInputEl = ref<InputInstance | undefined>(undefined);

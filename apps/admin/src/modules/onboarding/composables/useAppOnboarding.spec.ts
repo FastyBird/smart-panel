@@ -134,5 +134,29 @@ describe('useAppOnboarding', () => {
 			expect(mockSignIn).toHaveBeenCalledWith({ data: { username: 'owner', password: 'secret-1' } });
 			expect(accountCreated.value).toBe(true);
 		});
+
+		it('retries a failed sign-in as the account it registered, not as edited fields', async () => {
+			const { accountData, accountRegistered, accountCreated, createAccount } = useAppOnboarding();
+
+			accountData.username = 'owner';
+			accountData.password = 'secret-1';
+
+			mockRegister.mockResolvedValueOnce(undefined);
+			mockSignIn.mockRejectedValueOnce(new Error('sign-in failed'));
+
+			await expect(createAccount()).resolves.toBe(false);
+
+			expect(accountRegistered.value).toBe(true);
+
+			accountData.username = 'someone-else';
+			accountData.password = 'secret-2';
+			mockSignIn.mockResolvedValueOnce(undefined);
+
+			await expect(createAccount()).resolves.toBe(true);
+
+			expect(mockRegister).toHaveBeenCalledTimes(1);
+			expect(mockSignIn).toHaveBeenLastCalledWith({ data: { username: 'owner', password: 'secret-1' } });
+			expect(accountCreated.value).toBe(true);
+		});
 	});
 });
