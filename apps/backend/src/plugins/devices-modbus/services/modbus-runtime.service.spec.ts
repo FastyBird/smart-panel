@@ -852,6 +852,21 @@ describe('ModbusRuntimeService', () => {
 		expect(connection.markOverloaded).toHaveBeenLastCalledWith(false);
 	});
 
+	it('requests a fresh sample only from a current read binding and marks dispatch before its ingress', async () => {
+		await runtime.start();
+		await jest.advanceTimersByTimeAsync(0);
+		const read = connections[0].read;
+		read.mockClear();
+		properties.reportSample.mockClear();
+		const dispatching = jest.fn(() => expect(read).not.toHaveBeenCalled());
+		await expect(runtime.requestPropertyRead('device-1', 'write-only', dispatching)).resolves.toBe(false);
+		await expect(runtime.requestPropertyRead('missing', 'p1', dispatching)).resolves.toBe(false);
+		expect(dispatching).not.toHaveBeenCalled();
+		await expect(runtime.requestPropertyRead('device-1', 'p1', dispatching)).resolves.toBe(true);
+		expect(dispatching).toHaveBeenCalledTimes(1);
+		expect(reports()).toEqual([['p1', 1]]);
+	});
+
 	it('reads back through the device poller', async () => {
 		await runtime.start();
 		await jest.advanceTimersByTimeAsync(0);

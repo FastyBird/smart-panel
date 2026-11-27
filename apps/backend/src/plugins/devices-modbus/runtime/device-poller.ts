@@ -219,7 +219,7 @@ export class DevicePoller {
 	 * Button points are skipped: an extra level read between polls would distort their timing.
 	 * Rejects when the endpoint did not answer; does not affect the device's connection state.
 	 */
-	async pollNow(propertyIds?: string[]): Promise<void> {
+	async pollNow(propertyIds?: string[], dispatching?: () => void): Promise<boolean> {
 		if (!this.isCurrent()) {
 			throw new ModbusEndpointUnavailableError('Modbus device is not being polled');
 		}
@@ -230,14 +230,16 @@ export class DevicePoller {
 		);
 
 		if (points.length === 0) {
-			return;
+			return false;
 		}
 
+		dispatching?.();
 		const outcome = await this.readBlocks(planReadBlocks(points, this.device.limits), null, true);
 
 		if (outcome.kind === 'failed') {
 			throw outcome.error;
 		}
+		return outcome.kind !== 'stale';
 	}
 
 	private isCurrent(): boolean {

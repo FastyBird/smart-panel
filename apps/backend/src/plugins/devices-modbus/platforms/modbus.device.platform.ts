@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import {
+	IDevicePlatform,
+	IDevicePropertyData,
+	PropertyReadRequest,
+} from '../../../modules/devices/platforms/device.platform';
 import {
 	DEVICES_MODBUS_PLUGIN_NAME,
 	DEVICES_MODBUS_TYPE,
@@ -61,6 +65,10 @@ export class ModbusDevicePlatform implements IDevicePlatform {
 
 	getType(): string {
 		return DEVICES_MODBUS_TYPE;
+	}
+
+	requestPropertyRead({ device, property, dispatching }: PropertyReadRequest): Promise<boolean> {
+		return this.runtime.requestPropertyRead(device.id, property.id, dispatching);
 	}
 
 	process(update: IDevicePropertyData): Promise<boolean> {
