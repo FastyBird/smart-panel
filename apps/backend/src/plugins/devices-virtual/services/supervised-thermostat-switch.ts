@@ -16,7 +16,7 @@ import {
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
 import { InstalledThermostatEvidence } from './thermostat-actuation-registry.service';
-import { thermostatActuatorIdentity } from './virtual-thermostat-contract.utils';
+import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 
 interface PendingOffObservation {
 	readonly claimId: string;
@@ -113,14 +113,15 @@ export class SupervisedThermostatSwitch {
 		const lease = this.platforms.captureRegistration(target.device.type);
 		const identity = thermostatActuatorIdentity(target.property, target.channel, target.device);
 		if (!platform || !lease || !identity || !this.reports) return null;
+		const contract = thermostatPropertyContract(target.property, target.channel, target.device);
+		const sameTarget = (leaf: IDevicePropertyData) =>
+			thermostatActuatorIdentity(leaf.property, leaf.channel, leaf.device) === identity &&
+			thermostatPropertyContract(leaf.property, leaf.channel, leaf.device) === contract;
 		const methods = captureCreation(platform, ['prepareCompositeBatch', 'processBatch', 'requestPropertyRead']);
-		const isCurrent = () =>
-			!this.destroyed &&
-			lease.isCurrent() &&
-			methods.current() &&
-			thermostatActuatorIdentity(target.property, target.channel, target.device) === identity;
-		const canReconcile = (_leaf: IDevicePropertyData, evidence: InstalledThermostatEvidence) =>
+		const isCurrent = () => !this.destroyed && lease.isCurrent() && methods.current() && sameTarget(target);
+		const canReconcile = (leaf: IDevicePropertyData, evidence: InstalledThermostatEvidence) =>
 			isCurrent() &&
+			sameTarget(leaf) &&
 			evidence?.providerProfile.id === profile.id &&
 			evidence.providerProfile.version === profile.version &&
 			evidence.physicalIdentity === identity &&
@@ -130,14 +131,20 @@ export class SupervisedThermostatSwitch {
 			providerProfile: profile,
 			isCurrent,
 			canReconcile,
-			send: (update, claim, evidence, isAdmitted, dispatch) => {
+			send: (input, claim, evidence, isAdmitted, dispatch) => {
+				const update = { ...input };
+				const desired = update.value;
+				const commandId = dispatch?.commandId;
 				const write = async (): Promise<ThermostatActuationResult> => {
 					const admitted = () =>
 						isCurrent() &&
+						typeof update.value === 'boolean' &&
+						update.value === desired &&
+						sameTarget(update) &&
 						isAdmitted() &&
 						(update.value === false ||
 							(claim.independentProtectionAcknowledged === true && !!evidence && canReconcile(update, evidence)));
-					if (!admitted() || !dispatch?.commandId || claim.physicalIdentity !== identity)
+					if (!admitted() || !commandId || claim.physicalIdentity !== identity)
 						return { outcome: 'refused', reasons: ['supervised_switch_not_admitted'] };
 					const prepared = await methods.values.prepareCompositeBatch?.call(platform, [update]);
 					if (
@@ -161,8 +168,7 @@ export class SupervisedThermostatSwitch {
 							? await prepared.dispatch(() => admitted() && prepared.isCurrent())
 							: await methods.values.processBatch.call(platform, [update]);
 						if (!accepted) return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
-						if (update.value === false && isCurrent())
-							this.observeOff(update, claim, dispatch.commandId, submittedAt, isCurrent);
+						if (desired === false && isCurrent()) this.observeOff(update, claim, commandId, submittedAt, isCurrent);
 						return { outcome: 'accepted', outputConfirmed: false, pendingOnDrained: false };
 					} finally {
 						prepared?.dispose?.();

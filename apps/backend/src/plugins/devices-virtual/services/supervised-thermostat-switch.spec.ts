@@ -154,6 +154,23 @@ describe('a software-supervised switch from a new device plugin', () => {
 		}
 	});
 
+	it('refuses a different property passed to a captured switch, including for an absolute OFF', async () => {
+		const f = fixture(false);
+		try {
+			const other = {
+				...f.target,
+				property: Object.assign(new ChannelPropertyEntity(), f.target.property, { id: 'other-switch' }),
+			};
+			expect(f.adapter.canReconcile(other, f.evidence)).toBe(false);
+			await expect(f.adapter.send(other, f.claim, f.evidence, () => true, { commandId: 'off' })).resolves.toMatchObject(
+				{ outcome: 'refused' },
+			);
+			expect(f.processBatch).not.toHaveBeenCalled();
+		} finally {
+			f.supervisor.destroy();
+		}
+	});
+
 	it('waits for an in-flight ON before sending OFF and requires a report after that OFF', async () => {
 		// Some plugins implement prepared dispatch only for a subset of their properties.
 		const f = fixture(false, true);

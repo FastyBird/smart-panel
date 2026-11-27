@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import {
 	CapturedThermostatReconcileReadinessV1,
 	RemoteCoolingFrame,
@@ -34,6 +35,7 @@ export interface ThermostatActuationExtension {
 interface ThermostatActuationRegistration {
 	readonly key: string;
 	readonly extension: ThermostatActuationExtension;
+	readonly isCurrent: () => boolean;
 }
 
 /** The provider owns its registration, including evidence validation and device-side commands. */
@@ -50,23 +52,30 @@ export class ThermostatActuationRegistry implements OnModuleDestroy {
 		if (this.extensions.has(key)) throw new Error('Thermostat safety extension already registered');
 		// Retain the functions that were registered. A later profile implementation must obtain
 		// its own registration before it can qualify or dispatch a previously captured claim.
-		const registered: ThermostatActuationExtension = Object.freeze({
-			profile: Object.freeze({ id, version }),
-			qualify: extension.qualify.bind(extension),
-			allows: extension.allows.bind(extension),
-			captureAdapter: extension.captureAdapter.bind(extension),
-			captureReadiness: extension.captureReadiness?.bind(extension),
-			captureTargetMetadata: extension.captureTargetMetadata?.bind(extension),
-		});
-		const registration = Object.freeze({ key, extension: registered });
+		const methods = captureCreation(extension, [
+			'qualify',
+			'allows',
+			'captureAdapter',
+			'captureReadiness',
+			'captureTargetMetadata',
+		]);
+		let active = true;
+		const isCurrent = () => {
+			active &&=
+				!this.destroyed && methods.current() && extension.profile.id === id && extension.profile.version === version;
+			return active;
+		};
+		const registration = Object.freeze({ key, extension, isCurrent });
 		this.extensions.set(key, registration);
 		return () => {
+			active = false;
 			if (this.extensions.get(key) === registration) this.extensions.delete(key);
 		};
 	}
 
 	get(id: string, version: number) {
-		return this.extensions.get(JSON.stringify([id, version])) ?? null;
+		const registration = this.extensions.get(JSON.stringify([id, version]));
+		return registration?.isCurrent() ? registration : null;
 	}
 
 	onModuleDestroy(): void {
