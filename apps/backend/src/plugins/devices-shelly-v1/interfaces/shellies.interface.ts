@@ -121,10 +121,12 @@ export interface ShellyTemperatureReport {
 	receivedAt: Date;
 	ingressSequence: number;
 	isCurrent: () => boolean;
+	/** True while this serial is still the latest observation awaiting publication. */
+	isLatest: () => boolean;
 }
 
 export interface ShelliesAdapterCallbacks {
-	onTemperatureReport?: (report: ShellyTemperatureReport) => void | Promise<void>;
+	onTemperatureReport?: (report: ShellyTemperatureReport) => boolean | Promise<boolean>;
 	onDeviceDiscovered?: (event: NormalizedDeviceEvent) => void | Promise<void>;
 	onDeviceChanged?: (event: NormalizedDeviceChangeEvent) => void | Promise<void>;
 	onDeviceOffline?: (event: NormalizedDeviceEvent) => void | Promise<void>;

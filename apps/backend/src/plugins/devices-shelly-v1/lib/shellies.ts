@@ -6,13 +6,43 @@
  * Note: Using require() here is necessary and intentional for this legacy package.
  */
 import type { EventEmitter } from 'events';
+import type { ClientRequest } from 'node:http';
 
 import type { ShelliesLibrary, ShellyDevice } from '../interfaces/shellies.interface';
+import type { ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- shellies is a CommonJS-only package
 const shellies = require('shellies') as ShelliesLibrary;
 
 export default shellies;
+
+type StatusRequest = PromiseLike<{ body: ShellyStatusResponse }> & {
+	once(event: 'request', handler: (request: { req: ClientRequest }) => void): void;
+	redirects(max: number): StatusRequest;
+};
+
+/** Use the same authenticated GET as shellies.getStatus(), retaining its native dispatch evidence. */
+export async function readShellyRelayStatus(
+	peer: ShellyDevice,
+	dispatching: () => void,
+): Promise<{ sent: boolean; status?: ShellyStatusResponse }> {
+	let sent = false;
+	try {
+		const transport = peer as ShellyDevice & { request: { get(url: string): StatusRequest } };
+		const request = transport.request.get(`${peer.host}/status`).redirects(0);
+		request.once('request', ({ req }) => {
+			req.once('finish', () => {
+				sent = true;
+				dispatching();
+			});
+		});
+		const response = await request;
+		return sent ? { sent, status: response.body } : { sent };
+	} catch {
+		// A refused connection never flushed a request. An HTTP error or lost reply after flush was sent.
+		return { sent };
+	}
+}
 
 type CoIoTStatus = {
 	deviceType: string;

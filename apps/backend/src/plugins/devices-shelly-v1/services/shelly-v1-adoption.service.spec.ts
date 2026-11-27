@@ -6,12 +6,16 @@ import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import { AdoptDeviceDto } from '../dto/adopt-devices.dto';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 
+import { ShellyV1AdoptedIdentityService } from './shelly-v1-adopted-identity.service';
 import { ShellyV1AdoptionService } from './shelly-v1-adoption.service';
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 describe('ShellyV1AdoptionService', () => {
 	let module: TestingModule | undefined;
 	let service: ShellyV1AdoptionService;
 	let devicesService: { findOneBy: jest.Mock; create: jest.Mock; update: jest.Mock };
+	let adoptMac: jest.Mock;
+	let getDeviceInfo: jest.Mock;
 
 	const selection = (overrides: Partial<AdoptDeviceDto> = {}): AdoptDeviceDto =>
 		({
@@ -30,12 +34,37 @@ describe('ShellyV1AdoptionService', () => {
 			update: jest.fn().mockImplementation(() => Promise.resolve({ id: 'existing' } as ShellyV1DeviceEntity)),
 		};
 
+		adoptMac = jest.fn();
+		getDeviceInfo = jest.fn();
 		module = await Test.createTestingModule({
-			providers: [ShellyV1AdoptionService, { provide: DevicesService, useValue: devicesService }],
+			providers: [
+				ShellyV1AdoptionService,
+				{ provide: DevicesService, useValue: devicesService },
+				{ provide: ShellyV1AdoptedIdentityService, useValue: { adopt: adoptMac } },
+				{ provide: ShellyV1HttpClientService, useValue: { getDeviceInfo } },
+			],
 		}).compile();
 
 		service = module.get<ShellyV1AdoptionService>(ShellyV1AdoptionService);
 	});
+
+	it.each([true, false])(
+		'uses an explicit adoption to establish a missing legacy pin and refuses a conflicting endpoint (matches=%s)',
+		async (matches) => {
+			const chosen = selection({ identifier: 'DDEEFF' });
+			devicesService.findOneBy.mockResolvedValue({
+				id: 'legacy',
+				identifier: chosen.identifier,
+				hostname: chosen.hostname,
+			});
+			getDeviceInfo.mockResolvedValue({ mac: 'aabbccddeeff' });
+			adoptMac.mockResolvedValue(matches ? 'AABBCCDDEEFF' : '112233DDEEFF');
+			const [result] = await service.adopt([chosen]);
+			expect(adoptMac).toHaveBeenCalledWith('legacy', 'DDEEFF', 'AABBCCDDEEFF');
+			expect(result.status).toBe(matches ? 'updated' : 'failed');
+			expect(devicesService.update).toHaveBeenCalledTimes(matches ? 1 : 0);
+		},
+	);
 
 	it('creates a device that is not registered yet', async () => {
 		const [outcome] = await service.adopt([selection()]);

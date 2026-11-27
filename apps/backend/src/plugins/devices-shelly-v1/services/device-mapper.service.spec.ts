@@ -36,6 +36,7 @@ import { ShellyInfoResponse, ShellySettingsResponse, ShellyStatusResponse } from
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import { ShellyV1AdoptedIdentityService } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 describe('DeviceMapperService', () => {
@@ -46,6 +47,7 @@ describe('DeviceMapperService', () => {
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
 	let shelliesAdapter: jest.Mocked<ShelliesAdapterService>;
 	let httpClient: jest.Mocked<ShellyV1HttpClientService>;
+	let identities: { adopt: jest.Mock; expected: jest.Mock };
 
 	// Quiet logger noise
 
@@ -91,6 +93,10 @@ describe('DeviceMapperService', () => {
 			getDeviceStatus: jest.fn(),
 		} as any;
 
+		identities = {
+			adopt: jest.fn((_id, _address, mac) => Promise.resolve(mac ?? null)),
+			expected: jest.fn().mockResolvedValue(null),
+		};
 		service = new DeviceMapperService(
 			devicesService,
 			channelsService,
@@ -99,6 +105,7 @@ describe('DeviceMapperService', () => {
 			shelliesAdapter,
 			httpClient,
 			new DeviceProvisionQueueService(),
+			identities as unknown as ShellyV1AdoptedIdentityService,
 		);
 	});
 
@@ -125,7 +132,7 @@ describe('DeviceMapperService', () => {
 			device: {
 				hostname: name,
 				type: 'SHSW-PM',
-				mac: '8CBFEAA58474',
+				mac: '8CBFEAABC123',
 			},
 			wifi_ao: {
 				enabled: false,
@@ -152,7 +159,7 @@ describe('DeviceMapperService', () => {
 
 	const makeMockInfo = (): ShellyInfoResponse => ({
 		type: 'SHSW-PM',
-		mac: '8CBFEAA58474',
+		mac: '8CBFEAABC123',
 		auth: false,
 		fw: '1.14.0',
 		longid: 1234567890,
@@ -172,7 +179,7 @@ describe('DeviceMapperService', () => {
 			time: '10:00',
 			unixtime: 1234567890,
 			serial: 1,
-			mac: '8CBFEAA58474',
+			mac: '8CBFEAABC123',
 			ram_lwm: 30000,
 		}) as any;
 
@@ -239,6 +246,7 @@ describe('DeviceMapperService', () => {
 			);
 
 			const result = await service.mapDevice(event);
+			expect(identities.adopt).toHaveBeenCalledWith('device-uuid', event.id, '8CBFEAABC123');
 
 			// Verify device was created
 			expect(devicesService.create).toHaveBeenCalledWith(
@@ -321,7 +329,7 @@ describe('DeviceMapperService', () => {
 
 			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as any);
 			httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings('RGBW Light') as any);
-			httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), type: 'SHRGBW2' });
+			httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), type: 'SHRGBW2', mac: '8CBFEADEF456' });
 			httpClient.getDeviceStatus.mockResolvedValue(makeMockStatus() as any);
 
 			devicesService.findOneBy.mockResolvedValue(null);
@@ -383,7 +391,7 @@ describe('DeviceMapperService', () => {
 
 			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as any);
 			httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings('RGBW Light') as any);
-			httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), type: 'SHRGBW2' });
+			httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), type: 'SHRGBW2', mac: '8CBFEADEF456' });
 			httpClient.getDeviceStatus.mockResolvedValue(makeMockStatus() as any);
 
 			devicesService.findOneBy.mockResolvedValue(null);
@@ -423,6 +431,64 @@ describe('DeviceMapperService', () => {
 	});
 
 	describe('Existing device updates', () => {
+		it.each([
+			['missing', 'AABBCCABC123'],
+			['conflicting', 'AABBCCABC123'],
+			['unconfirmed legacy', null],
+		])('preserves the mapped endpoint and identity when rediscovery reports a %s identity', async (identity, pin) => {
+			const event = makeNormalizedEvent();
+			const peer = makeShellyDevice();
+			shelliesAdapter.getDevice.mockReturnValue(peer as ShellyDevice);
+			devicesService.findOneBy.mockResolvedValue(
+				Object.assign(new ShellyV1DeviceEntity(), {
+					id: 'existing',
+					identifier: event.id,
+					hostname: '192.168.1.9',
+					enabled: true,
+				}),
+			);
+			identities.expected.mockResolvedValue(pin);
+			httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings() as ShellySettingsResponse);
+			if (identity === 'missing') httpClient.getDeviceInfo.mockRejectedValue(new Error('unreachable'));
+			else httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), mac: '112233ABC123' });
+			await expect(service.mapDevice(event)).rejects.toThrow('adopted identity');
+			expect(devicesService.update).not.toHaveBeenCalled();
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			expect(identities.adopt).not.toHaveBeenCalled();
+		});
+
+		it.each(['AABBCCABC123', null])(
+			'preserves the serial on a failed probe at its current host (pin %s)',
+			async (pin) => {
+				const event = makeNormalizedEvent();
+				shelliesAdapter.getDevice.mockReturnValue(makeShellyDevice() as ShellyDevice);
+				const existing = Object.assign(new ShellyV1DeviceEntity(), {
+					id: 'existing',
+					identifier: event.id,
+					hostname: event.host,
+					enabled: true,
+				});
+				devicesService.findOneBy.mockResolvedValue(existing);
+				identities.expected.mockResolvedValue(pin);
+				httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings() as ShellySettingsResponse);
+				httpClient.getDeviceInfo.mockRejectedValue(new Error('sleeping'));
+				httpClient.getDeviceStatus.mockRejectedValue(new Error('sleeping'));
+				const channel = Object.assign(new ShellyV1ChannelEntity(), { id: 'channel' });
+				channelsService.findOneBy.mockResolvedValue(channel);
+				channelsService.update.mockResolvedValue(channel);
+				channelsPropertiesService.findOneBy.mockImplementation((_column, identifier) =>
+					Promise.resolve(Object.assign(new ShellyV1ChannelPropertyEntity(), { id: String(identifier) })),
+				);
+				await expect(service.mapDevice(event)).resolves.toBe(existing);
+				const serial = channelsPropertiesService.update.mock.calls.find(
+					([id]) => id === SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
+				);
+				expect(serial).toBeDefined();
+				expect(serial?.[1].value).toEqual(pin ?? undefined);
+				expect(identities.adopt).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should update existing device and not create duplicate', async () => {
 			const event = makeNormalizedEvent('shelly1pm-ABC123', 'SHSW-PM');
 			const shellyDevice = makeShellyDevice('shelly1pm-ABC123', 'SHSW-PM');
@@ -458,6 +524,7 @@ describe('DeviceMapperService', () => {
 			const result = await service.mapDevice(event);
 
 			// Verify device was updated, not created
+			expect(identities.adopt).not.toHaveBeenCalled();
 			expect(devicesService.create).not.toHaveBeenCalled();
 			expect(devicesService.update).toHaveBeenCalledWith(
 				'device-uuid',
@@ -570,7 +637,7 @@ describe('DeviceMapperService', () => {
 			httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings() as any);
 			httpClient.getDeviceInfo.mockResolvedValue({
 				type: 'SHSW-PM',
-				mac: '8CBFEAA58474',
+				mac: '8CBFEAABC123',
 				auth: false,
 				fw: '1.14.0',
 				longid: 1234567890,

@@ -8,6 +8,9 @@ import { CreateShellyV1DeviceDto } from '../dto/create-device.dto';
 import { UpdateShellyV1DeviceDto } from '../dto/update-device.dto';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 
+import { ShellyV1AdoptedIdentityService, shellyV1Address } from './shelly-v1-adopted-identity.service';
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
+
 export type ShellyV1AdoptionStatus = 'created' | 'updated' | 'failed';
 
 export interface ShellyV1AdoptionOutcome {
@@ -36,7 +39,11 @@ export interface ShellyV1AdoptionOutcome {
 export class ShellyV1AdoptionService {
 	private readonly logger = createExtensionLogger(DEVICES_SHELLY_V1_PLUGIN_NAME, 'ShellyV1AdoptionService');
 
-	constructor(private readonly devicesService: DevicesService) {}
+	constructor(
+		private readonly devicesService: DevicesService,
+		private readonly identities: ShellyV1AdoptedIdentityService,
+		private readonly http: ShellyV1HttpClientService,
+	) {}
 
 	async adopt(devices: AdoptDeviceDto[]): Promise<ShellyV1AdoptionOutcome[]> {
 		const outcomes: ShellyV1AdoptionOutcome[] = [];
@@ -56,9 +63,25 @@ export class ShellyV1AdoptionService {
 
 	private async adoptOne(device: AdoptDeviceDto): Promise<ShellyV1AdoptionOutcome> {
 		const existing = await this.findByIdentifier(device.identifier);
+		const short = shellyV1Address(device.identifier);
+		let mac: string | undefined;
+		if (short?.length === 6) {
+			const info = await this.http.getDeviceInfo(device.hostname).catch((): null => null);
+			if (info) {
+				mac = typeof info.mac === 'string' ? info.mac.toUpperCase() : undefined;
+				if (!mac || !/^[0-9A-F]{12}$/.test(mac) || !mac.endsWith(short))
+					return {
+						hostname: device.hostname,
+						name: device.name,
+						status: 'failed',
+						deviceId: existing?.id ?? null,
+						error: 'Shelly hardware identity does not match the selected device.',
+					};
+			}
+		}
 
 		if (existing !== null) {
-			return this.update(device, existing);
+			return this.update(device, existing, mac);
 		}
 
 		try {
@@ -70,6 +93,8 @@ export class ShellyV1AdoptionService {
 				password: device.password ?? null,
 				hostname: device.hostname,
 			});
+			if (mac && (await this.identities.adopt(created.id, device.identifier, mac)) !== mac)
+				throw new Error('Conflicting adopted Shelly identity.');
 
 			return {
 				hostname: device.hostname,
@@ -86,7 +111,7 @@ export class ShellyV1AdoptionService {
 			const raced = await this.findByIdentifier(device.identifier);
 
 			if (raced !== null) {
-				return this.update(device, raced);
+				return this.update(device, raced, mac);
 			}
 
 			const err = error as Error;
@@ -106,8 +131,17 @@ export class ShellyV1AdoptionService {
 		}
 	}
 
-	private async update(device: AdoptDeviceDto, existing: ShellyV1DeviceEntity): Promise<ShellyV1AdoptionOutcome> {
+	private async update(
+		device: AdoptDeviceDto,
+		existing: ShellyV1DeviceEntity,
+		mac?: string,
+	): Promise<ShellyV1AdoptionOutcome> {
 		try {
+			if (shellyV1Address(device.identifier)?.length === 6) {
+				const expected = await this.identities.adopt(existing.id, device.identifier, mac);
+				if ((mac && expected !== mac) || (expected && !mac && existing.hostname !== device.hostname))
+					throw new Error('Shelly endpoint does not match the adopted hardware identity.');
+			}
 			await this.devicesService.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(existing.id, {
 				type: DEVICES_SHELLY_V1_TYPE,
 				name: device.name,
