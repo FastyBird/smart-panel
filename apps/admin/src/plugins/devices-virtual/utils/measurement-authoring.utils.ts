@@ -10,7 +10,7 @@ import {
 	DevicesVirtualPluginDeviceMode,
 	DevicesVirtualPluginValueOrigin,
 } from '../../../openapi.constants';
-import { DEVICES_SHELLY_NG_TYPE } from '../../devices-shelly-ng/devices-shelly-ng.constants';
+import type { MeasurementAlias } from '../composables/use-virtual-device-extensions';
 
 export type NumericOperator = components['schemas']['DevicesVirtualPluginDataNumericOperator'];
 export type TransformPolicy = components['schemas']['DevicesVirtualPluginNumericTransformPolicy'];
@@ -57,15 +57,15 @@ export function measurementCandidates(
 			)
 		)
 			return [];
-		const rawShellyVoltage =
-			device.type === DEVICES_SHELLY_NG_TYPE &&
-			channel.category === DevicesModuleChannelCategory.analog_input &&
-			property.category === DevicesModuleChannelPropertyCategory.value &&
-			property.identifier === 'voltage' &&
-			/^raw-voltage:voltmeter:\d+:[a-f0-9]{64}$/.test(channel.identifier ?? '') &&
-			property.permissions.every((permission) => permission === DevicesModuleChannelPropertyPermissions.ro) &&
-			(property.unit == null || property.unit === 'V');
-		const unit = rawShellyVoltage ? 'V' : property.unit;
+		const { unit } = property;
+		const voltageMeasurement =
+			unit === 'V' &&
+			(property.category === DevicesModuleChannelPropertyCategory.voltage ||
+				(channel.category === DevicesModuleChannelCategory.analog_input &&
+					property.category === DevicesModuleChannelPropertyCategory.value &&
+					!property.permissions.some((permission) =>
+						[DevicesModuleChannelPropertyPermissions.rw, DevicesModuleChannelPropertyPermissions.wo].includes(permission)
+					)));
 		if (mode === DevicesVirtualPluginDeviceMode.sensor_transform) {
 			if (device.type === 'virtual' || !unit || !['float', 'char', 'uchar', 'short', 'ushort', 'int', 'uint'].includes(property.dataType)) return [];
 		} else {
@@ -93,9 +93,7 @@ export function measurementCandidates(
 				label: `${device.name} / ${channel.name} / ${property.name ?? property.category}`,
 				quantity: property.category,
 				unit: unit ?? '',
-				...(rawShellyVoltage || (property.category === DevicesModuleChannelPropertyCategory.voltage && unit === 'V')
-					? { thermistorVoltage: true }
-					: {}),
+				...(voltageMeasurement ? { thermistorVoltage: true } : {}),
 			},
 		];
 	});
@@ -106,16 +104,13 @@ export function isBlockingTransformPreviewError(error: string | null | undefined
 	return !!error && error !== 'input_out_of_range' && error !== 'output_out_of_range';
 }
 
-/**
- * A Shelly addon can expose both a display-only temperature:100 channel and its address-bound probe.
- * Prefer the single offered canonical representation of that exact physical reading. This never
- * remaps an existing binding, uses a cached value as live evidence, or filters offline devices.
- */
+/** Prefer a unique canonical source when its integration identifies two catalogue entries for one reading. */
 export function preferCanonicalMeasurementSources<T extends { id: string }>(
 	sources: T[],
 	devices: MeasurementSourceDevice[],
 	channels: MeasurementSourceChannel[],
-	properties: MeasurementSourceProperty[]
+	properties: MeasurementSourceProperty[],
+	identify: MeasurementAlias
 ): T[] {
 	const deviceById = new Map(devices.map((device) => [device.id, device]));
 	const channelById = new Map(channels.map((channel) => [channel.id, channel]));
@@ -124,18 +119,7 @@ export function preferCanonicalMeasurementSources<T extends { id: string }>(
 		const property = propertyById.get(source.id);
 		const channel = property && channelById.get(property.channel);
 		const device = channel && deviceById.get(channel.device);
-		if (
-			device?.type !== 'devices-shelly-ng' ||
-			channel?.category !== 'temperature' ||
-			property?.category !== 'temperature' ||
-			property.identifier !== 'tC' ||
-			property.unit !== '°C'
-		)
-			return null;
-		const identifier = channel.identifier ?? '';
-		const canonical = /^probe-temperature:temperature:1\d\d:[a-f0-9]{64}$/.test(identifier);
-		const component = canonical ? identifier.split(':').slice(1, 3).join(':') : /^temperature:1\d\d$/.test(identifier) ? identifier : null;
-		return component ? { key: JSON.stringify([device.id, component]), canonical } : null;
+		return device && channel && property ? identify(device, channel, property) : null;
 	});
 	const canonicalCounts = new Map<string, number>();
 	for (const identity of identities) {

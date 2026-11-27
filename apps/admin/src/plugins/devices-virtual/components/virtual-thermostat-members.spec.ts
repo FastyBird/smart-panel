@@ -5,12 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
+import { pluginsManagerKey } from '../../../common/services/plugins';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
+import ThermostatMemberInstallation from '../../devices-shelly-ng/components/thermostat-member-installation.vue';
 import { type ThermostatConfiguration, type ThermostatMemberDraft, draftFromConfiguration } from '../services/thermostat-authoring';
 import { ThermostatMemberFreshness, type ThermostatMemberRuntime } from '../services/thermostat-members';
 
 import ThermostatMemberCard from './thermostat-member-card.vue';
-import ThermostatMemberInstallation from './thermostat-member-installation.vue';
 import ThermostatMemberRecovery from './thermostat-member-recovery.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
 import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
@@ -51,12 +52,8 @@ vi.mock('../../../common', () => ({
 		}),
 	}),
 }));
-const context = (id: string) => ({
-	physical_identity: `canonical-${id}`,
-	configuration_revision: 3,
-	claim_revision: 4,
-	graph_revision: 8,
-	candidates: [
+const context = (id: string) => {
+	const candidates = [
 		{
 			property: `floor-${id.startsWith('claim-') ? id.slice(6) : id}`,
 			physical_property: `physical-${id}`,
@@ -64,12 +61,34 @@ const context = (id: string) => ({
 			fingerprint: id,
 			snapshot: { component: 'temperature:100' },
 		},
-	],
-	device_hardware_id: id,
-	firmware: 'fixture',
-	switch_configuration_json: '{"id":0}',
-	reasons: [],
-});
+	];
+	return {
+		physical_identity: `canonical-${id}`,
+		configuration_revision: 3,
+		claim_revision: 4,
+		graph_revision: 8,
+		candidates,
+		safety_extensions: [
+			{
+				id: 'shelly-ng.guarded-switch',
+				version: 1,
+				name: 'Shelly guarded switch',
+				roles: ['heating', 'cooling'],
+				requires_cooling_protection: false,
+				installation_path: '/plugins/devices-shelly-ng/producers/thermostat-installations',
+				device_hardware_id: id,
+				firmware: 'fixture',
+				switch_configuration_json: '{"id":0}',
+				reasons: [],
+				candidates,
+			},
+		],
+		device_hardware_id: id,
+		firmware: 'fixture',
+		switch_configuration_json: '{"id":0}',
+		reasons: [],
+	};
+};
 const configuration = (count = 2, missing = false) => ({
 	controller: 'controller',
 	revision: 3,
@@ -100,6 +119,8 @@ const configuration = (count = 2, missing = false) => ({
 		state: missing && index === 0 ? 'missing' : 'reserved',
 		revision: 4,
 		lease_seconds: 30,
+		provider_profile: 'shelly-ng.guarded-switch',
+		independent_protection_acknowledged: false,
 		qualification_generation: `generation-${index}`,
 		protection: {
 			schema_version: 1,
@@ -120,7 +141,7 @@ const resetCatalogue = () => {
 		...Array.from({ length: 2 }, (_, index) => ({
 			id: `relay-device-${index}`,
 			name: `Relay ${index}`,
-			type: 'devices-shelly-ng',
+			type: index ? 'devices-modbus' : 'devices-zigbee2mqtt',
 			roomId: null,
 			zoneIds: [],
 			status: { online: true },
@@ -200,6 +221,20 @@ const open = async (create = false) => {
 	view = mount(VirtualThermostatEditor, {
 		props: create ? { create: true } : { deviceId: 'controller' },
 		global: {
+			provide: {
+				[pluginsManagerKey as symbol]: {
+					getPlugins: () => [
+						{
+							elements: [
+								{
+									type: 'devices-shelly-ng',
+									components: { virtualThermostatInstallations: { 'shelly-ng.guarded-switch': ThermostatMemberInstallation } },
+								},
+							],
+						},
+					],
+				},
+			},
 			stubs: {
 				VirtualThermostatComfort: true,
 				ThermostatPropertyPicker: { props: ['modelValue', 'kind'], emits: ['update:modelValue'], template: '<div class="picker" />' },
@@ -219,6 +254,50 @@ const setNumber = (wrapper: VueWrapper, label: string, value: number) =>
 
 describe('actual mandatory-member authoring forms', () => {
 	vi.setConfig({ testTimeout: 30000 });
+	it('clears independent protection acknowledgement on rebind and shows only advertised extension choices', async () => {
+		const member = ref<ThermostatMemberDraft>({ role: 'heating', source_property: 'relay-0', lease_seconds: null } as ThermostatMemberDraft);
+		mocks.get.mockImplementation((_path, options) => {
+			const data = context(options.params.path.property);
+			data.safety_extensions =
+				options.params.path.property === 'relay-0' ? [{ ...data.safety_extensions[0], id: 'other-plugin.auto-off', name: 'Relay timer' }] : [];
+			return Promise.resolve({ data: { data } });
+		});
+		view = mount(ThermostatMemberCard, {
+			props: {
+				member: member.value,
+				selectable: true,
+				configurationRevision: 0,
+				requestedLimit: null,
+				disabled: false,
+				runtime: null,
+				receivedAt: 0,
+				now: 0,
+			},
+			global: { stubs: { ThermostatPropertyPicker: true } },
+		});
+		await flushPromises();
+		const profile = view.findAllComponents(ElSelect).find((entry) => entry.attributes('data-test-id') === 'member-safety-profile')!;
+		expect(profile.findAllComponents(ElOption).map((option) => option.props('value'))).toEqual(['supervised-switch', 'other-plugin.auto-off']);
+		const ack = view.findAllComponents(ElCheckbox).find((entry) => entry.attributes('data-test-id') === 'independent-protection')!;
+		ack.vm.$emit('update:modelValue', true);
+		expect(member.value.independent_protection_acknowledged).toBe(true);
+		profile.vm.$emit('change', 'foreign');
+		expect(member.value.provider_profile).toBeUndefined();
+		profile.vm.$emit('change', 'other-plugin.auto-off');
+		await flushPromises();
+		expect(member.value.provider_profile).toBe('other-plugin.auto-off');
+		expect(view.find('[data-test-id="independent-protection"]').exists()).toBe(false);
+		profile.vm.$emit('change', 'supervised-switch');
+		await flushPromises();
+		view.findAllComponents(ElCheckbox).find((entry) => entry.attributes('data-test-id') === 'independent-protection')!.vm.$emit('update:modelValue', true);
+		view.findComponent(ThermostatPropertyPicker).vm.$emit('update:modelValue', 'relay-1');
+		await flushPromises();
+		expect(member.value.source_property).toBe('relay-1');
+		expect(member.value.independent_protection_acknowledged).toBeUndefined();
+		expect(view.find('[data-test-id="member-safety-profile"]').exists()).toBe(false);
+		expect(view.text()).toContain('devicesVirtualPlugin.members.noFailsafe');
+		expect(mocks.put).not.toHaveBeenCalled();
+	});
 	it('fetches all device visibility scopes even if the default device list already populated the cache', async () => {
 		const editor = await open(true);
 		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Thermostat');
@@ -270,7 +349,7 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(editor.findAllComponents(ElCheckbox).some((entry) => entry.text().includes('floorProtect'))).toBe(false);
 		expect(editor.findAllComponents(ElFormItem).some((field) => field.props('label') === 'devicesVirtualPlugin.thermostat.floorLimit')).toBe(false);
 		expect(editor.text()).not.toContain('devicesVirtualPlugin.members.displayFloor');
-		expect(mocks.get.mock.calls.some(([path]) => path.includes('member-authoring'))).toBe(false);
+		expect(mocks.get.mock.calls.some(([path]) => path.includes('member-authoring'))).toBe(true);
 		setNumber(editor, 'devicesVirtualPlugin.thermostat.heatingSetpoint', 21);
 		setNumber(editor, 'devicesVirtualPlugin.thermostat.coldTolerance', Number.NaN);
 		await next();
@@ -527,7 +606,7 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(mocks.post.mock.calls.some(([path]) => path.includes('/verify'))).toBe(false);
 	});
 	it('automatically binds only the selected compatible floor sensor to two outputs on the same relay device', async () => {
-		// Both outputs and the qualified floor probe belong to one physical Shelly.
+		mocks.catalogue.devices.find((device) => device.id === 'relay-device-0')!.type = 'devices-shelly-ng';
 		mocks.catalogue.channels.find((channel) => channel.id === 'relay-channel-1')!.device = 'relay-device-0';
 		mocks.catalogue.channels.find((channel) => channel.id === 'relay-channel-1')!.identifier = 'switch:1';
 		mocks.catalogue.channels.push({ id: 'floor-channel', device: 'relay-device-0', category: 'temperature', name: 'Floor probe' });
@@ -568,12 +647,15 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('canAdvance')).toBe(true);
 		expect(editor.findAllComponents(ElCheckbox).some((entry) => entry.text().includes('floorProtect'))).toBe(false);
 		for (const card of editor.findAllComponents(ThermostatMemberCard)) {
+			card.findAllComponents(ElSelect).find((entry) => entry.attributes('data-test-id') === 'member-safety-profile')!.vm.$emit('change', 'shelly-ng.guarded-switch');
+			await flushPromises();
 			expect(card.findComponent(ThermostatPropertyPicker).exists()).toBe(false);
 			expect(card.findComponent(ElCheckbox).exists()).toBe(false);
 			expect(card.props('member').protection).toMatchObject({ source_property: 'selected-floor', maximum_age_seconds: 300 });
-			expect(card.findComponent(ElSelect).props('modelValue')).toBe('selected-floor');
+			const floorSelect = card.findAllComponents(ElSelect).find((select) => select.props('modelValue') === 'selected-floor')!;
+			expect(floorSelect).toBeDefined();
 			// A backend candidate that was not selected in Sensors cannot be assigned.
-			card.findComponent(ElSelect).vm.$emit('change', 'floor-relay-0');
+			floorSelect.vm.$emit('change', 'floor-relay-0');
 			expect(card.props('member').protection!.source_property).toBe('selected-floor');
 		}
 		await next();
@@ -595,13 +677,17 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(mocks.post.mock.calls.some(([path]) => path.includes('/verify'))).toBe(false);
 	});
 	it('never binds an unselected or incompatible local probe and preserves an edited age across selection updates', async () => {
-		const member = { role: 'heating', source_property: 'relay-0', lease_seconds: 600 } as ThermostatMemberDraft;
+		const member = {
+			role: 'heating',
+			source_property: 'relay-0',
+			lease_seconds: 600,
+			provider_profile: 'shelly-ng.guarded-switch',
+		} as ThermostatMemberDraft;
 		view = mount(ThermostatMemberCard, {
 			props: {
 				member,
 				floorSources: [{ id: 'incompatible-floor', label: 'Remote floor sensor', maximumAgeSeconds: 300 }],
 				selectable: false,
-				parallel: true,
 				configurationRevision: 0,
 				requestedLimit: 28,
 				disabled: false,
@@ -619,14 +705,14 @@ describe('actual mandatory-member authoring forms', () => {
 			source_property: 'floor-relay-0',
 			maximum_age_seconds: 300,
 		});
-		expect(view.findAllComponents(ElOption).map((option) => option.props('label'))).toEqual(['Selected floor temperature']);
+		expect(view.findAllComponents(ElOption).map((option) => option.props('label'))).toContain('Selected floor temperature');
 		setNumber(view, 'devicesVirtualPlugin.members.maximumAge', 120);
 		await view.setProps({ floorSources: [{ id: 'floor-relay-0', label: 'Selected floor temperature', maximumAgeSeconds: 60 }] });
 		expect(member.protection!.maximum_age_seconds).toBe(120);
 		await view.setProps({ floorSources: [] });
 		expect(member.protection).toBeUndefined();
 	});
-	it('filters cooling surfaces by both the selected sources and the local relay contract', async () => {
+	it('filters cooling surfaces by both the selected sources and their software eligibility', async () => {
 		const member = { role: 'cooling', source_property: 'relay-0', lease_seconds: 600 } as ThermostatMemberDraft;
 		view = mount(ThermostatMemberCard, {
 			props: {
@@ -636,7 +722,6 @@ describe('actual mandatory-member authoring forms', () => {
 					{ id: 'dew', label: 'Room dew point', role: 'dew_point' },
 					{ id: 'wrong-device', label: 'Other surface', role: 'cooled_surface' },
 				],
-				parallel: false,
 				selectable: false,
 				configurationRevision: 0,
 				requestedLimit: null,
@@ -665,13 +750,26 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(member.cooling_protection).toMatchObject({ dew_point_property: null, surface_property: null });
 		expect(mocks.get.mock.calls.filter(([path]) => path.includes('member-authoring'))).toHaveLength(1);
 	});
+	it('uses a remote surface for software condensation protection on a relay with an independent hardware guard', async () => {
+		const authoring = context('relay-0');
+		authoring.safety_extensions[0].candidates = [];
+		mocks.get.mockResolvedValueOnce({ data: { data: authoring } });
+		const member = { role: 'cooling', source_property: 'relay-0', provider_profile: 'shelly-ng.guarded-switch', lease_seconds: 15 } as ThermostatMemberDraft;
+		view = mount(ThermostatMemberCard, { props: {
+			member, coolingEnabled: true, coolingSources: [
+				{ id: 'dew', label: 'Room dew point', role: 'dew_point' },
+				{ id: 'floor-relay-0', label: 'Remote surface', role: 'cooled_surface' },
+			], configurationRevision: 0, requestedLimit: null, disabled: false, receivedAt: 0, now: 0, runtime: null,
+		} });
+		await flushPromises();
+		expect(member.cooling_protection?.surface_property).toBe('floor-relay-0');
+	});
 	it('does not detach an installed local guard when the wizard floor selection is empty', async () => {
 		const member = draftFromConfiguration(configuration(1) as unknown as ThermostatConfiguration).actuators[0];
 		view = mount(ThermostatMemberCard, {
 			props: {
 				member,
 				floorSources: [],
-				parallel: false,
 				configurationRevision: 3,
 				requestedLimit: 28,
 				disabled: false,
@@ -791,7 +889,7 @@ describe('actual mandatory-member authoring forms', () => {
 		for (const [key, value] of Object.entries({ endpoint: 'offline.fixture', epoch: 'operator-key' }))
 			installation
 				.findAllComponents(ElFormItem)
-				.find((entry) => entry.props('label') === `devicesVirtualPlugin.members.${key}`)!
+				.find((entry) => entry.props('label') === `devicesShellyNgPlugin.thermostatInstallation.${key}`)!
 				.findComponent(ElInput)
 				.vm.$emit('update:modelValue', value);
 		for (const [key, value] of Object.entries({
@@ -803,9 +901,9 @@ describe('actual mandatory-member authoring forms', () => {
 			heatingMinimum: 15,
 			heatingMaximum: 25,
 		}))
-			setNumber(installation, `devicesVirtualPlugin.members.${key}`, value);
+			setNumber(installation, `devicesShellyNgPlugin.thermostatInstallation.${key}`, value);
 		await flushPromises();
-		await button(installation, 'devicesVirtualPlugin.members.stage').trigger('click');
+		await button(installation, 'devicesShellyNgPlugin.thermostatInstallation.stage').trigger('click');
 		await flushPromises();
 		const staged = mocks.put.mock.calls.find(([path]) => path.includes('thermostat-installations'))!;
 		expect(staged[1]).toMatchObject({
@@ -837,7 +935,7 @@ describe('actual mandatory-member authoring forms', () => {
 		for (const [key, value] of Object.entries({ endpoint: 'offline.fixture', epoch: 'operator-key' }))
 			installation
 				.findAllComponents(ElFormItem)
-				.find((item) => item.props('label') === `devicesVirtualPlugin.members.${key}`)!
+				.find((item) => item.props('label') === `devicesShellyNgPlugin.thermostatInstallation.${key}`)!
 				.findComponent(ElInput)
 				.vm.$emit('update:modelValue', value);
 		for (const [key, value] of Object.entries({
@@ -849,18 +947,18 @@ describe('actual mandatory-member authoring forms', () => {
 			heatingMinimum: 15,
 			heatingMaximum: 25,
 		}))
-			setNumber(installation, `devicesVirtualPlugin.members.${key}`, value);
+			setNumber(installation, `devicesShellyNgPlugin.thermostatInstallation.${key}`, value);
 		await flushPromises();
 		expect(installation.text()).toContain('selected_protective_source_installation_snapshot_missing');
-		expect(button(installation, 'devicesVirtualPlugin.members.stage').props('disabled')).toBe(true);
-		await button(installation, 'devicesVirtualPlugin.members.stage').trigger('click');
+		expect(button(installation, 'devicesShellyNgPlugin.thermostatInstallation.stage').props('disabled')).toBe(true);
+		await button(installation, 'devicesShellyNgPlugin.thermostatInstallation.stage').trigger('click');
 		expect(mocks.put).not.toHaveBeenCalled();
 		complete = true;
-		await button(installation, 'devicesVirtualPlugin.members.reload').trigger('click');
+		await button(installation, 'devicesShellyNgPlugin.thermostatInstallation.reload').trigger('click');
 		await flushPromises();
 		expect(installation.text()).not.toContain('selected_protective_source_installation_snapshot_missing');
-		expect(button(installation, 'devicesVirtualPlugin.members.stage').props('disabled')).toBe(false);
-		await button(installation, 'devicesVirtualPlugin.members.stage').trigger('click');
+		expect(button(installation, 'devicesShellyNgPlugin.thermostatInstallation.stage').props('disabled')).toBe(false);
+		await button(installation, 'devicesShellyNgPlugin.thermostatInstallation.stage').trigger('click');
 		await flushPromises();
 		expect(mocks.put.mock.calls.filter(([path]) => path.includes('thermostat-installations'))).toHaveLength(1);
 	});
@@ -892,7 +990,6 @@ describe('actual mandatory-member authoring forms', () => {
 		view = mount(ThermostatMemberCard, {
 			props: {
 				member: draftFromConfiguration(configuration() as unknown as ThermostatConfiguration).actuators[0],
-				parallel: true,
 				configurationRevision: 3,
 				requestedLimit: 28,
 				disabled: true,
@@ -931,7 +1028,6 @@ describe('actual mandatory-member authoring forms', () => {
 		view = mount(ThermostatMemberCard, {
 			props: {
 				member: draftFromConfiguration(configuration() as unknown as ThermostatConfiguration).actuators[0],
-				parallel: true,
 				configurationRevision: 3,
 				requestedLimit: 28,
 				disabled: true,

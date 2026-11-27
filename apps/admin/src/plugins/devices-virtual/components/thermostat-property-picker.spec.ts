@@ -32,6 +32,7 @@ const devicesStore = {
 };
 const channelRows: Array<{ id: string; name: string; device: string }> = [];
 const channelsStore = {
+	findAll: () => channelRows,
 	findById: vi.fn(() => null),
 	findForDevice: vi.fn((deviceId: string) => channelRows.filter((channel) => channel.device === deviceId)),
 	get: vi.fn(async ({ id }: { id: string }) => ({ id, name: id, device: `device-${id.slice(-1)}` })),
@@ -45,6 +46,7 @@ const channelsStore = {
 	}),
 };
 const propertiesStore = {
+	findAll: vi.fn(() => []),
 	findById: vi.fn(() => null),
 	findForChannel: vi.fn(() => []),
 	get: vi.fn(async ({ id, channelId }: { id: string; channelId: string }) => ({
@@ -215,19 +217,26 @@ describe('thermostat property picker', () => {
 		wrapper.unmount();
 	});
 
-	it('offers only Shelly switch outputs as guarded actuators', async () => {
+	it('offers physical writable ON outputs from different plugins and filters alarms and read-only channels', async () => {
 		devicesStore.findAll.mockReturnValue([
-			{ id: 'device-a', name: 'Relay', type: 'devices-shelly-ng' },
-			{ id: 'device-b', name: 'Simulated heater', type: 'simulator' },
+			{ id: 'device-a', name: 'Coil', type: 'devices-modbus' },
+			{ id: 'device-b', name: 'Plug', type: 'devices-zigbee2mqtt' },
+			{ id: 'device-virtual', name: 'Virtual', type: 'virtual' },
 		] as never);
 		channelRows.push(
-			{ id: 'channel-a', name: 'Switch', device: 'device-a', identifier: 'switch:0' } as never,
-			{ id: 'channel-info', name: 'Info', device: 'device-a', identifier: 'device_information' } as never
+			{ id: 'channel-a', name: 'Relay', device: 'device-a' },
+			{ id: 'channel-info', name: 'Info', device: 'device-a' },
+			{ id: 'channel-b', name: 'Switch', device: 'device-b' }
 		);
-		propertiesStore.findForChannel.mockReturnValue([
-			{ id: 'output', name: 'Output', category: 'on', dataType: 'bool', identifier: 'output' },
-			{ id: 'over-current', name: 'Over current', category: 'over_current', dataType: 'bool', identifier: 'over_current' },
-		] as never);
+		const on = { id: 'state', name: 'Coil state', category: 'on', dataType: 'bool', permissions: ['wo'] };
+		const properties = [
+			{ ...on, channel: 'channel-a' },
+			{ ...on, channel: 'channel-b', id: 'zigbee-state' },
+			{ ...on, channel: 'channel-info', id: 'alarm', category: 'over_current' },
+			{ ...on, channel: 'channel-a', id: 'readonly', permissions: ['ro'] },
+		];
+		propertiesStore.findAll.mockReturnValue(properties as never);
+		propertiesStore.findForChannel.mockImplementation(((id: string) => properties.filter((property) => property.channel === id)) as never);
 		const wrapper = mount(ThermostatPropertyPicker, { props: { modelValue: '', kind: 'actuator' }, global: { stubs } });
 		await flushPromises();
 		const selects = wrapper.findAllComponents({ name: 'ElSelect' });
@@ -235,7 +244,12 @@ describe('thermostat property picker', () => {
 		await flushPromises();
 		selects[1].vm.$emit('change', 'channel-a');
 		await flushPromises();
-		expect(wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'))).toEqual(['device-a', 'channel-a', 'output']);
+		expect(wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'))).toEqual([
+			'device-a',
+			'device-b',
+			'channel-a',
+			'state',
+		]);
 		wrapper.unmount();
 	});
 });

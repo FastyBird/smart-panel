@@ -172,5 +172,34 @@
 	},
 	"sections": {
 		"connection": "Shelly connection"
+	},
+	"thermostatInstallation": {
+		"addEvidence": "Add evidence reference",
+		"ceiling": "Installed floor ceiling (°C)",
+		"coolingMaximum": "Installed cooling maximum (°C)",
+		"coolingMinimum": "Installed cooling minimum (°C)",
+		"cutoff": "Effective cutoff",
+		"endpoint": "Reviewed endpoint hostname",
+		"epoch": "Persistent epoch key",
+		"equipment": "Equipment identity",
+		"evidence": "Existing evidence reference",
+		"evidenceHelp": "Add only real documented evidence. Empty records make no qualification assertion.",
+		"heatingMaximum": "Installed heating maximum (°C)",
+		"heatingMinimum": "Installed heating minimum (°C)",
+		"installation": "Installation review and staging",
+		"legacyProfile": "Legacy singleton setup is retained. Adopt an explicit local binding before staging the member format.",
+		"maximumLease": "Installed maximum lease (seconds)",
+		"minimumLease": "Installed minimum lease (seconds)",
+		"observedMs": "Maximum observed duration (ms), if measured",
+		"procedure": "Documented procedure",
+		"reload": "Reload current revision",
+		"removeDraft": "Remove draft entry",
+		"retainedProfile": "Retained installation, audit and readiness",
+		"script": "Reviewed script slot",
+		"snapshot": "Read-only catalog and calibration review",
+		"stage": "Stage software installation record",
+		"stagingOnly": "Saving stages records only. It does not deploy scripts, activate outputs or certify equipment. Physical commissioning follows a published alpha.",
+		"testedAt": "Actual test time (ISO 8601)",
+		"watchdog": "Installed watchdog bound (ms)"
 	}
 }

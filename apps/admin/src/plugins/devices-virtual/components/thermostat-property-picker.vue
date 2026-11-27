@@ -112,9 +112,9 @@ import { PLUGINS_PREFIX } from '../../../app.constants';
 import { injectStoresManager, useBackend } from '../../../common';
 import type { IChannel, IChannelProperty, IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
-import { DEVICES_SHELLY_NG_TYPE } from '../../devices-shelly-ng/devices-shelly-ng.constants';
 import { useVirtualWizardSourceGroups } from '../composables/use-virtual-wizard-placement';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
+import { isThermostatActuatorProperty, thermostatWizardCandidates } from '../utils/thermostat-wizard-selection';
 
 const props = defineProps<{ modelValue: string | null; ownerDeviceId?: string; kind: 'ambient' | 'floor' | 'contact' | 'actuator' | 'setting' }>();
 const emit = defineEmits<{ (event: 'update:modelValue', value: string | null): void }>();
@@ -128,35 +128,54 @@ const propertiesStore = stores.getStore(channelsPropertiesStoreKey);
 const deviceId = ref<string | null>(props.ownerDeviceId ?? null);
 const channelId = ref<string | null>(null);
 
-// What the backend accepts as a guarded actuator (`thermostatActuatorIdentity` and the config
-// service's member check): the writable boolean output of a Shelly NG `switch:N` component, nothing
-// else. Offering every boolean of every device let a member be assembled from, say, an over-current
-// flag, which the preview then refused with a reason the form did not show.
-const isActuatorChannel = (channel: IChannel): boolean => /^switch:\d+$/.test(channel.identifier ?? '');
-const isActuatorProperty = (property: IChannelProperty): boolean =>
-	property.dataType === 'bool' && property.category === 'on' && ['output', 'on'].includes(property.identifier ?? '');
+const actuatorChannels = computed(
+	() =>
+		new Set(
+			propertiesStore
+				.findAll()
+				.filter(isThermostatActuatorProperty)
+				.map((property) => property.channel)
+		)
+);
+const actuatorDevices = computed(
+	() =>
+		new Set(
+			channelsStore
+				.findAll()
+				.filter((channel) => actuatorChannels.value.has(channel.id))
+				.map((channel) => channel.device)
+		)
+);
 const devices = computed<IDevice[]>(() =>
 	props.ownerDeviceId
 		? devicesStore.findAll().filter((device) => device.id === props.ownerDeviceId)
-		: devicesStore
-				.findAll()
-				.filter((device) => device.id !== props.ownerDeviceId && (props.kind !== 'actuator' || device.type === DEVICES_SHELLY_NG_TYPE))
+		: devicesStore.findAll().filter((device) => props.kind !== 'actuator' || (device.type !== 'virtual' && actuatorDevices.value.has(device.id)))
 );
 const groupSources = useVirtualWizardSourceGroups();
 const deviceGroups = computed(() => groupSources(orderBy(devices.value, [(device) => device.name], ['asc']), (device) => device));
 const channels = computed<IChannel[]>(() =>
-	deviceId.value ? channelsStore.findForDevice(deviceId.value).filter((channel) => props.kind !== 'actuator' || isActuatorChannel(channel)) : []
-);
-const properties = computed<IChannelProperty[]>(() =>
-	channelId.value
-		? propertiesStore.findForChannel(channelId.value).filter((property) => {
-				if (props.kind === 'setting') return true;
-				if (props.kind === 'actuator') return isActuatorProperty(property);
-				if (props.kind === 'contact') return ['bool', 'string', 'enum', 'uchar', 'int'].includes(property.dataType);
-				return property.category === 'temperature' && ['float', 'int', 'uchar'].includes(property.dataType);
-			})
+	deviceId.value
+		? channelsStore.findForDevice(deviceId.value).filter((channel) => props.kind !== 'actuator' || actuatorChannels.value.has(channel.id))
 		: []
 );
+const properties = computed<IChannelProperty[]>(() => {
+	if (!channelId.value) return [];
+	const candidates = propertiesStore.findForChannel(channelId.value);
+	switch (props.kind) {
+		case 'setting':
+			return candidates;
+		case 'actuator':
+			return candidates.filter(isThermostatActuatorProperty);
+		case 'contact':
+			return candidates.filter((property) => ['bool', 'string', 'enum', 'uchar', 'int'].includes(property.dataType));
+		default: {
+			const role = props.kind;
+			return thermostatWizardCandidates('sources', devices.value, channels.value, candidates)
+				.filter((candidate) => candidate.roles.some((allowed) => allowed === role))
+				.map((candidate) => candidate.property);
+		}
+	}
+});
 
 const sortedChannels = computed(() => orderBy(channels.value, [(channel) => channel.name], ['asc']));
 const sortedProperties = computed(() => orderBy(properties.value, [(property) => property.name ?? property.category], ['asc']));

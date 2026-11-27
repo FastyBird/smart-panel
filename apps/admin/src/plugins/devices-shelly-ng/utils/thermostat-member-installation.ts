@@ -1,4 +1,8 @@
-import type { ThermostatMemberContext, ThermostatStageRequest } from './thermostat-members';
+import type { components } from '../../../openapi';
+import type { ThermostatMemberContext } from '../../devices-virtual/services/thermostat-members';
+
+export type ThermostatInstallation = components['schemas']['DevicesVirtualPluginDataThermostatInstallation'];
+export type ThermostatStageRequest = components['schemas']['DevicesVirtualPluginStageThermostatInstallation'];
 
 export const attestationKinds = [
 	'commissioning_barrier',
@@ -48,7 +52,10 @@ const number = (value: number | null): value is number => typeof value === 'numb
 /** Catalog eligibility alone does not supply the selected member's complete installation metadata. */
 export function memberInstallationBlocker(context: ThermostatMemberContext | null, source: string | null): string | null {
 	if (!context) return 'member_authoring_context_unavailable';
-	const candidate = context.candidates.find((entry) => entry.property === source);
+	const extension = context.safety_extensions.find((entry) => entry.id === 'shelly-ng.guarded-switch');
+	if (!extension) return 'member_authoring_context_unavailable';
+	if (extension.reasons.length) return extension.reasons[0];
+	const candidate = extension.candidates.find((entry) => entry.property === source);
 	if (!candidate) return 'selected_protective_source_unavailable';
 	return candidate.snapshot ? null : 'selected_protective_source_installation_snapshot_missing';
 }
@@ -59,11 +66,13 @@ export function memberInstallationRequest(
 	generation?: string | null,
 	selectedSource: string | null = null
 ): ThermostatStageRequest | null {
+	const extension = context?.safety_extensions.find((item) => item.id === 'shelly-ng.guarded-switch');
 	if (
 		memberInstallationBlocker(context, selectedSource) ||
-		!context?.device_hardware_id ||
-		!context.firmware ||
-		!context.switch_configuration_json ||
+		!context ||
+		!extension?.device_hardware_id ||
+		!extension.firmware ||
+		!extension.switch_configuration_json ||
 		context.reasons.length ||
 		!draft.endpoint.trim() ||
 		!draft.epoch.trim() ||
@@ -91,9 +100,9 @@ export function memberInstallationRequest(
 		member_setup: {
 			format_version: 2,
 			installed_floor_ceiling_c: draft.ceiling,
-			device_hardware_id: context.device_hardware_id,
-			firmware: context.firmware,
-			switch_configuration_json: context.switch_configuration_json,
+			device_hardware_id: extension.device_hardware_id,
+			firmware: extension.firmware,
+			switch_configuration_json: extension.switch_configuration_json,
 			endpoint_hostname: draft.endpoint.trim(),
 			script_id: draft.script,
 			epoch_key: draft.epoch.trim(),

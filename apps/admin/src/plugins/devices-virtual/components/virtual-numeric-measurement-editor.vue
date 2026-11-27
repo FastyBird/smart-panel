@@ -1009,6 +1009,7 @@ import {
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { useMeasurementAuthoring } from '../composables/use-measurement-authoring';
 import { usePlacementNames } from '../composables/use-placement-names';
+import { useVirtualDeviceExtensions } from '../composables/use-virtual-device-extensions';
 import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
 import { provideVirtualWizardPlacement } from '../composables/use-virtual-wizard-placement';
 import {
@@ -1040,6 +1041,7 @@ const props = withDefaults(defineProps<{ mode: MeasurementMode; outputId?: strin
 });
 const emit = defineEmits<{ created: [deviceId: string]; busy: [value: boolean] }>();
 const { t, te, locale } = useI18n();
+const { measurementAlias } = useVirtualDeviceExtensions();
 const stores = injectStoresManager(),
 	devices = stores.getStore(devicesStoreKey),
 	channels = stores.getStore(channelsStoreKey),
@@ -1469,7 +1471,7 @@ const pickerSources = computed<VirtualWizardSource[]>(() => {
 });
 // Keep all metadata for saved bindings; collapse duplicate physical readings only in the add list.
 const availablePickerSources = computed(() =>
-	preferCanonicalMeasurementSources(pickerSources.value, devices.findAll(), channels.findAll(), properties.findAll())
+	preferCanonicalMeasurementSources(pickerSources.value, devices.findAll(), channels.findAll(), properties.findAll(), measurementAlias)
 );
 const selectedPickerSources = computed(() =>
 	model.inputs

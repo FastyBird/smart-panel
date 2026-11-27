@@ -7,6 +7,7 @@ import {
 	DevicesModuleChannelPropertyPermissions,
 	DevicesVirtualPluginDeviceMode,
 } from '../../../openapi.constants';
+import { shellyMeasurementAlias } from '../../devices-shelly-ng/utils/measurement-alias';
 
 import {
 	type AggregateProfile,
@@ -144,23 +145,23 @@ describe('backend aggregate capability payloads', () => {
 });
 
 describe('thermistor source admission', () => {
-	const candidates = (p: Partial<MeasurementSourceProperty>, identifier: string) =>
+	const candidates = (provider: string, fields: Partial<MeasurementSourceProperty> = {}) =>
 		measurementCandidates(
 			DevicesVirtualPluginDeviceMode.sensor_transform,
-			[device('devices-shelly-ng')],
-			[{ ...channel(DevicesModuleChannelCategory.analog_input), identifier }],
-			[property({ category: DevicesModuleChannelPropertyCategory.value, identifier: 'voltage', unit: null, ...p })]
+			[device(provider)],
+			[channel(DevicesModuleChannelCategory.analog_input)],
+			[property({ category: DevicesModuleChannelPropertyCategory.value, unit: 'V', ...fields })]
 		);
-	it('recognizes an identified read-only Shelly voltmeter even when its dynamic unit is absent', () => {
-		expect(candidates({}, `raw-voltage:voltmeter:1:${'a'.repeat(64)}`)).toEqual([expect.objectContaining({ unit: 'V', thermistorVoltage: true })]);
-	});
-	it.each(['ordinary-input', 'raw-voltage:voltmeter:1:incomplete'])('does not infer raw volts from an unqualified identity %s', (identifier) => {
-		expect(candidates({}, identifier)).toEqual([]);
-	});
-	it('never promotes arbitrary V labels or writable voltmeter values into thermistor sources', () => {
-		const identity = `raw-voltage:voltmeter:1:${'a'.repeat(64)}`;
-		expect(candidates({ unit: 'V', permissions: [DevicesModuleChannelPropertyPermissions.rw] }, identity)[0].thermistorVoltage).toBeUndefined();
-		expect(candidates({ unit: 'V' }, 'ordinary-input')[0].thermistorVoltage).toBeUndefined();
+	it.each(['devices-shelly-ng', 'devices-modbus', 'new-plugin'])(
+		'accepts the declared unit of a read-only voltage measurement from %s',
+		(provider) => {
+			expect(candidates(provider)).toEqual([expect.objectContaining({ unit: 'V', thermistorVoltage: true })]);
+		}
+	);
+	it('requires explicit units and a voltage measurement contract', () => {
+		expect(candidates('new-plugin', { unit: null })).toEqual([]);
+		expect(candidates('new-plugin', { permissions: [DevicesModuleChannelPropertyPermissions.rw] })[0].thermistorVoltage).toBeUndefined();
+		expect(candidates('new-plugin', { category: DevicesModuleChannelPropertyCategory.temperature })[0].thermistorVoltage).toBeUndefined();
 	});
 });
 
@@ -177,16 +178,22 @@ describe('duplicate Shelly addon readings in the wizard', () => {
 	const shelly = device('devices-shelly-ng');
 
 	it('offers the address-bound reading once, including offline, without rewriting existing row identities', () => {
-		const result = preferCanonicalMeasurementSources(rows, [shelly], [oldChannel, canonicalChannel], [oldProperty, canonicalProperty]);
+		const result = preferCanonicalMeasurementSources(
+			rows,
+			[shelly],
+			[oldChannel, canonicalChannel],
+			[oldProperty, canonicalProperty],
+			shellyMeasurementAlias
+		);
 		expect(result).toEqual([rows[1]]);
 		expect(result[0]).toBe(rows[1]);
 		expect(rows.map((row) => row.id)).toEqual(['legacy', 'probe']);
 	});
 
 	it('retains a source when no canonical replacement is offered by the backend catalogue', () => {
-		expect(preferCanonicalMeasurementSources([rows[0]], [shelly], [oldChannel, canonicalChannel], [oldProperty, canonicalProperty])).toEqual([
-			rows[0],
-		]);
+		expect(
+			preferCanonicalMeasurementSources([rows[0]], [shelly], [oldChannel, canonicalChannel], [oldProperty, canonicalProperty], shellyMeasurementAlias)
+		).toEqual([rows[0]]);
 	});
 
 	it.each(['provider', 'device', 'component', 'fingerprint', 'unit', 'property'])(
@@ -201,7 +208,7 @@ describe('duplicate Shelly addon readings in the wizard', () => {
 			if (difference === 'fingerprint') channels[1].identifier = 'probe-temperature:temperature:100:unknown';
 			if (difference === 'unit') properties[1].unit = '°F';
 			if (difference === 'property') properties[1].identifier = 'tF';
-			expect(preferCanonicalMeasurementSources(rows, devices, channels, properties)).toEqual(rows);
+			expect(preferCanonicalMeasurementSources(rows, devices, channels, properties, shellyMeasurementAlias)).toEqual(rows);
 		}
 	);
 
@@ -213,7 +220,8 @@ describe('duplicate Shelly addon readings in the wizard', () => {
 				choices,
 				[shelly],
 				[oldChannel, canonicalChannel, other],
-				[oldProperty, canonicalProperty, { ...canonicalProperty, id: 'other', channel: other.id }]
+				[oldProperty, canonicalProperty, { ...canonicalProperty, id: 'other', channel: other.id }],
+				shellyMeasurementAlias
 			)
 		).toEqual(choices);
 	});

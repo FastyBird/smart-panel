@@ -84,7 +84,7 @@ Production evidence includes [qualified adapter tests](../../../apps/backend/src
 [source identity/leases](../../../apps/backend/src/plugins/devices-shelly-ng/services/shelly-sample-sources.service.spec.ts),
 [qualified adoption](../../../apps/backend/src/plugins/devices-shelly-ng/services/qualified-adoption.spec.ts),
 [controller runtime](../../../apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts),
-[installation integration](../../../apps/backend/src/plugins/devices-virtual/services/thermostat-installation.integration.spec.ts)
+[installation integration](../../../apps/backend/src/plugins/devices-shelly-ng/services/thermostat-installation.integration.spec.ts)
 and the Zigbee source/bridge suites. This spike remains **NO-GO for installed thermostat activation**: the supplied
 pilot has no installed qualified guard/profile or recorded physical commissioning evidence.
 

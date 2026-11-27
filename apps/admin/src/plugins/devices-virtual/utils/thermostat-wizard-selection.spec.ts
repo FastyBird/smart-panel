@@ -59,27 +59,44 @@ describe('relay thermostat wizard selection contracts', () => {
 		expect(result.map((candidate) => candidate.id)).toEqual(['temperature', 'spec-unit', 'contact']);
 		expect(result[2].roles).toEqual(['contact']);
 	});
+	it.each(['char', 'ushort', 'uint'])('accepts a %s Celsius measurement for temperature roles', (dataType) => {
+		const [candidate] = thermostatWizardCandidates('sources', devices, channels, [property('wired-temperature', { dataType })]);
+		expect(candidate.roles).toEqual(['ambient', 'floor', 'cooled_surface']);
+	});
 	it('allows a materialized aggregate only as ambient and excludes forwarding virtuals', () => {
 		const derived = property('derived', { channel: 'derived', valueOrigin: 'derived', sourceProperty: null });
 		expect(thermostatWizardCandidates('sources', devices, channels, [derived])[0].roles).toEqual(['ambient']);
 		expect(thermostatWizardCandidates('sources', [{ ...devices[2], mode: 'projection' }] as unknown as IDevice[], channels, [derived])).toEqual([]);
 	});
-	it('offers only the supported readable/writable relay output, never alarms or arbitrary booleans', () => {
-		const valid = relay('output');
-		expect(valid.roles).toEqual(['heating', 'cooling']);
-		const properties = [
-			valid.property,
-			{ ...valid.property, id: 'alarm', identifier: 'overtemperature' },
-			{ ...valid.property, id: 'read-only', permissions: ['ro'] } as IChannelProperty,
-		];
-		expect(thermostatWizardCandidates('actuators', devices, channels, properties).map((candidate) => candidate.id)).toEqual(['output']);
-	});
+	it.each(['devices-modbus', 'devices-zigbee2mqtt', 'new-device-plugin'])(
+		'offers writable physical on/off properties from %s with arbitrary identifiers',
+		(type) => {
+			const device = { ...devices[1], type };
+			const outputChannel = { ...channels[2], identifier: 'relay_L2' };
+			const relayProperty = { ...relay('output').property, identifier: 'state_L2' };
+			const candidates = thermostatWizardCandidates(
+				'actuators',
+				[device],
+				[outputChannel],
+				[
+					relayProperty,
+					{ ...relayProperty, id: 'write-only', permissions: ['wo'] } as IChannelProperty,
+					{ ...relayProperty, id: 'alarm', category: 'over_current' } as IChannelProperty,
+					{ ...relayProperty, id: 'read-only', permissions: ['ro'] } as IChannelProperty,
+				]
+			);
+			expect(candidates.map((candidate) => candidate.id)).toEqual(['output', 'write-only']);
+			expect(candidates[0].roles).toEqual(['heating', 'cooling']);
+			expect(thermostatWizardCandidates('actuators', [{ ...device, type: 'virtual' }], [outputChannel], [relayProperty])).toEqual([]);
+		}
+	);
 	it('adds sensors into free roles without duplicates and defers contact mapping to configuration', () => {
 		const draft = newThermostatDraft();
 		expect(addThermostatWizardSource(draft, sensor('a'))).toBe(true);
 		expect(addThermostatWizardSource(draft, sensor('a'))).toBe(false);
 		expect(addThermostatWizardSource(draft, sensor('b'))).toBe(true);
-		expect(addThermostatWizardSource(draft, sensor('c'))).toBe(false);
+		expect(addThermostatWizardSource(draft, sensor('c'))).toBe(true);
+		expect(draft.coolingSources).toEqual([{ source_property: 'c', role: 'cooled_surface' }]);
 		const contact = thermostatWizardCandidates('sources', devices, channels, [
 			property('contact', { channel: 'contact', category: 'detected', dataType: 'bool' }),
 		])[0];
@@ -114,7 +131,7 @@ describe('relay thermostat wizard selection contracts', () => {
 		for (let index = 0; index < 8; index++) expect(addThermostatWizardActuator(draft, relay(`relay-${index}`))).toBe(true);
 		expect(addThermostatWizardActuator(draft, relay('relay-0'))).toBe(false);
 		expect(addThermostatWizardActuator(draft, relay('relay-8'))).toBe(false);
-		expect(draft.actuators.every((member) => member.role === 'heating' && member.lease_seconds === 600)).toBe(true);
+		expect(draft.actuators.every((member) => member.role === 'heating' && member.lease_seconds === null)).toBe(true);
 	});
 	it('drops settings for removed branches and invalid modes without resetting remaining settings', () => {
 		const draft = newThermostatDraft();
@@ -164,7 +181,7 @@ describe('relay thermostat wizard selection contracts', () => {
 		expect(thermostatWizardCandidates('sources', devices, localChannels, [property('surface', { channel: 'probe' })])[0].roles).toContain(
 			'cooled_surface'
 		);
-		expect(sensor('room').roles).not.toContain('cooled_surface');
+		expect(sensor('room').roles).toContain('cooled_surface');
 	});
 	it('keeps cooling selections separate from control source roles and supports several surface probes', () => {
 		const draft = newThermostatDraft();

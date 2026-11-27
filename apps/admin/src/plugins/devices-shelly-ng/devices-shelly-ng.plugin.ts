@@ -16,10 +16,13 @@ import {
 } from '../../modules/devices';
 import DeviceWizard from '../../modules/devices/components/wizard/device-wizard.vue';
 import { channelsPropertiesStoreKey, channelsStoreKey } from '../../modules/devices/store/keys';
+import type { VirtualDeviceExtensionComponents } from '../devices-virtual/composables/use-virtual-device-extensions';
 
 import { ShellyNgConfigForm, ShellyNgDeviceAddForm, ShellyNgDeviceEditForm } from './components/components';
 import ShellyCoverRecoverySection from './components/shelly-cover-recovery-section.vue';
 import { shellyCoverRecoveryTargets } from './components/shelly-cover-recovery-targets';
+import ShellyCoverRecovery from './components/shelly-cover-recovery.vue';
+import ThermostatMemberInstallation from './components/thermostat-member-installation.vue';
 import { useDevicesWizard } from './composables/composables';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from './devices-shelly-ng.constants';
 import { locales } from './locales';
@@ -33,10 +36,11 @@ import {
 import { ShellyNgChannelCreateReqSchema, ShellyNgChannelSchema, ShellyNgChannelUpdateReqSchema } from './store/channels.store.schemas';
 import { ShellyNgConfigSchema, ShellyNgConfigUpdateReqSchema } from './store/config.store.schemas';
 import { ShellyNgDeviceCreateReqSchema, ShellyNgDeviceSchema, ShellyNgDeviceUpdateReqSchema } from './store/devices.store.schemas';
+import { shellyMeasurementAlias } from './utils/measurement-alias';
 
 export const devicesShellyNgPluginKey: PluginInjectionKey<
 	IPlugin<
-		IDevicePluginsComponents & IChannelPluginsComponents & IChannelPropertyPluginsComponents & IPluginsComponents,
+		IDevicePluginsComponents & IChannelPluginsComponents & IChannelPropertyPluginsComponents & IPluginsComponents & VirtualDeviceExtensionComponents,
 		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas & IPluginsSchemas
 	>
 > = Symbol('FB-Plugin-DevicesShellyNg');
@@ -78,6 +82,9 @@ export default {
 				{
 					type: DEVICES_SHELLY_NG_TYPE,
 					components: {
+						virtualCoverRecovery: ShellyCoverRecovery,
+						virtualMeasurementAlias: shellyMeasurementAlias,
+						virtualThermostatInstallations: { 'shelly-ng.guarded-switch': ThermostatMemberInstallation },
 						deviceAddForm: ShellyNgDeviceAddForm,
 						deviceEditForm: ShellyNgDeviceEditForm,
 						deviceDetailTabs: [

@@ -234,6 +234,9 @@ const changeRole = (id: string, role: string) => {
 		const member = draft.value.actuators.find((entry) => entry.source_property === id);
 		if (!member || member.role === role) return;
 		member.role = role as ThermostatDraft['actuators'][number]['role'];
+		delete member.provider_profile;
+		delete member.independent_protection_acknowledged;
+		member.lease_seconds = null;
 		if (role === 'cooling') delete member.protection;
 		else delete member.cooling_protection;
 		syncThermostatWizardBranches(draft.value);

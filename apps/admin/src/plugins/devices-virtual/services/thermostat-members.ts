@@ -2,8 +2,6 @@ import type { components } from '../../../openapi';
 
 export type ThermostatMemberContext = components['schemas']['DevicesVirtualPluginDataThermostatAuthoringContext'];
 export type ThermostatMemberRuntime = components['schemas']['DevicesVirtualPluginDataThermostatBranchRuntime'];
-export type ThermostatInstallation = components['schemas']['DevicesVirtualPluginDataThermostatInstallation'];
-export type ThermostatStageRequest = components['schemas']['DevicesVirtualPluginStageThermostatInstallation'];
 
 /** Expiry is based on original observation evidence; metadata, ACKs and retained readings cannot renew it. */
 export function memberReading(member: ThermostatMemberRuntime | null, receivedAt: number, now: number) {

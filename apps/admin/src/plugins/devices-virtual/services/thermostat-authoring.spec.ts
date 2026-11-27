@@ -5,6 +5,7 @@ import {
 	DevicesVirtualPluginConfigureDewPointSchema_version,
 	DevicesVirtualPluginCoolingDependencyPurpose,
 	DevicesVirtualPluginThermostatSourceRole as SourceRole,
+	SpacesModuleClimateIntentMode,
 } from '../../../openapi';
 
 import {
@@ -44,6 +45,23 @@ describe('thermostat validation messages', () => {
 });
 
 describe('thermostat authoring payload', () => {
+	it('saves software-supervised drafts without a lease and requires explicit acknowledgement for an active mode', () => {
+		const draft = newThermostatDraft();
+		draft.sources = [{ role: SourceRole.ambient, source_property: 'radio-sensor', maximum_age_seconds: 1800 }];
+		draft.actuators = [{ role: ActuatorRole.heating, source_property: 'modbus-relay', lease_seconds: null }];
+		draft.policy.heatingSetpoint = 21;
+		const off = buildThermostatRequest(draft, 0);
+		expect(off.request?.actuators).toEqual([
+			{ role: 'heating', source_property: 'modbus-relay', provider_profile: 'supervised-switch', independent_protection_acknowledged: false },
+		]);
+		draft.requested_mode = SpacesModuleClimateIntentMode.heat;
+		expect(buildThermostatRequest(draft, 0).errors).toContain(thermostatError('independentProtection', { role: 'heating' }));
+		draft.actuators[0].independent_protection_acknowledged = true;
+		const active = buildThermostatRequest(draft, 0).request;
+		expect(active?.actuators[0].independent_protection_acknowledged).toBe(true);
+		expect(active?.actuators[0]).not.toHaveProperty('lease_seconds');
+	});
+
 	it('rejects timing and evidence ages beyond the backend bounds before a request', () => {
 		const draft = newThermostatDraft();
 		draft.policy.minimumOffMs = 86400001;

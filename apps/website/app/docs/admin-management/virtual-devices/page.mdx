@@ -5,10 +5,8 @@ import { Callout, Steps } from "nextra/components";
 Virtual devices give an existing measurement or several physical devices one reusable device identity. They appear in ordinary device and room views, while their details retain the physical source and current quality. From [Devices](/docs/admin-management/devices), the **Virtual** device wizard offers an existing projection and four additional types: aggregate sensor, numeric converter, light group, and thermostat controller.
 
 <Callout type="warning">
-  A virtual thermostat controls real outputs only after its actuator profile and
-  installed equipment are qualified and explicitly activated. A saved controller
-  can remain a draft. The UI's requested mode is not proof that a relay is
-  active or safe.
+  With software supervision, a relay can stay on if Smart Panel loses power or communication.
+  Verify independent equipment protection for each output before enabling heating or cooling.
 </Callout>
 
 ## Create and repair a measurement
@@ -44,21 +42,17 @@ If two groups in the same room share a physical light, room lighting reports an 
 
 ## Create a thermostat controller
 
-Choose **Thermostat controller** in the Virtual wizard. Select a valid ambient temperature source: a physical sensor, aggregate, or qualified numeric converter. Bind only supported heating and cooling outputs. Configure the actual installation's setpoints and deadband, and preview the actuator profile before saving. Unsupported or conflicting output combinations are rejected.
+Choose **Thermostat controller** in the Virtual wizard. For room temperature, select a physical Celsius sensor, an aggregate, or a calibrated numeric converter. In the relay step, assign a physical, writable on/off property to heating or cooling. The sensor and output can use different integrations. For example, a wireless Zigbee2MQTT room sensor can control a Modbus heating relay, and a wired sensor can control a Zigbee2MQTT plug.
 
-For a heating installation with floor protection, select a **separate** floor temperature input and supply the installed system's floor limit and recovery hysteresis. At or above the limit the controller releases heat; invalid or stale mandatory floor input inhibits heating. Heat can resume only with a fresh floor reading strictly below the limit minus hysteresis and with every other guard clear. Do not use a room average as the floor probe or assume a default safe floor temperature.
+Each output starts with **Software supervision**. Smart Panel evaluates the temperature and sends on/off commands through the output's device plugin. Confirm independent equipment protection for each output before activating it. You can save the controller in **Off** while commissioning is in progress.
 
-You can bind physical window contacts and configure automatic window detection independently. An open contact or detected window event pauses output. When the pause clears, the controller reevaluates the **latest** mode and setpoint, including changes made while paused. **Off**, input faults, floor protection and uncertain output state take priority over comfort demand. Heating and cooling outputs must not be active together.
+If the device plugin offers a safety extension for that output, select it in the configuration step. The Shelly Gen2+ guarded switch profile provides a device-side ON lease, an ordered OFF command and a device-local floor limit when commissioned. Open the saved member's installation review to stage its settings and verify the installed protection.
 
-After saving, open the thermostat detail to inspect the requested mode, actual heating/cooling activity, floor reading, protective reason, and installation status. Use **Edit** or **Repair** to replace a sensor or output and recheck the profile. A controller without completed qualification remains a draft; configuration or UI preview alone never energizes it. The panel and room climate controls use the same requested-setting path and should be checked against the reported activity and diagnostics.
+For floor heating, select a separate floor probe and enter the installed system's limit and recovery hysteresis. Smart Panel releases heat when the floor reaches the limit or the required reading becomes stale. It resumes only after a fresh reading falls below the limit minus the recovery hysteresis and the other guards clear. Software supervision accepts a floor probe from another integration. A device-local safety extension may require a probe wired directly to the actuator.
 
-<Callout type="warning">
-  For a live installation, the operator must verify physical input behavior,
-  sensor calibration and age, output isolation, bounded command/restart
-  behavior, independent equipment protection, and any opposed-output interlock
-  under a concrete approved procedure. Record the qualification against the
-  installed profile before activation.
-</Callout>
+For condensation protection, bind a dew-point reading and a cooled-surface probe for each cooling member. A window contact and automatic window detection can also pause regulation. Once a pause clears, Smart Panel reevaluates the current mode and setpoint.
+
+The thermostat detail shows requested mode, observed activity, input age and release status. After an OFF command, Smart Panel keeps the claim and blocks the opposite branch until it receives fresh evidence that the output is off. Plugins that can request a fresh read may confirm sooner. For other plugins, confirmation waits for the next device report or poll. A command acknowledgement alone leaves OFF unconfirmed. Shelly Gen1 relays can answer a direct status read. For a Home Assistant switch, confirmation waits for an independent state change from the physical switch. If the switch was already off and sends no new observation, the controller continues to show OFF as unconfirmed.
 
 ## Room readings and input freshness
 
