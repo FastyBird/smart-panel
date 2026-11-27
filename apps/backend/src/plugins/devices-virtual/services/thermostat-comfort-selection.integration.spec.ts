@@ -3858,6 +3858,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			physicalIdentity: 'physical-' + name,
 			providerProfile: 'shelly-ng.guarded-switch',
 			providerProfileVersion: 1,
+			independentProtectionAcknowledged: false,
 			sourcePropertyId: state === 'reserved' ? property : null,
 			sourcePropertyIdentity: 'property-' + name,
 			sourceDeviceId: state === 'reserved' ? id : null,
@@ -3900,6 +3901,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 				physicalIdentity: claim.physicalIdentity,
 				providerProfile: claim.providerProfile,
 				providerProfileVersion: claim.providerProfileVersion,
+				independentProtectionAcknowledged: claim.independentProtectionAcknowledged,
 				sourcePropertyId: claim.sourcePropertyId,
 				sourcePropertyIdentity: claim.sourcePropertyIdentity,
 				sourceDeviceId: claim.sourceDeviceId,
@@ -4002,7 +4004,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			}
 		});
 		afterEach(() => Object.defineProperty(globalThis, 'Date', clockDescriptor));
-		it('owns all fifteen/nineteen columns and complete membership, repeats and rejects a stale fence', async () => {
+		it('owns every configuration and claim column and complete membership, repeats and rejects a stale fence', async () => {
 			const images = observeImages(),
 				g = await graph.revision();
 			await configs.requestRelease(id, 1);
