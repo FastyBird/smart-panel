@@ -630,5 +630,20 @@
 		"updateDescription": "Instálala desde Actualizaciones de software, más abajo.",
 		"unknownTitle": "Alimentación y temperatura no informadas",
 		"unknownDescription": "La placa no informa de subtensión ni de limitación, o no se pudieron leer, así que su estado es desconocido."
+	},
+	"maintenance": {
+		"rebooting": {
+			"title": "Reiniciando el sistema"
+		},
+		"serviceRestarting": {
+			"title": "Reiniciando el servicio"
+		},
+		"poweredOff": {
+			"title": "Apagado"
+		},
+		"factoryReset": {
+			"title": "Restableciendo valores de fábrica"
+		},
+		"waitingSubtitle": "Esta página continuará sola cuando el Smart Panel vuelva a estar disponible."
 	}
 }

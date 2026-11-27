@@ -1,5 +1,5 @@
 <template>
-	<div class="py-4 px-4 max-w-lg mx-auto">
+	<div class="p-4 tp:p-5">
 		<el-alert
 			type="info"
 			:title="t('onboardingModule.integrations.description')"
@@ -28,10 +28,10 @@
 							<icon :icon="getPluginIcon(integration.type)" />
 						</el-icon>
 						<div class="flex-1 min-w-0">
-							<div class="font-medium">{{ integration.name }}</div>
+							<div class="text-card-title">{{ integration.name }}</div>
 							<div
 								v-if="integration.description"
-								class="text-xs text-secondary truncate"
+								class="text-caption truncate"
 							>
 								{{ integration.description }}
 							</div>
@@ -49,7 +49,7 @@
 						v-if="integration.enabled"
 						class="border-t border-primary-soft px-3 py-2 flex items-center justify-between gap-2"
 					>
-						<div class="flex items-center gap-2 text-xs min-w-0">
+						<div class="flex items-center gap-2 text-[12px] leading-[16px] min-w-0">
 							<template v-if="isDiscovering(integration.type)">
 								<el-icon
 									:size="14"
@@ -79,11 +79,11 @@
 							<template v-else-if="getDeviceCount(integration.type) > 0">
 								<el-icon
 									:size="14"
-									class="text-green-500"
+									class="text-success"
 								>
 									<icon icon="mdi:check-circle" />
 								</el-icon>
-								<span class="text-green-600">
+								<span class="text-success">
 									{{ t('onboardingModule.integrations.devicesFound', { count: getDeviceCount(integration.type) }) }}
 								</span>
 							</template>
@@ -105,7 +105,7 @@
 							<template v-else>
 								<el-icon
 									:size="14"
-									class="text-blue-400"
+									class="text-primary"
 								>
 									<icon icon="mdi:power-plug-outline" />
 								</el-icon>
@@ -134,15 +134,15 @@
 					<!-- Configuration required badge -->
 					<div
 						v-if="integration.enabled && requiresConfiguration(integration.type) && !isConfigured(integration.type)"
-						class="border-t border-orange-200 bg-orange-50 px-3 py-2 flex items-center gap-2"
+						class="border-t border-t-solid border-[var(--fb-status-warn-border)] bg-warning-soft px-3 py-2 flex items-center gap-2"
 					>
 						<el-icon
 							:size="14"
-							class="text-orange-500"
+							class="text-warning"
 						>
 							<icon icon="mdi:alert-circle-outline" />
 						</el-icon>
-						<span class="text-xs text-orange-600">
+						<span class="text-[12px] leading-[16px] text-warning">
 							{{ t('onboardingModule.integrations.configRequired') }}
 						</span>
 						<el-button
@@ -176,12 +176,12 @@
 			>
 				<icon icon="mdi:check-decagram" />
 			</el-icon>
-			<span class="text-sm text-regular">
+			<span class="text-body">
 				{{ t('onboardingModule.integrations.summary', { count: enabledCount }) }}
 			</span>
 			<span
 				v-if="totalDevicesFound > 0"
-				class="text-sm text-green-600 ml-auto"
+				class="text-[13px] leading-[20px] text-success ml-auto"
 			>
 				{{ t('onboardingModule.integrations.totalDevices', { count: totalDevicesFound }) }}
 			</span>

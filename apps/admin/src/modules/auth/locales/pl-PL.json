@@ -138,6 +138,9 @@
     },
     "close": {
       "title": "Zamknij"
+    },
+    "goToSignIn": {
+      "title": "Przejdź do logowania"
     }
   },
   "tokens": {
@@ -189,5 +192,10 @@
       "revokeError": "Nie udało się cofnąć tokena.",
       "copyError": "Nie udało się skopiować tokena do schowka."
     }
+  },
+  "subHeadings": {
+    "signIn": "Zarządzaj swoim Smart Panelem",
+    "signUp": "Utwórz konto, aby zarządzać Smart Panelem",
+    "lockScreen": "Wpisz hasło, aby kontynuować"
   }
 }

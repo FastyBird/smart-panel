@@ -188,6 +188,14 @@
     },
     "close": {
       "title": "Close"
+    },
+    "goToSignIn": {
+      "title": "Go to sign in"
     }
+  },
+  "subHeadings": {
+    "signIn": "Manage your Smart Panel",
+    "signUp": "Create an account to manage your Smart Panel",
+    "lockScreen": "Enter your password to continue"
   }
 }

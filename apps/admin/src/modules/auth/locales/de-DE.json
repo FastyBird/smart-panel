@@ -138,6 +138,9 @@
     },
     "close": {
       "title": "Schließen"
+    },
+    "goToSignIn": {
+      "title": "Zur Anmeldung"
     }
   },
   "tokens": {
@@ -189,5 +192,10 @@
       "revokeError": "Fehler beim Widerrufen des Tokens.",
       "copyError": "Fehler beim Kopieren des Tokens in die Zwischenablage."
     }
+  },
+  "subHeadings": {
+    "signIn": "Verwalten Sie Ihr Smart Panel",
+    "signUp": "Erstellen Sie ein Konto, um Ihr Smart Panel zu verwalten",
+    "lockScreen": "Geben Sie Ihr Passwort ein, um fortzufahren"
   }
 }

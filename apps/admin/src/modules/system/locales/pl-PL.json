@@ -630,5 +630,20 @@
 		"updateDescription": "Zainstaluj ją w sekcji Aktualizacje oprogramowania poniżej.",
 		"unknownTitle": "Zasilanie i temperatura nie są raportowane",
 		"unknownDescription": "Płyta nie raportuje zbyt niskiego napięcia ani dławienia albo nie udało się ich odczytać, więc ich stan jest nieznany."
+	},
+	"maintenance": {
+		"rebooting": {
+			"title": "Ponowne uruchamianie systemu"
+		},
+		"serviceRestarting": {
+			"title": "Ponowne uruchamianie usługi"
+		},
+		"poweredOff": {
+			"title": "Wyłączono"
+		},
+		"factoryReset": {
+			"title": "Przywracanie ustawień fabrycznych"
+		},
+		"waitingSubtitle": "Ta strona przejdzie dalej sama, gdy Smart Panel znów będzie dostępny."
 	}
 }

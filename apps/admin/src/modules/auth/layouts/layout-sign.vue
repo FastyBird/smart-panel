@@ -1,154 +1,21 @@
 <template>
-	<div class="flex flex-row items-center align-center w-full h-full">
-		<div class="mx-a w-[25rem]">
-			<el-card
-				v-if="isMDDevice"
-				class="mb-5"
-			>
-				<router-link
-					:to="{ name: RouteNames.SIGN_IN }"
-					class="block w-[8rem] my-0 mx-a"
-				>
-					<logo class="fill-brand-primary" />
-				</router-link>
-
-				<h1
-					v-if="route.name === RouteNames.SIGN_IN"
-					class="text-center capitalize mx-0 my-8 font-300 font-size-[1.8rem]"
-					data-test-id="sign-heading"
-				>
-					{{ t('authModule.headings.signIn') }}
-				</h1>
-
-				<h1
-					v-if="route.name === RouteNames.SIGN_UP"
-					class="text-center capitalize mx-0 my-8 font-300 font-size-[1.8rem]"
-					data-test-id="sign-heading"
-				>
-					{{ t('authModule.headings.signUp') }}
-				</h1>
-
-				<router-view />
-			</el-card>
-
-			<div
-				v-else
-				class="mb-5"
-			>
-				<router-link
-					:to="{ name: RouteNames.SIGN_IN }"
-					class="block w-[8rem] my-0 mx-a"
-				>
-					<logo class="fill-brand-primary" />
-				</router-link>
-
-				<h1
-					v-if="route.name === RouteNames.SIGN_IN"
-					class="text-center capitalize mx-0 my-8 font-300 font-size-[1.8rem]"
-				>
-					{{ t('authModule.headings.signIn') }}
-				</h1>
-
-				<h1
-					v-if="route.name === RouteNames.SIGN_UP"
-					class="text-center capitalize mx-0 my-8 font-300 font-size-[1.8rem]"
-				>
-					{{ t('authModule.headings.signUp') }}
-				</h1>
-
-				<router-view />
-			</div>
-
-			<div class="text-center">
-				<div
-					class="flex flex-row justify-center items-center mb-5"
-					data-test-id="social-links"
-				>
-					<el-link
-						underline="never"
-						href="https://github.com/fastybird"
-						target="_blank"
-						class="mx-5"
-					>
-						<template #icon>
-							<el-icon :size="20">
-								<icon icon="mdi:github" />
-							</el-icon>
-						</template>
-					</el-link>
-
-					<el-divider direction="vertical" />
-
-					<el-link
-						underline="never"
-						href="https://x.com/fastybird"
-						target="_blank"
-						class="mx-5"
-					>
-						<template #icon>
-							<el-icon :size="20">
-								<icon icon="fa6-brands:x-twitter" />
-							</el-icon>
-						</template>
-					</el-link>
-
-					<el-divider direction="vertical" />
-
-					<el-link
-						underline="never"
-						href="https://discord.gg/HPRJ2GzK"
-						target="_blank"
-						class="mx-5"
-					>
-						<template #icon>
-							<el-icon :size="20">
-								<icon icon="mdi:discord" />
-							</el-icon>
-						</template>
-					</el-link>
-
-					<el-divider direction="vertical" />
-
-					<el-link
-						underline="never"
-						href="https://www.facebook.com/fastybird"
-						target="_blank"
-						class="mx-5"
-					>
-						<template #icon>
-							<el-icon :size="20">
-								<icon icon="mdi:facebook" />
-							</el-icon>
-						</template>
-					</el-link>
-				</div>
-
-				<div class="flex flex-row justify-center items-baseline gap-[0.5rem]">
-					&copy;
-					<el-link
-						href="https://smart-panel.fastybird.com"
-						target="_blank"
-						data-test-id="author-link"
-					>
-						FastyBird Team
-					</el-link>
-					2024
-				</div>
-			</div>
-		</div>
-	</div>
+	<!-- Template 10, standalone: sign in and sign up outside the shell -->
+	<standalone-layout
+		:title="heading"
+		:subtitle="subtitle"
+		:logo-to="{ name: RouteNames.SIGN_IN }"
+		:logo-label="t('authModule.buttons.goToSignIn.title')"
+	>
+		<router-view />
+	</standalone-layout>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
-import { ElCard, ElDivider, ElIcon, ElLink } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import Logo from '../../../assets/images/fb_bird.svg?component';
-import { useBreakpoints } from '../../../common';
+import { StandaloneLayout } from '../../../common';
 import { RouteNames } from '../auth.constants';
 
 defineOptions({
@@ -158,5 +25,10 @@ defineOptions({
 const { t } = useI18n();
 
 const route = useRoute();
-const { isMDDevice } = useBreakpoints();
+
+const isSignUp = computed<boolean>((): boolean => route.name === RouteNames.SIGN_UP);
+
+const heading = computed<string>((): string => (isSignUp.value ? t('authModule.headings.signUp') : t('authModule.headings.signIn')));
+
+const subtitle = computed<string>((): string => (isSignUp.value ? t('authModule.subHeadings.signUp') : t('authModule.subHeadings.signIn')));
 </script>

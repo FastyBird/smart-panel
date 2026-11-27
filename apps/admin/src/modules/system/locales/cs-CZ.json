@@ -630,5 +630,20 @@
 		"updateDescription": "Nainstalujte ji v části Aktualizace softwaru níže.",
 		"unknownTitle": "Napájení a teplota nejsou hlášeny",
 		"unknownDescription": "Deska podpětí ani omezování výkonu nehlásí, nebo je nešlo načíst, takže jejich stav není znám."
+	},
+	"maintenance": {
+		"rebooting": {
+			"title": "Restartování systému"
+		},
+		"serviceRestarting": {
+			"title": "Restartování služby"
+		},
+		"poweredOff": {
+			"title": "Vypnuto"
+		},
+		"factoryReset": {
+			"title": "Obnovování továrního nastavení"
+		},
+		"waitingSubtitle": "Jakmile bude Smart Panel opět dostupný, stránka bude pokračovat sama."
 	}
 }

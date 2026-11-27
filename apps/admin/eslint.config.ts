@@ -58,6 +58,9 @@ const DESIGN_SYSTEM_MIGRATED_FOLDERS: string[] = [
 	'src/modules/users',
 	'src/modules/extensions',
 	'src/modules/system',
+	// AR-25: sign in, sign up, the lock screen and onboarding (the maintenance screens are in the system folder)
+	'src/modules/auth',
+	'src/modules/onboarding',
 ];
 
 /** Files that may keep a rule during the migration, with the task that removes the exception */

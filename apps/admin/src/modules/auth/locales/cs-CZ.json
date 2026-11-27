@@ -138,6 +138,9 @@
     },
     "close": {
       "title": "Zavřít"
+    },
+    "goToSignIn": {
+      "title": "Přejít na přihlášení"
     }
   },
   "tokens": {
@@ -189,5 +192,10 @@
       "revokeError": "Nepodařilo se odvolat token.",
       "copyError": "Nepodařilo se zkopírovat token do schránky."
     }
+  },
+  "subHeadings": {
+    "signIn": "Spravujte svůj Smart Panel",
+    "signUp": "Vytvořte si účet pro správu Smart Panelu",
+    "lockScreen": "Pro pokračování zadejte heslo"
   }
 }

@@ -138,6 +138,9 @@
     },
     "close": {
       "title": "Zavrieť"
+    },
+    "goToSignIn": {
+      "title": "Prejsť na prihlásenie"
     }
   },
   "tokens": {
@@ -189,5 +192,10 @@
       "revokeError": "Nepodarilo sa zrušiť token.",
       "copyError": "Nepodarilo sa skopírovať token do schránky."
     }
+  },
+  "subHeadings": {
+    "signIn": "Spravujte svoj Smart Panel",
+    "signUp": "Vytvorte si účet na správu Smart Panelu",
+    "lockScreen": "Na pokračovanie zadajte heslo"
   }
 }

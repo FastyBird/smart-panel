@@ -1,24 +1,17 @@
 <template>
-	<el-alert
-		type="info"
-		:closable="false"
-		class="my-6!"
-		center
-	>
-		<div class="text-center">
-			<span class="font-size-[0.9rem] font-bold">
-				{{ t('systemModule.subHeadings.poweredOff') }}
-			</span>
-			<br />
-			{{ t('systemModule.texts.manage.poweredOff') }}
-		</div>
-	</el-alert>
+	<state-view
+		kind="empty"
+		icon="mdi:power"
+		:title="t('systemModule.subHeadings.poweredOff')"
+		:description="t('systemModule.texts.manage.poweredOff')"
+		data-test-id="maintenance-powered-off"
+	/>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert } from 'element-plus';
+import { StateView } from '../../../common';
 
 defineOptions({
 	name: 'ViewPowerOff',

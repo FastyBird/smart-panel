@@ -138,6 +138,9 @@
     },
     "close": {
       "title": "Cerrar"
+    },
+    "goToSignIn": {
+      "title": "Ir al inicio de sesión"
     }
   },
   "tokens": {
@@ -189,5 +192,10 @@
       "revokeError": "No se pudo revocar el token.",
       "copyError": "No se pudo copiar el token al portapapeles."
     }
+  },
+  "subHeadings": {
+    "signIn": "Administra tu Smart Panel",
+    "signUp": "Crea una cuenta para administrar tu Smart Panel",
+    "lockScreen": "Introduce tu contraseña para continuar"
   }
 }

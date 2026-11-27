@@ -1,5 +1,5 @@
 <template>
-	<div class="py-4 px-4 max-w-lg mx-auto">
+	<div class="p-4 tp:p-5">
 		<el-alert
 			v-if="accountCreated"
 			type="success"
@@ -22,6 +22,7 @@
 				ref="formEl"
 				:model="accountData"
 				:rules="rules"
+				:disabled="isLoading || accountRegistered"
 				label-position="top"
 				status-icon
 			>
@@ -134,7 +135,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { accountData, accountCreated } = useAppOnboarding();
+// Once the account exists only signing in to it is left, so its fields stay as registered
+const { accountData, accountCreated, accountRegistered, isLoading } = useAppOnboarding();
 
 const formEl = ref<FormInstance | undefined>(undefined);
 const lastNameInputEl = ref<InputInstance | undefined>(undefined);

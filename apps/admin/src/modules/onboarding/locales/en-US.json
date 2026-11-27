@@ -15,7 +15,8 @@
 			"back": "Back",
 			"skip": "Skip",
 			"finishSetup": "Finish Setup"
-		}
+		},
+		"subtitle": "Set up your Smart Panel in a few steps"
 	},
 	"welcome": {
 		"title": "Welcome to Smart Panel",

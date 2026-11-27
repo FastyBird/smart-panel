@@ -1,131 +1,43 @@
 <template>
-	<div class="flex flex-row items-center align-center w-full h-full">
-		<div class="mx-a w-[25rem]">
-			<component
-				:is="isMDDevice ? ElCard : 'div'"
-				class="mb-5"
-			>
-				<div class="flex flex-col items-center my-6">
-					<user-avatar
-						:size="80"
-						:email="accountManager?.details.value?.email"
-						class="mb-3"
-					/>
+	<!-- Template 10, standalone: the locked session, with whose it is above the unlock form -->
+	<standalone-layout
+		:title="t('authModule.headings.lockScreen')"
+		:subtitle="t('authModule.subHeadings.lockScreen')"
+	>
+		<div
+			class="flex items-center gap-3 p-3 rounded-lg bg-fill-light min-w-0"
+			data-test-id="lock-account"
+		>
+			<user-avatar
+				:size="40"
+				:email="accountManager?.details.value?.email"
+			/>
 
-					<span
-						v-if="accountManager?.details.value?.name"
-						class="text-lg font-500"
-					>
-						{{ accountManager.details.value.name }}
-					</span>
-
-					<span
-						v-if="accountManager?.details.value?.email"
-						class="text-sm text-gray-500"
-					>
-						{{ accountManager.details.value.email }}
-					</span>
-				</div>
-
-				<h1
-					class="text-center capitalize mx-0 mb-6 mt-0 font-300 font-size-[1.4rem]"
-					data-test-id="lock-heading"
+			<div class="flex flex-col min-w-0">
+				<span
+					v-if="accountManager?.details.value?.name"
+					class="text-card-title truncate"
 				>
-					{{ t('authModule.headings.lockScreen') }}
-				</h1>
+					{{ accountManager.details.value.name }}
+				</span>
 
-				<router-view />
-			</component>
-
-			<div class="text-center">
-				<div
-					class="flex flex-row justify-center items-center mb-5"
-					data-test-id="social-links"
+				<span
+					v-if="accountManager?.details.value?.email"
+					class="text-help truncate"
 				>
-					<el-link
-						underline="never"
-						href="https://github.com/fastybird"
-						target="_blank"
-						class="mx-5"
-					>
-						<template #icon>
-							<el-icon :size="20">
-								<icon icon="mdi:github" />
-							</el-icon>
-						</template>
-					</el-link>
-
-					<el-divider direction="vertical" />
-
-					<el-link
-						underline="never"
-						href="https://x.com/fastybird"
-						target="_blank"
-						class="mx-5"
-					>
-						<template #icon>
-							<el-icon :size="20">
-								<icon icon="fa6-brands:x-twitter" />
-							</el-icon>
-						</template>
-					</el-link>
-
-					<el-divider direction="vertical" />
-
-					<el-link
-						underline="never"
-						href="https://discord.gg/HPRJ2GzK"
-						target="_blank"
-						class="mx-5"
-					>
-						<template #icon>
-							<el-icon :size="20">
-								<icon icon="mdi:discord" />
-							</el-icon>
-						</template>
-					</el-link>
-
-					<el-divider direction="vertical" />
-
-					<el-link
-						underline="never"
-						href="https://www.facebook.com/fastybird"
-						target="_blank"
-						class="mx-5"
-					>
-						<template #icon>
-							<el-icon :size="20">
-								<icon icon="mdi:facebook" />
-							</el-icon>
-						</template>
-					</el-link>
-				</div>
-
-				<div class="flex flex-row justify-center items-baseline gap-[0.5rem]">
-					&copy;
-					<el-link
-						href="https://smart-panel.fastybird.com"
-						target="_blank"
-						data-test-id="author-link"
-					>
-						FastyBird Team
-					</el-link>
-					2024
-				</div>
+					{{ accountManager.details.value.email }}
+				</span>
 			</div>
 		</div>
-	</div>
+
+		<router-view />
+	</standalone-layout>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElDivider, ElIcon, ElLink } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
-
-import { useBreakpoints } from '../../../common';
-import UserAvatar from '../../../common/components/user-avatar.vue';
+import { StandaloneLayout, UserAvatar } from '../../../common';
 import { injectAccountManager } from '../../../common/services/account-manager';
 
 defineOptions({
@@ -134,6 +46,5 @@ defineOptions({
 
 const { t } = useI18n();
 
-const { isMDDevice } = useBreakpoints();
 const accountManager = injectAccountManager();
 </script>
