@@ -87,12 +87,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		this.shelliesAdapter.setCallbacks({
 			onDeviceDiscovered: (event) => this.handleDeviceDiscovered(event),
 			onDeviceChanged: (event) => this.handleDeviceChanged(event),
-			onTemperatureReport: (report) =>
-				this.reports.temperature(report).catch((error: unknown) =>
-					this.logger.warn('Failed to record Shelly temperature report', {
-						message: error instanceof Error ? error.message : 'unknown error',
-					}),
-				),
+			onTemperatureReport: (report) => this.reports.temperature(report),
 			onDeviceOffline: (event) => this.handleDeviceOffline(event),
 			onDeviceOnline: (event) => this.handleDeviceOnline(event),
 			onError: (error) => this.handleAdapterError(error),

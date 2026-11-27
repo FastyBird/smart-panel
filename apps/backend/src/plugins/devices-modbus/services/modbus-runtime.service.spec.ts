@@ -46,6 +46,7 @@ interface PendingRead {
  */
 class FakeConnection {
 	readonly pending: PendingRead[] = [];
+	queuedUntil?: Promise<void>;
 	hold = false;
 	value = 1;
 	level = false;
@@ -56,11 +57,13 @@ class FakeConnection {
 	start = jest.fn();
 	markOverloaded = jest.fn();
 	getHealth = jest.fn(() => ({ state: 'connected' }));
-	read = jest.fn((request: ModbusReadRequest): Promise<number[]> => {
-		if (this.stopped) {
-			return Promise.reject(new ModbusEndpointUnavailableError());
-		}
-
+	async read(request: ModbusReadRequest, beforeDispatch?: () => void): Promise<number[]> {
+		if (this.queuedUntil !== undefined) await this.queuedUntil;
+		if (this.stopped) throw new ModbusEndpointUnavailableError();
+		beforeDispatch?.();
+		return this.send(request);
+	}
+	send = jest.fn((request: ModbusReadRequest): Promise<number[]> => {
 		if (this.failures > 0) {
 			this.failures--;
 
@@ -411,7 +414,7 @@ describe('ModbusRuntimeService', () => {
 			'device-1',
 			{ state: ConnectionState.ALERT, reason: 'Device has no read bindings' },
 		]);
-		expect(connections[0].read).not.toHaveBeenCalled();
+		expect(connections[0].send).not.toHaveBeenCalled();
 		expect(properties.reportSample).not.toHaveBeenCalled();
 		// A write-only device can still be commanded
 		expect(runtime.getConnection('device-1')).toBe(connections[0]);
@@ -447,7 +450,7 @@ describe('ModbusRuntimeService', () => {
 		await runtime.start();
 		await jest.advanceTimersByTimeAsync(0);
 
-		connections[0].read.mockRejectedValue(new ModbusConnectionError('down'));
+		connections[0].send.mockRejectedValue(new ModbusConnectionError('down'));
 		await jest.advanceTimersByTimeAsync(3000);
 
 		expect(states('device-1')).toContain(ConnectionState.LOST);
@@ -576,10 +579,10 @@ describe('ModbusRuntimeService', () => {
 		// Exactly one poll timer is left: replaced pollers were stopped, not just orphaned
 		expect(jest.getTimerCount()).toBe(1);
 
-		connections[0].read.mockClear();
+		connections[0].send.mockClear();
 		await jest.advanceTimersByTimeAsync(3000);
 
-		expect(connections[0].read).toHaveBeenCalledTimes(3);
+		expect(connections[0].send).toHaveBeenCalledTimes(3);
 	});
 
 	it('does not resurrect a device deleted while it was loading', async () => {
@@ -599,13 +602,13 @@ describe('ModbusRuntimeService', () => {
 
 		await runtime.onDeviceDeleted(devices[0]);
 		connectivity.trySetConnectionState.mockClear();
-		connections[0].read.mockClear();
+		connections[0].send.mockClear();
 
 		release();
 		await loading;
 		await jest.advanceTimersByTimeAsync(3000);
 
-		expect(connections[0].read).not.toHaveBeenCalled();
+		expect(connections[0].send).not.toHaveBeenCalled();
 		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
 		expect(runtime.getConnection('device-1')).toBeNull();
 	});
@@ -630,10 +633,10 @@ describe('ModbusRuntimeService', () => {
 		releaseOld();
 		await older;
 
-		connections[0].read.mockClear();
+		connections[0].send.mockClear();
 		await jest.advanceTimersByTimeAsync(2000);
 
-		expect(connections[0].read.mock.calls.map(([request]) => request.unitId)).toEqual([1, 1]);
+		expect(connections[0].send.mock.calls.map(([request]) => request.unitId)).toEqual([1, 1]);
 	});
 
 	it('loads a created device and ignores devices of other types', async () => {
@@ -773,15 +776,15 @@ describe('ModbusRuntimeService', () => {
 		expect(fresh.start).toHaveBeenCalledTimes(1);
 		expect(runtime.getConnection('device-1')).toBe(fresh);
 
-		fresh.read.mockClear();
+		fresh.send.mockClear();
 		await jest.advanceTimersByTimeAsync(3000);
 
-		const reads = (unitId: number) => fresh.read.mock.calls.filter(([request]) => request.unitId === unitId).length;
+		const reads = (unitId: number) => fresh.send.mock.calls.filter(([request]) => request.unitId === unitId).length;
 
 		// Started poll plus three ticks, once per device
 		expect(reads(1)).toBe(3);
 		expect(reads(2)).toBe(3);
-		expect(old.read).toHaveBeenCalledTimes(8);
+		expect(old.send).toHaveBeenCalledTimes(8);
 		// The rejected in-flight polls were discarded, not counted as failures
 		expect(states('device-1')).not.toContain(ConnectionState.LOST);
 		expect(states('device-2')).not.toContain(ConnectionState.LOST);
@@ -827,7 +830,7 @@ describe('ModbusRuntimeService', () => {
 		const connection = connections[0];
 		const slow: { read: PendingRead | null } = { read: null };
 
-		connection.read.mockImplementation((request: ModbusReadRequest) => {
+		connection.send.mockImplementation((request: ModbusReadRequest) => {
 			if (request.unitId === 1 && slow.read === null) {
 				return new Promise<number[]>((resolve, reject) => {
 					slow.read = { request, resolve, reject };
@@ -855,7 +858,7 @@ describe('ModbusRuntimeService', () => {
 	it('requests a fresh sample only from a current read binding and marks dispatch before its ingress', async () => {
 		await runtime.start();
 		await jest.advanceTimersByTimeAsync(0);
-		const read = connections[0].read;
+		const read = connections[0].send;
 		read.mockClear();
 		properties.reportSample.mockClear();
 		const dispatching = jest.fn(() => expect(read).not.toHaveBeenCalled());
@@ -867,16 +870,75 @@ describe('ModbusRuntimeService', () => {
 		expect(reports()).toEqual([['p1', 1]]);
 	});
 
+	it('counts a dispatched targeted read after unload and discards its late response', async () => {
+		await runtime.start();
+		await jest.advanceTimersByTimeAsync(0);
+		properties.reportSample.mockClear();
+		const connection = connections[0];
+		connection.hold = true;
+		const dispatching = jest.fn();
+		const read = runtime.requestPropertyRead('device-1', 'p1', dispatching);
+
+		expect(connection.pending).toHaveLength(1);
+		await runtime.unloadDevice('device-1');
+		connection.pending[0].resolve([99]);
+
+		await expect(read).resolves.toBe(true);
+		expect(dispatching).toHaveBeenCalledTimes(1);
+		expect(properties.reportSample).not.toHaveBeenCalled();
+	});
+
+	it('withdraws a queued targeted read when its poller is replaced before the send', async () => {
+		await runtime.start();
+		await jest.advanceTimersByTimeAsync(0);
+		const connection = connections[0];
+		let resume!: () => void;
+		connection.queuedUntil = new Promise<void>((resolve) => {
+			resume = resolve;
+		});
+		const dispatching = jest.fn();
+		const read = runtime.requestPropertyRead('device-1', 'p1', dispatching);
+		expect(dispatching).not.toHaveBeenCalled();
+
+		await runtime.unloadDevice('device-1');
+		connection.queuedUntil = undefined;
+		await runtime.loadDevice('device-1');
+		await jest.advanceTimersByTimeAsync(0);
+		connection.send.mockClear();
+		properties.reportSample.mockClear();
+		resume();
+
+		await expect(read).resolves.toBe(false);
+		expect(dispatching).not.toHaveBeenCalled();
+		expect(connection.send).not.toHaveBeenCalled();
+		expect(properties.reportSample).not.toHaveBeenCalled();
+	});
+
+	it('distinguishes a targeted read that times out from one rejected before dispatch', async () => {
+		await runtime.start();
+		await jest.advanceTimersByTimeAsync(0);
+		properties.reportSample.mockClear();
+		const connection = connections[0];
+		const dispatching = jest.fn();
+		connection.failures = 1;
+		await expect(runtime.requestPropertyRead('device-1', 'p1', dispatching)).resolves.toBe(true);
+
+		await connection.stop();
+		await expect(runtime.requestPropertyRead('device-1', 'p1', dispatching)).resolves.toBe(false);
+		expect(dispatching).toHaveBeenCalledTimes(1);
+		expect(properties.reportSample).not.toHaveBeenCalled();
+	});
+
 	it('reads back through the device poller', async () => {
 		await runtime.start();
 		await jest.advanceTimersByTimeAsync(0);
 
-		connections[0].read.mockClear();
+		connections[0].send.mockClear();
 		properties.reportSample.mockClear();
 
 		await runtime.readBack('device-1', ['p1']);
 
-		expect(connections[0].read).toHaveBeenCalledTimes(1);
+		expect(connections[0].send).toHaveBeenCalledTimes(1);
 		expect(reports()).toEqual([['p1', 1]]);
 		await expect(runtime.readBack('unknown', ['p1'])).rejects.toBeInstanceOf(ModbusEndpointUnavailableError);
 	});

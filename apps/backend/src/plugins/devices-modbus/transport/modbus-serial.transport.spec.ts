@@ -166,6 +166,29 @@ describe('ModbusSerialTransport', () => {
 			).resolves.toEqual([40, 50]);
 		});
 
+		it('opens the proof boundary only when a valid read can reach the socket', async () => {
+			const dispatched = jest.fn();
+			const readRegister = jest.fn(() => 12);
+			const port = await startModbusServer({ getHoldingRegister: readRegister });
+			const client = transport(port);
+			const request = { unitId: 1, registerType: ModbusRegisterType.HOLDING_REGISTER, address: 2, count: 1 };
+			await expect(client.read(request, dispatched)).rejects.toBeInstanceOf(ModbusConnectionError);
+			await client.connect();
+			await expect(client.read({ ...request, address: -1 }, dispatched)).rejects.toBeInstanceOf(RangeError);
+			expect(dispatched).not.toHaveBeenCalled();
+
+			await expect(
+				client.read(request, () => {
+					throw new Error('read withdrawn');
+				}),
+			).rejects.toThrow('read withdrawn');
+			await expect(client.read(request, dispatched)).resolves.toEqual([12]);
+
+			expect(dispatched).toHaveBeenCalledTimes(1);
+			expect(readRegister).toHaveBeenCalledTimes(1);
+			expect(dispatched.mock.invocationCallOrder[0]).toBeLessThan(readRegister.mock.invocationCallOrder[0]);
+		});
+
 		it('reads input registers and discrete inputs', async () => {
 			const port = await startModbusServer({
 				getInputRegister: (addr: number) => addr + 1,

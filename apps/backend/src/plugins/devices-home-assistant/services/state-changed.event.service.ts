@@ -14,7 +14,6 @@ import {
 	ENTITY_MAIN_STATE_ATTRIBUTE,
 	HomeAssistantDomain,
 } from '../devices-home-assistant.constants';
-import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantStateChangedEventDto, HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
@@ -23,16 +22,16 @@ import {
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
-import { normalizeHaEventType } from '../utils/ha-event.utils';
+import { isHaEntityId, normalizeHaEventType } from '../utils/ha-event.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
-import { HomeAssistantEventIngress, WsEventService } from './home-assistant.ws.service';
+import { HomeAssistantEventIngress, HomeAssistantRegistryChange, WsEventService } from './home-assistant.ws.service';
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext } from './virtual-property.types';
 
 /** Normalized main-state value of the physical entities supported by this reporter. */
 function physicalMainValue(state?: HomeAssistantStateDto | null): number | boolean | null {
-	if (!state) return null;
+	if (typeof state?.entity_id !== 'string' || typeof state.state !== 'string') return null;
 	if (state.entity_id.startsWith('switch.')) return state.state === 'on' ? true : state.state === 'off' ? false : null;
 	if (
 		!state.entity_id.startsWith('sensor.') ||
@@ -58,6 +57,15 @@ function independentContext(context: HomeAssistantStateDto['context']): boolean 
 	return !!context?.id && context.user_id === null && context.parent_id === null;
 }
 
+type LocalBinding = {
+	id?: string;
+	type?: string;
+	haDeviceId?: string;
+	haEntityId?: string | null;
+	device?: { id: string } | string;
+	channel?: { id: string; device?: { id: string } | string } | string;
+};
+
 interface EntityStateWork {
 	generation: number;
 	timer?: NodeJS.Timeout;
@@ -71,14 +79,17 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		'StateChangedEventService',
 	);
 
-	private mappingLoad: Promise<boolean> | null = null;
+	private mappingLoad: Promise<Map<string, HomeAssistantDeviceEntity> | null> | null = null;
+	private discoveryRequest?: AbortController;
+	private mappingsReady = false;
+	private mappingRevision = 0;
+	private bindingGeneration = 0;
 	private reportSession: string | null = null;
-	private mappingGeneration = 0;
-	private readonly sourceEpochs = new Map<string, object>();
-
-	private entityIdToHaDevice: Map<string, HomeAssistantDiscoveredDeviceDto> | null = null;
-
-	private devices: HomeAssistantDeviceEntity[] = [];
+	private readonly sourceEpochs = new Map<string, { value: number | boolean; changedAt: number }>();
+	private entityDevices = new Map<string, HomeAssistantDeviceEntity>();
+	private readonly propertyEntities = new Map<string, string>();
+	// A device change can arrive while discovery is still resolving a pending entity's owner.
+	private readonly deviceRevisions = new Map<string, number>();
 
 	private readonly entityWork = new Map<string, EntityStateWork>();
 	private destroyed = false;
@@ -111,18 +122,70 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_DELETED)
-	handleDevicesUpdatedEvent(entity?: { type?: string }) {
+	handleDevicesUpdatedEvent(entity?: LocalBinding): void {
 		if (entity?.type && entity.type !== DEVICES_HOME_ASSISTANT_TYPE) return;
-		this.mappingGeneration++;
-		this.sourceEpochs.clear();
+		const current = entity?.haEntityId;
+		const previous = this.propertyEntities.get(entity?.id);
+		const channel = typeof entity?.channel === 'object' ? entity.channel : null;
+		const parent = entity?.device ?? channel?.device;
+		let panelDeviceId = typeof parent === 'string' ? parent : parent?.id;
+		if (!panelDeviceId && entity?.channel) {
+			const channelId = typeof entity.channel === 'string' ? entity.channel : entity.channel.id;
+			for (const [id, channels] of this.channelsByDeviceId) {
+				if (channels.some((item) => item.id === channelId)) {
+					panelDeviceId = id;
+					break;
+				}
+			}
+		}
+		const entityIds = [previous, current].filter(isHaEntityId);
+		if (entity?.haDeviceId) this.invalidateBindings({ deviceId: entity.haDeviceId }, entity.id);
+		else if (entityIds.length) this.invalidateBindings({ entityIds }, previous ? undefined : panelDeviceId);
+		else if (panelDeviceId) this.invalidateBindings({}, panelDeviceId);
+		else this.invalidateBindings(null);
+	}
+
+	handleRegistryChange(change: HomeAssistantRegistryChange | null): void {
+		this.invalidateBindings(change);
+	}
+
+	private invalidateBindings(change: HomeAssistantRegistryChange | null, panelDeviceId?: string): void {
+		this.mappingRevision++;
+		this.mappingsReady = false;
+		this.discoveryRequest?.abort();
 		this.mappingLoad = null;
-		this.entityIdToHaDevice = null;
-		this.channelsByDeviceId.clear();
-		this.propertiesByChannelId.clear();
-		for (const [entityId, work] of this.entityWork) {
+		if (change?.deviceId) this.deviceRevisions.set(change.deviceId, this.mappingRevision);
+		if (panelDeviceId) this.deviceRevisions.set(panelDeviceId, this.mappingRevision);
+		const affected = new Set(change?.entityIds);
+		if (isHaEntityId(change?.deviceId)) affected.add(change.deviceId);
+		for (const [id, device] of this.entityDevices) {
+			if (device.id === panelDeviceId || device.haDeviceId === change?.deviceId) affected.add(id);
+		}
+		if (!change) {
+			this.bindingGeneration++;
+			this.entityDevices.clear();
+			this.deviceRevisions.clear();
+			this.sourceEpochs.clear();
+			this.propertyEntities.clear();
+		} else {
+			for (const id of affected) {
+				this.sourceEpochs.delete(id);
+				this.entityDevices.delete(id);
+			}
+			for (const [propertyId, id] of this.propertyEntities) {
+				if (affected.has(id)) this.propertyEntities.delete(propertyId);
+			}
+		}
+		// A request already reading unchanged metadata can finish for its original entity.
+		// Replacing these maps keeps an old read from filling the refreshed cache.
+		this.channelsByDeviceId = new Map();
+		this.propertiesByChannelId = new Map();
+		for (const [id, work] of this.entityWork) {
+			if (change && !affected.has(id)) continue;
+			work.generation++;
 			clearTimeout(work.timer);
 			work.timer = undefined;
-			if (work.tail === undefined) this.entityWork.delete(entityId);
+			if (work.tail === undefined) this.entityWork.delete(id);
 		}
 	}
 
@@ -147,65 +210,89 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		const entityId = state?.entity_id ?? old?.entity_id;
 		if (!entityId) return;
 		const physicalValue = physicalMainValue(state);
-		const trusted =
+		const measured =
 			physicalValue !== null &&
 			!state.attributes?.assumed_state &&
 			!state.attributes?.restored &&
-			!state.attributes?.optimistic &&
-			independentContext(state.context) &&
-			independentContext(event.context);
-		if (!old || !trusted) this.sourceEpochs.delete(entityId);
+			!state.attributes?.optimistic;
 		const work: EntityStateWork = this.entityWork.get(entityId) ?? { generation: 0 };
 		clearTimeout(work.timer);
 		work.timer = undefined;
 		if (!state) {
+			this.sourceEpochs.delete(entityId);
 			work.generation++;
 			if (work.tail === undefined) this.entityWork.delete(entityId);
 			return;
 		}
 		this.entityWork.set(entityId, work);
 
-		const generation = this.mappingGeneration;
+		const revision = this.mappingRevision;
+		const generation = this.bindingGeneration;
 		const entityGeneration = work.generation;
 		const isCurrent = (): boolean =>
-			this.mappingGeneration === generation &&
+			this.bindingGeneration === generation &&
 			work.generation === entityGeneration &&
 			(!ingress || ingress.isCurrent());
 		const changedAt = state.last_changed;
 		// HA last_updated and last_reported can advance for attributes alone. Only a change of
 		// the adopted entity's own main state carries a new measurement at last_changed.
-		const transition =
-			trusted &&
-			ingress &&
+		const prior = this.sourceEpochs.get(entityId);
+		const oldValue = physicalMainValue(old);
+		const priorKnown =
 			old?.entity_id === entityId &&
-			old.state !== state.state &&
+			oldValue !== null &&
 			!old.attributes?.restored &&
 			!old.attributes?.assumed_state &&
+			!old.attributes?.optimistic;
+		const transition =
+			measured &&
+			priorKnown &&
+			oldValue !== physicalValue &&
+			independentContext(state.context) &&
+			independentContext(event.context) &&
+			ingress &&
 			changedAt instanceof Date &&
 			Number.isFinite(changedAt.getTime()) &&
 			changedAt <= ingress.receivedAt &&
 			old.last_changed instanceof Date &&
-			changedAt > old.last_changed;
-		if (transition && !this.sourceEpochs.has(entityId)) this.sourceEpochs.set(entityId, {});
+			changedAt > old.last_changed &&
+			(!prior || changedAt.getTime() > prior.changedAt);
+		if (transition) {
+			// Keep valid queued transitions ordered within one source lifetime.
+			const source = prior ?? { value: physicalValue, changedAt: 0 };
+			source.value = physicalValue;
+			source.changedAt = changedAt.getTime();
+			this.sourceEpochs.set(entityId, source);
+		} else if (!measured || !priorKnown || prior?.value !== physicalValue) {
+			// Recovery and contradictory reports with unusable timing are still ordinary state.
+			this.sourceEpochs.delete(entityId);
+		}
 		const epoch = this.sourceEpochs.get(entityId);
-		const sourceIsCurrent = (): boolean =>
-			!!epoch &&
-			!!ingress?.isCurrent() &&
-			this.mappingGeneration === generation &&
-			this.sourceEpochs.get(entityId) === epoch;
+		const epochChangedAt = epoch?.changedAt;
 
 		const hardwareEvent = entityId.startsWith('event.');
 		const process = async (): Promise<void> => {
 			if (!isCurrent()) return;
-			if (!(await this.initializeMappings()) || !isCurrent()) return;
-			if (hardwareEvent) {
-				await this.handleHardwareEventEntity(event, isCurrent);
+			const device = await this.findAdoptedDevice(entityId, isCurrent);
+			if (!isCurrent()) return;
+			const ownerIsCurrent = (): boolean =>
+				!!device &&
+				(this.deviceRevisions.get(device.id) ?? 0) <= revision &&
+				(this.deviceRevisions.get(device.haDeviceId) ?? 0) <= revision;
+			if (!ownerIsCurrent()) {
+				if (this.sourceEpochs.get(entityId) === epoch && epoch?.changedAt === epochChangedAt)
+					this.sourceEpochs.delete(entityId);
 				return;
 			}
-			const haDevice = this.entityIdToHaDevice?.get(entityId);
-			const device = haDevice && this.devices.find((item) => item.haDeviceId === haDevice.id);
-			if (!device) {
-				if (this.sourceEpochs.get(entityId) === epoch) this.sourceEpochs.delete(entityId);
+			const sourceIsCurrent = (): boolean =>
+				!!epoch &&
+				!!ingress?.isCurrent() &&
+				this.bindingGeneration === generation &&
+				this.sourceEpochs.get(entityId) === epoch &&
+				ownerIsCurrent();
+
+			if (hardwareEvent) {
+				await this.handleHardwareEventEntity(event, device, isCurrent);
 				return;
 			}
 
@@ -213,6 +300,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			for (const entries of resultMaps) {
 				for (const { property, value } of entries) {
 					if (!isCurrent()) return;
+					if (property.haEntityId === entityId) this.propertyEntities.set(property.id, entityId);
 					const update = toInstance(UpdateHomeAssistantChannelPropertyDto, {
 						type: DEVICES_HOME_ASSISTANT_TYPE,
 						value,
@@ -281,6 +369,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 	 */
 	private async handleHardwareEventEntity(
 		event: HomeAssistantStateChangedEventDto,
+		device: HomeAssistantDeviceEntity,
 		isCurrent: () => boolean,
 	): Promise<void> {
 		if (event.data.new_state === null) {
@@ -315,19 +404,6 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			return;
 		}
 
-		// 5. Look up device and channel
-		const haDevice = this.entityIdToHaDevice?.get(entityId);
-		if (!haDevice) {
-			this.logger.debug(`[HARDWARE EVENT] No HA device mapped for entity ${entityId}`);
-			return;
-		}
-
-		const device = this.devices.find((d) => d.haDeviceId === haDevice.id);
-		if (!device) {
-			this.logger.debug(`[HARDWARE EVENT] No adopted Smart Panel device for HA device ${haDevice.id}`);
-			return;
-		}
-
 		const channels = await this.getChannelsForDevice(device.id);
 		if (!isCurrent()) return;
 		const properties = await this.getPropertiesForChannels(channels);
@@ -341,6 +417,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			return;
 		}
 
+		this.propertyEntities.set(eventProp.id, entityId);
 		const channelId = typeof eventProp.channel === 'string' ? eventProp.channel : eventProp.channel?.id;
 		if (!channelId) {
 			return;
@@ -481,45 +558,58 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		}
 	}
 
-	private initializeMappings(): Promise<boolean> {
-		if (this.entityIdToHaDevice !== null) return Promise.resolve(true);
-		if (this.mappingLoad === null) {
-			const load = this.loadMappings(this.mappingGeneration).finally(() => {
-				if (this.mappingLoad === load) this.mappingLoad = null;
-			});
-			this.mappingLoad = load;
+	private async findAdoptedDevice(
+		entityId: string,
+		isCurrent: () => boolean,
+	): Promise<HomeAssistantDeviceEntity | undefined> {
+		while (isCurrent()) {
+			if (this.mappingsReady) return this.entityDevices.get(entityId);
+			const revision = this.mappingRevision;
+			if (this.mappingLoad === null) {
+				const request = new AbortController();
+				this.discoveryRequest = request;
+				const load = this.loadMappings(revision, request.signal).finally(() => {
+					if (this.mappingLoad === load) {
+						this.mappingLoad = null;
+						this.discoveryRequest = undefined;
+					}
+				});
+				this.mappingLoad = load;
+			}
+			const routes = await this.mappingLoad;
+			if (this.mappingRevision === revision) return routes?.get(entityId);
 		}
-		return this.mappingLoad;
 	}
 
-	private async loadMappings(generation: number): Promise<boolean> {
+	private async loadMappings(
+		revision: number,
+		signal: AbortSignal,
+	): Promise<Map<string, HomeAssistantDeviceEntity> | null> {
+		const routes = new Map<string, HomeAssistantDeviceEntity>();
 		try {
-			const [haDevices, panelDevices] = await Promise.all([
-				this.homeAssistantHttpService.getDiscoveredDevices(),
-				this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE),
-			]);
-
-			if (this.mappingGeneration !== generation || !haDevices?.length || !panelDevices?.length) {
-				return false;
+			const panelDevices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
+			if (signal.aborted || !panelDevices?.length) return null;
+			const bySource = new Map(panelDevices.map((device) => [device.haDeviceId, device]));
+			for (const [id, device] of bySource) if (isHaEntityId(id)) routes.set(id, device);
+			if (routes.size < bySource.size) {
+				const devices = await this.homeAssistantHttpService.getDiscoveredDevices(signal);
+				for (const remote of devices) {
+					const adopted = bySource.get(remote.id);
+					if (adopted) for (const id of remote.entities) routes.set(id, adopted);
+				}
 			}
-
-			this.entityIdToHaDevice = new Map();
-
-			haDevices.forEach((device) =>
-				device.entities.forEach((entityId) => this.entityIdToHaDevice.set(entityId, device)),
-			);
-
-			this.devices = panelDevices;
-
-			return true;
+			if (revision !== this.mappingRevision) return null;
+			this.entityDevices = routes;
+			this.mappingsReady = true;
+			return routes;
 		} catch (error) {
-			const err = error as Error;
-
+			if (signal.aborted || revision !== this.mappingRevision) return null;
 			this.logger.warn('Failed to initialize mappings, Home Assistant may be unavailable', {
-				message: err.message,
+				message: error instanceof Error ? error.message : 'unknown error',
 			});
-
-			return false;
+			// Local helper adoptions are already authoritative. Retry discovery for registry-backed devices.
+			for (const [id, device] of routes) this.entityDevices.set(id, device);
+			return routes;
 		}
 	}
 
@@ -530,10 +620,9 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		let channels = this.channelsByDeviceId.get(deviceId);
 
 		if (!channels) {
-			const generation = this.mappingGeneration;
+			const cache = this.channelsByDeviceId;
 			channels = await this.channelsService.findAll<HomeAssistantChannelEntity>(deviceId, DEVICES_HOME_ASSISTANT_TYPE);
-			if (this.mappingGeneration !== generation) return [];
-			this.channelsByDeviceId.set(deviceId, channels);
+			cache.set(deviceId, channels);
 		}
 
 		return channels;
@@ -560,12 +649,11 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 
 		// Load uncached properties in batch
 		if (uncachedChannelIds.length > 0) {
-			const generation = this.mappingGeneration;
+			const cache = this.propertiesByChannelId;
 			const newProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
 				uncachedChannelIds,
 				DEVICES_HOME_ASSISTANT_TYPE,
 			);
-			if (this.mappingGeneration !== generation) return [];
 
 			// Group by channel and cache
 			for (const channelId of uncachedChannelIds) {
@@ -573,7 +661,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 					const propChannelId = typeof p.channel === 'string' ? p.channel : p.channel?.id;
 					return propChannelId === channelId;
 				});
-				this.propertiesByChannelId.set(channelId, channelProps);
+				cache.set(channelId, channelProps);
 				allProperties.push(...channelProps);
 			}
 		}

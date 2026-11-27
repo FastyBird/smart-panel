@@ -7,7 +7,6 @@ import { ModbusConnectionError, ModbusExceptionError, ModbusTimeoutError } from 
 import { ModbusReadRequest } from '../transport/modbus-transport';
 
 import { DevicePoller, ModbusDeviceSnapshot, PollerCallbacks } from './device-poller';
-import { EndpointConnection } from './endpoint-connection';
 
 interface Deferred<T> {
 	promise: Promise<T>;
@@ -111,7 +110,12 @@ describe('DevicePoller', () => {
 	const create = (device: ModbusDeviceSnapshot): DevicePoller => {
 		poller = new DevicePoller(
 			device,
-			connection as unknown as EndpointConnection,
+			{
+				read: (request: ModbusReadRequest, beforeDispatch: () => void) => {
+					beforeDispatch();
+					return connection.read(request);
+				},
+			},
 			callbacks as unknown as PollerCallbacks,
 		);
 

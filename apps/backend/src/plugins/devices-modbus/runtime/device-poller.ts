@@ -143,7 +143,7 @@ export class DevicePoller {
 
 	constructor(
 		private readonly device: ModbusDeviceSnapshot,
-		private readonly connection: EndpointConnection,
+		private readonly connection: Pick<EndpointConnection, 'read'>,
 		private readonly callbacks: PollerCallbacks,
 	) {
 		const groups = new Map<number, ReadPoint[]>();
@@ -217,10 +217,12 @@ export class DevicePoller {
 	/**
 	 * Reads the given read-bound properties (all when omitted) right away and reports them even when unchanged.
 	 * Button points are skipped: an extra level read between polls would distort their timing.
-	 * Rejects when the endpoint did not answer; does not affect the device's connection state.
+	 * A targeted read returns whether it was sent, even if its later answer is unusable.
+	 * An ordinary read-back rejects when the endpoint does not answer.
 	 */
 	async pollNow(propertyIds?: string[], dispatching?: () => void): Promise<boolean> {
 		if (!this.isCurrent()) {
+			if (dispatching) return false;
 			throw new ModbusEndpointUnavailableError('Modbus device is not being polled');
 		}
 
@@ -233,9 +235,13 @@ export class DevicePoller {
 			return false;
 		}
 
-		dispatching?.();
-		const outcome = await this.readBlocks(planReadBlocks(points, this.device.limits), null, true);
+		let sent = false;
+		const outcome = await this.readBlocks(planReadBlocks(points, this.device.limits), null, true, () => {
+			if (!sent) dispatching?.();
+			sent = true;
+		});
 
+		if (dispatching) return sent;
 		if (outcome.kind === 'failed') {
 			throw outcome.error;
 		}
@@ -291,24 +297,31 @@ export class DevicePoller {
 		}
 	}
 
-	private async readBlocks(blocks: ReadBlock[], schedule: Schedule | null, force: boolean): Promise<ReadOutcome> {
+	private async readBlocks(
+		blocks: ReadBlock[],
+		schedule: Schedule | null,
+		force: boolean,
+		dispatching?: () => void,
+	): Promise<ReadOutcome> {
 		for (const block of [...blocks]) {
 			if (!this.isCurrent()) {
 				return { kind: 'stale' };
 			}
 
-			const sampledAt = new Date();
-			// Numbered when the read starts: a read begun before a proof boundary never answers it.
-			const ingressSequence = nextSampleIngress();
+			let sampledAt!: Date;
+			let ingressSequence!: number;
 			let values: boolean[] | number[];
 
 			try {
-				values = await this.connection.read({
-					unitId: this.device.unitId,
-					registerType: block.registerType,
-					address: block.address,
-					count: block.count,
-				});
+				values = await this.connection.read(
+					{ unitId: this.device.unitId, registerType: block.registerType, address: block.address, count: block.count },
+					() => {
+						if (!this.isCurrent()) throw new ModbusEndpointUnavailableError('Modbus device is no longer being polled');
+						dispatching?.();
+						sampledAt = new Date();
+						ingressSequence = nextSampleIngress();
+					},
+				);
 			} catch (error) {
 				if (!this.isCurrent()) {
 					return { kind: 'stale' };

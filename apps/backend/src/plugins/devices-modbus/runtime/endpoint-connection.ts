@@ -138,12 +138,20 @@ export class EndpointConnection {
 		}
 	}
 
-	read(request: ModbusReadRequest): Promise<boolean[] | number[]> {
-		return this.enqueue(this.readQueue, (transport) => transport.read(request));
+	read(request: ModbusReadRequest, beforeDispatch?: () => void): Promise<boolean[] | number[]> {
+		return this.enqueue(this.readQueue, (transport) =>
+			transport.read(request, () => {
+				beforeDispatch?.();
+				this.requests++;
+			}),
+		);
 	}
 
 	write(request: ModbusWriteRequest): Promise<void> {
-		return this.enqueue(this.writeQueue, (transport) => transport.write(request));
+		return this.enqueue(this.writeQueue, (transport) => {
+			this.requests++;
+			return transport.write(request);
+		});
 	}
 
 	get framing(): ModbusFraming {
@@ -212,7 +220,6 @@ export class EndpointConnection {
 		const startedAt = Date.now();
 
 		this.inFlight.add(entry);
-		this.requests++;
 
 		let pending: Promise<unknown>;
 

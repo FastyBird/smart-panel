@@ -43,10 +43,12 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from './entities/devices-shelly-v1.entity';
+import { ShellyV1AdoptedIdentityEntity } from './entities/shelly-v1-adopted-identity.entity';
 import { ShellyV1ConfigModel } from './models/config.model';
 import { ShellyV1DevicePlatform } from './platforms/shelly-v1.device.platform';
 import { DeviceMapperService } from './services/device-mapper.service';
 import { ShelliesAdapterService } from './services/shellies-adapter.service';
+import { ShellyV1AdoptedIdentityService } from './services/shelly-v1-adopted-identity.service';
 import { ShellyV1AdoptionService } from './services/shelly-v1-adoption.service';
 import { ShellyV1DiscoveryService } from './services/shelly-v1-discovery.service';
 import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
@@ -63,7 +65,12 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([ShellyV1DeviceEntity, ShellyV1ChannelEntity, ShellyV1ChannelPropertyEntity]),
+		TypeOrmModule.forFeature([
+			ShellyV1DeviceEntity,
+			ShellyV1ChannelEntity,
+			ShellyV1ChannelPropertyEntity,
+			ShellyV1AdoptedIdentityEntity,
+		]),
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
@@ -77,6 +84,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		ShellyV1ProbeService,
 		ShellyV1DiscoveryService,
 		ShellyV1AdoptionService,
+		ShellyV1AdoptedIdentityService,
 		ShellyV1DevicePlatform,
 		ShellyV1PropertyReportsService,
 		ShellyV1Service,

@@ -72,7 +72,7 @@ describe('ShelliesAdapterService', () => {
 
 		// Set up callbacks
 		callbacks = {
-			onTemperatureReport: jest.fn(),
+			onTemperatureReport: jest.fn().mockResolvedValue(true),
 			onDeviceDiscovered: jest.fn(),
 			onDeviceChanged: jest.fn(),
 			onDeviceOffline: jest.fn(),
@@ -95,6 +95,7 @@ describe('ShelliesAdapterService', () => {
 			host,
 			online: true,
 			on: jest.fn(),
+			removeAllListeners: jest.fn(),
 			setAuthCredentials: jest.fn(),
 			setRelay: jest.fn(),
 			setLight: jest.fn(),
@@ -324,6 +325,70 @@ describe('ShelliesAdapterService', () => {
 		});
 	});
 
+	describe('HTTP liveness checks', () => {
+		const ping = (alive: boolean) => {
+			let release: () => void;
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			httpClient.getDeviceInfo.mockImplementationOnce(async () => {
+				await gate;
+				if (!alive) throw new Error('offline');
+				return { mac: 'AABBCCDDEEFF', type: 'SHHT-1', auth: false, fw: '1', longid: 1 };
+			});
+			return () => release();
+		};
+		const discoverStale = () => {
+			const device = Object.assign(makeShellyDevice(), { lastSeen: new Date(Date.now() - 70_000) });
+			mockShelliesLibrary.getDevice.mockReturnValue(device);
+			mockShelliesLibrary.on.mock.calls
+				.filter(([event]) => event === 'add')
+				.at(-1)[1](device);
+			return device;
+		};
+
+		it.each([true, false])(
+			'ignores a retired run’s ping result (%s) without releasing the successor’s running check',
+			async (alive) => {
+				await service.start();
+				const old = discoverStale();
+				const originalLastSeen = old.lastSeen;
+				const resolveOld = ping(alive);
+				const firstCheck = service.checkDevicesStatus();
+				expect(httpClient.getDeviceInfo).toHaveBeenCalledTimes(1);
+				service.stop();
+				await service.start();
+				const successor = discoverStale();
+				const resolveNew = ping(true);
+				const secondCheck = service.checkDevicesStatus();
+				expect(httpClient.getDeviceInfo).toHaveBeenCalledTimes(2);
+				resolveOld();
+				await firstCheck;
+				expect(old.online).toBe(true);
+				expect(old.lastSeen).toBe(originalLastSeen);
+				expect(callbacks.onDeviceOffline).not.toHaveBeenCalled();
+				await service.checkDevicesStatus();
+				expect(httpClient.getDeviceInfo).toHaveBeenCalledTimes(2);
+				resolveNew();
+				await secondCheck;
+				expect(Number(successor.lastSeen)).toBeGreaterThan(Number(originalLastSeen));
+			},
+		);
+
+		it('discards a ping against a replaced peer within the same adapter run', async () => {
+			await service.start();
+			const original = discoverStale();
+			const finish = ping(false);
+			const checking = service.checkDevicesStatus();
+			const successor = discoverStale();
+			finish();
+			await checking;
+			expect(original.online).toBe(true);
+			expect(successor.online).toBe(true);
+			expect(callbacks.onDeviceOffline).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Device event handlers', () => {
 		const temperatureProbe = async () => {
 			await service.start();
@@ -337,6 +402,135 @@ describe('ShelliesAdapterService', () => {
 			) => void;
 			return { peer, push: (serial: number, value: unknown) => status(peer, serial, value) };
 		};
+
+		it.each([
+			{ reason: 'packet lifetime', elapsed: 145_000, host: '192.168.1.100', restart: false },
+			{ reason: 'different peer host', elapsed: 100, host: '192.168.1.99', restart: false },
+			{ reason: 'adapter shutdown', elapsed: 100, host: '192.168.1.100', restart: true },
+		])('ends removed peer ordering state at $reason', async ({ elapsed, host, restart }) => {
+			jest.useFakeTimers();
+			try {
+				const { peer, push } = await temperatureProbe();
+				push(250, 20);
+				await jest.advanceTimersByTimeAsync(0);
+				mockShelliesLibrary.getDevice.mockReturnValue(undefined);
+				mockShelliesLibrary.on.mock.calls.find(([name]) => name === 'remove')[1](peer);
+				expect(jest.getTimerCount()).toBe(1);
+				if (restart) {
+					service.stop();
+					expect(jest.getTimerCount()).toBe(0);
+					await service.start();
+				}
+				await jest.advanceTimersByTimeAsync(elapsed);
+				const replacement = makeShellyDevice(peer.id, peer.type, host);
+				mockShelliesLibrary.getDevice.mockReturnValue(replacement);
+				mockShelliesLibrary.on.mock.calls
+					.filter(([name]) => name === 'add')
+					.at(-1)[1](replacement);
+				mockShelliesLibrary.subscribeShellyTemperatures.mock.calls.at(-1)[0](replacement, 250, 19);
+				expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([20, 19]);
+				service.stop();
+				expect(jest.getTimerCount()).toBe(0);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('retries only the original pending observation after discovery, coalesces writes and stops after publication', async () => {
+			const { push } = await temperatureProbe();
+			let unmapped: (published: boolean) => void;
+			callbacks.onTemperatureReport.mockImplementationOnce(
+				() =>
+					new Promise<boolean>((resolve) => {
+						unmapped = resolve;
+					}),
+			);
+			push(5, 21.5);
+			const original = callbacks.onTemperatureReport.mock.lastCall[0];
+			push(5, 99);
+			push(5, 99);
+			expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
+			callbacks.onTemperatureReport.mockRejectedValueOnce(new Error('storage unavailable'));
+			unmapped(false);
+			await new Promise(setImmediate);
+			expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(2);
+			callbacks.onTemperatureReport.mockImplementationOnce(() => {
+				throw new Error('mapper failed');
+			});
+			push(5, 99);
+			await new Promise(setImmediate);
+			push(5, 99);
+			await new Promise(setImmediate);
+			push(5, 99);
+			expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(4);
+			for (const [report] of callbacks.onTemperatureReport.mock.calls) expect(report).toBe(original);
+			expect(original.value).toBe(21.5);
+		});
+
+		it('rejects a superseded pending observation and never retries it after a newer serial', async () => {
+			const { push } = await temperatureProbe();
+			let finish: (published: boolean) => void;
+			callbacks.onTemperatureReport.mockImplementationOnce(
+				() =>
+					new Promise<boolean>((resolve) => {
+						finish = resolve;
+					}),
+			);
+			push(5, 25);
+			const old = callbacks.onTemperatureReport.mock.lastCall[0];
+			push(5, 95);
+			push(6, 26);
+			const latest = callbacks.onTemperatureReport.mock.lastCall[0];
+			expect(old.isLatest()).toBe(false);
+			expect(latest.isLatest()).toBe(true);
+			finish(false);
+			await new Promise(setImmediate);
+			mockShelliesLibrary.readShellyTemperature.mockResolvedValue({ serial: 6, value: 26 });
+			push(5, 95);
+			await new Promise(setImmediate);
+			push(6, 96);
+			expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([25, 26]);
+		});
+
+		it.each([true, false])(
+			'preserves the serial baseline across offline/online after an admission of %s',
+			async (published) => {
+				const { peer, push } = await temperatureProbe();
+				let finish: (published: boolean) => void;
+				callbacks.onTemperatureReport.mockImplementationOnce(
+					() =>
+						new Promise<boolean>((resolve) => {
+							finish = resolve;
+						}),
+				);
+				push(1000, 20);
+				const original = callbacks.onTemperatureReport.mock.lastCall[0];
+				const listener = (name: string) => (peer.on as jest.Mock).mock.calls.find(([event]) => event === name)[1]();
+				peer.online = false;
+				listener('offline');
+				peer.online = true;
+				listener('online');
+				finish(published);
+				await new Promise(setImmediate);
+				expect(original.isCurrent()).toBe(false);
+				push(1000, 70);
+				mockShelliesLibrary.readShellyTemperature.mockResolvedValueOnce({ serial: 1000, value: 20 });
+				push(999, 71);
+				await new Promise(setImmediate);
+				expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
+				push(1001, 21);
+				const next = callbacks.onTemperatureReport.mock.lastCall[0];
+				expect(next.value).toBe(21);
+				mockShelliesLibrary.readShellyTemperature.mockResolvedValueOnce({ serial: 1, value: 18 });
+				push(1, 72);
+				await new Promise(setImmediate);
+				expect(next.isCurrent()).toBe(false);
+				mockShelliesLibrary.readShellyTemperature.mockResolvedValueOnce({ serial: 1, value: 18 });
+				push(1001, 73);
+				await new Promise(setImmediate);
+				expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([20, 21, 18]);
+			},
+		);
 
 		it.each([1000, 60000])(
 			'resynchronizes a rebooted live peer at %s and discards delayed packets on either side of the restart',
@@ -526,6 +720,7 @@ describe('ShelliesAdapterService', () => {
 
 			const removeHandler = (device.on as jest.Mock).mock.calls.find((call) => call[0] === 'remove')?.[1];
 
+			mockShelliesLibrary.getDevice.mockReturnValue(undefined);
 			removeHandler?.();
 
 			expect(service.getRegisteredDevice('shelly1pm-ABC123')).toBeUndefined();
