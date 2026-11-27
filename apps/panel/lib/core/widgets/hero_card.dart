@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -287,6 +289,15 @@ class _HeroSlots extends StatelessWidget {
         onDetails != null || OutcomeStyle.of(Theme.of(context), outcome).isPill,
       _ => false,
     };
+    // Its room in design px: a touch target, or the outcome's own height
+    // when enlarged text makes its pill taller.
+    final keptFeedbackHeight = switch (feedback) {
+      final OutcomeIndicator outcome when keepFeedback => math.max(
+        HeroCardMetrics.feedbackTapHeight,
+        AppSpacings.unscale(outcome.heightIn(context)),
+      ),
+      _ => HeroCardMetrics.feedbackTapHeight,
+    };
     final valueColor = (dimmed || offline)
         ? neutrals.textSecondary
         : neutrals.textPrimary;
@@ -300,9 +311,7 @@ class _HeroSlots extends StatelessWidget {
             (badge ? metrics.badgeHeight + metrics.gap : 0) +
             (slider != null ? metrics.sliderHeight + metrics.gap : 0) +
             (buttons != null ? metrics.buttonsHeight + metrics.gap : 0) +
-            (keepFeedback
-                ? HeroCardMetrics.feedbackTapHeight + metrics.gap
-                : 0);
+            (keepFeedback ? keptFeedbackHeight + metrics.gap : 0);
         final height = constraints.hasBoundedHeight
             ? AppSpacings.unscale(constraints.maxHeight)
             : double.infinity;

@@ -39,6 +39,7 @@ Future<void> _pump(
   WidgetTester tester,
   Widget child, {
   Brightness brightness = Brightness.light,
+  double textScale = 1,
 }) async {
   tester.view.physicalSize = const Size(1280, 800);
   tester.view.devicePixelRatio = 1;
@@ -55,7 +56,12 @@ Future<void> _pump(
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       locale: const Locale('en'),
-      home: Scaffold(body: Align(alignment: Alignment.topLeft, child: child)),
+      home: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: Scaffold(body: Align(alignment: Alignment.topLeft, child: child)),
+        ),
+      ),
     ),
   );
 }
@@ -309,6 +315,38 @@ void main() {
           await tester.pumpAndSettle();
           await tester.tap(outcome);
           expect(details, 1, reason: 'at $height');
+        }
+      });
+    }
+
+    for (final (sizeClass, orientation) in [
+      (ScreenSizeClass.compact, Orientation.landscape),
+      (ScreenSizeClass.regular, Orientation.landscape),
+    ]) {
+      testWidgets('budgets an outcome pill grown by 3× text at every height at ${sizeClass.name} ${orientation.name}',
+          (tester) async {
+        // 3× text makes the pill taller than the 36 px touch target: the
+        // hero must budget its real height, scrolling rather than
+        // overflowing.
+        for (final outcome in [AppOutcome.notConfirmed, AppOutcome.failed]) {
+          for (var height = 120.0; height <= 300; height += 6) {
+            await _pump(
+              tester,
+              _hero(
+                sizeClass,
+                height: height,
+                orientation: orientation,
+                feedback: OutcomeIndicator(
+                  outcome: outcome,
+                  onDetails: outcome == AppOutcome.notConfirmed ? () {} : null,
+                  sizeClass: sizeClass,
+                ),
+              ),
+              textScale: 3,
+            );
+            expect(tester.takeException(), isNull, reason: '${outcome.name} at $height');
+            expect(find.byType(OutcomeIndicator), findsOneWidget, reason: '${outcome.name} at $height');
+          }
         }
       });
     }
