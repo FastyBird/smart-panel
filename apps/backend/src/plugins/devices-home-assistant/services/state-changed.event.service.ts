@@ -34,14 +34,23 @@ import { VirtualPropertyContext } from './virtual-property.types';
 function physicalMainValue(state?: HomeAssistantStateDto | null): number | boolean | null {
 	if (!state) return null;
 	if (state.entity_id.startsWith('switch.')) return state.state === 'on' ? true : state.state === 'off' ? false : null;
-	if (!state.entity_id.startsWith('sensor.') || state.attributes?.device_class !== 'temperature' || !state.state?.trim()) return null;
+	if (
+		!state.entity_id.startsWith('sensor.') ||
+		state.attributes?.device_class !== 'temperature' ||
+		!state.state?.trim()
+	)
+		return null;
 	const value = Number(state.state);
 	if (!Number.isFinite(value)) return null;
 	switch (state.attributes.unit_of_measurement) {
-		case '°C': return value;
-		case '°F': return ((value - 32) * 5) / 9;
-		case 'K': return value - 273.15;
-		default: return null;
+		case '°C':
+			return value;
+		case '°F':
+			return ((value - 32) * 5) / 9;
+		case 'K':
+			return value - 273.15;
+		default:
+			return null;
 	}
 }
 
@@ -124,9 +133,13 @@ export class StateChangedEventService implements WsEventService {
 		const entityId = state?.entity_id ?? old?.entity_id;
 		if (!entityId) return;
 		const physicalValue = physicalMainValue(state);
-		const trusted = physicalValue !== null && !state.attributes?.assumed_state &&
-			!state.attributes?.restored && !state.attributes?.optimistic &&
-			independentContext(state.context) && independentContext(event.context);
+		const trusted =
+			physicalValue !== null &&
+			!state.attributes?.assumed_state &&
+			!state.attributes?.restored &&
+			!state.attributes?.optimistic &&
+			independentContext(state.context) &&
+			independentContext(event.context);
 		if (!old || !trusted) this.sourceEpochs.delete(entityId);
 		if (!state) return;
 
@@ -178,9 +191,15 @@ export class StateChangedEventService implements WsEventService {
 						value,
 					});
 					if (ingress && (!ingress.isCurrent() || this.mappingGeneration !== generation)) return;
-					if (transition && device.enabled && property.haEntityId === entityId && property.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE &&
-						property.category === (typeof physicalValue === 'boolean' ? PropertyCategory.ON : PropertyCategory.TEMPERATURE) &&
-						value === physicalValue) {
+					if (
+						transition &&
+						device.enabled &&
+						property.haEntityId === entityId &&
+						property.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE &&
+						property.category ===
+							(typeof physicalValue === 'boolean' ? PropertyCategory.ON : PropertyCategory.TEMPERATURE) &&
+						value === physicalValue
+					) {
 						if (sourceIsCurrent())
 							await this.channelsPropertiesService.reportSample(property.id, update, {
 								sampledAt: changedAt,
@@ -197,9 +216,12 @@ export class StateChangedEventService implements WsEventService {
 			}
 			await this.updateVirtualPropertiesForEntity(device.id, entityId, state);
 		};
-		const run = (): Promise<void> => process().catch((error: unknown) => this.logger.warn('Failed to process Home Assistant state', {
-			message: error instanceof Error ? error.message : 'unknown error',
-		}));
+		const run = (): Promise<void> =>
+			process().catch((error: unknown) =>
+				this.logger.warn('Failed to process Home Assistant state', {
+					message: error instanceof Error ? error.message : 'unknown error',
+				}),
+			);
 		if (transition) {
 			await run();
 			return;

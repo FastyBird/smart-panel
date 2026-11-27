@@ -12,8 +12,7 @@ import { ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1PropertyReportsService } from './shelly-v1-property-reports.service';
 
-function setup(temperature = false) {
-	const id = 'AABBCCDDEEFF';
+function setup(temperature = false, id = 'AABBCCDDEEFF') {
 	const device = Object.assign(new ShellyV1DeviceEntity(), { id: 'panel-device', identifier: id, enabled: true });
 	const registration = { id, type: temperature ? 'SHHT-1' : 'SHSW-1', host: '192.168.1.5', enabled: true };
 	const peer = { ...registration, online: true, relay0: true, getStatus: jest.fn<Promise<ShellyStatusResponse>, []>() };
@@ -36,7 +35,11 @@ function setup(temperature = false) {
 		adapter as unknown as ShelliesAdapterService,
 		{ findOneBy: () => Promise.resolve(device) } as unknown as DevicesService,
 		{ findOneBy: () => Promise.resolve(channel) } as unknown as ChannelsService,
-		{ findOneBy: () => Promise.resolve(property), reportSample } as unknown as ChannelsPropertiesService,
+		{
+			findOneBy: (_key: string, identifier: string) =>
+				Promise.resolve(identifier === 'serial_number' ? { value: { value: 'AABBCCDDEEFF' } } : property),
+			reportSample,
+		} as unknown as ChannelsPropertiesService,
 	);
 	let boundary = -1;
 	const target = {
@@ -75,6 +78,17 @@ describe('Shelly Gen1 physical property reports', () => {
 		f.peer.getStatus.mockResolvedValue(status as unknown as ShellyStatusResponse);
 		await f.service.read(f.device, f.target);
 		expect(f.reportSample).not.toHaveBeenCalled();
+	});
+
+	it('verifies the adopted full serial number before accepting a legacy short CoIoT address', async () => {
+		const f = setup(false, 'DDEEFF');
+		f.peer.getStatus
+			.mockResolvedValueOnce({ mac: '112233DDEEFF', relays: [{ ison: false }] } as ShellyStatusResponse)
+			.mockResolvedValueOnce({ mac: 'AABBCCDDEEFF', relays: [{ ison: false }] } as ShellyStatusResponse);
+		await f.service.read(f.device, f.target);
+		expect(f.reportSample).not.toHaveBeenCalled();
+		await f.service.read(f.device, f.target);
+		expect(f.reportSample).toHaveBeenCalledTimes(1);
 	});
 
 	it('withdraws an in-flight and an already accepted sample after a binding changes', async () => {
