@@ -1086,7 +1086,15 @@ describe('StateChangedEventService', () => {
 			expect(inputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(scope === 'same' ? 0 : 1);
 		});
 
-		it('delivers original button presses in order when discovery was temporarily incomplete', async () => {
+		it('does not replay a button press whose initial discovery found no owner', async () => {
+			httpService.getDiscoveredDevices.mockResolvedValueOnce([]).mockResolvedValue([haDevice]);
+			await service.handle(hardware);
+			await jest.advanceTimersByTimeAsync(5000);
+			expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
+			expect(inputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+		});
+
+		it('delivers button presses received during the discovery cooldown in their original order', async () => {
 			httpService.getDiscoveredDevices.mockResolvedValueOnce([]).mockResolvedValue([haDevice]);
 			const unknown = toInstance(
 				HomeAssistantStateChangedEventDto,
