@@ -121,6 +121,9 @@
 			"delete": "Eliminar",
 			"enable": "Activar",
 			"disable": "Desactivar"
+		},
+		"standalone": {
+			"links": "Enlaces del proyecto"
 		}
 	}
 }

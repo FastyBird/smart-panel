@@ -1,5 +1,5 @@
 <template>
-	<div class="py-4 px-4 max-w-lg mx-auto">
+	<div class="p-4 tp:p-5">
 		<el-alert
 			type="info"
 			:title="t('onboardingModule.spaces.description')"
@@ -10,7 +10,7 @@
 
 		<!-- Quick add by category -->
 		<div class="mb-4">
-			<div class="text-sm font-medium mb-2">{{ t('onboardingModule.spaces.quickAdd') }}</div>
+			<div class="text-label mb-2">{{ t('onboardingModule.spaces.quickAdd') }}</div>
 			<div class="flex flex-wrap gap-2">
 				<el-button
 					v-for="cat in quickCategories"
@@ -54,12 +54,12 @@
 		<!-- Added spaces list -->
 		<div
 			v-if="spacesToCreate.length > 0"
-			class="border border-gray-200 rounded-lg overflow-hidden"
+			class="border border-solid border-light rounded-lg overflow-hidden"
 		>
-			<div class="text-sm font-medium px-3 py-2 bg-gray-50 border-b border-gray-200">
+			<div class="text-label px-3 py-2 bg-fill-light border-b border-b-solid border-light">
 				{{ t('onboardingModule.spaces.roomsToCreate', { count: spacesToCreate.length }) }}
 			</div>
-			<div class="divide-y divide-gray-200">
+			<div class="divide-y divide-[var(--el-border-color-light)]">
 				<div
 					v-for="(space, index) in spacesToCreate"
 					:key="index"
@@ -69,7 +69,7 @@
 						<icon
 							v-if="space.icon"
 							:icon="space.icon"
-							class="text-gray-500"
+							class="text-secondary"
 						/>
 						<span>{{ space.name }}</span>
 						<el-tag
@@ -110,7 +110,7 @@
 				v-if="selectedDeviceIds.length > 0"
 				class="flex items-center gap-2 mb-3"
 			>
-				<span class="text-sm text-gray-500">
+				<span class="text-help">
 					{{ t('onboardingModule.spaces.devices.selected', { count: selectedDeviceIds.length }) }}
 				</span>
 				<el-select
@@ -146,17 +146,17 @@
 			<!-- Unassigned devices -->
 			<div
 				v-if="unassignedDevices.length > 0"
-				class="border border-gray-200 rounded-lg overflow-hidden mb-3"
+				class="border border-solid border-light rounded-lg overflow-hidden mb-3"
 			>
-				<div class="text-sm font-medium px-3 py-2 bg-orange-50 border-b border-gray-200 flex items-center gap-2">
+				<div class="text-label px-3 py-2 bg-warning-soft border-b border-b-solid border-light flex items-center gap-2">
 					<icon
 						icon="mdi:help-circle-outline"
-						class="text-orange-500"
+						class="text-warning"
 					/>
 					{{ t('onboardingModule.spaces.devices.unassigned', { count: unassignedDevices.length }) }}
 				</div>
 				<el-scrollbar max-height="30vh">
-					<div class="divide-y divide-gray-200">
+					<div class="divide-y divide-[var(--el-border-color-light)]">
 						<div
 							v-for="device in unassignedDevices"
 							:key="device.id"
@@ -168,11 +168,11 @@
 							/>
 							<icon
 								:icon="getDeviceCategoryIcon(device.category)"
-								class="text-gray-400 shrink-0 text-lg"
+								class="text-muted shrink-0 text-[18px]"
 							/>
 							<div class="flex-1 min-w-0 overflow-hidden">
-								<div class="text-sm truncate">{{ device.name }}</div>
-								<div class="text-xs text-gray-400 truncate">
+								<div class="text-body truncate">{{ device.name }}</div>
+								<div class="text-caption truncate">
 									<span>{{ formatDeviceType(device.type) }}</span>
 									<template v-if="device.description">
 										&middot; {{ device.description }}
@@ -202,17 +202,17 @@
 			<!-- Assigned devices -->
 			<div
 				v-if="assignedDevices.length > 0"
-				class="border border-gray-200 rounded-lg overflow-hidden mb-3"
+				class="border border-solid border-light rounded-lg overflow-hidden mb-3"
 			>
-				<div class="text-sm font-medium px-3 py-2 bg-green-50 border-b border-gray-200 flex items-center gap-2">
+				<div class="text-label px-3 py-2 bg-success-soft border-b border-b-solid border-light flex items-center gap-2">
 					<icon
 						icon="mdi:check-circle-outline"
-						class="text-green-500"
+						class="text-success"
 					/>
 					{{ t('onboardingModule.spaces.devices.assigned', { count: assignedDevices.length }) }}
 				</div>
 				<el-scrollbar max-height="30vh">
-					<div class="divide-y divide-gray-200">
+					<div class="divide-y divide-[var(--el-border-color-light)]">
 						<div
 							v-for="device in assignedDevices"
 							:key="device.id"
@@ -224,11 +224,11 @@
 							/>
 							<icon
 								:icon="getDeviceCategoryIcon(device.category)"
-								class="text-gray-400 shrink-0 text-lg"
+								class="text-muted shrink-0 text-[18px]"
 							/>
 							<div class="flex-1 min-w-0 overflow-hidden">
-								<div class="text-sm truncate">{{ device.name }}</div>
-								<div class="text-xs text-gray-400 truncate">
+								<div class="text-body truncate">{{ device.name }}</div>
+								<div class="text-caption truncate">
 									<span>{{ formatDeviceType(device.type) }}</span>
 									<template v-if="device.description">
 										&middot; {{ device.description }}

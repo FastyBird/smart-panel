@@ -1,13 +1,11 @@
-import { computed } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
-import { ElCard, ElIcon, ElLink } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
 import { RouteNames as AppRouteNames } from '../../../app.constants';
-import { type IUseBreakpoints, useBreakpoints } from '../../../common';
+import { StandaloneLayout } from '../../../common';
 import { RouteNames } from '../auth.constants';
 
 import LayoutSign from './layout-sign.vue';
@@ -19,26 +17,11 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-const isMDDevice = computed(() => true);
-
-vi.mock('../../../common', async () => {
-	const actual = await vi.importActual('../../../common');
-
-	return {
-		...actual,
-		useBreakpoints: vi.fn(() => ({
-			isMDDevice: isMDDevice,
-		})),
-	};
-});
-
 describe('LayoutSign', (): void => {
 	let wrapper: VueWrapper;
-	let router;
+	let router: ReturnType<typeof createRouter>;
 
 	beforeEach((): void => {
-		vi.clearAllMocks();
-
 		router = createRouter({
 			history: createWebHistory(),
 			routes: [
@@ -55,44 +38,32 @@ describe('LayoutSign', (): void => {
 		});
 	});
 
-	it('renders the component correctly', async (): Promise<void> => {
-		expect(wrapper.exists()).toBe(true);
-	});
-
-	it('displays the sign-in heading when on the sign-in page', async (): Promise<void> => {
+	it('sits on the standalone card, its brand mark leading to sign in', async (): Promise<void> => {
 		await router.push({ name: RouteNames.SIGN_IN });
 
-		expect(wrapper.find('[data-test-id="sign-heading"]').text()).toContain('authModule.headings.signIn');
+		const layout = wrapper.findComponent(StandaloneLayout);
+
+		expect(layout.exists()).toBe(true);
+		expect(layout.props('logoTo')).toEqual({ name: RouteNames.SIGN_IN });
+		expect(layout.props('logoLabel')).toBe('authModule.buttons.goToSignIn.title');
 	});
 
-	it('displays the sign-up heading when on the sign-up page', async (): Promise<void> => {
+	it('titles the sign-in page', async (): Promise<void> => {
+		await router.push({ name: RouteNames.SIGN_IN });
+
+		expect(wrapper.find('h1').text()).toBe('authModule.headings.signIn');
+		expect(wrapper.findComponent(StandaloneLayout).props('subtitle')).toBe('authModule.subHeadings.signIn');
+	});
+
+	it('titles the sign-up page', async (): Promise<void> => {
 		await router.push({ name: RouteNames.SIGN_UP });
 
-		expect(wrapper.find('[data-test-id="sign-heading"]').text()).toContain('authModule.headings.signUp');
+		expect(wrapper.find('h1').text()).toBe('authModule.headings.signUp');
+		expect(wrapper.findComponent(StandaloneLayout).props('subtitle')).toBe('authModule.subHeadings.signUp');
 	});
 
-	it('should show social media links with correct icons', (): void => {
-		const block = wrapper.find('[data-test-id="social-links"]');
-
-		expect(block.exists()).toBe(true);
-
-		const socialLinks = block.findAllComponents(ElLink);
-
-		expect(socialLinks).toHaveLength(4);
-
-		const icons = block.findAllComponents(ElIcon);
-
-		expect(icons).toHaveLength(4);
-	});
-
-	it('should conditionally render ElCard when isMDDevice is true', (): void => {
-		vi.mocked(useBreakpoints).mockReturnValue({ isMDDevice: computed<boolean>(() => true) } as IUseBreakpoints);
-
-		expect(wrapper.findComponent(ElCard).exists()).toBe(true);
-	});
-
-	it('should display copyright information', (): void => {
-		expect(wrapper.text()).toContain('©');
+	it('keeps the project links and the copyright', (): void => {
+		expect(wrapper.findAll('[data-test-id="standalone-layout-links"] nav a')).toHaveLength(4);
 		expect(wrapper.find('[data-test-id="author-link"]').attributes('href')).toBe('https://smart-panel.fastybird.com');
 	});
 });

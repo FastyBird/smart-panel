@@ -1,42 +1,43 @@
 <template>
-	<div class="text-center">
-		<template v-if="!timedOut">
-			<el-icon
-				class="is-loading mb-4"
-				:size="40"
-			>
-				<icon icon="mdi:loading" />
-			</el-icon>
+	<state-view
+		v-if="!timedOut"
+		kind="loading"
+		:title="waitingMessage"
+		data-test-id="health-polling-waiting"
+	/>
 
-			<p class="font-size-[0.9rem]">
-				{{ waitingMessage }}
-			</p>
-		</template>
+	<!-- Taking too long is not yet a failure: the system may still come back, so it can be watched again -->
+	<div
+		v-else
+		class="flex flex-col gap-4"
+		data-test-id="health-polling-timeout"
+	>
+		<el-alert
+			type="warning"
+			:title="timeoutMessage"
+			:closable="false"
+			show-icon
+		/>
 
-		<template v-else>
-			<el-alert
-				type="warning"
-				:closable="false"
-				center
-			>
-				<div class="text-center">
-					<span class="font-size-[0.9rem] font-bold">
-						{{ timeoutMessage }}
-					</span>
-				</div>
-			</el-alert>
-		</template>
+		<el-button
+			size="large"
+			class="w-full"
+			data-test-id="health-polling-retry"
+			@click="onRetry"
+		>
+			{{ t('systemModule.buttons.retry.title') }}
+		</el-button>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElIcon } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
+import { ElAlert, ElButton } from 'element-plus';
 
 import { MODULES_PREFIX } from '../../../app.constants';
+import { StateView } from '../../../common';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 defineOptions({
@@ -56,11 +57,13 @@ const props = withDefaults(
 	},
 );
 
+const { t } = useI18n();
+
 const timedOut = ref(false);
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let sawUnhealthy = false;
-const startTime = Date.now();
+let startTime = Date.now();
 
 const pollIntervalMs = 3000;
 const initialPollMs = props.waitForUnhealthy ? 500 : pollIntervalMs;
@@ -95,6 +98,14 @@ const checkHealth = async (): Promise<void> => {
 	const nextInterval = sawUnhealthy ? pollIntervalMs : 1000;
 
 	timer = setTimeout(checkHealth, nextInterval);
+};
+
+// Watches for the same time again; whether the system went down is kept, so a system already back counts as back
+const onRetry = (): void => {
+	timedOut.value = false;
+	startTime = Date.now();
+
+	timer = setTimeout(checkHealth, pollIntervalMs);
 };
 
 onMounted(() => {

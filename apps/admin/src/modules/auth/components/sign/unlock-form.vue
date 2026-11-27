@@ -5,8 +5,7 @@
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="px-5"
-		@submit.prevent="onSubmit"
+		@submit.prevent
 	>
 		<el-form-item
 			:label="t('authModule.fields.password.title')"
@@ -23,19 +22,22 @@
 			/>
 		</el-form-item>
 
-		<el-button
-			type="primary"
-			size="large"
-			class="block w-full mb-3"
-			@click="onSubmit(unlockFormEl)"
-		>
-			{{ t('authModule.buttons.unlock.title') }}
-		</el-button>
-
-		<div class="flex flex-row justify-center items-center mt-4">
+		<div class="flex flex-col gap-3">
 			<el-button
-				type="danger"
-				link
+				type="primary"
+				size="large"
+				class="w-full ml-0!"
+				data-test-id="unlock-submit"
+				@click="onSubmit(unlockFormEl)"
+			>
+				{{ t('authModule.buttons.unlock.title') }}
+			</el-button>
+
+			<!-- Signing out ends nothing that cannot be had back by signing in, so it is not drawn in red -->
+			<el-button
+				size="large"
+				class="w-full ml-0!"
+				data-test-id="unlock-sign-out"
 				@click="onSignOut"
 			>
 				{{ t('authModule.buttons.signOut.title') }}

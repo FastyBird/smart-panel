@@ -1,5 +1,5 @@
 <template>
-	<div class="py-4 px-4 max-w-lg mx-auto">
+	<div class="p-4 tp:p-5">
 		<el-alert
 			type="info"
 			:title="t('onboardingModule.location.description')"
@@ -27,10 +27,10 @@
 					>
 						<template #default="{ item }">
 							<div class="flex flex-col py-1">
-								<span class="font-medium">{{ item.name }}</span>
-								<span class="text-xs text-gray-500">
+								<span class="text-card-title">{{ item.name }}</span>
+								<span class="text-caption">
 									{{ item.state ? `${item.state}, ` : '' }}{{ item.country }}
-									<span class="ml-2 text-gray-400">({{ item.lat.toFixed(4) }}, {{ item.lon.toFixed(4) }})</span>
+									<span class="ml-2">({{ item.lat.toFixed(4) }}, {{ item.lon.toFixed(4) }})</span>
 								</span>
 							</div>
 						</template>

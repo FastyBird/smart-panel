@@ -121,6 +121,9 @@
 			"delete": "Löschen",
 			"enable": "Aktivieren",
 			"disable": "Deaktivieren"
+		},
+		"standalone": {
+			"links": "Projektlinks"
 		}
 	}
 }

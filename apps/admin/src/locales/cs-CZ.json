@@ -121,6 +121,9 @@
 			"delete": "Smazat",
 			"enable": "Povolit",
 			"disable": "Zakázat"
+		},
+		"standalone": {
+			"links": "Odkazy na projekt"
 		}
 	}
 }

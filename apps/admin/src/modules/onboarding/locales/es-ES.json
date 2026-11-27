@@ -15,7 +15,8 @@
 			"back": "Atrás",
 			"skip": "Omitir",
 			"finishSetup": "Finalizar configuración"
-		}
+		},
+		"subtitle": "Configura tu Smart Panel en unos pocos pasos"
 	},
 	"welcome": {
 		"title": "Bienvenido al panel inteligente",

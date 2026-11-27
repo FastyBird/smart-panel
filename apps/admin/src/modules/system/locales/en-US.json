@@ -630,5 +630,20 @@
     "updateDescription": "Install it from Software updates below.",
     "unknownTitle": "Power and temperature not reported",
     "unknownDescription": "The board does not report undervoltage or throttling, or they could not be read, so their state is not known."
+  },
+  "maintenance": {
+    "rebooting": {
+      "title": "Restarting the system"
+    },
+    "serviceRestarting": {
+      "title": "Restarting the service"
+    },
+    "poweredOff": {
+      "title": "Powered off"
+    },
+    "factoryReset": {
+      "title": "Resetting to factory settings"
+    },
+    "waitingSubtitle": "This page carries on by itself once the Smart Panel is back."
   }
 }

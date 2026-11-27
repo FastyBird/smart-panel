@@ -5,7 +5,6 @@
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="px-5"
 		@submit.prevent="onSubmit(signFormEl)"
 	>
 		<el-form-item
@@ -38,7 +37,8 @@
 		<el-button
 			type="primary"
 			size="large"
-			class="block w-full"
+			class="w-full mt-1"
+			data-test-id="sign-in-submit"
 			@click="onSubmit(signFormEl)"
 		>
 			{{ t('authModule.buttons.signIn.title') }}

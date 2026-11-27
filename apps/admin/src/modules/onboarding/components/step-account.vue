@@ -1,5 +1,5 @@
 <template>
-	<div class="py-4 px-4 max-w-lg mx-auto">
+	<div class="p-4 tp:p-5">
 		<el-alert
 			v-if="accountCreated"
 			type="success"

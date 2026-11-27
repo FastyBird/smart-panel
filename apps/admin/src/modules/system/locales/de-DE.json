@@ -630,5 +630,20 @@
 		"updateDescription": "Installieren Sie es unten unter Software-Updates.",
 		"unknownTitle": "Stromversorgung und Temperatur nicht gemeldet",
 		"unknownDescription": "Das Board meldet weder Unterspannung noch Drosselung, oder sie konnten nicht gelesen werden; ihr Zustand ist unbekannt."
+	},
+	"maintenance": {
+		"rebooting": {
+			"title": "System wird neu gestartet"
+		},
+		"serviceRestarting": {
+			"title": "Dienst wird neu gestartet"
+		},
+		"poweredOff": {
+			"title": "Ausgeschaltet"
+		},
+		"factoryReset": {
+			"title": "Zurücksetzen auf Werkseinstellungen"
+		},
+		"waitingSubtitle": "Diese Seite fährt automatisch fort, sobald das Smart Panel wieder erreichbar ist."
 	}
 }

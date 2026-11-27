@@ -1,13 +1,17 @@
 <template>
-	<div class="flex flex-col items-center text-center py-8 px-4">
-		<el-icon
-			:size="80"
-			class="mb-6 text-green-500"
+	<div class="flex flex-col items-center gap-4 p-4 tp:p-5 text-center">
+		<div
+			class="flex items-center justify-center w-16 h-16 rounded-full bg-success-soft text-success"
+			aria-hidden="true"
 		>
-			<icon icon="mdi:check-circle-outline" />
-		</el-icon>
+			<icon
+				icon="mdi:check-circle-outline"
+				width="36"
+				height="36"
+			/>
+		</div>
 
-		<h2 class="text-2xl font-bold mb-4">
+		<h2 class="m-0 text-section">
 			{{ t('onboardingModule.complete.title') }}
 		</h2>
 
@@ -16,134 +20,40 @@
 			:title="t('onboardingModule.complete.description')"
 			:closable="false"
 			show-icon
-			class="mb-8! max-w-md"
+			class="max-w-md text-left"
 		/>
 
-		<div class="flex flex-col gap-3 max-w-sm w-full">
-			<!-- Account -->
-			<div class="flex items-center gap-3 p-3 rounded-lg bg-green-50">
-				<el-icon
-					:size="20"
-					class="text-green-500 shrink-0"
-				>
-					<icon icon="mdi:check" />
-				</el-icon>
-				<span>{{ t('onboardingModule.complete.summary.accountCreated') }}</span>
-			</div>
-
-			<!-- Location -->
-			<div
-				v-if="locationConfigured"
-				class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
+		<!-- What was set up, and what was skipped and can be done later -->
+		<ul
+			class="flex flex-col gap-2 w-full max-w-sm m-0 p-0 list-none text-left"
+			data-test-id="onboarding-summary"
+		>
+			<li
+				v-for="row in summary"
+				:key="row.id"
+				:class="['flex items-center gap-3 p-3 rounded-lg', row.done ? 'bg-success-soft' : 'bg-fill-light']"
+				:data-done="row.done ? 'true' : 'false'"
 			>
-				<el-icon
-					:size="20"
-					class="text-green-500 shrink-0"
-				>
-					<icon icon="mdi:check" />
-				</el-icon>
-				<span>{{ t('onboardingModule.complete.summary.locationConfigured') }}</span>
-			</div>
-			<div
-				v-else
-				class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
-			>
-				<el-icon
-					:size="20"
-					class="text-gray-400 shrink-0"
-				>
-					<icon icon="mdi:minus" />
-				</el-icon>
-				<span class="text-gray-400">{{ t('onboardingModule.complete.summary.locationSkipped') }}</span>
-			</div>
-
-			<!-- Spaces -->
-			<div
-				v-if="spacesCount > 0"
-				class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
-			>
-				<el-icon
-					:size="20"
-					class="text-green-500 shrink-0"
-				>
-					<icon icon="mdi:check" />
-				</el-icon>
-				<span>{{ t('onboardingModule.complete.summary.spacesCreated', { count: spacesCount }) }}</span>
-			</div>
-			<div
-				v-else
-				class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
-			>
-				<el-icon
-					:size="20"
-					class="text-gray-400 shrink-0"
-				>
-					<icon icon="mdi:minus" />
-				</el-icon>
-				<span class="text-gray-400">{{ t('onboardingModule.complete.summary.spacesSkipped') }}</span>
-			</div>
-
-			<!-- Devices assigned -->
-			<div
-				v-if="assignedDevicesCount > 0"
-				class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
-			>
-				<el-icon
-					:size="20"
-					class="text-green-500 shrink-0"
-				>
-					<icon icon="mdi:check" />
-				</el-icon>
-				<span>{{ t('onboardingModule.complete.summary.devicesAssigned', { count: assignedDevicesCount }) }}</span>
-			</div>
-			<div
-				v-else-if="discoveredDevices.length > 0"
-				class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
-			>
-				<el-icon
-					:size="20"
-					class="text-gray-400 shrink-0"
-				>
-					<icon icon="mdi:minus" />
-				</el-icon>
-				<span class="text-gray-400">{{ t('onboardingModule.complete.summary.devicesSkipped') }}</span>
-			</div>
-
-			<!-- Integrations -->
-			<div
-				v-if="integrationsCount > 0"
-				class="flex items-center gap-3 p-3 rounded-lg bg-green-50"
-			>
-				<el-icon
-					:size="20"
-					class="text-green-500 shrink-0"
-				>
-					<icon icon="mdi:check" />
-				</el-icon>
-				<span>{{ t('onboardingModule.complete.summary.integrationsEnabled', { count: integrationsCount }) }}</span>
-			</div>
-			<div
-				v-else
-				class="flex items-center gap-3 p-3 rounded-lg bg-gray-50"
-			>
-				<el-icon
-					:size="20"
-					class="text-gray-400 shrink-0"
-				>
-					<icon icon="mdi:minus" />
-				</el-icon>
-				<span class="text-gray-400">{{ t('onboardingModule.complete.summary.integrationsSkipped') }}</span>
-			</div>
-		</div>
+				<icon
+					:icon="row.done ? 'mdi:check' : 'mdi:minus'"
+					:class="['shrink-0', row.done ? 'text-success' : 'text-muted']"
+					width="20"
+					height="20"
+					aria-hidden="true"
+				/>
+				<span :class="row.done ? 'text-body' : 'text-help'">{{ row.label }}</span>
+			</li>
+		</ul>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+import { ElAlert } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
-import { ElAlert, ElIcon } from 'element-plus';
-import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager } from '../../../common';
 import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
@@ -154,7 +64,7 @@ defineOptions({
 	name: 'StepComplete',
 });
 
-defineProps<{
+const props = defineProps<{
 	locationConfigured: boolean;
 }>();
 
@@ -172,5 +82,49 @@ const assignedDevicesCount = computed(() => {
 const integrationsCount = computed(() => {
 	return Object.values(extensionsStore.data)
 		.filter((ext) => ext.kind === ExtensionKind.plugin && ext.type.startsWith('devices-') && ext.enabled).length;
+});
+
+const summary = computed<{ id: string; done: boolean; label: string }[]>(() => {
+	const rows = [
+		{ id: 'account', done: true, label: t('onboardingModule.complete.summary.accountCreated') },
+		{
+			id: 'location',
+			done: props.locationConfigured,
+			label: props.locationConfigured
+				? t('onboardingModule.complete.summary.locationConfigured')
+				: t('onboardingModule.complete.summary.locationSkipped'),
+		},
+		{
+			id: 'spaces',
+			done: spacesCount.value > 0,
+			label:
+				spacesCount.value > 0
+					? t('onboardingModule.complete.summary.spacesCreated', { count: spacesCount.value })
+					: t('onboardingModule.complete.summary.spacesSkipped'),
+		},
+	];
+
+	// Devices only when some were found
+	if (assignedDevicesCount.value > 0 || discoveredDevices.length > 0) {
+		rows.push({
+			id: 'devices',
+			done: assignedDevicesCount.value > 0,
+			label:
+				assignedDevicesCount.value > 0
+					? t('onboardingModule.complete.summary.devicesAssigned', { count: assignedDevicesCount.value })
+					: t('onboardingModule.complete.summary.devicesSkipped'),
+		});
+	}
+
+	rows.push({
+		id: 'integrations',
+		done: integrationsCount.value > 0,
+		label:
+			integrationsCount.value > 0
+				? t('onboardingModule.complete.summary.integrationsEnabled', { count: integrationsCount.value })
+				: t('onboardingModule.complete.summary.integrationsSkipped'),
+	});
+
+	return rows;
 });
 </script>

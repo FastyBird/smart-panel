@@ -5,10 +5,9 @@
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="px-5"
-		@submit.prevent="onSubmit"
+		@submit.prevent="onSubmit(signFormEl)"
 	>
-		<div class="flex flex-row flex-nowrap gap-5">
+		<div class="grid grid-cols-1 tp:grid-cols-2 gap-x-4">
 			<el-form-item
 				:label="t('authModule.fields.firstName.title')"
 				prop="firstName"
@@ -26,7 +25,7 @@
 			>
 				<el-input
 					v-model="signForm.lastName"
-					:palceholder="t('authModule.fields.lastName.placeholder')"
+					:placeholder="t('authModule.fields.lastName.placeholder')"
 					name="lastName"
 				/>
 			</el-form-item>
@@ -39,7 +38,7 @@
 			>
 				<el-input
 					v-model="signForm.email"
-					:palceholder="t('authModule.fields.email.placeholder')"
+					:placeholder="t('authModule.fields.email.placeholder')"
 					name="email"
 				/>
 			</el-form-item>
@@ -52,14 +51,13 @@
 			>
 				<el-input
 					v-model="signForm.username"
-					show-password
 					name="username"
 					type="text"
 				/>
 			</el-form-item>
 		</div>
 
-		<div class="mb-10">
+		<div class="mb-5">
 			<el-form-item
 				:label="t('authModule.fields.password.title')"
 				prop="password"
@@ -73,24 +71,27 @@
 			</el-form-item>
 		</div>
 
-		<el-button
-			type="primary"
-			size="large"
-			class="block w-full"
-			@click="onSubmit(signFormEl)"
-		>
-			{{ t('authModule.buttons.signUp.title') }}
-		</el-button>
-	</el-form>
+		<div class="flex flex-col gap-3">
+			<el-button
+				type="primary"
+				size="large"
+				class="w-full ml-0!"
+				data-test-id="sign-up-submit"
+				@click="onSubmit(signFormEl)"
+			>
+				{{ t('authModule.buttons.signUp.title') }}
+			</el-button>
 
-	<div class="mt-5 px-5">
-		<el-button
-			class="block w-full"
-			@click="onBackToSignIn()"
-		>
-			{{ t('authModule.buttons.backToSignIn.title') }}
-		</el-button>
-	</div>
+			<el-button
+				size="large"
+				class="w-full ml-0!"
+				data-test-id="sign-up-back"
+				@click="onBackToSignIn()"
+			>
+				{{ t('authModule.buttons.backToSignIn.title') }}
+			</el-button>
+		</div>
+	</el-form>
 </template>
 
 <script setup lang="ts">

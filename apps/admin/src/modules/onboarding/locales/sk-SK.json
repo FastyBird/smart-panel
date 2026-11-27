@@ -15,7 +15,8 @@
 			"back": "Späť",
 			"skip": "Preskočiť",
 			"finishSetup": "Dokončiť nastavenie"
-		}
+		},
+		"subtitle": "Nastavte svoj Smart Panel v niekoľkých krokoch"
 	},
 	"welcome": {
 		"title": "Vitajte v Smart Paneli",
