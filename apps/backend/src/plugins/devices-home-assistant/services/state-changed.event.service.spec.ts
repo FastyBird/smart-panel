@@ -247,17 +247,10 @@ describe('StateChangedEventService', () => {
 				return { mapped, channels };
 			};
 
-			it('keeps both physical transitions, ordinary attributes and virtual properties in arrival order', async () => {
-				const mappingStarted = gate();
-				const allowMapping = gate();
+			it('waits for a submitted virtual write before applying the newer transition', async () => {
 				const virtualStarted = gate();
 				const allowVirtualWrite = gate();
-				const { mapped } = setup(async (revision) => {
-					if (revision === 'first') {
-						mappingStarted.release();
-						await allowMapping.promise;
-					}
-				});
+				const { mapped } = setup(() => Promise.resolve());
 				channelsPropertiesService.update.mockImplementation(async (id, update) => {
 					if (id === heater + '/virtual' && update.value === 'first') {
 						virtualStarted.release();
@@ -266,17 +259,18 @@ describe('StateChangedEventService', () => {
 					return { id } as HomeAssistantChannelPropertyEntity;
 				});
 				const first = service.handle(transition('first', true), ingress());
-				await mappingStarted.promise;
-				const second = service.handle(transition('second', false), { ...ingress(), ingressSequence: 13 });
-				await jest.advanceTimersByTimeAsync(0);
-				const whileMapping = [...mapped];
-				allowMapping.release();
 				await virtualStarted.promise;
+				const previous = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
+				const qualifiedBeforeTransition = previous();
+				const second = service.handle(transition('second', false), { ...ingress(), ingressSequence: 13 });
+				const stillQualified = previous();
+				await jest.advanceTimersByTimeAsync(0);
 				const whileWritingVirtual = [...mapped];
 				allowVirtualWrite.release();
 				await Promise.all([first, second]);
 
-				expect(whileMapping).toEqual(['first']);
+				expect(qualifiedBeforeTransition).toBe(true);
+				expect(stillQualified).toBe(false);
 				expect(whileWritingVirtual).toEqual(['first']);
 				expect(samples()).toEqual([
 					[heater, true, 12],
@@ -312,14 +306,83 @@ describe('StateChangedEventService', () => {
 				expect(mapped).toEqual(['first', 'second']);
 				await jest.advanceTimersByTimeAsync(1);
 				expect(mapped).toEqual(['first', 'second', 'latest attributes']);
-				expect(samples()).toEqual([
-					[heater, true, 12],
-					[heater, false, 13],
-				]);
+				expect(samples()).toEqual([[heater, false, 13]]);
 				expect(writes().slice(-2)).toEqual([
 					[heater + '/attribute', 'latest attributes'],
 					[heater + '/virtual', 'latest attributes'],
 				]);
+			});
+
+			it('revokes admitted OFF on intake and cancels queued snapshots even when the final ON mapping fails', async () => {
+				const started = gate();
+				const release = gate();
+				const other = 'switch.other';
+				const { mapped } = setup(
+					async (revision) => {
+						if (revision === 'pending attributes') {
+							started.release();
+							await release.promise;
+						}
+						if (revision === 'failed ON') throw new Error('ON mapping failed');
+					},
+					[heater, other],
+				);
+				await service.handle(transition('other OFF', false, other), ingress());
+				const unrelated = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
+				await service.handle(transition('accepted OFF', false), ingress());
+				const previous = channelsPropertiesService.reportSample.mock.calls[1][2].sourceIsCurrent;
+				await service.handle(presentation('pending attributes', 'off'), ingress());
+				await jest.advanceTimersByTimeAsync(500);
+				await started.promise;
+				const qualifiedBeforeTransition = previous();
+
+				const on = service.handle(transition('queued ON', true), ingress());
+				const qualifiedAtIntake = previous();
+				const off = service.handle(transition('queued OFF', false), ingress());
+				const latest = service.handle(transition('failed ON', true), ingress());
+				release.release();
+				await Promise.all([on, off, latest]);
+				expect(qualifiedBeforeTransition).toBe(true);
+				expect(qualifiedAtIntake).toBe(false);
+				expect(previous()).toBe(false);
+				expect(unrelated()).toBe(true);
+				expect(mapped).toEqual(['other OFF', 'accepted OFF', 'pending attributes', 'failed ON']);
+				expect(samples()).toEqual([
+					[other, false, 12],
+					[heater, false, 12],
+				]);
+				expect(writes().filter(([id]) => id === heater + '/attribute')).toEqual([
+					[heater + '/attribute', 'accepted OFF'],
+				]);
+				expect(writes().filter(([id]) => id === heater + '/virtual')).toEqual([[heater + '/virtual', 'accepted OFF']]);
+
+				await service.handle(transition('new OFF', false), { ...ingress(), ingressSequence: 15 });
+				expect(channelsPropertiesService.reportSample.mock.calls[2][2].sourceIsCurrent()).toBe(true);
+				expect(previous()).toBe(false);
+			});
+
+			it('withdraws an OFF observation while persistence is in progress if the newer ON cannot map', async () => {
+				const started = gate();
+				const release = gate();
+				setup((revision) => (revision === 'ON' ? Promise.reject(new Error('mapping failed')) : Promise.resolve()));
+				let accepted: boolean;
+				channelsPropertiesService.reportSample.mockImplementationOnce(async (id, _update, evidence) => {
+					started.release();
+					await release.promise;
+					accepted = evidence.sourceIsCurrent();
+					return { id } as HomeAssistantChannelPropertyEntity;
+				});
+				const first = service.handle(transition('OFF', false), ingress());
+				await started.promise;
+				const guard = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
+				const latest = service.handle(transition('ON', true), ingress());
+				const stillCurrent = guard();
+				release.release();
+				await Promise.all([first, latest]);
+				expect(stillCurrent).toBe(false);
+				expect(accepted).toBe(false);
+				expect(guard()).toBe(false);
+				expect(writes()).toEqual([]);
 			});
 
 			it.each(['reconnect', 'remap', 'entity removal', 'teardown'])(
@@ -516,6 +579,67 @@ describe('StateChangedEventService', () => {
 				} else expect(httpService.getDiscoveredDevices).not.toHaveBeenCalled();
 			},
 		);
+
+		it.each(['empty', 'partial'])(
+			'retries missing adopted devices after %s discovery while serving known routes from cache',
+			async (initial) => {
+				const sensor = 'sensor.room';
+				const relay = 'switch.relay';
+				const fan = 'switch.fan';
+				arrange(sensor, 20, PropertyCategory.TEMPERATURE);
+				const adopted = [sensor, 'ha-relay', 'ha-fan'].map(
+					(haDeviceId) => ({ id: 'panel-' + haDeviceId, haDeviceId, enabled: true }) as HomeAssistantDeviceEntity,
+				);
+				devicesService.findAll.mockResolvedValue(adopted);
+				const relayDevice = {
+					id: 'ha-relay',
+					entities: [relay, 'sensor.relay_power', 'sensor.relay_current'],
+				} as HomeAssistantDiscoveredDeviceModel;
+				const fanDevice = { id: 'ha-fan', entities: [fan] } as HomeAssistantDiscoveredDeviceModel;
+				httpService.getDiscoveredDevices
+					.mockResolvedValueOnce(initial === 'empty' ? [] : [relayDevice])
+					.mockResolvedValue([relayDevice, fanDevice]);
+
+				const attributes = { device_class: 'temperature', unit_of_measurement: '°C' };
+				await service.handle(event(sensor, '19', '20', attributes), ingress());
+				await service.handle(event(sensor, '20', '20', attributes), ingress());
+				await jest.advanceTimersByTimeAsync(500);
+				if (initial === 'partial') await service.handle(event(relay, 'off', 'on'), ingress());
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
+				await service.handle(event(fan, 'off', 'on'), ingress());
+				expect(mapperService.mapFromHA.mock.calls.at(-1)[0]).toBe(adopted[2]);
+				const laterRelay = event(relay, 'on', 'off');
+				laterRelay.data.old_state.last_changed = at;
+				laterRelay.data.new_state.last_changed = new Date(at.getTime() + 1);
+				await service.handle(laterRelay, ingress());
+				expect(mapperService.mapFromHA.mock.calls.at(-1)[0]).toBe(adopted[1]);
+				await service.handle(event('switch.unadopted', 'off', 'on'), ingress());
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
+			},
+		);
+
+		it('retains verified routes from complementary partial inventories for the same adoption', async () => {
+			const a = 'switch.a';
+			const b = 'switch.b';
+			arrange(a, true);
+			const adoptions = ['remote-a', 'remote-b'].map(
+				(haDeviceId) => ({ id: haDeviceId + '-panel', haDeviceId, enabled: true }) as HomeAssistantDeviceEntity,
+			);
+			devicesService.findAll.mockResolvedValue(adoptions);
+			httpService.getDiscoveredDevices
+				.mockResolvedValueOnce([{ id: 'remote-a', entities: [a] } as HomeAssistantDiscoveredDeviceModel])
+				.mockResolvedValue([{ id: 'remote-b', entities: [b] } as HomeAssistantDiscoveredDeviceModel]);
+			await service.handle(event(a, 'off', 'on'), ingress());
+			await service.handle(event(b, 'off', 'on'), ingress());
+			await service.handle(event(a, 'on', 'on'), ingress());
+			await jest.advanceTimersByTimeAsync(500);
+			expect(mapperService.mapFromHA.mock.calls.map(([device]) => device)).toEqual([
+				adoptions[0],
+				adoptions[1],
+				adoptions[0],
+			]);
+			expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
+		});
 
 		it('keeps direct adoptions available during a registry discovery failure and retries the remote device', async () => {
 			arrange('sensor.room', 20, PropertyCategory.TEMPERATURE);
@@ -879,10 +1003,22 @@ describe('StateChangedEventService', () => {
 				},
 			} as unknown as HomeAssistantStateChangedEventDto;
 
-			await service.handle(event1);
-			await service.handle(event2);
+			const started = gate();
+			const release = gate();
+			channelsService.findAll.mockImplementationOnce(async () => {
+				started.release();
+				await release.promise;
+				return [channel];
+			});
+			const first = service.handle(event1);
+			await started.promise;
+			const second = service.handle(event2);
+			release.release();
+			await Promise.all([first, second]);
 
-			expect(inputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(2);
+			expect(
+				inputOccurrencesService.publishOccurrence.mock.calls.map(([occurrence]) => occurrence.sourceOccurrenceId),
+			).toEqual(['event.button_1:2026-09-17T00:00:01.000Z:ctx-1', 'event.button_1:2026-09-17T00:00:02.000Z:ctx-2']);
 		});
 	});
 });

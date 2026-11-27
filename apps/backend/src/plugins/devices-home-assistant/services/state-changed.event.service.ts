@@ -85,7 +85,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 	private mappingRevision = 0;
 	private bindingGeneration = 0;
 	private reportSession: string | null = null;
-	private readonly sourceEpochs = new Map<string, { value: number | boolean; changedAt: number }>();
+	private readonly sourceEpochs = new Map<string, { readonly value: number | boolean; readonly changedAt: number }>();
 	private entityDevices = new Map<string, HomeAssistantDeviceEntity>();
 	private readonly propertyEntities = new Map<string, string>();
 	// A device change can arrive while discovery is still resolving a pending entity's owner.
@@ -228,11 +228,6 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 
 		const revision = this.mappingRevision;
 		const generation = this.bindingGeneration;
-		const entityGeneration = work.generation;
-		const isCurrent = (): boolean =>
-			this.bindingGeneration === generation &&
-			work.generation === entityGeneration &&
-			(!ingress || ingress.isCurrent());
 		const changedAt = state.last_changed;
 		// HA last_updated and last_reported can advance for attributes alone. Only a change of
 		// the adopted entity's own main state carries a new measurement at last_changed.
@@ -258,17 +253,19 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			changedAt > old.last_changed &&
 			(!prior || changedAt.getTime() > prior.changedAt);
 		if (transition) {
-			// Keep valid queued transitions ordered within one source lifetime.
-			const source = prior ?? { value: physicalValue, changedAt: 0 };
-			source.value = physicalValue;
-			source.changedAt = changedAt.getTime();
-			this.sourceEpochs.set(entityId, source);
+			// Revoke the previous observation at intake, even if mapping this transition later fails.
+			this.sourceEpochs.set(entityId, { value: physicalValue, changedAt: changedAt.getTime() });
+			work.generation++;
 		} else if (!measured || !priorKnown || prior?.value !== physicalValue) {
 			// Recovery and contradictory reports with unusable timing are still ordinary state.
 			this.sourceEpochs.delete(entityId);
 		}
 		const epoch = this.sourceEpochs.get(entityId);
-		const epochChangedAt = epoch?.changedAt;
+		const entityGeneration = work.generation;
+		const isCurrent = (): boolean =>
+			this.bindingGeneration === generation &&
+			work.generation === entityGeneration &&
+			(!ingress || ingress.isCurrent());
 
 		const hardwareEvent = entityId.startsWith('event.');
 		const process = async (): Promise<void> => {
@@ -280,8 +277,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 				(this.deviceRevisions.get(device.id) ?? 0) <= revision &&
 				(this.deviceRevisions.get(device.haDeviceId) ?? 0) <= revision;
 			if (!ownerIsCurrent()) {
-				if (this.sourceEpochs.get(entityId) === epoch && epoch?.changedAt === epochChangedAt)
-					this.sourceEpochs.delete(entityId);
+				if (this.sourceEpochs.get(entityId) === epoch) this.sourceEpochs.delete(entityId);
 				return;
 			}
 			const sourceIsCurrent = (): boolean =>
@@ -563,7 +559,8 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		isCurrent: () => boolean,
 	): Promise<HomeAssistantDeviceEntity | undefined> {
 		while (isCurrent()) {
-			if (this.mappingsReady) return this.entityDevices.get(entityId);
+			const cached = this.entityDevices.get(entityId);
+			if (cached || this.mappingsReady) return cached;
 			const revision = this.mappingRevision;
 			if (this.mappingLoad === null) {
 				const request = new AbortController();
@@ -590,17 +587,34 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			const panelDevices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
 			if (signal.aborted || !panelDevices?.length) return null;
 			const bySource = new Map(panelDevices.map((device) => [device.haDeviceId, device]));
-			for (const [id, device] of bySource) if (isHaEntityId(id)) routes.set(id, device);
-			if (routes.size < bySource.size) {
+			const missingDevices = new Set<string>();
+			for (const [id, device] of bySource) {
+				if (isHaEntityId(id)) routes.set(id, device);
+				else missingDevices.add(id);
+			}
+			if (missingDevices.size) {
 				const devices = await this.homeAssistantHttpService.getDiscoveredDevices(signal);
+				const reportedDevices = new Set(devices.map((device) => device.id));
 				for (const remote of devices) {
 					const adopted = bySource.get(remote.id);
-					if (adopted) for (const id of remote.entities) routes.set(id, adopted);
+					if (!adopted) continue;
+					for (const id of remote.entities) {
+						if (!isHaEntityId(id)) continue;
+						routes.set(id, adopted);
+						missingDevices.delete(remote.id);
+					}
+				}
+				// One incomplete inventory can omit a device that an earlier inventory resolved.
+				// Keep its known entities only while the original local adoption still owns them.
+				for (const [id, cached] of this.entityDevices) {
+					const adopted = bySource.get(cached.haDeviceId);
+					if (adopted?.id === cached.id && !reportedDevices.has(cached.haDeviceId) && !routes.has(id))
+						routes.set(id, adopted);
 				}
 			}
 			if (revision !== this.mappingRevision) return null;
 			this.entityDevices = routes;
-			this.mappingsReady = true;
+			this.mappingsReady = missingDevices.size === 0;
 			return routes;
 		} catch (error) {
 			if (signal.aborted || revision !== this.mappingRevision) return null;
