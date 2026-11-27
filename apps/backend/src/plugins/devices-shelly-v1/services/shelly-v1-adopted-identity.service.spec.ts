@@ -210,6 +210,52 @@ describe('Shelly identity changes through the catalog', () => {
 		expect(updates).toHaveBeenCalledTimes(1);
 	});
 
+	it.each([
+		['password', { password: 'operator-password' }],
+		['name', { name: 'Operator name' }],
+		['category', { category: DeviceCategory.LIGHTING }],
+	] as const)('refuses stale wizard edits to %s during the MAC probe', async (_field, edit) => {
+		const device = await f.pins.createDevice(a, mac);
+		const started = deferred<void>();
+		const response = deferred<{ mac: string }>();
+		const pending = wizard(f.pins, () => {
+			started.resolve();
+			return response.promise;
+		}).adopt([{ ...b, password: 'wizard-password' }]);
+		await started.promise;
+		await f.devices.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(device.id, { type: a.type, ...edit });
+		response.resolve({ mac });
+		await expect(pending).resolves.toEqual([expect.objectContaining({ status: 'failed', deviceId: device.id })]);
+		expect(await f.pins.captureDevice(a.identifier)).toMatchObject({
+			hostname: a.hostname,
+			...edit,
+			pin: { verifiedHost: a.hostname, revision: 1 },
+		});
+		expect(updates).toHaveBeenCalledTimes(1);
+	});
+
+	it('preserves an operator password and commits the verified move when adoption omits the password', async () => {
+		const device = await f.pins.createDevice(a, mac);
+		const started = deferred<void>();
+		const response = deferred<{ mac: string }>();
+		const pending = wizard(f.pins, () => {
+			started.resolve();
+			return response.promise;
+		}).adopt([b]);
+		await started.promise;
+		await f.devices.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(device.id, {
+			type: a.type,
+			password: 'operator-password',
+		});
+		response.resolve({ mac });
+		await expect(pending).resolves.toEqual([expect.objectContaining({ status: 'updated', deviceId: device.id })]);
+		expect(await f.pins.captureDevice(a.identifier)).toMatchObject({
+			hostname: b.hostname,
+			password: 'operator-password',
+			pin: { verifiedHost: b.hostname, revision: 2 },
+		});
+	});
+
 	it('preserves the winner of first adoption even when the original probe returned the same full MAC', async () => {
 		const started = deferred<void>();
 		const response = deferred<{ mac: string }>();
@@ -268,6 +314,93 @@ describe('Shelly identity changes through the catalog', () => {
 			pin: { mac, verifiedHost: a.hostname, revision: 1 },
 		});
 		expect(updates).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['short pinned', a.identifier, mac],
+		['short unpinned', a.identifier, undefined],
+		['full address', mac, mac],
+	])('guards discovery creation at native COMMIT for a %s device', async (_label, identifier, reportedMac) => {
+		const created = jest.fn();
+		f.events.on(EventType.DEVICE_CREATED, created);
+		let current = true;
+		const subscriber = {
+			beforeTransactionCommit: () => {
+				current = false;
+			},
+		};
+		f.db.subscribers.push(subscriber);
+		const assertPeer = () => {
+			if (!current) throw new Error('Discovery peer changed');
+		};
+		const dto = { ...a, identifier };
+		await expect(f.pins.createDevice(dto, reportedMac, assertPeer)).rejects.toThrow();
+		expect(current).toBe(false);
+		expect(await f.db.getRepository(DeviceEntity).count()).toBe(0);
+		expect(await f.db.getRepository(ShellyV1AdoptedIdentityEntity).count()).toBe(0);
+		expect(created).not.toHaveBeenCalled();
+
+		f.db.subscribers.splice(f.db.subscribers.indexOf(subscriber), 1);
+		current = true;
+		const saved = await f.pins.createDevice(dto, reportedMac, assertPeer);
+		expect(created).toHaveBeenCalledTimes(1);
+		const pin = await f.pins.findPin(saved.id);
+		if (identifier === a.identifier && reportedMac) expect(pin).toMatchObject({ mac });
+		else expect(pin).toBeNull();
+	});
+
+	it('updates a renamed pin only after verifying the full MAC and prevents duplicate short-ID creations', async () => {
+		const device = await f.pins.createDevice(a, mac);
+		const renamed = 'shelly1-aabbccddeeff';
+		await f.devices.update(device.id, { type: a.type, identifier: renamed });
+		await expect(wizard(f.pins, () => Promise.resolve(null)).adopt([b])).resolves.toEqual([
+			expect.objectContaining({ status: 'failed' }),
+		]);
+		await expect(f.pins.createDevice(b, mac)).rejects.toThrow('already adopted');
+		await expect(f.pins.createDevice(b)).rejects.toThrow('already adopted');
+		expect(await f.pins.captureDevice(renamed)).toMatchObject({
+			id: device.id,
+			hostname: a.hostname,
+			pin: { mac, revision: 1 },
+		});
+
+		await expect(wizard(f.pins, () => Promise.resolve({ mac })).adopt([b])).resolves.toEqual([
+			expect.objectContaining({ status: 'updated', deviceId: device.id }),
+		]);
+		expect(await f.pins.captureDevice(renamed)).toMatchObject({
+			id: device.id,
+			hostname: b.hostname,
+			pin: { mac, revision: 2 },
+		});
+		expect(await f.db.getRepository(ShellyV1DeviceEntity).count()).toBe(1);
+	});
+
+	it('keeps verified devices with different full MACs and the same short suffix distinct', async () => {
+		const first = await f.pins.createDevice(a, mac);
+		const renamed = 'shelly1-aabbccddeeff';
+		await f.devices.update(first.id, { type: a.type, identifier: renamed });
+		const other = { ...b, identifier: 'shellyht-DDEEFF' };
+		const otherMac = '112233DDEEFF';
+		const [created] = await wizard(f.pins, () => Promise.resolve({ mac: otherMac })).adopt([other]);
+		expect(created.status).toBe('created');
+		expect(created.deviceId).not.toBe(first.id);
+		await expect(wizard(f.pins, () => Promise.resolve({ mac })).adopt([other])).resolves.toEqual([
+			expect.objectContaining({ status: 'failed' }),
+		]);
+		await expect(wizard(f.pins, () => Promise.resolve({ mac })).adopt([a])).resolves.toEqual([
+			expect.objectContaining({ status: 'updated', deviceId: first.id }),
+		]);
+		expect(await f.pins.captureDevice(renamed)).toMatchObject({
+			id: first.id,
+			hostname: a.hostname,
+			pin: { mac, revision: 1 },
+		});
+		expect(await f.pins.captureDevice(other.identifier)).toMatchObject({
+			id: created.deviceId,
+			hostname: other.hostname,
+			pin: { mac: otherMac, revision: 1 },
+		});
+		expect(await f.db.getRepository(ShellyV1DeviceEntity).count()).toBe(2);
 	});
 
 	it('requires the pinned MAC at an edited catalog host before adoption can change credentials', async () => {
@@ -356,7 +489,7 @@ describe('Shelly identity changes through the catalog', () => {
 		}
 		expect(updates).not.toHaveBeenCalled();
 		await f.devices.update(pinned.id, { type: a.type, identifier: 'shelly1-aabbccddeeff' });
-		const unpinned = await f.pins.createDevice(a);
+		const unpinned = await f.pins.createDevice({ ...a, identifier: '112233' });
 		await f.devices.update(unpinned.id, { type: a.type, identifier: 'operator-alias' });
 		expect(await f.pins.captureDevice('shelly1-aabbccddeeff')).toMatchObject({ id: pinned.id, pin: { mac } });
 		expect(await f.pins.captureDevice('operator-alias')).toMatchObject({ id: unpinned.id, pin: null });

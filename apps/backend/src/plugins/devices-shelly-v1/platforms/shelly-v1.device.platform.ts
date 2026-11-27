@@ -270,7 +270,19 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 		const boolValue = coerceBooleanSafe(stateUpdate.value);
 		const address = shellyV1Address(device.identifier);
-		if (!address || !(await this.relayHostMatches(device, target, address))) return false;
+		if (!address) return false;
+		const pin = await this.identities.findPin(device.id);
+		if (!target.isCurrent() || (pin && !shellyV1PinMatches(address, pin.mac))) return false;
+		if (!pin && address.length !== 12 && device.hostname !== target.host) return false;
+		if (pin && pin.verifiedHost !== target.host) {
+			// Existing pins can be confirmed at the configured host. A full-address device without a
+			// configured host can use the registration after the full MAC and model have been verified.
+			const confirmationHost = device.hostname ?? (address.length === 12 ? target.host : null);
+			if (pin.verifiedHost !== null || confirmationHost !== target.host) return false;
+			const info = await this.http.getDeviceInfo(target.host);
+			if (!target.isCurrent() || shellyV1ReportedMac(address, target.peer.type, info) !== pin.mac) return false;
+			if (!(await this.identities.confirmHost(device.id, pin.mac, target.host, null, pin.revision))) return false;
+		}
 
 		this.logger.log(`Setting relay ${index} to ${boolValue ? 'ON' : 'OFF'} on device ${device.identifier}`, {
 			resource: device.id,
@@ -280,24 +292,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		await shellyDevice.setRelay(index, boolValue);
 
 		return true;
-	}
-
-	private async relayHostMatches(
-		device: ShellyV1DeviceEntity,
-		target: CommandTarget,
-		address: string,
-	): Promise<boolean> {
-		const pin = await this.identities.findPin(device.id);
-		if (!target.isCurrent() || (pin && !shellyV1PinMatches(address, pin.mac))) return false;
-		if (address.length === 12) return true;
-		if (!pin) return device.hostname === target.host;
-		if (pin.verifiedHost === target.host) return true;
-		if (pin.verifiedHost !== null || device.hostname !== target.host) return false;
-
-		// Pins from older installations can be confirmed only at the configured endpoint.
-		const info = await this.http.getDeviceInfo(target.host);
-		if (!target.isCurrent() || shellyV1ReportedMac(address, target.peer.type, info) !== pin.mac) return false;
-		return this.identities.confirmHost(device.id, pin.mac, target.host, null, pin.revision);
 	}
 
 	/**

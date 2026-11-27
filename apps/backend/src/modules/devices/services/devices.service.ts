@@ -1223,7 +1223,7 @@ export class DevicesService {
 		let updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 
 		if (mapping.afterUpdate) {
-			await mapping.afterUpdate(updatedDevice);
+			await mapping.afterUpdate(updatedDevice, entityFieldsChanged);
 
 			updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 		}

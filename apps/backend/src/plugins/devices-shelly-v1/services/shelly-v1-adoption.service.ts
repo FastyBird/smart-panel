@@ -10,6 +10,7 @@ import {
 	ShellyV1AdoptedIdentityService,
 	ShellyV1AdoptionState,
 	shellyV1Address,
+	shellyV1DiscoveryOwner,
 	shellyV1PinMatches,
 } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -74,10 +75,11 @@ export class ShellyV1AdoptionService {
 		let existing: ShellyV1AdoptionState | null = null;
 		const selection = { hostname, name };
 		try {
-			existing = await this.identities.captureDevice(identifier);
+			const candidates = await this.identities.captureDiscovery(identifier);
+			existing = candidates.exact;
 			const short = shellyV1Address(identifier)?.length === 6;
 			let mac: string | undefined;
-			if (short || existing?.pin) {
+			if (short || existing?.pin || candidates.aliases.length) {
 				const info = await this.http.getDeviceInfo(hostname).catch((): null => null);
 				if (info) {
 					mac = typeof info.mac === 'string' ? info.mac.toUpperCase() : undefined;
@@ -85,6 +87,7 @@ export class ShellyV1AdoptionService {
 						throw new Error('Shelly hardware identity does not match the selected device.');
 				}
 			}
+			existing = shellyV1DiscoveryOwner(candidates, mac);
 
 			if (!existing) {
 				try {

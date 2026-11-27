@@ -41,13 +41,15 @@ export class DeviceConnectivityService {
 	async setConnectionState(
 		deviceId: DeviceEntity['id'],
 		state: { state: ConnectionState; reason?: string; ts?: number },
+		isCurrent?: () => boolean,
 	): Promise<void> {
-		await this.trySetConnectionState(deviceId, state);
+		await this.trySetConnectionState(deviceId, state, isCurrent);
 	}
 
 	async trySetConnectionState(
 		deviceId: DeviceEntity['id'],
 		state: { state: ConnectionState; reason?: string; ts?: number },
+		isCurrent?: () => boolean,
 	): Promise<boolean> {
 		const destinations: ConnectivityDestinations | undefined = ControllerPublicationContext.current()
 			? {
@@ -84,7 +86,7 @@ export class DeviceConnectivityService {
 				return false;
 			}
 
-			if (!property) {
+			if (!property || isCurrent?.() === false) {
 				// Property not found - skip
 				return false;
 			}
@@ -96,9 +98,13 @@ export class DeviceConnectivityService {
 			if (last !== String(state.state)) {
 				try {
 					const update = { type: property.type, value: String(state.state) };
-					await (destinations
-						? destinations.properties.values.update.call(destinations.properties.receiver, property.id, update)
-						: this.channelsPropertiesService.update(property.id, update));
+					const properties = destinations?.properties.values ?? this.channelsPropertiesService;
+					const receiver = destinations?.properties.receiver ?? this.channelsPropertiesService;
+					if (isCurrent) {
+						await properties.update.call(receiver, property.id, update, { valueIsCurrent: isCurrent });
+					} else {
+						await properties.update.call(receiver, property.id, update);
+					}
 
 					changed = true;
 				} catch {
@@ -111,6 +117,7 @@ export class DeviceConnectivityService {
 				const connection = await (destinations
 					? destinations.state.values.readLatest.call(destinations.state.receiver, device)
 					: this.deviceConnectionStateService.readLatest(device));
+				if (isCurrent?.() === false) return false;
 
 				if (connection.status !== state.state) {
 					await (destinations
@@ -124,6 +131,7 @@ export class DeviceConnectivityService {
 				return false;
 			}
 
+			if (isCurrent?.() === false) return false;
 			if (changed) {
 				// Update device status before emitting so the event contains the new values
 				device.status.online = OnlineDeviceState.includes(state.state);

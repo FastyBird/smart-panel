@@ -25,6 +25,8 @@ export interface PropertySampleEvidence {
 	 * time or a history point, and never moves the value's age forward.
 	 */
 	readonly ageUnknown?: boolean;
+	/** An unordered discovery value may initialize an empty property after its source is verified at admission. */
+	readonly seedOnly?: { readonly assertCurrent: () => Promise<void> };
 	/**
 	 * The sample only acknowledges a command Smart Panel sent (an integration publishing the commanded
 	 * state once the device accepted it), not a report of the device's state. It may update the display,

@@ -42,12 +42,57 @@ const adapterFixture = (id = 'DDEEFF') => {
 	return {
 		getRegisteredDevice: () => registration,
 		getDevice: () => peer,
-		setDeviceAuthCredentials: jest.fn<void, [unknown, string, string, string | null]>(),
+		setDeviceAuthCredentials: jest.fn<boolean, [unknown, string, string, string | null]>().mockReturnValue(true),
 		updateDeviceEnabledStatus: jest.fn(),
 	};
 };
 
 describe('Gen1 credential setup after catalog publication', () => {
+	it.each(['pin lookup', 'SDK installation'])('retries an unchanged save after a failed %s', async (failure) => {
+		const adapter = adapterFixture();
+		const findPin = jest.fn().mockResolvedValue(null);
+		if (failure === 'pin lookup') findPin.mockRejectedValueOnce(new Error('fixture failure'));
+		else
+			adapter.setDeviceAuthCredentials.mockImplementationOnce(() => {
+				throw new Error('fixture failure');
+			});
+		const subscriber = new DeviceEntitySubscriber(
+			{ subscribers: [] } as unknown as DataSource,
+			adapter as unknown as ShelliesAdapterService,
+			{ getLoginSettings: () => Promise.resolve({ username: 'operator' }) } as unknown as ShellyV1HttpClientService,
+			{ findPin } as unknown as ShellyV1AdoptedIdentityService,
+		);
+		await expect(subscriber.deviceCreated(sampleDevice())).rejects.toThrow('fixture failure');
+		await subscriber.deviceUpdated(sampleDevice());
+		expect(adapter.setDeviceAuthCredentials).toHaveBeenLastCalledWith(adapter.getDevice(), 'host', 'operator', 'old');
+		const attempts = findPin.mock.calls.length;
+		await subscriber.deviceUpdated(sampleDevice());
+		expect(findPin).toHaveBeenCalledTimes(attempts);
+	});
+
+	it('keeps a newer successful credential installation when an older attempt fails later', async () => {
+		const adapter = adapterFixture();
+		let fail: (reason: Error) => void;
+		const firstLookup = new Promise<null>((_resolve, reject) => {
+			fail = reject;
+		});
+		const findPin = jest.fn().mockReturnValueOnce(firstLookup).mockResolvedValue(null);
+		const subscriber = new DeviceEntitySubscriber(
+			{ subscribers: [] } as unknown as DataSource,
+			adapter as unknown as ShelliesAdapterService,
+			{ getLoginSettings: () => Promise.resolve({ username: 'operator' }) } as unknown as ShellyV1HttpClientService,
+			{ findPin } as unknown as ShellyV1AdoptedIdentityService,
+		);
+		const old = subscriber.deviceCreated(sampleDevice());
+		const newer = sampleDevice({ password: 'new' });
+		await subscriber.deviceUpdated(newer);
+		fail(new Error('fixture failure'));
+		await expect(old).rejects.toThrow('fixture failure');
+		await subscriber.deviceUpdated(newer);
+		expect(findPin).toHaveBeenCalledTimes(3);
+		expect(adapter.setDeviceAuthCredentials.mock.calls.map(([, , , password]) => password)).toEqual([null, 'new']);
+	});
+
 	it.each([
 		{ identifier: 'shelly1-AABBCCDDEEFF', usesRegistration: true },
 		{ identifier: 'shelly1-DDEEFF', usesRegistration: false },
@@ -156,7 +201,7 @@ describe('Gen1 credential setup after catalog publication', () => {
 		},
 	);
 
-	it('keeps a rolled-back password change and unrelated edits offline, then reads the pin after commit', async () => {
+	it('reconciles committed password changes and retries an identical PATCH without another update event', async () => {
 		const db = await new SqliteDataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -189,12 +234,6 @@ describe('Gen1 credential setup after catalog publication', () => {
 				events = new EventEmitter2(),
 				lock = new DeviceStructureLockService();
 			const mapping = new DevicesTypeMapperService();
-			mapping.registerMapping({
-				type: DEVICES_SHELLY_V1_TYPE,
-				class: ShellyV1DeviceEntity,
-				createDto: CreateShellyV1DeviceDto,
-				updateDto: UpdateShellyV1DeviceDto,
-			});
 			const devices = new DevicesService(
 				db.getRepository(DeviceEntity),
 				db.getRepository(SpaceEntity),
@@ -219,6 +258,13 @@ describe('Gen1 credential setup after catalog publication', () => {
 				http as unknown as ShellyV1HttpClientService,
 				pins,
 			);
+			mapping.registerMapping({
+				type: DEVICES_SHELLY_V1_TYPE,
+				class: ShellyV1DeviceEntity,
+				createDto: CreateShellyV1DeviceDto,
+				updateDto: UpdateShellyV1DeviceDto,
+				afterUpdate: (device, changed) => subscriber.afterCatalogSave(device, changed),
+			});
 			const publications: Promise<void>[] = [];
 			events.on(EventType.DEVICE_UPDATED, (device: ShellyV1DeviceEntity) =>
 				publications.push(subscriber.deviceUpdated(device)),
@@ -240,14 +286,29 @@ describe('Gen1 credential setup after catalog publication', () => {
 			expect(http.getLoginSettings).not.toHaveBeenCalled();
 			expect(adapter.setDeviceAuthCredentials).not.toHaveBeenCalled();
 			expect(await repo.findOneByOrFail({ id: saved.id })).toMatchObject({ enabled: true, password: 'old' });
-			await devices.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(saved.id, {
-				type: DEVICES_SHELLY_V1_TYPE,
-				password: 'committed',
-			});
+			const patch: UpdateShellyV1DeviceDto = { type: DEVICES_SHELLY_V1_TYPE, password: 'committed' };
+			adapter.setDeviceAuthCredentials.mockReturnValueOnce(true).mockReturnValueOnce(false);
+			await devices.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(saved.id, patch);
 			await Promise.all(publications);
 			expect(findPin).toHaveBeenCalledTimes(2);
 			expect(adapter.setDeviceAuthCredentials.mock.calls.map(([, , , password]) => password)).toEqual([
 				null,
+				'committed',
+			]);
+			const updates = publications.length;
+			const installed = new Promise<void>((resolve) => {
+				adapter.setDeviceAuthCredentials.mockImplementationOnce(() => {
+					resolve();
+					return true;
+				});
+			});
+			await devices.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(saved.id, patch);
+			await installed;
+			expect(publications).toHaveLength(updates);
+			expect(findPin).toHaveBeenCalledTimes(4);
+			expect(adapter.setDeviceAuthCredentials.mock.calls.map(([, , , password]) => password)).toEqual([
+				null,
+				'committed',
 				'committed',
 			]);
 			subscriber.onModuleDestroy();
@@ -264,7 +325,7 @@ describe('Gen1 credential setup after catalog publication', () => {
 			const adapter = {
 				getRegisteredDevice: () => registration,
 				getDevice: () => peer,
-				setDeviceAuthCredentials: jest.fn(),
+				setDeviceAuthCredentials: jest.fn().mockReturnValue(true),
 				updateDeviceEnabledStatus: jest.fn(),
 			};
 			const identities = {

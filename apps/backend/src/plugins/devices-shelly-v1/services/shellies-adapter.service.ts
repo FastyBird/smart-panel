@@ -293,10 +293,19 @@ export class ShelliesAdapterService {
 	/**
 	 * Set authentication credentials for a device
 	 */
-	setDeviceAuthCredentials(peer: ShellyDevice, host: string, username: string, password: string | null): void {
-		if (peer.host !== host || this.getDevice(peer.type, peer.id) !== peer) return;
+	setDeviceAuthCredentials(peer: ShellyDevice, host: string, username: string, password: string | null): boolean {
+		if (peer.host !== host || this.getDevice(peer.type, peer.id) !== peer) return false;
+		const registration = this.devicesRegistry.get(peer.id);
+		if (registration) {
+			if (registration.type !== peer.type || registration.host !== host) return false;
+			registration.credentialRevision = (registration.credentialRevision ?? 0) + 1;
+		}
 		clearShellyCredentials(peer);
-		if (password) peer.setAuthCredentials?.(username, password);
+		if (password) {
+			if (!peer.setAuthCredentials) return false;
+			peer.setAuthCredentials(username, password);
+		}
+		return true;
 	}
 
 	/**

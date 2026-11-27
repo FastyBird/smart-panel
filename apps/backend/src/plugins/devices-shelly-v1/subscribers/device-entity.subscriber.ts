@@ -5,8 +5,9 @@ import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { outsideSqliteTransaction } from '../../../common/database/sqlite-data-source';
+import { createExtensionLogger } from '../../../common/logger';
 import { EventType } from '../../../modules/devices/devices.constants';
-import { SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
+import { DEVICES_SHELLY_V1_PLUGIN_NAME, SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 import {
@@ -22,10 +23,12 @@ type CredentialSettings = {
 	hostname: string | null;
 	enabled: boolean;
 	passwordFingerprint: string | null;
+	retry?: boolean;
 };
 
 @Injectable()
 export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV1DeviceEntity> {
+	private readonly logger = createExtensionLogger(DEVICES_SHELLY_V1_PLUGIN_NAME, 'DeviceEntitySubscriber');
 	private readonly fingerprintKey = randomBytes(32);
 	private readonly settings = new Map<string, CredentialSettings>();
 
@@ -46,7 +49,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		const registration = this.shelliesAdapter.getRegisteredDevice(identifier);
 		const host = hostname ?? (shellyV1Address(identifier)?.length === 12 ? registration?.host : null);
 		if (!host || !registration || registration.host !== host) return null;
-		const { type } = registration;
+		const { type, credentialRevision } = registration;
 		const peer = this.shelliesAdapter.getDevice(type, identifier);
 		if (!peer || peer.host !== host || peer.id !== identifier || peer.type !== type) return null;
 		return {
@@ -57,35 +60,36 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 				this.shelliesAdapter.getDevice(type, identifier) === peer &&
 				registration.host === host &&
 				registration.type === type &&
+				registration.credentialRevision === credentialRevision &&
 				peer.type === type &&
 				peer.host === host,
 		};
 	}
 
-	private async configureCredentials(device: ShellyV1DeviceEntity, settings: CredentialSettings): Promise<void> {
+	private async configureCredentials(device: ShellyV1DeviceEntity, settings: CredentialSettings): Promise<boolean> {
 		const { id, identifier, password } = device;
-		if (!identifier || !password) return;
+		if (!identifier || !password) return false;
 		const target = this.credentialTarget(identifier, device.hostname);
-		if (!target) return;
+		if (!target) return false;
 		const { peer, host } = target;
 		const current = () => this.settings.get(id) === settings && target.isCurrent();
 		const pin = await this.identities.findPin(id);
-		if (!current() || (pin && !shellyV1PinMatches(identifier, pin.mac))) return;
+		if (!current() || (pin && !shellyV1PinMatches(identifier, pin.mac))) return false;
 		if (pin && pin.verifiedHost !== host) {
 			const info = await this.httpClient.getDeviceInfo(host).catch((): null => null);
-			if (!current() || shellyV1ReportedMac(identifier, peer.type, info) !== pin.mac) return;
+			if (!current() || shellyV1ReportedMac(identifier, peer.type, info) !== pin.mac) return false;
 		}
 		const login = await this.httpClient.getLoginSettings(host).catch((): null => null);
-		if (!current()) return;
+		if (!current()) return false;
 		if (pin && pin.verifiedHost !== host) {
-			if (!(await this.identities.confirmHost(id, pin.mac, host, pin.verifiedHost, pin.revision))) return;
+			if (!(await this.identities.confirmHost(id, pin.mac, host, pin.verifiedHost, pin.revision))) return false;
 		} else {
 			const latest = await this.identities.findPin(id);
 			if (latest?.mac !== pin?.mac || latest?.revision !== pin?.revision || latest?.verifiedHost !== pin?.verifiedHost)
-				return;
+				return false;
 		}
-		if (!current()) return;
-		this.shelliesAdapter.setDeviceAuthCredentials(peer, host, login?.username || SHELLY_AUTH_USERNAME, password);
+		if (!current()) return false;
+		return this.shelliesAdapter.setDeviceAuthCredentials(peer, host, login?.username || SHELLY_AUTH_USERNAME, password);
 	}
 
 	private snapshot(device: ShellyV1DeviceEntity): CredentialSettings {
@@ -128,33 +132,51 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		return this.reconcile(device, false);
 	}
 
-	private async reconcile(device: ShellyV1DeviceEntity, created: boolean): Promise<void> {
+	afterCatalogSave(device: ShellyV1DeviceEntity, changed?: boolean): Promise<ShellyV1DeviceEntity> {
+		// An idempotent PATCH sends no DEVICE_UPDATED. Leave the network work outside the caller's
+		// transaction, just as for the ordinary post-save event.
+		if (changed === false && this.settings.get(device.id)?.retry) {
+			void this.reconcile(device, false, true).catch(() => {
+				this.logger.warn('Could not retry credential installation for the saved Shelly device.', {
+					resource: device.id,
+				});
+			});
+		}
+		return Promise.resolve(device);
+	}
+
+	private async reconcile(device: ShellyV1DeviceEntity, created: boolean, retryOnly = false): Promise<void> {
 		if (!(device instanceof ShellyV1DeviceEntity)) return;
 		const previous = this.settings.get(device.id);
 		if (!created && !previous) return;
 		const next = this.snapshot(device);
-		if (
+		const unchanged =
 			previous &&
 			!created &&
 			previous.identifier === next.identifier &&
 			previous.hostname === next.hostname &&
 			previous.enabled === next.enabled &&
-			previous.passwordFingerprint === next.passwordFingerprint
-		)
-			return;
+			previous.passwordFingerprint === next.passwordFingerprint;
+		if ((unchanged && !previous.retry) || (retryOnly && !unchanged)) return;
 		// Replace the snapshot before any await. An intervening password, endpoint or lifetime change
 		// revokes pending lookups even when a later edit restores the original values.
 		this.settings.set(device.id, next);
-		if (previous) {
+		if (previous && !unchanged) {
 			this.clearCredentials(previous.identifier, previous.hostname);
 			if (previous.identifier && previous.identifier !== next.identifier)
 				this.shelliesAdapter.updateDeviceEnabledStatus(previous.identifier, false);
 		}
 		if (!next.identifier) return;
 		this.shelliesAdapter.updateDeviceEnabledStatus(next.identifier, next.enabled);
-		if (next.enabled && device.password)
-			await outsideSqliteTransaction(this.dataSource, () => this.configureCredentials(device, next));
-		else if (!previous || previous.identifier !== next.identifier || previous.hostname !== next.hostname)
+		if (next.enabled && device.password) {
+			let configured = false;
+			try {
+				configured = await outsideSqliteTransaction(this.dataSource, () => this.configureCredentials(device, next));
+			} finally {
+				// Only this save is marked retryable. A newer save owns its own snapshot.
+				next.retry = !configured;
+			}
+		} else if (!previous || previous.identifier !== next.identifier || previous.hostname !== next.hostname)
 			this.clearCredentials(next.identifier, next.hostname);
 	}
 
