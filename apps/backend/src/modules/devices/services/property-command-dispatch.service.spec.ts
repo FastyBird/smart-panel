@@ -14,7 +14,7 @@ import { ShellyNgDeviceEntity } from '../../../plugins/devices-shelly-ng/entitie
 import { VirtualThermostatActuatorClaimEntity } from '../../../plugins/devices-virtual/entities/virtual-thermostat.entity';
 import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualThermostatClaimsService } from '../../../plugins/devices-virtual/services/virtual-thermostat-claims.service';
-import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
+import { ChannelCategory, DataTypeType, EventType, PermissionType, PropertyCategory } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../platforms/device.platform';
 
@@ -37,6 +37,7 @@ describe('PropertyCommandDispatchService', () => {
 	let composites: CompositePropertyCommandRegistryService;
 	let admission: PropertyCommandAdmissionRegistryService;
 	let windows: PropertyCommandWindowService;
+	let structureLock: DeviceStructureLockService;
 	let platform: jest.Mocked<IDevicePlatform>;
 	let platformRegistry: jest.Mocked<Pick<PlatformRegistryService, 'get' | 'usesAuthoritativePropertyReadback'>>;
 	let valueSourceRegistry: jest.Mocked<Pick<PropertyValueSourceRegistryService, 'resolve'>>;
@@ -64,6 +65,7 @@ describe('PropertyCommandDispatchService', () => {
 
 	beforeEach(() => {
 		windows = new PropertyCommandWindowService();
+		structureLock = new DeviceStructureLockService();
 		admission = new PropertyCommandAdmissionRegistryService();
 		composites = new CompositePropertyCommandRegistryService();
 		sources = new Map();
@@ -93,7 +95,7 @@ describe('PropertyCommandDispatchService', () => {
 			devices as unknown as DevicesService,
 			platformRegistry as unknown as PlatformRegistryService,
 			valueSourceRegistry as unknown as PropertyValueSourceRegistryService,
-			new DeviceStructureLockService(),
+			structureLock,
 			new PropertyStateCoordinatorService(),
 			windows,
 			undefined,
@@ -451,6 +453,7 @@ describe('PropertyCommandDispatchService', () => {
 	});
 	describe('thermostat admission scope at physical dispatch', () => {
 		let claims: VirtualThermostatClaimsService;
+		let events: EventEmitter2;
 		let rows: VirtualThermostatActuatorClaimEntity[];
 		let readClaims: jest.Mock;
 		const relayDevice = Object.assign(new ShellyNgDeviceEntity(), {
@@ -475,13 +478,28 @@ describe('PropertyCommandDispatchService', () => {
 			property: relayProperty,
 			value: true,
 		});
-		const claim = (propertyId = relayProperty.id) => {
+		const lightChannel = { ...channel, category: ChannelCategory.LIGHT } as ChannelEntity;
+		const lightProperty = {
+			...sourceProperty,
+			channel: lightChannel,
+			category: PropertyCategory.ON,
+		} as ChannelPropertyEntity;
+		const light = { device, channel: lightChannel, property: lightProperty, value: true };
+		const lightIdentity = `property:${device.id}:${lightChannel.id}:${lightProperty.id}`;
+		const barrier = () => {
+			let resume: () => void;
+			const waiting = new Promise<void>((resolve) => {
+				resume = resolve;
+			});
+			return { waiting, resume };
+		};
+		const claim = (propertyId = relayProperty.id, physicalIdentity = 'shelly-ng:A8032ABE5084:switch:0:output') => {
 			rows = [
 				{
 					id: 'claim',
 					controllerId: 'thermostat',
 					sourcePropertyIdentity: propertyId,
-					physicalIdentity: 'shelly-ng:A8032ABE5084:switch:0:output',
+					physicalIdentity,
 					state: 'reserved',
 				} as VirtualThermostatActuatorClaimEntity,
 			];
@@ -489,19 +507,89 @@ describe('PropertyCommandDispatchService', () => {
 		};
 		beforeEach(async () => {
 			rows = [];
+			events = new EventEmitter2();
 			readClaims = jest.fn(() => Promise.resolve(rows));
 			claims = new VirtualThermostatClaimsService(
 				{ manager: { find: readClaims } } as unknown as DataSource,
-				new DeviceStructureLockService(),
+				structureLock,
 				{} as VirtualDependencyGraphService,
 				admission,
-				new EventEmitter2(),
+				events,
 			);
-			admission.register(claims);
-			await claims.refresh();
+			await claims.onApplicationBootstrap();
 			properties.findOne.mockImplementation((id) =>
 				Promise.resolve(id === relayProperty.id ? relayProperty : sourceProperty),
 			);
+		});
+		afterEach(() => claims.onModuleDestroy());
+
+		it.each(['settings', 'metadata', 'reservation'])(
+			'checks a queued ordinary light against its actual reservation after %s publication',
+			async (change) => {
+				properties.findOne.mockResolvedValue(lightProperty);
+				const queued = barrier();
+				const release = barrier();
+				const send = jest.fn();
+				platform.prepareCompositeBatch = jest.fn((updates) =>
+					Promise.resolve({
+						updates,
+						isCurrent: () => true,
+						dispatch: async (current) => {
+							queued.resume();
+							await release.waiting;
+							if (!current()) return false;
+							send();
+							return true;
+						},
+					}),
+				);
+				const captured = claims.capture();
+				const pending = service.dispatchBatch([light]);
+				await queued.waiting;
+				try {
+					claims.invalidate('actuation');
+					expect(captured.isCurrent()).toBe(false);
+					expect(captured.isCurrent(light)).toBe(true);
+					await expect(claims.assertAllowed(light)).resolves.toBeUndefined();
+					if (change === 'metadata') events.emit(EventType.CHANNEL_PROPERTY_UPDATED, lightProperty);
+					if (change === 'reservation') claim(lightProperty.id, lightIdentity);
+					await claims.refresh();
+					expect(captured.isCurrent(light)).toBe(change === 'settings');
+				} finally {
+					release.resume();
+				}
+				await expect(pending).resolves.toMatchObject({ success: change === 'settings' });
+				expect(send).toHaveBeenCalledTimes(change === 'settings' ? 1 : 0);
+				if (change === 'reservation') await expect(service.dispatchBatch([light])).rejects.toThrow('reserved');
+			},
+		);
+
+		it('completes an unprepared light write before a concurrent thermostat can acquire that output', async () => {
+			properties.findOne.mockResolvedValue(lightProperty);
+			const queued = barrier();
+			const completeWrite = barrier();
+			const order: string[] = [];
+			platform.processBatch.mockImplementationOnce(async () => {
+				queued.resume();
+				await completeWrite.waiting;
+				order.push('light written');
+				return true;
+			});
+			const write = service.dispatchBatch([light]);
+			await queued.waiting;
+			const release = claims.holdRecoveryFence();
+			const acquisition = structureLock.runExclusive(async () => {
+				claim(lightProperty.id, lightIdentity);
+				order.push('light reserved');
+				release();
+				await claims.refresh();
+			});
+			completeWrite.resume();
+			await expect(write).resolves.toMatchObject({ success: true });
+			await acquisition;
+			expect(order).toEqual(['light written', 'light reserved']);
+			await expect(service.dispatchBatch([light])).rejects.toThrow('reserved');
+			expect(platform.processBatch).toHaveBeenCalledTimes(1);
 		});
 
 		it.each(['not-ready', 'paused-refresh', 'failed-refresh', 'epoch-change'])(

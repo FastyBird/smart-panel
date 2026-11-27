@@ -74,6 +74,9 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	private readonly releaseWrites = new WeakMap<QueryRunner, { query: string; parameters: readonly unknown[] }>();
 	private readonly reservations = new Map<string, VirtualThermostatActuatorClaimEntity>();
 	private readonly byProperty = new Map<string, VirtualThermostatActuatorClaimEntity>();
+	/** Stays valid across comfort publications, until a write could change the reserved outputs. */
+	private reservationGeneration?: object;
+	private readonly pendingReservationWrites = new Set<{ readonly pending: boolean }>();
 	private epoch = 0;
 	private ready = false;
 	private recoveryFences = 0;
@@ -119,6 +122,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		this.destroyed = true;
 		this.qualifications.clear();
 		this.supervised.clear();
+		this.pendingReservationWrites.clear();
 		this.cancelRetry();
 		this.retryContext.emitDestroy();
 		this.unregister?.();
@@ -133,7 +137,9 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			this.events.off(event, this.onStructure);
 		this.invalidate();
 	}
-	invalidate(): void {
+	invalidate(scope: 'ownership' | 'actuation' = 'ownership', write?: { readonly pending: boolean }): void {
+		if (scope === 'ownership') this.reservationGeneration = undefined;
+		if (write) this.pendingReservationWrites.add(write);
 		this.ready = false;
 		this.epoch++;
 	}
@@ -153,6 +159,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		// Acquire before coalescing: a writer's post-commit refresh must never join a reader queued behind it.
 		await this.structureLock.runShared(async () => {
 			if (this.destroyed) return;
+			// An in-transaction read cannot prove the final ownership held after commit or rollback.
+			for (const write of this.pendingReservationWrites) if (write.pending) return;
 			if (this.refreshInFlight !== undefined) return this.refreshInFlight;
 			const epoch = this.epoch;
 			const refresh = this.reload(epoch);
@@ -185,6 +193,13 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				)
 					this.supervised.delete(id);
 			}
+			const sameReservations =
+				this.reservations.size === rows.length &&
+				rows.every(
+					(row) =>
+						this.reservations.get(row.physicalIdentity)?.id === row.id &&
+						this.byProperty.get(row.sourcePropertyIdentity)?.id === row.id,
+				);
 			this.reservations.clear();
 			this.byProperty.clear();
 			for (const row of rows) {
@@ -192,6 +207,9 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				this.byProperty.set(row.sourcePropertyIdentity, row);
 			}
 			this.ready = this.recoveryFences === 0;
+			if (!this.ready) this.reservationGeneration = undefined;
+			else if (!this.reservationGeneration || !sameReservations) this.reservationGeneration = {};
+			this.pendingReservationWrites.clear();
 			// Retry completion tracks fresh membership, independently of the recovery admission fence.
 			this.cancelRetry();
 			this.retryDelay = 1000;
@@ -225,11 +243,15 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	capture(): PropertyCommandAdmissionSnapshot {
 		const epoch = this.epoch;
 		const ready = this.ready;
+		const reservations = this.reservationGeneration;
 		const claimedProperties = new Set(this.byProperty.keys());
-		const isCurrent = (update?: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>) =>
-			!!update && !claimedProperties.has(update.property.id) && !this.requiresGuardedDispatch(update)
-				? true
-				: ready && this.ready && epoch === this.epoch;
+		const isCurrent = (update?: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>) => {
+			if (!update) return ready && this.ready && epoch === this.epoch;
+			if (!claimedProperties.has(update.property.id) && !this.requiresGuardedDispatch(update)) return true;
+			return (
+				!this.pendingReservationWrites.size && reservations !== undefined && reservations === this.reservationGeneration
+			);
+		};
 		return {
 			isCurrent,
 			isEffectCurrent: isCurrent,
@@ -256,7 +278,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	/** Rejects ordinary commands to reserved leaves and closes claimable outputs during reconciliation. */
 	assertAllowed(update: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>): Promise<void> {
 		if (!this.requiresGuardedDispatch(update)) return Promise.resolve();
-		if (!this.ready) throw new DevicesValidationException('Actuator ownership is reconciling; retry the command.');
+		if (!this.reservationGeneration || this.pendingReservationWrites.size)
+			throw new DevicesValidationException('Actuator ownership is reconciling; retry the command.');
 		const identity = thermostatActuatorIdentity(update.property, update.channel, update.device);
 		const claim = (identity && this.reservations.get(identity)) || this.byProperty.get(update.property.id);
 		if (claim)

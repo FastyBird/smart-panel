@@ -118,7 +118,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 		if (process.env.FB_CLI === 'on') return;
 		const publication = captureCreation(this, ['afterCommit']);
 		this.stopAutomationPublication = this.automation?.registerPublication((id) =>
-			publication.values.afterCommit.call(publication.receiver, id),
+			publication.values.afterCommit.call(publication.receiver, id, undefined, 'settings'),
 		);
 	}
 	onModuleDestroy(): void {
@@ -380,7 +380,11 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 	}
 
 	/** Must run only after the owning writer commits; no preview or rollback may publish. */
-	async afterCommit(controllerId: string, lifecycle?: VirtualDeviceBindingsEvent) {
+	async afterCommit(
+		controllerId: string,
+		lifecycle?: VirtualDeviceBindingsEvent,
+		change: 'configuration' | 'settings' = 'configuration',
+	) {
 		if (lifecycle) publishThermostatBindings(this.events, lifecycle);
 		const own = captureCreation(this, ['get', 'property'] as (keyof this)[]);
 		const get = Reflect.get(own.values, 'get') as typeof this.get;
@@ -394,7 +398,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 			() => graphCurrent() && own.current() && claims.current() && values.current() && events.current(),
 		);
 		return publication.run(async () => {
-			claims.values.invalidate.call(claims.receiver);
+			claims.values.invalidate.call(claims.receiver, change === 'settings' ? 'actuation' : 'ownership');
 			const current = await invokeCreation(get, this, controllerId);
 			for (const setting of current.settings) {
 				const target = await invokeCreation(property, this, manager, setting.property);
@@ -410,7 +414,11 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 									: ['cool', 'auto'].includes(current.requested_mode);
 				await values.values.write.call(values.receiver, target.property, value);
 				target.property.value = await values.values.readLatest.call(values.receiver, target.property);
-				events.values.emit.call(events.receiver, EventType.CHANNEL_PROPERTY_UPDATED, target.property);
+				events.values.emit.call(
+					events.receiver,
+					change === 'settings' ? EventType.CHANNEL_PROPERTY_VALUE_SET : EventType.CHANNEL_PROPERTY_UPDATED,
+					target.property,
+				);
 			}
 			// The structural write has committed. Reload fails closed and schedules retry without changing that outcome.
 			await claims.values.refresh.call(claims.receiver).catch(() => undefined);
@@ -841,7 +849,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 							let stage = 'claims.invalidate';
 							let index: number | undefined;
 							try {
-								claims.values.invalidate.call(claims.receiver);
+								claims.values.invalidate.call(claims.receiver, 'actuation');
 								stage = 'claims.refresh';
 								await claims.values.refresh.call(claims.receiver);
 								// Even a native no-op must retry the original mirrors after an earlier publication failure.

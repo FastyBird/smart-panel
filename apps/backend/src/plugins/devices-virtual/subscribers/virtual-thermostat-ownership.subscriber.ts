@@ -38,7 +38,7 @@ import {
 export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInterface, OnApplicationBootstrap {
 	private readonly logger = new Logger(VirtualThermostatOwnershipSubscriber.name);
 	private installed = false;
-	private readonly dirtyRunners = new WeakSet<QueryRunner>();
+	private readonly dirtyRunners = new WeakMap<QueryRunner, { pending: boolean }>();
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly claims: VirtualThermostatClaimsService,
@@ -136,17 +136,33 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 			await this.dataSource.query(`CREATE TRIGGER IF NOT EXISTS "${name}" ${sql}`);
 		this.installed = true;
 	}
-	private catalogMutation(query: string): 'bindings' | 'qualification' | null {
+	private catalogMutation(query: string): 'bindings' | 'qualification' | 'settings' | 'automation-slot' | null {
 		const table = /^\s*(?:UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+(?:["`]|\[)?(\w+)/i
 			.exec(query)?.[1]
 			?.toLowerCase();
 		if (!table) return null;
+		if (table === 'devices_module_climate_automation_slots') return 'automation-slot';
+		if (table === 'devices_virtual_thermostat_configs') {
+			// Only recognize the parameter or numeric assignments emitted for ordinary comfort writes.
+			// Ownership, release, and any unfamiliar DML keep the full structural fence.
+			const assignments = /^\s*UPDATE\s+"?devices_virtual_thermostat_configs"?\s+SET\s+(.+?)\s+WHERE\s/is.exec(
+				query,
+			)?.[1];
+			if (
+				assignments
+					?.split(',')
+					.every((assignment) =>
+						/^\s*"?(?:comfort|locked|policy|requestedMode|revision)"?\s*=\s*(?:\?|\d+)\s*$/i.test(assignment),
+					)
+			)
+				return 'settings';
+		}
 		if (
 			/^devices_virtual_(?:thermostat_(?:configs|sources|actuator_claims|member_protection)$|transform_)/.test(table) ||
 			this.safetyCatalog.invalidatesQualification(table)
 		)
 			return 'qualification';
-		return /^(?:devices_module_(?:devices|channels|channels_properties|climate_automation_slots)|devices_virtual_thermostat_settings)$/.test(
+		return /^(?:devices_module_(?:devices|channels|channels_properties)|devices_virtual_thermostat_settings)$/.test(
 			table,
 		)
 			? 'bindings'
@@ -155,10 +171,14 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 	beforeQuery(event: BeforeQueryEvent<unknown>): void {
 		const mutation = this.installed && this.catalogMutation(event.query);
 		if (!mutation) return;
-		this.dirtyRunners.add(event.queryRunner);
+		const write = this.dirtyRunners.get(event.queryRunner) ?? { pending: true };
+		this.dirtyRunners.set(event.queryRunner, write);
 		if (this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters)) return;
-		this.claims.invalidate();
-		if (mutation === 'qualification') this.claims.revokeAllQualifications();
+		this.claims.invalidate(
+			mutation === 'settings' || mutation === 'automation-slot' ? 'actuation' : 'ownership',
+			write,
+		);
+		if (mutation === 'qualification' || mutation === 'settings') this.claims.revokeAllQualifications();
 	}
 	async afterQuery(event: AfterQueryEvent<unknown>): Promise<void> {
 		if (this.installed && !event.queryRunner.isTransactionActive && this.catalogMutation(event.query))
@@ -174,7 +194,11 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		// Read-only snapshots must release SQLite without acquiring the structure lock: a structural
 		// writer can already hold that lock while waiting for this connection. Inner savepoint
 		// boundaries retain dirtiness until the owning transaction commits or rolls back.
-		if (!this.installed || runner.isTransactionActive || !this.dirtyRunners.delete(runner)) return;
+		if (!this.installed || runner.isTransactionActive) return;
+		const write = this.dirtyRunners.get(runner);
+		if (!write) return;
+		write.pending = false;
+		this.dirtyRunners.delete(runner);
 		await this.refreshAfterWrite(boundary);
 	}
 	private async refreshAfterWrite(boundary: string): Promise<void> {
