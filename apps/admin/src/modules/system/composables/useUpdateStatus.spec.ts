@@ -403,4 +403,26 @@ describe('useUpdateStatus', () => {
 
 		expect(api.readFailed.value).toBe(false);
 	});
+
+	it('ignores a check left behind by a consumer that has left', async () => {
+		const pending = deferred<ReturnType<typeof response>>();
+		mockPost.mockReturnValueOnce(pending.promise);
+		const first = consumer();
+		const check = first.api.checkForUpdates();
+		first.scope.stop();
+
+		await vi.advanceTimersByTimeAsync(6_000);
+		mockGet.mockRejectedValueOnce(new Error('Backend offline'));
+		const second = consumer();
+		await second.api.fetchStatus();
+
+		expect(second.api.readFailed.value).toBe(true);
+
+		pending.resolve(response({ current_version: '1.1.0', latest_version: '1.2.0', update_available: true }));
+		await check;
+
+		// The current consumer's failed read stands: the late answer does not name an update as current
+		expect(second.api.readFailed.value).toBe(true);
+		expect(second.api.latestVersion.value).not.toBe('1.2.0');
+	});
 });

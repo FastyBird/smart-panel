@@ -273,10 +273,18 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 	};
 
 	const checkForUpdates = async (): Promise<void> => {
+		// A check left behind by a disposed consumer, or by a terminal event, must not overwrite what the current one read
+		const generation = observerGeneration;
+		const isCurrent = (): boolean => !disposed && generation === observerGeneration;
+
 		loading.value = true;
 
 		try {
 			const { data: responseData } = await backend.client.POST(UPDATE_CHECK_PATH);
+
+			if (!isCurrent()) {
+				return;
+			}
 
 			if (responseData?.data) {
 				applyInfoResponse(responseData.data);
@@ -284,6 +292,10 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 				readFailed.value = true;
 			}
 		} catch (err) {
+			if (!isCurrent()) {
+				return;
+			}
+
 			error.value = 'systemModule.messages.update.checkFailed';
 			readFailed.value = true;
 

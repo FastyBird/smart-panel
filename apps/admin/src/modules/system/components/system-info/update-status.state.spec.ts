@@ -15,6 +15,7 @@ const latestVersion = ref<string | null>(null);
 const updateAvailable = ref(false);
 const loading = ref(false);
 const readFailed = ref(false);
+const isUpdating = ref(false);
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
@@ -35,7 +36,7 @@ vi.mock('../../composables/composables', () => ({
 		loading,
 		readFailed,
 		waitingForRestart: ref(false),
-		isUpdating: computed(() => false),
+		isUpdating: computed(() => isUpdating.value),
 		fetchStatus: vi.fn(),
 		checkForUpdates: vi.fn(),
 		installUpdate: vi.fn(),
@@ -51,6 +52,7 @@ describe('UpdateStatus state', () => {
 		updateAvailable.value = false;
 		loading.value = false;
 		readFailed.value = false;
+		isUpdating.value = false;
 	});
 
 	it('says it is checking until the backend has answered', () => {
@@ -100,5 +102,40 @@ describe('UpdateStatus state', () => {
 		updateAvailable.value = true;
 
 		expect(tag().props()).toMatchObject({ status: 'warn', label: 'systemModule.texts.update.available' });
+	});
+
+	it('offers Install only for an update the last read confirmed', () => {
+		currentVersion.value = '1.1.0';
+		latestVersion.value = '1.2.0';
+		updateAvailable.value = true;
+
+		const wrapper = mount(UpdateStatus, { global: { stubs: { Icon: true } } });
+
+		expect(wrapper.find('[data-test-id="update-status-install"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="update-status-check"]').exists()).toBe(false);
+	});
+
+	it('offers Check again after a failed read, not the update found before', () => {
+		currentVersion.value = '1.1.0';
+		latestVersion.value = '1.2.0';
+		updateAvailable.value = true;
+		readFailed.value = true;
+
+		const wrapper = mount(UpdateStatus, { global: { stubs: { Icon: true } } });
+
+		expect(wrapper.find('[data-test-id="update-status-check"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="update-status-install"]').exists()).toBe(false);
+	});
+
+	it('keeps Install to reopen the progress while the restarting backend fails the reads', () => {
+		currentVersion.value = '1.1.0';
+		latestVersion.value = '1.2.0';
+		updateAvailable.value = true;
+		readFailed.value = true;
+		isUpdating.value = true;
+
+		const wrapper = mount(UpdateStatus, { global: { stubs: { Icon: true } } });
+
+		expect(wrapper.find('[data-test-id="update-status-install"]').exists()).toBe(true);
 	});
 });

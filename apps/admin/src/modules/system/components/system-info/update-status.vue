@@ -15,7 +15,7 @@
 			<span class="flex-1" />
 
 			<el-button
-				v-if="!updateAvailable"
+				v-if="!canInstall"
 				:loading="loading"
 				:disabled="isUpdating"
 				data-test-id="update-status-check"
@@ -172,6 +172,10 @@ watch(showUpdateDialog, (visible, wasVisible): void => {
 		window.location.reload();
 	}
 });
+
+// Install only for an update the last read confirmed: after a failed read Check stays, to read again. While an update
+// runs the backend restarts and its reads fail, so Install stays then to reopen the progress
+const canInstall = computed<boolean>((): boolean => isUpdating.value || (updateAvailable.value && latestVersion.value !== null && !readFailed.value));
 
 const lastCheckedFormatted = computed<string | null>((): string | null => {
 	if (!lastChecked.value) {
