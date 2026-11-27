@@ -1,5 +1,7 @@
 import EventEmitter from 'events';
 
+import type { ShellyStatusResponse } from './shelly-http.interface';
+
 /**
  * Type definitions for the shellies library
  * The shellies package is a CommonJS module without TypeScript support
@@ -34,6 +36,7 @@ export interface ShellyDevice extends EventEmitter {
 	[key: string]: ShellyDevicePropertyValue | ((...args: unknown[]) => unknown);
 
 	// Methods
+	getStatus(): Promise<ShellyStatusResponse>;
 	setRelay?(index: number, value: boolean): Promise<void>;
 	setColor?(options: ShellyColorOptions): Promise<void>;
 	setWhite?(temperatureOrIndex: number, brightnessOrOn?: number | boolean, on?: boolean): Promise<void>;
@@ -49,6 +52,7 @@ export interface ShelliesLibrary extends EventEmitter {
 
 	// Stop discovery and cleanup
 	stop(): void;
+	removeAllDevices(): void;
 
 	// Get device by ID
 	getDevice(type: string, id: string): ShellyDevice | undefined;
@@ -111,7 +115,16 @@ export enum ShelliesAdapterEventType {
  * Callbacks for the Shellies adapter
  * Used for internal plugin communication instead of event bus
  */
+export interface ShellyTemperatureReport {
+	deviceId: string;
+	value: number | null;
+	receivedAt: Date;
+	ingressSequence: number;
+	isCurrent: () => boolean;
+}
+
 export interface ShelliesAdapterCallbacks {
+	onTemperatureReport?: (report: ShellyTemperatureReport) => void | Promise<void>;
 	onDeviceDiscovered?: (event: NormalizedDeviceEvent) => void | Promise<void>;
 	onDeviceChanged?: (event: NormalizedDeviceChangeEvent) => void | Promise<void>;
 	onDeviceOffline?: (event: NormalizedDeviceEvent) => void | Promise<void>;

@@ -44,7 +44,10 @@ describe('StateChangedEventService', () => {
 				StateChangedEventService,
 				{ provide: DevicesService, useValue: { findAll: jest.fn() } },
 				{ provide: ChannelsService, useValue: { findOne: jest.fn(), findAll: jest.fn().mockResolvedValue([]) } },
-				{ provide: ChannelsPropertiesService, useValue: { findAll: jest.fn(), update: jest.fn() } },
+				{
+					provide: ChannelsPropertiesService,
+					useValue: { findAll: jest.fn(), update: jest.fn(), reportSample: jest.fn() },
+				},
 				{ provide: MapperService, useValue: { mapFromHA: jest.fn() } },
 				{ provide: HomeAssistantHttpService, useValue: { getDiscoveredDevices: jest.fn() } },
 				{ provide: VirtualPropertyService, useValue: { resolveVirtualPropertyValue: jest.fn() } },
@@ -101,6 +104,93 @@ describe('StateChangedEventService', () => {
 		await service.handle(event);
 		// Expect nothing crashes, no calls made due to early return
 		expect(mapperService.mapFromHA).not.toHaveBeenCalled();
+	});
+
+	describe('physical switch and temperature reports', () => {
+		const context = { id: 'original-event', user_id: null, parent_id: null };
+		const at = new Date('2026-05-08T12:00:00Z');
+		const event = (entity: string, previous: string, next: string, attributes: Record<string, unknown> = {}) =>
+			({
+				context,
+				data: {
+					old_state: { entity_id: entity, state: previous, last_changed: new Date(at.getTime() - 60_000) },
+					new_state: { entity_id: entity, state: next, context, last_changed: at, attributes },
+				},
+			}) as unknown as HomeAssistantStateChangedEventDto;
+		const ingress = () => ({
+			session: 'server:socket:1',
+			receivedAt: new Date(at.getTime() + 2_000),
+			ingressSequence: 12,
+			isCurrent: jest.fn(() => true),
+		});
+		const arrange = (entity: string, value: boolean | number, category = PropertyCategory.ON) => {
+			httpService.getDiscoveredDevices.mockResolvedValue([
+				{ id: 'original-device', entities: [entity] } as HomeAssistantDiscoveredDeviceModel,
+			]);
+			devicesService.findAll.mockResolvedValue([
+				{ id: 'panel-device', enabled: true, haDeviceId: 'original-device' } as HomeAssistantDeviceEntity,
+			]);
+			mapperService.mapFromHA.mockResolvedValue([
+				[
+					{
+						property: {
+							id: 'property',
+							haEntityId: entity,
+							haAttribute: 'fb.main_state',
+							category,
+						} as HomeAssistantChannelPropertyEntity,
+						value,
+					},
+				],
+			]);
+		};
+		it('publishes an independent physical switch transition at its own timestamp and original socket ingress', async () => {
+			arrange('switch.heater', false);
+			const source = ingress();
+			await service.handle(event('switch.heater', 'on', 'off'), source);
+			const [id, update, evidence] = channelsPropertiesService.reportSample.mock.calls[0];
+			expect(id).toBe('property');
+			expect(update.value).toBe(false);
+			expect(evidence).toMatchObject({
+				sampledAt: at,
+				receivedAt: source.receivedAt,
+				ingressSequence: 12,
+				provenance: 'live',
+			});
+			expect(evidence.sourceIsCurrent()).toBe(true);
+			source.isCurrent.mockReturnValue(false);
+			expect(evidence.sourceIsCurrent()).toBe(false);
+		});
+
+		it('publishes a direct temperature reading and withdraws it when the source becomes unavailable', async () => {
+			arrange('sensor.room', 20, PropertyCategory.TEMPERATURE);
+			const source = ingress();
+			const attributes = { device_class: 'temperature', unit_of_measurement: '°C' };
+			await service.handle(event('sensor.room', '19', '20', attributes), source);
+			expect(channelsPropertiesService.reportSample.mock.calls[0][1].value).toBe(20);
+			const guard = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
+			await service.handle(event('sensor.room', '20', 'unavailable', attributes), source);
+			expect(guard()).toBe(false);
+		});
+
+		it.each(['assumed_state', 'restored', 'optimistic', 'service', 'unchanged', 'initial', 'future'])(
+			'keeps %s presentations out of the physical sample stream',
+			async (kind) => {
+				arrange('switch.heater', false);
+				const request = event(
+					'switch.heater',
+					kind === 'unchanged' ? 'off' : 'on',
+					'off',
+					['restored', 'optimistic', 'assumed_state'].includes(kind) ? { [kind]: true } : {},
+				);
+				if (kind === 'service') request.data.new_state.context = { ...context, user_id: 'caller' };
+				if (kind === 'future') request.data.new_state.last_changed = new Date(at.getTime() + 30_000);
+				if (kind === 'initial') request.data.old_state = null;
+				await service.handle(request, ingress());
+				await jest.runAllTimersAsync();
+				expect(channelsPropertiesService.reportSample).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	test('should debounce and process state changes', async () => {

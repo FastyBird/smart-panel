@@ -52,6 +52,7 @@ import { ShellyV1DiscoveryService } from './services/shelly-v1-discovery.service
 import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
 import { ShellyV1InputTrackerService } from './services/shelly-v1-input-tracker.service';
 import { ShellyV1ProbeService } from './services/shelly-v1-probe.service';
+import { ShellyV1PropertyReportsService } from './services/shelly-v1-property-reports.service';
 import { ShellyV1Service } from './services/shelly-v1.service';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
@@ -77,6 +78,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		ShellyV1DiscoveryService,
 		ShellyV1AdoptionService,
 		ShellyV1DevicePlatform,
+		ShellyV1PropertyReportsService,
 		ShellyV1Service,
 		DeviceEntitySubscriber,
 	],

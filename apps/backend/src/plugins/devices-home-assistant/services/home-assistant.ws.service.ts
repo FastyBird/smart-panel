@@ -6,6 +6,7 @@ import { Injectable } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import {
 	ConfigChangeResult,
@@ -36,9 +37,19 @@ import {
 import { HaSupervisorService } from './ha-supervisor.service';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
+export interface HomeAssistantEventIngress {
+	session: string;
+	receivedAt: Date;
+	ingressSequence: number;
+	isCurrent: () => boolean;
+}
+
 export interface WsEventService {
 	get event(): string;
-	handle(event: HomeAssistantStateChangedEventDto | Record<string, unknown>): Promise<void>;
+	handle(
+		event: HomeAssistantStateChangedEventDto | Record<string, unknown>,
+		ingress?: HomeAssistantEventIngress,
+	): Promise<void>;
 }
 
 /**
@@ -118,6 +129,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	>();
 	private readonly acceptedNativeSubscriptions = new Set<string>();
 	private nativeSubscriptionGeneration = 0;
+	private registryGeneration = 0;
 	private nativeSubscriptionsReady(): boolean {
 		return [...this.nativeSubscriptionEvents].every((event) => this.acceptedNativeSubscriptions.has(event));
 	}
@@ -837,6 +849,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 				typeof msg.event.event_type === 'string'
 			) {
 				const eventType = msg.event.event_type;
+				if (eventType === 'entity_registry_updated' || eventType === 'core_config_updated') this.registryGeneration++;
 				for (const listener of this.nativeClimateListeners) listener(msg.event as Record<string, unknown>);
 				const handler = this.eventsHandlers.get(eventType) ?? this.eventsHandlers.get('*');
 
@@ -848,7 +861,19 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 							excludeExtraneousValues: false,
 						});
 
-						await handler.handle(event);
+						const connection = this.captureNativeClimateConnection();
+						const generation = this.registryGeneration;
+						await handler.handle(
+							event,
+							connection
+								? {
+										session: `${connection.identity}:${generation}`,
+										receivedAt: new Date(),
+										ingressSequence: nextSampleIngress(),
+										isCurrent: () => connection.isCurrent() && generation === this.registryGeneration,
+									}
+								: undefined,
+						);
 					} else {
 						await handler.handle(msg.event as unknown as Record<string, unknown>);
 					}

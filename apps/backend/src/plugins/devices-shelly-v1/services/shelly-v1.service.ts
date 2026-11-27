@@ -6,7 +6,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ConnectionState, DataTypeType } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -41,6 +41,7 @@ import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 import { ShellyV1InputTrackerService } from './shelly-v1-input-tracker.service';
+import { ShellyV1PropertyReportsService } from './shelly-v1-property-reports.service';
 
 /**
  * Shelly V1 device discovery and synchronization service.
@@ -75,6 +76,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly httpClient: ShellyV1HttpClientService,
+		private readonly reports: ShellyV1PropertyReportsService,
 		@Optional() private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 		@Optional() private readonly inputTracker?: ShellyV1InputTrackerService,
 	) {
@@ -85,6 +87,12 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		this.shelliesAdapter.setCallbacks({
 			onDeviceDiscovered: (event) => this.handleDeviceDiscovered(event),
 			onDeviceChanged: (event) => this.handleDeviceChanged(event),
+			onTemperatureReport: (report) =>
+				this.reports.temperature(report).catch((error: unknown) =>
+					this.logger.warn('Failed to record Shelly temperature report', {
+						message: error instanceof Error ? error.message : 'unknown error',
+					}),
+				),
 			onDeviceOffline: (event) => this.handleDeviceOffline(event),
 			onDeviceOnline: (event) => this.handleDeviceOnline(event),
 			onError: (error) => this.handleAdapterError(error),
@@ -376,7 +384,8 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 				propValue = Boolean(event.newValue);
 			}
 
-			// Update the property value
+			// The library's change event coerces raw values and can replay cached state. Verify
+			// thermostat measurements against the original device's independent status endpoint.
 			await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
 				property.id,
 				toInstance(UpdateShellyV1ChannelPropertyDto, {
@@ -384,6 +393,9 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 					value: propValue,
 				}),
 			);
+
+			if (binding.category === PropertyCategory.ON && this.reports.supports(binding))
+				await this.reports.refresh(device);
 
 			this.logger.debug(
 				`Updated property ${property.identifier} for channel ${channel.identifier} to ${JSON.stringify(event.newValue)}`,
@@ -820,9 +832,15 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 					}
 
 					// Fetch device info and status from HTTP API in parallel
+					const observation = this.reports.capture(device);
 					const [info, status] = await Promise.all([
 						this.httpClient.getDeviceInfo(registeredDevice.host),
-						this.httpClient.getDeviceStatus(registeredDevice.host, undefined, username, password),
+						this.httpClient
+							.getDeviceStatus(registeredDevice.host, undefined, username, password)
+							.then(async (status) => {
+								if (observation) await this.reports.publish(observation, status, new Date());
+								return status;
+							}),
 					]);
 
 					// Get the device_information channel

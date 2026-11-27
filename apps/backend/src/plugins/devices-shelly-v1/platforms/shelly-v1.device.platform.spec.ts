@@ -17,6 +17,7 @@ import {
 } from '../entities/devices-shelly-v1.entity';
 import { ShellyDevice } from '../interfaces/shellies.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
+import { ShellyV1PropertyReportsService } from '../services/shelly-v1-property-reports.service';
 
 import { ShellyV1DevicePlatform } from './shelly-v1.device.platform';
 
@@ -57,9 +58,15 @@ describe('ShellyV1DevicePlatform', () => {
 	const makePlatform = (opts?: { getDevice?: jest.Mock }) => {
 		const shelliesAdapter = {
 			getDevice: opts?.getDevice ?? jest.fn(),
+			getRegisteredDevice: (id: string) => ({ type: 'registered-model', id, enabled: true }),
 		} as unknown as ShelliesAdapterService;
 
-		return { platform: new ShellyV1DevicePlatform(shelliesAdapter), shelliesAdapter };
+		return {
+			platform: new ShellyV1DevicePlatform(shelliesAdapter, {
+				read: jest.fn(),
+			} as unknown as ShellyV1PropertyReportsService),
+			shelliesAdapter,
+		};
 	};
 
 	it('getType returns DEVICES_SHELLY_V1_TYPE', () => {
@@ -85,7 +92,7 @@ describe('ShellyV1DevicePlatform', () => {
 		});
 
 		expect(ok).toBe(true);
-		expect(getDevice).toHaveBeenCalledWith('shelly1pm', 'shelly1pm-ABC123');
+		expect(getDevice).toHaveBeenCalledWith('registered-model', 'shelly1pm-ABC123');
 		expect(shellyDevice.setRelay).toHaveBeenCalledWith(0, true);
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
 			`[ShellyV1DevicePlatform] Successfully processed all property updates for device id=${device.id}`,

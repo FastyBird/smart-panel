@@ -34,6 +34,7 @@ import { ShellyV1ConfigModel } from '../models/config.model';
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
+import { ShellyV1PropertyReportsService } from './shelly-v1-property-reports.service';
 import { ShellyV1Service } from './shelly-v1.service';
 
 describe('ShellyV1Service', () => {
@@ -118,6 +119,15 @@ describe('ShellyV1Service', () => {
 	beforeEach(async () => {
 		module = await Test.createTestingModule({
 			providers: [
+				{
+					provide: ShellyV1PropertyReportsService,
+					useValue: {
+						supports: jest.fn().mockReturnValue(false),
+						capture: jest.fn(),
+						refresh: jest.fn(),
+						temperature: jest.fn(),
+					},
+				},
 				ShellyV1Service,
 				{
 					provide: ChannelInputOccurrencesService,

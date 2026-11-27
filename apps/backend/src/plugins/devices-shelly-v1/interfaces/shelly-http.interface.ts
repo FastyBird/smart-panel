@@ -31,6 +31,7 @@ export interface ShellyStatusUpdateInfo {
 }
 
 export interface ShellyStatusResponse {
+	relays?: { ison: boolean }[];
 	wifi_sta: ShellyStatusWifiSta;
 	cloud: ShellyStatusCloud;
 	mqtt: ShellyStatusMqtt;

@@ -5,6 +5,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 import {
 	NormalizedDeviceChangeEvent,
@@ -14,7 +15,7 @@ import {
 	ShelliesLibrary,
 	ShellyDevice,
 } from '../interfaces/shellies.interface';
-import shellies from '../lib/shellies';
+import shellies, { subscribeShellyTemperatures } from '../lib/shellies';
 import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -28,6 +29,7 @@ export class ShelliesAdapterService {
 
 	private shellies: ShelliesLibrary | null = null;
 	private isStarted = false;
+	private unsubscribeTemperature?: () => void;
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
 	private statusCheckRunning = false;
@@ -37,6 +39,7 @@ export class ShelliesAdapterService {
 	 * Key: device ID, Value: device info (id, type, host)
 	 */
 	private readonly devicesRegistry = new Map<string, RegisteredDevice>();
+	private readonly temperatureSerials = new WeakMap<RegisteredDevice, number>();
 
 	/**
 	 * External 'add' subscribers that should receive every device discovered while
@@ -87,6 +90,9 @@ export class ShelliesAdapterService {
 
 			//this.shellies.on('discover', deviceDiscoveredHandler);
 			this.shellies.on('add', deviceDiscoveredHandler); // Synonym in Gen 1
+			this.unsubscribeTemperature = subscribeShellyTemperatures((device, serial, value) =>
+				this.handleTemperatureReport(device, serial, value),
+			);
 
 			// Re-attach external 'add' subscribers (wizard discovery sessions) that registered
 			// while we were stopped/restarting. `subscribeToAddedDevice` keeps them in the set
@@ -112,6 +118,8 @@ export class ShelliesAdapterService {
 				stack: error instanceof Error ? error.stack : undefined,
 			});
 
+			this.unsubscribeTemperature?.();
+			this.unsubscribeTemperature = undefined;
 			void this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
 
 			throw error;
@@ -140,10 +148,15 @@ export class ShelliesAdapterService {
 			}
 
 			// Remove shellies-level event listeners
+			this.unsubscribeTemperature?.();
+			this.unsubscribeTemperature = undefined;
 			this.shellies.removeAllListeners();
 
 			// Stop discovery
 			this.shellies.stop();
+			// The library keeps its peer map after stop, but our per-device listeners and
+			// registration were cleared. Recreate both from the next discovery packet.
+			this.shellies.removeAllDevices();
 
 			// Clear devices registry
 			this.devicesRegistry.clear();
@@ -236,9 +249,8 @@ export class ShelliesAdapterService {
 	updateDeviceEnabledStatus(deviceId: string, enabled: boolean): void {
 		const device = this.devicesRegistry.get(deviceId);
 
-		if (device) {
-			device.enabled = enabled;
-			this.devicesRegistry.set(deviceId, device);
+		if (device && device.enabled !== enabled) {
+			this.devicesRegistry.set(deviceId, { ...device, enabled });
 		}
 	}
 
@@ -308,6 +320,14 @@ export class ShelliesAdapterService {
 		newValue: string | number | boolean,
 		oldValue: string | number | boolean | null,
 	): void {
+		const registered = this.devicesRegistry.get(device.id);
+		if (
+			(property === 'host' || property === 'mode') &&
+			registered &&
+			this.getDevice(registered.type, registered.id) === device
+		) {
+			this.devicesRegistry.set(device.id, { ...registered, host: device.host });
+		}
 		const normalizedEvent: NormalizedDeviceChangeEvent = {
 			id: device.id,
 			property,
@@ -318,10 +338,40 @@ export class ShelliesAdapterService {
 		void this.callbacks.onDeviceChanged?.(normalizedEvent);
 	}
 
+	// Only original CoIoT temperature fields enter this path.
+	// Sleeping probes may already be unreachable by HTTP by the time their change callback runs.
+	private handleTemperatureReport(peer: ShellyDevice, serial: number, value: unknown): void {
+		const registration = this.devicesRegistry.get(peer.id);
+		if (!registration?.enabled || !Number.isInteger(serial) || serial <= 0 || serial > 65535) return;
+		const previous = this.temperatureSerials.get(registration);
+		const distance = (serial - (previous ?? serial - 1) + 65536) % 65536;
+		if (distance === 0 || distance >= 32768) return;
+		const host = peer.host;
+		const isCurrent = (): boolean =>
+			this.isRunning() &&
+			peer.online &&
+			peer.host === host &&
+			this.devicesRegistry.get(peer.id) === registration &&
+			this.getDevice(peer.type, peer.id) === peer;
+		if (!isCurrent()) return;
+		this.temperatureSerials.set(registration, serial);
+		void this.callbacks.onTemperatureReport?.({
+			deviceId: peer.id,
+			value: typeof value === 'number' && Number.isFinite(value) && value !== 999 ? value : null,
+			receivedAt: new Date(),
+			ingressSequence: nextSampleIngress(),
+			isCurrent,
+		});
+	}
+
 	/**
 	 * Handle device offline event
 	 */
 	private handleDeviceOffline(device: ShellyDevice): void {
+		const registered = this.devicesRegistry.get(device.id);
+		if (registered && this.getDevice(registered.type, registered.id) === device)
+			this.devicesRegistry.set(device.id, { ...registered });
+
 		const normalizedEvent: NormalizedDeviceEvent = {
 			id: device.id,
 			type: device.type,

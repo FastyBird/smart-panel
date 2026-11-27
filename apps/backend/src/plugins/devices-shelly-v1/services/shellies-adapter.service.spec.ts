@@ -18,8 +18,10 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 // Mock the shellies library
 jest.mock('../lib/shellies', () => ({
+	subscribeShellyTemperatures: jest.fn().mockReturnValue(() => {}),
 	on: jest.fn(),
 	removeAllListeners: jest.fn(),
+	removeAllDevices: jest.fn(),
 	start: jest.fn(),
 	stop: jest.fn(),
 	getDevice: jest.fn(),
@@ -36,6 +38,7 @@ describe('ShelliesAdapterService', () => {
 	let configService: jest.Mocked<ConfigService>;
 	let httpClient: jest.Mocked<ShellyV1HttpClientService>;
 	let callbacks: {
+		onTemperatureReport: jest.Mock;
 		onDeviceDiscovered: jest.Mock;
 		onDeviceChanged: jest.Mock;
 		onDeviceOffline: jest.Mock;
@@ -67,6 +70,7 @@ describe('ShelliesAdapterService', () => {
 
 		// Set up callbacks
 		callbacks = {
+			onTemperatureReport: jest.fn(),
 			onDeviceDiscovered: jest.fn(),
 			onDeviceChanged: jest.fn(),
 			onDeviceOffline: jest.fn(),
@@ -319,6 +323,27 @@ describe('ShelliesAdapterService', () => {
 	});
 
 	describe('Device event handlers', () => {
+		it('takes original temperature fields from new CoIoT sequences and expires their original session', async () => {
+			await service.start();
+			const peer = makeShellyDevice('AABBCCDDEEFF', 'SHHT-1');
+			mockShelliesLibrary.getDevice.mockReturnValue(peer);
+			const add = mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'add')[1];
+			const status = mockShelliesLibrary.subscribeShellyTemperatures.mock.calls[0][0];
+			add(peer);
+			status(peer, 101, 19.5);
+			status(peer, 101, 19.5);
+			status(peer, 99, 24);
+			expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
+			const report = callbacks.onTemperatureReport.mock.calls[0][0];
+			expect(report.value).toBe(19.5);
+			expect(report.isCurrent()).toBe(true);
+			status(peer, 102, null);
+			expect(callbacks.onTemperatureReport.mock.lastCall[0].value).toBeNull();
+			service.updateDeviceEnabledStatus('AABBCCDDEEFF', false);
+			service.updateDeviceEnabledStatus('AABBCCDDEEFF', true);
+			expect(report.isCurrent()).toBe(false);
+		});
+
 		it('should invoke change callback when device property changes', async () => {
 			await service.start();
 

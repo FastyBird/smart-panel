@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { coerceBooleanSafe, coerceNumberSafe } from '../../../common/utils/transform.utils';
-import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import {
+	IDevicePlatform,
+	IDevicePropertyData,
+	PropertyReadRequest,
+} from '../../../modules/devices/platforms/device.platform';
 import {
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
 	DeviceDescriptor,
-	PropertyBinding,
 } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
 import {
@@ -17,7 +20,8 @@ import {
 } from '../entities/devices-shelly-v1.entity';
 import { ShellyColorOptions, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
-import { findShellyV1Descriptor } from '../utils/descriptor.utils';
+import { ShellyV1PropertyReportsService } from '../services/shelly-v1-property-reports.service';
+import { findShellyV1Descriptor, getShellyV1Bindings } from '../utils/descriptor.utils';
 import { ROLLER_COMMAND_VALUE_MAP, validateEnumValue } from '../utils/value-mapping.utils';
 
 export type IShellyV1DevicePropertyData = IDevicePropertyData & {
@@ -42,7 +46,15 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		'ShellyV1DevicePlatform',
 	);
 
-	constructor(private readonly shelliesAdapter: ShelliesAdapterService) {}
+	constructor(
+		private readonly shelliesAdapter: ShelliesAdapterService,
+		private readonly reports: ShellyV1PropertyReportsService,
+	) {}
+
+	requestPropertyRead(request: PropertyReadRequest): Promise<boolean> {
+		if (!(request.device instanceof ShellyV1DeviceEntity)) return Promise.resolve(false);
+		return this.reports.read(request.device, request);
+	}
 
 	getType(): string {
 		return DEVICES_SHELLY_V1_TYPE;
@@ -67,7 +79,8 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		}
 
 		// Get the Shelly device instance from the adapter
-		const shellyDevice = this.shelliesAdapter.getDevice(device.identifier.split('-')[0], device.identifier);
+		const registered = this.shelliesAdapter.getRegisteredDevice(device.identifier);
+		const shellyDevice = registered?.enabled && this.shelliesAdapter.getDevice(registered.type, registered.id);
 
 		if (!shellyDevice) {
 			this.logger.warn(`Shelly device not found in adapter: ${device.identifier}, device may be offline`, {
@@ -156,7 +169,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		}
 
 		// Get bindings for this device (considering mode if applicable)
-		const bindings = this.getBindings(descriptor, shellyDevice);
+		const bindings = getShellyV1Bindings(descriptor, shellyDevice);
 
 		if (!bindings || bindings.length === 0) {
 			return false;
@@ -506,23 +519,5 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		}
 
 		return true;
-	}
-
-	/**
-	 * Get bindings for a device considering mode
-	 */
-	private getBindings(descriptor: DeviceDescriptor, shellyDevice: ShellyDevice): PropertyBinding[] {
-		if (descriptor.instance?.modeProperty && descriptor.modes) {
-			const modeValue = shellyDevice[descriptor.instance.modeProperty];
-			const modeProfile = descriptor.modes.find((mode) => mode.modeValue === modeValue);
-
-			if (modeProfile) {
-				return modeProfile.bindings;
-			}
-
-			return [];
-		}
-
-		return descriptor.bindings || [];
 	}
 }

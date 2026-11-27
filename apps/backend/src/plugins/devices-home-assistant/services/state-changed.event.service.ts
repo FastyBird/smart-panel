@@ -11,6 +11,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import {
 	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 	DEVICES_HOME_ASSISTANT_TYPE,
+	ENTITY_MAIN_STATE_ATTRIBUTE,
 	HomeAssistantDomain,
 } from '../devices-home-assistant.constants';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
@@ -25,9 +26,28 @@ import { MapperService } from '../mappers/mapper.service';
 import { normalizeHaEventType } from '../utils/ha-event.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
-import { WsEventService } from './home-assistant.ws.service';
+import { HomeAssistantEventIngress, WsEventService } from './home-assistant.ws.service';
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext } from './virtual-property.types';
+
+/** Normalized main-state value of the physical entities supported by this reporter. */
+function physicalMainValue(state?: HomeAssistantStateDto | null): number | boolean | null {
+	if (!state) return null;
+	if (state.entity_id.startsWith('switch.')) return state.state === 'on' ? true : state.state === 'off' ? false : null;
+	if (!state.entity_id.startsWith('sensor.') || state.attributes?.device_class !== 'temperature' || !state.state?.trim()) return null;
+	const value = Number(state.state);
+	if (!Number.isFinite(value)) return null;
+	switch (state.attributes.unit_of_measurement) {
+		case '°C': return value;
+		case '°F': return ((value - 32) * 5) / 9;
+		case 'K': return value - 273.15;
+		default: return null;
+	}
+}
+
+function independentContext(context: HomeAssistantStateDto['context']): boolean {
+	return !!context?.id && context.user_id === null && context.parent_id === null;
+}
 
 @Injectable()
 export class StateChangedEventService implements WsEventService {
@@ -36,7 +56,10 @@ export class StateChangedEventService implements WsEventService {
 		'StateChangedEventService',
 	);
 
-	private isMappingLoading = false;
+	private mappingLoad: Promise<boolean> | null = null;
+	private reportSession: string | null = null;
+	private mappingGeneration = 0;
+	private readonly sourceEpochs = new Map<string, object>();
 
 	private entityIdToHaDevice: Map<string, HomeAssistantDiscoveredDeviceDto> | null = null;
 
@@ -76,7 +99,11 @@ export class StateChangedEventService implements WsEventService {
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_DELETED)
-	handleDevicesUpdatedEvent() {
+	handleDevicesUpdatedEvent(entity?: { type?: string }) {
+		if (entity?.type && entity.type !== DEVICES_HOME_ASSISTANT_TYPE) return;
+		this.mappingGeneration++;
+		this.sourceEpochs.clear();
+		this.mappingLoad = null;
 		this.entityIdToHaDevice = null;
 		this.channelsByDeviceId.clear();
 		this.propertiesByChannelId.clear();
@@ -86,77 +113,102 @@ export class StateChangedEventService implements WsEventService {
 		return 'state_changed';
 	}
 
-	async handle(event: HomeAssistantStateChangedEventDto): Promise<void> {
-		if (!(await this.initializeMappings())) {
-			return;
+	async handle(event: HomeAssistantStateChangedEventDto, ingress?: HomeAssistantEventIngress): Promise<void> {
+		if (ingress && !ingress.isCurrent()) return;
+		if (ingress && this.reportSession !== ingress.session) {
+			this.handleDevicesUpdatedEvent();
+			this.reportSession = ingress.session;
 		}
+		const state = event.data.new_state;
+		const old = event.data.old_state;
+		const entityId = state?.entity_id ?? old?.entity_id;
+		if (!entityId) return;
+		const physicalValue = physicalMainValue(state);
+		const trusted = physicalValue !== null && !state.attributes?.assumed_state &&
+			!state.attributes?.restored && !state.attributes?.optimistic &&
+			independentContext(state.context) && independentContext(event.context);
+		if (!old || !trusted) this.sourceEpochs.delete(entityId);
+		if (!state) return;
 
-		if (event.data.new_state === null) {
-			return;
-		}
+		const generation = this.mappingGeneration;
+		const changedAt = state.last_changed;
+		// HA last_updated and last_reported can advance for attributes alone. Only a change of
+		// the adopted entity's own main state carries a new measurement at last_changed.
+		const transition =
+			trusted &&
+			ingress &&
+			old?.entity_id === entityId &&
+			old.state !== state.state &&
+			!old.attributes?.restored &&
+			!old.attributes?.assumed_state &&
+			changedAt instanceof Date &&
+			Number.isFinite(changedAt.getTime()) &&
+			changedAt <= ingress.receivedAt &&
+			old.last_changed instanceof Date &&
+			changedAt > old.last_changed;
+		if (transition && !this.sourceEpochs.has(entityId)) this.sourceEpochs.set(entityId, {});
+		const epoch = this.sourceEpochs.get(entityId);
+		const sourceIsCurrent = (): boolean =>
+			!!epoch &&
+			!!ingress?.isCurrent() &&
+			this.mappingGeneration === generation &&
+			this.sourceEpochs.get(entityId) === epoch;
 
-		const entityId = event.data.new_state.entity_id;
-
-		// Handle Home Assistant event.* entities immediately for hardware input occurrences
+		if (!(await this.initializeMappings()) || (ingress && !ingress.isCurrent())) return;
 		if (entityId.startsWith('event.')) {
 			await this.handleHardwareEventEntity(event);
 			return;
 		}
-
-		if (this.debounceTimers.has(entityId)) {
-			clearTimeout(this.debounceTimers.get(entityId));
-		}
-
-		const haDevice = this.entityIdToHaDevice.get(entityId);
-
-		if (!haDevice) {
-			return;
-		}
-
-		const device = this.devices.find((device) => device.haDeviceId === haDevice.id);
-
+		const haDevice = this.entityIdToHaDevice?.get(entityId);
+		const device = haDevice && this.devices.find((item) => item.haDeviceId === haDevice.id);
 		if (!device) {
+			if (this.sourceEpochs.get(entityId) === epoch) this.sourceEpochs.delete(entityId);
 			return;
 		}
 
+		clearTimeout(this.debounceTimers.get(entityId));
+		this.debounceTimers.delete(entityId);
+		const process = async (): Promise<void> => {
+			if (ingress && !ingress.isCurrent()) return;
+			const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [state]);
+			for (const entries of resultMaps) {
+				for (const { property, value } of entries) {
+					const update = toInstance(UpdateHomeAssistantChannelPropertyDto, {
+						type: DEVICES_HOME_ASSISTANT_TYPE,
+						value,
+					});
+					if (ingress && (!ingress.isCurrent() || this.mappingGeneration !== generation)) return;
+					if (transition && device.enabled && property.haEntityId === entityId && property.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE &&
+						property.category === (typeof physicalValue === 'boolean' ? PropertyCategory.ON : PropertyCategory.TEMPERATURE) &&
+						value === physicalValue) {
+						if (sourceIsCurrent())
+							await this.channelsPropertiesService.reportSample(property.id, update, {
+								sampledAt: changedAt,
+								receivedAt: ingress.receivedAt,
+								observedAt: ingress.receivedAt,
+								ingressSequence: ingress.ingressSequence,
+								provenance: 'live',
+								sourceIsCurrent,
+							});
+					} else {
+						await this.channelsPropertiesService.update(property.id, update);
+					}
+				}
+			}
+			await this.updateVirtualPropertiesForEntity(device.id, entityId, state);
+		};
+		const run = (): Promise<void> => process().catch((error: unknown) => this.logger.warn('Failed to process Home Assistant state', {
+			message: error instanceof Error ? error.message : 'unknown error',
+		}));
+		if (transition) {
+			await run();
+			return;
+		}
 		this.debounceTimers.set(
 			entityId,
 			setTimeout(() => {
 				this.debounceTimers.delete(entityId);
-
-				void (async () => {
-					this.logger.debug(
-						`[STATE CHANGED] Processing state for ${entityId}, ` +
-							`state=${event.data.new_state.state}, ` +
-							`brightness=${JSON.stringify(event.data.new_state.attributes?.brightness ?? 'N/A')}`,
-					);
-
-					const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [event.data.new_state]);
-
-					this.logger.debug(`[STATE CHANGED] Received ${resultMaps.length} result maps from mapper`);
-
-					for (const entries of resultMaps) {
-						this.logger.debug(`[STATE CHANGED] Processing map with ${entries.length} entries`);
-
-						for (const { property, value } of entries) {
-							this.logger.debug(
-								`[STATE CHANGED] Updating property ${property.category} (${property.id}) ` +
-									`with value=${String(value)}`,
-							);
-
-							await this.channelsPropertiesService.update(
-								property.id,
-								toInstance(UpdateHomeAssistantChannelPropertyDto, {
-									type: DEVICES_HOME_ASSISTANT_TYPE,
-									value,
-								}),
-							);
-						}
-					}
-
-					// Update related virtual properties
-					await this.updateVirtualPropertiesForEntity(device.id, entityId, event.data.new_state);
-				})();
+				void run();
 			}, 500),
 		);
 	}
@@ -360,24 +412,25 @@ export class StateChangedEventService implements WsEventService {
 		}
 	}
 
-	private async initializeMappings(): Promise<boolean> {
-		if (this.entityIdToHaDevice !== null) {
-			return true;
+	private initializeMappings(): Promise<boolean> {
+		if (this.entityIdToHaDevice !== null) return Promise.resolve(true);
+		if (this.mappingLoad === null) {
+			const load = this.loadMappings(this.mappingGeneration).finally(() => {
+				if (this.mappingLoad === load) this.mappingLoad = null;
+			});
+			this.mappingLoad = load;
 		}
+		return this.mappingLoad;
+	}
 
-		if (this.isMappingLoading) {
-			return false;
-		}
-
-		this.isMappingLoading = true;
-
+	private async loadMappings(generation: number): Promise<boolean> {
 		try {
 			const [haDevices, panelDevices] = await Promise.all([
 				this.homeAssistantHttpService.getDiscoveredDevices(),
 				this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE),
 			]);
 
-			if (!haDevices?.length || !panelDevices?.length) {
+			if (this.mappingGeneration !== generation || !haDevices?.length || !panelDevices?.length) {
 				return false;
 			}
 
@@ -398,8 +451,6 @@ export class StateChangedEventService implements WsEventService {
 			});
 
 			return false;
-		} finally {
-			this.isMappingLoading = false;
 		}
 	}
 
