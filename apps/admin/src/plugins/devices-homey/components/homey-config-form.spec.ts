@@ -77,7 +77,6 @@ describe('HomeyConfigForm', () => {
 		expect(permissions.text()).toContain('homey.device.control');
 		expect(wrapper.findAll('[data-test-id]').map((element) => element.attributes('data-test-id'))).toEqual([
 			'homey-local-connection-info',
-			'homey-enabled-field',
 			'homey-api-key-permissions',
 			'homey-connection-panel-stub',
 		]);

@@ -94,8 +94,8 @@ dark, and updates all six locales.
 | AR-22 | #1679 | 4 | `refactor(admin): rebuild the overview as a dashboard` | AR-3, AR-8 | done (#1774); the cameras panel follows UP-11 |
 | AR-23 | #1680 | 4 | `refactor(admin): move buddy onto the two-pane and wizard templates` | AR-5, AR-8 | done (#1775) |
 | AR-24 | #1681 | 4 | `refactor(admin): move users, extensions and system onto the page templates` | AR-3, AR-5, AR-8 | done (#1776, #1777, #1778) |
-| AR-25 | #1682 | 4 | `refactor(admin): move sign-in, system state and onboarding screens onto the standalone template` | AR-4, AR-5 | in review |
-| AR-26 | #1683 | 4 | `refactor(admin): move configuration and plugin settings onto the slot contract` | AR-3, AR-4, AR-6, AR-8 | open |
+| AR-25 | #1682 | 4 | `refactor(admin): move sign-in, system state and onboarding screens onto the standalone template` | AR-4, AR-5 | done (#1780) |
+| AR-26 | #1683 | 4 | `refactor(admin): move configuration and plugin settings onto the slot contract` | AR-3, AR-4, AR-6, AR-8 | in progress (part 1, the Configuration page and the host frame, in review; the plugin families follow) |
 | AR-27 | #1684 | 4 | `docs(cross): publish the admin slot contract and lint rules for plugin authors` | AR-2, AR-6, AR-26 | open |
 | AR-28 | #1685 | 4 | `chore(admin): turn the design system lint rules to error everywhere` | AR-9 … AR-26 | open |
 | AR-29 | #1686 | 4 | Integrated verification on real devices | phases 1–4 merged, UP-11, UP-12 | open |

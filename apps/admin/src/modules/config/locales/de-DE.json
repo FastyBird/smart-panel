@@ -280,6 +280,9 @@
 		},
 		"keepSecret": {
 			"title": "Behalten"
+		},
+		"keepEditing": {
+			"title": "Weiter bearbeiten"
 		}
 	},
 	"languages": {
@@ -322,5 +325,56 @@
 		"error": "Fehler",
 		"fail": "Fehlgeschlagen",
 		"fatal": "Tödlich"
+	},
+	"sections": {
+		"modules": {
+			"title": "Module",
+			"description": "Einstellungen der Kernfunktionen"
+		}
+	},
+	"families": {
+		"devices": {
+			"title": "Geräteintegrationen",
+			"description": "Verbindungen zu den Plattformen und Protokollen Ihrer Geräte"
+		},
+		"buddy": {
+			"title": "Buddy-Anbieter und -Kanäle",
+			"description": "KI-Modelle, Sprache und die Chats, in denen Buddy antwortet"
+		},
+		"notifications": {
+			"title": "Benachrichtigungskanäle",
+			"description": "Wohin Systembenachrichtigungen zugestellt werden"
+		},
+		"storage": {
+			"title": "Speicherung und Protokollierung",
+			"description": "Wo Verlauf und Protokolle gespeichert werden"
+		},
+		"remoteAccess": {
+			"title": "Fernzugriff",
+			"description": "Wege, diese Installation von außerhalb des lokalen Netzes zu erreichen"
+		},
+		"weather": {
+			"title": "Wetteranbieter",
+			"description": "Quellen für Wetter und Vorhersage"
+		},
+		"other": {
+			"title": "Weitere Plugins",
+			"description": "Plugins anderer Art"
+		}
+	},
+	"states": {
+		"enabled": "Aktiviert",
+		"disabled": "Deaktiviert"
+	},
+	"identity": {
+		"enabled": "Aktiviert"
+	},
+	"pluginStatus": {
+		"running": "Läuft",
+		"unhealthy": "Reagiert nicht",
+		"starting": "Startet",
+		"stopping": "Wird gestoppt",
+		"stopped": "Gestoppt",
+		"error": "Fehler"
 	}
 }

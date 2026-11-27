@@ -14,20 +14,7 @@
 			data-test-id="homey-local-connection-info"
 		/>
 
-		<el-form-item
-			:label="t('devicesHomeyPlugin.config.enabled')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-			data-test-id="homey-enabled-field"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<hr />
+		<hr class="mt-3" />
 
 		<el-form-item
 			:label="t('devicesHomeyPlugin.config.url.label')"
@@ -128,7 +115,7 @@
 import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import {

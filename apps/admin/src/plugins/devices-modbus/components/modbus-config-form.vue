@@ -15,20 +15,9 @@
 			/>
 
 			<el-form-item
-				:label="t('devicesModbusPlugin.config.enabled.title')"
-				prop="enabled"
-				label-position="left"
-				class="mt-3"
-			>
-				<el-switch
-					v-model="model.enabled"
-					name="enabled"
-				/>
-			</el-form-item>
-
-			<el-form-item
 				:label="t('devicesModbusPlugin.config.defaultConnectTimeoutMs.title')"
 				prop="defaultConnectTimeoutMs"
+				class="mt-3"
 			>
 				<el-input-number
 					v-model="model.defaultConnectTimeoutMs"
@@ -86,7 +75,7 @@ import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInputNumber, ElMessageBox, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInputNumber, ElMessageBox, type FormRules } from 'element-plus';
 
 import { useLogger } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';

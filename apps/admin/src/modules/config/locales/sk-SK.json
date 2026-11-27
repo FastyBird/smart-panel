@@ -280,6 +280,9 @@
 		},
 		"keepSecret": {
 			"title": "Ponechať"
+		},
+		"keepEditing": {
+			"title": "Pokračovať v úpravách"
 		}
 	},
 	"languages": {
@@ -322,5 +325,56 @@
 		"error": "Chyba",
 		"fail": "Zlyhanie",
 		"fatal": "Fatálne"
+	},
+	"sections": {
+		"modules": {
+			"title": "Moduly",
+			"description": "Nastavenia hlavných funkcií"
+		}
+	},
+	"families": {
+		"devices": {
+			"title": "Integrácie zariadení",
+			"description": "Pripojenia k platformám a protokolom vašich zariadení"
+		},
+		"buddy": {
+			"title": "Poskytovatelia a kanály Buddyho",
+			"description": "Modely AI, reč a chaty, v ktorých Buddy odpovedá"
+		},
+		"notifications": {
+			"title": "Kanály oznámení",
+			"description": "Kam sa doručujú systémové oznámenia"
+		},
+		"storage": {
+			"title": "Úložisko a protokolovanie",
+			"description": "Kde sa uchováva história a logy"
+		},
+		"remoteAccess": {
+			"title": "Vzdialený prístup",
+			"description": "Spôsoby, ako sa k tejto inštalácii dostať mimo miestnej siete"
+		},
+		"weather": {
+			"title": "Poskytovatelia počasia",
+			"description": "Zdroje počasia a predpovede"
+		},
+		"other": {
+			"title": "Ďalšie pluginy",
+			"description": "Pluginy iných druhov"
+		}
+	},
+	"states": {
+		"enabled": "Zapnuté",
+		"disabled": "Vypnuté"
+	},
+	"identity": {
+		"enabled": "Zapnuté"
+	},
+	"pluginStatus": {
+		"running": "Beží",
+		"unhealthy": "Neodpovedá",
+		"starting": "Spúšťa sa",
+		"stopping": "Zastavuje sa",
+		"stopped": "Zastavené",
+		"error": "Chyba"
 	}
 }

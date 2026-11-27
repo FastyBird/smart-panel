@@ -22,21 +22,10 @@
 		/>
 
 		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.config.apiKey.title')"
 			prop="apiKey"
 			:error="fieldErrors['apiKey']"
+			class="mt-3"
 		>
 			<config-secret-input
 				v-model="model.apiKey"
@@ -108,7 +97,7 @@
 import { computed, onMounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElAutocomplete, ElButton, ElForm, ElFormItem, ElSwitch, ElTooltip, type FormRules } from 'element-plus';
+import { ElAlert, ElAutocomplete, ElButton, ElForm, ElFormItem, ElTooltip, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { useDiscoveredInstances } from '../composables/useDiscoveredInstances';

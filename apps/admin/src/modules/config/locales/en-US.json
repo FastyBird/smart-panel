@@ -280,6 +280,9 @@
     },
     "keepSecret": {
       "title": "Keep it"
+    },
+    "keepEditing": {
+      "title": "Keep editing"
     }
   },
   "languages": {
@@ -322,5 +325,56 @@
     "error": "Error",
     "fail": "Fail",
     "fatal": "Fatal"
+  },
+  "sections": {
+    "modules": {
+      "title": "Modules",
+      "description": "Settings of the core features"
+    }
+  },
+  "families": {
+    "devices": {
+      "title": "Device integrations",
+      "description": "Connections to the platforms and protocols your devices use"
+    },
+    "buddy": {
+      "title": "Buddy providers and channels",
+      "description": "AI models, speech and the chats Buddy answers in"
+    },
+    "notifications": {
+      "title": "Notification channels",
+      "description": "Where system notifications are delivered"
+    },
+    "storage": {
+      "title": "Storage and logging",
+      "description": "Where history and logs are kept"
+    },
+    "remoteAccess": {
+      "title": "Remote access",
+      "description": "Ways to reach this installation from outside the local network"
+    },
+    "weather": {
+      "title": "Weather providers",
+      "description": "Sources of the weather and the forecast"
+    },
+    "other": {
+      "title": "Other plugins",
+      "description": "Plugins of other kinds"
+    }
+  },
+  "states": {
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  "identity": {
+    "enabled": "Enabled"
+  },
+  "pluginStatus": {
+    "running": "Running",
+    "unhealthy": "Not responding",
+    "starting": "Starting",
+    "stopping": "Stopping",
+    "stopped": "Stopped",
+    "error": "Error"
   }
 }

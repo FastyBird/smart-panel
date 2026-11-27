@@ -13,19 +13,12 @@
 			:closable="false"
 		/>
 
-		<el-form-item
-			:label="t('devicesUnifiProtectPlugin.config.enabled')"
-			prop="enabled"
-			label-position="left"
+		<el-divider
 			class="mt-3"
+			content-position="left"
 		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-divider content-position="left">{{ t('devicesUnifiProtectPlugin.sections.console') }}</el-divider>
+			{{ t('devicesUnifiProtectPlugin.sections.console') }}
+		</el-divider>
 
 		<protect-discovered-consoles
 			:host="model.host"
@@ -268,7 +261,6 @@ import {
 	ElInputNumber,
 	ElRadio,
 	ElRadioGroup,
-	ElSwitch,
 	type FormRules,
 } from 'element-plus';
 

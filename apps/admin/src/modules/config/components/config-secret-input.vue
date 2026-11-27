@@ -24,7 +24,7 @@
 			</span>
 			<span
 				v-else
-				class="text-xs text-gray-500"
+				class="text-caption"
 			>
 				{{ t('configModule.texts.secret.stored') }}
 			</span>
