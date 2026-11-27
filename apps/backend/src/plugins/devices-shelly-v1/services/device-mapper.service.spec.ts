@@ -492,16 +492,16 @@ describe('DeviceMapperService', () => {
 			return { promise, resolve };
 		}
 
-		function arrangeDiscovery(identifier = 'shelly1pm-ABC123') {
-			const event = makeNormalizedEvent(identifier);
-			const peer = makeShellyDevice(identifier) as ShellyDevice;
+		function arrangeDiscovery(identifier = 'shelly1pm-ABC123', type = 'SHSW-PM') {
+			const event = makeNormalizedEvent(identifier, type);
+			const peer = makeShellyDevice(identifier, type) as ShellyDevice;
 			const device = Object.assign(new ShellyV1DeviceEntity(), { id: 'existing', identifier, hostname: event.host });
 			const pin = { mac: makeMockInfo().mac, verifiedHost: event.host, revision: 1 };
 			pins.set(device.id, pin);
 			shelliesAdapter.getDevice.mockReturnValue(peer);
 			devicesService.findOneBy.mockResolvedValue(device);
 			httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings() as ShellySettingsResponse);
-			httpClient.getDeviceInfo.mockResolvedValue(makeMockInfo());
+			httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), type });
 			httpClient.getDeviceStatus.mockResolvedValue(makeMockStatus() as ShellyStatusResponse);
 			channelsService.findOneBy.mockImplementation((_column, identifier) =>
 				Promise.resolve(Object.assign(new ShellyV1ChannelEntity(), { id: String(identifier), identifier })),
@@ -681,6 +681,87 @@ describe('DeviceMapperService', () => {
 				);
 			},
 		);
+
+		it('keeps a newer temperature when a sleeping H&T reports during discovery', async () => {
+			const { event, peer } = arrangeDiscovery('shellyht-ABC123', 'SHHT-1');
+			const property = Object.assign(new ShellyV1ChannelPropertyEntity(), {
+				id: 'temperature',
+				channel: 'temperature_0',
+				category: PropertyCategory.TEMPERATURE,
+				dataType: DataTypeType.FLOAT,
+			});
+			const values = new PropertyValueService(
+				{ isConnected: () => false, flushQueuedWrites: () => Promise.resolve() } as StorageService,
+				new PropertyValueSourceRegistryService(),
+				new PropertyValueLockService({} as never),
+			);
+			peer.temperature = 18;
+			peer.lastSeen = Date.now() - 5000;
+			httpClient.getDeviceStatus.mockImplementationOnce(async () => {
+				const now = new Date();
+				peer.temperature = 22.5;
+				peer.lastSeen = now.getTime();
+				await values.writeSampleWithState(property, peer.temperature, {
+					provenance: 'live',
+					sampledAt: now,
+					receivedAt: now,
+				});
+				return makeMockStatus() as ShellyStatusResponse;
+			});
+			channelsPropertiesService.update.mockImplementation(async (id, dto) => {
+				if (id === property.id && dto.value !== undefined) await values.write(property, dto.value);
+				return property;
+			});
+			channelsPropertiesService.reportSample.mockImplementation(async (id, dto, evidence) => {
+				if (id === property.id) await values.writeSampleWithState(property, dto.value, evidence);
+				return property;
+			});
+
+			await service.mapDevice(event);
+
+			expect((await values.readLatest(property))?.value).toBe(22.5);
+			expect(values.readQualifiedSampleSnapshot(property, 10000, new Date())?.value).toBe(22.5);
+		});
+
+		it('seeds a newly provisioned temperature from the current reading and guards it until publication', async () => {
+			const { event, peer } = arrangeDiscovery('shellyht-ABC123', 'SHHT-1');
+			peer.temperature = 18;
+			peer.lastSeen = Date.now() - 5000;
+			channelsPropertiesService.findOneBy.mockResolvedValue(null);
+			channelsPropertiesService.create.mockImplementation((_channel, dto) => {
+				if (dto.identifier === 'temperature') {
+					expect(dto.value).toBeUndefined();
+					peer.temperature = 0;
+					peer.lastSeen = Date.now();
+				}
+				return Promise.resolve(Object.assign(new ShellyV1ChannelPropertyEntity(), { id: dto.identifier }));
+			});
+
+			await service.mapDevice(event);
+
+			const temperature = channelsPropertiesService.reportSample.mock.calls.find(([id]) => id === 'temperature');
+			expect(temperature?.[1].value).toBe(0);
+			expect(temperature?.[2]).toMatchObject({ provenance: 'cached', replay: true, ageUnknown: true });
+			expect(temperature?.[2].isCurrent()).toBe(true);
+			peer.temperature = 1;
+			expect(temperature?.[2].isCurrent()).toBe(false);
+		});
+
+		it('maps raw enum readings before publishing them as cached observations', async () => {
+			const { event, peer } = arrangeDiscovery('shellygas-ABC123', 'SHGS-1');
+			peer.gas = 'mild';
+			await service.mapDevice(event);
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledWith(
+				'status',
+				{ type: DEVICES_SHELLY_V1_TYPE, value: 'warning' },
+				expect.objectContaining({ provenance: 'cached', replay: true }),
+			);
+
+			channelsPropertiesService.reportSample.mockClear();
+			peer.gas = 'unrecognized';
+			await service.mapDevice(event);
+			expect(channelsPropertiesService.reportSample).not.toHaveBeenCalled();
+		});
 
 		it('keeps a newer HTTP relay observation when the SDK cache did not receive it', async () => {
 			const { event, peer } = arrangeDiscovery();
