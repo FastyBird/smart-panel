@@ -13,6 +13,13 @@ export const shellyMeasurementAlias: MeasurementAlias = (device, channel, proper
 		return null;
 	const identifier = channel.identifier ?? '';
 	const canonical = /^probe-temperature:temperature:1\d\d:[a-f0-9]{64}$/.test(identifier);
-	const component = canonical ? identifier.split(':').slice(1, 3).join(':') : /^temperature:1\d\d$/.test(identifier) ? identifier : null;
-	return component ? { key: JSON.stringify([device.id, component]), canonical } : null;
+	let component: string;
+	if (canonical) {
+		component = identifier.split(':').slice(1, 3).join(':');
+	} else if (/^temperature:1\d\d$/.test(identifier)) {
+		component = identifier;
+	} else {
+		return null;
+	}
+	return { key: JSON.stringify([device.id, component]), canonical };
 };
