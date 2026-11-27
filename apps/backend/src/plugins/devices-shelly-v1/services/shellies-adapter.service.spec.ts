@@ -19,6 +19,7 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 // Mock the shellies library
 jest.mock('../lib/shellies', () => ({
 	subscribeShellyTemperatures: jest.fn().mockReturnValue(() => {}),
+	readShellyTemperature: jest.fn().mockResolvedValue(null),
 	on: jest.fn(),
 	removeAllListeners: jest.fn(),
 	removeAllDevices: jest.fn(),
@@ -54,6 +55,7 @@ describe('ShelliesAdapterService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockShelliesLibrary.readShellyTemperature.mockReset().mockResolvedValue(null);
 
 		// Mock ConfigService
 		configService = {
@@ -323,6 +325,117 @@ describe('ShelliesAdapterService', () => {
 	});
 
 	describe('Device event handlers', () => {
+		const temperatureProbe = async () => {
+			await service.start();
+			const peer = makeShellyDevice('AABBCCDDEEFF', 'SHHT-1');
+			mockShelliesLibrary.getDevice.mockReturnValue(peer);
+			mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'add')[1](peer);
+			const status = mockShelliesLibrary.subscribeShellyTemperatures.mock.calls[0][0] as (
+				device: Partial<ShellyDevice>,
+				serial: number,
+				value: unknown,
+			) => void;
+			return { peer, push: (serial: number, value: unknown) => status(peer, serial, value) };
+		};
+
+		it.each([1000, 60000])(
+			'resynchronizes a rebooted live peer at %s and discards delayed packets on either side of the restart',
+			async (last) => {
+				jest.useFakeTimers();
+				try {
+					const { push } = await temperatureProbe();
+					const read = mockShelliesLibrary.readShellyTemperature;
+					push(last, 20);
+					const old = callbacks.onTemperatureReport.mock.lastCall[0];
+					read.mockResolvedValueOnce({ serial: last, value: 20 });
+					push(last - 2, 81);
+					await jest.advanceTimersByTimeAsync(0);
+					expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
+					expect(old.isCurrent()).toBe(true);
+					read.mockResolvedValueOnce({ serial: 1, value: 19 });
+					push(1, 82);
+					await jest.advanceTimersByTimeAsync(0);
+					expect(old.isCurrent()).toBe(false);
+					const fresh = callbacks.onTemperatureReport.mock.lastCall[0];
+					expect(fresh.value).toBe(19);
+					read.mockResolvedValue({ serial: 1, value: 19 });
+					push(last - 1, 83);
+					await jest.advanceTimersByTimeAsync(0);
+					push(last + 1, 84);
+					await jest.advanceTimersByTimeAsync(0);
+					push(1, 85);
+					expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(2);
+					read.mockResolvedValueOnce({ serial: 2, value: 18.5 });
+					push(2, 86);
+					await jest.advanceTimersByTimeAsync(0);
+					expect(callbacks.onTemperatureReport.mock.lastCall[0].value).toBe(18.5);
+					expect(fresh.isCurrent()).toBe(true);
+					read.mockClear();
+					await jest.advanceTimersByTimeAsync(145_001);
+					push(3, 18.25);
+					expect(callbacks.onTemperatureReport.mock.lastCall[0].value).toBe(18.25);
+					expect(read).not.toHaveBeenCalled();
+				} finally {
+					jest.useRealTimers();
+				}
+			},
+		);
+
+		it('recovers a sleeping peer passively after the CoAP packet lifetime and retries an unanswered ambiguous serial', async () => {
+			jest.useFakeTimers();
+			try {
+				const { push } = await temperatureProbe();
+				const read = mockShelliesLibrary.readShellyTemperature;
+				read.mockRejectedValue(new Error('sleeping'));
+				push(1000, 22);
+				const old = callbacks.onTemperatureReport.mock.lastCall[0];
+				push(1, 40);
+				await jest.advanceTimersByTimeAsync(0);
+				push(1, 40);
+				await jest.advanceTimersByTimeAsync(0);
+				expect(read).toHaveBeenCalledTimes(2);
+				expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
+				await jest.advanceTimersByTimeAsync(145_001);
+				push(4, 19);
+				expect(callbacks.onTemperatureReport.mock.lastCall[0].value).toBe(19);
+				expect(old.isCurrent()).toBe(false);
+				push(1001, 90);
+				await jest.advanceTimersByTimeAsync(145_001);
+				push(5, 18);
+				expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([22, 19, 18]);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('wraps across the reserved zero, drops repeats and invalid serials, and withdraws a pending read when the mapping changes', async () => {
+			const { push } = await temperatureProbe();
+			push(65534, 23);
+			const first = callbacks.onTemperatureReport.mock.lastCall[0];
+			push(65535, 22);
+			push(0, 80);
+			push(1, 21);
+			push(1, 81);
+			push(65536, 82);
+			expect(first.isCurrent()).toBe(true);
+			expect(mockShelliesLibrary.readShellyTemperature).not.toHaveBeenCalled();
+			let finish: (reply: { serial: number; value: number }) => void;
+			mockShelliesLibrary.readShellyTemperature.mockReturnValueOnce(
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+			);
+			push(65534, 83);
+			push(65534, 84);
+			expect(mockShelliesLibrary.readShellyTemperature).toHaveBeenCalledTimes(1);
+			service.updateDeviceEnabledStatus('AABBCCDDEEFF', false);
+			service.updateDeviceEnabledStatus('AABBCCDDEEFF', true);
+			finish({ serial: 2, value: 20 });
+			await new Promise(setImmediate);
+			expect(first.isCurrent()).toBe(false);
+			expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([23, 22, 21]);
+		});
+
 		it('takes original temperature fields from new CoIoT sequences and expires their original session', async () => {
 			await service.start();
 			const peer = makeShellyDevice('AABBCCDDEEFF', 'SHHT-1');
@@ -332,7 +445,9 @@ describe('ShelliesAdapterService', () => {
 			add(peer);
 			status(peer, 101, 19.5);
 			status(peer, 101, 19.5);
+			mockShelliesLibrary.readShellyTemperature.mockResolvedValueOnce({ serial: 101, value: 19.5 });
 			status(peer, 99, 24);
+			await new Promise(setImmediate);
 			expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
 			const report = callbacks.onTemperatureReport.mock.calls[0][0];
 			expect(report.value).toBe(19.5);

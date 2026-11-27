@@ -31,10 +31,11 @@ function setup(temperature = false, id = 'AABBCCDDEEFF') {
 	const reportSample = jest
 		.fn<Promise<unknown>, [string, { value: unknown }, PropertySampleEvidence]>()
 		.mockResolvedValue(null);
+	const findChannel = jest.fn(() => Promise.resolve(channel));
 	const service = new ShellyV1PropertyReportsService(
 		adapter as unknown as ShelliesAdapterService,
 		{ findOneBy: () => Promise.resolve(device) } as unknown as DevicesService,
-		{ findOneBy: () => Promise.resolve(channel) } as unknown as ChannelsService,
+		{ findOneBy: findChannel } as unknown as ChannelsService,
 		{
 			findOneBy: (_key: string, identifier: string) =>
 				Promise.resolve(identifier === 'serial_number' ? { value: { value: 'AABBCCDDEEFF' } } : property),
@@ -50,7 +51,18 @@ function setup(temperature = false, id = 'AABBCCDDEEFF') {
 			boundary = currentSampleIngress();
 		}),
 	} as unknown as PropertyReadRequest;
-	return { id, device, reportSample, registration, peer, target, adapter, service, boundary: () => boundary };
+	return {
+		id,
+		device,
+		reportSample,
+		findChannel,
+		registration,
+		peer,
+		target,
+		adapter,
+		service,
+		boundary: () => boundary,
+	};
 }
 
 describe('Shelly Gen1 physical property reports', () => {
@@ -108,7 +120,8 @@ describe('Shelly Gen1 physical property reports', () => {
 	it('takes temperature from an original sleeping probe notification at its receipt time without a network read', async () => {
 		const f = setup(true);
 		const receivedAt = new Date(Date.now() - 5_000);
-		const report = { deviceId: f.id, value: 21.75, receivedAt, ingressSequence: 28, isCurrent: () => true };
+		let current = true;
+		const report = { deviceId: f.id, value: 21.75, receivedAt, ingressSequence: 28, isCurrent: () => current };
 		await f.service.temperature(report);
 		expect(f.peer.getStatus).not.toHaveBeenCalled();
 		expect(f.reportSample).toHaveBeenCalledWith(
@@ -116,7 +129,36 @@ describe('Shelly Gen1 physical property reports', () => {
 			{ type: DEVICES_SHELLY_V1_TYPE, value: 21.75 },
 			expect.objectContaining({ sampledAt: receivedAt, receivedAt, ingressSequence: 28 }),
 		);
-		await f.service.temperature({ ...report, isCurrent: () => false });
+		const evidence = f.reportSample.mock.calls[0][2];
+		expect(evidence.sourceIsCurrent()).toBe(true);
+		current = false;
+		expect(evidence.sourceIsCurrent()).toBe(false);
+		await f.service.temperature(report);
 		expect(f.reportSample).toHaveBeenCalledTimes(1);
+	});
+	it('drops a pre-reboot report while its channel lookup is pending', async () => {
+		const f = setup(true);
+		let current = true;
+		let release: () => void;
+		const wait = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		f.findChannel.mockImplementationOnce(async () => {
+			await wait;
+			return { id: 'channel', identifier: 'temperature_0' };
+		});
+		const admission = f.service.temperature({
+			deviceId: f.id,
+			value: 21,
+			receivedAt: new Date(),
+			ingressSequence: 22,
+			isCurrent: () => current,
+		});
+		await Promise.resolve();
+		expect(f.findChannel).toHaveBeenCalled();
+		current = false;
+		release();
+		await admission;
+		expect(f.reportSample).not.toHaveBeenCalled();
 	});
 });

@@ -15,10 +15,23 @@ import {
 	ShelliesLibrary,
 	ShellyDevice,
 } from '../interfaces/shellies.interface';
-import shellies, { subscribeShellyTemperatures } from '../lib/shellies';
+import shellies, { readShellyTemperature, subscribeShellyTemperatures } from '../lib/shellies';
 import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
+
+// RFC 7252 §4.8.2: the default lifetime of a non-confirmable CoAP publication, including retransmission.
+const COAP_NON_LIFETIME_MS = 145_000;
+type TemperatureSession = {
+	serial: number;
+	advancedAt: number;
+	verifyUntil: number;
+	oldPacketsExpireAt: number;
+	checking: boolean;
+};
+// Only an adjacent wrap is unambiguous. A jump from a high counter to a low one could also be a reboot.
+const serialAdvances = (from: number, to: number): boolean =>
+	(from === 65535 && to === 1) || (to > from && to - from < 32768);
 
 @Injectable()
 export class ShelliesAdapterService {
@@ -39,7 +52,7 @@ export class ShelliesAdapterService {
 	 * Key: device ID, Value: device info (id, type, host)
 	 */
 	private readonly devicesRegistry = new Map<string, RegisteredDevice>();
-	private readonly temperatureSerials = new WeakMap<RegisteredDevice, number>();
+	private readonly temperatureSessions = new WeakMap<RegisteredDevice, TemperatureSession>();
 
 	/**
 	 * External 'add' subscribers that should receive every device discovered while
@@ -90,8 +103,8 @@ export class ShelliesAdapterService {
 
 			//this.shellies.on('discover', deviceDiscoveredHandler);
 			this.shellies.on('add', deviceDiscoveredHandler); // Synonym in Gen 1
-			this.unsubscribeTemperature = subscribeShellyTemperatures((device, serial, value) =>
-				this.handleTemperatureReport(device, serial, value),
+			this.unsubscribeTemperature = subscribeShellyTemperatures(
+				(device, serial, value) => void this.handleTemperatureReport(device, serial, value),
 			);
 
 			// Re-attach external 'add' subscribers (wizard discovery sessions) that registered
@@ -340,27 +353,65 @@ export class ShelliesAdapterService {
 
 	// Only original CoIoT temperature fields enter this path.
 	// Sleeping probes may already be unreachable by HTTP by the time their change callback runs.
-	private handleTemperatureReport(peer: ShellyDevice, serial: number, value: unknown): void {
+	private async handleTemperatureReport(peer: ShellyDevice, serial: number, value: unknown): Promise<void> {
 		const registration = this.devicesRegistry.get(peer.id);
 		if (!registration?.enabled || !Number.isInteger(serial) || serial <= 0 || serial > 65535) return;
-		const previous = this.temperatureSerials.get(registration);
-		const distance = (serial - (previous ?? serial - 1) + 65536) % 65536;
-		if (distance === 0 || distance >= 32768) return;
 		const host = peer.host;
-		const isCurrent = (): boolean =>
+		const peerIsCurrent = (): boolean =>
 			this.isRunning() &&
 			peer.online &&
 			peer.host === host &&
 			this.devicesRegistry.get(peer.id) === registration &&
 			this.getDevice(peer.type, peer.id) === peer;
-		if (!isCurrent()) return;
-		this.temperatureSerials.set(registration, serial);
+		if (!peerIsCurrent()) return;
+		const previous = this.temperatureSessions.get(registration);
+		if (previous?.serial === serial) return;
+		const started = performance.now();
+		const receivedAt = new Date();
+		const ingressSequence = nextSampleIngress();
+		if (
+			previous &&
+			(started < previous.verifyUntil ||
+				(!serialAdvances(previous.serial, serial) && started - previous.advancedAt <= COAP_NON_LIFETIME_MS))
+		) {
+			// A delayed lower serial and a reboot look identical. During this window only a correlated
+			// unicast reply can establish an observation; never use the ambiguous packet's value.
+			if (previous.checking) return;
+			if (started >= previous.verifyUntil) previous.verifyUntil = started + COAP_NON_LIFETIME_MS;
+			const last = previous.serial;
+			previous.checking = true;
+			const checked = await readShellyTemperature(peer).catch((): null => null);
+			previous.checking = false;
+			if (
+				!checked ||
+				!peerIsCurrent() ||
+				this.temperatureSessions.get(registration) !== previous ||
+				previous.serial !== last ||
+				performance.now() - started >= COAP_NON_LIFETIME_MS
+			)
+				return;
+			previous.verifyUntil = previous.oldPacketsExpireAt;
+			if (checked.serial === last) return;
+			({ serial, value } = checked);
+		}
+		// After the publication lifetime a lower counter cannot be a delayed report from before our
+		// last advance. Sleeping devices can therefore recover on their next broadcast even if GET failed.
+		const reset = previous && !serialAdvances(previous.serial, serial);
+		const acceptedAt = performance.now();
+		const oldPacketsExpireAt = reset ? acceptedAt + COAP_NON_LIFETIME_MS : 0;
+		const session =
+			!previous || reset
+				? { serial, advancedAt: acceptedAt, verifyUntil: oldPacketsExpireAt, oldPacketsExpireAt, checking: false }
+				: previous;
+		session.serial = serial;
+		session.advancedAt = acceptedAt;
+		this.temperatureSessions.set(registration, session);
 		void this.callbacks.onTemperatureReport?.({
 			deviceId: peer.id,
 			value: typeof value === 'number' && Number.isFinite(value) && value !== 999 ? value : null,
-			receivedAt: new Date(),
-			ingressSequence: nextSampleIngress(),
-			isCurrent,
+			receivedAt,
+			ingressSequence,
+			isCurrent: () => peerIsCurrent() && this.temperatureSessions.get(registration) === session,
 		});
 	}
 
