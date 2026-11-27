@@ -11,6 +11,7 @@ import {
 	IDevicePlatform,
 	IDevicePropertyData,
 	PreparedCompositeDeviceBatch,
+	PropertyReadRequest,
 } from '../../../modules/devices/platforms/device.platform';
 import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
 import { guardScriptReadiness } from '../contracts/guard-script.contract';
@@ -49,6 +50,25 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 
 	getType(): string {
 		return DEVICES_SHELLY_NG_TYPE;
+	}
+
+	async requestPropertyRead({ device, channel, property, dispatching }: PropertyReadRequest): Promise<boolean> {
+		if (
+			!(device instanceof ShellyNgDeviceEntity) ||
+			!(channel instanceof ShellyNgChannelEntity) ||
+			!(property instanceof ShellyNgChannelPropertyEntity) ||
+			!device.enabled ||
+			(typeof channel.device === 'string' ? channel.device : channel.device?.id) !== device.id ||
+			(typeof property.channel === 'string' ? property.channel : property.channel?.id) !== channel.id ||
+			property.category !== PropertyCategory.ON ||
+			property.dataType !== DataTypeType.BOOL ||
+			!['output', 'on'].includes(property.identifier) ||
+			!permissionSatisfied(PermissionType.READ_ONLY, new Set(property.permissions ?? []))
+		)
+			return false;
+		const match = /^switch:(0|[1-9]\d*)$/.exec(channel.identifier ?? '');
+		if (!match || !Number.isSafeInteger(Number(match[1]))) return false;
+		return this.delegatesManagerService.requestSwitchRead(device, channel, property, Number(match[1]), dispatching);
 	}
 
 	getProtectiveReadiness(

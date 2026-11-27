@@ -2428,8 +2428,9 @@ export class DelegatesManagerService {
 								: cover.current_pos
 						: null
 					: !fault &&
-						  ((source.attribute === 'output' && typeof raw === 'boolean') ||
-								(typeof raw === 'number' && Number.isFinite(raw)))
+						  (source.attribute === 'output'
+								? typeof raw === 'boolean'
+								: typeof raw === 'number' && Number.isFinite(raw))
 						? raw
 						: null;
 				let lease: ShellySampleSourceLease | null | undefined;
@@ -2747,6 +2748,50 @@ export class DelegatesManagerService {
 		this.delegates.delete(deviceId);
 
 		this.logger.log(`Detached Shelly device=${deviceId}`, { resource: deviceId });
+	}
+
+	async requestSwitchRead(
+		device: ShellyNgDeviceEntity,
+		channel: ShellyNgChannelEntity,
+		property: ShellyNgChannelPropertyEntity,
+		componentId: number,
+		dispatching: () => void,
+	): Promise<boolean> {
+		for (const id of this.identifierToDelegates.get(device.identifier) ?? []) {
+			const delegate = this.delegates.get(id);
+			const sources = this.sampleSources.get(id);
+			if (
+				!delegate ||
+				this.delegateDeviceIds.get(id) !== device.id ||
+				!sources?.some(
+					(source) =>
+						source.channel.id === channel.id &&
+						source.property.id === property.id &&
+						source.componentKey === channel.identifier &&
+						source.attribute === 'output',
+				)
+			)
+				continue;
+			const generation = this.sampleGenerations.get(id);
+			const revisionKey = `${id}|${property.id}`;
+			const revision = this.sampleRevisions.get(revisionKey);
+			const bound = () =>
+				this.delegates.get(id) === delegate &&
+				this.delegateDeviceIds.get(id) === device.id &&
+				this.sampleSources.get(id) === sources &&
+				this.sampleGenerations.get(id) === generation;
+			if (
+				await delegate.requestSwitchOutput(
+					componentId,
+					device.canonicalMac,
+					dispatching,
+					bound,
+					() => this.sampleRevisions.get(revisionKey) === revision,
+				)
+			)
+				return true;
+		}
+		return false;
 	}
 
 	captureThermostatSetupMetadata(device: ShellyNgDeviceEntity, componentId: number) {
