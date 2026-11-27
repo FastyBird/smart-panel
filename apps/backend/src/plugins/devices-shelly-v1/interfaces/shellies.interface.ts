@@ -78,6 +78,8 @@ export interface RegisteredDevice {
 	type: string;
 	host: string;
 	enabled: boolean; // Whether a device is enabled for updates
+	/** Changes synchronously whenever the SDK peer's credentials are cleared or replaced. */
+	credentialRevision?: number;
 }
 
 /**

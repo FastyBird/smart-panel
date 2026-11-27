@@ -64,6 +64,7 @@ describe('DeviceMapperService', () => {
 		updateDevice: jest.Mock;
 		confirmHost: jest.Mock;
 		captureDevice: jest.Mock;
+		captureDiscovery: jest.Mock;
 	};
 	let pins: Map<string, { mac: string; verifiedHost: string; revision: number }>;
 	let tracker: ShellyV1InputTrackerService;
@@ -104,7 +105,7 @@ describe('DeviceMapperService', () => {
 		shelliesAdapter = {
 			getDevice: jest.fn(),
 			getRegisteredDevice: jest.fn(),
-			setDeviceAuthCredentials: jest.fn(),
+			setDeviceAuthCredentials: jest.fn().mockReturnValue(true),
 			updateDeviceEnabledStatus: jest.fn(),
 		} as any;
 
@@ -137,6 +138,10 @@ describe('DeviceMapperService', () => {
 				return updated;
 			}),
 			confirmHost: jest.fn().mockResolvedValue(true),
+			captureDiscovery: jest.fn(async (identifier: string) => ({
+				exact: await identities.captureDevice(identifier),
+				aliases: [],
+			})),
 			captureDevice: jest.fn(async (identifier: string) => {
 				const row =
 					createdRows.get(identifier) ??
@@ -547,8 +552,53 @@ describe('DeviceMapperService', () => {
 			httpClient.getLoginSettings.mockResolvedValue({ username: 'operator', enabled: true, unprotected: false });
 			shelliesAdapter.setDeviceAuthCredentials.mockImplementationOnce(() => {
 				pin.verifiedHost = 'another-host';
+				return true;
 			});
 			await expect(service.mapDevice(event)).rejects.toThrow(DevicesShellyV1NotSupportedException);
+			expect(httpClient.getDeviceStatus).not.toHaveBeenCalled();
+		});
+
+		it.each(['edited password', 'cleared password', 'credential generation'])(
+			'discards pending discovery credentials after a change to the %s',
+			async (change) => {
+				const { device, event } = arrangeDiscovery();
+				device.password = 'old';
+				const registration = { id: event.id, host: event.host, type: event.type, enabled: true, credentialRevision: 1 };
+				shelliesAdapter.getRegisteredDevice.mockReturnValue(registration);
+				const reached = deferred();
+				const release = deferred();
+				httpClient.getLoginSettings.mockImplementationOnce(async () => {
+					reached.resolve();
+					await release.promise;
+					return { username: 'operator', enabled: true, unprotected: false };
+				});
+				const mapping = service.mapDevice(event);
+				await reached.promise;
+				if (change === 'credential generation') registration.credentialRevision++;
+				else
+					devicesService.findOneBy.mockResolvedValue(
+						Object.assign(new ShellyV1DeviceEntity(), device, {
+							password: change === 'edited password' ? 'new' : null,
+						}),
+					);
+				release.resolve();
+				await expect(mapping).rejects.toThrow('credentials changed');
+				expect(shelliesAdapter.setDeviceAuthCredentials).not.toHaveBeenCalled();
+				expect(httpClient.getDeviceStatus).not.toHaveBeenCalled();
+			},
+		);
+
+		it('does not send a captured password to status after another save replaces it', async () => {
+			const { device, event } = arrangeDiscovery();
+			device.password = 'old';
+			httpClient.getLoginSettings.mockResolvedValue({ username: 'operator', enabled: true, unprotected: false });
+			shelliesAdapter.setDeviceAuthCredentials.mockImplementationOnce(() => {
+				devicesService.findOneBy.mockResolvedValue(
+					Object.assign(new ShellyV1DeviceEntity(), device, { password: 'new' }),
+				);
+				return true;
+			});
+			await expect(service.mapDevice(event)).rejects.toThrow('credentials changed');
 			expect(httpClient.getDeviceStatus).not.toHaveBeenCalled();
 		});
 
@@ -585,6 +635,68 @@ describe('DeviceMapperService', () => {
 			await expect(service.mapDevice(event)).rejects.toThrow(DevicesShellyV1NotSupportedException);
 			expect(httpClient.getLoginSettings).not.toHaveBeenCalled();
 			expect(shelliesAdapter.setDeviceAuthCredentials).not.toHaveBeenCalled();
+		});
+
+		it('skips unknown peers without making HTTP requests when automatic adoption is disabled', async () => {
+			const { event } = arrangeDiscovery();
+			identities.captureDiscovery.mockResolvedValueOnce({ exact: null, aliases: [] });
+			await expect(service.mapDevice(event, false)).resolves.toBeNull();
+			expect(httpClient.getDeviceInfo).not.toHaveBeenCalled();
+			expect(httpClient.getDeviceSettings).not.toHaveBeenCalled();
+			expect(identities.createDevice).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			'matched',
+			'colliding MAC',
+			'colliding MAC with automatic adoption disabled',
+			'unverified',
+			'pin replaced during probe',
+		])('checks the full hardware pin when the catalog identifier was renamed (%s)', async (scenario) => {
+			const { event, device, pin } = arrangeDiscovery();
+			device.identifier = `shelly1pm-${pin.mac.toLowerCase()}`;
+			identities.captureDiscovery.mockImplementationOnce(() =>
+				Promise.resolve({
+					exact: null,
+					aliases: [shellyV1AdoptionState(device, pin)],
+				}),
+			);
+			devicesService.findOneBy.mockImplementation((_column, value) =>
+				Promise.resolve(value === device.id || value === device.identifier ? device : null),
+			);
+			const different = Object.assign(new ShellyV1DeviceEntity(), { id: 'different', identifier: event.id });
+			devicesService.create.mockResolvedValue(different);
+			httpClient.getDeviceInfo.mockImplementationOnce(() => {
+				if (scenario === 'unverified') return Promise.reject(new Error('sleeping'));
+				if (scenario === 'pin replaced during probe') pin.revision++;
+				return Promise.resolve({
+					...makeMockInfo(),
+					mac: scenario.startsWith('colliding MAC') ? '112233ABC123' : pin.mac,
+				});
+			});
+			const mapping = service.mapDevice(event, scenario !== 'matched' && !scenario.endsWith('disabled'));
+			if (scenario === 'matched') {
+				await expect(mapping).resolves.toBe(device);
+				expect(identities.captureDevice).toHaveBeenCalledWith(device.identifier);
+			} else if (scenario === 'colliding MAC') {
+				await expect(mapping).resolves.toBe(different);
+				expect(identities.updateDevice).not.toHaveBeenCalled();
+				expect(identities.createDevice).toHaveBeenCalledWith(
+					expect.objectContaining({ identifier: event.id }),
+					'112233ABC123',
+					expect.any(Function),
+				);
+			} else if (scenario.endsWith('disabled')) {
+				await expect(mapping).resolves.toBeNull();
+				expect(identities.updateDevice).not.toHaveBeenCalled();
+				expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+				expect(httpClient.getDeviceSettings).not.toHaveBeenCalled();
+			} else {
+				await expect(mapping).rejects.toThrow();
+				expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+				expect(shelliesAdapter.setDeviceAuthCredentials).not.toHaveBeenCalled();
+			}
+			if (scenario !== 'colliding MAC') expect(identities.createDevice).not.toHaveBeenCalled();
 		});
 
 		it.each(['moved catalog host', 'removed catalog row', 'new hardware pin'])(
@@ -677,7 +789,12 @@ describe('DeviceMapperService', () => {
 				expect(channelsPropertiesService.reportSample).toHaveBeenCalledWith(
 					'state',
 					{ type: DEVICES_SHELLY_V1_TYPE, value: newProperty },
-					expect.objectContaining({ provenance: 'cached', replay: true, sampledAt: new Date(Number(peer.lastSeen)) }),
+					expect.objectContaining({
+						provenance: 'cached',
+						replay: true,
+						ageUnknown: true,
+						seedOnly: expect.any(Object),
+					}),
 				);
 			},
 		);
@@ -804,6 +921,95 @@ describe('DeviceMapperService', () => {
 			expect(values.readQualifiedSampleSnapshot(property, 10000, new Date())?.value).toBe(true);
 			expect((await values.readLatest(property))?.value).toBe(true);
 		});
+
+		it.each(['stable', 'newer peer activity', 'retired pin'])(
+			'seeds a vacant relay only from its verified endpoint with %s',
+			async (scenario) => {
+				const { event, peer, pin } = arrangeDiscovery();
+				const property = Object.assign(new ShellyV1ChannelPropertyEntity(), {
+					id: 'state',
+					channel: 'relay_0',
+					category: PropertyCategory.ON,
+					dataType: DataTypeType.BOOL,
+				});
+				const cold = deferred();
+				const release = deferred();
+				const enqueueWritePoint = jest.fn().mockResolvedValue(undefined);
+				const storage = {
+					isConnected: () => true,
+					queryStrict: async () => {
+						cold.resolve();
+						await release.promise;
+						return [];
+					},
+					query: () => Promise.resolve([]),
+					enqueueWritePoint,
+				} as unknown as StorageService;
+				const values = new PropertyValueService(
+					storage,
+					new PropertyValueSourceRegistryService(),
+					new PropertyValueLockService({} as never),
+				);
+				channelsPropertiesService.reportSample.mockImplementation(async (_id, dto, evidence) => {
+					await values.writeSampleWithState(property, dto.value, evidence);
+					return property;
+				});
+				if (scenario === 'newer peer activity') {
+					release.resolve();
+					const measured = new Date(Date.now() - 5000);
+					await values.writeSampleWithState(property, true, {
+						sampledAt: measured,
+						receivedAt: measured,
+						provenance: 'live',
+					});
+					// The independent HTTP read saw ON. A later unrelated packet left the SDK's cached relay OFF.
+					peer.lastSeen = Date.now();
+				}
+				const mapping = service.mapDevice(event);
+				await cold.promise;
+				if (scenario === 'retired pin') pin.revision++;
+				release.resolve();
+				if (scenario === 'retired pin') {
+					await expect(mapping).rejects.toThrow(DevicesShellyV1NotSupportedException);
+					expect(await values.readLatest(property)).toBeNull();
+				} else {
+					await mapping;
+					const latest = await values.readLatest(property);
+					expect(latest?.value).toBe(scenario === 'newer peer activity');
+					if (scenario === 'stable') expect(latest?.lastUpdated).toBeNull();
+				}
+				expect(enqueueWritePoint).toHaveBeenCalledTimes(scenario === 'newer peer activity' ? 1 : 0);
+				expect(values.readQualifiedSample(property, 30000)?.value).toBe(
+					scenario === 'newer peer activity' ? true : undefined,
+				);
+			},
+		);
+
+		it.each(['lookup', 'creation'])(
+			'does not publish CONNECTED when the peer is replaced during the information channel %s',
+			async (stage) => {
+				const { event } = arrangeDiscovery();
+				const replace = () => {
+					shelliesAdapter.getRegisteredDevice.mockReturnValue({ ...event, enabled: true });
+					return Promise.resolve(
+						Object.assign(new ShellyV1ChannelEntity(), { id: 'info', identifier: 'device_information' }),
+					);
+				};
+				if (stage === 'lookup') channelsService.findOneBy.mockImplementationOnce(replace);
+				else {
+					channelsService.findOneBy.mockResolvedValueOnce(null);
+					channelsService.create.mockImplementationOnce(replace);
+				}
+				await expect(service.mapDevice(event)).rejects.toThrow(DevicesShellyV1NotSupportedException);
+				expect(
+					channelsPropertiesService.update.mock.calls.every(([, dto]) => dto.value !== ConnectionState.CONNECTED),
+				).toBe(true);
+				expect(
+					channelsPropertiesService.create.mock.calls.every(([, dto]) => dto.value !== ConnectionState.CONNECTED),
+				).toBe(true);
+				expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+			},
+		);
 
 		it('revokes a cached relay observation when its verified host moves during catalog update', async () => {
 			const { event, pin } = arrangeDiscovery();
@@ -1147,6 +1353,12 @@ describe('DeviceMapperService', () => {
 				data_type: DataTypeType.ENUM,
 				format: [ConnectionState.CONNECTED, ConnectionState.DISCONNECTED, ConnectionState.UNKNOWN],
 			});
+			expect(statusPropertyCall?.[1].value).toBeUndefined();
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(
+				mockDevice.id,
+				{ state: ConnectionState.CONNECTED },
+				expect.any(Function),
+			);
 		});
 	});
 

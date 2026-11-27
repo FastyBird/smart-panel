@@ -14,7 +14,11 @@ import { DevicesService } from './devices.service';
 describe('DeviceConnectivityService', () => {
 	const devicesService = { findOne: jest.fn() };
 	const channelsService = { findOneBy: jest.fn(), create: jest.fn() };
-	const channelsPropertiesService = { findOneBy: jest.fn(), create: jest.fn(), update: jest.fn() };
+	const channelsPropertiesService = {
+		findOneBy: jest.fn(),
+		create: jest.fn(),
+		update: jest.fn(),
+	};
 	const deviceConnectionStateService = { readLatest: jest.fn(), write: jest.fn() };
 	const eventEmitter = { emit: jest.fn() };
 	let service: DeviceConnectivityService;
@@ -62,6 +66,40 @@ describe('DeviceConnectivityService', () => {
 		expect(deviceConnectionStateService.write).not.toHaveBeenCalled();
 		expect(eventEmitter.emit).not.toHaveBeenCalled();
 	});
+
+	it.each(['stable', 'property lookup', 'state lookup'])(
+		'publishes guarded connectivity for a current endpoint (%s)',
+		async (stage) => {
+			const device = Object.assign(new DeviceEntity(), { id: 'device-id' });
+			const channel = Object.assign(new ChannelEntity(), { id: 'channel-id' });
+			const property = Object.assign(new ChannelPropertyEntity(), { id: 'property-id' });
+			let current = true;
+			const guard = () => current;
+			devicesService.findOne.mockResolvedValue(device);
+			channelsService.findOneBy.mockResolvedValue(channel);
+			channelsPropertiesService.findOneBy.mockImplementation(() => {
+				if (stage === 'property lookup') current = false;
+				return Promise.resolve(property);
+			});
+			deviceConnectionStateService.readLatest.mockImplementation(() => {
+				if (stage === 'state lookup') current = false;
+				return Promise.resolve({ status: ConnectionState.UNKNOWN });
+			});
+			await expect(service.trySetConnectionState(device.id, { state: ConnectionState.CONNECTED }, guard)).resolves.toBe(
+				stage === 'stable',
+			);
+			if (stage === 'property lookup') expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			else
+				expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+					property.id,
+					{ type: property.type, value: ConnectionState.CONNECTED },
+					{ valueIsCurrent: guard },
+				);
+			expect(deviceConnectionStateService.write).toHaveBeenCalledTimes(stage === 'stable' ? 1 : 0);
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(stage === 'stable' ? 1 : 0);
+		},
+	);
+
 	it('joins its finite original state write and event with captured input and destinations after observation retirement', async () => {
 		let entered: () => void;
 		let release: () => void;

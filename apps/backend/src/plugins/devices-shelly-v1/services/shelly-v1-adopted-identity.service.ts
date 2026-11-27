@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Like, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { SqliteDataSource, registerSqliteCommitGuard } from '../../../common/database/sqlite-data-source';
 import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -25,19 +26,60 @@ export function shellyV1PinMatches(identifier: string | null | undefined, mac: s
 	return !!address && typeof mac === 'string' && /^[0-9A-F]{12}$/.test(mac) && mac.endsWith(address);
 }
 
+type CatalogSettings = Pick<
+	ShellyV1DeviceEntity,
+	'id' | 'identifier' | 'hostname' | 'password' | 'name' | 'category' | 'enabled'
+>;
+
 export function shellyV1AdoptionState(
-	device: Pick<ShellyV1DeviceEntity, 'id' | 'identifier' | 'hostname'>,
+	device: CatalogSettings,
 	pin: Pick<ShellyV1AdoptedIdentityEntity, 'mac' | 'verifiedHost' | 'revision'> | null,
 ) {
 	return {
 		id: device.id,
 		identifier: device.identifier,
 		hostname: device.hostname,
+		password: device.password ?? null,
+		name: device.name,
+		category: device.category,
+		enabled: Boolean(device.enabled),
 		pin: pin && { mac: pin.mac, verifiedHost: pin.verifiedHost, revision: pin.revision },
 	};
 }
 
 export type ShellyV1AdoptionState = ReturnType<typeof shellyV1AdoptionState>;
+
+type CatalogRow = CatalogSettings & {
+	mac: string | null;
+	verifiedHost: string | null;
+	revision: number | null;
+};
+
+function fromRow(row: CatalogRow): ShellyV1AdoptionState {
+	return shellyV1AdoptionState(
+		row,
+		row.mac === null ? null : { mac: row.mac, verifiedHost: row.verifiedHost, revision: row.revision },
+	);
+}
+
+export interface ShellyV1DiscoveryCandidates {
+	exact: ShellyV1AdoptionState | null;
+	aliases: ShellyV1AdoptionState[];
+}
+
+/** A suffix finds candidate pins. Only the verified full MAC can select a renamed catalog device. */
+export function shellyV1DiscoveryOwner(
+	{ exact, aliases }: ShellyV1DiscoveryCandidates,
+	mac: string | null | undefined,
+): ShellyV1AdoptionState | null {
+	if (aliases.length === 0) return exact;
+	if (mac) {
+		const matches = aliases.filter((alias) => alias.pin?.mac === mac);
+		if (matches.length === 0) return exact;
+		if (!exact && matches.length === 1 && shellyV1PinMatches(matches[0].identifier, mac)) return matches[0];
+	}
+	throw new DevicesShellyV1ValidationException('Shelly discovery cannot verify a unique adopted hardware identity.');
+}
 
 export function shellyV1ReportedMac(
 	identifier: string,
@@ -65,26 +107,42 @@ export class ShellyV1AdoptedIdentityService {
 		assertEndpoint?: () => void,
 	): Promise<ShellyV1DeviceEntity> {
 		const address = shellyV1Address(dto.identifier);
-		if (address?.length !== 6 || !mac) {
-			assertEndpoint?.();
-			return this.devices.create<ShellyV1DeviceEntity, CreateShellyV1DeviceDto>(dto);
-		}
-		if (!shellyV1PinMatches(dto.identifier, mac) || !dto.hostname)
+		const pin = address?.length === 6 && !!mac;
+		if ((mac && !shellyV1PinMatches(dto.identifier, mac)) || (pin && !dto.hostname))
 			throw new Error('Shelly hardware identity does not match the selected device.');
-		const host = dto.hostname;
 		const createDto = { ...dto, id: dto.id ?? randomUUID() };
+		const dataSource = this.identities.manager.connection;
 		return this.structure.runExclusive(() =>
 			DeviceCreationContext.run(
-				(work) => this.identities.manager.connection.transaction(work),
+				(work) =>
+					dataSource instanceof SqliteDataSource
+						? dataSource.transactionWithWriteIntent(work)
+						: dataSource.transaction(work),
 				DEVICES_SHELLY_V1_TYPE,
 				async (context) => {
 					assertEndpoint?.();
+					if (assertEndpoint && dataSource instanceof SqliteDataSource)
+						registerSqliteCommitGuard(context.manager, () => {
+							assertEndpoint();
+							return true;
+						});
+					// A competing discovery can adopt the hardware under another identifier while the probe is in flight.
+					if (
+						address &&
+						(await context.manager.existsBy(ShellyV1AdoptedIdentityEntity, {
+							mac: mac ?? (address.length === 12 ? address : Like(`%${address}`)),
+						}))
+					)
+						throw new DevicesShellyV1ValidationException(
+							'Shelly hardware is already adopted. Retry with the current device.',
+						);
 					const created = await this.devices.create<ShellyV1DeviceEntity, CreateShellyV1DeviceDto>(createDto, context);
-					await context.manager.insert(ShellyV1AdoptedIdentityEntity, {
-						deviceId: created.id,
-						mac,
-						verifiedHost: host,
-					});
+					if (pin)
+						await context.manager.insert(ShellyV1AdoptedIdentityEntity, {
+							deviceId: created.id,
+							mac,
+							verifiedHost: createDto.hostname,
+						});
 					assertEndpoint?.();
 					return created;
 				},
@@ -97,30 +155,38 @@ export class ShellyV1AdoptedIdentityService {
 		return this.identities.findOneBy({ deviceId });
 	}
 
-	async captureDevice(identifier: string): Promise<ShellyV1AdoptionState | null> {
-		const row = await this.identities.manager
+	private catalogQuery() {
+		return this.identities.manager
 			.createQueryBuilder(ShellyV1DeviceEntity, 'device')
 			.leftJoin(ShellyV1AdoptedIdentityEntity, 'pin', 'pin.deviceId = device.id')
 			.select('device.id', 'id')
 			.addSelect('device.identifier', 'identifier')
 			.addSelect('device.hostname', 'hostname')
+			.addSelect('device.password', 'password')
+			.addSelect('device.name', 'name')
+			.addSelect('device.category', 'category')
+			.addSelect('device.enabled', 'enabled')
 			.addSelect('pin.mac', 'mac')
 			.addSelect('pin.verifiedHost', 'verifiedHost')
-			.addSelect('pin.revision', 'revision')
+			.addSelect('pin.revision', 'revision');
+	}
+
+	async captureDevice(identifier: string): Promise<ShellyV1AdoptionState | null> {
+		const row = await this.catalogQuery()
 			.where('device.identifier = :identifier', { identifier })
-			.getRawOne<{
-				id: string;
-				identifier: string;
-				hostname: string | null;
-				mac: string | null;
-				verifiedHost: string | null;
-				revision: number | null;
-			}>();
-		if (!row) return null;
-		return shellyV1AdoptionState(
-			row,
-			row.mac === null ? null : { mac: row.mac, verifiedHost: row.verifiedHost, revision: row.revision },
-		);
+			.getRawOne<CatalogRow>();
+		return row ? fromRow(row) : null;
+	}
+
+	async captureDiscovery(identifier: string): Promise<ShellyV1DiscoveryCandidates> {
+		const query = this.catalogQuery().where('device.identifier = :identifier', { identifier });
+		const address = shellyV1Address(identifier);
+		if (address) query.orWhere('pin.mac LIKE :mac', { mac: address.length === 12 ? address : `%${address}` });
+		const candidates = (await query.getRawMany<CatalogRow>()).map(fromRow);
+		return {
+			exact: candidates.find((row) => row.identifier === identifier) ?? null,
+			aliases: candidates.filter((row) => row.identifier !== identifier && row.pin),
+		};
 	}
 
 	async validateIdentifier(
@@ -185,6 +251,9 @@ export class ShellyV1AdoptedIdentityService {
 					id: state.id,
 					identifier: state.identifier ?? IsNull(),
 					hostname: state.hostname ?? IsNull(),
+					...(dto.name !== undefined && { name: state.name }),
+					...(dto.category !== undefined && { category: state.category }),
+					...(dto.password !== undefined && { password: state.password ?? IsNull() }),
 				});
 				const pins = manager.getRepository(ShellyV1AdoptedIdentityEntity);
 				const pin = await pins.findOneBy({ deviceId: state.id });
@@ -197,6 +266,7 @@ export class ShellyV1AdoptedIdentityService {
 					throw stale();
 				if (!mac) return false;
 				if (!pin && short) {
+					if (await pins.existsBy({ mac })) throw stale();
 					await pins.insert({ deviceId: state.id, mac, verifiedHost: dto.hostname });
 					return true;
 				}

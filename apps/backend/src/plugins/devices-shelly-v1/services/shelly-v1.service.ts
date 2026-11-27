@@ -250,26 +250,8 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		this.logger.log(`Device discovered: ${event.id} (${event.type}) at ${event.host}`);
 
 		try {
-			// Check if discovery is enabled
-			if (!this.config.discovery.enabled) {
-				// Discovery is disabled, only process devices that already exist in the database
-				const existingDevice = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
-					'identifier',
-					event.id,
-					DEVICES_SHELLY_V1_TYPE,
-				);
-
-				if (!existingDevice) {
-					this.logger.debug(`Discovery is disabled, ignoring new device: ${event.id} (${event.type})`);
-
-					return;
-				}
-
-				this.logger.debug(`Discovery is disabled, but device ${event.id} already exists, processing update`);
-			}
-
-			// Map and create the device with its channels and properties
-			const device = await this.deviceMapper.mapDevice(event);
+			const device = await this.deviceMapper.mapDevice(event, this.config.discovery.enabled);
+			if (!device) return;
 
 			this.logger.log(`Device mapped successfully: ${device.identifier} (${device.id})`, { resource: device.id });
 		} catch (error) {

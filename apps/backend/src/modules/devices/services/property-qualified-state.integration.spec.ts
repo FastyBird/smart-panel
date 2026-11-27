@@ -151,6 +151,64 @@ describe('qualified samples and producer state', () => {
 		jest.useRealTimers();
 	});
 
+	it('preserves a durable reading when discovery offers an unordered cold-cache seed', async () => {
+		const stored = new Date(base - 5000);
+		storage.queryStrict.mockResolvedValue([{ propertyId: property.id, numberValue: 20, time: stored }]);
+		const assertCurrent = jest.fn().mockResolvedValue(undefined);
+		await report(18, { ...evidence(base, 'cached'), replay: true, ageUnknown: true, seedOnly: { assertCurrent } });
+		expect(await values.readLatest(property)).toMatchObject({ value: 20, lastUpdated: stored.toISOString() });
+		expect(assertCurrent).not.toHaveBeenCalled();
+		expect(accepted).not.toHaveBeenCalled();
+		expect(invalidated).not.toHaveBeenCalled();
+		expect(scalar).not.toHaveBeenCalled();
+	});
+
+	it('preserves an observation loaded from storage while the discovery seed verifies its source', async () => {
+		const checking = deferred<void>();
+		const release = deferred<void>();
+		const stored = new Date(base - 1000);
+		const pending = report(18, {
+			...evidence(base, 'cached'),
+			replay: true,
+			ageUnknown: true,
+			seedOnly: {
+				assertCurrent: () => {
+					checking.resolve();
+					return release.promise;
+				},
+			},
+		});
+		await checking.promise;
+		storage.query.mockResolvedValue([{ propertyId: property.id, numberValue: 21, time: stored }]);
+		expect((await values.readLatest(property))?.value).toBe(21);
+		release.resolve();
+		await pending;
+		expect(await values.readLatest(property)).toMatchObject({ value: 21, lastUpdated: stored.toISOString() });
+		expect(accepted).not.toHaveBeenCalled();
+		expect(scalar).not.toHaveBeenCalled();
+	});
+
+	it('cannot overwrite an observation when the endpoint retires while a scalar update is waiting for the value lock', async () => {
+		const reading = deferred<void>();
+		const released = deferred<[]>();
+		storage.queryStrict.mockImplementationOnce(() => {
+			reading.resolve();
+			return released.promise;
+		});
+		const live = values.writeSampleWithState(property, 20, evidence());
+		await reading.promise;
+		const write = jest.spyOn(values, 'writeLiveWithState');
+		let current = true;
+		const late = reports.update(property.id, { type: property.type, value: 18 }, { valueIsCurrent: () => current });
+		await jest.advanceTimersByTimeAsync(0);
+		expect(write).toHaveBeenCalledTimes(1);
+		current = false;
+		released.resolve([]);
+		await Promise.all([live, late]);
+		expect((await values.readLatest(property))?.value).toBe(20);
+		expect(scalar).not.toHaveBeenCalled();
+	});
+
 	it('displays a command acknowledgement without qualifying it, and withdraws a live value it contradicts', async () => {
 		const lastSample = (): Record<string, unknown> =>
 			(accepted.mock.lastCall as [{ sample: Record<string, unknown> }])[0].sample;

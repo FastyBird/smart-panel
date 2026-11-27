@@ -285,6 +285,32 @@ describe('ShellyV1DevicePlatform', () => {
 			expect(http.getDeviceInfo).not.toHaveBeenCalled();
 		});
 
+		it('requires the verified host for a pinned full-address relay, including OFF', async () => {
+			const { device, peer, identities, http, write } = relay('shelly1pm-' + mac);
+			device.hostname = null;
+			identities.findPin.mockResolvedValue({ mac, verifiedHost: movedHost, revision: 1 });
+			expect(await write(false)).toBe(false);
+			expect(peer.setRelay).not.toHaveBeenCalled();
+			expect(http.getDeviceInfo).not.toHaveBeenCalled();
+
+			identities.findPin.mockResolvedValue({ mac, verifiedHost: originalHost, revision: 2 });
+			expect(await write(false)).toBe(true);
+			expect(peer.setRelay).toHaveBeenCalledWith(0, false);
+		});
+
+		it.each([originalHost, null])('confirms an older full-address pin with configured host %s', async (hostname) => {
+			const { device, peer, identities, http, write } = relay('shelly1pm-' + mac);
+			device.hostname = hostname;
+			identities.findPin.mockResolvedValue({ mac, verifiedHost: null, revision: 1 });
+			http.getDeviceInfo.mockResolvedValue({ type: peer.type, mac });
+			identities.confirmHost.mockResolvedValueOnce(false);
+			expect(await write(true)).toBe(false);
+			expect(peer.setRelay).not.toHaveBeenCalled();
+			expect(await write(true)).toBe(true);
+			expect(identities.confirmHost).toHaveBeenCalledWith(device.id, mac, originalHost, null, 1);
+			expect(peer.setRelay).toHaveBeenCalledWith(0, true);
+		});
+
 		it('keeps one captured endpoint for every relay in a batch', async () => {
 			const { platform, device, peer, registration, getRegisteredDevice } = relay();
 			const entered = gate();

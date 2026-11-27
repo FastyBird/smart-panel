@@ -106,6 +106,7 @@ export class DevicesShellyV1Plugin {
 		private readonly extensionsService: ExtensionsService,
 		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly identities: ShellyV1AdoptedIdentityService,
+		private readonly deviceSubscriber: DeviceEntitySubscriber,
 	) {}
 
 	onModuleInit() {
@@ -121,6 +122,7 @@ export class DevicesShellyV1Plugin {
 			updateDto: UpdateShellyV1DeviceDto,
 			class: ShellyV1DeviceEntity,
 			beforeUpdate: (device, previous) => this.identities.validateIdentifier(device, previous),
+			afterUpdate: (device, changed) => this.deviceSubscriber.afterCatalogSave(device, changed),
 		});
 
 		this.channelsMapper.registerMapping<ShellyV1ChannelEntity, CreateShellyV1ChannelDto, UpdateShellyV1ChannelDto>({

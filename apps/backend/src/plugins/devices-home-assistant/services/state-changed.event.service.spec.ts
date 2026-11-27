@@ -839,6 +839,33 @@ describe('StateChangedEventService', () => {
 				expect(sample.sourceIsCurrent()).toBe(false);
 				expect(unchanged()).toBe(true);
 			});
+
+			it('retires an adopted relay when discovery assigns its entity to an unadopted device', async () => {
+				setupPartial();
+				setAdoptions('owner-a', 'stable', 'unresolved');
+				const stable = discovered('stable', known);
+				httpService.getDiscoveredDevices
+					.mockReset()
+					.mockResolvedValueOnce([discovered('owner-a', relay), stable])
+					.mockResolvedValue([discovered('unadopted-owner', relay), stable]);
+				await service.handle(event(relay, 'on', 'off'), ingress());
+				await service.handle(event(known, 'on', 'off'), ingress());
+				const [oldOwner, sameOwner] = channelsPropertiesService.reportSample.mock.calls.map(
+					([, , sample]) => sample.sourceIsCurrent,
+				);
+				expect(oldOwner()).toBe(true);
+
+				const refresh = service.handle(event('switch.trigger', 'off', 'on'), ingress());
+				await jest.advanceTimersByTimeAsync(5000);
+				await refresh;
+				expect(oldOwner()).toBe(false);
+				expect(sameOwner()).toBe(true);
+
+				const unadopted = service.handle(event(relay, 'off', 'on'), ingress());
+				await jest.advanceTimersByTimeAsync(5000);
+				await unadopted;
+				expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(2);
+			});
 		});
 
 		it('keeps unrelated evidence across local edits and registry changes and retires the original binding on re-adoption', async () => {
@@ -1059,7 +1086,15 @@ describe('StateChangedEventService', () => {
 			expect(inputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(scope === 'same' ? 0 : 1);
 		});
 
-		it('delivers original button presses in order when discovery was temporarily incomplete', async () => {
+		it('does not replay a button press whose initial discovery found no owner', async () => {
+			httpService.getDiscoveredDevices.mockResolvedValueOnce([]).mockResolvedValue([haDevice]);
+			await service.handle(hardware);
+			await jest.advanceTimersByTimeAsync(5000);
+			expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
+			expect(inputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+		});
+
+		it('delivers button presses received during the discovery cooldown in their original order', async () => {
 			httpService.getDiscoveredDevices.mockResolvedValueOnce([]).mockResolvedValue([haDevice]);
 			const unknown = toInstance(
 				HomeAssistantStateChangedEventDto,

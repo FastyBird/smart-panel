@@ -344,10 +344,14 @@ describe('ShelliesAdapterService', () => {
 
 			const device = makeShellyDevice('shelly1pm-ABC123', 'SHSW-PM');
 			mockShelliesLibrary.getDevice.mockReturnValue(device);
+			mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'add')[1](device);
 
 			service.setDeviceAuthCredentials(device as ShellyDevice, device.host, 'admin', 'password123');
 
 			expect(device.setAuthCredentials).toHaveBeenCalledWith('admin', 'password123');
+			expect(service.getRegisteredDevice(device.id).credentialRevision).toBe(1);
+			service.setDeviceAuthCredentials(device as ShellyDevice, device.host, 'admin', null);
+			expect(service.getRegisteredDevice(device.id).credentialRevision).toBe(2);
 		});
 
 		it('withholds credentials after the captured peer has been replaced', async () => {
@@ -367,7 +371,7 @@ describe('ShelliesAdapterService', () => {
 			device.setAuthCredentials = undefined as any;
 			mockShelliesLibrary.getDevice.mockReturnValue(device);
 
-			service.setDeviceAuthCredentials(device as ShellyDevice, device.host, 'admin', 'password123');
+			expect(service.setDeviceAuthCredentials(device as ShellyDevice, device.host, 'admin', 'password123')).toBe(false);
 
 			expect(Logger.prototype.debug).not.toHaveBeenCalledWith(expect.stringContaining('Set auth credentials'));
 		});

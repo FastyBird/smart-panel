@@ -122,6 +122,8 @@ export interface VisiblePropertySearchSummaryPage {
 }
 
 export interface ChannelPropertyUpdateOptions {
+	/** Recheck an ordinary provider scalar's endpoint at value admission. */
+	valueIsCurrent?: () => boolean;
 	/** Internal provider evidence; excluded from public DTOs. */
 	sampleEvidence?: PropertySampleEvidence;
 	/** Provider discovery may use the value path when its validated metadata is unchanged. */
@@ -982,6 +984,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
 			...(evidence.replay === true ? { replay: true } : {}),
 			...(evidence.ageUnknown === true ? { ageUnknown: true } : {}),
+			...(evidence.seedOnly ? { seedOnly: Object.freeze({ assertCurrent: evidence.seedOnly.assertCurrent }) } : {}),
 			...(evidence.commandEcho === true ? { commandEcho: true } : {}),
 			// Arrival order is fixed here, before metadata lookups and the value lock.
 			ingressSequence: evidence.ingressSequence ?? nextSampleIngress(),
@@ -1016,6 +1019,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		options: ChannelPropertyUpdateOptions = {},
 	): Promise<TProperty> {
 		this.logger.debug(`Updating data source with id=${id}`);
+		const valueIsCurrent = options.valueIsCurrent;
 
 		if (this.isValueOnlyUpdate(updateDto, options)) {
 			const valueOnlyMapping =
@@ -1030,6 +1034,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					valueOnlyMapping,
 					options.skipUnchangedMetadata,
 					options.sampleEvidence,
+					valueIsCurrent,
 				);
 
 				if ('property' in result) {
@@ -1158,16 +1163,21 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 					return strictResult ?? this.propertyValueService.writeWithState(raw, updateDto.value, valueTimestamp);
 				};
+				const guardedWrite =
+					valueIsCurrent && !options.sampleEvidence && !options.strictValuePersistence
+						? () => this.propertyValueService.writeLiveWithState(raw, updateDto.value, valueTimestamp, valueIsCurrent)
+						: undefined;
 				const windowed =
 					options.commandOrigin === undefined
 						? await this.commitWindowedProviderValue(
 								raw,
 								updateDto.value,
 								{
-									unwindowed: writeWithoutWindow,
-									windowed: writeWithWindow,
+									unwindowed: guardedWrite ?? writeWithoutWindow,
+									windowed: guardedWrite ?? writeWithWindow,
 								},
 								options.sampleEvidence,
+								valueIsCurrent,
 							)
 						: await this.commitCommandOriginValue(raw, updateDto.value, options.commandOrigin, writeWithWindow);
 				valueChanged = windowed.changed;
@@ -1234,6 +1244,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		knownMapping: ChannelPropertyTypeMapping<TProperty, any, TUpdateDTO> | undefined,
 		skipUnchangedMetadata = false,
 		evidence?: PropertySampleEvidence,
+		valueIsCurrent?: () => boolean,
 	): Promise<{ property: TProperty } | { type: string }> {
 		return this.structureLock.runShared(() =>
 			this.propertyStateCoordinator.run(id, async (): Promise<{ property: TProperty } | { type: string }> => {
@@ -1267,15 +1278,18 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					return { type: current.type };
 				}
 				const commit = async (): Promise<{ property: TProperty }> => {
-					const write = (): Promise<PropertyValueWriteResult> =>
-						evidence
-							? this.propertyValueService.writeSampleWithState(current, value, evidence)
-							: this.propertyValueService.writeLiveWithState(current, value);
+					const write = (): Promise<PropertyValueWriteResult> => {
+						if (evidence) return this.propertyValueService.writeSampleWithState(current, value, evidence);
+						if (valueIsCurrent)
+							return this.propertyValueService.writeLiveWithState(current, value, undefined, valueIsCurrent);
+						return this.propertyValueService.writeLiveWithState(current, value);
+					};
 					const result = await this.commitWindowedProviderValue(
 						current,
 						value,
 						{ unwindowed: write, windowed: write },
 						evidence,
+						valueIsCurrent,
 					);
 					this.commandLatencyTraceCollector.recordWriteComplete(current, {
 						changed: result.changed,
@@ -1319,10 +1333,12 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		value: string | number | boolean | null,
 		writers: WindowedValueWriters,
 		evidence?: PropertySampleEvidence,
+		valueIsCurrent?: () => boolean,
 	): Promise<WindowedValueCommitResult> {
 		const canonicalPropertyId = this.valueSourceRegistry.resolve(property);
-		if (evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false)
-			return { changed: false, state: null, held: true, forceValueEvent: false };
+		const isCurrent = () =>
+			valueIsCurrent?.() !== false && evidence?.isCurrent?.() !== false && evidence?.sourceIsCurrent?.() !== false;
+		if (!isCurrent()) return { changed: false, state: null, held: true, forceValueEvent: false };
 		// Protective faults revoke qualification independently of command acknowledgement causality.
 		const validation = validatePropertyCommandValue(property, value);
 
@@ -1378,8 +1394,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 			// Clients may still display the unconfirmed command even when the provider reports the
 			// unchanged stored value. Resolve that optimistic state without adding duplicate history.
-			if (evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false)
-				return { changed: false, state: null, held: false, forceValueEvent: false };
+			if (!isCurrent()) return { changed: false, state: null, held: false, forceValueEvent: false };
 			return { ...result, held: false, forceValueEvent: reconcilesCommand && result.state !== null };
 		}
 
@@ -1414,7 +1429,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const firstConfirmation = isConfirmation && window.state === 'pending';
 		const result = await writers.windowed();
 
-		if (result.state === null || evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false) {
+		if (result.state === null || !isCurrent()) {
 			return { changed: false, state: null, held: false, forceValueEvent: false };
 		}
 

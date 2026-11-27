@@ -34,7 +34,7 @@ import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
-import { ShellyV1AdoptedIdentityService } from './shelly-v1-adopted-identity.service';
+import { ShellyV1AdoptedIdentityService, shellyV1AdoptionState } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 import { ShellyV1PropertyReportsService } from './shelly-v1-property-reports.service';
 import { ShellyV1Service } from './shelly-v1.service';
@@ -524,7 +524,7 @@ describe('ShellyV1Service', () => {
 				? { deviceId: device.id, mac: expected, verifiedHost: configuredHost, revision: 1, device }
 				: null;
 			identities.findPin.mockResolvedValue(pin);
-			const adoption = { id: device.id, identifier: device.identifier, hostname: device.hostname, pin };
+			const adoption = shellyV1AdoptionState(device, pin);
 			identities.captureDevice.mockResolvedValue(adoption);
 			channelsService.findOneBy.mockResolvedValue(mockDeviceInfoChannel);
 			channelsPropertiesService.findOneBy.mockResolvedValue(mockProperty);
@@ -719,8 +719,7 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
-			// Discovery is enabled by default, should call mapDevice for new devices
-			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent, true);
 		});
 
 		it('should ignore new devices when discovery is disabled', async () => {
@@ -741,15 +740,11 @@ describe('ShellyV1Service', () => {
 				online: true,
 			};
 
-			// Mock that device does not exist in database (new device)
-			devicesService.findOneBy.mockResolvedValue(null);
-			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
+			deviceMapper.mapDevice.mockResolvedValue(null);
 
 			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
-			// Discovery is disabled, should NOT call mapDevice for new devices
-			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-NEW123', DEVICES_SHELLY_V1_TYPE);
-			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent, false);
 		});
 
 		it('should still process existing devices when discovery is disabled', async () => {
@@ -770,15 +765,11 @@ describe('ShellyV1Service', () => {
 				online: true,
 			};
 
-			// Mock that device exists in database (existing device)
-			devicesService.findOneBy.mockResolvedValue(mockDevice);
 			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
 
 			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
-			// Discovery is disabled, but device exists, should still call mapDevice
-			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
-			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent, false);
 		});
 	});
 
@@ -796,7 +787,7 @@ describe('ShellyV1Service', () => {
 			);
 
 			await expect(adapterCallbacks.onDeviceDiscovered?.(discoveryEvent)).resolves.not.toThrow();
-			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent, true);
 		});
 	});
 

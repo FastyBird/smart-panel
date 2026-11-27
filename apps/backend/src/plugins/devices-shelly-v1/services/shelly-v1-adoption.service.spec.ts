@@ -16,6 +16,7 @@ describe('ShellyV1AdoptionService', () => {
 	let service: ShellyV1AdoptionService;
 	let identities: {
 		captureDevice: jest.Mock;
+		captureDiscovery: jest.Mock;
 		createDevice: jest.Mock<Promise<ShellyV1DeviceEntity>, [CreateShellyV1DeviceDto]>;
 		updateDevice: jest.Mock;
 	};
@@ -34,6 +35,10 @@ describe('ShellyV1AdoptionService', () => {
 	beforeEach(async () => {
 		identities = {
 			captureDevice: jest.fn().mockResolvedValue(null),
+			captureDiscovery: jest.fn(async (identifier: string) => ({
+				exact: (await identities.captureDevice(identifier)) as ShellyV1AdoptionState | null,
+				aliases: [],
+			})),
 			createDevice: jest
 				.fn<Promise<ShellyV1DeviceEntity>, [CreateShellyV1DeviceDto]>()
 				.mockResolvedValue(Object.assign(new ShellyV1DeviceEntity(), { id: 'new-device' })),
