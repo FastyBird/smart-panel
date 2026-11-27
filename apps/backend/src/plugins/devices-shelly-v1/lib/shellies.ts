@@ -14,7 +14,52 @@ const shellies = require('shellies') as ShelliesLibrary;
 
 export default shellies;
 
-type CoIoTStatus = { deviceType: string; deviceId: string; serial: number; payload?: { G?: unknown } };
+type CoIoTStatus = {
+	deviceType: string;
+	deviceId: string;
+	host: string;
+	serial: number;
+	payload?: { G?: unknown };
+	msg?: { code: string; _packet?: { ack: boolean } };
+};
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- use the same CoAP agent and option decoding as shellies
+const coap = require('shellies/lib/coap') as { getStatus(host: string): Promise<CoIoTStatus> };
+
+function temperatureField(peer: ShellyDevice, packet: CoIoTStatus): { serial: number; value: unknown } | null {
+	if (
+		!Array.isArray(packet.payload?.G) ||
+		!Number.isInteger(packet.serial) ||
+		packet.serial < 1 ||
+		packet.serial > 65535
+	)
+		return null;
+	const mapped = peer as ShellyDevice & { _getPropertyName: (id: number, mode: unknown) => string | undefined };
+	const temperatures = packet.payload.G.filter(
+		(tuple: unknown): tuple is [number, number, unknown] =>
+			Array.isArray(tuple) &&
+			tuple.length === 3 &&
+			tuple[0] === 0 &&
+			typeof tuple[1] === 'number' &&
+			mapped._getPropertyName(tuple[1], peer.mode) === 'temperature',
+	);
+	return temperatures.length === 1 ? { serial: packet.serial, value: temperatures[0][2] } : null;
+}
+
+/** The Gen1 protocol specifies a piggybacked response to GET /cit/s. Its serial is the device's current status. */
+export async function readShellyTemperature(peer: ShellyDevice): Promise<{ serial: number; value: unknown } | null> {
+	const host = peer.host;
+	const packet = await coap.getStatus(host);
+	if (
+		packet.host !== host ||
+		packet.deviceType !== peer.type ||
+		packet.deviceId !== peer.id ||
+		packet.msg?.code !== '2.05' ||
+		packet.msg._packet?.ack !== true
+	)
+		return null;
+	return temperatureField(peer, packet);
+}
 
 /**
  * The installed shellies 1.x emitter only publishes coerced, *changed* property values.
@@ -26,19 +71,9 @@ export function subscribeShellyTemperatures(
 ): () => void {
 	const library = shellies as ShelliesLibrary & { _listener: EventEmitter };
 	const onStatus = (packet: CoIoTStatus): void => {
-		const peer = library.getDevice(packet.deviceType, packet.deviceId) as
-			| (ShellyDevice & { _getPropertyName: (id: number, mode: unknown) => string | undefined })
-			| undefined;
-		if (!peer || !Array.isArray(packet.payload?.G)) return;
-		const temperatures = packet.payload.G.filter(
-			(tuple: unknown): tuple is [number, number, unknown] =>
-				Array.isArray(tuple) &&
-				tuple.length === 3 &&
-				tuple[0] === 0 &&
-				typeof tuple[1] === 'number' &&
-				peer._getPropertyName(tuple[1], peer.mode) === 'temperature',
-		);
-		if (temperatures.length === 1) callback(peer, packet.serial, temperatures[0][2]);
+		const peer = library.getDevice(packet.deviceType, packet.deviceId);
+		const field = peer && temperatureField(peer, packet);
+		if (field) callback(peer, field.serial, field.value);
 	};
 	library._listener.on('statusUpdate', onStatus);
 	return () => library._listener.removeListener('statusUpdate', onStatus);

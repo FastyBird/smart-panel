@@ -8,7 +8,12 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -28,6 +33,14 @@ import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { StateChangedEventService } from './state-changed.event.service';
 import { VirtualPropertyService } from './virtual-property.service';
 
+function gate() {
+	let release: () => void;
+	const promise = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	return { promise, release: () => release() };
+}
+
 describe('StateChangedEventService', () => {
 	let module: TestingModule | undefined;
 	let service: StateChangedEventService;
@@ -37,6 +50,7 @@ describe('StateChangedEventService', () => {
 	let mapperService: jest.Mocked<MapperService>;
 	let httpService: jest.Mocked<HomeAssistantHttpService>;
 	let inputOccurrencesService: jest.Mocked<ChannelInputOccurrencesService>;
+	let virtualPropertyService: jest.Mocked<VirtualPropertyService>;
 
 	beforeEach(async () => {
 		module = await Test.createTestingModule({
@@ -50,7 +64,13 @@ describe('StateChangedEventService', () => {
 				},
 				{ provide: MapperService, useValue: { mapFromHA: jest.fn() } },
 				{ provide: HomeAssistantHttpService, useValue: { getDiscoveredDevices: jest.fn() } },
-				{ provide: VirtualPropertyService, useValue: { resolveVirtualPropertyValue: jest.fn() } },
+				{
+					provide: VirtualPropertyService,
+					useValue: {
+						getVirtualPropertiesForChannel: jest.fn().mockReturnValue([]),
+						resolveVirtualPropertyValue: jest.fn(),
+					},
+				},
 				{
 					provide: ChannelInputOccurrencesService,
 					useValue: { publishOccurrence: jest.fn().mockResolvedValue({}) },
@@ -76,6 +96,7 @@ describe('StateChangedEventService', () => {
 		mapperService = module.get(MapperService);
 		httpService = module.get(HomeAssistantHttpService);
 		inputOccurrencesService = module.get(ChannelInputOccurrencesService);
+		virtualPropertyService = module.get(VirtualPropertyService);
 
 		jest.useFakeTimers();
 	});
@@ -102,7 +123,8 @@ describe('StateChangedEventService', () => {
 		} as unknown as HomeAssistantStateChangedEventDto;
 
 		await service.handle(event);
-		// Expect nothing crashes, no calls made due to early return
+		await jest.runAllTimersAsync();
+		expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(1);
 		expect(mapperService.mapFromHA).not.toHaveBeenCalled();
 	});
 
@@ -144,6 +166,259 @@ describe('StateChangedEventService', () => {
 				],
 			]);
 		};
+
+		describe('concurrent state changes', () => {
+			const heater = 'switch.heater';
+			let tick: number;
+			const lastChange = new Map<string, Date>();
+			beforeEach(() => {
+				tick = 0;
+				lastChange.clear();
+			});
+			const change = (entity: string, previous: string, next: string, revision: string) => {
+				const request = event(entity, previous, next, { revision });
+				const previousChange = lastChange.get(entity) ?? new Date(at.getTime() - 60_000);
+				request.data.old_state.last_changed = previousChange;
+				request.data.new_state.last_changed = previous === next ? previousChange : new Date(at.getTime() + tick++);
+				lastChange.set(entity, request.data.new_state.last_changed);
+				return request;
+			};
+			const transition = (revision: string, on: boolean, entity = heater) =>
+				change(entity, on ? 'off' : 'on', on ? 'on' : 'off', revision);
+			const presentation = (revision: string, state: string) => change(heater, state, state, revision);
+			const writes = () => channelsPropertiesService.update.mock.calls.map(([id, update]) => [id, update.value]);
+			const samples = () =>
+				channelsPropertiesService.reportSample.mock.calls.map(([id, update, source]) => [
+					id,
+					update.value,
+					source.ingressSequence,
+				]);
+
+			const setup = (beforeMapping: (revision: string) => Promise<void>, entities = [heater]) => {
+				httpService.getDiscoveredDevices.mockResolvedValue([
+					{ id: 'ha-device', entities } as HomeAssistantDiscoveredDeviceModel,
+				]);
+				devicesService.findAll.mockResolvedValue([
+					{ id: 'device', haDeviceId: 'ha-device', enabled: true } as HomeAssistantDeviceEntity,
+				]);
+				const channels = entities.map(
+					(id) => ({ id, category: ChannelCategory.SWITCHER }) as HomeAssistantChannelEntity,
+				);
+				const properties = entities.flatMap((entity) =>
+					[
+						{ id: entity, category: PropertyCategory.ON, haAttribute: 'fb.main_state' },
+						{ id: entity + '/attribute', category: PropertyCategory.FAULT_DESCRIPTION, haAttribute: 'revision' },
+						{ id: entity + '/virtual', category: PropertyCategory.STATUS, haAttribute: 'fb.virtual.status' },
+					].map(
+						(property) => ({ ...property, channel: entity, haEntityId: entity }) as HomeAssistantChannelPropertyEntity,
+					),
+				);
+				channelsService.findAll.mockResolvedValue(channels);
+				channelsPropertiesService.findAll.mockResolvedValue(properties);
+				virtualPropertyService.getVirtualPropertiesForChannel.mockReturnValue([
+					{
+						propertyCategory: PropertyCategory.STATUS,
+						virtualType: 'derived',
+						dataType: DataTypeType.STRING,
+						permissions: [PermissionType.READ_ONLY],
+					},
+				]);
+				virtualPropertyService.resolveVirtualPropertyValue.mockImplementation((definition, context) => ({
+					...definition,
+					category: definition.propertyCategory,
+					value: context.state.attributes.revision as string,
+					isVirtual: true,
+				}));
+				const mapped: string[] = [];
+				mapperService.mapFromHA.mockImplementation(async (_, [state]) => {
+					const revision = state.attributes.revision as string;
+					mapped.push(revision);
+					await beforeMapping(revision);
+					return [
+						[
+							{ property: properties.find((property) => property.id === state.entity_id), value: state.state === 'on' },
+							{
+								property: properties.find((property) => property.id === state.entity_id + '/attribute'),
+								value: revision,
+							},
+						],
+					];
+				});
+				return { mapped, channels };
+			};
+
+			it('keeps both physical transitions, ordinary attributes and virtual properties in arrival order', async () => {
+				const mappingStarted = gate();
+				const allowMapping = gate();
+				const virtualStarted = gate();
+				const allowVirtualWrite = gate();
+				const { mapped } = setup(async (revision) => {
+					if (revision === 'first') {
+						mappingStarted.release();
+						await allowMapping.promise;
+					}
+				});
+				channelsPropertiesService.update.mockImplementation(async (id, update) => {
+					if (id === heater + '/virtual' && update.value === 'first') {
+						virtualStarted.release();
+						await allowVirtualWrite.promise;
+					}
+					return { id } as HomeAssistantChannelPropertyEntity;
+				});
+				const first = service.handle(transition('first', true), ingress());
+				await mappingStarted.promise;
+				const second = service.handle(transition('second', false), { ...ingress(), ingressSequence: 13 });
+				await jest.advanceTimersByTimeAsync(0);
+				const whileMapping = [...mapped];
+				allowMapping.release();
+				await virtualStarted.promise;
+				const whileWritingVirtual = [...mapped];
+				allowVirtualWrite.release();
+				await Promise.all([first, second]);
+
+				expect(whileMapping).toEqual(['first']);
+				expect(whileWritingVirtual).toEqual(['first']);
+				expect(samples()).toEqual([
+					[heater, true, 12],
+					[heater, false, 13],
+				]);
+				expect(writes()).toEqual([
+					[heater + '/attribute', 'first'],
+					[heater + '/virtual', 'first'],
+					[heater + '/attribute', 'second'],
+					[heater + '/virtual', 'second'],
+				]);
+			});
+
+			it('supersedes debounced presentations even after the timer fired behind a pending transition', async () => {
+				const mappingStarted = gate();
+				const allowMapping = gate();
+				const { mapped } = setup(async (revision) => {
+					if (revision === 'first') {
+						mappingStarted.release();
+						await allowMapping.promise;
+					}
+				});
+				const first = service.handle(transition('first', true), ingress());
+				await mappingStarted.promise;
+				await service.handle(presentation('superseded by transition', 'on'), ingress());
+				await jest.advanceTimersByTimeAsync(500);
+				const second = service.handle(transition('second', false), { ...ingress(), ingressSequence: 13 });
+				await service.handle(presentation('superseded by same state', 'off'), ingress());
+				await service.handle(presentation('latest attributes', 'off'), ingress());
+				allowMapping.release();
+				await Promise.all([first, second]);
+				await jest.advanceTimersByTimeAsync(499);
+				expect(mapped).toEqual(['first', 'second']);
+				await jest.advanceTimersByTimeAsync(1);
+				expect(mapped).toEqual(['first', 'second', 'latest attributes']);
+				expect(samples()).toEqual([
+					[heater, true, 12],
+					[heater, false, 13],
+				]);
+				expect(writes().slice(-2)).toEqual([
+					[heater + '/attribute', 'latest attributes'],
+					[heater + '/virtual', 'latest attributes'],
+				]);
+			});
+
+			it.each(['reconnect', 'remap', 'entity removal', 'teardown'])(
+				'discards in-flight, queued and debounced snapshots at %s',
+				async (change) => {
+					const mappingStarted = gate();
+					const allowMapping = gate();
+					const { mapped } = setup(async (revision) => {
+						if (revision === 'old') {
+							mappingStarted.release();
+							await allowMapping.promise;
+						}
+					});
+					const source = ingress();
+					const first = service.handle(transition('old', true), source);
+					await mappingStarted.promise;
+					const second = service.handle(transition('queued', false), source);
+					await service.handle(presentation('debounced', 'off'), source);
+					let destroyed: Promise<void>;
+					if (change === 'remap') service.handleDevicesUpdatedEvent({ type: 'devices-home-assistant' });
+					if (change === 'teardown') destroyed = service.onModuleDestroy();
+					if (change === 'entity removal') {
+						const removal = transition('removed', false);
+						removal.data.new_state = null;
+						await service.handle(removal, source);
+					}
+					const current = change === 'reconnect' ? { ...source, session: 'replacement socket' } : source;
+					const replacement = service.handle(transition('current', true), { ...current, ingressSequence: 99 });
+					allowMapping.release();
+					await Promise.all([first, second, replacement, destroyed]);
+					await jest.runAllTimersAsync();
+					expect(mapped).toEqual(change === 'teardown' ? ['old'] : ['old', 'current']);
+					expect(samples()).toEqual(change === 'teardown' ? [] : [[heater, true, 99]]);
+					expect(writes()).toEqual(
+						change === 'teardown'
+							? []
+							: [
+									[heater + '/attribute', 'current'],
+									[heater + '/virtual', 'current'],
+								],
+					);
+				},
+			);
+
+			it('fences a virtual property lookup across remapping and reloads the channel metadata', async () => {
+				const lookupStarted = gate();
+				const allowLookup = gate();
+				const { channels } = setup(() => Promise.resolve());
+				channelsService.findAll.mockImplementationOnce(async () => {
+					lookupStarted.release();
+					await allowLookup.promise;
+					return channels;
+				});
+				const first = service.handle(transition('old', true), ingress());
+				await lookupStarted.promise;
+				service.handleDevicesUpdatedEvent({ type: 'devices-home-assistant' });
+				const second = service.handle(transition('current', false), { ...ingress(), ingressSequence: 13 });
+				allowLookup.release();
+				await Promise.all([first, second]);
+				expect(channelsService.findAll).toHaveBeenCalledTimes(2);
+				expect(writes()).toEqual([
+					[heater + '/attribute', 'old'],
+					[heater + '/attribute', 'current'],
+					[heater + '/virtual', 'current'],
+				]);
+				expect(channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent()).toBe(false);
+			});
+
+			it('lets other entities finish independently and processes the next event after a mapping error', async () => {
+				const mappingStarted = gate();
+				const failMapping = gate();
+				const other = 'switch.cooler';
+				const { mapped } = setup(
+					async (revision) => {
+						if (revision === 'failing') {
+							mappingStarted.release();
+							await failMapping.promise;
+							throw new Error('mapping failed');
+						}
+					},
+					[heater, other],
+				);
+				const first = service.handle(transition('failing', true), ingress());
+				await mappingStarted.promise;
+				const next = service.handle(transition('retry', false), { ...ingress(), ingressSequence: 13 });
+				const independent = service.handle(transition('other', true, other), ingress());
+				await jest.advanceTimersByTimeAsync(0);
+				const duringFailure = samples();
+				failMapping.release();
+				await Promise.all([first, next, independent]);
+				expect(duringFailure).toEqual([[other, true, 12]]);
+				expect(mapped).toEqual(['failing', 'other', 'retry']);
+				expect(samples()).toEqual([
+					[other, true, 12],
+					[heater, false, 13],
+				]);
+			});
+		});
+
 		it('publishes an independent physical switch transition at its own timestamp and original socket ingress', async () => {
 			arrange('switch.heater', false);
 			const source = ingress();

@@ -128,6 +128,8 @@ export class ShellyV1PropertyReportsService {
 		const source = this.capture(device);
 		const binding = source?.bindings.find((item) => item.shelliesProperty === 'temperature');
 		if (!source || !binding) return;
+		const peerIsCurrent = source.isCurrent;
+		source.isCurrent = () => peerIsCurrent() && report.isCurrent();
 		source.observedAt = report.receivedAt;
 		source.ingressSequence = report.ingressSequence;
 		await this.reportBinding(source, binding, report.value, report.receivedAt);
