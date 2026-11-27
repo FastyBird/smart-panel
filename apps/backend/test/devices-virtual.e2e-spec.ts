@@ -3238,47 +3238,28 @@ describe('devices-virtual plugin (e2e)', () => {
 				})
 				.expect(201);
 			const deviceId = (created.body as { data: DeviceBody }).data.id;
-			const statusPropertyId = await waitUntil<string>(async () => {
-				const response = await authGet(`/modules/devices/devices/${deviceId}/channels`);
-				const status =
-					response.status === 200
-						? (response.body as { data: ChannelBody[] }).data
-								.find((candidate) => candidate.category === String(ChannelCategory.DEVICE_INFORMATION))
-								?.properties.find((property) => property.category === PropertyCategory.STATUS)
-						: undefined;
+			// The creation listener writes manufacturer, model and serial number after it creates the status row.
+			await linkSetupCompletion.finish();
+			const channels = await authGet(`/modules/devices/devices/${deviceId}/channels`).expect(200);
+			const status = (channels.body as { data: ChannelBody[] }).data
+				.find((channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION))
+				?.properties.find((property) => property.category === PropertyCategory.STATUS);
+			expect(status).toBeDefined();
 
-				return { done: !!status, value: status?.id ?? '' };
-			}, 'the synthesized connection state property');
-			const revision = async (): Promise<number> =>
-				(
-					await dataSource.query<{ revision: number }[]>(
-						'SELECT "revision" FROM "devices_virtual_graph_revision" WHERE "id" = 1',
-					)
-				)[0]?.revision ?? 0;
+			const graph = moduleRef.get(VirtualDependencyGraphService);
 			const properties = moduleRef.get<ChannelsPropertiesService>(ChannelsPropertiesService);
-			// The device information synthesis that follows creation is fire-and-forget and each of its
-			// rows is a structural write, so the baseline is the revision once it has stopped moving.
-			let before = await revision();
-			for (let quiet = 0; quiet < 4; ) {
-				await new Promise((resolve) => setTimeout(resolve, 250));
-				const current = await revision();
-				quiet = current === before ? quiet + 1 : 0;
-				before = current;
-			}
+			// The revision is shared by every device. Keep unrelated catalog writers outside this measurement.
+			await moduleRef.get(DeviceStructureLockService).runExclusive(async () => {
+				const before = await graph.revision();
+				for (const state of [ConnectionState.DISCONNECTED, ConnectionState.CONNECTED, ConnectionState.DISCONNECTED]) {
+					await properties.update(status.id, { type: DEVICES_VIRTUAL_TYPE, value: String(state) });
+					expect(await graph.revision()).toBe(before);
+				}
+				expect((await properties.getOneOrThrow(status.id)).value?.value).toBe(String(ConnectionState.DISCONNECTED));
 
-			// The write DeviceConnectivityService issues for every status change: type and value only.
-			for (const state of [ConnectionState.DISCONNECTED, ConnectionState.CONNECTED, ConnectionState.DISCONNECTED])
-				await properties.update(statusPropertyId, { type: DEVICES_VIRTUAL_TYPE, value: String(state) });
-
-			expect((await properties.getOneOrThrow(statusPropertyId)).value?.value).toBe(
-				String(ConnectionState.DISCONNECTED),
-			);
-			expect(await revision()).toBe(before);
-
-			// A stored field of the same row is a change to the catalog and keeps advancing.
-			await properties.update(statusPropertyId, { type: DEVICES_VIRTUAL_TYPE, name: 'Renamed status' });
-
-			expect(await revision()).toBe(before + 1);
+				await properties.update(status.id, { type: DEVICES_VIRTUAL_TYPE, name: 'Renamed status' });
+				expect(await graph.revision()).toBe(before + 1);
+			});
 		});
 	});
 
