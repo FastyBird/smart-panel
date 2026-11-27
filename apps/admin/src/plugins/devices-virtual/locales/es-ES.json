@@ -740,7 +740,7 @@
 		},
 		"draft": {
 			"title": "Borrador del controlador",
-			"description": "La configuración y las reservas se conservan, pero la calefacción y la refrigeración no estarán disponibles hasta la cualificación del hardware y la conciliación en ejecución."
+			"description": "El borrador conserva los dispositivos seleccionados. Antes de activar el termostato, confirme la protección independiente de cada salida supervisada por software y complete la configuración de las extensiones de hardware elegidas."
 		},
 		"name": "Nombre del termostato",
 		"revision": "Revisión de configuración {revision} · revisión del grafo {graph} · {readiness}",

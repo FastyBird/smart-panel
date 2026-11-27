@@ -764,11 +764,9 @@ describe('virtual thermostat durable runtime', () => {
 		const platform = {
 			getType: () => DEVICES_SHELLY_NG_TYPE,
 			process: jest.fn(),
-			processBatch: async (
-				updates: import('../../../modules/devices/platforms/device.platform').IDevicePropertyData[],
-			) => {
+			processBatch: (updates: import('../../../modules/devices/platforms/device.platform').IDevicePropertyData[]) => {
 				for (const { property, value } of updates) commands.push({ property: property.id, on: value === true });
-				return true;
+				return Promise.resolve(true);
 			},
 		};
 		switches.register(platform);
@@ -3417,6 +3415,8 @@ describe('virtual thermostat durable runtime', () => {
 				parameters?: readonly unknown[];
 			};
 			const transactions = new Map<import('typeorm').QueryRunner, NativeTransaction>();
+			const onBindings = jest.fn<void, [DeviceBindingsEvent]>();
+			events.on(DEVICE_BINDINGS_CHANGED, onBindings);
 			const qualifiedWrites: {
 				query: string;
 				parameters: readonly unknown[];
@@ -3531,6 +3531,10 @@ describe('virtual thermostat durable runtime', () => {
 						.some((query) => query.startsWith('UPDATE "devices_virtual_graph_revision"')),
 				).toBe(true);
 				expect(transaction.outcome).toBe(mode === 'clean' ? 'COMMIT' : 'ROLLBACK');
+				const removals = onBindings.mock.calls
+					.map(([event]) => event)
+					.filter((event) => event.removedBindings?.some((binding) => binding.claimId === claim.id));
+				expect(removals).toHaveLength(mode === 'clean' ? 1 : 0);
 				if (mode === 'clean') {
 					expect(released.state).toBe('released');
 					expect(released.revision).toBe(requested.revision + 1);
@@ -3545,6 +3549,7 @@ describe('virtual thermostat durable runtime', () => {
 			} catch (cause) {
 				primary = { cause };
 			} finally {
+				events.off(DEVICE_BINDINGS_CHANGED, onBindings);
 				owner.onModuleDestroy();
 				actualConfigs.onModuleDestroy();
 				const completions = await Promise.allSettled([owner.flush(), fixture.flushTelemetry()]);

@@ -48,7 +48,17 @@ export class ThermostatActuationRegistry implements OnModuleDestroy {
 			throw new Error('Invalid thermostat safety extension');
 		const key = JSON.stringify([id, version]);
 		if (this.extensions.has(key)) throw new Error('Thermostat safety extension already registered');
-		const registration = Object.freeze({ key, extension });
+		// Retain the functions that were registered. A later profile implementation must obtain
+		// its own registration before it can qualify or dispatch a previously captured claim.
+		const registered: ThermostatActuationExtension = Object.freeze({
+			profile: Object.freeze({ id, version }),
+			qualify: extension.qualify.bind(extension),
+			allows: extension.allows.bind(extension),
+			captureAdapter: extension.captureAdapter.bind(extension),
+			captureReadiness: extension.captureReadiness?.bind(extension),
+			captureTargetMetadata: extension.captureTargetMetadata?.bind(extension),
+		});
+		const registration = Object.freeze({ key, extension: registered });
 		this.extensions.set(key, registration);
 		return () => {
 			if (this.extensions.get(key) === registration) this.extensions.delete(key);

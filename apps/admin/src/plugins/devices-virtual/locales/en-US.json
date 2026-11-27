@@ -740,7 +740,7 @@
 		},
 		"draft": {
 			"title": "Draft controller",
-			"description": "Configuration and reservations persist, but heating and cooling remain unavailable until hardware qualification and runtime reconciliation."
+			"description": "The draft keeps the selected devices. Before enabling the thermostat, confirm independent protection for each software-supervised output and complete setup for any selected hardware extension."
 		},
 		"name": "Thermostat name",
 		"revision": "Configuration revision {revision} · graph revision {graph} · {readiness}",

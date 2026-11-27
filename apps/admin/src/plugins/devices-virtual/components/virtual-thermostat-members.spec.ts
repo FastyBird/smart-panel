@@ -289,7 +289,10 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(view.find('[data-test-id="independent-protection"]').exists()).toBe(false);
 		profile.vm.$emit('change', 'supervised-switch');
 		await flushPromises();
-		view.findAllComponents(ElCheckbox).find((entry) => entry.attributes('data-test-id') === 'independent-protection')!.vm.$emit('update:modelValue', true);
+		view
+			.findAllComponents(ElCheckbox)
+			.find((entry) => entry.attributes('data-test-id') === 'independent-protection')!
+			.vm.$emit('update:modelValue', true);
 		view.findComponent(ThermostatPropertyPicker).vm.$emit('update:modelValue', 'relay-1');
 		await flushPromises();
 		expect(member.value.source_property).toBe('relay-1');
@@ -647,7 +650,10 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(editor.findComponent({ name: 'DeviceWizardSteps' }).props('canAdvance')).toBe(true);
 		expect(editor.findAllComponents(ElCheckbox).some((entry) => entry.text().includes('floorProtect'))).toBe(false);
 		for (const card of editor.findAllComponents(ThermostatMemberCard)) {
-			card.findAllComponents(ElSelect).find((entry) => entry.attributes('data-test-id') === 'member-safety-profile')!.vm.$emit('change', 'shelly-ng.guarded-switch');
+			card
+				.findAllComponents(ElSelect)
+				.find((entry) => entry.attributes('data-test-id') === 'member-safety-profile')!
+				.vm.$emit('change', 'shelly-ng.guarded-switch');
 			await flushPromises();
 			expect(card.findComponent(ThermostatPropertyPicker).exists()).toBe(false);
 			expect(card.findComponent(ElCheckbox).exists()).toBe(false);
@@ -754,13 +760,28 @@ describe('actual mandatory-member authoring forms', () => {
 		const authoring = context('relay-0');
 		authoring.safety_extensions[0].candidates = [];
 		mocks.get.mockResolvedValueOnce({ data: { data: authoring } });
-		const member = { role: 'cooling', source_property: 'relay-0', provider_profile: 'shelly-ng.guarded-switch', lease_seconds: 15 } as ThermostatMemberDraft;
-		view = mount(ThermostatMemberCard, { props: {
-			member, coolingEnabled: true, coolingSources: [
-				{ id: 'dew', label: 'Room dew point', role: 'dew_point' },
-				{ id: 'floor-relay-0', label: 'Remote surface', role: 'cooled_surface' },
-			], configurationRevision: 0, requestedLimit: null, disabled: false, receivedAt: 0, now: 0, runtime: null,
-		} });
+		const member = {
+			role: 'cooling',
+			source_property: 'relay-0',
+			provider_profile: 'shelly-ng.guarded-switch',
+			lease_seconds: 15,
+		} as ThermostatMemberDraft;
+		view = mount(ThermostatMemberCard, {
+			props: {
+				member,
+				coolingEnabled: true,
+				coolingSources: [
+					{ id: 'dew', label: 'Room dew point', role: 'dew_point' },
+					{ id: 'floor-relay-0', label: 'Remote surface', role: 'cooled_surface' },
+				],
+				configurationRevision: 0,
+				requestedLimit: null,
+				disabled: false,
+				receivedAt: 0,
+				now: 0,
+				runtime: null,
+			},
+		});
 		await flushPromises();
 		expect(member.cooling_protection?.surface_property).toBe('floor-relay-0');
 	});

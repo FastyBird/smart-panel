@@ -740,7 +740,7 @@
 		},
 		"draft": {
 			"title": "Wersja robocza sterownika",
-			"description": "Konfiguracja i rezerwacje zostaną zachowane, ale ogrzewanie i chłodzenie pozostaną niedostępne do czasu kwalifikacji sprzętu i uzgodnienia stanu działania."
+			"description": "Wersja robocza zachowuje wybrane urządzenia. Przed włączeniem termostatu potwierdź niezależne zabezpieczenie każdego wyjścia nadzorowanego programowo i skonfiguruj wybrane rozszerzenia sprzętowe."
 		},
 		"name": "Nazwa termostatu",
 		"revision": "Rewizja konfiguracji {revision} · rewizja grafu {graph} · {readiness}",

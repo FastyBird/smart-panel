@@ -86,6 +86,13 @@
 				type="warning"
 				:closable="false"
 			/>
+			<el-alert
+				v-for="reason in authoringReasons"
+				:key="reason"
+				:title="reason"
+				type="warning"
+				:closable="false"
+			/>
 		</template>
 		<el-form-item
 			v-if="!supervised"
@@ -160,13 +167,6 @@
 					:maximum-age-seconds="member.protection.maximum_age_seconds"
 					consequence="floor"
 					@apply="member.protection.maximum_age_seconds = $event"
-				/>
-				<el-alert
-					v-for="reason in floorSources === undefined ? (selectedExtension?.reasons ?? context.value.value?.reasons ?? []) : []"
-					:key="reason"
-					:title="reason"
-					type="warning"
-					:closable="false"
 				/>
 
 				<el-alert
@@ -372,6 +372,7 @@ const extensions = computed(() =>
 	)
 );
 const selectedExtension = computed(() => extensions.value.find((extension) => extension.id === profile.value));
+const authoringReasons = computed(() => [...new Set([...(context.value.value?.reasons ?? []), ...(selectedExtension.value?.reasons ?? [])])]);
 const protectionCandidates = computed(() =>
 	supervised.value ? (context.value.value?.candidates ?? []) : (selectedExtension.value?.candidates ?? [])
 );

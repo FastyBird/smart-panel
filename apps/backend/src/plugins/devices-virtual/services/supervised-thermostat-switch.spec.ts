@@ -67,16 +67,16 @@ describe('a software-supervised switch from a new device plugin', () => {
 			contractFingerprint: 'contract',
 			qualification: evidence,
 		};
-		const request = jest.fn(async (query: PropertyReadRequest) => {
+		const request = jest.fn((query: PropertyReadRequest) => {
 			query.dispatching();
-			return true;
+			return Promise.resolve(true);
 		});
 		const processBatch = jest.fn((_updates: IDevicePropertyData[]) => Promise.resolve(true));
 		const platform: IDevicePlatform = {
 			getType: () => device.type,
 			process: jest.fn(),
 			processBatch,
-			...(noPreparedBatch ? { prepareCompositeBatch: jest.fn(async () => null) } : {}),
+			...(noPreparedBatch ? { prepareCompositeBatch: jest.fn(() => Promise.resolve(null)) } : {}),
 			...(readable ? { requestPropertyRead: request } : {}),
 		};
 		const registration = registry.registerOwned(platform);
@@ -223,11 +223,12 @@ describe('a software-supervised switch from a new device plugin', () => {
 			f.source.alive = false;
 			expect(original.sourceIsCurrent()).toBe(false);
 			await expect(f.drain(report)).resolves.toBeNull();
-			f.platform.processBatch = jest.fn(async () => true);
+			const replacement = jest.fn(() => Promise.resolve(true));
+			f.platform.processBatch = replacement;
 			await expect(
 				f.adapter.send(f.target, f.claim, f.evidence, () => true, { commandId: 'late' }),
 			).resolves.toMatchObject({ outcome: 'refused' });
-			expect(f.platform.processBatch).not.toHaveBeenCalled();
+			expect(replacement).not.toHaveBeenCalled();
 		} finally {
 			f.supervisor.destroy();
 		}

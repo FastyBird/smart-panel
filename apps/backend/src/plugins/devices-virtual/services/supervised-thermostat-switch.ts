@@ -174,7 +174,7 @@ export class SupervisedThermostatSwitch {
 					if (this.writes.get(identity) === operation) this.writes.delete(identity);
 				});
 			},
-			reconcile: async (leaf, commandIds, off, admitted, scope) => {
+			reconcile: (leaf, commandIds, off, admitted, scope) => {
 				const witness = this.observations.get(identity);
 				if (
 					!witness?.sample ||
@@ -194,17 +194,17 @@ export class SupervisedThermostatSwitch {
 					off.ingressSequence === undefined ||
 					off.ingressSequence < witness.sample.ingressSequence
 				)
-					return null;
+					return Promise.resolve(null);
 				const source = this.values.captureSampleSourceGuard(target.property);
 				const sourceIsCurrent = () => isCurrent() && witness.sampleSourceIsCurrent() && source();
 				const current = () =>
 					sourceIsCurrent() && admitted() && this.observations.get(identity) === witness && !this.writes.has(identity);
-				return {
+				return Promise.resolve({
 					proofId: randomUUID(),
 					physicalIdentity: identity,
 					connectionIdentity: scope.qualification.qualificationGeneration,
 					coveredCommandIds: [...commandIds],
-					retireConfirmedCommandIds: (ids) => {
+					retireConfirmedCommandIds: (ids: readonly string[]) => {
 						if (ids.includes(witness.commandId)) witness.settled = true;
 					},
 					supervisedOffCommandId: witness.commandId,
@@ -213,7 +213,7 @@ export class SupervisedThermostatSwitch {
 					isCurrent: current,
 					sourceIsCurrent,
 					scope,
-				};
+				});
 			},
 		};
 	}

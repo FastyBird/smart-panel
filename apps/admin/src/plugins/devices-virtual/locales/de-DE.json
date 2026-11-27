@@ -740,7 +740,7 @@
 		},
 		"draft": {
 			"title": "Reglerentwurf",
-			"description": "Konfiguration und Reservierungen bleiben erhalten, Heizen und Kühlen sind jedoch erst nach Hardware-Qualifizierung und Laufzeitabgleich verfügbar."
+			"description": "Der Entwurf speichert die ausgewählten Geräte. Bestätigen Sie vor dem Aktivieren des Thermostats den unabhängigen Schutz für jeden softwaregesteuerten Ausgang und richten Sie die ausgewählten Hardware-Erweiterungen ein."
 		},
 		"name": "Name des Thermostats",
 		"revision": "Konfigurationsrevision {revision} · Graphrevision {graph} · {readiness}",

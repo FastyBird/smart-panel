@@ -137,7 +137,9 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		this.installed = true;
 	}
 	private catalogMutation(query: string): 'bindings' | 'qualification' | null {
-		const table = /^\s*(?:UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`\[]?(\w+)/i.exec(query)?.[1]?.toLowerCase();
+		const table = /^\s*(?:UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+(?:["`]|\[)?(\w+)/i
+			.exec(query)?.[1]
+			?.toLowerCase();
 		if (!table) return null;
 		if (
 			/^devices_virtual_(?:thermostat_(?:configs|sources|actuator_claims|member_protection)$|transform_)/.test(table) ||

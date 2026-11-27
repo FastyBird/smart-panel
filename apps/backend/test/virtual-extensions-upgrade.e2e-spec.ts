@@ -144,11 +144,11 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 			expect.objectContaining({ name: 'providerProfile', dflt_value: "'shelly-ng.guarded-switch'" }),
 		);
 		expect((await claimColumns()).map(({ name }) => name)).not.toContain('independentProtectionAcknowledged');
-		expect(
-			await database.query(
-				"SELECT sql FROM sqlite_master WHERE type='trigger' AND name='virtual_thermostat_device_contract'",
-			),
-		).toEqual([{ sql: expect.stringContaining('canonicalMac') }]);
+		const triggers = await database.query<{ sql: string }[]>(
+			"SELECT sql FROM sqlite_master WHERE type='trigger' AND name='virtual_thermostat_device_contract'",
+		);
+		expect(triggers).toHaveLength(1);
+		expect(triggers[0].sql).toContain('canonicalMac');
 		expect(await database.runMigrations({ transaction: 'each' })).toHaveLength(1);
 		expect(await database.query('SELECT count(*) AS count FROM devices_virtual_thermostat_override_clocks')).toEqual([
 			{ count: 0 },

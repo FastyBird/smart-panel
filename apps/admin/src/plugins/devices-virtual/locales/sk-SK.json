@@ -740,7 +740,7 @@
 		},
 		"draft": {
 			"title": "Koncept regulátora",
-			"description": "Konfigurácia a rezervácie sa uložia, ale kúrenie a chladenie zostanú nedostupné až do kvalifikácie hardvéru a zosúladenia behového stavu."
+			"description": "Koncept uchováva vybrané zariadenia. Pred zapnutím termostatu potvrďte nezávislú ochranu každého softvérovo riadeného výstupu a dokončite nastavenie vybraných hardvérových rozšírení."
 		},
 		"name": "Názov termostatu",
 		"revision": "Revízia konfigurácie {revision} · revízia grafu {graph} · {readiness}",
