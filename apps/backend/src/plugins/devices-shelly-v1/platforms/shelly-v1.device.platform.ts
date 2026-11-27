@@ -23,6 +23,7 @@ import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 import {
 	ShellyV1AdoptedIdentityService,
 	shellyV1Address,
+	shellyV1PinMatches,
 	shellyV1ReportedMac,
 } from '../services/shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
@@ -269,8 +270,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 		const boolValue = coerceBooleanSafe(stateUpdate.value);
 		const address = shellyV1Address(device.identifier);
-		if (!address || (address.length === 6 && !(await this.shortRelayHostMatches(device, target, address))))
-			return false;
+		if (!address || !(await this.relayHostMatches(device, target, address))) return false;
 
 		this.logger.log(`Setting relay ${index} to ${boolValue ? 'ON' : 'OFF'} on device ${device.identifier}`, {
 			resource: device.id,
@@ -282,22 +282,22 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		return true;
 	}
 
-	private async shortRelayHostMatches(
+	private async relayHostMatches(
 		device: ShellyV1DeviceEntity,
 		target: CommandTarget,
 		address: string,
 	): Promise<boolean> {
 		const pin = await this.identities.findPin(device.id);
-		if (!target.isCurrent()) return false;
+		if (!target.isCurrent() || (pin && !shellyV1PinMatches(address, pin.mac))) return false;
+		if (address.length === 12) return true;
 		if (!pin) return device.hostname === target.host;
-		if (!/^[0-9A-F]{12}$/.test(pin.mac) || !pin.mac.endsWith(address)) return false;
 		if (pin.verifiedHost === target.host) return true;
 		if (pin.verifiedHost !== null || device.hostname !== target.host) return false;
 
 		// Pins from older installations can be confirmed only at the configured endpoint.
 		const info = await this.http.getDeviceInfo(target.host);
 		if (!target.isCurrent() || shellyV1ReportedMac(address, target.peer.type, info) !== pin.mac) return false;
-		return this.identities.confirmHost(device.id, pin.mac, target.host, null);
+		return this.identities.confirmHost(device.id, pin.mac, target.host, null, pin.revision);
 	}
 
 	/**

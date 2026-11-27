@@ -213,7 +213,7 @@ describe('ShellyV1DevicePlatform', () => {
 			'handles an upgraded pin with %s at the captured endpoint',
 			async (kind) => {
 				const { device, peer, registration, identities, http, write } = relay();
-				identities.findPin.mockResolvedValue({ mac, verifiedHost: null });
+				identities.findPin.mockResolvedValue({ mac, verifiedHost: null, revision: 1 });
 				http.getDeviceInfo.mockResolvedValue({
 					type: kind === 'wrong model' ? 'SHSW-1' : peer.type,
 					mac: kind === 'wrong full MAC' ? 'DDEEFFABC123' : mac,
@@ -225,7 +225,7 @@ describe('ShellyV1DevicePlatform', () => {
 				if (kind === 'unconfirmed move') expect(http.getDeviceInfo).not.toHaveBeenCalled();
 				else expect(http.getDeviceInfo).toHaveBeenCalledWith(originalHost);
 				if (kind === 'match' || kind === 'lost confirmation')
-					expect(identities.confirmHost).toHaveBeenCalledWith(device.id, mac, originalHost, null);
+					expect(identities.confirmHost).toHaveBeenCalledWith(device.id, mac, originalHost, null, 1);
 				else expect(identities.confirmHost).not.toHaveBeenCalled();
 			},
 		);
@@ -274,12 +274,14 @@ describe('ShellyV1DevicePlatform', () => {
 			expect(peer.setRelay).not.toHaveBeenCalled();
 		});
 
-		it('uses the current full-address relay through the normal write path', async () => {
+		it('uses the full-address relay without a configured host and rejects a conflicting catalog pin', async () => {
 			const { device, peer, identities, http, write } = relay('shelly1pm-' + mac);
 			device.hostname = null;
 			expect(await write(true)).toBe(true);
 			expect(peer.setRelay).toHaveBeenCalledWith(0, true);
-			expect(identities.findPin).not.toHaveBeenCalled();
+			identities.findPin.mockResolvedValue({ mac: '112233ABC123', verifiedHost: originalHost, revision: 1 });
+			expect(await write(true)).toBe(false);
+			expect(peer.setRelay).toHaveBeenCalledTimes(1);
 			expect(http.getDeviceInfo).not.toHaveBeenCalled();
 		});
 

@@ -42,6 +42,7 @@ import { ShelliesAdapterService } from './shellies-adapter.service';
 import {
 	ShellyV1AdoptedIdentityService,
 	shellyV1Address,
+	shellyV1PinMatches,
 	shellyV1ReportedMac,
 } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -819,15 +820,15 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 					);
 
 					if (!device?.enabled || !isCurrent()) continue;
+					const pin = await this.identities.findPin(device.id);
+					if (!isCurrent() || (pin && !shellyV1PinMatches(device.identifier, pin.mac))) continue;
+					const address = shellyV1Address(device.identifier);
+					const expected = pin?.mac ?? (address?.length === 12 ? address : null);
+					// Legacy short IDs can use their configured host only while they have no adopted pin.
+					if (expected === null && device.hostname !== host) continue;
 					const info = await this.httpClient.getDeviceInfo(host);
 					const mac = shellyV1ReportedMac(device.identifier, registeredDevice.type, info);
-					if (!mac || !isCurrent()) continue;
-					const expected = await this.identities.expected(device.id, device.identifier);
-					// Legacy short identities without a full MAC can use their explicitly configured host.
-					const matches = expected
-						? expected === mac
-						: device.hostname === host && shellyV1Address(device.identifier)?.length === 6;
-					if (!matches || !isCurrent()) continue;
+					if (!mac || (expected !== null && expected !== mac) || !isCurrent()) continue;
 
 					const password = device.password || undefined;
 					let username: string | undefined;
@@ -836,6 +837,16 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 						username = login?.username || SHELLY_AUTH_USERNAME;
 					}
 					if (!isCurrent()) continue;
+					const latest = await this.identities.captureDevice(device.identifier);
+					if (
+						!isCurrent() ||
+						!latest ||
+						latest.id !== device.id ||
+						latest.hostname !== device.hostname ||
+						latest.pin?.mac !== pin?.mac ||
+						latest.pin?.revision !== pin?.revision
+					)
+						continue;
 					const observation = expected ? this.reports.capture(device) : null;
 					const status = await this.httpClient.getDeviceStatus(host, undefined, username, password);
 					if (!isCurrent() || typeof status?.mac !== 'string' || status.mac.toUpperCase() !== mac) continue;

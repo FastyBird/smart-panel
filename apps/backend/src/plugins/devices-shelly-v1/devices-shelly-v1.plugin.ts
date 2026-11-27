@@ -105,6 +105,7 @@ export class DevicesShellyV1Plugin {
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly managedServiceManager: ManagedServiceManagerService,
+		private readonly identities: ShellyV1AdoptedIdentityService,
 	) {}
 
 	onModuleInit() {
@@ -119,6 +120,7 @@ export class DevicesShellyV1Plugin {
 			createDto: CreateShellyV1DeviceDto,
 			updateDto: UpdateShellyV1DeviceDto,
 			class: ShellyV1DeviceEntity,
+			beforeUpdate: (device, previous) => this.identities.validateIdentifier(device, previous),
 		});
 
 		this.channelsMapper.registerMapping<ShellyV1ChannelEntity, CreateShellyV1ChannelDto, UpdateShellyV1ChannelDto>({

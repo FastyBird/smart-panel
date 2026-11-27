@@ -36,8 +36,8 @@ const sampleDevice = (overrides: Partial<ShellyV1DeviceEntity> = {}) =>
 		enabled: true,
 		...overrides,
 	});
-const adapterFixture = () => {
-	const peer = { id: 'DDEEFF', type: 'SHSW-1', host: 'host' };
+const adapterFixture = (id = 'DDEEFF') => {
+	const peer = { id, type: 'SHSW-1', host: 'host' };
 	const registration = { ...peer };
 	return {
 		getRegisteredDevice: () => registration,
@@ -48,6 +48,67 @@ const adapterFixture = () => {
 };
 
 describe('Gen1 credential setup after catalog publication', () => {
+	it.each([
+		{ identifier: 'shelly1-AABBCCDDEEFF', usesRegistration: true },
+		{ identifier: 'shelly1-DDEEFF', usesRegistration: false },
+	])(
+		'resolves a missing hostname for $identifier and clears credentials on deletion',
+		async ({ identifier, usesRegistration }) => {
+			const adapter = adapterFixture(identifier);
+			const http = { getLoginSettings: jest.fn().mockResolvedValue({ username: 'operator' }) };
+			const subscriber = new DeviceEntitySubscriber(
+				{ subscribers: [] } as unknown as DataSource,
+				adapter as unknown as ShelliesAdapterService,
+				http as unknown as ShellyV1HttpClientService,
+				{ findPin: () => Promise.resolve(null) } as unknown as ShellyV1AdoptedIdentityService,
+			);
+			const device = sampleDevice({ identifier, hostname: null });
+			await subscriber.deviceCreated(device);
+			subscriber.deviceDeleted(device);
+			expect(http.getLoginSettings.mock.calls).toEqual(usesRegistration ? [['host']] : []);
+			expect(adapter.setDeviceAuthCredentials.mock.calls.map(([, host, , password]) => [host, password])).toEqual(
+				usesRegistration
+					? [
+							['host', 'old'],
+							['host', null],
+						]
+					: [],
+			);
+		},
+	);
+
+	it.each(['replaced peer', 'pin changed', 'conflicting identifier'])(
+		'withholds credentials when the captured full-address registration has a %s',
+		async (change) => {
+			const identifier = 'shelly1-AABBCCDDEEFF';
+			const adapter = adapterFixture(identifier);
+			const pin = {
+				mac: change === 'conflicting identifier' ? '112233DDEEFF' : 'AABBCCDDEEFF',
+				verifiedHost: 'host',
+				revision: 1,
+			};
+			const http = {
+				getLoginSettings: jest.fn(() => {
+					if (change === 'replaced peer') {
+						const peer = { ...adapter.getDevice() };
+						jest.spyOn(adapter, 'getDevice').mockReturnValue(peer);
+					}
+					if (change === 'pin changed') pin.revision++;
+					return Promise.resolve({ username: 'operator' });
+				}),
+			};
+			const subscriber = new DeviceEntitySubscriber(
+				{ subscribers: [] } as unknown as DataSource,
+				adapter as unknown as ShelliesAdapterService,
+				http as unknown as ShellyV1HttpClientService,
+				{ findPin: () => Promise.resolve({ ...pin }) } as unknown as ShellyV1AdoptedIdentityService,
+			);
+			await subscriber.deviceCreated(sampleDevice({ identifier, hostname: null }));
+			expect(http.getLoginSettings).toHaveBeenCalledTimes(change === 'conflicting identifier' ? 0 : 1);
+			expect(adapter.setDeviceAuthCredentials).not.toHaveBeenCalled();
+		},
+	);
+
 	it.each(['new password', 'disabled', 'deleted'])(
 		'revokes an outstanding login after the device is %s',
 		async (change) => {
@@ -184,7 +245,7 @@ describe('Gen1 credential setup after catalog publication', () => {
 				password: 'committed',
 			});
 			await Promise.all(publications);
-			expect(findPin).toHaveBeenCalledTimes(1);
+			expect(findPin).toHaveBeenCalledTimes(2);
 			expect(adapter.setDeviceAuthCredentials.mock.calls.map(([, , , password]) => password)).toEqual([
 				null,
 				'committed',
@@ -209,7 +270,9 @@ describe('Gen1 credential setup after catalog publication', () => {
 			const identities = {
 				findPin: jest
 					.fn()
-					.mockResolvedValue(scenario === 'legacy' ? null : { mac: 'AABBCCDDEEFF', verifiedHost: 'old-host' }),
+					.mockResolvedValue(
+						scenario === 'legacy' ? null : { mac: 'AABBCCDDEEFF', verifiedHost: 'old-host', revision: 1 },
+					),
 				confirmHost: jest.fn().mockResolvedValue(true),
 			};
 			const http = {
@@ -240,7 +303,9 @@ describe('Gen1 credential setup after catalog publication', () => {
 			await subscriber.deviceCreated(device);
 			expect(adapter.setDeviceAuthCredentials).toHaveBeenCalledTimes(['verified', 'legacy'].includes(scenario) ? 1 : 0);
 			expect(http.getLoginSettings).toHaveBeenCalledTimes(['verified', 'legacy', 'moved'].includes(scenario) ? 1 : 0);
-			expect(identities.confirmHost).toHaveBeenCalledTimes(['verified', 'moved'].includes(scenario) ? 1 : 0);
+			expect(identities.confirmHost).toHaveBeenCalledTimes(scenario === 'verified' ? 1 : 0);
+			if (scenario === 'verified')
+				expect(identities.confirmHost).toHaveBeenCalledWith('stored', 'AABBCCDDEEFF', 'new-host', 'old-host', 1);
 		},
 	);
 });

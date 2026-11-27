@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, VersionColumn } from 'typeorm';
 
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
@@ -16,4 +16,7 @@ export class ShellyV1AdoptedIdentityEntity {
 
 	@Column({ type: 'varchar', nullable: true })
 	verifiedHost: string | null;
+
+	@VersionColumn({ default: 1 })
+	revision: number;
 }

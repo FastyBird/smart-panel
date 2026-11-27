@@ -2,13 +2,16 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
-import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import { AdoptDeviceDto } from '../dto/adopt-devices.dto';
 import { UpdateShellyV1DeviceDto } from '../dto/update-device.dto';
-import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 
-import { ShellyV1AdoptedIdentityService, shellyV1Address } from './shelly-v1-adopted-identity.service';
+import {
+	ShellyV1AdoptedIdentityService,
+	ShellyV1AdoptionState,
+	shellyV1Address,
+	shellyV1PinMatches,
+} from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 export type ShellyV1AdoptionStatus = 'created' | 'updated' | 'failed';
@@ -40,7 +43,6 @@ export class ShellyV1AdoptionService {
 	private readonly logger = createExtensionLogger(DEVICES_SHELLY_V1_PLUGIN_NAME, 'ShellyV1AdoptionService');
 
 	constructor(
-		private readonly devicesService: DevicesService,
 		private readonly identities: ShellyV1AdoptedIdentityService,
 		private readonly http: ShellyV1HttpClientService,
 		private readonly provisionQueue: DeviceProvisionQueueService,
@@ -62,125 +64,71 @@ export class ShellyV1AdoptionService {
 		return outcomes;
 	}
 
-	private async adoptOne(device: AdoptDeviceDto): Promise<ShellyV1AdoptionOutcome> {
-		const existing = await this.findByIdentifier(device.identifier);
-		const short = shellyV1Address(device.identifier);
-		let mac: string | undefined;
-		if (short?.length === 6) {
-			const info = await this.http.getDeviceInfo(device.hostname).catch((): null => null);
-			if (info) {
-				mac = typeof info.mac === 'string' ? info.mac.toUpperCase() : undefined;
-				if (!mac || !/^[0-9A-F]{12}$/.test(mac) || !mac.endsWith(short))
-					return {
-						hostname: device.hostname,
-						name: device.name,
-						status: 'failed',
-						deviceId: existing?.id ?? null,
-						error: 'Shelly hardware identity does not match the selected device.',
-					};
-			}
-		}
-
-		if (existing !== null) {
-			return this.update(device, existing, mac);
-		}
-
+	private async adoptOne({
+		identifier,
+		hostname,
+		name,
+		category,
+		password,
+	}: AdoptDeviceDto): Promise<ShellyV1AdoptionOutcome> {
+		let existing: ShellyV1AdoptionState | null = null;
+		const selection = { hostname, name };
 		try {
-			const created = await this.identities.createDevice(
-				{
-					type: DEVICES_SHELLY_V1_TYPE,
-					category: device.category,
-					identifier: device.identifier,
-					name: device.name,
-					password: device.password ?? null,
-					hostname: device.hostname,
-				},
-				mac,
-			);
-
-			return {
-				hostname: device.hostname,
-				name: device.name,
-				status: 'created',
-				error: null,
-				deviceId: created.id,
-			};
-		} catch (error) {
-			// The connector may have adopted this device between the lookup above
-			// and the create. It is the same race the connector itself handles, and
-			// the answer is the same: look again, and treat a device that now exists
-			// as an update rather than a failure.
-			const raced = await this.findByIdentifier(device.identifier);
-
-			if (raced !== null) {
-				return this.update(device, raced, mac);
+			existing = await this.identities.captureDevice(identifier);
+			const short = shellyV1Address(identifier)?.length === 6;
+			let mac: string | undefined;
+			if (short || existing?.pin) {
+				const info = await this.http.getDeviceInfo(hostname).catch((): null => null);
+				if (info) {
+					mac = typeof info.mac === 'string' ? info.mac.toUpperCase() : undefined;
+					if (!mac || !shellyV1PinMatches(identifier, mac))
+						throw new Error('Shelly hardware identity does not match the selected device.');
+				}
 			}
 
-			const err = error as Error;
-
-			this.logger.error(`Failed to adopt device identifier=${device.identifier}`, {
-				message: err.message,
-				stack: err.stack,
-			});
-
-			return {
-				hostname: device.hostname,
-				name: device.name,
-				status: 'failed',
-				error: err.message.length > 0 ? err.message : 'Device could not be adopted',
-				deviceId: null,
-			};
-		}
-	}
-
-	private async update(
-		device: AdoptDeviceDto,
-		existing: ShellyV1DeviceEntity,
-		mac?: string,
-	): Promise<ShellyV1AdoptionOutcome> {
-		try {
-			if (shellyV1Address(device.identifier)?.length === 6) {
-				const expected = await this.identities.adopt(existing.id, device.identifier, mac, device.hostname);
-				if ((mac && expected !== mac) || (!mac && existing.hostname !== device.hostname))
-					throw new Error('Shelly endpoint does not match the adopted hardware identity.');
+			if (!existing) {
+				try {
+					const created = await this.identities.createDevice(
+						{
+							type: DEVICES_SHELLY_V1_TYPE,
+							identifier,
+							category,
+							password: password ?? null,
+							...selection,
+						},
+						mac,
+					);
+					return { ...selection, status: 'created', error: null, deviceId: created.id };
+				} catch (error) {
+					existing = await this.identities.captureDevice(identifier);
+					if (!existing) throw error;
+					// The observation started without this row or its pin. A fresh adoption can verify the winner.
+					if (short || existing.pin)
+						throw new Error('Shelly was adopted during verification. Retry with the current device.', { cause: error });
+				}
 			}
-			await this.devicesService.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(existing.id, {
+
+			const update: UpdateShellyV1DeviceDto & { hostname: string } = {
 				type: DEVICES_SHELLY_V1_TYPE,
-				name: device.name,
-				category: device.category,
-				// A blank password field means "leave what is stored" rather than
-				// "clear it" - the wizard only knows a password the operator typed
-				// during this session.
-				...(device.password === null || typeof device.password === 'undefined' ? {} : { password: device.password }),
-				hostname: device.hostname,
-			} as UpdateShellyV1DeviceDto);
-
-			return {
-				hostname: device.hostname,
-				name: device.name,
-				status: 'updated',
-				error: null,
-				deviceId: existing.id,
+				category,
+				// The wizard only knows a password the operator typed during this session.
+				...(password == null ? {} : { password }),
+				...selection,
 			};
+			await this.identities.updateDevice(existing, update, mac);
+			return { ...selection, status: 'updated', error: null, deviceId: existing.id };
 		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to update adopted device identifier=${device.identifier}`, {
+			const err = error instanceof Error ? error : new Error('Device could not be adopted');
+			this.logger.error(`Failed to adopt device identifier=${identifier}`, {
 				message: err.message,
 				stack: err.stack,
 			});
-
 			return {
-				hostname: device.hostname,
-				name: device.name,
+				...selection,
 				status: 'failed',
-				error: err.message.length > 0 ? err.message : 'Device could not be updated',
-				deviceId: existing.id,
+				error: err.message || 'Device could not be adopted',
+				deviceId: existing?.id ?? null,
 			};
 		}
-	}
-
-	private async findByIdentifier(identifier: string): Promise<ShellyV1DeviceEntity | null> {
-		return await this.devicesService.findOneBy<ShellyV1DeviceEntity>('identifier', identifier, DEVICES_SHELLY_V1_TYPE);
 	}
 }
