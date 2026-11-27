@@ -1687,5 +1687,6 @@
   "shading_role_open": "Otevřít {role}",
   "shading_role_close": "Zavřít {role}",
   "shading_group_label": "Skupina stínění",
-  "shading_group_positions_differ": "polohy se liší"
+  "shading_group_positions_differ": "polohy se liší",
+  "lights_role_lights": "Zobrazit světla: {role}"
 }

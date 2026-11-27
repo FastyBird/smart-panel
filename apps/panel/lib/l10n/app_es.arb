@@ -1636,5 +1636,6 @@
   "shading_role_open": "Abrir {role}",
   "shading_role_close": "Cerrar {role}",
   "shading_group_label": "Grupo de cortinas",
-  "shading_group_positions_differ": "posiciones distintas"
+  "shading_group_positions_differ": "posiciones distintas",
+  "lights_role_lights": "Ver luces de {role}"
 }

@@ -5361,4 +5361,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get shading_group_positions_differ => 'polohy se liší';
+
+  @override
+  String lights_role_lights(String role) {
+    return 'Zobrazit světla: $role';
+  }
 }

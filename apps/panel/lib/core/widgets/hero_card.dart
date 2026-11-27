@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/offline_note.dart';
+import 'package:fastybird_smart_panel/core/widgets/outcome_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -276,10 +277,14 @@ class _HeroSlots extends StatelessWidget {
     final neutrals = Theme.of(context).neutrals;
     final gap = AppSpacings.scale(metrics.gap);
     final wantsBadge = badge != null && showBadge;
-    // A tappable feedback line (the light property chooser) is a control,
-    // not a caption: it keeps its place in every layout below.
-    final feedbackAction = switch (feedback) {
+    // A tappable feedback line (the light property chooser, an outcome's
+    // details) is a control, and a warning outcome (Not confirmed, Failed)
+    // must stay seen (spec §7): neither is a caption to drop for room. Both
+    // keep their place in every layout below.
+    final keepFeedback = switch (feedback) {
       HeroFeedback(:final onTap) => onTap != null,
+      OutcomeIndicator(:final onDetails, :final outcome) =>
+        onDetails != null || OutcomeStyle.of(Theme.of(context), outcome).isPill,
       _ => false,
     };
     final valueColor = (dimmed || offline)
@@ -295,7 +300,7 @@ class _HeroSlots extends StatelessWidget {
             (badge ? metrics.badgeHeight + metrics.gap : 0) +
             (slider != null ? metrics.sliderHeight + metrics.gap : 0) +
             (buttons != null ? metrics.buttonsHeight + metrics.gap : 0) +
-            (feedbackAction
+            (keepFeedback
                 ? HeroCardMetrics.feedbackTapHeight + metrics.gap
                 : 0);
         final height = constraints.hasBoundedHeight
@@ -313,8 +318,8 @@ class _HeroSlots extends StatelessWidget {
         final inline = hasBadge && available < 50;
         // Under the smallest numeral the value takes the inline size, as it
         // does beside the badge (spec §4, "Physical floors": the square's
-        // known miss), and a plain feedback line goes (a tappable one is
-        // counted with the controls). Not even that fits: keep every control
+        // known miss), and a plain feedback line goes (a kept one is counted
+        // with the controls). Not even that fits: keep every control
         // reachable and let the card scroll.
         final small =
             !inline &&
@@ -328,7 +333,7 @@ class _HeroSlots extends StatelessWidget {
             : available.isFinite
             ? metrics.numeralFor(
                 available,
-                hasFeedback: feedback != null && !feedbackAction,
+                hasFeedback: feedback != null && !keepFeedback,
               )
             : metrics.numeralMax;
         // Cramped (inside its own scroll view) or given no height limit at
@@ -358,7 +363,7 @@ class _HeroSlots extends StatelessWidget {
                 ),
               ),
             ),
-            if (feedback != null && (feedbackAction || (!cramped && !small)))
+            if (feedback != null && (keepFeedback || (!cramped && !small)))
               feedback!,
           ],
         );
@@ -397,7 +402,7 @@ class _HeroSlots extends StatelessWidget {
               ),
             if (inline) ...[
               const Spacer(),
-              if (feedbackAction) feedback!,
+              if (keepFeedback) feedback!,
             ] else if (shrink)
               bigValue
             else

@@ -5646,5 +5646,14 @@
   "shading_group_positions_differ": "positions differ",
   "@shading_group_positions_differ": {
     "description": "Added to shading_group_label when the group's covers report different positions"
+  },
+  "lights_role_lights": "Show {role} lights",
+  "@lights_role_lights": {
+    "description": "Header button on Compact landscape that opens the selected light role's lights; role is the role name",
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
   }
 }

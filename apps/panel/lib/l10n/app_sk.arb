@@ -1636,5 +1636,6 @@
   "shading_role_open": "Otvoriť {role}",
   "shading_role_close": "Zatvoriť {role}",
   "shading_group_label": "Skupina tienenia",
-  "shading_group_positions_differ": "polohy sa líšia"
+  "shading_group_positions_differ": "polohy sa líšia",
+  "lights_role_lights": "Zobraziť svetlá: {role}"
 }

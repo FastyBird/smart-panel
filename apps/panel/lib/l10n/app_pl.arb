@@ -1636,5 +1636,6 @@
   "shading_role_open": "Otwórz {role}",
   "shading_role_close": "Zamknij {role}",
   "shading_group_label": "Grupa osłon",
-  "shading_group_positions_differ": "pozycje się różnią"
+  "shading_group_positions_differ": "pozycje się różnią",
+  "lights_role_lights": "Pokaż światła: {role}"
 }

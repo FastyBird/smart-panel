@@ -5376,4 +5376,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get shading_group_positions_differ => 'Positionen unterschiedlich';
+
+  @override
+  String lights_role_lights(String role) {
+    return '$role-Leuchten anzeigen';
+  }
 }

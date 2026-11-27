@@ -1636,5 +1636,6 @@
   "shading_role_open": "{role} öffnen",
   "shading_role_close": "{role} schließen",
   "shading_group_label": "Beschattungsgruppe",
-  "shading_group_positions_differ": "Positionen unterschiedlich"
+  "shading_group_positions_differ": "Positionen unterschiedlich",
+  "lights_role_lights": "{role}-Leuchten anzeigen"
 }

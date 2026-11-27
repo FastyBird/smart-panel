@@ -9597,6 +9597,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'positions differ'**
   String get shading_group_positions_differ;
+
+  /// Header button on Compact landscape that opens the selected light role's lights; role is the role name
+  ///
+  /// In en, this message translates to:
+  /// **'Show {role} lights'**
+  String lights_role_lights(String role);
 }
 
 class _AppLocalizationsDelegate

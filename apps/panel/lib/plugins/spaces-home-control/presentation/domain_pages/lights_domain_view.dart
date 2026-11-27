@@ -441,6 +441,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// True when a hero intent was in flight; used to detect unlock.
   bool _heroWasSpaceLocked = false;
 
+  /// Bumped whenever the hero's state is reset (a role switch): a request
+  /// that started for the previous hero leaves the current one alone.
+  int _heroGeneration = 0;
+
   /// Notifier bumped after [_toggleLight] so the role-lights sheet rebuilds.
   final ValueNotifier<int> _roleLightsSheetNotifier = ValueNotifier<int>(0);
 
@@ -971,6 +975,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Reset hero control state (when switching roles).
   void _resetHeroControlState() {
+    _heroGeneration++;
     for (final channelId in _heroControlChannelIds) {
       _heroControlStateService.setIdle(channelId);
     }
@@ -1940,11 +1945,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       _toggleRoleLights(roleData, on);
     }
 
-    // An off role turns on, then takes the value.
+    // An off role turns on, then takes the value, unless the hero has moved
+    // to another role meanwhile: the value would land on the new role's
+    // hero state.
     VoidCallback preset(LightHeroCapability m, double v) => () async {
           if (!state.isOn) {
+            final generation = _heroGeneration;
             await _toggleRoleLights(roleData, true);
-            if (!mounted) return;
+            if (!mounted || generation != _heroGeneration) return;
           }
           HapticFeedback.selectionClick();
           _onHeroValueChanged(m, v, roleData.role, state);
@@ -2375,6 +2383,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final hasLightsOn = (lightsOn ?? 0) > 0;
     final unknown = _lightingState?.unknownLights ?? 0;
+    final selectedRole = effectiveRole == null
+        ? null
+        : roles.where((r) => r.role == effectiveRole).firstOrNull;
 
     final line =
         subtitle ??
@@ -2391,6 +2402,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           icon: MdiIcons.lightbulbGroupOutline,
           semanticLabel: localizations.lights_roles_title,
           onTap: () => _showRolesChooser(roles, effectiveRole),
+        ),
+      // Compact landscape drops the hero badge (spec §4, "Domain hero"),
+      // which is how a role's lights open elsewhere: the header takes it.
+      if (_screenService.isCompact &&
+          _screenService.isLandscape &&
+          !_screenService.isSquare &&
+          selectedRole != null)
+        HeaderIconButton(
+          key: const ValueKey('lights-role-lights-button'),
+          icon: MdiIcons.lightbulbGroup,
+          semanticLabel: localizations.lights_role_lights(selectedRole.name),
+          onTap: () => _showRoleLightsSheet(selectedRole),
         ),
       if (_screenService.isCompact &&
           lightsOn != null &&
@@ -3124,6 +3147,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final stateRole = mapTargetRoleToStateRole(roleData.role);
     if (stateRole == null) return;
+    final generation = _heroGeneration;
+    // After the request, the hero is only this role's if no switch happened.
+    bool heroStillOurs() => updateHero && generation == _heroGeneration;
 
     try {
       if (updateHero) {
@@ -3158,13 +3184,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       if (!success) {
         Toast.showError(context, message: localizations.action_failed);
-        if (updateHero) {
+        if (heroStillOurs()) {
           _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
           setState(() {
             _heroPendingOnState = null;
           });
         }
-      } else if (updateHero) {
+      } else if (heroStillOurs()) {
         _heroPendingOnStateClearTimer = Timer(
           const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
           () {
@@ -3179,7 +3205,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     } catch (e) {
       if (!mounted) return;
       Toast.showError(context, message: localizations.action_failed);
-      if (updateHero) {
+      if (heroStillOurs()) {
         _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
         setState(() {
           _heroPendingOnState = null;

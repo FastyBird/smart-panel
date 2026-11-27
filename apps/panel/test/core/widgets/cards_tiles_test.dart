@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/offline_note.dart';
+import 'package:fastybird_smart_panel/core/widgets/outcome_indicator.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
@@ -88,6 +89,7 @@ Widget _hero(
   bool dimmed = false,
   Orientation orientation = Orientation.landscape,
   VoidCallback? onFeedbackTap,
+  Widget? feedback,
 }) =>
     SizedBox(
       width: 600,
@@ -109,7 +111,7 @@ Widget _hero(
                 sizeClass: sizeClass,
               )
             : null,
-        feedback: HeroFeedback(text: 'Brightness · Main', onTap: onFeedbackTap, sizeClass: sizeClass),
+        feedback: feedback ?? HeroFeedback(text: 'Brightness · Main', onTap: onFeedbackTap, sizeClass: sizeClass),
         slider: const SizedBox.expand(key: ValueKey('slider')),
         buttons: const SizedBox.expand(key: ValueKey('buttons')),
       ),
@@ -275,6 +277,54 @@ void main() {
         }
       });
     }
+
+    for (final (sizeClass, orientation) in [
+      (ScreenSizeClass.compact, Orientation.landscape),
+      (ScreenSizeClass.regular, Orientation.landscape),
+      (ScreenSizeClass.compact, Orientation.portrait),
+    ]) {
+      testWidgets('keeps an unconfirmed outcome and its details at every height at ${sizeClass.name} ${orientation.name}',
+          (tester) async {
+        // A setpoint that never confirmed: the warning and its details must
+        // survive the inline, small and scrolling layouts.
+        for (var height = 120.0; height <= 300; height += 6) {
+          var details = 0;
+          await _pump(
+            tester,
+            _hero(
+              sizeClass,
+              height: height,
+              orientation: orientation,
+              feedback: OutcomeIndicator(
+                outcome: AppOutcome.notConfirmed,
+                onDetails: () => details++,
+                sizeClass: sizeClass,
+              ),
+            ),
+          );
+          expect(tester.takeException(), isNull, reason: 'at $height');
+          final outcome = find.byType(OutcomeIndicator);
+          expect(outcome, findsOneWidget, reason: 'at $height');
+          await tester.ensureVisible(outcome);
+          await tester.pumpAndSettle();
+          await tester.tap(outcome);
+          expect(details, 1, reason: 'at $height');
+        }
+      });
+    }
+
+    testWidgets('keeps a failed warning without details on a short hero', (tester) async {
+      await _pump(
+        tester,
+        _hero(
+          ScreenSizeClass.compact,
+          height: 150,
+          feedback: const OutcomeIndicator(outcome: AppOutcome.failed, sizeClass: ScreenSizeClass.compact),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byType(OutcomeIndicator), findsOneWidget);
+    });
 
     testWidgets('drops the role badge in Compact landscape only', (tester) async {
       await _pump(tester, _hero(ScreenSizeClass.compact, height: 320));

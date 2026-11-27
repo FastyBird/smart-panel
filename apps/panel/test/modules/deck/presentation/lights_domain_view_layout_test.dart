@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_light_target_role.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -12,6 +14,8 @@ import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/light_targets/light_target.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/lights_domain_view.dart';
@@ -29,6 +33,8 @@ class _Devices extends Mock implements DevicesService {}
 class _Light extends Mock implements LightingDeviceView {}
 
 class _Channel extends Mock implements LightChannelView {}
+
+class _OnProp extends Mock implements OnChannelPropertyView {}
 
 const _room = '00000000-0000-4000-8000-000000000001';
 const _item = DomainViewItem(
@@ -180,6 +186,12 @@ void main() {
         compactLandscape ? findsNothing : findsOneWidget,
       );
 
+      // Without the badge, the header opens the role's lights.
+      expect(
+        find.byKey(const ValueKey('lights-role-lights-button')),
+        compactLandscape ? findsOneWidget : findsNothing,
+      );
+
       final square = size.width == size.height;
       // The square puts the roles behind a header button and the badge;
       // elsewhere they are tiles.
@@ -265,6 +277,11 @@ void main() {
         when(() => channel.hasSaturation).thenReturn(false);
         when(() => channel.hasColorWhite).thenReturn(false);
         when(() => channel.on).thenReturn(on);
+        final onProp = _OnProp();
+        when(
+          () => onProp.id,
+        ).thenReturn('00000000-0000-4000-8000-00000000003$n');
+        when(() => channel.onProp).thenReturn(onProp);
         when(() => channel.brightness).thenReturn(on ? 50 : 0);
         when(
           () => devices.getDevice('00000000-0000-4000-8000-00000000001$n'),
@@ -329,6 +346,61 @@ void main() {
       verify(
         () => spaces.turnRoleOn(_room, LightingStateRole.ambient),
       ).called(1);
+      await unmount(tester);
+    });
+    testWidgets('Compact landscape opens the selected role\'s lights from the '
+        'header', (tester) async {
+      tunableWhite();
+      await mountAt(tester, const Size(356, 240));
+      await tester.tap(find.byKey(const ValueKey('lights-role-ambient')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('lights-role-lights-button')));
+      await tester.pumpAndSettle();
+      // Ambient's one light, in the drawer.
+      expect(find.text('Light 2'), findsWidgets);
+      expect(find.text('Light 1'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('a preset whose power-on outlasts a role switch leaves the new '
+        'hero alone', (tester) async {
+      tunableWhite();
+      final powerOn = Completer<LightingIntentResult?>();
+      when(
+        () => spaces.turnRoleOn(_room, any()),
+      ).thenAnswer((_) => powerOn.future);
+      when(
+        () => spaces.setRoleColorTemp(_room, any(), any()),
+      ).thenAnswer((_) async => null);
+      await mountAt(tester, const Size(584, 360));
+      await tester.tap(find.byKey(const ValueKey('lights-role-ambient')));
+      await tester.pumpAndSettle();
+      await showTemperature(tester);
+
+      // Warm on the off Ambient role waits for the power-on...
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('lights-hero')),
+          matching: find.text('Warm'),
+        ),
+      );
+      await tester.pump();
+      // ...while the user moves to Main.
+      await tester.tap(find.byKey(const ValueKey('lights-role-main')));
+      await tester.pumpAndSettle();
+
+      powerOn.complete(null);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+      // The late preset neither sets Main's hero pending nor fires for
+      // Ambient through the shared debounce.
+      verifyNever(() => spaces.setRoleColorTemp(_room, any(), any()));
+      final hero = find.byKey(const ValueKey('lights-hero'));
+      expect(
+        find.descendant(of: hero, matching: find.text('Setting')),
+        findsNothing,
+      );
       await unmount(tester);
     });
   });
