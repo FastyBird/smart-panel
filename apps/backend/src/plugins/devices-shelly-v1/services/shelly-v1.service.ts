@@ -1,10 +1,7 @@
-import { instanceToPlain } from 'class-transformer';
-
 import { Injectable, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState, DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
@@ -33,9 +30,14 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import { NormalizedDeviceChangeEvent, NormalizedDeviceEvent } from '../interfaces/shellies.interface';
+import {
+	NormalizedDeviceChangeEvent,
+	NormalizedDeviceEvent,
+	RegisteredDevice,
+	ShellyDevice,
+} from '../interfaces/shellies.interface';
 import { ShellyV1ConfigModel } from '../models/config.model';
-import { findShellyV1Descriptor } from '../utils/descriptor.utils';
+import { findShellyV1Descriptor, getShellyV1Bindings } from '../utils/descriptor.utils';
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
@@ -43,6 +45,7 @@ import {
 	ShellyV1AdoptedIdentityService,
 	shellyV1Address,
 	shellyV1PinMatches,
+	shellyV1RegistrationMatchesPin,
 	shellyV1ReportedMac,
 } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -95,8 +98,8 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 			onDeviceDiscovered: (event) => this.handleDeviceDiscovered(event),
 			onDeviceChanged: (event) => this.handleDeviceChanged(event),
 			onTemperatureReport: (report) => this.reports.temperature(report),
-			onDeviceOffline: (event) => this.handleDeviceOffline(event),
-			onDeviceOnline: (event) => this.handleDeviceOnline(event),
+			onDeviceOffline: (event) => this.handleConnectionChange(event),
+			onDeviceOnline: (event) => this.handleConnectionChange(event),
 			onError: (error) => this.handleAdapterError(error),
 		});
 	}
@@ -262,6 +265,30 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		}
 	}
 
+	private async resolveRegisteredDevice(registration: RegisteredDevice, peer: ShellyDevice, includePin = false) {
+		const { id, type, host, catalog } = registration;
+		const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
+			catalog ? 'id' : 'identifier',
+			catalog?.deviceId ?? id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
+		if (!device?.enabled) return null;
+		const isCurrent = (): boolean =>
+			device.enabled &&
+			registration.enabled &&
+			this.shelliesAdapter.isRunning() &&
+			this.shelliesAdapter.getRegisteredDevice(id) === registration &&
+			this.shelliesAdapter.getRegisteredDeviceForCatalog(device) === registration &&
+			this.shelliesAdapter.getDevice(type, id) === peer &&
+			registration.host === host &&
+			peer.id === id &&
+			peer.type === type &&
+			peer.host === host;
+		if (!isCurrent()) return null;
+		const pin = includePin || registration.catalog ? await this.identities.findPin(device.id) : null;
+		return isCurrent() && shellyV1RegistrationMatchesPin(registration, device, pin) ? { device, pin, isCurrent } : null;
+	}
+
 	/**
 	 * Handle device property change event from the shellies adapter
 	 */
@@ -269,45 +296,27 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		this.logger.debug(`Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`);
 
 		try {
-			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
-
-			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`Device ${event.id} is disabled, ignoring property change`);
-
-				return;
-			}
+			if (!registeredDevice?.enabled || registeredDevice.id !== event.id) return;
+			const peer = this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id);
+			if (!peer) return;
 
 			// Snapshot raw inputEvent before asynchronous device lookup to prevent race conditions
-			let rawEventSnapshot: string | undefined;
-			let counterChannelIndex: number | undefined;
 			const counterMatch = event.property.match(/^inputEventCounter(\d+)$/);
-			if (counterMatch) {
-				counterChannelIndex = parseInt(counterMatch[1], 10);
-				const shellyDevice = registeredDevice
-					? this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id)
-					: undefined;
-				if (shellyDevice) {
-					rawEventSnapshot = String(shellyDevice[`inputEvent${counterChannelIndex}`] ?? '');
-				}
-			}
-
-			// Find the device
-			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
-				'identifier',
-				event.id,
-				DEVICES_SHELLY_V1_TYPE,
-			);
-
-			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping property update`);
-
-				return;
-			}
+			const rawEvent = counterMatch ? String(peer[`inputEvent${Number(counterMatch[1])}`] ?? '') : '';
+			const source = await this.resolveRegisteredDevice(registeredDevice, peer);
+			if (!source || !source.isCurrent()) return;
+			const { device, isCurrent } = source;
 
 			// Handle input event counters for hardware button/input occurrence publishing
-			if (counterMatch && counterChannelIndex !== undefined) {
-				await this.handleInputEventCounter(device, counterChannelIndex, Number(event.newValue), rawEventSnapshot);
+			if (counterMatch) {
+				await this.handleInputEventCounter(
+					device,
+					Number(counterMatch[1]),
+					Number(event.newValue),
+					rawEvent,
+					isCurrent,
+				);
 
 				return;
 			}
@@ -318,7 +327,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 			}
 
 			// Look up the property binding using the shelliesProperty from the event
-			const binding = await this.findPropertyBinding(device, event.property);
+			const binding = await this.findPropertyBinding(device, peer, event.property);
 
 			if (!binding) {
 				this.logger.debug(`No binding found for property: ${event.property} on device ${device.identifier}, skipping`, {
@@ -363,7 +372,8 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 				return;
 			}
 
-			let propValue: unknown = event.newValue;
+			if (!isCurrent()) return;
+			let propValue = event.newValue;
 			if (property.dataType === DataTypeType.BOOL && typeof event.newValue === 'number') {
 				propValue = Boolean(event.newValue);
 			}
@@ -372,14 +382,12 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 			// thermostat measurements against the original device's independent status endpoint.
 			await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
 				property.id,
-				toInstance(UpdateShellyV1ChannelPropertyDto, {
-					...instanceToPlain(property),
-					value: propValue,
-				}),
+				{ type: DEVICES_SHELLY_V1_TYPE, value: propValue },
+				{ valueIsCurrent: isCurrent },
 			);
 
-			if (binding.category === PropertyCategory.ON && this.reports.supports(binding))
-				await this.reports.refresh(device);
+			if (isCurrent() && binding.category === PropertyCategory.ON && this.reports.supports(binding))
+				await this.reports.refresh(device, isCurrent);
 
 			this.logger.debug(
 				`Updated property ${property.identifier} for channel ${channel.identifier} to ${JSON.stringify(event.newValue)}`,
@@ -400,15 +408,9 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		device: ShellyV1DeviceEntity,
 		channelIndex: number,
 		counter: number,
-		rawEventSnapshot?: string,
+		rawEvent: string,
+		isCurrent: () => boolean,
 	): Promise<void> {
-		const registeredDevice = this.shelliesAdapter.getRegisteredDevice(device.identifier);
-		const shellyDevice = registeredDevice
-			? this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id)
-			: undefined;
-
-		const rawEvent =
-			rawEventSnapshot !== undefined ? rawEventSnapshot : String(shellyDevice?.[`inputEvent${channelIndex}`] ?? '');
 		const trackResult = this.tracker.trackEvent(device.id, channelIndex, counter, rawEvent);
 
 		if (!trackResult.shouldPublish) {
@@ -461,13 +463,13 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		}
 
 		// Update property value in database
+		if (!isCurrent()) return;
 		await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
 			eventProperty.id,
-			toInstance(UpdateShellyV1ChannelPropertyDto, {
-				...instanceToPlain(eventProperty),
-				value: mappedEvent,
-			}),
+			{ type: DEVICES_SHELLY_V1_TYPE, value: mappedEvent },
+			{ valueIsCurrent: isCurrent },
 		);
+		if (!isCurrent()) return;
 
 		// Publish occurrence independently through ChannelInputOccurrencesService
 		if (this.channelInputOccurrencesService) {
@@ -505,156 +507,39 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		trackResult.commit();
 	}
 
-	/**
-	 * Handle device offline event from the shellies adapter
-	 */
-	private async handleDeviceOffline(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.debug(`Device went offline: ${event.id}`);
-
+	private async handleConnectionChange(event: NormalizedDeviceEvent): Promise<void> {
 		try {
-			// Check if a device is enabled in the registry
-			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
-
-			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`Device ${event.id} is disabled, ignoring offline event`);
-
-				return;
-			}
-
-			// Find the device
-			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
-				'identifier',
-				event.id,
-				DEVICES_SHELLY_V1_TYPE,
+			const registration = this.shelliesAdapter.getRegisteredDevice(event.id);
+			if (!registration?.enabled || registration.type !== event.type || registration.host !== event.host) return;
+			const peer = this.shelliesAdapter.getDevice(event.type, event.id);
+			if (!peer) return;
+			const source = await this.resolveRegisteredDevice(registration, peer);
+			if (!source) return;
+			const isCurrent = () => source.isCurrent() && peer.online === event.online;
+			if (!isCurrent()) return;
+			await this.deviceConnectivityService.setConnectionState(
+				source.device.id,
+				{ state: event.online ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED },
+				isCurrent,
 			);
-
-			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping offline state update`);
-
-				return;
-			}
-
-			// Update connection state to DISCONNECTED
-			await this.deviceConnectivityService.setConnectionState(device.id, {
-				state: ConnectionState.DISCONNECTED,
-			});
-
-			this.logger.debug(`Device ${device.identifier} marked as offline`, { resource: device.id });
 		} catch (error) {
-			this.logger.error(`Failed to mark device ${event.id} as offline:`, {
+			this.logger.error(`Failed to update connection state for device ${event.id}:`, {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});
 		}
 	}
 
-	/**
-	 * Handle device online event from the shellies adapter
-	 */
-	private async handleDeviceOnline(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.debug(`Device came online: ${event.id}`);
-
-		try {
-			// Check if a device is enabled in the registry
-			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
-
-			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`Device ${event.id} is disabled, ignoring online event`);
-
-				return;
-			}
-
-			// Find the device
-			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
-				'identifier',
-				event.id,
-				DEVICES_SHELLY_V1_TYPE,
-			);
-
-			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping online state update`);
-
-				return;
-			}
-
-			// Update connection state to CONNECTED
-			await this.deviceConnectivityService.setConnectionState(device.id, {
-				state: ConnectionState.CONNECTED,
-			});
-
-			this.logger.debug(`Device ${device.identifier} marked as online`, { resource: device.id });
-		} catch (error) {
-			this.logger.error(`Failed to mark device ${event.id} as online:`, {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
-		}
-	}
-
-	/**
-	 * Find the property binding for a given shelliesProperty
-	 * This looks up the device descriptor and finds which channel/property
-	 * the Shelly property maps to
-	 */
 	private async findPropertyBinding(
 		device: ShellyV1DeviceEntity,
+		peer: ShellyDevice,
 		shelliesProperty: string,
 	): Promise<PropertyBinding | null> {
-		// Find the device descriptor
 		const descriptor = await this.findDescriptor(device);
-
-		if (!descriptor) {
-			this.logger.warn(`No descriptor found for device: ${device.identifier}`, { resource: device.id });
-
-			return null;
-		}
-
-		// Get bindings based on device mode (if applicable)
-		let bindings: PropertyBinding[] = [];
-
-		if (descriptor.instance?.modeProperty && descriptor.modes) {
-			// Device has mode-based configuration - need to get current mode from adapter
-			// Use the model type from descriptor to get the device from adapter
-			const deviceModel = descriptor.models[0]; // Use the first model as the type
-			const shellyDevice = this.shelliesAdapter.getDevice(deviceModel, device.identifier);
-
-			if (!shellyDevice) {
-				this.logger.warn(`Device ${device.identifier} not found in adapter, cannot determine mode`, {
-					resource: device.id,
-				});
-
-				return null;
-			}
-
-			const modeValue = shellyDevice[descriptor.instance.modeProperty];
-			const modeProfile = descriptor.modes.find((mode) => mode.modeValue === modeValue);
-
-			if (modeProfile) {
-				bindings = modeProfile.bindings;
-			} else {
-				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)} on device ${device.identifier}`, {
-					resource: device.id,
-				});
-
-				return null;
-			}
-		} else if (descriptor.bindings) {
-			// Device has static bindings
-			bindings = descriptor.bindings;
-		}
-
-		// Find the binding that matches the shelliesProperty
-		const binding = bindings.find((b) => b.shelliesProperty === shelliesProperty);
-
-		if (!binding) {
-			this.logger.debug(`No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`, {
-				resource: device.id,
-			});
-
-			return null;
-		}
-
-		return binding;
+		if (!descriptor) return null;
+		return (
+			getShellyV1Bindings(descriptor, peer).find((binding) => binding.shelliesProperty === shelliesProperty) ?? null
+		);
 	}
 
 	/**
@@ -781,28 +666,19 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 				}
 
 				const host = registeredDevice.host;
-				const shellyDevice = this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id);
-				const isCurrent = (): boolean =>
-					this.state === 'started' &&
-					this.shelliesAdapter.isRunning() &&
-					this.shelliesAdapter.getRegisteredDevice(registeredDevice.id) === registeredDevice &&
-					this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id) === shellyDevice &&
-					shellyDevice?.online === true &&
-					shellyDevice.id === registeredDevice.id &&
-					shellyDevice.type === registeredDevice.type &&
-					shellyDevice.host === host &&
-					registeredDevice.host === host;
-				if (!isCurrent()) continue;
+				const peer = this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id);
+				if (!peer?.online) continue;
+				const credentialRevision = registeredDevice.credentialRevision;
 
 				try {
-					const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
-						'identifier',
-						registeredDevice.id,
-						DEVICES_SHELLY_V1_TYPE,
-					);
-
-					if (!device?.enabled || !isCurrent()) continue;
-					const pin = await this.identities.findPin(device.id);
+					const source = await this.resolveRegisteredDevice(registeredDevice, peer, true);
+					if (!source) continue;
+					const { device, pin } = source;
+					const isCurrent = (): boolean =>
+						this.state === 'started' &&
+						peer.online &&
+						registeredDevice.credentialRevision === credentialRevision &&
+						source.isCurrent();
 					if (!isCurrent() || (pin && !shellyV1PinMatches(device.identifier, pin.mac))) continue;
 					const address = shellyV1Address(device.identifier);
 					const expected = pin?.mac ?? (address?.length === 12 ? address : null);
@@ -812,7 +688,8 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 					const mac = shellyV1ReportedMac(device.identifier, registeredDevice.type, info);
 					if (!mac || (expected !== null && expected !== mac) || !isCurrent()) continue;
 
-					const password = device.password || undefined;
+					const savedPassword = device.password ?? null;
+					const password = savedPassword || undefined;
 					let username: string | undefined;
 					if (password) {
 						const login = await this.httpClient.getLoginSettings(host).catch((): null => null);
@@ -824,8 +701,12 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 						!isCurrent() ||
 						!latest ||
 						latest.id !== device.id ||
+						latest.identifier !== device.identifier ||
+						!latest.enabled ||
+						latest.password !== savedPassword ||
 						latest.hostname !== device.hostname ||
 						latest.pin?.mac !== pin?.mac ||
+						latest.pin?.verifiedHost !== pin?.verifiedHost ||
 						latest.pin?.revision !== pin?.revision
 					)
 						continue;
@@ -862,10 +743,11 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 							await this.channelsPropertiesService.update<
 								ShellyV1ChannelPropertyEntity,
 								UpdateShellyV1ChannelPropertyDto
-							>(linkQualityProperty.id, {
-								type: DEVICES_SHELLY_V1_TYPE,
-								value: quality,
-							});
+							>(
+								linkQualityProperty.id,
+								{ type: DEVICES_SHELLY_V1_TYPE, value: quality },
+								{ valueIsCurrent: isCurrent },
+							);
 
 							this.logger.debug(
 								`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm (${quality}%)`,
@@ -887,10 +769,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 							await this.channelsPropertiesService.update<
 								ShellyV1ChannelPropertyEntity,
 								UpdateShellyV1ChannelPropertyDto
-							>(firmwareProperty.id, {
-								type: DEVICES_SHELLY_V1_TYPE,
-								value: info.fw,
-							});
+							>(firmwareProperty.id, { type: DEVICES_SHELLY_V1_TYPE, value: info.fw }, { valueIsCurrent: isCurrent });
 
 							this.logger.debug(`Updated firmware version for ${registeredDevice.id}: ${info.fw}`, {
 								resource: device.id,

@@ -40,10 +40,11 @@ const adapterFixture = (id = 'DDEEFF') => {
 	const peer = { id, type: 'SHSW-1', host: 'host' };
 	const registration = { ...peer };
 	return {
-		getRegisteredDevice: () => registration,
+		getRegisteredDeviceForCatalog: () => registration,
 		getDevice: () => peer,
 		setDeviceAuthCredentials: jest.fn<boolean, [unknown, string, string, string | null]>().mockReturnValue(true),
 		updateDeviceEnabledStatus: jest.fn(),
+		releaseCatalogDevice: jest.fn(),
 	};
 };
 
@@ -323,7 +324,7 @@ describe('Gen1 credential setup after catalog publication', () => {
 			const peer = { id: 'DDEEFF', type: 'SHSW-1', host: 'new-host' };
 			const registration = { ...peer };
 			const adapter = {
-				getRegisteredDevice: () => registration,
+				getRegisteredDeviceForCatalog: () => registration,
 				getDevice: () => peer,
 				setDeviceAuthCredentials: jest.fn().mockReturnValue(true),
 				updateDeviceEnabledStatus: jest.fn(),

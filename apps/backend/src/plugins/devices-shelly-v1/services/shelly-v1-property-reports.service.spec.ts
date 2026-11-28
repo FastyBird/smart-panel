@@ -7,7 +7,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { currentSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
-import { ShellyTemperatureReport } from '../interfaces/shellies.interface';
+import { RegisteredDevice, ShellyTemperatureReport } from '../interfaces/shellies.interface';
 import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import * as shelly from '../lib/shellies';
 
@@ -16,14 +16,20 @@ import { ShellyV1AdoptedIdentityService } from './shelly-v1-adopted-identity.ser
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 import { ShellyV1PropertyReportsService } from './shelly-v1-property-reports.service';
 
-function setup(temperature = false, id = 'AABBCCDDEEFF') {
+function setup(temperature = false, id = 'AABBCCDDEEFF', catalogIdentifier = id) {
 	const device = Object.assign(new ShellyV1DeviceEntity(), {
 		id: 'panel-device',
-		identifier: id,
+		identifier: catalogIdentifier,
 		enabled: true,
 		hostname: '192.168.1.5',
 	});
-	const registration = { id, type: temperature ? 'SHHT-1' : 'SHSW-1', host: '192.168.1.5', enabled: true };
+	const registration: RegisteredDevice = {
+		id,
+		type: temperature ? 'SHHT-1' : 'SHSW-1',
+		host: '192.168.1.5',
+		enabled: true,
+	};
+	if (catalogIdentifier !== id) registration.catalog = { deviceId: device.id, mac: 'AABBCCDDEEFF' };
 	const peer = { ...registration, online: true, relay0: true, getStatus: jest.fn<Promise<ShellyStatusResponse>, []>() };
 	const channel = { id: 'channel', identifier: temperature ? 'temperature_0' : 'relay_0' };
 	const property = {
@@ -34,14 +40,26 @@ function setup(temperature = false, id = 'AABBCCDDEEFF') {
 	};
 	const adapter = {
 		isRunning: () => true,
-		getRegisteredDevice: jest.fn().mockReturnValue(registration),
-		getDevice: () => peer,
+		getRegisteredDevice: jest.fn((rawId: string): RegisteredDevice | undefined =>
+			rawId === id ? registration : undefined,
+		),
+		getRegisteredDeviceForCatalog: jest.fn((row: ShellyV1DeviceEntity): RegisteredDevice | undefined => {
+			const active = adapter.getRegisteredDevice(id);
+			return active && (active.catalog ? active.catalog.deviceId === row.id : active.id === row.identifier)
+				? active
+				: undefined;
+		}),
+		getDevice: jest.fn((type: string, rawId: string) =>
+			rawId === id && type === registration.type ? peer : undefined,
+		),
 	};
 	const reportSample = jest
 		.fn<Promise<unknown>, [string, { value: unknown }, PropertySampleEvidence]>()
 		.mockResolvedValue(null);
 	const findChannel = jest.fn(() => Promise.resolve(channel));
-	const findDevice = jest.fn(() => Promise.resolve(device));
+	const findDevice = jest.fn((column: 'id' | 'identifier', value: string) =>
+		Promise.resolve(device[column] === value ? device : null),
+	);
 	const expected = jest.fn(() => Promise.resolve<string | null>('AABBCCDDEEFF'));
 	const pin = { mac: 'AABBCCDDEEFF', verifiedHost: registration.host, revision: 1 };
 	const findPin = jest.fn(() => Promise.resolve<typeof pin | null>({ ...pin }));
@@ -130,6 +148,65 @@ describe('Shelly Gen1 physical property reports', () => {
 		expect(evidence.sourceIsCurrent()).toBe(true);
 		f.adapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
 		expect(evidence.sourceIsCurrent()).toBe(false);
+	});
+
+	it.each([
+		['shelly1-DDEEFF', 'shelly1-AABBCCDDEEFF'],
+		['shelly1-AABBCCDDEEFF', 'shelly1-DDEEFF'],
+	])('reads a verified peer %s for the renamed catalog identifier %s', async (rawId, identifier) => {
+		const f = setup(false, rawId, identifier);
+		f.peer.getStatus.mockResolvedValue({ mac: f.pin.mac, relays: [{ ison: false }] } as ShellyStatusResponse);
+		await expect(f.service.read(f.device, f.target)).resolves.toBe(true);
+		expect(f.target.dispatching).toHaveBeenCalledTimes(1);
+		const [, update, evidence] = f.reportSample.mock.calls[0];
+		expect(update.value).toBe(false);
+		expect(evidence.ingressSequence).toBeGreaterThan(f.boundary());
+		expect(evidence.sourceIsCurrent()).toBe(true);
+		f.adapter.getDevice.mockReturnValue({ ...f.peer });
+		expect(evidence.sourceIsCurrent()).toBe(false);
+	});
+
+	it.each(['foreign pin', 'moved pin', 'missing pin', 'failed pin lookup', 'replaced registration'])(
+		'withholds the alias status request after a %s',
+		async (change) => {
+			const f = setup(false, 'shelly1-DDEEFF', 'shelly1-AABBCCDDEEFF');
+			f.findPin.mockImplementationOnce(() => {
+				if (change === 'replaced registration') f.adapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
+				if (change === 'failed pin lookup') return Promise.reject(new Error('catalog unavailable'));
+				if (change === 'missing pin') return Promise.resolve(null);
+				return Promise.resolve({
+					...f.pin,
+					mac: change === 'foreign pin' ? '112233DDEEFF' : f.pin.mac,
+					verifiedHost: change === 'moved pin' ? '192.168.1.6' : f.pin.verifiedHost,
+				});
+			});
+			await expect(f.service.read(f.device, f.target)).resolves.toBe(false);
+			expect(f.peer.getStatus).not.toHaveBeenCalled();
+			expect(f.target.dispatching).not.toHaveBeenCalled();
+			expect(f.reportSample).not.toHaveBeenCalled();
+		},
+	);
+
+	it('rejects a mismatched same-suffix status or a binding replaced during the alias read', async () => {
+		const f = setup(false, 'shelly1-DDEEFF', 'shelly1-AABBCCDDEEFF');
+		f.peer.getStatus.mockResolvedValueOnce({ mac: '112233DDEEFF', relays: [{ ison: true }] } as ShellyStatusResponse);
+		await f.service.read(f.device, f.target);
+		f.peer.getStatus.mockImplementationOnce(() => {
+			f.adapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
+			return Promise.resolve({ mac: f.pin.mac, relays: [{ ison: true }] } as ShellyStatusResponse);
+		});
+		await f.service.read(f.device, f.target);
+		expect(f.peer.getStatus).toHaveBeenCalledTimes(2);
+		expect(f.reportSample).not.toHaveBeenCalled();
+	});
+
+	it('drops a queued change refresh when its originating registration is replaced', async () => {
+		const f = setup(false, 'shelly1-DDEEFF', 'shelly1-AABBCCDDEEFF');
+		const queued = f.service.refresh(f.device, () => f.adapter.getRegisteredDevice(f.id) === f.registration);
+		f.adapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
+		await expect(queued).resolves.toBe(false);
+		expect(f.peer.getStatus).not.toHaveBeenCalled();
+		expect(f.reportSample).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -250,6 +327,34 @@ describe('Shelly Gen1 physical property reports', () => {
 		expect(evidence.sourceIsCurrent()).toBe(false);
 		await f.service.temperature(report);
 		expect(f.reportSample).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports sleeping sensor values and faults against the verified catalog UUID while the raw peer stays current', async () => {
+		const f = setup(true, 'shellyht-DDEEFF', 'shellyht-AABBCCDDEEFF');
+		const value = temperatureReport(f.id, 17, 21);
+		const fault = temperatureReport(f.id, 18, null);
+		await f.service.temperature(value);
+		await f.service.temperature(fault);
+		expect(f.findDevice.mock.calls).toEqual([
+			['id', f.device.id, DEVICES_SHELLY_V1_TYPE],
+			['id', f.device.id, DEVICES_SHELLY_V1_TYPE],
+		]);
+		expect(f.reportSample.mock.calls.map(([, update, evidence]) => [update.value, evidence.sampledAt])).toEqual([
+			[21, value.receivedAt],
+			[null, fault.receivedAt],
+		]);
+		const evidence = f.reportSample.mock.lastCall[2];
+		expect(evidence.sourceIsCurrent()).toBe(true);
+		f.findPin.mockResolvedValueOnce({ ...f.pin, mac: '112233DDEEFF' });
+		await f.service.temperature(temperatureReport(f.id, 19));
+		f.findPin.mockResolvedValueOnce({ ...f.pin, verifiedHost: '192.168.1.8' });
+		await f.service.temperature(temperatureReport(f.id, 20));
+		f.adapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
+		expect(evidence.sourceIsCurrent()).toBe(false);
+		await f.service.temperature(fault);
+		expect(f.reportSample).toHaveBeenCalledTimes(2);
+		expect(f.getDeviceInfo).not.toHaveBeenCalled();
+		expect(f.peer.getStatus).not.toHaveBeenCalled();
 	});
 	it('drops a pre-reboot report while its channel lookup is pending', async () => {
 		const f = setup(true);

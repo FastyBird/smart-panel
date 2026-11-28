@@ -38,7 +38,7 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import { NormalizedDeviceEvent, ShellyDevice } from '../interfaces/shellies.interface';
+import { NormalizedDeviceEvent, RegisteredDevice, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShellyInfoResponse, ShellySettingsResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 
 import { DeviceMapperService } from './device-mapper.service';
@@ -102,9 +102,28 @@ describe('DeviceMapperService', () => {
 			setConnectionState: jest.fn(),
 		} as any;
 
+		const registrations = new Map<string, RegisteredDevice>();
 		shelliesAdapter = {
 			getDevice: jest.fn(),
-			getRegisteredDevice: jest.fn(),
+			getRegisteredDevice: jest.fn((id: string) => {
+				if (!registrations.has(id)) {
+					const peer = shelliesAdapter.getDevice('', id);
+					if (peer) registrations.set(id, { id, type: peer.type, host: peer.host, enabled: true });
+				}
+				return registrations.get(id);
+			}),
+			bindCatalogDevice: jest.fn(
+				(registration: RegisteredDevice, _peer: ShellyDevice, device: ShellyV1DeviceEntity, mac: string) => {
+					registration.catalog = { deviceId: device.id, mac };
+					return true;
+				},
+			),
+			getRegisteredDeviceForCatalog: jest.fn(
+				(device: ShellyV1DeviceEntity) =>
+					Array.from(registrations.values()).find((r) => r.catalog?.deviceId === device.id) ??
+					shelliesAdapter.getRegisteredDevice(device.identifier),
+			),
+			releaseCatalogDevice: jest.fn(),
 			setDeviceAuthCredentials: jest.fn().mockReturnValue(true),
 			updateDeviceEnabledStatus: jest.fn(),
 		} as any;
@@ -678,6 +697,12 @@ describe('DeviceMapperService', () => {
 			if (scenario === 'matched') {
 				await expect(mapping).resolves.toBe(device);
 				expect(identities.captureDevice).toHaveBeenCalledWith(device.identifier);
+				expect(shelliesAdapter.bindCatalogDevice).toHaveBeenCalledWith(
+					shelliesAdapter.getRegisteredDevice(event.id),
+					shelliesAdapter.getDevice(event.type, event.id),
+					device,
+					pin.mac,
+				);
 			} else if (scenario === 'colliding MAC') {
 				await expect(mapping).resolves.toBe(different);
 				expect(identities.updateDevice).not.toHaveBeenCalled();

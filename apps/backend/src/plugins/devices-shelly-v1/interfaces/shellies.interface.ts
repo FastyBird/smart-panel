@@ -78,6 +78,8 @@ export interface RegisteredDevice {
 	type: string;
 	host: string;
 	enabled: boolean; // Whether a device is enabled for updates
+	/** A full hardware MAC verified for this SDK peer, host and catalog UUID by discovery. */
+	catalog?: Readonly<{ deviceId: string; mac: string }>;
 	/** Changes synchronously whenever the SDK peer's credentials are cleared or replaced. */
 	credentialRevision?: number;
 }

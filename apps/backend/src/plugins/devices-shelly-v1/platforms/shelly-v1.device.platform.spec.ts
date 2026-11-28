@@ -59,15 +59,19 @@ describe('ShellyV1DevicePlatform', () => {
 
 	const makePlatform = (opts?: { getDevice?: jest.Mock; getRegisteredDevice?: jest.Mock }) => {
 		const registrations = new Map<string, RegisteredDevice>();
+		const getRegisteredDevice =
+			opts?.getRegisteredDevice ??
+			((id: string) => {
+				if (!registrations.has(id)) {
+					const peer = opts?.getDevice?.() as ShellyDevice | undefined;
+					registrations.set(id, { type: peer?.type ?? 'SHSW-PM', id, host: '192.168.1.100', enabled: true });
+				}
+				return registrations.get(id);
+			});
 		const shelliesAdapter = {
 			getDevice: opts?.getDevice ?? jest.fn(),
-			getRegisteredDevice:
-				opts?.getRegisteredDevice ??
-				((id: string) => {
-					if (!registrations.has(id))
-						registrations.set(id, { type: 'SHSW-PM', id, host: '192.168.1.100', enabled: true });
-					return registrations.get(id);
-				}),
+			getRegisteredDevice,
+			getRegisteredDeviceForCatalog: (device: ShellyV1DeviceEntity) => getRegisteredDevice(device.identifier),
 		} as unknown as ShelliesAdapterService;
 		const identities = { findPin: jest.fn().mockResolvedValue(null), confirmHost: jest.fn().mockResolvedValue(true) };
 		const http = { getDeviceInfo: jest.fn() };
@@ -169,7 +173,7 @@ describe('ShellyV1DevicePlatform', () => {
 		const relay = (identifier = 'shelly1pm-ABC123') => {
 			const device = makeDevice('catalog-relay', identifier);
 			const peer = makeShellyDevice('SHSW-PM', identifier);
-			const registration = { type: peer.type, id: peer.id, host: peer.host, enabled: true };
+			const registration: RegisteredDevice = { type: peer.type, id: peer.id, host: peer.host, enabled: true };
 			const getDevice = jest.fn().mockReturnValue(peer);
 			const getRegisteredDevice = jest.fn().mockReturnValue(registration);
 			const { platform, identities, http } = makePlatform({ getDevice, getRegisteredDevice });
@@ -177,6 +181,25 @@ describe('ShellyV1DevicePlatform', () => {
 				platform.process({ device, channel: makeChannel(), property: makeProp(), value });
 			return { device, peer, registration, getDevice, getRegisteredDevice, platform, identities, http, write };
 		};
+
+		it.each(['verified', 'same suffix and different hardware', 'other host', 'missing pin', 'other catalog row'])(
+			'dispatches a renamed relay command only to its verified registration (%s)',
+			async (scenario) => {
+				const { device, peer, registration, identities, write } = relay();
+				device.identifier = 'renamed-abc123';
+				registration.catalog = { deviceId: scenario === 'other catalog row' ? 'other' : device.id, mac };
+				identities.findPin.mockResolvedValue(
+					scenario === 'missing pin'
+						? null
+						: {
+								mac: scenario === 'same suffix and different hardware' ? '112233ABC123' : mac,
+								verifiedHost: scenario === 'other host' ? movedHost : originalHost,
+							},
+				);
+				expect(await write(false)).toBe(scenario === 'verified');
+				expect(peer.setRelay.mock.calls).toEqual(scenario === 'verified' ? [[0, false]] : []);
+			},
+		);
 
 		it.each([true, false])(
 			'rejects a moved short-ID peer for value %s until its full identity has been verified there',

@@ -18,12 +18,13 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import { ShellyColorOptions, ShellyDevice } from '../interfaces/shellies.interface';
+import { RegisteredDevice, ShellyColorOptions, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 import {
 	ShellyV1AdoptedIdentityService,
 	shellyV1Address,
 	shellyV1PinMatches,
+	shellyV1RegistrationMatchesPin,
 	shellyV1ReportedMac,
 } from '../services/shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
@@ -37,7 +38,7 @@ export type IShellyV1DevicePropertyData = IDevicePropertyData & {
 	property: ShellyV1ChannelPropertyEntity;
 };
 
-type CommandTarget = { peer: ShellyDevice; host: string; isCurrent: () => boolean };
+type CommandTarget = { peer: ShellyDevice; registration: RegisteredDevice; host: string; isCurrent: () => boolean };
 
 /**
  * Device platform for Shelly V1 devices
@@ -90,7 +91,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		}
 
 		// Get the Shelly device instance from the adapter
-		const registered = this.shelliesAdapter.getRegisteredDevice(device.identifier);
+		const registered = this.shelliesAdapter.getRegisteredDeviceForCatalog(device);
 		const shellyDevice = registered?.enabled && this.shelliesAdapter.getDevice(registered.type, registered.id);
 
 		if (!shellyDevice) {
@@ -103,11 +104,11 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		const { id, type, host } = registered;
 		const target: CommandTarget = {
 			peer: shellyDevice,
+			registration: registered,
 			host,
 			isCurrent: () =>
 				!!host &&
 				device.enabled &&
-				device.identifier === id &&
 				registered.enabled &&
 				registered.id === id &&
 				registered.type === type &&
@@ -115,7 +116,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				shellyDevice.id === id &&
 				shellyDevice.type === type &&
 				shellyDevice.host === host &&
-				this.shelliesAdapter.getRegisteredDevice(id) === registered &&
+				this.shelliesAdapter.getRegisteredDeviceForCatalog(device) === registered &&
 				this.shelliesAdapter.getDevice(type, id) === shellyDevice,
 		};
 
@@ -225,16 +226,10 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				return await this.executeRelayCommand(device, target, parseInt(relayMatch[1], 10), propertyUpdates);
 			} else if (lightMatch) {
 				// Light command
-				return await this.executeLightCommand(
-					device,
-					shellyDevice,
-					parseInt(lightMatch[1], 10),
-					propertyUpdates,
-					descriptor,
-				);
+				return await this.executeLightCommand(device, target, parseInt(lightMatch[1], 10), propertyUpdates, descriptor);
 			} else if (rollerMatch) {
 				// Roller command
-				return await this.executeRollerCommand(device, shellyDevice, parseInt(rollerMatch[1], 10), propertyUpdates);
+				return await this.executeRollerCommand(device, target, parseInt(rollerMatch[1], 10), propertyUpdates);
 			} else {
 				return false;
 			}
@@ -269,28 +264,39 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		}
 
 		const boolValue = coerceBooleanSafe(stateUpdate.value);
-		const address = shellyV1Address(device.identifier);
-		if (!address) return false;
-		const pin = await this.identities.findPin(device.id);
-		if (!target.isCurrent() || (pin && !shellyV1PinMatches(address, pin.mac))) return false;
-		if (!pin && address.length !== 12 && device.hostname !== target.host) return false;
-		if (pin && pin.verifiedHost !== target.host) {
-			// Existing pins can be confirmed at the configured host. A full-address device without a
-			// configured host can use the registration after the full MAC and model have been verified.
-			const confirmationHost = device.hostname ?? (address.length === 12 ? target.host : null);
-			if (pin.verifiedHost !== null || confirmationHost !== target.host) return false;
-			const info = await this.http.getDeviceInfo(target.host);
-			if (!target.isCurrent() || shellyV1ReportedMac(address, target.peer.type, info) !== pin.mac) return false;
-			if (!(await this.identities.confirmHost(device.id, pin.mac, target.host, null, pin.revision))) return false;
-		}
-
 		this.logger.log(`Setting relay ${index} to ${boolValue ? 'ON' : 'OFF'} on device ${device.identifier}`, {
 			resource: device.id,
 		});
 
-		if (!target.isCurrent()) return false;
-		await shellyDevice.setRelay(index, boolValue);
+		return this.dispatch(device, target, () => shellyDevice.setRelay(index, boolValue), true);
+	}
 
+	private async dispatch(
+		device: ShellyV1DeviceEntity,
+		target: CommandTarget,
+		command: () => Promise<void>,
+		relay = false,
+	): Promise<boolean> {
+		if (!target.isCurrent()) return false;
+		if (target.registration.catalog || relay) {
+			const address = shellyV1Address(device.identifier);
+			if (!address) return false;
+			const pin = await this.identities.findPin(device.id);
+			if (!target.isCurrent() || !shellyV1RegistrationMatchesPin(target.registration, device, pin)) return false;
+			if (pin && !shellyV1PinMatches(address, pin.mac)) return false;
+			if (!pin && address.length !== 12 && device.hostname !== target.host) return false;
+			if (pin && pin.verifiedHost !== target.host) {
+				// Upgrade a legacy pin only at the configured host or for a matching full-address peer.
+				const confirmationHost = device.hostname ?? (address.length === 12 ? target.host : null);
+				if (pin.verifiedHost !== null || confirmationHost !== target.host) return false;
+				const info = await this.http.getDeviceInfo(target.host);
+				if (!target.isCurrent() || shellyV1ReportedMac(address, target.peer.type, info) !== pin.mac) return false;
+				if (!(await this.identities.confirmHost(device.id, pin.mac, target.host, null, pin.revision))) return false;
+			}
+		}
+
+		if (!target.isCurrent()) return false;
+		await command();
 		return true;
 	}
 
@@ -299,11 +305,12 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 	 */
 	private async executeLightCommand(
 		device: ShellyV1DeviceEntity,
-		shellyDevice: ShellyDevice,
+		target: CommandTarget,
 		index: number,
 		propertyUpdates: Array<{ property: ShellyV1ChannelPropertyEntity; value: string | number | boolean }>,
 		descriptor: DeviceDescriptor,
 	): Promise<boolean> {
+		const shellyDevice = target.peer;
 		// Collect property values
 		const values: {
 			state?: boolean;
@@ -411,7 +418,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					{ resource: device.id },
 				);
 
-				await shellyDevice.setColor(colorOpts);
+				if (!(await this.dispatch(device, target, () => shellyDevice.setColor(colorOpts)))) return false;
 				executed = true;
 			}
 		}
@@ -441,7 +448,8 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 						{ resource: device.id },
 					);
 
-					await shellyDevice.setWhite(temperature, brightness, on);
+					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(temperature, brightness, on))))
+						return false;
 				} else if (isMultiChannel) {
 					// Multi-channel device without temperature: setWhite(index, brightness, on)
 					this.logger.log(
@@ -449,7 +457,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 						{ resource: device.id },
 					);
 
-					await shellyDevice.setWhite(index, brightness, on);
+					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(index, brightness, on)))) return false;
 				} else {
 					// Single-channel device without temperature: setWhite(brightness, on)
 					this.logger.log(
@@ -457,7 +465,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 						{ resource: device.id },
 					);
 
-					await shellyDevice.setWhite(brightness, on);
+					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(brightness, on)))) return false;
 				}
 
 				executed = true;
@@ -472,7 +480,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					{ resource: device.id },
 				);
 
-				await shellyDevice.setColor({ switch: values.state });
+				if (!(await this.dispatch(device, target, () => shellyDevice.setColor({ switch: values.state })))) return false;
 				executed = true;
 			} else if (shellyDevice.setWhite) {
 				// Check if a device has multi-channel lights
@@ -489,10 +497,12 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 				if (isMultiChannel) {
 					// Multi-channel: use index signature
-					await shellyDevice.setWhite(index, brightness, values.state);
+					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(index, brightness, values.state))))
+						return false;
 				} else {
 					// Single-channel: use a simple signature
-					await shellyDevice.setWhite(brightness, values.state);
+					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(brightness, values.state))))
+						return false;
 				}
 
 				executed = true;
@@ -516,10 +526,11 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 	 */
 	private async executeRollerCommand(
 		device: ShellyV1DeviceEntity,
-		shellyDevice: ShellyDevice,
+		target: CommandTarget,
 		index: number,
 		propertyUpdates: Array<{ property: ShellyV1ChannelPropertyEntity; value: string | number | boolean }>,
 	): Promise<boolean> {
+		const shellyDevice = target.peer;
 		if (!shellyDevice.setRoller) {
 			this.logger.warn(`Device ${device.identifier} does not support setRoller method`, { resource: device.id });
 
@@ -536,7 +547,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					resource: device.id,
 				});
 
-				await shellyDevice.setRollerPosition(position);
+				if (!(await this.dispatch(device, target, () => shellyDevice.setRollerPosition(position)))) return false;
 			} else if (property.identifier === 'command') {
 				// Execute command (open/close/stop)
 				const command = String(value).toLowerCase();
@@ -558,7 +569,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 				// For roller commands, canonical values match raw values (open/close/stop)
 				// No reverse mapping needed
-				await shellyDevice.setRollerState(command);
+				if (!(await this.dispatch(device, target, () => shellyDevice.setRollerState(command)))) return false;
 			} else {
 				// Intentionally empty - unsupported command type
 			}
