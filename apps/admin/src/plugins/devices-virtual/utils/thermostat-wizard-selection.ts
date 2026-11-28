@@ -1,8 +1,6 @@
 import type { IChannel, IChannelProperty, IDevice } from '../../../modules/devices';
 import { DevicesVirtualPluginThermostatActuatorRole, DevicesVirtualPluginThermostatSourceRole } from '../../../openapi';
-import { DEVICES_SHELLY_NG_TYPE } from '../../devices-shelly-ng/devices-shelly-ng.constants';
 import {
-	RECOMMENDED_ACTUATOR_LEASE_SECONDS,
 	RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS,
 	type ThermostatCoolingSourceDraft,
 	type ThermostatDraft,
@@ -25,6 +23,17 @@ export interface ThermostatWizardCandidate {
 	roles: (ThermostatWizardSourceRole | ActuatorRole)[];
 }
 
+export const isThermostatNumericReading = (property: IChannelProperty): boolean =>
+	['char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float'].includes(property.dataType);
+
+export function isThermostatActuatorProperty(property: IChannelProperty): boolean {
+	return (
+		property.category === 'on' &&
+		property.dataType === 'bool' &&
+		property.permissions.some((permission) => permission === 'rw' || permission === 'wo')
+	);
+}
+
 /** Structural authoring choices only. The existing backend still checks ownership and live contracts. */
 export function thermostatWizardCandidates(
 	kind: 'sources' | 'actuators',
@@ -39,33 +48,27 @@ export function thermostatWizardCandidates(
 		const device = channel && deviceById.get(channel.device);
 		if (!channel || !device) return [];
 		const permissions: readonly string[] = property.permissions;
-		const readable = permissions.includes('ro') || permissions.includes('rw');
-		if (!readable) return [];
 		if (kind === 'actuators') {
-			if (
-				device.type !== DEVICES_SHELLY_NG_TYPE ||
-				!/^switch:\d+$/.test(channel.identifier ?? '') ||
-				property.category !== 'on' ||
-				property.dataType !== 'bool' ||
-				!['output', 'on'].includes(property.identifier ?? '') ||
-				!(permissions.includes('rw') || permissions.includes('wo'))
-			)
-				return [];
+			if (device.type === 'virtual' || !isThermostatActuatorProperty(property)) return [];
 			return [{ id: property.id, device, channel, property, roles: Object.values(DevicesVirtualPluginThermostatActuatorRole) }];
 		}
+		if (!permissions.includes('ro') && !permissions.includes('rw')) return [];
 		if (device.type !== 'virtual' && channel.category === 'contact' && property.category === 'detected' && property.dataType === 'bool') {
 			return [{ id: property.id, device, channel, property, roles: [DevicesVirtualPluginThermostatSourceRole.contact] }];
 		}
 		if (
 			channel.category !== 'temperature' ||
 			property.category !== 'temperature' ||
-			!['float', 'int', 'short', 'uchar'].includes(property.dataType) ||
+			!isThermostatNumericReading(property) ||
 			permissions.some((permission) => permission === 'rw' || permission === 'wo') ||
 			(property.unit != null && !['°C', 'C', 'Celsius', 'celsius'].includes(property.unit))
 		)
 			return [];
-		const roles: ThermostatWizardSourceRole[] = [DevicesVirtualPluginThermostatSourceRole.ambient, DevicesVirtualPluginThermostatSourceRole.floor];
-		if (device.type === DEVICES_SHELLY_NG_TYPE) roles.push('cooled_surface');
+		const roles: ThermostatWizardSourceRole[] = [
+			DevicesVirtualPluginThermostatSourceRole.ambient,
+			DevicesVirtualPluginThermostatSourceRole.floor,
+			'cooled_surface',
+		];
 		if (device.type === 'virtual') {
 			const virtual = device as IDevice & { mode?: string };
 			const derived = property as IChannelProperty & { valueOrigin?: string; sourceProperty?: string | null };
@@ -79,7 +82,6 @@ export function thermostatWizardCandidates(
 			)
 				return [];
 			if (virtual.mode === 'sensor_aggregate') roles.splice(1);
-			else roles.push('cooled_surface');
 		}
 		return [{ id: property.id, device, channel, property, roles }];
 	});
@@ -151,7 +153,7 @@ export function addThermostatWizardActuator(draft: ThermostatDraft, candidate: T
 	draft.actuators.push({
 		role: DevicesVirtualPluginThermostatActuatorRole.heating,
 		source_property: candidate.id,
-		lease_seconds: RECOMMENDED_ACTUATOR_LEASE_SECONDS,
+		lease_seconds: null,
 	});
 	return true;
 }

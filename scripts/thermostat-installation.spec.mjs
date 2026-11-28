@@ -7,7 +7,7 @@ const environment = { SP_API_URL: 'http://127.0.0.1:3000', SP_USER_ACCESS_TOKEN:
 test('inspect uses the authenticated panel API without leaking the credential or artifact', async () => {
 	let display;
 	await runInstallationCli(['inspect',claim],environment,async (url, options) => {
-		assert.equal(url.pathname, `/api/v1/plugins/devices-virtual/producers/thermostat-installations/${claim}`);
+		assert.equal(url.pathname, `/api/v1/plugins/devices-shelly-ng/producers/thermostat-installations/${claim}`);
 		assert.equal(options.method,'GET');
 		assert.equal(options.headers.Authorization, 'Bearer fixture-only');
 		return { ok: true, json: async () => ({ data: { readiness: 'blocked', artifact: 'review source' } }) };

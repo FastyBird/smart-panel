@@ -12,7 +12,7 @@ import {
 	UpdateEvent,
 } from 'typeorm';
 
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 
 import {
 	SqliteNoMutationWindow,
@@ -26,6 +26,7 @@ import { captureCreation } from '../../../modules/devices/services/creation-capt
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 import { initializeThermostatCreationCatalog } from '../services/thermostat-creation-catalog';
 import { THERMOSTAT_OVERRIDE_CLOCK_TRIGGERS } from '../services/thermostat-override-clock.sql';
+import { ThermostatSafetyCatalog } from '../services/thermostat-safety-catalog.service';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
 import {
 	THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
@@ -37,10 +38,11 @@ import {
 export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInterface, OnApplicationBootstrap {
 	private readonly logger = new Logger(VirtualThermostatOwnershipSubscriber.name);
 	private installed = false;
-	private readonly dirtyRunners = new WeakSet<QueryRunner>();
+	private readonly dirtyRunners = new WeakMap<QueryRunner, { pending: boolean }>();
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly claims: VirtualThermostatClaimsService,
+		@Optional() private readonly safetyCatalog: ThermostatSafetyCatalog = new ThermostatSafetyCatalog(),
 	) {
 		this.dataSource.subscribers.push(this);
 	}
@@ -134,25 +136,52 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 			await this.dataSource.query(`CREATE TRIGGER IF NOT EXISTS "${name}" ${sql}`);
 		this.installed = true;
 	}
-	private isCatalogMutation(query: string): boolean {
-		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties|climate_automation_slots)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings|member_protection)|devices_virtual_transform_[a-z_]+|devices_shelly_ng_sample_sources)["`\]]?\b/i.test(
-			query,
-		);
+	private catalogMutation(query: string): 'bindings' | 'qualification' | 'settings' | 'automation-slot' | null {
+		const table = /^\s*(?:UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+(?:["`]|\[)?(\w+)/i
+			.exec(query)?.[1]
+			?.toLowerCase();
+		if (!table) return null;
+		if (table === 'devices_module_climate_automation_slots') return 'automation-slot';
+		if (table === 'devices_virtual_thermostat_configs') {
+			// Only recognize the parameter or numeric assignments emitted for ordinary comfort writes.
+			// Ownership, release, and any unfamiliar DML keep the full structural fence.
+			const assignments = /^\s*UPDATE\s+"?devices_virtual_thermostat_configs"?\s+SET\s+(.+?)\s+WHERE\s/is.exec(
+				query,
+			)?.[1];
+			if (
+				assignments
+					?.split(',')
+					.every((assignment) =>
+						/^\s*"?(?:comfort|locked|policy|requestedMode|revision)"?\s*=\s*(?:\?|\d+)\s*$/i.test(assignment),
+					)
+			)
+				return 'settings';
+		}
+		if (
+			/^devices_virtual_(?:thermostat_(?:configs|sources|actuator_claims|member_protection)$|transform_)/.test(table) ||
+			this.safetyCatalog.invalidatesQualification(table)
+		)
+			return 'qualification';
+		return /^(?:devices_module_(?:devices|channels|channels_properties)|devices_virtual_thermostat_settings)$/.test(
+			table,
+		)
+			? 'bindings'
+			: null;
 	}
 	beforeQuery(event: BeforeQueryEvent<unknown>): void {
-		if (!this.installed || !this.isCatalogMutation(event.query)) return;
-		this.dirtyRunners.add(event.queryRunner);
+		const mutation = this.installed && this.catalogMutation(event.query);
+		if (!mutation) return;
+		const write = this.dirtyRunners.get(event.queryRunner) ?? { pending: true };
+		this.dirtyRunners.set(event.queryRunner, write);
 		if (this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters)) return;
-		this.claims.invalidate();
-		if (
-			/devices_virtual_(?:thermostat_(?:configs|sources|actuator_claims|member_protection)|transform_)|devices_shelly_ng_sample_sources/i.test(
-				event.query,
-			)
-		)
-			this.claims.revokeAllQualifications();
+		this.claims.invalidate(
+			mutation === 'settings' || mutation === 'automation-slot' ? 'actuation' : 'ownership',
+			write,
+		);
+		if (mutation === 'qualification' || mutation === 'settings') this.claims.revokeAllQualifications();
 	}
 	async afterQuery(event: AfterQueryEvent<unknown>): Promise<void> {
-		if (this.installed && !event.queryRunner.isTransactionActive && this.isCatalogMutation(event.query))
+		if (this.installed && !event.queryRunner.isTransactionActive && this.catalogMutation(event.query))
 			await this.reconcileRunner(event.queryRunner, 'catalog write');
 	}
 	async afterTransactionCommit(event: TransactionCommitEvent): Promise<void> {
@@ -165,7 +194,11 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		// Read-only snapshots must release SQLite without acquiring the structure lock: a structural
 		// writer can already hold that lock while waiting for this connection. Inner savepoint
 		// boundaries retain dirtiness until the owning transaction commits or rolls back.
-		if (!this.installed || runner.isTransactionActive || !this.dirtyRunners.delete(runner)) return;
+		if (!this.installed || runner.isTransactionActive) return;
+		const write = this.dirtyRunners.get(runner);
+		if (!write) return;
+		write.pending = false;
+		this.dirtyRunners.delete(runner);
 		await this.refreshAfterWrite(boundary);
 	}
 	private async refreshAfterWrite(boundary: string): Promise<void> {
@@ -210,7 +243,7 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 			if (!owned.length) return;
 			if (
 				[...event.updatedColumns, ...event.updatedRelations].some((column) =>
-					['identifier', 'canonicalMac', 'category', 'type'].includes(column.propertyName),
+					['identifier', 'category', 'type'].includes(column.propertyName),
 				)
 			)
 				throw new DevicesValidationException(

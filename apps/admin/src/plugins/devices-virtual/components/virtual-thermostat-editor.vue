@@ -527,7 +527,6 @@
 						>
 							{{ memberLabel('members') }} · {{ draft.actuators.length }}/8
 						</el-divider>
-						<p v-if="!create">{{ memberLabel('nativeUnavailable') }}</p>
 						<section
 							v-for="role in [ThermostatActuatorRole.heating, ThermostatActuatorRole.cooling]"
 							v-show="!create || draft.actuators.some((member) => member.role === role)"
@@ -549,7 +548,7 @@
 								:floor-sources="create ? selectedFloorSources : undefined"
 								:cooling-sources="create && draft.policy.cooling ? selectedCoolingSources : undefined"
 								:title="create ? `${roleLabel(role)} · ${memberSourceLabel(actuator.source_property)}` : undefined"
-								:parallel="draft.actuators.filter((member) => member.role === 'heating').length > 1"
+								:cooling-enabled="!!draft.policy.cooling"
 								:controller="deviceId"
 								:configuration-revision="configuration?.revision ?? 0"
 								:requested-limit="draft.policy.floor?.limit ?? null"
@@ -702,7 +701,19 @@
 										v-for="(member, index) in draft.actuators"
 										:key="member.retained?.id ?? `${member.role}-${index}`"
 									>
-										<el-descriptions-item :label="`${roleLabel(member.role)} · ${memberLabel('lease')}`">
+										<el-descriptions-item :label="`${roleLabel(member.role)} · ${memberLabel('profile')}`">
+											{{ isSupervisedMember(member) ? memberLabel('supervised') : member.provider_profile }}
+										</el-descriptions-item>
+										<el-descriptions-item
+											v-if="isSupervisedMember(member)"
+											:label="memberLabel('independentProtection')"
+										>
+											{{ memberLabel(member.independent_protection_acknowledged ? 'acknowledged' : 'ackRequired') }}
+										</el-descriptions-item>
+										<el-descriptions-item
+											v-else
+											:label="memberLabel('lease')"
+										>
 											{{ member.lease_seconds }} s
 										</el-descriptions-item>
 										<el-descriptions-item
@@ -901,7 +912,6 @@ import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
 import { provideVirtualWizardPlacement } from '../composables/use-virtual-wizard-placement';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 import {
-	RECOMMENDED_ACTUATOR_LEASE_SECONDS,
 	RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS,
 	type ThermostatConfiguration,
 	type ThermostatDraft,
@@ -910,6 +920,7 @@ import {
 	draftAfterRelease,
 	draftFromConfiguration,
 	emptyThermostatDraft,
+	isSupervisedMember,
 	newThermostatDraft,
 	recommendedFloorPolicy,
 	recommendedWindowHeuristic,
@@ -1324,7 +1335,7 @@ const addSource = (role: ThermostatSource['role']): void => {
 };
 const addActuator = (role: ThermostatActuatorRole): void => {
 	if (draft.value.actuators.length >= 8 || !canAuthor.value) return;
-	draft.value.actuators.push({ role, source_property: '', lease_seconds: props.create ? RECOMMENDED_ACTUATOR_LEASE_SECONDS : null });
+	draft.value.actuators.push({ role, source_property: '', lease_seconds: null });
 };
 const addSetting = (): void => {
 	draft.value.settings.push({ setting: ThermostatSettingRole.heating_setpoint, property: '' });

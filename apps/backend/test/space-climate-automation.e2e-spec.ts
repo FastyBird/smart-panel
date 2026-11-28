@@ -43,14 +43,20 @@ import {
 } from '../src/plugins/devices-shelly-ng/entities/devices-shelly-ng.entity';
 import {
 	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
 	VirtualDeviceMode,
+	VirtualValueOrigin,
 } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualGraphRevisionEntity } from '../src/plugins/devices-virtual/entities/virtual-producer.entity';
-import { VirtualThermostatConfigEntity } from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
+import {
+	VirtualThermostatConfigEntity,
+	VirtualThermostatSettingEntity,
+} from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
 import { VirtualDependencyGraphService } from '../src/plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualThermostatAutomationService } from '../src/plugins/devices-virtual/services/virtual-thermostat-automation.service';
 import { VirtualThermostatComfortService } from '../src/plugins/devices-virtual/services/virtual-thermostat-comfort.service';
+import { thermostatPropertyContract } from '../src/plugins/devices-virtual/services/virtual-thermostat-contract.utils';
 import { readThermostatRecreationHistory } from '../src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership';
 import { VirtualThermostatRuntimeService } from '../src/plugins/devices-virtual/services/virtual-thermostat-runtime.service';
 import { VirtualThermostatOwnershipSubscriber } from '../src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber';
@@ -268,11 +274,34 @@ describe('Group A default-migrated authenticated activity climate automation', (
 		}
 	});
 
-	it.each([false, true])(
-		'composes all configured activity domains through ordinary HTTP and real adapters; media fails=%s',
-		async (failMedia) => {
+	it.each([
+		[false, true],
+		[true, true],
+		[false, false],
+	])(
+		'composes all configured activity domains through ordinary HTTP and real adapters; media fails=%s, prepared platform=%s',
+		async (failMedia, preparedPlatform) => {
 			const { roomId, controllerId } = await seed();
 			await enable(controllerId);
+			const heater = await database.manager.findOneOrFail(VirtualChannelEntity, {
+				where: { device: { id: controllerId }, identifier: 'heater' },
+				relations: ['device'],
+			});
+			const setting = await database.manager.save(VirtualChannelPropertyEntity, {
+				id: randomUUID(),
+				channel: heater,
+				identifier: 'on',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+				valueOrigin: VirtualValueOrigin.LOCAL,
+			});
+			await database.manager.insert(VirtualThermostatSettingEntity, {
+				controllerId,
+				propertyId: setting.id,
+				setting: 'heating_enabled',
+				contractFingerprint: thermostatPropertyContract(setting, heater, heater.device as DeviceEntity),
+			});
 			const createControl = async (
 				category: DeviceCategory,
 				channelCategory: ChannelCategory,
@@ -345,15 +374,25 @@ describe('Group A default-migrated authenticated activity climate automation', (
 				getType: () => light.device.type,
 				process: (update) => apply([update]),
 				processBatch: apply,
-				prepareCompositeBatch: (updates) =>
+			};
+			if (preparedPlatform)
+				endpoint.prepareCompositeBatch = (updates) =>
 					Promise.resolve({
 						updates,
 						isCurrent: () => true,
 						dispatch: (current) => (current() ? apply(updates) : Promise.resolve(false)),
-					}),
-			};
+					});
 			const registration = module.get(PlatformRegistryService).registerOwned(endpoint);
 			expect(registration).not.toBeNull();
+			const events = module.get(EventEmitter2);
+			const published: EventType[] = [];
+			const observe = (event: EventType) => (property: ChannelPropertyEntity) => {
+				if (property.id === setting.id) published.push(event);
+			};
+			const valueSet = observe(EventType.CHANNEL_PROPERTY_VALUE_SET);
+			const metadataUpdated = observe(EventType.CHANNEL_PROPERTY_UPDATED);
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_SET, valueSet);
+			events.on(EventType.CHANNEL_PROPERTY_UPDATED, metadataUpdated);
 			try {
 				const endpoints = await module.get(DerivedMediaEndpointService).buildEndpointsForSpace(roomId);
 				const display = endpoints.endpoints.find(
@@ -413,6 +452,8 @@ describe('Group A default-migrated authenticated activity climate automation', (
 					}),
 				);
 				expect(issued).toHaveLength(3);
+				expect(published).toContain(EventType.CHANNEL_PROPERTY_VALUE_SET);
+				expect(published).not.toContain(EventType.CHANNEL_PROPERTY_UPDATED);
 				expect(issued).toEqual(
 					expect.arrayContaining([
 						{ id: light.propertyId, value: false },
@@ -433,6 +474,8 @@ describe('Group A default-migrated authenticated activity climate automation', (
 				expect(read.status).toBe(200);
 				expect(JSON.stringify(read.body)).not.toMatch(/controllerIncarnation|installEvidence|baselineId|candidateId/);
 			} finally {
+				events.off(EventType.CHANNEL_PROPERTY_VALUE_SET, valueSet);
+				events.off(EventType.CHANNEL_PROPERTY_UPDATED, metadataUpdated);
 				registration?.dispose();
 			}
 		},
@@ -624,7 +667,27 @@ describe('Group A default-migrated authenticated activity climate automation', (
 		const initial = Date.now(),
 			first = Math.floor(initial / 60_000) * 60_000 + 60_000,
 			second = first + 60_000;
-		const now = jest.spyOn(Date, 'now').mockReturnValue(initial);
+		// The sensor, its freshness check and the scheduler must read the same wall clock.
+		jest.useFakeTimers({
+			now: initial,
+			doNotFake: [
+				'setTimeout',
+				'clearTimeout',
+				'setInterval',
+				'clearInterval',
+				'setImmediate',
+				'clearImmediate',
+				'nextTick',
+				'queueMicrotask',
+				'performance',
+				'hrtime',
+			],
+		});
+		const evaluateChangedInputs = async () => {
+			// A cron or event scan may already hold the previous input. Join it, then evaluate the new evidence.
+			await occupancy.runCycle();
+			await occupancy.runCycle();
+		};
 		const effective = async () => (await module.get(VirtualThermostatComfortService).get(controllerId)).effective;
 		try {
 			await http()
@@ -656,7 +719,7 @@ describe('Group A default-migrated authenticated activity climate automation', (
 				.expect(200);
 			await occupancy.runCycle();
 			expect(await modes.getActiveMode(roomId)).toBeNull();
-			now.mockReturnValue(first + 1000);
+			jest.setSystemTime(first + 1000);
 			await scheduler.runCycle();
 			expect((await modes.getActiveMode(roomId)).activityActor).toMatch(/^schedule:/);
 			expect(await effective()).toMatchObject({ source: 'automation', heating_setpoint: 17 });
@@ -664,14 +727,14 @@ describe('Group A default-migrated authenticated activity climate automation', (
 			await module
 				.get(PropertyValueService)
 				.writeSampleWithState(input, true, { sampledAt: at, receivedAt: at, provenance: 'live' });
-			await occupancy.runCycle();
+			await evaluateChangedInputs();
 			expect(await modes.getActiveMode(roomId)).toMatchObject({
 				selectedActivityMode: ActivityMode.RELAX,
 				activityActor: 'occupancy',
 			});
 			expect(await effective()).toMatchObject({ source: 'automation', heating_setpoint: 22 });
 			await connected(ConnectionState.DISCONNECTED);
-			await occupancy.runCycle();
+			await evaluateChangedInputs();
 			expect((await occupancy.stateFor(roomId)).status).toBe('unknown');
 			expect((await modes.getActiveMode(roomId)).selectedActivityMode).toBe(ActivityMode.RELAX);
 			expect(await effective()).toMatchObject({ source: 'automation', heating_setpoint: 22 });
@@ -693,7 +756,7 @@ describe('Group A default-migrated authenticated activity climate automation', (
 					clear_user_off: false,
 				})
 				.expect(201);
-			now.mockReturnValue(second + 1000);
+			jest.setSystemTime(second + 1000);
 			await scheduler.runCycle();
 			expect(await modes.getActiveMode(roomId)).toMatchObject({
 				selectedActivityMode: ActivityMode.RELAX,
@@ -713,14 +776,14 @@ describe('Group A default-migrated authenticated activity climate automation', (
 			await module
 				.get(PropertyValueService)
 				.writeSampleWithState(input, true, { sampledAt: fresh, receivedAt: fresh, provenance: 'live' });
-			await occupancy.runCycle();
+			await evaluateChangedInputs();
 			expect((await module.get(SpaceOccupancyConfigService).get(roomId)).manualOverride).toBe(false);
 			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
 				manualHold: true,
 			});
 			expect(await effective()).toMatchObject({ source: 'manual', heating_setpoint: 20 });
 		} finally {
-			now.mockRestore();
+			jest.useRealTimers();
 		}
 	});
 

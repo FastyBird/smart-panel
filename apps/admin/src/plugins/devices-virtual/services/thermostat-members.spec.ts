@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
+import {
+	emptyMemberInstallation,
+	memberInstallationBlocker,
+	memberInstallationRequest,
+} from '../../devices-shelly-ng/utils/thermostat-member-installation';
+
 import { type ThermostatConfiguration, buildThermostatRequest, draftFromConfiguration } from './thermostat-authoring';
-import { emptyMemberInstallation, memberInstallationBlocker, memberInstallationRequest } from './thermostat-member-installation';
 import {
 	type ThermostatMemberContext,
 	ThermostatMemberFreshness,
@@ -49,6 +54,7 @@ export const memberConfiguration = (count = 2): ThermostatConfiguration =>
 			source_identity: `relay-${index}`,
 			physical_identity: `shelly-${index}`,
 			lease_seconds: 30,
+			provider_profile: 'shelly-ng.guarded-switch',
 			revision: 4,
 			qualification_generation: `generation-${index}`,
 			protection: {
@@ -159,9 +165,19 @@ describe('mandatory member authoring and current evidence', () => {
 			firmware: 'actual-fixture-fw',
 			switch_configuration_json: '{"id":0}',
 			reasons: [],
-			candidates: [
-				{ property: 'selected-floor', snapshot: { component: 'temperature:100' } },
-				{ property: 'other-floor', snapshot: null },
+			candidates: [],
+			safety_extensions: [
+				{
+					id: 'shelly-ng.guarded-switch',
+					device_hardware_id: 'actual-fixture-id',
+					firmware: 'actual-fixture-fw',
+					switch_configuration_json: '{"id":0}',
+					reasons: [],
+					candidates: [
+						{ property: 'selected-floor', snapshot: { component: 'temperature:100' } },
+						{ property: 'other-floor', snapshot: null },
+					],
+				},
 			],
 		} as unknown as ThermostatMemberContext;
 		const request = memberInstallationRequest(draft, context, 7, 'reviewed-generation', 'selected-floor')!;
@@ -178,18 +194,18 @@ describe('mandatory member authoring and current evidence', () => {
 			},
 		});
 		expect(request.member_setup).not.toHaveProperty('floor_configuration_json');
-		context.candidates[0].snapshot = null;
+		context.safety_extensions[0].candidates[0].snapshot = null;
 		expect(memberInstallationBlocker(context, 'selected-floor')).toBe('selected_protective_source_installation_snapshot_missing');
 		expect(memberInstallationRequest(draft, context, 7, undefined, 'selected-floor')).toBeNull();
-		context.candidates[0].snapshot = { component: 'temperature:100' };
+		context.safety_extensions[0].candidates[0].snapshot = { component: 'temperature:100' };
 		expect(memberInstallationRequest(draft, context, 7, undefined, 'selected-floor')).not.toBeNull();
-		context.candidates.push({
-			...context.candidates[0],
+		context.safety_extensions[0].candidates.push({
+			...context.safety_extensions[0].candidates[0],
 			property: 'converted-floor',
 			snapshot: { component: 'input:100', calibration: { operator: 'steinhart_hart' } },
 		});
 		expect(memberInstallationRequest(draft, context, 7, undefined, 'converted-floor')).not.toBeNull();
-		context.switch_configuration_json = null;
+		context.safety_extensions[0].switch_configuration_json = null;
 		expect(memberInstallationRequest(draft, context, 7, undefined, 'selected-floor')).toBeNull();
 	});
 	it('contains the same translated member controls in every supported locale', () => {

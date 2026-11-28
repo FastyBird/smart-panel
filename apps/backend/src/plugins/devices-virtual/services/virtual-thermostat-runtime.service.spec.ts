@@ -9,7 +9,12 @@ import { v4 as uuid } from 'uuid';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { createProtectionProbe, memberInstallationSetup } from '../../../../test/support/thermostat-protection-fixture';
+import { shellyThermostatActuationFixture } from '../../../../test/support/thermostat-actuation-fixture';
+import {
+	createProtectionProbe,
+	createShellyThermostatSafetyCatalog,
+	memberInstallationSetup,
+} from '../../../../test/support/thermostat-protection-fixture';
 import {
 	disposeRealThermostatGuardFixtures,
 	realThermostatGuardFixture,
@@ -17,6 +22,7 @@ import {
 } from '../../../../test/support/thermostat-real-guard-fixture';
 import { SqliteDataSource, observeSqliteOuterOutcome } from '../../../common/database/sqlite-data-source';
 import { IndexVirtualThermostatCommands1000000000035 } from '../../../migrations/1000000000035-IndexVirtualThermostatCommands';
+import { DEVICE_BINDINGS_CHANGED, DeviceBindingsEvent } from '../../../modules/devices/contracts/device-bindings.event';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -36,6 +42,8 @@ import { DeviceStructureLockService } from '../../../modules/devices/services/de
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyReadProofService } from '../../../modules/devices/services/property-read-proof.service';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
@@ -46,6 +54,13 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ThermostatInstallationEntity } from '../../devices-shelly-ng/entities/thermostat-installation.entity';
+import { thermostatInstallationArtifact } from '../../devices-shelly-ng/services/thermostat-installation-artifact';
+import { ThermostatInstallationBindingsService } from '../../devices-shelly-ng/services/thermostat-installation-bindings.service';
+import { ThermostatInstallationLoaderService } from '../../devices-shelly-ng/services/thermostat-installation-loader.service';
+import { ThermostatInstallationService } from '../../devices-shelly-ng/services/thermostat-installation.service';
+import { resolveInstallationSetup } from '../../devices-shelly-ng/services/thermostat-installation.service';
+import { THERMOSTAT_ATTESTATION_KINDS } from '../../devices-shelly-ng/services/thermostat-installation.types';
 import { ConfigureVirtualAggregateDto } from '../dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
@@ -54,7 +69,6 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
-import { ThermostatInstallationEntity } from '../entities/thermostat-installation.entity';
 import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
 import { VirtualAggregateOperator } from '../entities/virtual-producer.entity';
 import {
@@ -70,14 +84,7 @@ import {
 } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
-import { thermostatInstallationArtifact } from './thermostat-installation-artifact';
-import { ThermostatInstallationBindingsService } from './thermostat-installation-bindings.service';
-import { ThermostatInstallationLoaderService } from './thermostat-installation-loader.service';
-import { ThermostatInstallationService } from './thermostat-installation.service';
-import { resolveInstallationSetup } from './thermostat-installation.service';
-import { THERMOSTAT_ATTESTATION_KINDS } from './thermostat-installation.types';
 import { ThermostatMemberProtectionService } from './thermostat-member-protection.service';
-import { resolveThermostatProtectionSource } from './thermostat-protection-source.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
@@ -326,6 +333,9 @@ describe('virtual thermostat durable runtime', () => {
 			closedValue: null,
 		});
 		await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+			providerProfile: 'shelly-ng.guarded-switch',
+			providerProfileVersion: 1,
+			qualificationGeneration: uuid(),
 			id: uuid(),
 			controllerId,
 			role: 'heating',
@@ -479,6 +489,10 @@ describe('virtual thermostat durable runtime', () => {
 			claims,
 			events,
 			values,
+			undefined,
+			undefined,
+			undefined,
+			createShellyThermostatSafetyCatalog(),
 		);
 		comfort = new VirtualThermostatComfortService(
 			database,
@@ -500,6 +514,9 @@ describe('virtual thermostat durable runtime', () => {
 				runtimeGraph,
 				comfort,
 				new ConfigService(),
+				undefined,
+				undefined,
+				createShellyThermostatSafetyCatalog(),
 			);
 			issuedRuntimes.push(created);
 			return created;
@@ -722,6 +739,178 @@ describe('virtual thermostat durable runtime', () => {
 				jest.useRealTimers();
 			},
 		);
+	});
+
+	it('keeps supervised opposed branches off until real post-command reports clear their journals', async () => {
+		await settle();
+		runtime.onModuleDestroy();
+		const coolingId = await addMandatoryMember('cooling');
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.policy.coolingSetpoint = 24;
+		config.requestedMode = 'auto';
+		await database.manager.save(config);
+		await database.manager.update(
+			VirtualThermostatActuatorClaimEntity,
+			{ controllerId },
+			{
+				providerProfile: 'supervised-switch',
+				providerProfileVersion: 1,
+				leaseSeconds: 0,
+				independentProtectionAcknowledged: true,
+			},
+		);
+		const switches = new PlatformRegistryService();
+		const commands: { property: string; on: boolean }[] = [];
+		const platform = {
+			getType: () => DEVICES_SHELLY_NG_TYPE,
+			process: jest.fn(),
+			processBatch: (updates: import('../../../modules/devices/platforms/device.platform').IDevicePropertyData[]) => {
+				for (const { property, value } of updates) commands.push({ property: property.id, on: value === true });
+				return Promise.resolve(true);
+			},
+		};
+		switches.register(platform);
+		const structure = new DeviceStructureLockService();
+		const graph = runtime['graph'];
+		const structuralGraph = new VirtualDependencyGraphService(database);
+		const claims = new VirtualThermostatClaimsService(
+			database,
+			structure,
+			structuralGraph,
+			new PropertyCommandAdmissionRegistryService(),
+			events,
+		);
+		const transport = new VirtualThermostatTransportService(
+			switches,
+			values,
+			undefined,
+			new PropertyReadProofService(switches, events),
+		);
+		issuedClaims.push(claims);
+		await claims.onApplicationBootstrap();
+		runtime = new VirtualThermostatRuntimeService(
+			database,
+			structure,
+			claims,
+			new VirtualThermostatInputsService(database, values),
+			transport,
+			values,
+			producers,
+			events,
+			graph,
+			comfort,
+		);
+		issuedRuntimes.push(runtime);
+		const report = (id: string, value: boolean, echo = false) => {
+			sample(id, value);
+			const current = {
+				...samples.get(id),
+				ingressSequence: nextSampleIngress(),
+				...(echo ? { commandEcho: true as const } : {}),
+			};
+			samples.set(id, current);
+			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: id, sample: current });
+		};
+		const drive = async () => {
+			await runtime.request(controllerId);
+			await settle();
+		};
+		const removals: DeviceBindingsEvent[] = [];
+		const captureRemoval = (event: DeviceBindingsEvent) => {
+			if (event.removedBindings?.length) removals.push(event);
+		};
+		events.on(DEVICE_BINDINGS_CHANGED, captureRemoval);
+		try {
+			sample(sensorId, 21);
+			await runtime.onApplicationBootstrap();
+			clearInterval(runtime['timer']);
+			await drive();
+			expect(commands).toEqual(
+				expect.arrayContaining([
+					{ property: relayId, on: false },
+					{ property: coolingId, on: false },
+				]),
+			);
+			report(relayId, false, true);
+			report(coolingId, false, true);
+			await drive();
+			expect(commands.some(({ on }) => on)).toBe(false);
+			report(relayId, false);
+			report(coolingId, false);
+			await drive();
+			// An external writer can operate a supervised output. Even a full ON/OFF transition
+			// between evaluations ends the previous OFF interval before the other branch can start.
+			report(coolingId, true);
+			report(coolingId, false);
+			sample(sensorId, 18);
+			await drive();
+			expect(commands.some(({ on }) => on)).toBe(false);
+			report(coolingId, false);
+			await drive();
+			expect(commands).toContainEqual({ property: relayId, on: true });
+			report(relayId, true);
+			sample(sensorId, 28);
+			await drive();
+			expect(commands.at(-1)).toEqual({ property: relayId, on: false });
+			report(relayId, false, true);
+			await drive();
+			expect(commands).not.toContainEqual({ property: coolingId, on: true });
+			report(relayId, false);
+			await drive();
+			expect(commands).toContainEqual({ property: coolingId, on: true });
+
+			const configuration = new VirtualThermostatConfigService(
+				database,
+				structure,
+				structuralGraph,
+				claims,
+				events,
+				values,
+			);
+			const released = await configuration.requestRelease(controllerId, config.revision);
+			await drive();
+			report(relayId, false, true);
+			report(coolingId, false, true);
+			await drive();
+			expect(
+				await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'releasing' }),
+			).toBe(2);
+			expect(removals).toHaveLength(0);
+			for (const propertyId of [relayId, coolingId]) {
+				report(propertyId, false);
+				await drive();
+			}
+			const formerMembers = await database.manager.findBy(VirtualThermostatActuatorClaimEntity, {
+				controllerId,
+				state: 'released',
+			});
+			expect(formerMembers).toHaveLength(2);
+			expect(removals).toHaveLength(2);
+			for (const member of formerMembers) {
+				const event = removals.find(({ removedBindings }) => removedBindings[0].claimId === member.id);
+				expect(event).toMatchObject({
+					action: 'updated',
+					deviceId: controllerId,
+					revision: released.revision,
+					removedBindings: [
+						{
+							role: member.role,
+							claimId: member.id,
+							deviceId: member.sourceDeviceIdentity,
+							propertyId: member.sourcePropertyIdentity,
+							physicalIdentity: member.physicalIdentity,
+							providerProfile: 'supervised-switch',
+						},
+					],
+				});
+				expect(event.bindings.some((binding) => binding.claimId === member.id)).toBe(false);
+			}
+		} finally {
+			events.off(DEVICE_BINDINGS_CHANGED, captureRemoval);
+			runtime.onModuleDestroy();
+			transport.onModuleDestroy();
+			switches.onModuleDestroy();
+		}
 	});
 
 	it('reconciles and refreshes runtime after a committed comfort mutation whose leading listener threw', async () => {
@@ -2462,6 +2651,9 @@ describe('virtual thermostat durable runtime', () => {
 		});
 		const channel = property.channel as ChannelEntity;
 		await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+			providerProfile: 'shelly-ng.guarded-switch',
+			providerProfileVersion: 1,
+			qualificationGeneration: uuid(),
 			id: uuid(),
 			controllerId,
 			role,
@@ -2491,10 +2683,10 @@ describe('virtual thermostat durable runtime', () => {
 			for (const member of members) {
 				if (await database.manager.findOneBy(ThermostatMemberProtectionEntity, { claimId: member.id })) continue;
 				const probe = await createProtectionProbe(database, member.sourcePropertyId);
-				const source = await resolveThermostatProtectionSource(
+				const source = await createShellyThermostatSafetyCatalog().resolveSource(
 					database.manager,
 					probe.sourceId,
-					member.physicalIdentity,
+					member,
 				);
 				protectionProbes.add(probe.sourceId);
 				await database.manager.insert(ThermostatMemberProtectionEntity, {
@@ -2598,6 +2790,7 @@ describe('virtual thermostat durable runtime', () => {
 			new PropertyCommandAdmissionRegistryService(),
 			events,
 			new ConfigService({ FB_CLI: 'off' }),
+			shellyThermostatActuationFixture(),
 		);
 		issuedClaims.push(claims);
 		await claims.onApplicationBootstrap();
@@ -2632,6 +2825,9 @@ describe('virtual thermostat durable runtime', () => {
 			graph,
 			comfort,
 			new ConfigService({ FB_CLI: 'off' }),
+			undefined,
+			undefined,
+			createShellyThermostatSafetyCatalog(),
 		);
 		issuedRuntimes.push(runtime);
 		await runtime.onApplicationBootstrap();
@@ -2659,6 +2855,7 @@ describe('virtual thermostat durable runtime', () => {
 			new ConfigService({ FB_CLI: 'off' }),
 			undefined,
 			automation,
+			createShellyThermostatSafetyCatalog(),
 		);
 		issuedRuntimes.push(runtime);
 		await runtime.onApplicationBootstrap();
@@ -3045,6 +3242,7 @@ describe('virtual thermostat durable runtime', () => {
 			new ConfigService({ FB_CLI: 'off' }),
 			undefined,
 			comfort['automation'],
+			createShellyThermostatSafetyCatalog(),
 		);
 		issuedRuntimes.push(runtime);
 		await runtime.onApplicationBootstrap();
@@ -3071,7 +3269,7 @@ describe('virtual thermostat durable runtime', () => {
 		await database.manager.save(config);
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const probe = await createProtectionProbe(database, relayId);
-		const source = await resolveThermostatProtectionSource(database.manager, probe.sourceId, claim.physicalIdentity);
+		const source = await createShellyThermostatSafetyCatalog().resolveSource(database.manager, probe.sourceId, claim);
 		await database.manager.insert(ThermostatMemberProtectionEntity, {
 			claimId: claim.id,
 			schemaVersion: 1,
@@ -3103,6 +3301,7 @@ describe('virtual thermostat durable runtime', () => {
 			new PropertyCommandAdmissionRegistryService(),
 			events,
 			new ConfigService({ FB_CLI: 'off' }),
+			shellyThermostatActuationFixture(),
 		);
 		issuedClaims.push(claims);
 		await claims.onApplicationBootstrap();
@@ -3165,6 +3364,7 @@ describe('virtual thermostat durable runtime', () => {
 			new ConfigService({ FB_CLI: 'off' }),
 			undefined,
 			provider,
+			createShellyThermostatSafetyCatalog(),
 		);
 		issuedRuntimes.push(runtime);
 		const profiles = new ThermostatInstallationService(database, structure, bindings, claims, runtime);
@@ -3224,6 +3424,8 @@ describe('virtual thermostat durable runtime', () => {
 				fixture.values,
 				undefined,
 				comfort['automation'],
+				undefined,
+				createShellyThermostatSafetyCatalog(),
 			);
 			actualConfigs.onModuleInit();
 			type NativeTransaction = { queries: string[]; outcome: string | null };
@@ -3231,6 +3433,8 @@ describe('virtual thermostat durable runtime', () => {
 				parameters?: readonly unknown[];
 			};
 			const transactions = new Map<import('typeorm').QueryRunner, NativeTransaction>();
+			const onBindings = jest.fn<void, [DeviceBindingsEvent]>();
+			events.on(DEVICE_BINDINGS_CHANGED, onBindings);
 			const qualifiedWrites: {
 				query: string;
 				parameters: readonly unknown[];
@@ -3345,6 +3549,10 @@ describe('virtual thermostat durable runtime', () => {
 						.some((query) => query.startsWith('UPDATE "devices_virtual_graph_revision"')),
 				).toBe(true);
 				expect(transaction.outcome).toBe(mode === 'clean' ? 'COMMIT' : 'ROLLBACK');
+				const removals = onBindings.mock.calls
+					.map(([event]) => event)
+					.filter((event) => event.removedBindings?.some((binding) => binding.claimId === claim.id));
+				expect(removals).toHaveLength(mode === 'clean' ? 1 : 0);
 				if (mode === 'clean') {
 					expect(released.state).toBe('released');
 					expect(released.revision).toBe(requested.revision + 1);
@@ -3359,6 +3567,7 @@ describe('virtual thermostat durable runtime', () => {
 			} catch (cause) {
 				primary = { cause };
 			} finally {
+				events.off(DEVICE_BINDINGS_CHANGED, onBindings);
 				owner.onModuleDestroy();
 				actualConfigs.onModuleDestroy();
 				const completions = await Promise.allSettled([owner.flush(), fixture.flushTelemetry()]);
@@ -4257,6 +4466,9 @@ describe('virtual thermostat durable runtime', () => {
 				previous['graph'],
 				comfort,
 				new ConfigService({ FB_CLI: 'off' }),
+				undefined,
+				undefined,
+				createShellyThermostatSafetyCatalog(),
 			);
 			issuedRuntimes.push(owner);
 			return owner;
@@ -4454,6 +4666,7 @@ describe('virtual thermostat durable runtime', () => {
 				new ConfigService({ FB_CLI: 'off' }),
 				undefined,
 				automation,
+				createShellyThermostatSafetyCatalog(),
 			);
 			issuedRuntimes.push(owner);
 			runtime = owner;
@@ -6035,6 +6248,9 @@ describe('virtual thermostat durable runtime', () => {
 		});
 		const channel = property.channel as ChannelEntity;
 		await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+			providerProfile: 'shelly-ng.guarded-switch',
+			providerProfileVersion: 1,
+			qualificationGeneration: uuid(),
 			id: uuid(),
 			controllerId,
 			role: 'cooling',
@@ -6220,6 +6436,7 @@ describe('virtual thermostat durable runtime', () => {
 			new PropertyCommandAdmissionRegistryService(),
 			new EventEmitter2(),
 			new ConfigService({ FB_CLI: 'off' }),
+			shellyThermostatActuationFixture(),
 		);
 		try {
 			await claims.onApplicationBootstrap();
@@ -9117,14 +9334,14 @@ describe('virtual thermostat durable runtime', () => {
 			expect(device).toBeInstanceOf(ShellyNgDeviceEntity);
 			expect(prototype).toBe(ShellyNgDeviceEntity.prototype);
 			expect(Object.getOwnPropertyDescriptor(device, 'type')).toBeUndefined();
-			expect(generation).toBeNull();
-			expect(Object.getOwnPropertyDescriptor(qualification, 'qualificationGeneration')).toBeUndefined();
+			expect(typeof generation).toBe('string');
+			expect(qualification.qualificationGeneration).toBe(generation);
 			expect(
 				await database.manager.query(
 					'SELECT "qualificationGeneration" FROM "devices_virtual_thermostat_actuator_claims" WHERE "id" = ?',
 					[claim.id],
 				),
-			).toEqual([{ qualificationGeneration: null }]);
+			).toEqual([{ qualificationGeneration: generation }]);
 			const before = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
 			expect(before.some((row) => row.action === 'off' && row.status === 'confirmed')).toBe(true);
 			const originalCurrent = change === 'get-restored' ? adapter.isCurrent : selected.metadata.isCurrent;
@@ -10755,6 +10972,7 @@ describe('virtual thermostat durable runtime', () => {
 								new ConfigService({ FB_CLI: 'off' }),
 								undefined,
 								comfort['automation'],
+								createShellyThermostatSafetyCatalog(),
 							);
 				if (b !== a) issuedRuntimes.push(b);
 				runtime = b;
@@ -10897,6 +11115,7 @@ describe('virtual thermostat durable runtime', () => {
 				new ConfigService({ FB_CLI: 'off' }),
 				undefined,
 				comfort['automation'],
+				createShellyThermostatSafetyCatalog(),
 			);
 			issuedRuntimes.push(b);
 			runtime = b;
@@ -12048,6 +12267,8 @@ describe('virtual thermostat durable runtime', () => {
 			preparation.fixture.values,
 			undefined,
 			comfort['automation'],
+			undefined,
+			createShellyThermostatSafetyCatalog(),
 		);
 		configured.onModuleInit();
 		try {
@@ -12062,7 +12283,14 @@ describe('virtual thermostat durable runtime', () => {
 				contactOpeningMs: 0,
 				contactClosingMs: 0,
 				sources: [{ role: 'ambient', sourcePropertyId: sensorId, maximumAgeSeconds: 300 }],
-				actuators: [{ role: 'heating', sourcePropertyId: propertyId, leaseSeconds: 30 }],
+				actuators: [
+					{
+						role: 'heating',
+						sourcePropertyId: propertyId,
+						leaseSeconds: 30,
+						providerProfile: 'shelly-ng.guarded-switch',
+					},
+				],
 				settings: [],
 			});
 			const dFence = await comfort.get(d);
@@ -12091,6 +12319,8 @@ describe('virtual thermostat durable runtime', () => {
 			fixture.values,
 			undefined,
 			comfort['automation'],
+			undefined,
+			createShellyThermostatSafetyCatalog(),
 		);
 		releaseService.onModuleInit();
 		const deadline = lease.deadline;
@@ -12137,6 +12367,7 @@ describe('virtual thermostat durable runtime', () => {
 				new ConfigService({ FB_CLI: 'off' }),
 				undefined,
 				comfort['automation'],
+				createShellyThermostatSafetyCatalog(),
 			);
 			issuedRuntimes.push(runtime);
 			await runtime.onApplicationBootstrap();

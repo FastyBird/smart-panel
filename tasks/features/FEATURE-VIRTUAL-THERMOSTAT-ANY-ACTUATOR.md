@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: EPIC-VIRTUAL-DEVICE-CAPABILITIES
-Status: in-progress
+Status: implemented, in review
 
 ## 1. Business goal
 
@@ -82,17 +82,17 @@ features that a device's integration offers.
 
 ## 5. Acceptance criteria
 
-- [ ] `devices-virtual` contains no import from another plugin, enforced by a check.
-- [ ] A writable switch of any plugin can be bound, qualified and activated as a heating or cooling output; tests use
+- [x] `devices-virtual` contains no import from another plugin, enforced by a check.
+- [x] A writable switch of any plugin can be bound, qualified and activated as a heating or cooling output; tests use
       a stub platform with and without read-back, not only real plugins.
-- [ ] OFF for any output is confirmed only by a read-back or report observed after the OFF command; an acknowledged
+- [x] OFF for any output is confirmed only by a read-back or report observed after the OFF command; an acknowledged
       echo alone never releases a claim or allows the opposite output.
-- [ ] Without a safety extension, the editor and detail page state that the output has no device-side failsafe, and
+- [x] Without a safety extension, the editor and detail page state that the output has no device-side failsafe, and
       activation requires the operator's acknowledgement of independent protection.
-- [ ] A Shelly output with the Shelly safety extension still gets its device lease, fence and on-device floor limit.
-- [ ] No legacy readiness or continuity path and no Shelly default remains in `devices-virtual`.
-- [ ] Floor protection works with any switch through the software limit and the acknowledgement.
-- [ ] Tests cover the generic path, read-back proof and the extension registry.
+- [x] A Shelly output with the Shelly safety extension still gets its device lease, fence and on-device floor limit.
+- [x] No legacy readiness or continuity path and no Shelly default remains in `devices-virtual`.
+- [x] Floor protection works with any switch through the software limit and the acknowledgement.
+- [x] Tests cover the generic path, read-back proof and the extension registry.
 
 ## 6. Delivery plan (separate PRs)
 

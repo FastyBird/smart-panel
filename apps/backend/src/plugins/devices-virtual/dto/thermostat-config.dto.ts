@@ -1,7 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	IsArray,
+	IsBoolean,
 	IsIn,
 	IsInt,
 	IsNumber,
@@ -11,6 +12,7 @@ import {
 	Length,
 	Max,
 	Min,
+	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
 
@@ -357,6 +359,29 @@ export class ThermostatMemberProtectionDto {
 @ApiSchema({ name: 'DevicesVirtualPluginThermostatActuator' })
 export class VirtualThermostatActuatorDto {
 	@ApiPropertyOptional({
+		name: 'provider_profile',
+		description: 'Selected safety extension, or supervised-switch for ordinary platform control',
+	})
+	@Expose({ name: 'provider_profile' })
+	@IsOptional()
+	@IsString()
+	@Length(1, 128)
+	providerProfile?: string;
+
+	@ApiPropertyOptional({
+		name: 'independent_protection_acknowledged',
+		description: 'Operator confirms independent protection for this supervised output',
+	})
+	@Expose({ name: 'independent_protection_acknowledged' })
+	@Transform(
+		({ obj }: { obj: { independent_protection_acknowledged?: unknown } }) => obj.independent_protection_acknowledged,
+		{ toClassOnly: true },
+	)
+	@ValidateIf((_object, value: unknown) => value !== undefined)
+	@IsBoolean()
+	independentProtectionAcknowledged?: boolean;
+
+	@ApiPropertyOptional({
 		name: 'cooling_protection',
 		type: ThermostatCoolingDependencyDto,
 		description: 'Separate mandatory cooling-leaf dependencies',
@@ -369,7 +394,7 @@ export class VirtualThermostatActuatorDto {
 
 	@ApiPropertyOptional({
 		type: ThermostatMemberProtectionDto,
-		description: 'Mandatory for every parallel heating member; omission preserves only an existing legacy singleton',
+		description: 'Software floor binding, required on parallel heaters using device-side floor protection',
 	})
 	@Expose()
 	@IsOptional()
@@ -379,24 +404,26 @@ export class VirtualThermostatActuatorDto {
 
 	@ApiProperty({
 		enum: ['heating', 'cooling'],
+		enumName: 'DevicesVirtualPluginThermostatActuatorRole',
 		description: 'Physical branch controlled exclusively by this controller',
 	})
 	@Expose()
 	@IsIn(['heating', 'cooling'])
 	role: ThermostatActuatorRole;
-	@ApiProperty({ name: 'source_property', description: 'Canonical readable and writable physical boolean switch' })
+	@ApiProperty({ name: 'source_property', description: 'Writable physical boolean switch' })
 	@Expose({ name: 'source_property' })
 	@IsUUID('4')
 	sourcePropertyId: string;
-	@ApiProperty({
+	@ApiPropertyOptional({
 		name: 'lease_seconds',
-		description: 'Requested actuator-local maximum ON lease; qualification supplies permitted bounds',
+		description: 'Device-side ON lease in seconds for a selected safety extension',
 		minimum: 0,
 	})
 	@Expose({ name: 'lease_seconds' })
+	@IsOptional()
 	@IsNumber()
-	@Min(Number.EPSILON)
-	leaseSeconds: number;
+	@Min(0)
+	leaseSeconds?: number;
 }
 
 @ApiSchema({ name: 'DevicesVirtualPluginThermostatSetting' })

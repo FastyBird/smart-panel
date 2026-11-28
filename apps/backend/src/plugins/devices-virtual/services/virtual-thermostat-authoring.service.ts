@@ -33,6 +33,7 @@ import { buildDeviceGraphQuery } from '../../../modules/devices/utils/device-gra
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceType, isFloorZoneCategory } from '../../../modules/spaces/spaces.constants';
+import { VirtualDeviceBindingsEvent } from '../contracts/virtual-device-bindings.event';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
 import { CreateVirtualThermostatProducerDto } from '../dto/thermostat-authoring.dto';
 import {
@@ -45,13 +46,14 @@ import {
 import { VirtualCreatedThermostatModel } from '../models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationModel } from '../models/thermostat-response.model';
 
+import { captureThermostatBindings } from './thermostat-binding-events';
 import { CatalogMember, CatalogWitness, thermostatCreationCatalog } from './thermostat-creation-catalog';
 import { RetainedOriginalCreatedResponse, thermostatCreationResponse } from './thermostat-creation-response';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 
 type CreatedCatalogResponse = RetainedOriginalCreatedResponse &
-	Readonly<{ catalog: CatalogWitness; members: readonly CatalogMember[] }>;
+	Readonly<{ catalog: CatalogWitness; members: readonly CatalogMember[]; lifecycle: VirtualDeviceBindingsEvent }>;
 
 const fail = (message: string): never => {
 	throw new DevicesValidationException(message);
@@ -246,7 +248,10 @@ export class VirtualThermostatAuthoringService {
 								)
 									throw new Error('Original thermostat configuration membership changed');
 								const catalog = await DeviceCreationContext.check(context, () => originalRead(draft.dto.id, members));
-								return Object.freeze({ ...original, members, catalog });
+								const lifecycle = await DeviceCreationContext.check(context, () =>
+									captureThermostatBindings(context.manager, prepared.config, 'created'),
+								);
+								return Object.freeze({ ...original, members, catalog, lifecycle });
 							},
 							settlement,
 							(manager) => seal.values.sealControllerLedger.call(seal.receiver, manager),
@@ -261,7 +266,11 @@ export class VirtualThermostatAuthoringService {
 						let selectedDevice = committed.fullWire.device;
 						try {
 							assertCreationCurrent(entryPins);
-							await configurations.values.afterCommit.call(configurations.receiver, committed.identity.controller);
+							await configurations.values.afterCommit.call(
+								configurations.receiver,
+								committed.identity.controller,
+								committed.lifecycle,
+							);
 						} catch (error: unknown) {
 							configFailure ??= Object.freeze({ cause: error });
 							this.logger.error('Thermostat committed but post-commit publication failed', error);

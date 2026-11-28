@@ -3,18 +3,14 @@ import { DataSource } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { ThermostatInstallationEntity } from '../entities/thermostat-installation.entity';
 import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 } from '../entities/virtual-thermostat.entity';
 
-import {
-	ThermostatProtectionSource,
-	protectionBoundsValid,
-	resolveThermostatProtectionSource,
-} from './thermostat-protection-source.utils';
+import { ThermostatProtectionSource, protectionBoundsValid } from './thermostat-protection-source.utils';
+import { ThermostatSafetyCatalog } from './thermostat-safety-catalog.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
 
 export interface ThermostatMemberProtectionBinding {
@@ -62,6 +58,7 @@ export class ThermostatMemberProtectionService {
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly values: PropertyValueService,
+		private readonly safetyCatalog: ThermostatSafetyCatalog = new ThermostatSafetyCatalog(),
 	) {}
 	reset(): void {
 		this.latches.clear();
@@ -114,15 +111,12 @@ export class ThermostatMemberProtectionService {
 		const heating = claims.filter((claim) => claim.role === 'heating');
 		for (const claim of heating) {
 			const binding = await this.dataSource.manager.findOneBy(ThermostatMemberProtectionEntity, { claimId: claim.id });
-			if (!binding && heating.length === 1) continue; // Exact legacy singleton semantics.
+			const extension = this.safetyCatalog.get(claim.providerProfile);
+			if (!binding && (heating.length === 1 || !extension?.installedFloor)) continue;
 			let source: ThermostatProtectionSource | null = null;
 			try {
 				if (binding?.sourcePropertyId)
-					source = await resolveThermostatProtectionSource(
-						this.dataSource.manager,
-						binding.sourcePropertyId,
-						claim.physicalIdentity,
-					);
+					source = await this.safetyCatalog.resolveSource(this.dataSource.manager, binding.sourcePropertyId, claim);
 				if (source?.fingerprint !== binding?.contractFingerprint) source = null;
 			} catch {
 				source = null;
@@ -133,10 +127,11 @@ export class ThermostatMemberProtectionService {
 				this.dependencies.set(id, consumers);
 			}
 			const installation =
-				binding && (await this.dataSource.manager.findOneBy(ThermostatInstallationEntity, { claimId: claim.id }));
-			const ceiling = installation?.setup.formatVersion === 2 ? installation.setup.installedFloorCeilingC : null;
+				binding && extension?.installedFloor ? await extension.installedFloor(this.dataSource.manager, claim.id) : null;
 			const cutoff =
-				config.policy.floor && Number.isFinite(ceiling) ? Math.min(config.policy.floor.limit, ceiling) : null;
+				!config.policy.floor || (extension?.installedFloor && !installation)
+					? null
+					: Math.min(config.policy.floor.limit, installation?.ceiling ?? config.policy.floor.limit);
 			const hysteresis = config.policy.floor?.recoveryHysteresis ?? null;
 			result.push({
 				claimId: claim.id,
@@ -195,7 +190,7 @@ export class ThermostatMemberProtectionService {
 				(source?.transform && sample.revision !== source.transform.revision) ||
 				typeof sample.value !== 'number' ||
 				!Number.isFinite(sample.value) ||
-				(source && (sample.value < source.domain.minimum || sample.value > source.domain.maximum))
+				(source?.domain && (sample.value < source.domain.minimum || sample.value > source.domain.maximum))
 			)
 				reasons.push('member_protection_sample_unavailable');
 			if (

@@ -172,5 +172,34 @@
 	},
 	"sections": {
 		"connection": "Conexión de Shelly"
+	},
+	"thermostatInstallation": {
+		"addEvidence": "Añadir referencia",
+		"ceiling": "Límite instalado del suelo (°C)",
+		"coolingMaximum": "Máximo instalado de refrigeración (°C)",
+		"coolingMinimum": "Mínimo instalado de refrigeración (°C)",
+		"cutoff": "Límite efectivo de corte",
+		"endpoint": "Nombre de host revisado",
+		"epoch": "Clave de época persistente",
+		"equipment": "Identidad del equipo",
+		"evidence": "Referencia de evidencia existente",
+		"evidenceHelp": "Añada solo evidencia documentada real. Los registros vacíos no acreditan cualificación.",
+		"heatingMaximum": "Máximo instalado de calefacción (°C)",
+		"heatingMinimum": "Mínimo instalado de calefacción (°C)",
+		"installation": "Revisión y preparación de instalación",
+		"legacyProfile": "Se conserva la configuración individual anterior. Asigne protección local explícita antes del nuevo formato.",
+		"maximumLease": "Plazo máximo instalado (segundos)",
+		"minimumLease": "Plazo mínimo instalado (segundos)",
+		"observedMs": "Duración máxima observada (ms), si se midió",
+		"procedure": "Procedimiento documentado",
+		"reload": "Recargar revisión actual",
+		"removeDraft": "Eliminar entrada del borrador",
+		"retainedProfile": "Instalación, auditoría y preparación conservadas",
+		"script": "Ranura de script revisada",
+		"snapshot": "Revisión de catálogo y calibración de solo lectura",
+		"stage": "Preparar registro de instalación de software",
+		"stagingOnly": "Guardar solo prepara registros. No despliega scripts, activa salidas ni certifica equipos. La puesta en servicio física sigue a una versión alfa publicada.",
+		"testedAt": "Hora real de prueba (ISO 8601)",
+		"watchdog": "Límite instalado del vigilante (ms)"
 	}
 }

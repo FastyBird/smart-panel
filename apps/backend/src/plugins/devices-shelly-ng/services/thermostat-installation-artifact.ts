@@ -1,14 +1,16 @@
 import { createHash } from 'node:crypto';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { SHELLY_GUARD_SOURCE } from '../../devices-shelly-ng/contracts/guard-script-source';
-import { SHELLY_MEMBER_GUARD_SOURCE } from '../../devices-shelly-ng/contracts/member-guard-script-source';
+import { protectionBoundsValid } from '../../devices-virtual/services/thermostat-protection-source.utils';
 import {
-	nativeTemperatureIdentity,
-	nativeVoltmeterVoltageIdentity,
-} from '../../devices-shelly-ng/contracts/native-temperature.contract';
-import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
-import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+	VirtualNumericTransformOperator,
+	validateVirtualNumericTransform,
+} from '../../devices-virtual/services/virtual-numeric-transform.utils';
+import { SHELLY_GUARD_SOURCE } from '../contracts/guard-script-source';
+import { SHELLY_MEMBER_GUARD_SOURCE } from '../contracts/member-guard-script-source';
+import { nativeTemperatureIdentity, nativeVoltmeterVoltageIdentity } from '../contracts/native-temperature.contract';
+import { ShellyProtectiveQualification } from '../contracts/protective-switch.contract';
+import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 import { ThermostatInstallationEntity } from '../entities/thermostat-installation.entity';
 
 import { ThermostatInstallationBindingsService } from './thermostat-installation-bindings.service';
@@ -17,8 +19,6 @@ import {
 	ThermostatGuardSetup,
 	ThermostatOperatorAttestation,
 } from './thermostat-installation.types';
-import { protectionBoundsValid } from './thermostat-protection-source.utils';
-import { VirtualNumericTransformOperator, validateVirtualNumericTransform } from './virtual-numeric-transform.utils';
 
 type Bindings = Awaited<ReturnType<ThermostatInstallationBindingsService['resolve']>>;
 function reject(message: string): never {

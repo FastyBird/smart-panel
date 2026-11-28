@@ -88,8 +88,37 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 			'SELECT id,identifier,name,permissions,dataType,type,category,channelId,sourcePropertyId FROM devices_module_channels_properties ORDER BY id',
 		);
 		await database.destroy();
+		const thermostatUpgrade = 'AddSupervisedThermostatOutputs1000000000061';
+		const throughThermostat = migrations.filter((file) => Number(basename(file).slice(0, 13)) <= 1000000000061);
+		database = await createSqliteDataSource({ ...options, migrations: throughThermostat });
+		const initialUpgrade = await database.runMigrations({ transaction: 'each' });
+		expect(initialUpgrade.at(-1)?.name).toBe(thermostatUpgrade);
+		const claimColumns = () =>
+			database.query<{ name: string; dflt_value: string | null }[]>(
+				'PRAGMA table_info("devices_virtual_thermostat_actuator_claims")',
+			);
+		expect(await claimColumns()).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: 'providerProfile', dflt_value: "'supervised-switch'" }),
+				expect.objectContaining({ name: 'independentProtectionAcknowledged', dflt_value: '0' }),
+			]),
+		);
+		await database.undoLastMigration({ transaction: 'each' });
+		expect(await claimColumns()).toContainEqual(
+			expect.objectContaining({ name: 'providerProfile', dflt_value: "'shelly-ng.guarded-switch'" }),
+		);
+		expect((await claimColumns()).map(({ name }) => name)).not.toContain('independentProtectionAcknowledged');
+		const triggers = await database.query<{ sql: string }[]>(
+			"SELECT sql FROM sqlite_master WHERE type='trigger' AND name='virtual_thermostat_device_contract'",
+		);
+		expect(triggers).toHaveLength(1);
+		expect(triggers[0].sql).toContain('canonicalMac');
+		await database.destroy();
+
 		database = await createSqliteDataSource({ ...options, migrations });
-		const upgraded = await database.runMigrations({ transaction: 'each' });
+		const reapplied = await database.runMigrations({ transaction: 'each' });
+		expect(reapplied[0]?.name).toBe(thermostatUpgrade);
+		const upgraded = [...initialUpgrade.slice(0, -1), ...reapplied];
 		const expectedVersions = migrations.slice(baseline.length).map((file) => Number(basename(file).slice(0, 13)));
 		expect(upgraded.map((migration) => migration.timestamp)).toEqual(expectedVersions);
 		expect(upgraded.map((migration) => migration.name)).toEqual(

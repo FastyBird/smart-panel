@@ -1047,9 +1047,9 @@ describe('numeric conversion wizard guidance and review', () => {
 		await flushPromises();
 	});
 
-	it('enables thermistor operators for a qualified raw-voltage Shelly source and explains their prerequisites', async () => {
-		mocks.devices = [{ id: 'd', type: 'devices-shelly-ng', name: 'Probe' }];
-		mocks.channels = [{ id: 'c', device: 'd', category: 'analog_input', identifier: `raw-voltage:voltmeter:1:${'a'.repeat(64)}`, name: 'Voltmeter' }];
+	it('enables thermistor operators for a declared raw-voltage Modbus source and explains their prerequisites', async () => {
+		mocks.devices = [{ id: 'd', type: 'devices-modbus', name: 'Probe' }];
+		mocks.channels = [{ id: 'c', device: 'd', category: 'analog_input', identifier: 'adc-1', name: 'Voltmeter' }];
 		mocks.properties = [
 			{
 				id: 'physical',
@@ -1057,7 +1057,7 @@ describe('numeric conversion wizard guidance and review', () => {
 				category: 'value',
 				dataType: 'float',
 				identifier: 'voltage',
-				unit: null,
+				unit: 'V',
 				permissions: ['ro'],
 				name: 'Raw voltage',
 			},

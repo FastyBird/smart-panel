@@ -206,19 +206,43 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				success = true;
 				const deadline = Date.now() + (options.ttlMs ?? 3000);
 				for (const batch of byDevice.values()) {
-					const prepared = await this.platformRegistryService.get(batch[0].device)?.prepareCompositeBatch?.(batch);
+					const owner = this.platformRegistryService.get(batch[0].device);
 					const guard = () =>
 						isCurrent() &&
 						admissionUpdates.every(isLeafCurrent) &&
 						Date.now() < deadline &&
-						!!prepared?.isCurrent() &&
 						handles.every(
 							(handle) => this.commandWindowService.peekGeneration(handle.canonicalPropertyId) === handle.generation,
 						);
-					if (!prepared || !guard() || !(await prepared.dispatch(guard))) {
-						success = false;
-						break;
+					const prepared = await owner?.prepareCompositeBatch?.(batch);
+					if (
+						!prepared &&
+						!options.isRequestCurrent &&
+						owner &&
+						batch.every((update) => this.admissionGuards?.allowsStructureLockedDispatch(update))
+					) {
+						// Hold the structural read lease through an ordinary platform's write. A new
+						// thermostat cannot acquire the switch while a pre-claim command is queued.
+						success = await this.structureLock.runShared(async () => {
+							for (const update of batch) await admission?.assertAllowed(update);
+							return (
+								guard() &&
+								this.platformRegistryService.get(batch[0].device) === owner &&
+								(await owner.processBatch(batch))
+							);
+						});
+					} else {
+						try {
+							success =
+								!!prepared &&
+								guard() &&
+								prepared.isCurrent() &&
+								(await prepared.dispatch(() => guard() && prepared.isCurrent()));
+						} finally {
+							prepared?.dispose?.();
+						}
 					}
+					if (!success) break;
 				}
 			} else success = admissionUpdates.every(isLeafCurrent) && (await platform.processBatch([...updates]));
 

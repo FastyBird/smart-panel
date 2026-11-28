@@ -27,9 +27,11 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
+import { DevicesVirtualPlugin } from '../devices-virtual/devices-virtual.plugin';
 
 import { ShellyCoverRecoveryController } from './controllers/shelly-cover-recovery.controller';
 import { ShellyNgDevicesController } from './controllers/shelly-ng-devices.controller';
+import { ThermostatInstallationController } from './controllers/thermostat-installation.controller';
 import { DelegatesManagerService } from './delegates/delegates-manager.service';
 import {
 	AddressType,
@@ -55,6 +57,10 @@ import { ShellyCoverOrderingEntity } from './entities/shelly-cover-ordering.enti
 import { ShellyCoverRecoveryEntity } from './entities/shelly-cover-recovery.entity';
 import { ShellyNgDeviceAddressEntity } from './entities/shelly-ng-device-address.entity';
 import { ShellySampleSourceEntity } from './entities/shelly-sample-source.entity';
+import {
+	ThermostatInstallationAuditEntity,
+	ThermostatInstallationEntity,
+} from './entities/thermostat-installation.entity';
 import { MappingLoaderService, PropertyMappingStorageService, TransformerRegistry } from './mappings';
 import { ShellyNgConfigModel } from './models/config.model';
 import { ShellyNgDevicePlatform } from './platforms/shelly-ng.device.platform';
@@ -70,7 +76,13 @@ import { ShellyNgDiscoveryService } from './services/shelly-ng-discovery.service
 import { ShellyNgService } from './services/shelly-ng.service';
 import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
 import { ShellySampleSourcesService } from './services/shelly-sample-sources.service';
+import { ShellyThermostatActuationExtension } from './services/shelly-thermostat-actuation-extension.service';
+import { ShellyThermostatIdentityGuard } from './services/shelly-thermostat-identity-guard';
+import { ShellyThermostatSafetyCatalog } from './services/shelly-thermostat-safety-catalog.service';
 import { ShellyWsServerService } from './services/shelly-ws-server.service';
+import { ThermostatInstallationBindingsService } from './services/thermostat-installation-bindings.service';
+import { ThermostatInstallationLoaderService } from './services/thermostat-installation-loader.service';
+import { ThermostatInstallationService } from './services/thermostat-installation.service';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
 @ApiTag({
@@ -80,7 +92,10 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 })
 @Module({
 	imports: [
+		DevicesVirtualPlugin,
 		TypeOrmModule.forFeature([
+			ThermostatInstallationAuditEntity,
+			ThermostatInstallationEntity,
 			ShellyNgDeviceEntity,
 			ShellyNgChannelEntity,
 			ShellyNgChannelPropertyEntity,
@@ -96,6 +111,12 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		ExtensionsModule,
 	],
 	providers: [
+		ShellyThermostatActuationExtension,
+		ShellyThermostatSafetyCatalog,
+		ShellyThermostatIdentityGuard,
+		ThermostatInstallationBindingsService,
+		ThermostatInstallationLoaderService,
+		ThermostatInstallationService,
 		TransformerRegistry,
 		MappingLoaderService,
 		PropertyMappingStorageService,
@@ -116,7 +137,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		ShellyNgDevicePlatform,
 		DeviceEntitySubscriber,
 	],
-	controllers: [ShellyNgDevicesController, ShellyCoverRecoveryController],
+	controllers: [ShellyNgDevicesController, ShellyCoverRecoveryController, ThermostatInstallationController],
 })
 export class DevicesShellyNgPlugin {
 	constructor(

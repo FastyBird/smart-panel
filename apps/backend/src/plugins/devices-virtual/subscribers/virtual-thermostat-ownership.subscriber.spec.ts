@@ -1,7 +1,18 @@
 import { DataSource } from 'typeorm';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 import { SqliteDataSource, createSqliteDataSource } from '../../../common/database/sqlite-data-source';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
+import { VirtualDependencyGraphService } from '../services/virtual-dependency-graph.service';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
 
 import { VirtualThermostatOwnershipSubscriber } from './virtual-thermostat-ownership.subscriber';
@@ -30,6 +41,7 @@ describe('thermostat ownership persistence boundaries (real SQLite)', () => {
 				refresh,
 				invalidate,
 				isQualifiedReleaseWrite: () => false,
+				revokeAllQualifications: jest.fn(),
 			} as unknown as VirtualThermostatClaimsService,
 		);
 		(subscriber as unknown as { installed: boolean }).installed = true;
@@ -87,4 +99,72 @@ describe('thermostat ownership persistence boundaries (real SQLite)', () => {
 		expect(invalidate).toHaveBeenCalledTimes(2);
 		expect(refresh).toHaveBeenCalledTimes(2);
 	});
+
+	it.each(['settings', 'slot', 'rollback', 'new claim', 'catalog', 'release'])(
+		'checks an existing light command against the committed reservation after %s SQL',
+		async (change) => {
+			await database.query('CREATE TABLE devices_module_climate_automation_slots (id INTEGER PRIMARY KEY)');
+			await database.query(
+				'CREATE TABLE devices_virtual_thermostat_configs (id INTEGER PRIMARY KEY, revision INTEGER, comfort TEXT, releaseRequestedAt TEXT)',
+			);
+			await database.query('INSERT INTO devices_virtual_thermostat_configs (id, revision) VALUES (1, 1)');
+			await database.query(
+				'CREATE TABLE devices_virtual_thermostat_actuator_claims (id TEXT, controllerId TEXT, sourcePropertyIdentity TEXT, physicalIdentity TEXT)',
+			);
+			const claims = new VirtualThermostatClaimsService(
+				{
+					manager: { find: () => database.query('SELECT * FROM devices_virtual_thermostat_actuator_claims') },
+				} as unknown as DataSource,
+				lock,
+				{} as VirtualDependencyGraphService,
+				new PropertyCommandAdmissionRegistryService(),
+				new EventEmitter2(),
+			);
+			invalidate.mockImplementation((...args: Parameters<typeof claims.invalidate>) => claims.invalidate(...args));
+			refresh.mockImplementation(() => claims.refresh());
+			const light = {
+				device: Object.assign(new DeviceEntity(), { id: 'device' }),
+				channel: Object.assign(new ChannelEntity(), { id: 'channel', category: ChannelCategory.LIGHT }),
+				property: Object.assign(new ChannelPropertyEntity(), {
+					id: 'light',
+					category: PropertyCategory.ON,
+					dataType: DataTypeType.BOOL,
+					permissions: [PermissionType.READ_WRITE],
+				}),
+				value: true,
+			};
+			if (change === 'new claim')
+				await database.query(`CREATE TRIGGER reserve_light AFTER UPDATE OF comfort ON devices_virtual_thermostat_configs
+					BEGIN INSERT INTO devices_virtual_thermostat_actuator_claims VALUES ('claim', 'controller', 'light', 'property:device:channel:light'); END`);
+			try {
+				await claims.refresh();
+				const captured = claims.capture();
+				const write = database.transaction(async (manager) => {
+					if (change === 'slot') await manager.query('INSERT INTO devices_module_climate_automation_slots VALUES (1)');
+					else
+						await manager.query(
+							'UPDATE "devices_virtual_thermostat_configs" SET "revision" = 2, "comfort" = ? WHERE id = 1',
+							['eco'],
+						);
+					expect(captured.isCurrent(light)).toBe(false);
+					await claims.refresh();
+					expect(captured.isCurrent(light)).toBe(false);
+					if (change === 'catalog') await manager.query('INSERT INTO devices_module_devices VALUES (1)');
+					if (change === 'release')
+						await manager.query('UPDATE devices_virtual_thermostat_configs SET releaseRequestedAt = ? WHERE id = 1', [
+							'now',
+						]);
+					if (change === 'rollback') throw new Error('rollback');
+				});
+				if (change === 'rollback') await expect(write).rejects.toThrow('rollback');
+				else await write;
+				expect(captured.isCurrent()).toBe(false);
+				expect(captured.isCurrent(light)).toBe(['settings', 'slot', 'rollback'].includes(change));
+				if (change === 'new claim') expect(() => claims.assertAllowed(light)).toThrow('reserved');
+				else await expect(claims.assertAllowed(light)).resolves.toBeUndefined();
+			} finally {
+				claims.onModuleDestroy();
+			}
+		},
+	);
 });

@@ -24,12 +24,78 @@
 			required
 		>
 			<thermostat-property-picker
-				v-model="member.source_property"
+				:model-value="member.source_property"
 				kind="actuator"
+				@update:model-value="selectOutput"
 			/>
 		</el-form-item>
 		<p v-else-if="member.retained">{{ label('retained') }}</p>
+		<template v-if="member.source_property">
+			<el-form-item
+				v-if="(extensions.length || !supervised) && !member.retained"
+				:label="label('profile')"
+			>
+				<el-select
+					:model-value="profile"
+					:disabled="disabled || context.loading.value"
+					data-test-id="member-safety-profile"
+					@change="selectProfile"
+				>
+					<el-option
+						:value="SUPERVISED_SWITCH_PROFILE"
+						:label="label('supervised')"
+					/>
+					<el-option
+						v-if="!supervised && !selectedExtension"
+						:value="profile"
+						:label="profile"
+						disabled
+					/>
+					<el-option
+						v-for="extension in extensions"
+						:key="extension.id"
+						:value="extension.id"
+						:label="extension.name"
+					/>
+				</el-select>
+			</el-form-item>
+			<p v-else-if="!supervised">{{ selectedExtension?.name ?? profile }}</p>
+			<template v-if="supervised">
+				<el-alert
+					:title="label('noFailsafe')"
+					type="warning"
+					show-icon
+					:closable="false"
+				/>
+				<el-form-item
+					:error="!member.independent_protection_acknowledged ? fieldError(`independentProtection:${member.role}`) : ''"
+					class="mt-2"
+				>
+					<el-checkbox
+						v-model="member.independent_protection_acknowledged"
+						:disabled="disabled"
+						data-test-id="independent-protection"
+					>
+						{{ label('acknowledgeProtection') }}
+					</el-checkbox>
+				</el-form-item>
+			</template>
+			<el-alert
+				v-else-if="!selectedExtension && !context.loading.value"
+				:title="label('extensionUnavailable')"
+				type="warning"
+				:closable="false"
+			/>
+			<el-alert
+				v-for="reason in authoringReasons"
+				:key="reason"
+				:title="reason"
+				type="warning"
+				:closable="false"
+			/>
+		</template>
 		<el-form-item
+			v-if="!supervised"
 			:error="!Number.isFinite(member.lease_seconds) || member.lease_seconds! <= 0 ? fieldError(`lease:${member.role}`) : ''"
 			:label="label('lease')"
 			required
@@ -47,11 +113,11 @@
 				:disabled="disabled || !!member.retained?.protection"
 				@change="adopt"
 			>
-				{{ label('localProtection') }}
+				{{ label('memberFloor') }}
 			</el-checkbox>
 			<el-form-item
-				v-if="floorSources !== undefined && parallel && !member.protection"
-				:label="label('localProtection')"
+				v-if="floorSources !== undefined && !supervised && floorSources.length && !member.protection"
+				:label="label('memberFloor')"
 				:error="fieldError('localProtection')"
 				required
 			>
@@ -101,13 +167,6 @@
 					:maximum-age-seconds="member.protection.maximum_age_seconds"
 					consequence="floor"
 					@apply="member.protection.maximum_age_seconds = $event"
-				/>
-				<el-alert
-					v-for="reason in floorSources === undefined ? (context.value.value?.reasons ?? []) : []"
-					:key="reason"
-					:title="reason"
-					type="warning"
-					:closable="false"
 				/>
 
 				<el-alert
@@ -187,7 +246,7 @@
 		<template v-if="member.retained">
 			<p>{{ label('observed') }}: {{ observation.activity }} · {{ label('pendingOn') }}: {{ runtime?.pending_on ?? 'unknown' }}</p>
 			<p>{{ label('qualification') }}: {{ observation.qualification ?? 'unknown' }}</p>
-			<p>{{ label('qualificationHelp') }}</p>
+			<p>{{ label(supervised ? 'supervisedQualification' : 'qualificationHelp') }}</p>
 			<p>{{ label('activitySample') }}: {{ observation.sampledAt ?? '—' }} · {{ label('activityExpiry') }}: {{ observation.expiresAt ?? '—' }}</p>
 			<p>
 				{{ label('reading') }}: {{ reading.temperature === null ? label('unavailable') : `${reading.temperature} °C` }} · {{ reading.status }} ·
@@ -210,11 +269,19 @@
 				type="warning"
 				:closable="false"
 			/>
+			<el-alert
+				v-if="runtime?.release_pending && !runtime.release_proven"
+				:title="label('awaitingOff')"
+				type="warning"
+				:closable="false"
+			/>
 			<details>
 				<summary>{{ label('proof') }}</summary>
 				<pre>{{ JSON.stringify(runtime?.release_evidence ?? member.retained.release_evidence, null, 2) }}</pre>
 			</details>
-			<thermostat-member-installation
+			<component
+				:is="installationForm"
+				v-if="installationForm && selectedExtension?.installation_path"
 				:claim="member.retained"
 				:configuration-revision="configurationRevision"
 				:disabled="disabled || setupDisabled"
@@ -241,12 +308,18 @@ import { ElAlert, ElCheckbox, ElFormItem, ElInputNumber, ElOption, ElSelect, vLo
 import { useBackend } from '../../../common';
 import { useWizardFieldError } from '../../../modules/devices/components/wizard/use-wizard-validation';
 import { useThermostatMemberContext } from '../composables/use-thermostat-member-context';
+import { useVirtualDeviceExtensions } from '../composables/use-virtual-device-extensions';
 import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
-import { RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS, type ThermostatMemberDraft } from '../services/thermostat-authoring';
+import {
+	RECOMMENDED_ACTUATOR_LEASE_SECONDS,
+	RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS,
+	SUPERVISED_SWITCH_PROFILE,
+	type ThermostatMemberDraft,
+	isSupervisedMember,
+} from '../services/thermostat-authoring';
 import { type ThermostatMemberContext, ThermostatMemberFreshness, type ThermostatMemberRuntime } from '../services/thermostat-members';
 
 import SourceReporting from './source-reporting.vue';
-import ThermostatMemberInstallation from './thermostat-member-installation.vue';
 import ThermostatMemberRecovery from './thermostat-member-recovery.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
 import VirtualWizardCard from './virtual-wizard-card.vue';
@@ -259,7 +332,7 @@ const props = defineProps<{
 	selectable?: boolean;
 	floorSources?: { id: string; label: string; maximumAgeSeconds: number | null }[];
 	coolingSources?: { id: string; label: string; role: 'dew_point' | 'cooled_surface' }[];
-	parallel: boolean;
+	coolingEnabled?: boolean;
 	controller?: string;
 	configurationRevision: number;
 	requestedLimit: number | null;
@@ -275,11 +348,12 @@ const { t } = useI18n();
 const label = (key: string) => t(`devicesVirtualPlugin.members.${key}`);
 const backend = useBackend();
 const member = toRef(props, 'member');
+const { installation } = useVirtualDeviceExtensions();
+const profile = computed(() => member.value.provider_profile ?? SUPERVISED_SWITCH_PROFILE);
+const supervised = computed(() => isSupervisedMember(member.value));
+const installationForm = computed(() => installation(profile.value));
 const sourceKey = computed(() =>
-	props.member.source_property &&
-	(props.floorSources === undefined ||
-		(props.member.role === 'heating' && props.floorSources.length > 0) ||
-		(props.member.role === 'cooling' && props.coolingSources?.some((source) => source.role === 'cooled_surface')))
+	props.member.source_property
 		? `${props.member.source_property}:${props.configurationRevision}:${props.member.retained?.revision ?? ''}:${props.member.retained?.qualification_generation ?? ''}`
 		: ''
 );
@@ -292,17 +366,48 @@ const context = useThermostatMemberContext<ThermostatMemberContext>(sourceKey, a
 	if (!data) throw new Error(JSON.stringify(error));
 	return data.data;
 });
+const extensions = computed(() =>
+	(context.value.value?.safety_extensions ?? []).filter(
+		(extension) => extension.roles.includes(member.value.role) && (!extension.requires_cooling_protection || props.coolingEnabled)
+	)
+);
+const selectedExtension = computed(() => extensions.value.find((extension) => extension.id === profile.value));
+const authoringReasons = computed(() => [...new Set([...(context.value.value?.reasons ?? []), ...(selectedExtension.value?.reasons ?? [])])]);
+const protectionCandidates = computed(() =>
+	supervised.value ? (context.value.value?.candidates ?? []) : (selectedExtension.value?.candidates ?? [])
+);
 const candidates = computed(() =>
-	(context.value.value?.candidates ?? []).filter(
+	protectionCandidates.value.filter(
 		(candidate) => props.floorSources === undefined || props.floorSources.some((source) => source.id === candidate.property)
 	)
 );
+function selectProfile(id: string) {
+	if (
+		props.disabled ||
+		member.value.retained ||
+		id === profile.value ||
+		(id !== SUPERVISED_SWITCH_PROFILE && !extensions.value.some((item) => item.id === id))
+	)
+		return;
+	member.value.provider_profile = id;
+	delete member.value.independent_protection_acknowledged;
+	member.value.lease_seconds = id === SUPERVISED_SWITCH_PROFILE ? null : RECOMMENDED_ACTUATOR_LEASE_SECONDS;
+	delete member.value.protection;
+}
+function selectOutput(id: string | null) {
+	if (props.disabled || member.value.retained || id === member.value.source_property) return;
+	member.value.source_property = id;
+	delete member.value.provider_profile;
+	delete member.value.independent_protection_acknowledged;
+	member.value.lease_seconds = null;
+	delete member.value.protection;
+}
 const selected = computed(() => candidates.value.find((entry) => entry.property === props.member.protection?.source_property));
 // Only newly authored guards are derived from the wizard selection. Never detach an installed guard.
 watch(
-	[candidates, () => props.floorSources],
+	[candidates, () => props.floorSources, profile],
 	() => {
-		if (props.floorSources === undefined || member.value.retained || member.value.role !== 'heating') return;
+		if (props.floorSources === undefined || member.value.retained || member.value.role !== 'heating' || supervised.value) return;
 		if (!props.floorSources.length) {
 			delete member.value.protection;
 			return;
@@ -322,14 +427,17 @@ watch(
 	{ immediate: true }
 );
 const coolingDewPoints = computed(() => props.coolingSources?.filter((source) => source.role === 'dew_point') ?? []);
+const cooledSurfaceCandidates = computed(() =>
+	selectedExtension.value?.requires_cooling_protection ? selectedExtension.value.candidates : (context.value.value?.candidates ?? [])
+);
 const coolingSurfaces = computed(
 	() =>
 		props.coolingSources?.filter(
-			(source) => source.role === 'cooled_surface' && context.value.value?.candidates.some((candidate) => candidate.property === source.id)
+			(source) => source.role === 'cooled_surface' && cooledSurfaceCandidates.value.some((candidate) => candidate.property === source.id)
 		) ?? []
 );
 watch(
-	[() => props.coolingSources, () => context.value.value],
+	[() => props.coolingSources, cooledSurfaceCandidates, profile],
 	() => {
 		if (props.coolingSources === undefined || member.value.retained || member.value.role !== 'cooling') return;
 		const guard = (member.value.cooling_protection ??= {
@@ -361,7 +469,7 @@ const adopt = (enabled: string | number | boolean) => {
 			source_property: null,
 			maximum_age_seconds: RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS,
 		} as unknown as NonNullable<ThermostatMemberDraft['protection']>;
-	else if (enabled !== true && !member.value.retained?.protection && !props.parallel) delete member.value.protection;
+	else if (enabled !== true && !member.value.retained?.protection) delete member.value.protection;
 };
 const selectSource = (value: string) => {
 	if (member.value.protection && candidates.value.some((entry) => entry.property === value)) member.value.protection.source_property = value;

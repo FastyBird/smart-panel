@@ -172,5 +172,34 @@
 	},
 	"sections": {
 		"connection": "Shelly-Verbindung"
+	},
+	"thermostatInstallation": {
+		"addEvidence": "Nachweis hinzufügen",
+		"ceiling": "Installierte Bodengrenze (°C)",
+		"coolingMaximum": "Installiertes Kühlmaximum (°C)",
+		"coolingMinimum": "Installiertes Kühlminimum (°C)",
+		"cutoff": "Wirksame Abschaltgrenze",
+		"endpoint": "Geprüfter Gerätehostname",
+		"epoch": "Persistenter Epochenschlüssel",
+		"equipment": "Geräteidentität",
+		"evidence": "Vorhandener Nachweisverweis",
+		"evidenceHelp": "Nur tatsächlich dokumentierte Nachweise hinzufügen. Leere Einträge bestätigen keine Qualifikation.",
+		"heatingMaximum": "Installiertes Heizmaximum (°C)",
+		"heatingMinimum": "Installiertes Heizminimum (°C)",
+		"installation": "Installationsprüfung und Vorbereitung",
+		"legacyProfile": "Die bisherige Einzeleinrichtung bleibt erhalten. Vor dem neuen Format eine lokale Schutzbindung zuweisen.",
+		"maximumLease": "Installierte maximale EIN-Frist (Sekunden)",
+		"minimumLease": "Installierte minimale EIN-Frist (Sekunden)",
+		"observedMs": "Maximal beobachtete Dauer (ms), falls gemessen",
+		"procedure": "Dokumentiertes Verfahren",
+		"reload": "Aktuelle Revision laden",
+		"removeDraft": "Entwurfseintrag entfernen",
+		"retainedProfile": "Erhaltene Installation, Audit und Bereitschaft",
+		"script": "Geprüfter Skriptplatz",
+		"snapshot": "Katalog- und Kalibrierungsprüfung nur lesend",
+		"stage": "Software-Installationsdatensatz vorbereiten",
+		"stagingOnly": "Speichern bereitet nur Datensätze vor. Es verteilt keine Skripte, aktiviert keine Ausgänge und zertifiziert keine Geräte. Die physische Inbetriebnahme folgt nach einer veröffentlichten Alpha.",
+		"testedAt": "Tatsächlicher Testzeitpunkt (ISO 8601)",
+		"watchdog": "Installierte Überwachungsgrenze (ms)"
 	}
 }

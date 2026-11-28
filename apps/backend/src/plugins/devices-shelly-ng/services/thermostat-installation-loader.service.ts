@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 
 import {
 	ConflictException,
@@ -12,15 +12,23 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { DeviceBindingsEvent } from '../../../modules/devices/contracts/device-bindings.event';
 import { EventType } from '../../../modules/devices/devices.constants';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
-import { ShellyNgDevicePlatform } from '../../devices-shelly-ng/platforms/shelly-ng.device.platform';
+import { VIRTUAL_DEVICE_BINDINGS_CHANGED } from '../../devices-virtual/contracts/virtual-device-bindings.event';
+import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../../devices-virtual/devices-virtual.constants';
+import { VirtualThermostatClaimsService } from '../../devices-virtual/services/virtual-thermostat-claims.service';
+import { THERMOSTAT_CONFIG_CHANGED } from '../../devices-virtual/services/virtual-thermostat-config.service';
+import { VirtualThermostatRuntimeService } from '../../devices-virtual/services/virtual-thermostat-runtime.service';
+import { SHELLY_GUARDED_PROFILE, SHELLY_GUARDED_PROFILE_VERSION } from '../contracts/thermostat-actuation.constants';
 import {
 	ThermostatInstallationAuditEntity,
 	ThermostatInstallationEntity,
 } from '../entities/thermostat-installation.entity';
+import { ShellyNgDevicePlatform } from '../platforms/shelly-ng.device.platform';
 
+import { REMOTE_DEW_POINT_PROFILE } from './remote-dew-point-lease.contract';
 import {
 	installationAttestationReasons,
 	thermostatInstallationArtifact,
@@ -29,12 +37,8 @@ import {
 import { ThermostatInstallationBindingsService } from './thermostat-installation-bindings.service';
 import { ThermostatInstallationService } from './thermostat-installation.service';
 import { ThermostatMachineObservation } from './thermostat-installation.types';
-import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
-import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
-import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
 
 const EVENTS = [
-	THERMOSTAT_CONFIG_CHANGED,
 	EventType.DEVICE_CONNECTION_CHANGED,
 	EventType.DEVICE_UPDATED,
 	EventType.DEVICE_DELETED,
@@ -52,6 +56,9 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 	private timer?: ReturnType<typeof setInterval>;
 	private queue: Promise<void> = Promise.resolve();
 	private scheduled = false;
+	private refreshAll = false;
+	private readonly refreshClaims = new Set<string>();
+	private readonly pendingOwners = new Map<string, string>();
 	private readonly pausedClaims = new Set<string>();
 	private readonly verifications = new Map<string, symbol>();
 	private readonly humanVerifications = new Map<string, symbol>();
@@ -69,6 +76,37 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		this.invalidate();
 		this.schedule();
 	};
+	private readonly bindingsChanged = (event: DeviceBindingsEvent) => {
+		if (event.producer !== DEVICES_VIRTUAL_PLUGIN_NAME || event.kind !== 'thermostat') return;
+		const selected = [...event.bindings, ...(event.removedBindings ?? [])].filter(
+			(binding) =>
+				binding.claimId &&
+				(binding.providerProfile === SHELLY_GUARDED_PROFILE || binding.providerProfile === REMOTE_DEW_POINT_PROFILE),
+		);
+		// Remote cooling evidence may come from a separate installed verifier with no local staged guard row.
+		for (const binding of selected) {
+			if (binding.providerProfile === REMOTE_DEW_POINT_PROFILE && binding.physicalIdentity)
+				this.claims.revokeQualification(binding.physicalIdentity, REMOTE_DEW_POINT_PROFILE);
+		}
+		this.invalidateController(
+			event.deviceId,
+			selected.map((binding) => binding.claimId),
+		);
+	};
+	private readonly configChanged = (controllerId: string) => this.invalidateController(controllerId, []);
+
+	private invalidateController(controllerId: string, changedClaims: string[]): void {
+		const affected = new Set(changedClaims);
+		for (const [claimId, owner] of this.pendingOwners) if (owner === controllerId) affected.add(claimId);
+		for (const [claimId, entry] of this.active) if (entry.controllerId === controllerId) affected.add(claimId);
+		if (!affected.size) return;
+		for (const claimId of affected) {
+			this.verifications.delete(claimId);
+			this.invalidateClaim(claimId);
+		}
+		this.schedule(affected);
+	}
+
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly bindings: ThermostatInstallationBindingsService,
@@ -88,6 +126,8 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 	}
 	async onApplicationBootstrap(): Promise<void> {
 		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
+		this.events.on(VIRTUAL_DEVICE_BINDINGS_CHANGED, this.bindingsChanged);
+		this.events.on(THERMOSTAT_CONFIG_CHANGED, this.configChanged);
 		for (const event of EVENTS) this.events.on(event, this.changed);
 		const epoch = this.epoch;
 		try {
@@ -102,38 +142,47 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 	onModuleDestroy(): void {
 		this.stopped = true;
 		clearInterval(this.timer);
+		this.events.off(VIRTUAL_DEVICE_BINDINGS_CHANGED, this.bindingsChanged);
+		this.events.off(THERMOSTAT_CONFIG_CHANGED, this.configChanged);
 		for (const event of EVENTS) this.events.off(event, this.changed);
 		this.installations.onChanging = undefined;
 		this.installations.isActivationPaused = undefined;
 		this.invalidate();
 	}
-	private schedule(): void {
-		if (this.scheduled || this.stopped) return;
+	private schedule(affected?: Set<string>): void {
+		if (this.stopped) return;
+		if (affected) for (const id of affected) this.refreshClaims.add(id);
+		else this.refreshAll = true;
+		if (this.scheduled) return;
 		this.scheduled = true;
-		this.queue = this.queue
-			.then(async () => {
-				if (this.stopped) return;
-				const epoch = this.epoch;
-				try {
-					await this.refresh();
-				} catch {
-					if (epoch === this.epoch) this.invalidate();
-				}
-			})
-			.finally(() => {
-				this.scheduled = false;
-			});
+		this.queue = this.queue.then(async () => {
+			this.scheduled = false;
+			if (this.stopped) return;
+			const ids = this.refreshAll ? undefined : [...this.refreshClaims];
+			this.refreshAll = false;
+			this.refreshClaims.clear();
+			const epoch = this.epoch;
+			try {
+				await this.refresh(ids);
+			} catch {
+				if (epoch !== this.epoch) return;
+				if (ids) for (const id of ids) this.invalidateClaim(id);
+				else this.invalidate();
+			}
+		});
 	}
 	invalidate(): void {
 		this.epoch++;
 		for (const entry of this.active.values()) {
-			this.claims.revokeQualification(entry.identity);
+			this.claims.revokeQualification(entry.identity, SHELLY_GUARDED_PROFILE);
 			void this.runtime.request(entry.controllerId);
 		}
 		this.active.clear();
 	}
-	async refresh(): Promise<void> {
-		const rows = await this.dataSource.manager.find(ThermostatInstallationEntity);
+	async refresh(claimIds?: string[]): Promise<void> {
+		const rows = claimIds
+			? await this.dataSource.manager.find(ThermostatInstallationEntity, { where: { claimId: In(claimIds) } })
+			: await this.dataSource.manager.find(ThermostatInstallationEntity);
 		for (const row of rows) {
 			try {
 				await this.verify(row.claimId, undefined, null);
@@ -150,7 +199,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		let release: (() => void) | undefined;
 		if (actorId !== null) {
 			release = this.claims.holdRecoveryFence();
-			this.claims.revokeAllQualifications();
+			this.claims.revokeAllQualifications(SHELLY_GUARDED_PROFILE);
 			this.pausedClaims.add(claimId);
 			this.invalidate();
 		}
@@ -170,6 +219,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 			if (actorId !== null || current) throw error;
 		} finally {
 			if (this.verifications.get(claimId) === operation) this.verifications.delete(claimId);
+			if (!this.verifications.has(claimId)) this.pendingOwners.delete(claimId);
 			if (this.humanVerifications.get(claimId) === operation) this.humanVerifications.delete(claimId);
 			if (release) {
 				release();
@@ -182,7 +232,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		const entry = this.active.get(claimId);
 		if (!entry) return;
 		this.active.delete(claimId);
-		this.claims.revokeQualification(entry.identity);
+		this.claims.revokeQualification(entry.identity, SHELLY_GUARDED_PROFILE);
 		void this.runtime.request(entry.controllerId);
 	}
 	private async verifyProfile(
@@ -193,6 +243,8 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 	): Promise<void> {
 		const epoch = this.epoch;
 		const row = await this.dataSource.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId });
+		if (!isCurrent()) return;
+		this.pendingOwners.set(claimId, row.controllerId);
 		if (expectedRevision !== undefined && row.revision !== expectedRevision)
 			throw new ConflictException('Installation revision changed; inspect again.');
 		let lease: { isCurrent: () => boolean } | null = null;
@@ -300,7 +352,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 			if (!isCurrent()) return;
 			const existing = this.active.get(claimId);
 			if (reasons.length || !lease?.isCurrent()) {
-				this.claims.revokeQualification(row.physicalIdentity);
+				this.claims.revokeQualification(row.physicalIdentity, SHELLY_GUARDED_PROFILE);
 				this.active.delete(claimId);
 				if (existing) void this.runtime.request(row.controllerId);
 				return;
@@ -323,8 +375,10 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 				this.active.set(claimId, entry);
 				const artifact = thermostatInstallationArtifact(row, verifiedBinding);
 				this.claims.recordQualification({
+					contractVersion: 1,
+					providerProfile: { id: SHELLY_GUARDED_PROFILE, version: SHELLY_GUARDED_PROFILE_VERSION },
 					physicalIdentity: row.physicalIdentity,
-					qualificationGeneration: verifiedBinding.claim.qualificationGeneration ?? undefined,
+					qualificationGeneration: verifiedBinding.claim.qualificationGeneration,
 					profile: artifact.qualification,
 					upstreamWritersExcluded: true,
 					opposedOutputsInterlocked:

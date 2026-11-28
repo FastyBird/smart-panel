@@ -2,7 +2,9 @@ import { createHash } from 'crypto';
 
 import { PropertySampleEvidence } from '../../../modules/devices/models/property-sample.model';
 
-export { hasQualifiedRawVoltageIdentity } from '../../../modules/devices/utils/property-metadata.utils';
+export function hasQualifiedRawVoltageIdentity(channelIdentifier: string): boolean {
+	return /^raw-voltage:voltmeter:\d+:[a-f0-9]{64}$/.test(channelIdentifier);
+}
 
 export interface ShellyRawSample {
 	readonly componentKey: string;

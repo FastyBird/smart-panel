@@ -884,7 +884,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		if (!this.contributions) return lights;
 		const plan = await this.contributions.plan(lights.map((light) => ({ ...light, channel: light.lightChannel })));
 		const context = this.commandContext.getStore();
-		if (context) context.selectionCurrent = plan.isCurrent;
+		if (context) context.selectionCurrent = plan.coverage.size ? plan.isCurrent : undefined;
 		return plan.targets;
 	}
 

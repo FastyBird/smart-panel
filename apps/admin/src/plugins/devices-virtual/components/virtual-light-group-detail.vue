@@ -43,9 +43,11 @@
 					<span>
 						{{ configuration.reported_state?.members.find((state) => state.source_identity === member.source_identity)?.reasons?.join('; ') }}
 					</span>
-					<shelly-cover-recovery
-						v-if="recoveryTarget(member)"
-						v-bind="recoveryTarget(member)!"
+					<component
+						:is="target.component"
+						v-for="target in recoveryTargets(member)"
+						:key="target.props.propertyId"
+						v-bind="target.props"
 						:connected="connected"
 						@recovered="load"
 					/>
@@ -248,7 +250,7 @@ import { injectSockets, injectStoresManager, useBackend } from '../../../common'
 import type { IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import type { components } from '../../../openapi';
-import ShellyCoverRecovery from '../../devices-shelly-ng/components/shelly-cover-recovery.vue';
+import { useVirtualDeviceExtensions } from '../composables/use-virtual-device-extensions';
 import { type GroupProfile, useGroupCatalog } from '../composables/useGroupCatalog';
 import { useLightGroupAuthoring } from '../composables/useLightGroupAuthoring';
 import { useLightGroupCommandOutcomes } from '../composables/useLightGroupCommandOutcomes';
@@ -266,6 +268,7 @@ type Configure = components['schemas']['DevicesVirtualPluginConfigureLightGroup'
 const props = defineProps<{ device: IDevice }>();
 const { t } = useI18n();
 const backend = useBackend();
+const extensions = useVirtualDeviceExtensions();
 const stores = injectStoresManager();
 const devices = stores.getStore(devicesStoreKey);
 const channels = stores.getStore(channelsStoreKey);
@@ -350,7 +353,7 @@ const numericControls = computed(() => {
 		.map((categories) => categories.map((category) => available.find((control) => control.category === category)!));
 });
 const terminal = ref<components['schemas']['DevicesModuleDataCompositeCommandOutcome'][]>([]);
-const recoveryTarget = (member: GeneratedConfiguration['members'][number]) => {
+const recoveryTargets = (member: GeneratedConfiguration['members'][number]) => {
 	if (
 		configuration.value?.profile !== 'cover' ||
 		!member.source_channel ||
@@ -360,11 +363,12 @@ const recoveryTarget = (member: GeneratedConfiguration['members'][number]) => {
 			)
 		)
 	)
-		return null;
+		return [];
 	const channel = channels.findById(member.source_channel);
 	const device = channel ? devices.findById(channel.device) : null;
 	const command = member.bindings.find((binding) => binding.quantity === 'command')?.source_property;
-	return device?.type === 'devices-shelly-ng' && command ? { deviceId: device.id, channelId: member.source_channel, propertyId: command } : null;
+	const component = device && extensions.forDevice(device.type)?.virtualCoverRecovery;
+	return device && component && command ? [{ component, props: { deviceId: device.id, channelId: member.source_channel, propertyId: command } }] : [];
 };
 const memberNames = computed(() =>
 	Object.fromEntries(

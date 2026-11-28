@@ -3,7 +3,7 @@ import { DataSource, EntityManager, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, NotFoundException, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import {
 	SqliteCommitGuardReceipt,
@@ -27,17 +27,13 @@ import { DeviceStructureLockService } from '../../../modules/devices/services/de
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
 import {
-	ShellyNgChannelEntity,
-	ShellyNgChannelPropertyEntity,
-} from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
-import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
-import {
 	MAX_THERMOSTAT_ACTUATOR_MEMBERS,
-	SHELLY_GUARDED_PROFILE,
-	SHELLY_GUARDED_PROFILE_VERSION,
+	SUPERVISED_SWITCH_PROFILE,
+	SUPERVISED_SWITCH_PROFILE_VERSION,
 	thermostatBranchGroupIdentity,
 	thermostatHasOpposedBranches,
 } from '../contracts/thermostat-actuation.contract';
+import { VirtualDeviceBindingsEvent } from '../contracts/virtual-device-bindings.event';
 import { ConfigureVirtualThermostatDto, RestoreVirtualThermostatActuatorDto } from '../dto/thermostat-config.dto';
 import {
 	VirtualChannelPropertyEntity,
@@ -60,6 +56,7 @@ import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../e
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
 import { NativeThermostatService } from './native-thermostat.service';
+import { captureThermostatBindings, publishThermostatBindings } from './thermostat-binding-events';
 import { thermostatComfortSelection } from './thermostat-comfort-selection';
 import {
 	ControllerMutationImage,
@@ -71,10 +68,8 @@ import {
 	writeControllerSettingPermissions,
 } from './thermostat-controller-mutation';
 import { ThermostatCoolingDependencyService } from './thermostat-cooling-dependency.service';
-import {
-	resolveThermostatProtectionSource,
-	validateProtectionConsumerIndex,
-} from './thermostat-protection-source.utils';
+import { validateProtectionConsumerIndex } from './thermostat-protection-source.utils';
+import { ThermostatSafetyCatalog } from './thermostat-safety-catalog.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import {
@@ -116,13 +111,14 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 		@Optional() private readonly resolver: VirtualTransformResolver = new VirtualTransformResolver(),
 		@Optional() private readonly automation?: VirtualThermostatAutomationService,
 		@Optional() private readonly native?: NativeThermostatService,
+		@Optional() private readonly safetyCatalog: ThermostatSafetyCatalog = new ThermostatSafetyCatalog(),
 	) {}
 
 	onModuleInit(): void {
 		if (process.env.FB_CLI === 'on') return;
 		const publication = captureCreation(this, ['afterCommit']);
 		this.stopAutomationPublication = this.automation?.registerPublication((id) =>
-			publication.values.afterCommit.call(publication.receiver, id),
+			publication.values.afterCommit.call(publication.receiver, id, undefined, 'settings'),
 		);
 	}
 	onModuleDestroy(): void {
@@ -131,7 +127,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 	}
 
 	private coolingDependencies(): ThermostatCoolingDependencyService {
-		return new ThermostatCoolingDependencyService(this.dataSource, this.values, this.claims);
+		return new ThermostatCoolingDependencyService(this.dataSource, this.values, this.claims, this.safetyCatalog);
 	}
 
 	async configure(controllerId: string, dto: ConfigureVirtualThermostatDto) {
@@ -163,6 +159,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 					ControllerPublicationContext.captureCallback(async () => {
 						if (captureFailure) throw captureFailure.cause;
 						ownerCurrent = this.structureLock.captureExclusiveOwner();
+						let lifecycle: VirtualDeviceBindingsEvent;
 						let receipt: SqliteCommitGuardReceipt;
 						let ready = false;
 						let unchanged = false;
@@ -219,6 +216,11 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 									fail('Thermostat configuration counter overflow.');
 							const graphRevision = await advanceGraph();
 							const expected = await this.persist(manager, controllerId, prepared, before);
+							lifecycle = await captureThermostatBindings(
+								manager,
+								prepared.config,
+								before.configuration.length ? 'updated' : 'created',
+							);
 							await bindings(expected.properties, manager, graphRevision);
 							await this.automation?.manualFence(manager, controllerId, true, slot);
 							await this.graph.sealControllerLedger(manager);
@@ -239,7 +241,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 							write,
 							noop,
 						);
-						return unchanged ? this.get(controllerId) : this.afterCommit(controllerId);
+						return unchanged ? this.get(controllerId) : this.afterCommit(controllerId, lifecycle);
 					}),
 				);
 			} finally {
@@ -361,8 +363,29 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 		]);
 		return this.model(config, sources, actuators, settings, manager);
 	}
+	@OnEvent(EventType.DEVICE_DELETED)
+	async onDeviceDeleted(device: VirtualDeviceEntity): Promise<void> {
+		if (device.type !== 'virtual' || device.mode !== VirtualDeviceMode.CLIMATE_CONTROLLER) return;
+		// The devices module emits after removal commits. The retained configuration and released
+		// claims identify the installation even though the owning device no longer exists.
+		const event = await this.structureLock.runShared(async () => {
+			const config = await this.dataSource.manager.findOneBy(VirtualThermostatConfigEntity, {
+				controllerId: device.id,
+			});
+			return config && config.ownerDeviceId === null
+				? captureThermostatBindings(this.dataSource.manager, config, 'deleted')
+				: null;
+		});
+		if (event) publishThermostatBindings(this.events, event);
+	}
+
 	/** Must run only after the owning writer commits; no preview or rollback may publish. */
-	async afterCommit(controllerId: string) {
+	async afterCommit(
+		controllerId: string,
+		lifecycle?: VirtualDeviceBindingsEvent,
+		change: 'configuration' | 'settings' = 'configuration',
+	) {
+		if (lifecycle) publishThermostatBindings(this.events, lifecycle);
 		const own = captureCreation(this, ['get', 'property'] as (keyof this)[]);
 		const get = Reflect.get(own.values, 'get') as typeof this.get;
 		const property = Reflect.get(own.values, 'property') as typeof this.property;
@@ -375,7 +398,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 			() => graphCurrent() && own.current() && claims.current() && values.current() && events.current(),
 		);
 		return publication.run(async () => {
-			claims.values.invalidate.call(claims.receiver);
+			claims.values.invalidate.call(claims.receiver, change === 'settings' ? 'actuation' : 'ownership');
 			const current = await invokeCreation(get, this, controllerId);
 			for (const setting of current.settings) {
 				const target = await invokeCreation(property, this, manager, setting.property);
@@ -391,7 +414,11 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 									: ['cool', 'auto'].includes(current.requested_mode);
 				await values.values.write.call(values.receiver, target.property, value);
 				target.property.value = await values.values.readLatest.call(values.receiver, target.property);
-				events.values.emit.call(events.receiver, EventType.CHANNEL_PROPERTY_UPDATED, target.property);
+				events.values.emit.call(
+					events.receiver,
+					change === 'settings' ? EventType.CHANNEL_PROPERTY_VALUE_SET : EventType.CHANNEL_PROPERTY_UPDATED,
+					target.property,
+				);
 			}
 			// The structural write has committed. Reload fails closed and schedules retry without changing that outcome.
 			await claims.values.refresh.call(claims.receiver).catch(() => undefined);
@@ -566,6 +593,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 						if (captureFailure) throw captureFailure.cause;
 						const dto = ownedInput;
 						const ownerCurrent = this.structureLock.captureExclusiveOwner();
+						let lifecycle: VirtualDeviceBindingsEvent;
 						let receipt: SqliteCommitGuardReceipt;
 						let ready = false;
 						await this.graph.withControllerMutationWrite(
@@ -616,13 +644,17 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 								}
 								const target = await this.property(manager, dto.sourcePropertyId);
 								const identity = thermostatActuatorIdentity(target.property, target.channel, target.device);
+								if (identity !== claim.physicalIdentity)
+									fail('Restored property must be the same canonical writable switch.');
 								if (
-									identity !== claim.physicalIdentity ||
-									!(target.channel instanceof ShellyNgChannelEntity) ||
-									!(target.property instanceof ShellyNgChannelPropertyEntity) ||
-									target.property.identifier !== 'output'
+									claim.providerProfile !== SUPERVISED_SWITCH_PROFILE &&
+									!this.safetyCatalog
+										.offers(target, claim.role, claim.role === 'cooling' && !!config.policy.cooling)
+										.some(
+											(offer) => offer.id === claim.providerProfile && offer.version === claim.providerProfileVersion,
+										)
 								)
-									fail('Restored property must be the same canonical readable and writable Shelly output.');
+									fail('The restored output does not support its selected safety extension.');
 								const conflict = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, {
 									physicalIdentity: identity,
 									state: Not('released'),
@@ -636,6 +668,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 								config.requestedMode = 'off';
 								claim.revision++;
 								claim.qualificationGeneration = uuid();
+								claim.independentProtectionAcknowledged = false;
 								claim.state = releaseRequested ? 'releasing' : 'reserved';
 								claim.sourcePropertyId = target.property.id;
 								claim.sourcePropertyIdentity = target.property.id;
@@ -673,6 +706,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 									[audit],
 									true,
 								);
+								lifecycle = await captureThermostatBindings(manager, config, 'updated');
 								await assertControllerMutationImage(manager, controllerId, {
 									...before,
 									configuration,
@@ -694,7 +728,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 							},
 						);
 						this.claims.revokeQualification(dto.physicalIdentity);
-						return this.afterCommit(controllerId);
+						return this.afterCommit(controllerId, lifecycle);
 					}),
 				);
 			} finally {
@@ -815,7 +849,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 							let stage = 'claims.invalidate';
 							let index: number | undefined;
 							try {
-								claims.values.invalidate.call(claims.receiver);
+								claims.values.invalidate.call(claims.receiver, 'actuation');
 								stage = 'claims.refresh';
 								await claims.values.refresh.call(claims.receiver);
 								// Even a native no-op must retry the original mirrors after an earlier publication failure.
@@ -1065,15 +1099,28 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 				fail('Request and prove release before actuator repair, remap or detach.');
 			const target = await this.property(manager, input.sourcePropertyId, !!draft);
 			const identity = thermostatActuatorIdentity(target.property, target.channel, target.device);
+			if (!identity) fail('Actuator requires a writable physical boolean switch.');
+			const profileId = input.providerProfile ?? old?.providerProfile ?? SUPERVISED_SWITCH_PROFILE;
+			if (old && profileId !== old.providerProfile) fail('Release the actuator before changing its safety extension.');
+			const profile =
+				profileId === SUPERVISED_SWITCH_PROFILE
+					? { id: profileId, version: SUPERVISED_SWITCH_PROFILE_VERSION }
+					: this.safetyCatalog
+							.offers(target, input.role, input.role === 'cooling' && !!dto.policy.cooling)
+							.find((offer) => offer.id === profileId);
+			if (!profile || (old && old.providerProfileVersion !== profile.version))
+				fail('The selected safety extension is unavailable for this output.');
+			const leaseSeconds = profileId === SUPERVISED_SWITCH_PROFILE ? 0 : input.leaseSeconds;
+			if (profileId !== SUPERVISED_SWITCH_PROFILE && (!Number.isFinite(leaseSeconds) || leaseSeconds <= 0))
+				fail('A device safety extension requires an explicit positive ON lease.');
 			if (
-				!identity ||
-				!(target.channel instanceof ShellyNgChannelEntity) ||
-				!(target.property instanceof ShellyNgChannelPropertyEntity) ||
-				target.property.identifier !== 'output' ||
-				!Number.isFinite(input.leaseSeconds) ||
-				input.leaseSeconds <= 0
+				input.independentProtectionAcknowledged !== undefined &&
+				typeof input.independentProtectionAcknowledged !== 'boolean'
 			)
-				fail('Actuator requires a supported physical guarded boolean leaf and explicit finite ON lease.');
+				fail('Independent protection acknowledgement must be a boolean.');
+			const acknowledged =
+				profileId === SUPERVISED_SWITCH_PROFILE &&
+				(input.independentProtectionAcknowledged ?? old?.independentProtectionAcknowledged ?? false);
 			const fingerprint = thermostatPropertyContract(target.property, target.channel, target.device);
 			if (old && (old.physicalIdentity !== identity || old.contractFingerprint !== fingerprint))
 				fail('Actuator identity/contract changed; explicit release and repair required.');
@@ -1089,20 +1136,21 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 					controllerId,
 					role: input.role,
 					physicalIdentity: identity,
-					providerProfile:
-						input.role === 'cooling' && dto.policy.cooling
-							? REMOTE_DEW_POINT_PROFILE
-							: (old?.providerProfile ?? SHELLY_GUARDED_PROFILE),
-					providerProfileVersion: old?.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION,
+					providerProfile: profile.id,
+					providerProfileVersion: profile.version,
+					independentProtectionAcknowledged: acknowledged,
 					sourcePropertyId: target.property.id,
 					sourcePropertyIdentity: target.property.id,
 					sourceDeviceId: target.device.id,
 					sourceDeviceIdentity: target.device.id,
 					contractFingerprint: fingerprint,
 					revision: (old?.revision ?? 0) + 1,
-					qualificationGeneration: old?.qualificationGeneration ?? null,
+					qualificationGeneration:
+						old && old.independentProtectionAcknowledged === acknowledged && old.qualificationGeneration
+							? old.qualificationGeneration
+							: uuid(),
 					state: old?.state ?? 'reserved',
-					leaseSeconds: input.leaseSeconds,
+					leaseSeconds,
 					reason: old?.reason ?? null,
 					releaseRequestedAt: old?.releaseRequestedAt ?? null,
 					releasedAt: null,
@@ -1139,9 +1187,14 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 			const input = dto.actuators.find((member) => member.sourcePropertyId === claim.sourcePropertyIdentity);
 			const old = await manager.findOneBy(ThermostatMemberProtectionEntity, { claimId: claim.id });
 			if (input.protection === undefined) {
-				if (old || (claim.role === 'heating' && heating.length > 1))
+				if (
+					old ||
+					(claim.role === 'heating' &&
+						heating.length > 1 &&
+						this.safetyCatalog.get(claim.providerProfile)?.installedFloor)
+				)
 					fail(
-						'Every parallel or previously explicit heating member requires an explicit retained protection binding.',
+						'Parallel heating members with device-side floor protection and previously protected members require an explicit floor binding.',
 					);
 				continue;
 			}
@@ -1168,11 +1221,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 					}),
 				);
 			} else {
-				const source = await resolveThermostatProtectionSource(
-					manager,
-					protection.sourcePropertyId,
-					claim.physicalIdentity,
-				);
+				const source = await this.safetyCatalog.resolveSource(manager, protection.sourcePropertyId, claim);
 				protections.push(
 					manager.create(ThermostatMemberProtectionEntity, {
 						claimId: claim.id,
@@ -1300,7 +1349,12 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 			reasons.push('cooling_remote_profile_installation_unqualified');
 		for (const claim of actuators) {
 			if (!claim.sourcePropertyId || !claim.sourceDeviceId) reasons.push(claim.role + '_actuator_missing');
-			if (!this.claims.qualification(claim, thermostatHasOpposedBranches(actuators)))
+			if (claim.providerProfile === SUPERVISED_SWITCH_PROFILE && !claim.independentProtectionAcknowledged)
+				reasons.push(claim.role + '_independent_protection_not_acknowledged');
+			else if (
+				claim.providerProfile !== SUPERVISED_SWITCH_PROFILE &&
+				!this.claims.qualification(claim, thermostatHasOpposedBranches(actuators))
+			)
 				reasons.push(claim.role + '_hardware_qualification_missing');
 			if (claim.state !== 'reserved') reasons.push(claim.role + '_' + claim.state);
 		}
@@ -1334,8 +1388,9 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 					}))[0] ?? null,
 			id: claim.id,
 			group_identity: thermostatBranchGroupIdentity(config.controllerId, claim.role),
-			provider_profile: claim.providerProfile ?? SHELLY_GUARDED_PROFILE,
-			provider_profile_version: claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION,
+			provider_profile: claim.providerProfile,
+			provider_profile_version: claim.providerProfileVersion,
+			independent_protection_acknowledged: claim.independentProtectionAcknowledged,
 			role: claim.role,
 			source_property: claim.sourcePropertyId,
 			source_identity: claim.sourcePropertyIdentity,

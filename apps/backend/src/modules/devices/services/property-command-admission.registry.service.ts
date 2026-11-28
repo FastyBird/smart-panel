@@ -23,6 +23,8 @@ export interface PropertyCommandAdmissionGuard {
 	isEffectCurrent?(effect: PropertyCommandEffect): boolean;
 	assertEffectAllowed?(effect: PropertyCommandEffect): Promise<void>;
 	requiresGuardedDispatch?(update: IDevicePropertyData): boolean;
+	/** A structural reservation cannot change while an ordinary, unprepared write owns the shared structure lock. */
+	readonly allowsStructureLockedDispatch?: boolean;
 	/** Internal policy hook: ordinary user/group/scene commands all consult the same canonical leaf. */
 	assertAllowed(update: IDevicePropertyData): Promise<void>;
 }
@@ -45,6 +47,11 @@ export class PropertyCommandAdmissionRegistryService {
 	}
 	requiresGuardedDispatch(update: IDevicePropertyData): boolean {
 		return [...this.guards].some((guard) => guard.requiresGuardedDispatch?.(update));
+	}
+	allowsStructureLockedDispatch(update: IDevicePropertyData): boolean {
+		return [...this.guards].every(
+			(guard) => !guard.requiresGuardedDispatch?.(update) || guard.allowsStructureLockedDispatch === true,
+		);
 	}
 	/** Captures guard membership and per-leaf policy before asynchronous preparation. */
 	capture(): PropertyCommandAdmissionSnapshot {

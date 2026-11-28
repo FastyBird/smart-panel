@@ -116,23 +116,23 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus';
 
 import { useBackend } from '../../../common';
-import { useThermostatMemberContext } from '../composables/use-thermostat-member-context';
-import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
-import type { ThermostatClaim } from '../services/thermostat-authoring';
+import VirtualWizardRemoveButton from '../../devices-virtual/components/virtual-wizard-remove-button.vue';
+import { useThermostatMemberContext } from '../../devices-virtual/composables/use-thermostat-member-context';
+import { useVirtualWizardError } from '../../devices-virtual/composables/use-virtual-wizard-error';
+import type { ThermostatClaim } from '../../devices-virtual/services/thermostat-authoring';
+import type { ThermostatMemberContext } from '../../devices-virtual/services/thermostat-members';
 import {
+	type ThermostatInstallation,
 	attestationKinds,
 	emptyMemberInstallation,
 	memberInstallationBlocker,
 	memberInstallationRequest,
-} from '../services/thermostat-member-installation';
-import type { ThermostatInstallation, ThermostatMemberContext } from '../services/thermostat-members';
-
-import VirtualWizardRemoveButton from './virtual-wizard-remove-button.vue';
+} from '../utils/thermostat-member-installation';
 
 const props = defineProps<{ claim: ThermostatClaim; configurationRevision: number; requestedLimit: number | null; disabled: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const { t } = useI18n();
-const label = (key: string) => t(`devicesVirtualPlugin.members.${key}`);
+const label = (key: string) => t(`devicesShellyNgPlugin.thermostatInstallation.${key}`);
 let alive = true;
 onScopeDispose(() => {
 	alive = false;
@@ -146,7 +146,7 @@ const state = useThermostatMemberContext<{ context: ThermostatMemberContext; pro
 	const claim = props.claim.id;
 	const [context, profile] = await Promise.all([
 		backend.client.GET('/plugins/devices-virtual/producers/thermostat-member-authoring/claims/{claim}', { params: { path: { claim } }, signal }),
-		backend.client.GET('/plugins/devices-virtual/producers/thermostat-installations/{claim}', { params: { path: { claim } }, signal }),
+		backend.client.GET('/plugins/devices-shelly-ng/producers/thermostat-installations/{claim}', { params: { path: { claim } }, signal }),
 	]);
 	if (!context.data || (!profile.data && profile.response.status !== 404)) throw new Error(JSON.stringify(context.error ?? profile.error));
 	return { context: context.data.data, profile: profile.data?.data ?? null };
@@ -192,7 +192,7 @@ const stage = async () => {
 	pending.value = true;
 	error.value = null;
 	try {
-		const { data, error: failure } = await backend.client.PUT('/plugins/devices-virtual/producers/thermostat-installations/{claim}', {
+		const { data, error: failure } = await backend.client.PUT('/plugins/devices-shelly-ng/producers/thermostat-installations/{claim}', {
 			params: { path: { claim } },
 			body,
 		});

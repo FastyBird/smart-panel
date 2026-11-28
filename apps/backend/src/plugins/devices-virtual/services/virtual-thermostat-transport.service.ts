@@ -1,23 +1,23 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyReadProofService } from '../../../modules/devices/services/property-read-proof.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
-import { ShellyNgDevicePlatform } from '../../devices-shelly-ng/platforms/shelly-ng.device.platform';
-import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
 import {
 	CapturedThermostatReconcileReadiness,
 	ThermostatActuationAdapter as ProviderActuationAdapter,
 	ThermostatReconciliationScope as ProviderReconciliationScope,
 	ThermostatReleaseOrderingEvidence as ProviderReleaseOrderingEvidence,
-	SHELLY_GUARDED_PROFILE,
-	SHELLY_GUARDED_PROFILE_VERSION,
+	RemoteCoolingFrame,
+	SUPERVISED_SWITCH_PROFILE,
+	SUPERVISED_SWITCH_PROFILE_VERSION,
 } from '../contracts/thermostat-actuation.contract';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
-import { RemoteCoolingFrame, ThermostatRemoteCoolingAdapter } from './thermostat-remote-cooling-adapter';
+import { SupervisedThermostatSwitch } from './supervised-thermostat-switch';
+import { ThermostatActuationRegistry } from './thermostat-actuation-registry.service';
 import { ThermostatInstalledQualification } from './virtual-thermostat-claims.service';
 import {
 	thermostatActuatorIdentity,
@@ -29,16 +29,32 @@ export type ThermostatReconciliationScope = ProviderReconciliationScope<Thermost
 export type ThermostatReleaseOrderingEvidence = ProviderReleaseOrderingEvidence<ThermostatInstalledQualification>;
 export type ThermostatActuationAdapter = ProviderActuationAdapter<ThermostatInstalledQualification>;
 
-const originalShellyType = Object.getOwnPropertyDescriptor(ShellyNgDeviceEntity.prototype, 'type');
+// Keep provider qualification bytes opaque while retaining their original data descriptors.
+function captureProfile(profile: object, seen = new Set<object>()): { current: () => boolean }[] {
+	if (seen.has(profile)) return [];
+	seen.add(profile);
+	const capture = captureCreation(profile, Object.keys(profile) as (keyof typeof profile)[]);
+	const nested = Object.values(capture.values).flatMap((value: unknown) =>
+		value && typeof value === 'object' ? captureProfile(value, seen) : [],
+	);
+	return [capture, ...nested];
+}
 
 /** Provider seam is internal; no HTTP payload can register an adapter or supply ordering evidence. */
 @Injectable()
 export class VirtualThermostatTransportService implements OnModuleDestroy {
 	private destroyed = false;
 	private readonly registrationEpochs = new Map<string, object>();
-	private readonly adapters = new Map<string, { readonly adapter: ThermostatActuationAdapter }>();
+	private readonly adapters = new Map<
+		string,
+		{
+			readonly adapter: ThermostatActuationAdapter;
+			readonly profileId: string;
+			readonly profileVersion: number;
+		}
+	>();
 	private readonly adapterOwners = new WeakMap<ThermostatActuationAdapter, () => boolean>();
-	private remoteCooling?: ThermostatRemoteCoolingAdapter;
+	private readonly supervised: SupervisedThermostatSwitch;
 	private coolingFrameReader?: (claim: VirtualThermostatActuatorClaimEntity) => RemoteCoolingFrame | null;
 	registerCoolingFrameReader(
 		reader: (claim: VirtualThermostatActuatorClaimEntity) => RemoteCoolingFrame | null,
@@ -52,19 +68,28 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 
 	constructor(
 		private readonly platforms: PlatformRegistryService,
-		private readonly values: PropertyValueService,
-	) {}
+		values: PropertyValueService,
+		@Optional() private readonly extensions: ThermostatActuationRegistry = new ThermostatActuationRegistry(),
+		@Optional() proof?: PropertyReadProofService,
+	) {
+		this.supervised = new SupervisedThermostatSwitch(this.platforms, values, proof);
+	}
 	register(type: string, adapter: ThermostatActuationAdapter): () => void {
 		if (this.destroyed) throw new Error('Thermostat transport is destroyed');
 		if (
 			adapter.contractVersion !== 1 ||
 			!adapter.providerProfile.id ||
+			adapter.providerProfile.id === SUPERVISED_SWITCH_PROFILE ||
 			!Number.isSafeInteger(adapter.providerProfile.version) ||
 			adapter.providerProfile.version < 1
 		)
 			throw new Error('Unsupported thermostat actuation contract/profile');
 		if (this.adapters.has(type)) throw new Error('Thermostat transport already registered');
-		const registration = Object.freeze({ adapter });
+		const registration = Object.freeze({
+			adapter,
+			profileId: adapter.providerProfile.id,
+			profileVersion: adapter.providerProfile.version,
+		});
 		this.adapters.set(type, registration);
 		this.registrationEpochs.set(type, registration);
 		return () => {
@@ -76,8 +101,17 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 	}
 	onModuleDestroy(): void {
 		this.destroyed = true;
+		this.supervised.destroy();
 		this.adapters.clear();
 		this.registrationEpochs.clear();
+	}
+
+	forgetSupervisedOff(claim: VirtualThermostatActuatorClaimEntity): void {
+		this.supervised.forget(claim);
+	}
+
+	awaitingSupervisedOff(claim: VirtualThermostatActuatorClaimEntity): boolean {
+		return claim.providerProfile === SUPERVISED_SWITCH_PROFILE && this.supervised.awaitingReport(claim);
 	}
 
 	/** Read-only OFF observation. No provider, session, machine predicate or sample is invoked. */
@@ -98,36 +132,17 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			if (this.destroyed || !qualification) return null;
 			const targetPin = captureCreation(target, ['device', 'channel', 'property']);
 			const { device, channel, property } = targetPin.values;
-			// Only the original canonical getter is trusted, with no shadow getter invocation.
-			const chain: object[] = [];
-			for (let owner: object | null = device; owner; owner = Object.getPrototypeOf(owner) as object | null) {
-				chain.push(owner);
-				const descriptor = Object.getOwnPropertyDescriptor(owner, 'type');
-				if (!descriptor) continue;
-				if (
-					owner !== ShellyNgDeviceEntity.prototype ||
-					!originalShellyType ||
-					descriptor.get !== originalShellyType.get ||
-					descriptor.set !== originalShellyType.set ||
-					descriptor.enumerable !== originalShellyType.enumerable ||
-					descriptor.configurable !== originalShellyType.configurable
-				)
-					return null;
-				break;
-			}
-			if (chain.at(-1) !== ShellyNgDeviceEntity.prototype) return null;
-			const typeCurrent = () =>
-				chain.every((owner, index) => {
-					const descriptor = Object.getOwnPropertyDescriptor(owner, 'type');
-					return index < chain.length - 1
-						? !descriptor && Object.getPrototypeOf(owner) === chain[index + 1]
-						: descriptor?.get === originalShellyType.get &&
-								descriptor?.set === originalShellyType.set &&
-								descriptor?.enumerable === originalShellyType.enumerable &&
-								descriptor?.configurable === originalShellyType.configurable;
-				});
-			const devicePin = captureCreation(device, ['id', 'enabled', 'identifier']);
-			const macPin = captureCreation(device as ShellyNgDeviceEntity, ['canonicalMac']);
+			const profileId = captureCreation(claim, ['providerProfile', 'providerProfileVersion']);
+			const registration = this.extensions.get(
+				profileId.values.providerProfile,
+				profileId.values.providerProfileVersion,
+			);
+			const targetGuard = registration?.extension.captureTargetMetadata?.(target);
+			if (targetGuard === null || (targetGuard && !targetGuard.isCurrent())) return null;
+			// Provider entity classes supply the discriminator through a prototype getter.
+			// An instance-level accessor is not part of that contract.
+			if (Object.getOwnPropertyDescriptor(device, 'type')?.get) return null;
+			const devicePin = captureCreation(device, ['id', 'enabled', 'identifier', 'getPhysicalSwitchIdentity']);
 			const channelPin = captureCreation(channel, ['id', 'identifier', 'category', 'device']);
 			const propertyKeys = [
 				'id',
@@ -152,6 +167,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 				'providerProfileVersion',
 				'qualificationGeneration',
 				'leaseSeconds',
+				'independentProtectionAcknowledged',
 				'sourcePropertyId',
 				'sourceDeviceId',
 				'sourcePropertyIdentity',
@@ -176,13 +192,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			const local = qualificationPin.values.profile;
 			if (!profile || !local) return null;
 			const profilePin = captureCreation(profile, ['id', 'version']);
-			const localPin = captureCreation(local, Object.keys(local) as (keyof typeof local)[]);
-			const script = localPin.values.guardScript;
-			const scriptPin = script && captureCreation(script, Object.keys(script) as (keyof typeof script)[]);
-			const metadata = scriptPin?.values.installationMetadata;
-			const metadataPin = metadata && captureCreation(metadata, Object.keys(metadata) as (keyof typeof metadata)[]);
-			const bounds = localPin.values.testedLeaseSeconds;
-			const boundsPin = bounds && captureCreation(bounds, ['min', 'max']);
+			const profilePins = captureProfile(local);
 			const permissionsPin = captureCreation(
 				property.permissions,
 				Object.keys(property.permissions) as (keyof typeof property.permissions)[],
@@ -195,7 +205,6 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 				typeof propertyChannel === 'object' && propertyChannel ? captureCreation(propertyChannel, ['id']) : null;
 			const physicalIdentity = thermostatActuatorIdentity(property, channel, device);
 			const generation = qualificationPin.values.qualificationGeneration;
-			const legacy = claimPin.values.qualificationGeneration === null && generation === undefined;
 			const generated =
 				typeof generation === 'string' &&
 				generation.length > 0 &&
@@ -204,7 +213,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			if (
 				!physicalIdentity ||
 				qualification.contractVersion !== 1 ||
-				(!legacy && !generated) ||
+				!generated ||
 				typeof machine !== 'function' ||
 				!profile.id ||
 				!Number.isSafeInteger(profile.version) ||
@@ -217,7 +226,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 				!claim.controllerId ||
 				!Number.isSafeInteger(claim.revision) ||
 				claim.revision < 1 ||
-				claim.state !== 'reserved' ||
+				(claim.state !== 'reserved' && claim.state !== 'releasing') ||
 				claim.sourcePropertyId !== property.id ||
 				claim.sourcePropertyIdentity !== property.id ||
 				claim.sourceDeviceId !== device.id ||
@@ -230,34 +239,38 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			const pins = [
 				targetPin,
 				devicePin,
-				macPin,
 				channelPin,
 				propertyPin,
 				claimPin,
 				qualificationPin,
 				profilePin,
-				localPin,
-				scriptPin,
-				metadataPin,
-				boundsPin,
+				...profilePins,
 				permissionsPin,
 				channelDevicePin,
 				propertyChannelPin,
 			].filter((pin) => !!pin);
 			const snapshot = () =>
-				thermostatFingerprint({ contract: thermostatPropertyContract(property, channel, device), local });
+				thermostatFingerprint({
+					contract: thermostatPropertyContract(property, channel, device),
+					identity: thermostatActuatorIdentity(property, channel, device),
+					local,
+				});
 			const image = snapshot();
 			let open = true;
 			const isCurrent = () => {
 				if (!open) return false;
 				try {
-					open = !this.destroyed && typeCurrent() && pins.every((pin) => pin.current()) && snapshot() === image;
+					open =
+						!this.destroyed &&
+						(!targetGuard || targetGuard.isCurrent()) &&
+						pins.every((pin) => pin.current()) &&
+						snapshot() === image;
 				} catch {
 					open = false;
 				}
 				return open;
 			};
-			return { device, profile, local, generation, legacy, physicalIdentity, machine, isCurrent };
+			return { device, profile, generation, physicalIdentity, machine, isCurrent };
 		} catch {
 			return null;
 		}
@@ -272,20 +285,13 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 		try {
 			const metadata = this.captureReadinessMetadata(target, claim, qualification);
 			if (!metadata) return null;
-			const { device, profile, local, generation, legacy, physicalIdentity, machine } = metadata;
+			const { device, profile, generation, physicalIdentity, machine } = metadata;
 			const type = device.type;
 			const epoch = this.registrationEpochs.get(type);
 			const registration = this.adapters.get(type);
-			if (
-				legacy &&
-				(registration ||
-					claim.role !== 'heating' ||
-					profile.id !== SHELLY_GUARDED_PROFILE ||
-					profile.version !== SHELLY_GUARDED_PROFILE_VERSION)
-			)
-				return null;
+			const extension = this.extensions.get(profile.id, profile.version);
 			let providerCurrent: () => boolean;
-			if (registration) {
+			if (registration?.profileId === profile.id && registration.profileVersion === profile.version) {
 				const adapter = registration.adapter;
 				const methods = captureCreation(adapter, [
 					'captureReconcileReadiness',
@@ -330,30 +336,25 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					invokeCreation(evidence.values.isCurrent, original) === true &&
 					invokeCreation(methods.values.canReconcile, adapter, target, qualification) === true;
 			} else {
+				if (!invokeCreation(machine, qualification)) return null;
+				const capability =
+					profile.id === SUPERVISED_SWITCH_PROFILE && profile.version === SUPERVISED_SWITCH_PROFILE_VERSION
+						? this.supervised.readiness(target, qualification)
+						: extension?.extension.captureReadiness?.(target, qualification);
 				if (
-					profile.id !== SHELLY_GUARDED_PROFILE ||
-					profile.version !== SHELLY_GUARDED_PROFILE_VERSION ||
-					qualification.upstreamWritersExcluded !== true ||
-					local.releaseOrderingQualified !== true ||
-					local.independentProtectionQualified !== true ||
-					invokeCreation(machine, qualification) !== true
+					!capability ||
+					capability.capabilityVersion !== 1 ||
+					capability.providerProfile.id !== profile.id ||
+					capability.providerProfile.version !== profile.version ||
+					capability.physicalIdentity !== physicalIdentity ||
+					capability.qualificationGeneration !== generation
 				)
 					return null;
-				const registry = captureCreation(this.platforms, ['captureRegistration', 'get']);
-				const lease = registry.values.captureRegistration.call(this.platforms, type);
-				if (!lease) return null;
-				const platform = registry.values.get.call(this.platforms, device);
-				if (!(platform instanceof ShellyNgDevicePlatform)) return null;
-				const prepare = captureCreation(platform, ['prepareGuardRpcSession']);
-				const session = prepare.values.prepareGuardRpcSession.call(platform, target, local);
-				if (!session) return null;
-				const sessionPin = captureCreation(session, ['isCurrent']);
+				const captured = captureCreation(capability, ['isCurrent']);
 				providerCurrent = () =>
-					registry.current() &&
-					lease.isCurrent() &&
-					prepare.current() &&
-					sessionPin.current() &&
-					sessionPin.values.isCurrent.call(session) === true;
+					this.extensions.get(profile.id, profile.version) === extension &&
+					captured.current() &&
+					invokeCreation(captured.values.isCurrent, capability);
 			}
 			let current = true;
 			const isCurrent = () => {
@@ -372,14 +373,6 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 				return current;
 			};
 			if (!isCurrent()) return null;
-			if (legacy)
-				return Object.freeze({
-					capabilityVersion: 2,
-					qualificationBinding: 'legacy-null-managed-shelly',
-					providerProfile: Object.freeze({ id: SHELLY_GUARDED_PROFILE, version: SHELLY_GUARDED_PROFILE_VERSION }),
-					physicalIdentity,
-					isCurrent,
-				});
 			if (typeof generation !== 'string') return null;
 			return Object.freeze({
 				capabilityVersion: 1,
@@ -403,6 +396,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 		const registrations = this.adapters;
 		const type = target.device.type;
 		const registration = registrations.get(type);
+		const extension = this.extensions.get(claim.providerProfile, claim.providerProfileVersion);
 		const adapter = dispatch.values.get.call(dispatch.receiver, target, claim, qualification);
 		if (!adapter) return null;
 		const owner = this.adapterOwners.get(adapter);
@@ -419,7 +413,9 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			if (!current) return false;
 			try {
 				current =
+					!this.destroyed &&
 					dispatch.current() &&
+					this.extensions.get(claim.providerProfile, claim.providerProfileVersion) === extension &&
 					methods.current() &&
 					profile.current() &&
 					(owner?.() ?? true) &&
@@ -446,197 +442,38 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 		capturedQualification?: ThermostatInstalledQualification | null,
 	): ThermostatActuationAdapter | null {
 		if (this.destroyed) return null;
+		const custom = this.adapters.get(target.device.type);
 		if (
-			claim?.providerProfile === REMOTE_DEW_POINT_PROFILE &&
-			claim.providerProfileVersion === 1 &&
-			claim.role === 'cooling'
+			custom &&
+			(!claim || (custom.profileId === claim.providerProfile && custom.profileVersion === claim.providerProfileVersion))
 		) {
-			const remote = (this.remoteCooling ??= new ThermostatRemoteCoolingAdapter(
-				this.values,
-				(member) => this.coolingFrameReader?.(member) ?? null,
-				async (leaf, current) => {
-					const platform = this.platforms.get(leaf.device);
-					if (!(leaf.device instanceof ShellyNgDeviceEntity) || !(platform instanceof ShellyNgDevicePlatform))
-						return { outcome: 'refused', reasons: ['unsupported_protective_leaf'] };
-					return platform.processProtectiveCommand(
-						{ device: leaf.device, channel: leaf.channel, property: leaf.property },
-						{ on: false },
-						1000,
-						current,
-					);
-				},
-			));
-			if (capturedQualification === undefined) return remote;
-			const reader = this.coolingFrameReader;
-			const registry = captureCreation(this.platforms, ['get']);
-			const platform = registry.values.get.call(registry.receiver, target.device);
-			const original =
-				platform instanceof ShellyNgDevicePlatform ? captureCreation(platform, ['processProtectiveCommand']) : null;
-			const captured = remote.capture(
-				target,
-				claim,
-				capturedQualification,
-				(member) => (reader ? invokeCreation(reader, this, member) : null),
-				async (leaf, current) => {
-					if (!(leaf.device instanceof ShellyNgDeviceEntity) || !original)
-						return { outcome: 'refused', reasons: ['unsupported_protective_leaf'] };
-					return original.values.processProtectiveCommand.call(
-						original.receiver,
-						{ device: leaf.device, channel: leaf.channel, property: leaf.property },
-						{ on: false },
-						1000,
-						current,
-					);
-				},
-			);
-			this.adapterOwners.set(
-				captured,
-				() =>
-					this.coolingFrameReader === reader &&
-					registry.current() &&
-					registry.values.get.call(registry.receiver, target.device) === platform &&
-					(original?.current() ?? true) &&
-					captured.isCurrent(),
-			);
-			return captured;
-		}
-
-		const supplied = this.adapters.get(target.device.type)?.adapter;
-		if (supplied)
-			return !claim ||
-				(supplied.contractVersion === 1 &&
-					supplied.providerProfile.id === (claim.providerProfile ?? SHELLY_GUARDED_PROFILE) &&
-					supplied.providerProfile.version === (claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION))
+			const supplied = custom.adapter;
+			return supplied.providerProfile.id === custom.profileId &&
+				supplied.providerProfile.version === custom.profileVersion
 				? supplied
 				: null;
-		if (
-			claim &&
-			((claim.providerProfile ?? SHELLY_GUARDED_PROFILE) !== SHELLY_GUARDED_PROFILE ||
-				(claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION) !== SHELLY_GUARDED_PROFILE_VERSION)
-		)
-			return null;
-		const platform = this.platforms.get(target.device);
-		if (!(platform instanceof ShellyNgDevicePlatform)) return null;
-		const registry = captureCreation(this.platforms, ['get']);
-		const original = captureCreation(platform, [
-			'prepareGuardRpcSession',
-			'admitGuardFenceSample',
-			'captureOwnedGuardFenceSample',
-			'processProtectiveCommand',
-		]);
-		const valueReader = captureCreation(this.values, ['readQualifiedSample']);
-		const capturedSession = capturedQualification
-			? original.values.prepareGuardRpcSession.call(platform, target, capturedQualification.profile)
-			: null;
-		const sessionMethods = capturedSession && captureCreation(capturedSession, ['on', 'fence']);
-		const sessionFor = (input: ThermostatInstalledQualification) => {
-			if (capturedQualification === undefined)
-				return original.values.prepareGuardRpcSession.call(platform, target, input.profile);
-			if (input !== capturedQualification || !sessionMethods) return null;
-			return {
-				on: (...args: Parameters<typeof capturedSession.on>) => sessionMethods.values.on.call(capturedSession, ...args),
-				fence: (...args: Parameters<typeof capturedSession.fence>) =>
-					sessionMethods.values.fence.call(capturedSession, ...args),
-			};
-		};
-		const adapter: ThermostatActuationAdapter = {
-			contractVersion: 1,
-			providerProfile: { id: SHELLY_GUARDED_PROFILE, version: SHELLY_GUARDED_PROFILE_VERSION },
-			canReconcile: (target, qualification) =>
-				qualification.upstreamWritersExcluded &&
-				qualification.profile.releaseOrderingQualified &&
-				qualification.profile.independentProtectionQualified &&
-				qualification.physicalIdentity === thermostatActuatorIdentity(target.property, target.channel, target.device) &&
-				!!sessionFor(qualification),
-			/** Refuse ON before energizing or report a possible send as unknown; OFF acceptance alone cannot release a claim. */
-			send: async (target, claim, qualification, isAdmitted) => {
-				if (!(target.device instanceof ShellyNgDeviceEntity))
-					return { outcome: 'refused', reasons: ['unsupported_protective_leaf'] };
-				const session = qualification && sessionFor(qualification);
-				if (target.value === true) {
-					if (
-						!session ||
-						!qualification.upstreamWritersExcluded ||
-						!qualification.profile.releaseOrderingQualified ||
-						!qualification.profile.independentProtectionQualified ||
-						qualification.physicalIdentity !== claim.physicalIdentity
-					)
-						return { outcome: 'refused', reasons: ['ordered_script_qualification_missing'] };
-					return session.on(claim.leaseSeconds, 1000, isAdmitted);
-				}
-				if (session) {
-					const deliver = invokeCreation(original.values.captureOwnedGuardFenceSample, platform, target);
-					const readback = await session.fence(1000, isAdmitted);
-					if (readback) {
-						await invokeCreation(deliver, undefined, readback);
-						return { outcome: 'accepted', wasOn: readback.wasOn, outputConfirmed: false, pendingOnDrained: false };
-					}
-				}
-				// An unconfirmed script barrier still permits best-effort absolute native OFF.
-				return original.values.processProtectiveCommand.call(
-					platform,
-					{ device: target.device, channel: target.channel, property: target.property },
-					{ on: false },
-					1000,
-					isAdmitted,
-				);
-			},
-			/** Bind drainage to the installed qualification, live connection lease and freshly admitted OFF sample. */
-			reconcile: async (target, commandIds, _off, isCurrent, scope) => {
-				const qualification = scope.qualification;
-				if (
-					!qualification.upstreamWritersExcluded ||
-					!qualification.profile.releaseOrderingQualified ||
-					!qualification.profile.independentProtectionQualified ||
-					qualification.physicalIdentity !== thermostatActuatorIdentity(target.property, target.channel, target.device)
-				)
-					return null;
-				const session = sessionFor(qualification);
-				if (!session) return null;
-				const deliver = invokeCreation(original.values.captureOwnedGuardFenceSample, platform, target);
-				const readback = await session.fence(1000, isCurrent);
-				if (!readback || typeof readback.evidence.sourceIsCurrent !== 'function') return null;
-				await invokeCreation(deliver, undefined, readback);
-				if (!readback.isCurrent()) return null;
-				const sample = valueReader.values.readQualifiedSample.call(valueReader.receiver, target.property, 30_000);
-				if (
-					!sample ||
-					sample.value !== false ||
-					sample.provenance !== 'live' ||
-					sample.quality !== 'good' ||
-					sample.sampledAt.getTime() !== readback.evidence.sampledAt.getTime() ||
-					sample.receivedAt.getTime() !== readback.evidence.receivedAt.getTime() ||
-					!readback.isCurrent()
-				)
-					return null;
-				return {
-					proofId: readback.proofId,
-					physicalIdentity: qualification.physicalIdentity,
-					connectionIdentity: readback.connectionIdentity,
-					coveredCommandIds: [...commandIds],
-					externalWriterBarrier: true,
-					offSample: sample,
-					observedAt: readback.evidence.observedAt,
-					isCurrent: readback.isCurrent,
-					sourceIsCurrent: readback.evidence.sourceIsCurrent,
-					scope: {
-						controllerId: scope.controllerId,
-						controllerRevision: scope.controllerRevision,
-						claimId: scope.claimId,
-						claimRevision: scope.claimRevision,
-						contractFingerprint: scope.contractFingerprint,
-					},
-				};
-			},
-		};
+		}
+		if (!claim) return null;
+		const registration = this.extensions.get(claim.providerProfile, claim.providerProfileVersion);
+		const reader = this.coolingFrameReader;
+		const adapter =
+			claim.providerProfile === SUPERVISED_SWITCH_PROFILE &&
+			claim.providerProfileVersion === SUPERVISED_SWITCH_PROFILE_VERSION
+				? this.supervised.capture(target)
+				: registration?.extension.captureAdapter(
+						target,
+						claim,
+						capturedQualification,
+						(member) => reader?.(member) ?? null,
+					);
+		if (!adapter) return null;
+		const original = captureCreation(adapter, ['isCurrent']);
 		this.adapterOwners.set(
 			adapter,
 			() =>
-				registry.current() &&
-				registry.values.get.call(registry.receiver, target.device) === platform &&
+				this.coolingFrameReader === reader &&
 				original.current() &&
-				valueReader.current() &&
-				(sessionMethods?.current() ?? true),
+				(!original.values.isCurrent || invokeCreation(original.values.isCurrent, adapter)),
 		);
 		return adapter;
 	}

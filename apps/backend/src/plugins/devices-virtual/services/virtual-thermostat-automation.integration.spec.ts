@@ -4,6 +4,8 @@ import { BeforeQueryEvent, EntityManager, LoadEvent, QueryRunner, RemoveEvent, U
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { shellyThermostatActuationFixture } from '../../../../test/support/thermostat-actuation-fixture';
+import { createShellyThermostatSafetyCatalog } from '../../../../test/support/thermostat-protection-fixture';
 import { realThermostatGuardFixture } from '../../../../test/support/thermostat-real-guard-fixture';
 import {
 	SqliteCommitGuardReceipt,
@@ -51,6 +53,7 @@ import { SpacesTypeMapperService } from '../../../modules/spaces/services/spaces
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { StorageService } from '../../../modules/storage/services/storage.service';
+import { SHELLY_GUARDED_PROFILE } from '../../devices-shelly-ng/contracts/thermostat-actuation.constants';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -186,6 +189,8 @@ describe('configured activity through the native thermostat participant', () => 
 			{} as never,
 			undefined,
 			provider,
+			undefined,
+			createShellyThermostatSafetyCatalog(),
 		);
 		configuration.onModuleInit();
 		comfort = new VirtualThermostatComfortService(database, structure, graph, claims, events, provider);
@@ -976,7 +981,9 @@ describe('configured activity through the native thermostat participant', () => 
 			contactOpeningMs: 0,
 			contactClosingMs: 0,
 			sources: [{ role: 'ambient', sourcePropertyId: sensor, maximumAgeSeconds: 60 }],
-			actuators: [{ role: 'heating', sourcePropertyId: actuator, leaseSeconds: 5 }],
+			actuators: [
+				{ role: 'heating', sourcePropertyId: actuator, providerProfile: SHELLY_GUARDED_PROFILE, leaseSeconds: 5 },
+			],
 			settings: [],
 		};
 		await configuration.configure(controllerId, input);
@@ -1181,6 +1188,8 @@ describe('configured activity through the native thermostat participant', () => 
 				calls as unknown as PropertyValueService,
 				undefined,
 				provider,
+				undefined,
+				createShellyThermostatSafetyCatalog(),
 			);
 			configuration.onModuleInit();
 			const authored = await author({ thermostat_preset: 'eco' });
@@ -2384,6 +2393,8 @@ describe('configured activity through the native thermostat participant', () => 
 			graph,
 			new PropertyCommandAdmissionRegistryService(),
 			events,
+			undefined,
+			shellyThermostatActuationFixture(),
 		);
 		const runtime = new VirtualThermostatRuntimeService(
 			database,
@@ -2399,6 +2410,7 @@ describe('configured activity through the native thermostat participant', () => 
 			new ConfigService(),
 			undefined,
 			provider,
+			createShellyThermostatSafetyCatalog(),
 		);
 		try {
 			await graph.onApplicationBootstrap();
@@ -2442,7 +2454,11 @@ describe('configured activity through the native thermostat participant', () => 
 			const installedClaim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
 				controllerId,
 			});
-			expect(installedClaim).toMatchObject({ sourcePropertyIdentity: actuator, leaseSeconds: 5 });
+			expect(installedClaim).toMatchObject({
+				sourcePropertyIdentity: actuator,
+				providerProfile: SHELLY_GUARDED_PROFILE,
+				leaseSeconds: 5,
+			});
 			expect(
 				on.every(
 					(command) =>
@@ -2478,9 +2494,9 @@ describe('configured activity through the native thermostat participant', () => 
 		}
 	});
 	// The new lifecycle cases reuse the real native/provider/managed transport participants.
-	const ownedGuard = async (activate = true, generated = false) => {
+	const ownedGuard = async (activate = true, restoreFirst = false) => {
 		const physical = await configurePhysical();
-		if (generated) {
+		if (restoreFirst) {
 			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 			await configuration.restoreActuator(
@@ -2498,7 +2514,7 @@ describe('configured activity through the native thermostat participant', () => 
 			);
 			const restored = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 			expect(restored.requestedMode).toBe('off');
-			// These are separate explicit operator choices, never part of the legacy NG-2 positive.
+			// A restore leaves the thermostat off. Operating mode and automation consent are fresh choices.
 			await configuration.configure(controllerId, {
 				...physical.input,
 				expectedRevision: restored.revision,
@@ -2528,6 +2544,8 @@ describe('configured activity through the native thermostat participant', () => 
 			graph,
 			new PropertyCommandAdmissionRegistryService(),
 			events,
+			undefined,
+			shellyThermostatActuationFixture(),
 		);
 		const runtime = new VirtualThermostatRuntimeService(
 			database,
@@ -2543,6 +2561,7 @@ describe('configured activity through the native thermostat participant', () => 
 			new ConfigService(),
 			undefined,
 			provider,
+			createShellyThermostatSafetyCatalog(),
 		);
 		configuration.onModuleDestroy();
 		configuration = new VirtualThermostatConfigService(
@@ -2554,6 +2573,8 @@ describe('configured activity through the native thermostat participant', () => 
 			fixture.values,
 			undefined,
 			provider,
+			undefined,
+			createShellyThermostatSafetyCatalog(),
 		);
 		configuration.onModuleInit();
 		const qualify = (claim: VirtualThermostatActuatorClaimEntity) => {
@@ -2561,9 +2582,7 @@ describe('configured activity through the native thermostat participant', () => 
 			if (!session?.isCurrent()) throw new Error('Original managed session required');
 			claims.recordQualification({
 				...qualifications.get(claim.physicalIdentity),
-				...(typeof claim.qualificationGeneration === 'string'
-					? { qualificationGeneration: claim.qualificationGeneration }
-					: {}),
+				qualificationGeneration: claim.qualificationGeneration,
 				machineLeaseIsCurrent: () => session.isCurrent(),
 			});
 			return session;
@@ -2673,16 +2692,17 @@ describe('configured activity through the native thermostat participant', () => 
 			expect(qualification).not.toBeNull();
 			const malformed = { ...qualification };
 			Object.defineProperty(malformed, 'qualificationGeneration', { value: null, enumerable: true });
-			f.claims.recordQualification(malformed);
-			expect(f.claims.qualification(claim, false)).toHaveProperty('qualificationGeneration', null);
+			f.claims.revokeQualification(claim.physicalIdentity);
+			expect(() => f.claims.recordQualification(malformed)).toThrow();
+			expect(f.claims.qualification(claim, false)).toBeNull();
+			expect(f.fixture.transport.captureOffMetadata(context.targets.get(claim.id), claim, malformed)).toBeNull();
 			const capture = jest.spyOn(f.fixture.transport, 'capture');
 			const get = jest.spyOn(f.fixture.transport, 'get');
 			const session = jest.spyOn(f.fixture.platform, 'prepareGuardRpcSession');
 			const metadata = jest.spyOn(f.fixture.transport, 'captureOffMetadata');
 			await f.internal.prepare(context, claim, 'on');
 			await f.internal.reconcile(context, claim);
-			expect(metadata).toHaveBeenCalledTimes(1);
-			expect(metadata.mock.results[0].value).toBeNull();
+			expect(metadata).not.toHaveBeenCalled();
 			expect(capture).not.toHaveBeenCalled();
 			expect(get).not.toHaveBeenCalled();
 			expect(session).not.toHaveBeenCalled();
@@ -2744,7 +2764,7 @@ describe('configured activity through the native thermostat participant', () => 
 			await f.cleanup();
 		}
 	});
-	it('native canonical restore retires a held legacy ON and admits only fresh generated readiness', async () => {
+	it('native canonical restore retires a held ON and admits only the new qualification generation', async () => {
 		const f = await ownedGuard();
 		let release: () => void, entered: () => void;
 		const gate = new Promise<void>((resolve) => (release = resolve));
@@ -2756,7 +2776,7 @@ describe('configured activity through the native thermostat participant', () => 
 				target = context.targets.get(claim.id);
 			const qualification = f.claims.qualification(claim, false);
 			const old = f.fixture.transport.captureReconcileReadiness(target, claim, qualification);
-			expect(old?.capabilityVersion).toBe(2);
+			expect(old).toMatchObject({ capabilityVersion: 1, qualificationGeneration: claim.qualificationGeneration });
 			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
 			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 			f.fixture.controls.beforeOn = async () => {
@@ -2788,6 +2808,7 @@ describe('configured activity through the native thermostat participant', () => 
 			expect(f.fixture.controls.sends).toEqual([]);
 			const current = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id });
 			expect(current.revision).toBeGreaterThan(claim.revision);
+			expect(current.qualificationGeneration).not.toBe(claim.qualificationGeneration);
 			expect(typeof current.qualificationGeneration).toBe('string');
 			expect(current.qualificationGeneration.length).toBeGreaterThan(0);
 			expect(await database.manager.count(VirtualThermostatRecoveryEntity)).toBe(1);

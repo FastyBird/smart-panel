@@ -411,6 +411,7 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 				group_identity: id + ':heating',
 				provider_profile: 'shelly-ng.guarded-switch',
 				provider_profile_version: 1,
+				independent_protection_acknowledged: false,
 				role: 'heating',
 				source_property: null,
 				source_identity: 'lost-property',

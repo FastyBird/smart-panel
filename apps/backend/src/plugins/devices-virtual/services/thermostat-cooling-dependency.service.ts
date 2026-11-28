@@ -5,7 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
+import { SUPERVISED_SWITCH_PROFILE } from '../contracts/thermostat-actuation.contract';
 import { ThermostatCoolingDependencyDto } from '../dto/thermostat-config.dto';
 import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
 import { VirtualDewPointConfigEntity, VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
@@ -14,7 +14,8 @@ import {
 	VirtualThermostatConfigEntity,
 } from '../entities/virtual-thermostat.entity';
 
-import { ThermostatProtectionSource, resolveThermostatProtectionSource } from './thermostat-protection-source.utils';
+import { ThermostatProtectionSource } from './thermostat-protection-source.utils';
+import { ThermostatSafetyCatalog } from './thermostat-safety-catalog.service';
 import { VirtualCoolingPolicy, evaluateCoolingProtection } from './virtual-cooling-policy.utils';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
@@ -54,6 +55,7 @@ export class ThermostatCoolingDependencyService {
 		private readonly dataSource: DataSource,
 		private readonly values: PropertyValueService,
 		private readonly claims?: VirtualThermostatClaimsService,
+		private readonly safetyCatalog: ThermostatSafetyCatalog = new ThermostatSafetyCatalog(),
 	) {}
 	reset(): void {
 		this.latches.clear();
@@ -106,7 +108,7 @@ export class ThermostatCoolingDependencyService {
 		if (dto.surfacePropertyId === null) {
 			if (!old || old.surfacePropertyId !== null) return fail();
 		} else {
-			const surface = await resolveThermostatProtectionSource(manager, dto.surfacePropertyId, claim.physicalIdentity);
+			const surface = await this.safetyCatalog.resolveSource(manager, dto.surfacePropertyId, claim, 'surface');
 			row.surfacePropertyId = surface.property.id;
 			row.surfaceIdentity = surface.property.id;
 			row.physicalSurfaceIdentity = surface.leaf.id;
@@ -148,10 +150,11 @@ export class ThermostatCoolingDependencyService {
 						dewPoint = await this.dataSource.manager.findOneBy(ChannelPropertyEntity, { id: dew.outputPropertyId });
 				}
 				if (dependency?.surfacePropertyId)
-					surface = await resolveThermostatProtectionSource(
+					surface = await this.safetyCatalog.resolveSource(
 						this.dataSource.manager,
 						dependency.surfacePropertyId,
-						claim.physicalIdentity,
+						claim,
+						'surface',
 					);
 				if (surface?.fingerprint !== dependency?.surfaceFingerprint) surface = null;
 			} catch {
@@ -267,18 +270,22 @@ export class ThermostatCoolingDependencyService {
 				!this.values.incorporatedEvidenceCurrent([dewEvidence, surfaceEvidence])
 			)
 				reasons.push('cooling_lineage_quality_or_age');
-			// Only the separately registered, current installed remote profile can clear this gate.
-			// Public flags, legacy heating bytes, adapter registration and ACKs do not supply it.
-			const qualification = this.claims?.qualification(entry.claim, entry.opposed);
-			const remote =
-				qualification?.providerProfile?.id === REMOTE_DEW_POINT_PROFILE ? qualification.profile.remoteDewPoint : null;
-			if (!remote) reasons.push('cooling_remote_profile_installation_unqualified');
-			else if (
-				remote.artifact.binding.protectionFingerprint !== entry.basis ||
-				remote.artifact.binding.remoteLineageFingerprint !== entry.dependency?.dewPointFingerprint ||
-				remote.artifact.binding.localSurface.calibrationFingerprint !== entry.surface?.fingerprint
+			const extension = this.safetyCatalog.get(entry.claim.providerProfile);
+			if (
+				entry.claim.providerProfile !== SUPERVISED_SWITCH_PROFILE &&
+				(!extension || extension.offer.version !== entry.claim.providerProfileVersion)
 			)
-				reasons.push('cooling_artifact_or_protection_mismatch');
+				reasons.push('cooling_safety_extension_unavailable');
+			else if (extension?.offer.requires_cooling_protection) {
+				const proof = this.claims?.qualification(entry.claim, entry.opposed)?.coolingBinding;
+				if (!proof) reasons.push('cooling_remote_profile_installation_unqualified');
+				else if (
+					proof.protectionFingerprint !== entry.basis ||
+					proof.remoteLineageFingerprint !== entry.dependency?.dewPointFingerprint ||
+					proof.surfaceFingerprint !== entry.surface?.fingerprint
+				)
+					reasons.push('cooling_artifact_or_protection_mismatch');
+			}
 			const sourceGap = reasons.length > 0;
 			if (sourceGap && !state.gap) {
 				state.barrier = this.values.currentSampleGeneration();
@@ -292,7 +299,7 @@ export class ThermostatCoolingDependencyService {
 				state.latched,
 			);
 			if (
-				entry.surface &&
+				entry.surface?.domain &&
 				result.threshold !== null &&
 				result.threshold + entry.policy.recoveryHysteresisC >= entry.surface.domain.maximum
 			)

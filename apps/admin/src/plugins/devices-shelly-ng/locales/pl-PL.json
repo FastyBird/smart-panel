@@ -172,5 +172,34 @@
 	},
 	"sections": {
 		"connection": "Połączenie Shelly"
+	},
+	"thermostatInstallation": {
+		"addEvidence": "Dodaj odnośnik do dowodu",
+		"ceiling": "Zainstalowany limit podłogi (°C)",
+		"coolingMaximum": "Zainstalowane maksimum chłodzenia (°C)",
+		"coolingMinimum": "Zainstalowane minimum chłodzenia (°C)",
+		"cutoff": "Skuteczny próg wyłączenia",
+		"endpoint": "Sprawdzona nazwa hosta",
+		"epoch": "Trwały klucz epoki",
+		"equipment": "Identyfikacja urządzenia",
+		"evidence": "Odnośnik do istniejącego dowodu",
+		"evidenceHelp": "Dodawaj wyłącznie rzeczywiste udokumentowane dowody. Puste wpisy nie potwierdzają kwalifikacji.",
+		"heatingMaximum": "Zainstalowane maksimum ogrzewania (°C)",
+		"heatingMinimum": "Zainstalowane minimum ogrzewania (°C)",
+		"installation": "Przegląd i przygotowanie instalacji",
+		"legacyProfile": "Zachowano dotychczasową konfigurację pojedynczą. Przed nowym formatem przypisz jawną ochronę lokalną.",
+		"maximumLease": "Zainstalowany maksymalny czas włączenia (sekundy)",
+		"minimumLease": "Zainstalowany minimalny czas włączenia (sekundy)",
+		"observedMs": "Maksymalny zaobserwowany czas (ms), jeśli zmierzono",
+		"procedure": "Udokumentowana procedura",
+		"reload": "Wczytaj bieżącą rewizję",
+		"removeDraft": "Usuń wpis szkicu",
+		"retainedProfile": "Zachowana instalacja, audyt i gotowość",
+		"script": "Sprawdzone miejsce skryptu",
+		"snapshot": "Przegląd katalogu i kalibracji tylko do odczytu",
+		"stage": "Przygotuj programowy zapis instalacji",
+		"stagingOnly": "Zapis jedynie przygotowuje rekordy. Nie wdraża skryptów, nie aktywuje wyjść ani nie certyfikuje urządzeń. Fizyczne uruchomienie następuje po wydaniu alfy.",
+		"testedAt": "Rzeczywisty czas testu (ISO 8601)",
+		"watchdog": "Zainstalowany limit nadzoru (ms)"
 	}
 }

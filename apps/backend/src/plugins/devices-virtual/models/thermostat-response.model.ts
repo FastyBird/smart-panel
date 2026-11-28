@@ -375,12 +375,19 @@ export class VirtualThermostatClaimModel {
 	@ApiProperty({ description: 'Installed protective adapter profile version' })
 	@Expose()
 	provider_profile_version: number;
+	@ApiProperty({ description: 'Operator acknowledged independent protection for this supervised output' })
+	@Expose()
+	independent_protection_acknowledged: boolean;
 
 	@ApiProperty({ description: 'Durable reservation UUID' })
 	@Expose()
 	id: string;
 
-	@ApiProperty({ description: 'Exclusive branch role', enum: ['heating', 'cooling'] })
+	@ApiProperty({
+		description: 'Exclusive branch role',
+		enum: ['heating', 'cooling'],
+		enumName: 'DevicesVirtualPluginThermostatActuatorRole',
+	})
 	@Expose()
 	role: 'heating' | 'cooling';
 
@@ -415,7 +422,7 @@ export class VirtualThermostatClaimModel {
 	@Expose()
 	state: 'reserved' | 'releasing' | 'suspended' | 'missing' | 'released';
 
-	@ApiProperty({ description: 'Requested qualified local ON lease' })
+	@ApiProperty({ description: 'Device-side ON lease in seconds, or zero for software supervision' })
 	@Expose()
 	lease_seconds: number;
 
@@ -576,7 +583,9 @@ export class VirtualThermostatBranchRuntimeModel {
 	release_evidence: Record<string, string | number | boolean> | null;
 
 	@ApiProperty() @Expose() claim: string;
-	@ApiProperty({ enum: ['heating', 'cooling'] }) @Expose() role: 'heating' | 'cooling';
+	@ApiProperty({ enum: ['heating', 'cooling'], enumName: 'DevicesVirtualPluginThermostatActuatorRole' })
+	@Expose()
+	role: 'heating' | 'cooling';
 	@ApiProperty({
 		enum: ['on', 'off', 'unknown'],
 		description:

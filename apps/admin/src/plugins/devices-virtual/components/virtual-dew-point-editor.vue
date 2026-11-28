@@ -385,6 +385,7 @@ import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '.
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { useDewPointAuthoring } from '../composables/use-dew-point-authoring';
 import { usePlacementNames } from '../composables/use-placement-names';
+import { useVirtualDeviceExtensions } from '../composables/use-virtual-device-extensions';
 import { useVirtualWizardError } from '../composables/use-virtual-wizard-error';
 import { provideVirtualWizardPlacement, useVirtualWizardSourceGroups } from '../composables/use-virtual-wizard-placement';
 import { preferCanonicalMeasurementSources } from '../utils/measurement-authoring.utils';
@@ -442,6 +443,7 @@ onMounted(() => {
 onUnmounted(() => {
 	if (clock) clearInterval(clock);
 });
+const { measurementAlias } = useVirtualDeviceExtensions();
 const stores = injectStoresManager(),
 	devices = stores.getStore(devicesStoreKey),
 	channels = stores.getStore(channelsStoreKey),
@@ -634,7 +636,7 @@ const pickerSources = computed<VirtualWizardSource[]>(() =>
 );
 // Keep all metadata for saved bindings; collapse duplicate physical readings only in the add list.
 const availablePickerSources = computed(() =>
-	preferCanonicalMeasurementSources(pickerSources.value, devices.findAll(), channels.findAll(), properties.findAll())
+	preferCanonicalMeasurementSources(pickerSources.value, devices.findAll(), channels.findAll(), properties.findAll(), measurementAlias)
 );
 const selectedSources = computed(() =>
 	roles.flatMap((role) => {

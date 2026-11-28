@@ -4,8 +4,8 @@ import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermo
 
 /** Versioned internal contracts. Registration or command acceptance cannot grant protective authority. */
 export const THERMOSTAT_ACTUATION_CONTRACT_VERSION = 1 as const;
-export const SHELLY_GUARDED_PROFILE = 'shelly-ng.guarded-switch' as const;
-export const SHELLY_GUARDED_PROFILE_VERSION = 1 as const;
+export const SUPERVISED_SWITCH_PROFILE = 'supervised-switch' as const;
+export const SUPERVISED_SWITCH_PROFILE_VERSION = 1 as const;
 export const MAX_THERMOSTAT_ACTUATOR_MEMBERS = 8;
 
 export interface ThermostatProviderProfile {
@@ -16,7 +16,7 @@ export type ThermostatActuationResult =
 	| { readonly outcome: 'refused'; readonly reasons: readonly string[] }
 	| {
 			readonly outcome: 'accepted';
-			readonly wasOn: boolean;
+			readonly wasOn?: boolean;
 			readonly outputConfirmed: false;
 			readonly pendingOnDrained: false;
 	  }
@@ -34,15 +34,19 @@ export interface ThermostatCausalObservation {
 
 /** Local protection, observation and transport acceptance are intentionally separate capabilities. */
 export interface ThermostatProtectiveQualification<LocalProfile> {
-	/** Omitted only by the legacy installed Shelly evidence loader; normalized at admission. */
-	readonly contractVersion?: 1;
-	readonly providerProfile?: ThermostatProviderProfile;
+	readonly contractVersion: 1;
+	readonly providerProfile: ThermostatProviderProfile;
 	readonly physicalIdentity: string;
-	readonly qualificationGeneration?: string;
+	readonly qualificationGeneration: string;
 	readonly profile: LocalProfile;
 	readonly upstreamWritersExcluded: boolean;
 	readonly opposedOutputsInterlocked: boolean;
 	readonly machineLeaseIsCurrent?: () => boolean;
+	readonly coolingBinding?: Readonly<{
+		protectionFingerprint: string;
+		remoteLineageFingerprint: string;
+		surfaceFingerprint: string;
+	}>;
 }
 
 export type ThermostatControlStrategy =
@@ -88,7 +92,9 @@ export interface ThermostatReleaseOrderingEvidence<Qualification> {
 	readonly connectionIdentity: string;
 	readonly coveredCommandIds: readonly string[];
 	/** Provider barrier includes all earlier transport aliases and commands, including pre-claim ordinary writers. */
-	readonly externalWriterBarrier: true;
+	readonly externalWriterBarrier?: true;
+	/** A software-supervised output observed after a completed absolute OFF, with all controller writes serialized. */
+	readonly supervisedOffCommandId?: string;
 	readonly offSample: QualifiedPropertySample;
 	/** Metadata retirement only after the caller has committed these exact journal identities as confirmed. */
 	readonly retireConfirmedCommandIds?: (ids: readonly string[]) => void;
@@ -102,21 +108,15 @@ export interface CapturedThermostatReconcileReadinessV1 {
 	readonly isCurrent: () => boolean;
 }
 
-/** Built-in legacy continuity only; never offered by custom providers or used as ON authority. */
-export interface CapturedThermostatLegacyReadiness {
-	readonly capabilityVersion: 2;
-	readonly qualificationBinding: 'legacy-null-managed-shelly';
-	readonly providerProfile: {
-		readonly id: typeof SHELLY_GUARDED_PROFILE;
-		readonly version: typeof SHELLY_GUARDED_PROFILE_VERSION;
-	};
-	readonly physicalIdentity: string;
-	readonly qualificationGeneration?: never;
+export type CapturedThermostatReconcileReadiness = CapturedThermostatReconcileReadinessV1;
+
+export interface RemoteCoolingFrame {
+	readonly threshold: number;
+	readonly expiresAt: number;
+	readonly controllerRevision: number;
+	readonly protectionFingerprint: string;
 	readonly isCurrent: () => boolean;
 }
-export type CapturedThermostatReconcileReadiness =
-	| CapturedThermostatReconcileReadinessV1
-	| CapturedThermostatLegacyReadiness;
 
 export interface ThermostatActuationAdapter<Qualification> {
 	readonly contractVersion: 1;

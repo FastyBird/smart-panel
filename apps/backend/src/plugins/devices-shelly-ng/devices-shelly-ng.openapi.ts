@@ -6,6 +6,7 @@ import { RecoverCoverOrderingDto, ReqRecoverCoverOrderingDto } from './dto/cover
 import { CreateShellyNgChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateShellyNgChannelDto } from './dto/create-channel.dto';
 import { CreateShellyNgDeviceDto } from './dto/create-device.dto';
+import * as InstallationDtos from './dto/thermostat-installation.dto';
 import { UpdateShellyNgChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateShellyNgChannelDto } from './dto/update-channel.dto';
 import {
@@ -47,8 +48,11 @@ import {
 	ShellyNgSupportedDeviceModel,
 	ShellyNgSupportedDeviceSystemComponentModel,
 } from './models/shelly-ng.model';
+import * as InstallationModels from './models/thermostat-installation-response.model';
 
 export const DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS = [
+	...Object.values(InstallationDtos),
+	...Object.values(InstallationModels),
 	RecoverCoverOrderingDto,
 	ReqRecoverCoverOrderingDto,
 	CoverRecoveryModel,

@@ -14,6 +14,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { AcceptedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
@@ -23,8 +24,8 @@ import {
 	PropertyProducerRegistryService,
 } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { ShellyNgChannelPropertyEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import {
+	SUPERVISED_SWITCH_PROFILE,
 	thermostatBranchGroupIdentity,
 	thermostatHasOpposedBranches,
 } from '../contracts/thermostat-actuation.contract';
@@ -56,6 +57,7 @@ import {
 	ThermostatMemberProtectionDiagnostic,
 	ThermostatMemberProtectionService,
 } from './thermostat-member-protection.service';
+import { ThermostatSafetyCatalog } from './thermostat-safety-catalog.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import {
 	ThermostatResolvedAutomation,
@@ -224,8 +226,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private lifecycle?: RuntimeLifecycle;
 	private bootstrap?: { lifecycle: RuntimeLifecycle; completion: Promise<void> };
 	private coolingService?: ThermostatCoolingDependencyService;
+	private readonly memberProtection: ThermostatMemberProtectionService;
 	private get coolingDependencies(): ThermostatCoolingDependencyService {
-		return (this.coolingService ??= new ThermostatCoolingDependencyService(this.dataSource, this.values, this.claims));
+		return (this.coolingService ??= new ThermostatCoolingDependencyService(
+			this.dataSource,
+			this.values,
+			this.claims,
+			this.safetyCatalog,
+		));
 	}
 
 	private active = false;
@@ -242,6 +250,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		string,
 		{
 			qualification: ThermostatInstalledQualification;
+			/** An unsolicited ON between evaluations ends the prior interval of observed OFF. */
+			supervisedOff?: boolean;
 			sourceIsCurrent: () => boolean;
 			observedAt: number;
 			scope: string;
@@ -264,7 +274,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly inFlight = new Map<string, Promise<void>>();
 	private readonly inFlightCommands = new Map<string, VirtualThermostatCommandEntity>();
 	private timer?: NodeJS.Timeout;
-	private listener = (payload?: { propertyId?: string; id?: string; device?: { id: string } }) => {
+	private listener = (payload?: {
+		propertyId?: string;
+		id?: string;
+		device?: { id: string };
+		sample?: AcceptedPropertySample;
+	}) => {
 		if (payload?.id && this.outputs.has(payload.id)) return;
 		const propertyId = payload?.propertyId ?? payload?.id;
 		for (const [id, context] of this.contexts)
@@ -277,6 +292,20 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				) ||
 				context.claims.some((claim) => claim.sourcePropertyId === propertyId)
 			) {
+				const sample = payload?.sample;
+				if (
+					sample?.value === true &&
+					sample.quality === 'good' &&
+					sample.provenance === 'live' &&
+					!sample.commandEcho &&
+					!sample.replay
+				) {
+					for (const claim of context.claims) {
+						if (claim.providerProfile !== SUPERVISED_SWITCH_PROFILE || claim.sourcePropertyId !== propertyId) continue;
+						const prior = this.reconciled.get(`${claim.id}:${claim.revision}`);
+						if (prior) prior.supervisedOff = false;
+					}
+				}
 				// Observe invalid/degraded producer intervals synchronously, even if a later report
 				// reaches the queue before the scheduled evaluation can load its new context.
 				this.memberProtection.read(context.memberBindings, Date.now());
@@ -309,13 +338,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly comfort: VirtualThermostatComfortService,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
-		@Optional()
-		private readonly memberProtection: ThermostatMemberProtectionService = new ThermostatMemberProtectionService(
-			dataSource,
-			values,
-		),
+		@Optional() memberProtection?: ThermostatMemberProtectionService,
 		@Optional() private readonly automation?: VirtualThermostatAutomationService,
+		@Optional() private readonly safetyCatalog: ThermostatSafetyCatalog = new ThermostatSafetyCatalog(),
 	) {
+		this.memberProtection =
+			memberProtection ?? new ThermostatMemberProtectionService(dataSource, values, safetyCatalog);
 		this.journal = new ThermostatRuntimeJournal(dataSource, structure);
 	}
 
@@ -688,6 +716,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			'physicalIdentity',
 			'contractFingerprint',
 			'qualificationGeneration',
+			'independentProtectionAcknowledged',
 			'providerProfile',
 			'providerProfileVersion',
 		] as const;
@@ -892,7 +921,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	): ThermostatActuatorEvidence {
 		const branch = context.branches.get(claim.id),
 			target = context.targets.get(claim.id);
-		const feedback = target ? this.values.readQualifiedSample(target.property, 30_000, new Date(now)) : null;
+		const reported = target ? this.values.readQualifiedSample(target.property, 30_000, new Date(now)) : null;
+		const feedback = reported?.replay || reported?.commandEcho ? null : reported;
 		branch.activity = typeof feedback?.value === 'boolean' ? (feedback.value ? 'on' : 'off') : 'unknown';
 		// Detached I/O outcomes override a context loaded before their journal write acquired its lock.
 		const latest = new Map(context.commands.map((command) => [command.id, command]));
@@ -927,14 +957,19 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			if (ownedReady) context.ownedReadinessRefusals.delete(claim.id);
 			else context.ownedReadinessRefusals.add(claim.id);
 		}
+		const supervised = claim.providerProfile === SUPERVISED_SWITCH_PROFILE;
+		const provenOff = !supervised || this.reconciled.get(`${claim.id}:${claim.revision}`)?.supervisedOff === true;
 		return {
 			activity: branch.activity,
 			pendingOn: pending.some((command) => command.action === 'on'),
-			releaseProven: this.isReconciled(claim),
+			releaseProven:
+				this.isReconciled(claim) &&
+				(!supervised || (provenOff && !pending.some((command) => command.action === 'off'))),
 			offSince: branch.lastVerifiedOffAt?.getTime() ?? null,
 			canEnergize:
 				!!context.owner?.enabled &&
 				claim.state === 'reserved' &&
+				(claim.providerProfile !== SUPERVISED_SWITCH_PROFILE || claim.independentProtectionAcknowledged) &&
 				!!target?.device.enabled &&
 				!!qualification &&
 				ownedReady &&
@@ -944,7 +979,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				!this.memberFaults.has(`${claim.id}:${claim.revision}`) &&
 				!unobservedOn &&
 				(branch.activity === 'on' ||
-					(branch.lastVerifiedOffAt !== null &&
+					(provenOff &&
+						branch.lastVerifiedOffAt !== null &&
 						now >= branch.lastVerifiedOffAt.getTime() + context.config.policy.minimumOffMs)) &&
 				!pending.some((command) => command.action === 'off'),
 		};
@@ -1140,7 +1176,15 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const pending = context.commands.some(
 				(command) => command.claimId === claim.id && command.action === 'on' && unresolved(command),
 			);
-			if (!desired && (branch.activity !== 'off' || pending || !this.isReconciled(claim) || claim.state !== 'reserved'))
+			const supervised = claim.providerProfile === SUPERVISED_SWITCH_PROFILE;
+			if (
+				!desired &&
+				!(supervised && this.transport.awaitingSupervisedOff(claim)) &&
+				(branch.activity !== 'off' ||
+					pending ||
+					(supervised ? !this.hasCurrentDrain(context, claim) : !this.isReconciled(claim)) ||
+					(supervised ? claim.state === 'releasing' : claim.state !== 'reserved'))
+			)
 				await this.prepare(context, claim, 'off');
 		}
 		for (const claim of context.claims) {
@@ -1159,7 +1203,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				desired &&
 				(!latest ||
 					(latest.status === 'confirmed' && context.branches.get(claim.id).activity === 'off') ||
-					(context.branches.get(claim.id).activity === 'on' &&
+					(claim.leaseSeconds > 0 &&
+						context.branches.get(claim.id).activity === 'on' &&
 						now - latest.preparedAt.getTime() >= claim.leaseSeconds * 500))
 			)
 				await this.prepare(context, claim, 'on');
@@ -1178,6 +1223,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					id: claim.id,
 					revision: claim.revision,
 					generation: claim.qualificationGeneration,
+					independentProtectionAcknowledged: claim.independentProtectionAcknowledged,
 					role: claim.role,
 					state: claim.state,
 					leaseSeconds: claim.leaseSeconds,
@@ -1508,6 +1554,19 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const acceptedOff = this.values.readQualifiedSample(target.property, 30_000);
 		const endedAt = new Date();
 		const covered = new Set(proof?.coveredCommandIds ?? []);
+		const supervised = claim.providerProfile === SUPERVISED_SWITCH_PROFILE;
+		const validBoundary = supervised
+			? !!proof?.supervisedOffCommandId &&
+				pending.some(
+					(row) => row.id === proof.supervisedOffCommandId && row.action === 'off' && row.status === 'accepted',
+				) &&
+				!proof.offSample.commandEcho &&
+				!proof.offSample.replay &&
+				proof.offSample.ingressSequence !== undefined &&
+				proof.offSample.ingressSequence === acceptedOff?.ingressSequence
+			: proof?.externalWriterBarrier === true &&
+				proof.observedAt?.getTime() >= startedAt.getTime() &&
+				proof.offSample?.sampledAt?.getTime() >= proof.observedAt?.getTime();
 		if (
 			!proof ||
 			(metadata !== undefined && !metadata.isCurrent()) ||
@@ -1526,19 +1585,17 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			proof.scope.claimRevision !== claim.revision ||
 			proof.scope.contractFingerprint !== claim.contractFingerprint ||
 			!Number.isFinite(proof.observedAt?.getTime()) ||
-			proof.observedAt.getTime() < startedAt.getTime() ||
+			!validBoundary ||
 			proof.observedAt.getTime() > endedAt.getTime() ||
 			!this.canSend(context, claim, 'off') ||
 			!proof.proofId ||
 			!proof.connectionIdentity ||
 			proof.physicalIdentity !== claim.physicalIdentity ||
-			!proof.externalWriterBarrier ||
 			pending.some((command) => !covered.has(command.id)) ||
 			proof.offSample.propertyId !== target.property.id ||
 			proof.offSample.value !== false ||
 			proof.offSample.provenance !== 'live' ||
 			proof.offSample.quality !== 'good' ||
-			proof.offSample.sampledAt.getTime() < proof.observedAt.getTime() ||
 			proof.offSample.receivedAt.getTime() > endedAt.getTime() ||
 			proof.offSample.sampledAt.getTime() !== acceptedOff.sampledAt.getTime() ||
 			proof.offSample.receivedAt.getTime() !== acceptedOff.receivedAt.getTime() ||
@@ -1564,6 +1621,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				currentOff.sampledAt.getTime() === proof.offSample.sampledAt.getTime() &&
 				currentOff.receivedAt.getTime() === proof.offSample.receivedAt.getTime() &&
 				currentOff.revision === proof.offSample.revision &&
+				(!supervised || currentOff.ingressSequence === proof.offSample.ingressSequence) &&
 				adapter.canReconcile(target, qualification)
 			);
 		};
@@ -1603,6 +1661,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					currentOff.sampledAt.getTime() !== proof.offSample.sampledAt.getTime() ||
 					currentOff.receivedAt.getTime() !== proof.offSample.receivedAt.getTime() ||
 					currentOff.revision !== proof.offSample.revision ||
+					(supervised && currentOff.ingressSequence !== proof.offSample.ingressSequence) ||
 					!adapter.isCurrent() ||
 					!adapter.canReconcile(target, currentQualification) ||
 					current.some((command) => this.inFlight.has(command.id) || !covered.has(command.id))
@@ -1615,7 +1674,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					releaseProofId: proof.proofId,
 					activity: 'off',
 					lastVerifiedOffAt:
-						!branch.lastVerifiedOffAt || current.some((command) => command.action === 'on')
+						supervised || !branch.lastVerifiedOffAt || current.some((command) => command.action === 'on')
 							? proof.offSample.receivedAt
 							: branch.lastVerifiedOffAt,
 					releaseAttempts: 0,
@@ -1674,9 +1733,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					controllerRevision: proof.scope.controllerRevision,
 				}),
 			);
+			if (claim.providerProfile === SUPERVISED_SWITCH_PROFILE) this.transport.forgetSupervisedOff(claim);
 		}
 		this.reconciled.set(`${claim.id}:${claim.revision}`, {
 			qualification,
+			supervisedOff: supervised,
 			sourceIsCurrent: proof.sourceIsCurrent,
 			observedAt: proof.offSample.receivedAt.getTime(),
 			scope: this.releaseScope(context),
@@ -1715,20 +1776,23 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (
 			!claim ||
 			!target?.device.enabled ||
-			!(target.property instanceof ShellyNgChannelPropertyEntity) ||
 			target.property.id !== claim.sourcePropertyId ||
 			thermostatActuatorIdentity(target.property, target.channel, target.device) !== claim.physicalIdentity ||
 			!this.values.captureSampleSourceGuard(target.property)()
 		)
 			return unavailable;
-		const qualificationReady = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))
-			? true
-			: null;
+		const qualificationReady =
+			(claim.providerProfile !== SUPERVISED_SWITCH_PROFILE || claim.independentProtectionAcknowledged) &&
+			this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))
+				? true
+				: null;
 		const sample = this.values.readQualifiedSampleSnapshot(target.property, 30_000, now);
 		if (
 			!sample ||
 			sample.propertyId !== target.property.id ||
 			sample.provenance !== 'live' ||
+			sample.replay ||
+			sample.commandEcho ||
 			sample.quality !== 'good' ||
 			typeof sample.value !== 'boolean'
 		)
@@ -1773,15 +1837,18 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const branch = context.branches.get(claim.id),
 				commands = context.commands.filter((command) => command.claimId === claim.id && unresolved(command));
 			const target = context.targets.get(claim.id);
-			const readinessFault = !target
-				? 'actuator_missing'
-				: !this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))
-					? 'hardware_qualification_missing'
-					: !this.values.readQualifiedSample(target.property, 30_000)
-						? 'feedback_unavailable'
-						: claim.state !== 'reserved'
-							? `actuator_${claim.state}`
-							: null;
+			let readinessFault: string | null = null;
+			if (claim.providerProfile === SUPERVISED_SWITCH_PROFILE && !claim.independentProtectionAcknowledged) {
+				readinessFault = 'independent_protection_acknowledgement_required';
+			} else if (!target) {
+				readinessFault = 'actuator_missing';
+			} else if (!this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))) {
+				readinessFault = 'hardware_qualification_missing';
+			} else if (!this.values.readQualifiedSample(target.property, 30_000)) {
+				readinessFault = 'feedback_unavailable';
+			} else if (claim.state !== 'reserved') {
+				readinessFault = `actuator_${claim.state}`;
+			}
 			return {
 				protection: context.memberProtection.find((entry) => entry.claim === claim.id) ?? null,
 				cooling_protection: context.coolingProtection.find((entry) => entry.claim === claim.id) ?? null,
@@ -1815,6 +1882,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			};
 		});
 		const reasons = [...context.decision.reasons];
+		if (
+			context.claims.some(
+				(claim) => claim.providerProfile === SUPERVISED_SWITCH_PROFILE && !claim.independentProtectionAcknowledged,
+			)
+		)
+			reasons.push('independent_protection_acknowledgement_required');
 		if (context.claims.some((claim) => !this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))))
 			reasons.push('hardware_qualification_missing');
 		if (context.claims.some((claim) => !this.isReconciled(claim))) reasons.push('release_ordering_unreconciled');

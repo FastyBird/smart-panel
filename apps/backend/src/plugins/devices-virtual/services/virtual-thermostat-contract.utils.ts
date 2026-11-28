@@ -9,7 +9,6 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
-import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 
 export const thermostatFingerprint = (value: unknown): string =>
 	createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -32,34 +31,37 @@ export const thermostatPropertyContract = (
 		deviceId: device.id,
 		deviceType: device.type,
 	});
-/** Canonical hardware identity, independent of device/property UUIDs and transport aliases. */
+/** Reserve the provider's hardware identity when available, otherwise the exact catalog endpoint. */
 export function thermostatActuatorIdentity(
 	property: ChannelPropertyEntity,
 	channel: ChannelEntity,
 	device: DeviceEntity,
 ): string | null {
-	const component = /^switch:(\d+)$/.exec(channel.identifier ?? '');
-	const mac = device instanceof ShellyNgDeviceEntity ? device.canonicalMac : null;
-	const permissions = new Set(property.permissions ?? []);
 	if (
-		!component ||
-		!mac ||
-		!/^[\da-f]{12}$/i.test(mac) ||
-		!['output', 'on'].includes(property.identifier) ||
+		device.type === 'virtual' ||
 		property.category !== PropertyCategory.ON ||
 		property.dataType !== DataTypeType.BOOL ||
-		!permissionSatisfied(PermissionType.READ_ONLY, permissions) ||
-		!permissionSatisfied(PermissionType.WRITE_ONLY, permissions)
+		!permissionSatisfied(PermissionType.WRITE_ONLY, new Set(property.permissions ?? []))
 	)
 		return null;
-	return `shelly-ng:${mac.toUpperCase()}:switch:${Number(component[1])}:output`;
+	const hardware = device.getPhysicalSwitchIdentity?.(channel, property);
+	if (hardware) return hardware;
+	return device.id && channel.id && property.id ? `property:${device.id}:${channel.id}:${property.id}` : null;
 }
 export const isThermostatTemperature = (property: ChannelPropertyEntity, channel: ChannelEntity): boolean =>
 	channel.category === ChannelCategory.TEMPERATURE &&
 	((property as ChannelPropertyEntity & { measurementQuantity?: string }).measurementQuantity == null ||
 		(property as ChannelPropertyEntity & { measurementQuantity?: string }).measurementQuantity === 'temperature') &&
 	property.category === PropertyCategory.TEMPERATURE &&
-	[DataTypeType.FLOAT, DataTypeType.INT, DataTypeType.SHORT, DataTypeType.UCHAR].includes(property.dataType) &&
+	[
+		DataTypeType.FLOAT,
+		DataTypeType.INT,
+		DataTypeType.UINT,
+		DataTypeType.SHORT,
+		DataTypeType.USHORT,
+		DataTypeType.CHAR,
+		DataTypeType.UCHAR,
+	].includes(property.dataType) &&
 	permissionSatisfied(PermissionType.READ_ONLY, new Set(property.permissions ?? [])) &&
 	!property.permissions.some((permission) =>
 		[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),

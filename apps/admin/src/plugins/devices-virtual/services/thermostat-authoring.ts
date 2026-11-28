@@ -82,6 +82,9 @@ export const emptyThermostatDraft = (): ThermostatDraft => ({
 /** Recommended starting values for the mandatory per-entry fields of a new thermostat. */
 export const RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS = 300;
 export const RECOMMENDED_ACTUATOR_LEASE_SECONDS = 600;
+export const SUPERVISED_SWITCH_PROFILE = 'supervised-switch';
+export const isSupervisedMember = (member: ThermostatMemberDraft) =>
+	(member.provider_profile ?? SUPERVISED_SWITCH_PROFILE) === SUPERVISED_SWITCH_PROFILE;
 export const recommendedFloorPolicy = (): NonNullable<ThermostatDraft['policy']['floor']> => ({ limit: 28, recoveryHysteresis: 1 });
 export const recommendedWindowHeuristic = (): NonNullable<ThermostatDraft['heuristic']> => ({
 	sampleWindowMs: 180_000,
@@ -141,6 +144,8 @@ export const draftFromConfiguration = (config: ThermostatConfiguration): Thermos
 		role: claim.role,
 		source_property: claim.source_property ?? claim.source_identity,
 		lease_seconds: claim.lease_seconds,
+		provider_profile: claim.provider_profile,
+		independent_protection_acknowledged: claim.independent_protection_acknowledged,
 		retained: structuredClone(toRaw(claim)),
 		...(claim.cooling_protection
 			? {
@@ -293,13 +298,11 @@ export const buildThermostatRequest = (
 	if (draft.actuators.length > 8) errors.push(thermostatError('memberLimit'));
 	if (new Set(draft.actuators.map((member) => member.source_property)).size !== draft.actuators.length)
 		errors.push(thermostatError('memberDistinct'));
-	const parallelHeating = draft.actuators.filter((member) => member.role === 'heating').length > 1;
 	for (const actuator of draft.actuators) {
 		if (actuator.retained && !actuator.retained.source_property) errors.push(thermostatError('retainedClaim', { id: actuator.retained.id }));
-		if (actuator.role === 'heating' && (parallelHeating || actuator.protection)) {
+		if (actuator.role === 'heating' && actuator.protection) {
 			if (!policy.floor) errors.push(thermostatError('sharedFloorPolicy'));
-			if (!actuator.protection || (!actuator.protection.source_property && !actuator.retained?.protection))
-				errors.push(thermostatError('localProtection'));
+			if (!actuator.protection.source_property && !actuator.retained?.protection) errors.push(thermostatError('localProtection'));
 			if (
 				actuator.protection &&
 				(!whole(actuator.protection.maximum_age_seconds) ||
@@ -309,7 +312,10 @@ export const buildThermostatRequest = (
 				errors.push(thermostatError('protectionAge'));
 		}
 		if (!actuator.source_property) errors.push(thermostatError('actuatorRepair', { role: actuator.role }));
-		if (!finite(actuator.lease_seconds) || actuator.lease_seconds <= 0) errors.push(thermostatError('lease', { role: actuator.role }));
+		if (isSupervisedMember(actuator)) {
+			if (draft.requested_mode !== 'off' && !actuator.independent_protection_acknowledged)
+				errors.push(thermostatError('independentProtection', { role: actuator.role }));
+		} else if (!finite(actuator.lease_seconds) || actuator.lease_seconds <= 0) errors.push(thermostatError('lease', { role: actuator.role }));
 	}
 	if (new Set(draft.settings.map((setting) => setting.setting)).size !== draft.settings.length) errors.push(thermostatError('settingUnique'));
 	if (draft.settings.some((setting) => !setting.property)) errors.push(thermostatError('settingProperty'));
@@ -330,7 +336,10 @@ export const buildThermostatRequest = (
 			actuators: draft.actuators.map((member) => ({
 				role: member.role,
 				source_property: member.source_property,
-				lease_seconds: member.lease_seconds,
+				provider_profile: member.provider_profile ?? SUPERVISED_SWITCH_PROFILE,
+				...(isSupervisedMember(member)
+					? { independent_protection_acknowledged: member.independent_protection_acknowledged === true }
+					: { lease_seconds: member.lease_seconds }),
 				...(member.protection ? { protection: member.protection } : {}),
 				...(policy.cooling && member.role === 'cooling' && member.cooling_protection ? { cooling_protection: member.cooling_protection } : {}),
 			})) as ThermostatActuator[],

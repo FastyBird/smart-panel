@@ -19,8 +19,8 @@ export const THERMOSTAT_OWNERSHIP_TRIGGERS: Readonly<Record<string, string>> = {
 		WHEN (NEW."id" IS NOT OLD."id" OR NEW."identifier" IS NOT OLD."identifier" OR NEW."category" IS NOT OLD."category" OR NEW."deviceId" IS NOT OLD."deviceId" OR NEW."type" IS NOT OLD."type")
 		AND EXISTS (SELECT 1 FROM "devices_virtual_thermostat_actuator_claims" c JOIN "devices_module_channels_properties" p ON p."id" = c."sourcePropertyId" WHERE p."channelId" = OLD."id" AND c."state" != 'released')
 		BEGIN SELECT RAISE(ABORT, 'Thermostat actuator channel is reserved; qualified release and repair required'); END`,
-	virtual_thermostat_device_contract: `BEFORE UPDATE OF "id", "identifier", "canonicalMac", "category", "type" ON "devices_module_devices"
-		WHEN (NEW."id" IS NOT OLD."id" OR NEW."identifier" IS NOT OLD."identifier" OR NEW."canonicalMac" IS NOT OLD."canonicalMac" OR NEW."category" IS NOT OLD."category" OR NEW."type" IS NOT OLD."type")
+	virtual_thermostat_device_contract: `BEFORE UPDATE OF "id", "identifier", "category", "type" ON "devices_module_devices"
+		WHEN (NEW."id" IS NOT OLD."id" OR NEW."identifier" IS NOT OLD."identifier" OR NEW."category" IS NOT OLD."category" OR NEW."type" IS NOT OLD."type")
 		AND EXISTS (SELECT 1 FROM "devices_virtual_thermostat_actuator_claims" WHERE ("sourceDeviceId" = OLD."id" OR "controllerId" = OLD."id") AND "state" != 'released')
 		BEGIN SELECT RAISE(ABORT, 'Thermostat hardware identity is reserved; qualified release and repair required'); END`,
 	virtual_thermostat_device_disable: `AFTER UPDATE OF "enabled" ON "devices_module_devices"

@@ -4,7 +4,9 @@ import { ChildEntity, Column, OneToMany } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { hasQualifiedRawVoltageIdentity } from '../contracts/native-temperature.contract';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 import { ShellyNgDeviceAddressEntity } from './shelly-ng-device-address.entity';
@@ -99,6 +101,17 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 	@OneToMany(() => ShellyNgDeviceAddressEntity, (addr) => addr.device, { eager: true })
 	addresses: ShellyNgDeviceAddressEntity[];
 
+	getPhysicalSwitchIdentity(channel: ChannelEntity, property: ChannelPropertyEntity): string | null {
+		const component = /^switch:(\d+)$/.exec(channel.identifier ?? '');
+		if (
+			!component ||
+			!/^[\da-f]{12}$/i.test(this.canonicalMac ?? '') ||
+			!['output', 'on'].includes(property.identifier)
+		)
+			return null;
+		return `shelly-ng:${this.canonicalMac.toUpperCase()}:switch:${Number(component[1])}:output`;
+	}
+
 	toString(): string {
 		return `Shelly Device [${this.identifier}] -> FB Device [${this.id}]`;
 	}
@@ -126,6 +139,15 @@ export class ShellyNgChannelEntity extends ChannelEntity {
 @ApiSchema({ name: 'DevicesShellyNgPluginDataChannelProperty' })
 @ChildEntity()
 export class ShellyNgChannelPropertyEntity extends ChannelPropertyEntity {
+	override measurementUnit?(channel: ChannelEntity): string | null {
+		return channel.category === ChannelCategory.ANALOG_INPUT &&
+			this.category === PropertyCategory.VALUE &&
+			this.identifier === 'voltage' &&
+			hasQualifiedRawVoltageIdentity(channel.identifier ?? '')
+			? 'V'
+			: null;
+	}
+
 	@ApiProperty({
 		description: 'Channel property type',
 		type: 'string',

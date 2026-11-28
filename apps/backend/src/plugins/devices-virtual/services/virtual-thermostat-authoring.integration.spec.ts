@@ -12,6 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
+import { shellyThermostatActuationFixture } from '../../../../test/support/thermostat-actuation-fixture';
 import { createProtectionProbe } from '../../../../test/support/thermostat-protection-fixture';
 import { realThermostatGuardFixture } from '../../../../test/support/thermostat-real-guard-fixture';
 import {
@@ -75,11 +76,18 @@ import { PropertyValueService } from '../../../modules/devices/services/property
 import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import { DeviceExistsConstraintValidator } from '../../../modules/devices/validators/device-exists-constraint.validator';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
+import { SHELLY_GUARDED_PROFILE } from '../../devices-shelly-ng/contracts/thermostat-actuation.constants';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ShellyThermostatSafetyCatalog } from '../../devices-shelly-ng/services/shelly-thermostat-safety-catalog.service';
+import { SUPERVISED_SWITCH_PROFILE } from '../contracts/thermostat-actuation.contract';
+import {
+	VIRTUAL_DEVICE_BINDINGS_CHANGED,
+	VirtualDeviceBindingsEvent,
+} from '../contracts/virtual-device-bindings.event';
 import { NativeThermostatController } from '../controllers/native-thermostat.controller';
 import { CreateVirtualChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateVirtualChannelDto } from '../dto/create-channel.dto';
@@ -119,6 +127,7 @@ import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virt
 import { NativeThermostatService } from './native-thermostat.service';
 import { initializeThermostatCreationCatalog } from './thermostat-creation-catalog';
 import { RetainedOriginalCreatedResponse, thermostatCreationResponse } from './thermostat-creation-response';
+import { ThermostatSafetyCatalog } from './thermostat-safety-catalog.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualDewPointConfigService } from './virtual-dew-point-config.service';
@@ -1299,7 +1308,9 @@ describe('atomic virtual thermostat authoring', () => {
 			deletionEvents.push({ device, transactionActive: isSqliteTransactionActive(database) });
 		};
 		events.on(EventType.DEVICE_DELETED, deletionListener);
+		const unregisterAdmission = claims.registerRuntimeAdmission(() => true);
 		try {
+			input.configuration.actuators[0].independentProtectionAcknowledged = true;
 			await authoring.create(input);
 			const initial = {
 				...(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id })),
@@ -1354,6 +1365,13 @@ describe('atomic virtual thermostat authoring', () => {
 				}
 				return;
 			}
+			const originalClaim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+				controllerId: id,
+				state: 'reserved',
+			});
+			const originalQualification = claims.qualification(originalClaim, false);
+			expect(originalQualification?.machineLeaseIsCurrent?.()).toBe(true);
+			expect(claims.mintAuthority(originalClaim.id, 'on').claimId).toBe(originalClaim.id);
 			const oldDeletion = await ledger.captureControllerDeletion(id);
 			// The fixture starts deletion from a terminal reservation. This does not assert physical OFF qualification.
 			await lock.runExclusive(() =>
@@ -1367,9 +1385,6 @@ describe('atomic virtual thermostat authoring', () => {
 			const oldJournal = new ThermostatRuntimeJournal(database, lock);
 			let oldRuntime: VirtualThermostatRuntimeEntity | undefined;
 			if (scenario === 'runtime_history' || scenario.startsWith('history_')) {
-				const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
-					controllerId: id,
-				});
 				await lock.runExclusive(() =>
 					database.transaction(async (manager) => {
 						await manager.insert(VirtualThermostatRuntimeEntity, {
@@ -1383,7 +1398,7 @@ describe('atomic virtual thermostat authoring', () => {
 							evaluatedAt: new Date(),
 						});
 						await manager.insert(VirtualThermostatBranchRuntimeEntity, {
-							claimId: claim.id,
+							claimId: originalClaim.id,
 							activity: 'unknown',
 							lastVerifiedOffAt: null,
 							releaseProofId: null,
@@ -1396,8 +1411,8 @@ describe('atomic virtual thermostat authoring', () => {
 						await manager.insert(VirtualThermostatCommandEntity, {
 							id: uuid(),
 							controllerId: id,
-							claimId: claim.id,
-							claimRevision: claim.revision,
+							claimId: originalClaim.id,
+							claimRevision: originalClaim.revision,
 							configurationRevision: 1,
 							decisionRevision: scenario === 'history_overflow' ? Number.MAX_SAFE_INTEGER : 7,
 							action: 'on',
@@ -1416,7 +1431,11 @@ describe('atomic virtual thermostat authoring', () => {
 					}),
 				);
 				if (scenario === 'history_reservation')
-					await database.manager.update(VirtualThermostatActuatorClaimEntity, { id: claim.id }, { state: 'releasing' });
+					await database.manager.update(
+						VirtualThermostatActuatorClaimEntity,
+						{ id: originalClaim.id },
+						{ state: 'releasing' },
+					);
 				priorHistory = {
 					runtime: await database.query<object[]>('SELECT * FROM devices_virtual_thermostat_runtime'),
 					branches: await database.query<object[]>('SELECT * FROM devices_virtual_thermostat_branch_runtime'),
@@ -1786,12 +1805,27 @@ describe('atomic virtual thermostat authoring', () => {
 				state: 'reserved',
 			});
 			expect(freshClaims).toHaveLength(1);
-			expect(freshClaims[0].qualificationGeneration).toMatch(/^[0-9a-f-]{36}$/);
-			expect(claims.qualification(freshClaims[0], false)).toBeNull();
+			const [fresh] = freshClaims;
+			expect(fresh.id).not.toBe(originalClaim.id);
+			expect(fresh.qualificationGeneration).toMatch(/^[0-9a-f-]{36}$/);
+			expect(fresh.qualificationGeneration).not.toBe(originalClaim.qualificationGeneration);
+			expect(originalQualification?.machineLeaseIsCurrent?.()).toBe(false);
+			expect(claims.qualification(originalClaim, false)).toBeNull();
+			expect(claims.qualification(fresh, false)).toMatchObject({
+				physicalIdentity: originalClaim.physicalIdentity,
+				qualificationGeneration: fresh.qualificationGeneration,
+				providerProfile: { id: SUPERVISED_SWITCH_PROFILE },
+			});
+			expect(fresh.independentProtectionAcknowledged).toBe(false);
+			expect(() => claims.mintAuthority(fresh.id, 'on')).toThrow(
+				'Thermostat actuator is not admitted for this action.',
+			);
+			expect(claims.mintAuthority(fresh.id, 'off').claimId).toBe(fresh.id);
 			expect(configuration.comfort?.automation_enabled ?? false).toBe(false);
 			expect(configuration.comfort?.automation_baseline ?? null).toBeNull();
 			expect(publications.filter((event) => event === EventType.DEVICE_CREATED)).toHaveLength(1);
 		} finally {
+			unregisterAdmission();
 			events.off(EventType.DEVICE_DELETED, deletionListener);
 			automation.onModuleDestroy();
 			automationRegistry.onModuleDestroy();
@@ -1804,10 +1838,31 @@ describe('atomic virtual thermostat authoring', () => {
 		graph = new VirtualDependencyGraphService(database, undefined, ledger);
 		const automation = new VirtualThermostatAutomationService(database, automationRegistry, ledger, graph, lock);
 		claims.onModuleDestroy();
-		claims = new VirtualThermostatClaimsService(database, lock, graph, registry, events);
+		const catalog = new ThermostatSafetyCatalog();
+		new ShellyThermostatSafetyCatalog(catalog, new PlatformRegistryService()).onModuleInit();
+		claims = new VirtualThermostatClaimsService(
+			database,
+			lock,
+			graph,
+			registry,
+			events,
+			undefined,
+			shellyThermostatActuationFixture(),
+		);
 		await graph.onApplicationBootstrap();
 		await claims.onApplicationBootstrap();
-		configs = new VirtualThermostatConfigService(database, lock, graph, claims, events, values, undefined, automation);
+		configs = new VirtualThermostatConfigService(
+			database,
+			lock,
+			graph,
+			claims,
+			events,
+			values,
+			undefined,
+			automation,
+			undefined,
+			catalog,
+		);
 		devices = new DevicesService(
 			database.getRepository(DeviceEntity),
 			database.getRepository(SpaceEntity),
@@ -1834,6 +1889,7 @@ describe('atomic virtual thermostat authoring', () => {
 		automation.onModuleInit();
 		await automation.onApplicationBootstrap();
 		const input = request(relayId);
+		input.configuration.actuators[0].providerProfile = SHELLY_GUARDED_PROFILE;
 		input.configuration.requestedMode = 'heat';
 		const id = input.device.id;
 		await authoring.create(input);
@@ -1939,6 +1995,7 @@ describe('atomic virtual thermostat authoring', () => {
 			expect(before.runtime.length).toBe(1);
 			const successor = request(relayId);
 			successor.device.id = id;
+			successor.configuration.actuators[0].providerProfile = SHELLY_GUARDED_PROFILE;
 			successor.configuration.requestedMode = 'heat';
 			const originalOnCount = fixture.controls.sends.filter((send) => send.on).length;
 			let archivedPreimage: Awaited<ReturnType<typeof readThermostatRecreationHistory>> | undefined;
@@ -2060,8 +2117,16 @@ describe('atomic virtual thermostat authoring', () => {
 
 	it('commits the owner and canonical reservation together and rejects a second UUID alias', async () => {
 		const first = request(relayId);
+		first.configuration.actuators[0].independentProtectionAcknowledged = true;
+		const membership: VirtualDeviceBindingsEvent[] = [];
+		events.on(VIRTUAL_DEVICE_BINDINGS_CHANGED, (event: VirtualDeviceBindingsEvent) => membership.push(event));
 		const callerBefore = JSON.stringify(first);
 		const created = await authoring.create(first);
+		expect(created.configuration.actuators[0]).toMatchObject({
+			provider_profile: 'supervised-switch',
+			independent_protection_acknowledged: true,
+		});
+		expect(membership).toEqual([expect.objectContaining({ action: 'created', deviceId: first.device.id })]);
 		expect(JSON.stringify(first)).toBe(callerBefore);
 		expect(created.device.id).toBe(first.device.id);
 		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
@@ -2069,6 +2134,7 @@ describe('atomic virtual thermostat authoring', () => {
 		const second = request(alias);
 		publications.length = 0;
 		await expect(authoring.create(second)).rejects.toThrow('Canonical physical actuator is already reserved');
+		expect(membership).toHaveLength(1);
 		expect(
 			await database.manager.count(VirtualDeviceEntity, { where: { mode: VirtualDeviceMode.CLIMATE_CONTROLLER } }),
 		).toBe(1);

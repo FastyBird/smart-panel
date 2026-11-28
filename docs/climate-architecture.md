@@ -48,6 +48,51 @@ HTTP and event snapshots share process epoch and sequence stamps, so a fetch cov
 refresh loop; newer hints, commands, reconnects or device replacement fence older pending responses. Socket payloads
 are not treated as actuator acknowledgement or independent control evidence.
 
+## Building a thermostat from physical switches
+
+A heating or cooling member selects a physical writable boolean ON property. The device, channel and property UUIDs
+identify the endpoint. A provider can supply a stable switch identity for hardware that can be rediscovered under a
+new catalog entry. Ambient and floor measurements come from readable Celsius properties and keep their own reporting
+intervals. A Zigbee2MQTT temperature sensor can supervise a Modbus relay, or the same controller can combine outputs
+from several integrations.
+
+New members use the `supervised-switch` profile by default. The operator acknowledges independent protection for
+each supervised output before the controller can turn it on. Smart Panel can enforce a configured floor limit while
+it is running. If a relay stays energized after the panel or the network stops, independent protection must limit
+its operation. The profile has no device-side timer.
+
+After OFF, the controller waits for a live device report for that property. A read-capable platform can request the
+report immediately. Other platforms can provide it on their next poll or notification. Replays, cached state and
+command echoes cannot confirm OFF. While a member's OFF is unconfirmed, its reservation and the interlock on the
+opposite branch stay in place.
+
+Zigbee2MQTT can request a fresh value through `/get` when the device supports it. Modbus uses the relay's read
+mapping and Shelly uses its status endpoint. Home Assistant can supply an independent live entity state change.
+If Home Assistant has only its cached state after an idempotent OFF, the operator sees the same unconfirmed status
+as for an integration still waiting on its next device report. After an unavailable or unknown Home Assistant
+state, the first usable value establishes a display baseline. A subsequent independent state change can confirm OFF.
+
+Shelly Gen1 verifies a relay's full MAC on status readback. For an existing six-character ID, adoption through
+the Shelly discovery wizard records the full MAC against the existing device row. Rediscovery preserves this pin.
+For a short-ID temperature sensor, the plugin also remembers the address where it verified that MAC and model.
+A change of address requires a fresh identity check before a CoIoT temperature or sensor fault can affect the
+controller. Subsequent samples at the verified address retain their original receipt times and require no HTTP read.
+The same verified address determines where the plugin can send a short-ID relay command.
+
+### Extending another plugin's device bindings
+
+Producers can emit `DevicesModule.Device.BindingsChanged` after a committed membership change. A thermostat event
+identifies the producer, controller ID, revision and action (`created`, `updated` or `deleted`). Its bindings include
+each member's role, device and property, plus the selected profile, physical identity and claim ID for outputs.
+A completed release publishes the surviving membership and identifies the released output in `removedBindings`.
+Several releases can share one configuration revision. Integrations can rebuild their state from the catalog on
+startup and use the committed snapshots to reconcile later changes. Previews and rolled-back writes produce no event.
+
+A safety provider advertises compatible targets through `ThermostatSafetyCatalog` and registers its commands and
+qualification checks through `ThermostatActuationRegistry`. The Shelly NG plugin owns its guard script, device
+lease, OFF fence, installation verification and local floor sensor qualification. Choosing the extension makes its
+commissioning checks mandatory. The virtual plugin can run with an empty extension registry.
+
 ## Registered manual thermostat settings
 
 The existing command port accepts one atomic batch of registered heating/cooling setpoints, enable flags and lock.
@@ -198,24 +243,9 @@ hardware acceptance and whole-epic release approval remain separate work.
 
 ### Owned transport continuity
 
-Owned automation validates pure OFF metadata and captures transport readiness before ordinary command adapter
-preparation. Generation-bearing evidence and custom opt-in providers require matching nonempty generations and
-readiness capability v1. The built-in Shelly guarded-switch v1 heating path also supports an exact SQL NULL claim
-with generation absent throughout the qualification prototype chain, or an own data property whose value is undefined.
-Those two descriptor shapes remain distinct. Explicit null, inherited values/accessors, missing claim generation,
-empty strings and mismatches refuse. Custom shadows, remote profiles and cooling cannot use this legacy exception.
-
-Legacy readiness is a frozen internal capability v2 with `qualificationBinding: legacy-null-managed-shelly` and no
-generation property. It neither upgrades the actuation protocol nor supplies command, session or native receipt authority.
-Native source/slot/incarnation, claim revision, exact qualification identity, original registration and managed session,
-physical identity, protective inputs and OFF/drain evidence remain mandatory. An expired original capture is never
-renewed by capturing a successor. Standalone readiness cannot observe a qualification-map replacement; runtime retains
-its original qualification and native-image fences.
-
-An observed loss of the canonical Shelly getter chain or captured metadata ends that original capture permanently.
-Restoring the descriptor or value permits a fresh capture, but never revives the old one. The same lifetime applies
-to the captured command adapter: observed method loss or an observation exception permanently closes that capture.
-The original readiness capture also closes permanently when a provider or machine continuity predicate refuses or throws.
+Owned automation captures OFF metadata and transport readiness before preparing a command. The current reservation,
+configuration revision, provider registration and nonempty qualification generation must agree. The provider verifies
+its own device or session identity. Losing that registration or qualification invalidates the captured operation.
 
 Pure OFF metadata performs no machine predicate, provider/session preparation or sample work. The existing qualifier
 may already have checked its trusted machine predicate before this boundary. Owned readiness refusal reports suspended
@@ -283,7 +313,7 @@ The operator supplies setpoints, deadband and any enabled floor limit and recove
 
 A configured physical window contact and automatic temperature-change detection are independent pause policies. Either can inhibit output. A contact closing or heuristic pause expiring triggers a fresh evaluation of the latest user mode and setpoint; it does not replay the settings that existed when the pause began. User OFF, input faults, floor protection, window pauses, cycle/changeover waits and actuator uncertainty take precedence over comfort demand. Protective release must be confirmed or remain visible as uncertain; a virtual status alone cannot qualify an installed protective system.
 
-Actuator claims bind a qualified physical output to one controller and refuse unsupported or conflicting configurations at preview and persistence. Stop, restart and binding changes reconcile outstanding commands and claims before output may resume. The controller's software safeguards still require independent equipment protection and an operator-approved installation qualification before a live heating or cooling output is activated.
+Actuator claims bind a physical output to one controller and refuse conflicting configurations at preview and persistence. Stop, restart and binding changes reconcile outstanding commands and claims before output may resume. Activating a supervised output requires the operator's independent protection acknowledgement. Activating a selected device-side extension requires its installation qualification.
 
 Concurrent startup callers join the same original bootstrap completion, including its exact failure. Failed startup
 retires its own registrations and timer before a fresh attempt may become current. Stop revokes that lifetime
@@ -309,7 +339,7 @@ The shared journal decision identity remains the existing `(controllerId, decisi
 its own persisted command identity before transport entry.
 
 The versioned internal actuation contract separates transport acceptance, causal observation, local protective
-qualification and qualified OFF/drain evidence. Shelly remains the only implemented guarded adapter. A profile/version
+qualification and qualified OFF/drain evidence. Shelly NG provides the guarded switch and remote dew-point extensions. Ordinary switches use software supervision. A profile/version
 mismatch or an unsupported provider cannot qualify a protected branch by registering an adapter or acknowledging a
 service call. `native_unit` is a typed, mutually exclusive strategy seam binding one canonical HA/Zigbee physical unit;
 its adapters, requested bundle and observations are outside this backend foundation and cannot be activated here.
@@ -328,10 +358,10 @@ group/canonical identity, reservation state, pending ON, release attempts and la
 returns `released_actuators` with retained per-member completion evidence; recovery audit remains claim-specific.
 Disable/delete/remap/restart preserve unresolved identities and reservations rather than reducing branch capacity.
 
-Each parallel heating member now requires an explicit version-one `local_floor` protection binding. Its Celsius
-source must be a qualified sensor on that actuator's canonical Shelly, or the reviewed Steinhart–Hart converter over
-one qualified physical voltage input on that same Shelly. Aggregates, projections, nested converters, controller
-outputs and unsupported protective profiles remain ineligible. One ambient source regulates the entire branch.
+Supervised outputs can use a common software floor guard or individual `local_floor` bindings. Each parallel
+heater using Shelly's on-device floor extension requires an explicit version-one `local_floor` binding. That
+extension accepts a qualified Celsius sensor or a reviewed Steinhart–Hart converter over a qualified voltage input
+on the actuator's own Shelly. One ambient source can regulate the entire branch.
 
 Migration `1000000000041` adds retained claim-keyed safety dependencies, nullable diagnostic latch/display fields and
 a nullable full Shelly catalog snapshot. It rewrites no claim, journal, generation, installation, activation or audit.
@@ -360,8 +390,8 @@ safety configuration change. `display_floor_claim` selects only a member's displ
 or replace a safety dependency. Configuration includes retained member bindings; runtime branches expose individual
 reading/age, effective cutoff, latch and blockers alongside pending ON and release/recovery evidence.
 
-This software supplies no installed qualification evidence and performs no commissioning. Each floor-protected relay
-still needs an actual supported local sensor/calibration and the existing per-device isolation, execution-bound,
+This software supplies no installed qualification evidence and performs no commissioning. Each relay using the Shelly device-side floor guard
+still needs a supported local sensor/calibration and the existing per-device isolation, execution-bound,
 restart-drain and independent equipment-protection evidence. Network loss cannot promise instantaneous cross-device
 shutdown; local protection and bounded leases remain essential. Hardware deployment/qualification follows a published
 alpha. HA/Zigbee native-unit protection and non-floor protective profiles remain unsupported.

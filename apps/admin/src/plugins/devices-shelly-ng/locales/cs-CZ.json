@@ -172,5 +172,34 @@
 	},
 	"sections": {
 		"connection": "Připojení Shelly"
+	},
+	"thermostatInstallation": {
+		"addEvidence": "Přidat odkaz na důkaz",
+		"ceiling": "Instalovaný limit podlahy (°C)",
+		"coolingMaximum": "Instalované maximum chlazení (°C)",
+		"coolingMinimum": "Instalované minimum chlazení (°C)",
+		"cutoff": "Účinný vypínací limit",
+		"endpoint": "Ověřená adresa zařízení",
+		"epoch": "Trvalý klíč epochy",
+		"equipment": "Identita vybavení",
+		"evidence": "Odkaz na existující důkaz",
+		"evidenceHelp": "Přidejte pouze skutečné dokumentované důkazy. Prázdné záznamy nepotvrzují kvalifikaci.",
+		"heatingMaximum": "Instalované maximum topení (°C)",
+		"heatingMinimum": "Instalované minimum topení (°C)",
+		"installation": "Kontrola a příprava instalace",
+		"legacyProfile": "Původní nastavení jednoho člena je zachováno. Pro nový formát nejprve výslovně přiřaďte místní ochranu.",
+		"maximumLease": "Instalované maximum doby zapnutí (sekundy)",
+		"minimumLease": "Instalované minimum doby zapnutí (sekundy)",
+		"observedMs": "Nejdelší pozorovaná doba (ms), je-li změřena",
+		"procedure": "Zdokumentovaný postup",
+		"reload": "Načíst aktuální revizi",
+		"removeDraft": "Odebrat položku konceptu",
+		"retainedProfile": "Zachovaná instalace, audit a připravenost",
+		"script": "Ověřená pozice skriptu",
+		"snapshot": "Kontrola katalogu a kalibrace pouze pro čtení",
+		"stage": "Připravit softwarový záznam instalace",
+		"stagingOnly": "Uložení pouze připraví záznamy. Nenasazuje skripty, neaktivuje výstupy ani necertifikuje vybavení. Fyzické uvedení do provozu následuje po vydání alfy.",
+		"testedAt": "Skutečný čas testu (ISO 8601)",
+		"watchdog": "Instalovaný limit hlídání (ms)"
 	}
 }

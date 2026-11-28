@@ -9,6 +9,8 @@ import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { shellyThermostatActuationFixture } from '../../../../test/support/thermostat-actuation-fixture';
+import { createShellyThermostatSafetyCatalog } from '../../../../test/support/thermostat-protection-fixture';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
 	ChannelCategory,
@@ -32,16 +34,13 @@ import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 } from '../../devices-virtual/entities/virtual-thermostat.entity';
+import { ThermostatActuationRegistry } from '../../devices-virtual/services/thermostat-actuation-registry.service';
 import {
 	CoolingBinding,
 	ThermostatCoolingDependencyService,
 } from '../../devices-virtual/services/thermostat-cooling-dependency.service';
-import { ThermostatRemoteCoolingAdapter } from '../../devices-virtual/services/thermostat-remote-cooling-adapter';
 import { VirtualDependencyGraphService } from '../../devices-virtual/services/virtual-dependency-graph.service';
-import {
-	ThermostatInstalledQualification,
-	VirtualThermostatClaimsService,
-} from '../../devices-virtual/services/virtual-thermostat-claims.service';
+import { VirtualThermostatClaimsService } from '../../devices-virtual/services/virtual-thermostat-claims.service';
 import { thermostatPropertyContract } from '../../devices-virtual/services/virtual-thermostat-contract.utils';
 import { ThermostatRuntimeOwnership } from '../../devices-virtual/services/virtual-thermostat-runtime-ownership';
 import { VirtualThermostatRuntimeService } from '../../devices-virtual/services/virtual-thermostat-runtime.service';
@@ -57,6 +56,9 @@ import {
 	remoteDewPointInstallationBlockers,
 } from './remote-dew-point-qualification';
 import { RemoteDewPointSession } from './remote-dew-point-session';
+import { ShellyThermostatActuationExtension } from './shelly-thermostat-actuation-extension.service';
+import type { ShellyThermostatQualification as ThermostatInstalledQualification } from './shelly-thermostat-qualification';
+import { ThermostatRemoteCoolingAdapter } from './thermostat-remote-cooling-adapter';
 
 const binding: RemoteDewPointArtifactBinding = {
 	deviceId: 'shellyplus1pm-test',
@@ -561,6 +563,8 @@ describe('separate remote profile actual claims registry', () => {
 			{} as VirtualDependencyGraphService,
 			new PropertyCommandAdmissionRegistryService(),
 			new EventEmitter2(),
+			undefined,
+			shellyThermostatActuationFixture(),
 		);
 		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
 			physicalIdentity: binding.physicalActuator,
@@ -767,6 +771,8 @@ describe('actual remote adapter retained-journal qualification boundary', () => 
 			{} as VirtualDependencyGraphService,
 			new PropertyCommandAdmissionRegistryService(),
 			new EventEmitter2(),
+			undefined,
+			shellyThermostatActuationFixture(),
 		);
 		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
 			id: 'fixture-claim',
@@ -824,14 +830,20 @@ describe('actual remote adapter retained-journal qualification boundary', () => 
 		);
 		expect(
 			(
-				await adapter.send(target, claim, registry.qualification(claim, false), () => true, {
-					commandId: 'owned-command',
-				})
+				await adapter.send(
+					target,
+					claim,
+					registry.qualification(claim, false) as ThermostatInstalledQualification,
+					() => true,
+					{
+						commandId: 'owned-command',
+					},
+				)
 			).outcome,
 		).toBe('refused');
 		expect(request).not.toHaveBeenCalled();
 		registry.recordQualification(f.qualification);
-		const qualification = registry.qualification(claim, false);
+		const qualification = registry.qualification(claim, false) as ThermostatInstalledQualification;
 		expect((await adapter.send(target, claim, qualification, () => true, { commandId: 'owned-command' })).outcome).toBe(
 			'accepted',
 		);
@@ -905,6 +917,8 @@ describe('cooling recovery with real recursive accepted lineage and compiled OFF
 			{} as VirtualDependencyGraphService,
 			new PropertyCommandAdmissionRegistryService(),
 			events,
+			undefined,
+			shellyThermostatActuationFixture(),
 		);
 		registry.recordQualification(f.qualification);
 		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
@@ -971,7 +985,12 @@ describe('cooling recovery with real recursive accepted lineage and compiled OFF
 			policy: { schemaVersion: 1, marginC: 2, recoveryHysteresisC: 1 },
 			basis: binding.protectionFingerprint,
 		};
-		const cooling = new ThermostatCoolingDependencyService({} as DataSource, values, registry);
+		const cooling = new ThermostatCoolingDependencyService(
+			{} as DataSource,
+			values,
+			registry,
+			createShellyThermostatSafetyCatalog(),
+		);
 		const read = () => cooling.read([entry], Date.now())[0];
 		const session = new RemoteDewPointSession(firmwareHttp(component), f.artifact);
 		try {
@@ -1124,6 +1143,7 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 				new PropertyCommandAdmissionRegistryService(),
 				events,
 				new ConfigService({ FB_CLI: 'off' }),
+				shellyThermostatActuationFixture(),
 			);
 			cleanup.push(() => registry.onModuleDestroy());
 			await registry.onApplicationBootstrap();
@@ -1147,11 +1167,14 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 			);
 			const producers = new PropertyProducerRegistryService(events);
 			cleanup.push(() => producers.onModuleDestroy());
-			const transport = new VirtualThermostatTransportService(
-				{ get: () => null } as unknown as PlatformRegistryService,
-				{} as PropertyValueService,
-			);
-			Object.assign(transport, { remoteCooling: adapter });
+			const platforms = new PlatformRegistryService();
+			const extensions = new ThermostatActuationRegistry();
+			const shelly = new ShellyThermostatActuationExtension(extensions, platforms, {} as PropertyValueService);
+			Object.assign(shelly, { remoteCooling: adapter });
+			shelly.onModuleInit();
+			cleanup.push(() => shelly.onModuleDestroy());
+			const transport = new VirtualThermostatTransportService(platforms, {} as PropertyValueService, extensions);
+			expect(transport.get(target, claim)?.canReconcile(target, registry.qualification(claim, false))).toBe(true);
 			const registerFrame = transport.registerCoolingFrameReader.bind(
 				transport,
 			) as VirtualThermostatTransportService['registerCoolingFrameReader'];

@@ -429,7 +429,7 @@ export class VirtualThermostatComfortService {
 			const get = Reflect.get(own.values, 'get') as VirtualThermostatComfortService['get'];
 			const changed = Reflect.get(own.values, 'changed') as VirtualThermostatComfortService['changed'];
 			const notifications = {
-				invalidate: () => claims.values.invalidate.call(claims.receiver),
+				invalidate: () => claims.values.invalidate.call(claims.receiver, 'actuation'),
 				refresh: () => claims.values.refresh.call(claims.receiver),
 				emit: () => events.values.emit.call(events.receiver, THERMOSTAT_CONFIG_CHANGED, id),
 			};
@@ -685,7 +685,7 @@ export class VirtualThermostatComfortService {
 	private async changed(
 		id: string,
 		dispatch = {
-			invalidate: () => this.claims.invalidate(),
+			invalidate: () => this.claims.invalidate('actuation'),
 			refresh: () => this.claims.refresh(),
 			emit: () => this.events.emit(THERMOSTAT_CONFIG_CHANGED, id),
 		},
