@@ -75,6 +75,7 @@ describe('ShellyV1AdoptionService', () => {
 				expect.objectContaining({ id: 'legacy' }),
 				expect.objectContaining({ hostname: chosen.hostname }),
 				'AABBCCDDEEFF',
+				{ reportedIdentifier: chosen.identifier },
 			);
 			expect(result.status).toBe(matches ? 'updated' : 'failed');
 		},
@@ -109,6 +110,7 @@ describe('ShellyV1AdoptionService', () => {
 			expect.objectContaining({ id: 'existing' }),
 			expect.objectContaining({ name: 'Kitchen light' }),
 			undefined,
+			{ reportedIdentifier: selection().identifier },
 		);
 	});
 
@@ -129,6 +131,7 @@ describe('ShellyV1AdoptionService', () => {
 			expect.objectContaining({ id: 'raced-in' }),
 			expect.anything(),
 			undefined,
+			{ reportedIdentifier: selection().identifier },
 		);
 	});
 
@@ -166,6 +169,7 @@ describe('ShellyV1AdoptionService', () => {
 			expect.objectContaining({ id: 'existing' }),
 			expect.objectContaining({ password: 'hunter2' }),
 			undefined,
+			{ reportedIdentifier: selection().identifier },
 		);
 	});
 

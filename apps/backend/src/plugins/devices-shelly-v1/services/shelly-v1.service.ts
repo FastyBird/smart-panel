@@ -277,7 +277,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 			device.enabled &&
 			registration.enabled &&
 			this.shelliesAdapter.isRunning() &&
-			this.shelliesAdapter.getRegisteredDevice(id) === registration &&
+			this.shelliesAdapter.getRegisteredDevice(id, type) === registration &&
 			this.shelliesAdapter.getRegisteredDeviceForCatalog(device) === registration &&
 			this.shelliesAdapter.getDevice(type, id) === peer &&
 			registration.host === host &&
@@ -296,8 +296,9 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		this.logger.debug(`Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`);
 
 		try {
-			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
-			if (!registeredDevice?.enabled || registeredDevice.id !== event.id) return;
+			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id, event.type);
+			if (!registeredDevice?.enabled || registeredDevice.id !== event.id || registeredDevice.type !== event.type)
+				return;
 			const peer = this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id);
 			if (!peer) return;
 
@@ -509,7 +510,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 
 	private async handleConnectionChange(event: NormalizedDeviceEvent): Promise<void> {
 		try {
-			const registration = this.shelliesAdapter.getRegisteredDevice(event.id);
+			const registration = this.shelliesAdapter.getRegisteredDevice(event.id, event.type);
 			if (!registration?.enabled || registration.type !== event.type || registration.host !== event.host) return;
 			const peer = this.shelliesAdapter.getDevice(event.type, event.id);
 			if (!peer) return;

@@ -252,6 +252,7 @@ describe('ShellyV1Service', () => {
 		it('should update property value when device, channel, and property are found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,
@@ -309,6 +310,7 @@ describe('ShellyV1Service', () => {
 		it('should skip update if device is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: mockDevice.identifier,
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,
@@ -330,6 +332,7 @@ describe('ShellyV1Service', () => {
 		it('should skip update if channel is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,
@@ -355,6 +358,7 @@ describe('ShellyV1Service', () => {
 		it('should skip update if property is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'power0',
 				newValue: 100,
 				oldValue: 0,
@@ -382,6 +386,7 @@ describe('ShellyV1Service', () => {
 		it('should skip update if binding is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'unknownProperty',
 				newValue: true,
 				oldValue: false,
@@ -406,6 +411,7 @@ describe('ShellyV1Service', () => {
 		it('should handle errors gracefully', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,
@@ -568,7 +574,7 @@ describe('ShellyV1Service', () => {
 			);
 			const reports = module.get<jest.Mocked<ShellyV1PropertyReportsService>>(ShellyV1PropertyReportsService);
 			reports.supports.mockReturnValue(true);
-			const change = { id: rawId, property: 'relay0', oldValue: false, newValue: true };
+			const change = { id: rawId, type: peer.type, property: 'relay0', oldValue: false, newValue: true };
 			return { device, registration, peer, identities, pin, change, reports, modelProperty };
 		}
 
@@ -583,7 +589,7 @@ describe('ShellyV1Service', () => {
 			expect(f.reports.refresh).toHaveBeenCalledWith(f.device, expect.any(Function));
 			expect(shelliesAdapter.getDevice).not.toHaveBeenCalledWith(f.registration.type, f.device.identifier);
 
-			const counter = { id: f.peer.id, property: 'inputEventCounter0', oldValue: 0, newValue: 1 };
+			const counter = { id: f.peer.id, type: f.peer.type, property: 'inputEventCounter0', oldValue: 0, newValue: 1 };
 			await adapterCallbacks.onDeviceChanged(counter);
 			await adapterCallbacks.onDeviceChanged({ ...counter, oldValue: 1, newValue: 2 });
 			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
@@ -625,6 +631,31 @@ describe('ShellyV1Service', () => {
 			await adapterCallbacks.onDeviceChanged(f.change);
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 			expect(f.reports.refresh).not.toHaveBeenCalled();
+		});
+
+		it('keeps a colliding unclaimed SDK model out of the verified relay catalog and its button counters', async () => {
+			const f = arrange();
+			const sensor: RegisteredDevice = { id: f.peer.id, type: 'SHHT-1', host: '192.168.1.88', enabled: true };
+			const sensorPeer = { ...sensor, online: true, inputEvent0: 'L' } as unknown as ShellyDevice;
+			shelliesAdapter.getRegisteredDevices.mockReturnValue([sensor, f.registration]);
+			shelliesAdapter.getRegisteredDevice.mockImplementation((id, type) =>
+				id === sensor.id ? [sensor, f.registration].find((item) => item.type === type) : undefined,
+			);
+			shelliesAdapter.getDevice.mockImplementation((type, id) =>
+				id === sensor.id ? [sensorPeer, f.peer].find((item) => item.type === type) : undefined,
+			);
+			devicesService.findOneBy.mockResolvedValue(f.device);
+			const counter = { id: sensor.id, type: sensor.type, property: 'inputEventCounter0', oldValue: 0, newValue: 1 };
+			await adapterCallbacks.onDeviceChanged(counter);
+			await adapterCallbacks.onDeviceOnline({ ...sensor, online: true });
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+			await adapterCallbacks.onDeviceChanged({ ...counter, type: f.peer.type });
+			await adapterCallbacks.onDeviceChanged({ ...counter, type: f.peer.type, oldValue: 1, newValue: 2 });
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({ deviceId: f.device.id, nativeEventType: 'S' }),
+			);
 		});
 	});
 
@@ -1046,6 +1077,7 @@ describe('ShellyV1Service', () => {
 			// First counter event baselines the tracker (counter=1)
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 1,
 				oldValue: 0,
@@ -1057,6 +1089,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 2;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 1,
@@ -1094,6 +1127,7 @@ describe('ShellyV1Service', () => {
 			// Baseline at 5
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 5,
 				oldValue: 5,
@@ -1102,6 +1136,7 @@ describe('ShellyV1Service', () => {
 			// Repeated multicast with counter still 5
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 5,
 				oldValue: 5,
@@ -1127,6 +1162,7 @@ describe('ShellyV1Service', () => {
 			// Baseline at 10
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 10,
 				oldValue: 10,
@@ -1136,6 +1172,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 11;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 11,
 				oldValue: 10,
@@ -1145,6 +1182,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 12;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 12,
 				oldValue: 11,
@@ -1172,6 +1210,7 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'input0',
 				newValue: 1,
 				oldValue: 0,
@@ -1201,6 +1240,7 @@ describe('ShellyV1Service', () => {
 			devicesService.findOneBy.mockResolvedValueOnce(mockDevice);
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 1,
 				oldValue: 0,
@@ -1217,6 +1257,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 2;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 1,
@@ -1249,6 +1290,7 @@ describe('ShellyV1Service', () => {
 			// Baseline at 1
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 1,
 				oldValue: 0,
@@ -1260,6 +1302,7 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 1,
@@ -1269,6 +1312,7 @@ describe('ShellyV1Service', () => {
 			channelInputOccurrencesService.publishOccurrence.mockResolvedValueOnce(undefined);
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 1,
@@ -1280,6 +1324,7 @@ describe('ShellyV1Service', () => {
 			// Once succeeded, subsequent repeated call with counter 2 is suppressed
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 2,
@@ -1305,6 +1350,7 @@ describe('ShellyV1Service', () => {
 			// Baseline at counter 50
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 50,
 				oldValue: 0,
@@ -1314,6 +1360,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 1;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 1,
 				oldValue: 50,
@@ -1333,6 +1380,7 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEvent0',
 				newValue: 'S',
 				oldValue: '',

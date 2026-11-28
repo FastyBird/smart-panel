@@ -16,7 +16,7 @@ import { Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
-import { ShelliesAdapterCallbacks, ShellyDevice } from '../interfaces/shellies.interface';
+import { ShelliesAdapterCallbacks, ShelliesLibrary, ShellyDevice } from '../interfaces/shellies.interface';
 import { DeviceEntitySubscriber } from '../subscribers/device-entity.subscriber';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
@@ -254,33 +254,128 @@ describe('ShelliesAdapterService', () => {
 			Object.assign(new ShellyV1DeviceEntity(), { id: 'catalog', identifier, hostname, enabled: true });
 
 		async function registry() {
-			const sdk = new Map<string, ShellyDevice>();
-			mockShelliesLibrary.getDevice.mockImplementation((_type: string, id: string) => sdk.get(id));
+			type Sdk = ShelliesLibrary & {
+				addDevice(peer: ShellyDevice): void;
+				removeDevice(peer: ShellyDevice): void;
+			};
+			const library = jest.requireActual<{ constructor: new () => Sdk }>('shellies');
+			const sdk = new library.constructor();
+			mockShelliesLibrary.getDevice.mockImplementation(sdk.getDevice.bind(sdk));
 			await service.start();
+			const listeners = mockShelliesLibrary.on.mock.calls as Array<[string, (peer: ShellyDevice) => void]>;
+			sdk.on('add', listeners.find(([event]) => event === 'add')[1]);
+			sdk.on('remove', listeners.find(([event]) => event === 'remove')[1]);
 			const { create } = jest.requireActual<{ create(type: string, id: string, host: string): ShellyDevice }>(
 				'shellies/lib/devices',
 			);
-			const add = (id = rawId, host = firstHost) => {
-				const peer = create('SHSW-1', id, host);
+			const add = (id = rawId, host = firstHost, type = 'SHSW-1') => {
+				const previous = sdk.getDevice(type, id);
+				if (previous) sdk.removeDevice(previous);
+				const peer = create(type, id, host);
 				peer.online = true;
-				sdk.set(id, peer);
-				mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'add')[1](peer);
+				sdk.addDevice(peer);
 				return peer;
 			};
-			const remove = (peer: ShellyDevice) => {
-				sdk.delete(peer.id);
-				mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'remove')[1](peer);
-			};
-			const bind = (peer: ShellyDevice, catalog = row()) =>
-				service.bindCatalogDevice(service.getRegisteredDevice(peer.id), peer, catalog, mac);
+			const remove = (peer: ShellyDevice) => sdk.removeDevice(peer);
+			const bind = (peer: ShellyDevice, catalog = row(), hardware = mac, pinRevision?: number) =>
+				service.bindCatalogDevice(
+					service.getRegisteredDevice(peer.id, peer.type),
+					peer,
+					catalog,
+					hardware,
+					pinRevision,
+				);
 			return { add, remove, bind };
 		}
+
+		it('preserves verified peers with the same short ID across models, updates and removal', async () => {
+			const { add, bind, remove } = await registry();
+			const relay = add();
+			const relayRow = row(rawId);
+			expect(bind(relay, relayRow)).toBe(true);
+			expect(service.setDeviceAuthCredentials(relay, firstHost, 'operator', 'relay-password')).toBe(true);
+			const relayCredentials = relay._request;
+			const relayRegistration = service.getRegisteredDeviceForCatalog(relayRow);
+
+			const sensor = add(rawId, '192.168.1.102', 'SHHT-1');
+			const sensorMac = '112233DDEEFF';
+			const sensorRow = Object.assign(row('shellyht-' + sensorMac, sensor.host), { id: 'sensor' });
+			expect(service.getRegisteredDevice(rawId)).toBeUndefined();
+			expect(service.getRegisteredDeviceForCatalog({ id: 'unclaimed', identifier: rawId })).toBeUndefined();
+			expect(service.getRegisteredDeviceForCatalog(relayRow)).toBe(relayRegistration);
+			expect(relay._request).toBe(relayCredentials);
+			expect(service.getKnownDevices()).toEqual([relay, sensor]);
+
+			expect(bind(sensor, row(fullId, sensor.host), sensorMac)).toBe(false);
+			expect(relay._request).toBe(relayCredentials);
+			expect(bind(sensor, sensorRow, sensorMac)).toBe(true);
+			expect(service.getRegisteredDeviceForCatalog(relayRow)).toBe(relayRegistration);
+			expect(service.getRegisteredDeviceForCatalog(sensorRow)).toBe(service.getRegisteredDevice(rawId, sensor.type));
+			service.updateDeviceEnabledStatus(rawId, false);
+			expect(service.getRegisteredDeviceForCatalog(relayRow)).toMatchObject({ enabled: true });
+			expect(service.getRegisteredDeviceForCatalog(sensorRow)).toMatchObject({ enabled: true });
+			service.updateDeviceEnabledStatus(rawId, false, sensor.type);
+			expect(service.getRegisteredDeviceForCatalog(relayRow)).toBe(relayRegistration);
+			expect(service.getRegisteredDeviceForCatalog(sensorRow)).toMatchObject({ enabled: false });
+			service.updateDeviceEnabledStatus(rawId, true, sensor.type);
+
+			relay.emit('change', 'relay0', true, false);
+			sensor.emit('change', 'humidity', 44, 42);
+			expect(callbacks.onDeviceChanged.mock.calls.map(([event]) => [event.type, event.property])).toEqual([
+				[relay.type, 'relay0'],
+				[sensor.type, 'humidity'],
+			]);
+			const temperature = mockShelliesLibrary.subscribeShellyTemperatures.mock.lastCall[0];
+			temperature(sensor, 14, 21.5);
+			const report = callbacks.onTemperatureReport.mock.lastCall[0];
+			expect(report).toMatchObject({ deviceId: rawId, deviceType: sensor.type, value: 21.5 });
+			expect(report.isCurrent()).toBe(true);
+			sensor.online = false;
+			expect(report.isCurrent()).toBe(false);
+			sensor.online = true;
+			expect(callbacks.onDeviceOffline).toHaveBeenCalledWith({
+				id: rawId,
+				type: sensor.type,
+				host: sensor.host,
+				online: false,
+			});
+			expect(callbacks.onDeviceOnline).toHaveBeenCalledWith({
+				id: rawId,
+				type: sensor.type,
+				host: sensor.host,
+				online: true,
+			});
+			expect(service.getRegisteredDeviceForCatalog(relayRow)).toBe(relayRegistration);
+
+			remove(sensor);
+			expect(service.getRegisteredDevice(rawId)).toBe(relayRegistration);
+			expect(service.getRegisteredDeviceForCatalog(sensorRow)).toBeUndefined();
+			expect(service.getRegisteredDeviceForCatalog(relayRow)).toBe(relayRegistration);
+			expect(relay._request).toBe(relayCredentials);
+			callbacks.onDeviceChanged.mockClear();
+			sensor.emit('change', 'humidity', 45, 44);
+			expect(callbacks.onDeviceChanged).not.toHaveBeenCalled();
+			relay.emit('change', 'relay0', false, true);
+			expect(callbacks.onDeviceChanged).toHaveBeenCalledWith({
+				id: rawId,
+				type: relay.type,
+				property: 'relay0',
+				newValue: false,
+				oldValue: true,
+			});
+		});
 
 		it('keeps an exact verified peer through compatible renames, mode, connection and enablement changes', async () => {
 			const { add, bind } = await registry();
 			const peer = add();
 			const raw = service.getRegisteredDevice(rawId);
+			expect(bind(peer, row(rawId), mac, 1)).toBe(true);
+			const original = raw.catalog;
 			expect(bind(peer, row(rawId))).toBe(true);
+			expect(raw.catalog).toBe(original);
+			expect(bind(peer, row(rawId), mac, 2)).toBe(true);
+			expect(raw.catalog).toEqual({ deviceId: 'catalog', mac, revision: 2 });
+			expect(original.revision).toBe(1);
 			expect(service.getRegisteredDeviceForCatalog(row())).toBe(raw);
 			expect(service.getRegisteredDeviceForCatalog({ id: 'other', identifier: rawId })).toBeUndefined();
 			expect(service.getRegisteredDeviceForCatalog(row('unrelated-123456'))).toBeUndefined();
@@ -531,9 +626,11 @@ describe('ShelliesAdapterService', () => {
 			const device = makeShellyDevice('shelly1pm-ABC123', 'SHSW-PM');
 			device.setAuthCredentials = undefined as any;
 			mockShelliesLibrary.getDevice.mockReturnValue(device);
-
+			mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'add')[1](device);
+			const registration = service.getRegisteredDevice(device.id, device.type);
+			expect(registration).toMatchObject({ id: device.id, enabled: true });
 			expect(service.setDeviceAuthCredentials(device as ShellyDevice, device.host, 'admin', 'password123')).toBe(false);
-
+			expect(registration.credentialRevision).toBe(1);
 			expect(Logger.prototype.debug).not.toHaveBeenCalledWith(expect.stringContaining('Set auth credentials'));
 		});
 	});
@@ -924,6 +1021,7 @@ describe('ShelliesAdapterService', () => {
 
 			expect(callbacks.onDeviceChanged).toHaveBeenCalledWith({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,

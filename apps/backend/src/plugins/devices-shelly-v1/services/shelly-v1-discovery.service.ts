@@ -4,17 +4,21 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
-import { DevicesService } from '../../../modules/devices/services/devices.service';
-import {
-	DEVICES_SHELLY_V1_PLUGIN_NAME,
-	DEVICES_SHELLY_V1_TYPE,
-	SHELLY_AUTH_USERNAME,
-} from '../devices-shelly-v1.constants';
-import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
+import { DEVICES_SHELLY_V1_PLUGIN_NAME, SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
 import { ShellyDevice } from '../interfaces/shellies.interface';
+import { ShellyInfoResponse } from '../interfaces/shelly-http.interface';
 import { findShellyV1Descriptor } from '../utils/descriptor.utils';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import {
+	ShellyV1AdoptedIdentityService,
+	ShellyV1AdoptionState,
+	shellyV1Address,
+	shellyV1DiscoveryOwner,
+	shellyV1PinMatches,
+	shellyV1RegistrationMatchesPin,
+	shellyV1ReportedMac,
+} from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 export type ShellyV1DiscoverySessionStatus = 'running' | 'finished' | 'failed';
@@ -84,7 +88,7 @@ export class ShellyV1DiscoveryService {
 
 	constructor(
 		private readonly shelliesAdapter: ShelliesAdapterService,
-		private readonly devicesService: DevicesService,
+		private readonly identities: ShellyV1AdoptedIdentityService,
 		private readonly httpClient: ShellyV1HttpClientService,
 	) {}
 
@@ -227,6 +231,79 @@ export class ShellyV1DiscoveryService {
 		}
 	}
 
+	/** Use the hardware proof already available to this scan. A short ID alone cannot identify a catalog row. */
+	private async identify(
+		identifier: string,
+		hostname: string,
+		mac: string | null,
+		peer?: ShellyDevice,
+	): Promise<{ identifier: string; registeredDevice: ShellyV1AdoptionState | null }> {
+		const candidates = await this.identities.captureDiscovery(identifier);
+		const registration = peer && this.shelliesAdapter.getRegisteredDevice(peer.id, peer.type);
+		if (
+			peer &&
+			(!registration ||
+				registration.host !== hostname ||
+				peer.host !== hostname ||
+				this.shelliesAdapter.getDevice(peer.type, peer.id) !== peer)
+		)
+			throw new Error('Shelly peer changed during discovery.');
+		const ambiguous = peer && this.shelliesAdapter.getRegisteredDevice(peer.id) !== registration;
+
+		if (mac) {
+			const owner = shellyV1DiscoveryOwner(candidates, mac, hostname);
+			if (owner) {
+				const address = shellyV1Address(owner.identifier);
+				const expected = owner.pin?.mac ?? (address?.length === 12 ? address : null);
+				if (expected) {
+					if (expected === mac && shellyV1PinMatches(owner.identifier, mac))
+						return { identifier: owner.identifier, registeredDevice: owner };
+				} else if (owner.hostname === hostname) {
+					const current = peer && this.shelliesAdapter.getRegisteredDeviceForCatalog(owner);
+					if (!peer || current === registration) return { identifier: owner.identifier, registeredDevice: owner };
+					// A different model sharing this short ID at another host does not invalidate a
+					// positive HTTP probe of the sole SDK peer at the configured legacy endpoint.
+					if (
+						ambiguous &&
+						!current &&
+						!registration.catalog &&
+						!this.shelliesAdapter.getKnownDevices().some((other) => other !== peer && other.host === hostname)
+					)
+						return { identifier: owner.identifier, registeredDevice: owner };
+				}
+			} else if (!peer) {
+				const legacy = await this.identities.findLegacyAtHost(hostname, mac);
+				if (legacy) return { identifier: legacy.identifier, registeredDevice: legacy };
+			}
+			// Another device already uses this short ID. Submit the distinct, verified MAC for adoption.
+			return { identifier: ambiguous || candidates.exact ? mac : identifier, registeredDevice: null };
+		}
+
+		const claim = registration?.catalog;
+		let owner = candidates.exact;
+		if (claim) owner = [candidates.exact, ...candidates.aliases].find((row) => row?.id === claim.deviceId) ?? null;
+		if (owner && registration && this.shelliesAdapter.getRegisteredDeviceForCatalog(owner) === registration) {
+			if (claim) {
+				if (
+					shellyV1RegistrationMatchesPin(registration, owner, owner.pin) &&
+					(claim.revision === undefined || claim.revision === owner.pin?.revision)
+				)
+					return { identifier: owner.identifier, registeredDevice: owner };
+			} else {
+				const configured =
+					owner.hostname === hostname || (!owner.hostname && shellyV1Address(identifier)?.length === 12);
+				if (
+					configured &&
+					(!owner.pin || (owner.pin.verifiedHost === hostname && shellyV1PinMatches(identifier, owner.pin.mac)))
+				)
+					return { identifier: owner.identifier, registeredDevice: owner };
+			}
+		}
+		if (ambiguous || candidates.exact || claim)
+			throw new Error('The full MAC is needed to distinguish this Shelly device from another catalog or SDK peer.');
+		return { identifier, registeredDevice: null };
+	}
+
 	/**
 	 * Build a discovery snapshot for a device the main connector already knows about.
 	 * Probes the device over HTTP (no auth) to surface model/firmware in the wizard
@@ -250,54 +327,26 @@ export class ShellyV1DiscoveryService {
 		}
 
 		try {
-			const registeredDevice = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
-				'identifier',
-				device.id,
-				DEVICES_SHELLY_V1_TYPE,
-			);
-
 			const descriptor = findShellyV1Descriptor(device.type);
 			const categories = descriptor?.categories ?? [];
-
-			let status: ShellyV1DiscoveryDeviceStatus;
-
-			if (registeredDevice !== null) {
-				status = 'already_registered';
-			} else if (descriptor === null) {
-				status = 'unsupported';
-			} else {
-				status = 'ready';
-			}
-
-			// Try to enrich with /shelly response (firmware, auth flag) — best effort, the lib
-			// gives us model + host but not firmware version. If the call fails, fall back to
-			// what we have.
-			let firmware: string | null = null;
-			let authEnabled = false;
-
-			try {
-				const shellyInfo = await this.httpClient.getDeviceInfo(hostname, 3_000);
-				firmware = shellyInfo.fw ?? null;
-				authEnabled = Boolean(shellyInfo.auth);
-
-				// If auth is enabled and the device wasn't already registered we can't validate
-				// without a password — surface as needs_password so the user can enter one in the
-				// manual-add form.
-				if (authEnabled && status === 'ready') {
-					status = 'needs_password';
-				}
-			} catch {
-				// /shelly is reachable for most devices, but if it fails we leave the snapshot as-is —
-				// the lib already saw this device, so it's online via CoAP at least.
-			}
+			const info = await this.httpClient.getDeviceInfo(hostname, 3_000).catch((): ShellyInfoResponse | null => null);
+			const mac = shellyV1ReportedMac(device.id, device.type, info);
+			if (info && (info.type !== device.type || (shellyV1Address(device.id) && !mac)))
+				throw new Error('Shelly HTTP identity does not match the discovered SDK peer.');
+			const { identifier, registeredDevice } = await this.identify(device.id, hostname, mac, device);
+			const authEnabled = Boolean(info?.auth);
+			let status: ShellyV1DiscoveryDeviceStatus = 'ready';
+			if (registeredDevice) status = 'already_registered';
+			else if (!descriptor) status = 'unsupported';
+			else if (authEnabled) status = 'needs_password';
 
 			const snapshot: ShellyV1DiscoveryDeviceSnapshot = {
-				identifier: device.id,
+				identifier,
 				hostname,
 				name: null,
 				model: device.type,
 				displayName: descriptor?.name ?? device.type,
-				firmware,
+				firmware: info?.fw ?? null,
 				status,
 				source: 'mdns',
 				categories,
@@ -316,10 +365,7 @@ export class ShellyV1DiscoveryService {
 
 			session.devices.set(hostname, snapshot);
 		} catch (error) {
-			// Most likely a transient DB error from `findOneBy`. Surface the device with a
-			// `failed` snapshot so the user can see something happened, but never let the
-			// promise reject — this is invoked from a fire-and-forget `add` listener and
-			// a rejection here would crash the process.
+			// A failed identity check remains visible in the scan without selecting a catalog row.
 			const err = error as Error;
 
 			this.logger.warn('Failed to build discovery snapshot for device from main connector', {
@@ -384,12 +430,10 @@ export class ShellyV1DiscoveryService {
 		try {
 			const shellyInfo = await this.httpClient.getDeviceInfo(hostname);
 			const descriptor = findShellyV1Descriptor(shellyInfo.type);
-			// Mirror the shellies library's `device.id` format — uppercase MAC without separators —
-			// so wizard-adopted devices match the identifier the auto-discovery flow uses.
-			const identifier = this.buildIdentifier(shellyInfo.mac);
-			const registeredDevice = identifier
-				? await this.devicesService.findOneBy<ShellyV1DeviceEntity>('identifier', identifier, DEVICES_SHELLY_V1_TYPE)
-				: null;
+			// The manual probe supplies the full MAC, even if CoIoT reports a short SDK ID.
+			const fullMac = this.buildIdentifier(shellyInfo.mac);
+			if (!fullMac || !/^[0-9A-F]{12}$/.test(fullMac)) throw new Error('Shelly returned an invalid hardware MAC.');
+			const { identifier, registeredDevice } = await this.identify(fullMac, hostname, fullMac);
 			const categories = descriptor?.categories ?? [];
 
 			let authValid: boolean | null = null;
@@ -450,6 +494,9 @@ export class ShellyV1DiscoveryService {
 
 			const failedDevice: ShellyV1DiscoveryDeviceSnapshot = {
 				...currentDevice,
+				registeredDeviceId: null,
+				registeredDeviceName: null,
+				registeredDeviceCategory: null,
 				status: 'failed',
 				source,
 				error: err.message,
@@ -463,10 +510,7 @@ export class ShellyV1DiscoveryService {
 	}
 
 	/**
-	 * Build the canonical device identifier the same way the shellies library does — the
-	 * uppercase MAC address without separators. The auto-discovery path uses this value
-	 * directly (`event.id` from CoAP), so wizard-adopted devices must use the same format
-	 * to be matched on subsequent CoAP frames.
+	 * Normalize the full MAC returned by a manual HTTP probe.
 	 */
 	private buildIdentifier(mac: string | null | undefined): string | null {
 		if (typeof mac !== 'string' || mac.length === 0) {

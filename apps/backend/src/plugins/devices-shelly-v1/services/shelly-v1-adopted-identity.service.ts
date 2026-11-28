@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { IsNull, Like, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -61,16 +61,30 @@ export interface ShellyV1DiscoveryCandidates {
 	aliases: ShellyV1AdoptionState[];
 }
 
-/** A suffix finds candidate pins. Only the verified full MAC can select a renamed catalog device. */
+function claimsMac(row: ShellyV1AdoptionState, mac: string): boolean {
+	return row.pin?.mac === mac || shellyV1Address(row.identifier) === mac;
+}
+
+/** Only a verified full MAC can select a catalog alias, including an original full-address identifier. */
 export function shellyV1DiscoveryOwner(
 	{ exact, aliases }: ShellyV1DiscoveryCandidates,
 	mac: string | null | undefined,
+	host: string,
 ): ShellyV1AdoptionState | null {
 	if (aliases.length === 0) return exact;
 	if (mac) {
-		const matches = aliases.filter((alias) => alias.pin?.mac === mac);
+		const matches = aliases.filter((alias) => claimsMac(alias, mac));
 		if (matches.length === 0) return exact;
-		if (!exact && matches.length === 1 && shellyV1PinMatches(matches[0].identifier, mac)) return matches[0];
+		const distinctExact =
+			exact?.pin?.verifiedHost &&
+			exact.pin.verifiedHost !== host &&
+			exact.hostname !== host &&
+			exact.pin.mac !== mac &&
+			shellyV1PinMatches(exact.identifier, exact.pin.mac);
+		if ((!exact || distinctExact) && matches.length === 1) {
+			const [match] = matches;
+			if (shellyV1PinMatches(match.identifier, mac) && (!match.pin || match.pin.mac === mac)) return match;
+		}
 	}
 	throw new DevicesShellyV1ValidationException('Shelly discovery cannot verify a unique adopted hardware identity.');
 }
@@ -138,12 +152,7 @@ export class ShellyV1AdoptedIdentityService {
 							return true;
 						});
 					// A competing discovery can adopt the hardware under another identifier while the probe is in flight.
-					if (
-						address &&
-						(await context.manager.existsBy(ShellyV1AdoptedIdentityEntity, {
-							mac: mac ?? (address.length === 12 ? address : Like(`%${address}`)),
-						}))
-					)
+					if (address && (await this.hardwareAlreadyOwned(context.manager, dto.identifier, mac)))
 						throw new DevicesShellyV1ValidationException(
 							'Shelly hardware is already adopted. Retry with the current device.',
 						);
@@ -166,8 +175,8 @@ export class ShellyV1AdoptedIdentityService {
 		return this.identities.findOneBy({ deviceId });
 	}
 
-	private catalogQuery() {
-		return this.identities.manager
+	private catalogQuery(manager: EntityManager = this.identities.manager) {
+		return manager
 			.createQueryBuilder(ShellyV1DeviceEntity, 'device')
 			.leftJoin(ShellyV1AdoptedIdentityEntity, 'pin', 'pin.deviceId = device.id')
 			.select('device.id', 'id')
@@ -189,15 +198,39 @@ export class ShellyV1AdoptedIdentityService {
 		return row ? fromRow(row) : null;
 	}
 
-	async captureDiscovery(identifier: string): Promise<ShellyV1DiscoveryCandidates> {
-		const query = this.catalogQuery().where('device.identifier = :identifier', { identifier });
+	async captureDiscovery(
+		identifier: string,
+		manager: EntityManager = this.identities.manager,
+	): Promise<ShellyV1DiscoveryCandidates> {
+		const query = this.catalogQuery(manager).where('device.identifier = :identifier', { identifier });
 		const address = shellyV1Address(identifier);
-		if (address) query.orWhere('pin.mac LIKE :mac', { mac: address.length === 12 ? address : `%${address}` });
+		if (address) {
+			query.orWhere('pin.mac LIKE :suffix OR UPPER(device.identifier) LIKE :suffix', { suffix: `%${address}` });
+		}
 		const candidates = (await query.getRawMany<CatalogRow>()).map(fromRow);
 		return {
 			exact: candidates.find((row) => row.identifier === identifier) ?? null,
-			aliases: candidates.filter((row) => row.identifier !== identifier && row.pin),
+			aliases: candidates.filter((row) => {
+				if (!address || row.identifier === identifier) return false;
+				const catalogAddress = shellyV1Address(row.identifier);
+				return (
+					(row.pin && shellyV1PinMatches(identifier, row.pin.mac)) ||
+					(catalogAddress?.length === 12 && catalogAddress.endsWith(address))
+				);
+			}),
 		};
+	}
+
+	/** Read through the active writer so concurrent adoptions of different SDK identifiers cannot claim the same MAC. */
+	private async hardwareAlreadyOwned(
+		manager: EntityManager,
+		identifier: string,
+		reportedMac?: string,
+	): Promise<boolean> {
+		const { exact, aliases } = await this.captureDiscovery(identifier, manager);
+		const address = shellyV1Address(identifier);
+		const mac = reportedMac ?? (address?.length === 12 ? address : null);
+		return !!exact || aliases.some((row) => !mac || claimsMac(row, mac));
 	}
 
 	async validateIdentifier(
@@ -239,10 +272,15 @@ export class ShellyV1AdoptedIdentityService {
 		state: ShellyV1AdoptionState,
 		dto: UpdateShellyV1DeviceDto & { hostname: string },
 		mac?: string,
-		assertEndpoint?: () => void,
+		{
+			assertEndpoint,
+			reportedIdentifier = state.identifier,
+		}: { assertEndpoint?: () => void; reportedIdentifier?: string } = {},
 	): Promise<ShellyV1DeviceEntity> {
 		const short = shellyV1Address(state.identifier)?.length === 6;
+		const alias = reportedIdentifier !== state.identifier;
 		if (
+			(alias && (!mac || !shellyV1PinMatches(reportedIdentifier, mac))) ||
 			(mac !== undefined && !shellyV1PinMatches(state.identifier, mac)) ||
 			(state.pin && (!shellyV1PinMatches(state.identifier, state.pin.mac) || (mac && state.pin.mac !== mac))) ||
 			(!mac &&
@@ -276,8 +314,9 @@ export class ShellyV1AdoptedIdentityService {
 				)
 					throw stale();
 				if (!mac) return false;
-				if (!pin && short) {
-					if (await pins.existsBy({ mac })) throw stale();
+				const candidates = await this.captureDiscovery(reportedIdentifier, manager);
+				if (shellyV1DiscoveryOwner(candidates, mac, dto.hostname)?.id !== state.id) throw stale();
+				if (!pin && (short || alias)) {
 					await pins.insert({ deviceId: state.id, mac, verifiedHost: dto.hostname });
 					return true;
 				}
@@ -290,5 +329,20 @@ export class ShellyV1AdoptedIdentityService {
 				return true;
 			},
 		});
+	}
+
+	/** A manual scan may know only the full MAC and host of a legacy, unpinned short-address device. */
+	async findLegacyAtHost(hostname: string, mac: string): Promise<ShellyV1AdoptionState | null> {
+		const rows = await this.catalogQuery()
+			.where('device.hostname = :hostname AND pin.deviceId IS NULL', { hostname })
+			.getRawMany<CatalogRow>();
+		const matches = rows.filter(
+			(row) => shellyV1Address(row.identifier)?.length === 6 && shellyV1PinMatches(row.identifier, mac),
+		);
+		if (matches.length > 1)
+			throw new DevicesShellyV1ValidationException(
+				'Multiple legacy Shelly devices match this host and hardware address.',
+			);
+		return matches.length === 1 ? fromRow(matches[0]) : null;
 	}
 }

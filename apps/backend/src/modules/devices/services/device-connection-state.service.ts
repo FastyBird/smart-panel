@@ -104,7 +104,12 @@ export class DeviceConnectionStateService {
 		return count;
 	}
 
-	async write(device: DeviceEntity, property: ChannelPropertyEntity, status: ConnectionState): Promise<void> {
+	async write(
+		device: DeviceEntity,
+		property: ChannelPropertyEntity,
+		status: ConnectionState,
+		onAdmitted?: (lastChanged: Date) => void,
+	): Promise<void> {
 		const publication = ControllerPublicationContext.current();
 		const deviceId = device.id;
 		const propertyId = property.id;
@@ -130,11 +135,23 @@ export class DeviceConnectionStateService {
 			this.statusPropertyMap.set(deviceId, propertyId);
 		}
 
-		if (!this.storageService.isConnected()) {
-			return;
-		}
-
 		try {
+			// Publish the accepted transition before another endpoint can supersede it during history I/O.
+			onAdmitted?.(lastChanged);
+		} finally {
+			await this.writeHistory(deviceId, propertyId, status, isOnline, lastChanged);
+		}
+	}
+
+	private async writeHistory(
+		deviceId: string,
+		propertyId: string,
+		status: ConnectionState,
+		isOnline: boolean,
+		changedAt: Date,
+	): Promise<void> {
+		try {
+			if (!this.storageService.isConnected()) return;
 			await ControllerPublicationContext.effect('device.status', () =>
 				this.storageService.writePoints([
 					{
@@ -145,15 +162,15 @@ export class DeviceConnectionStateService {
 							onlineI: isOnline ? 1 : 0,
 							status,
 						},
-						timestamp: new Date(),
+						timestamp: changedAt,
 					},
 				]),
 			);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to write status to storage id=${device.id} error=${err.message}`, {
-				resource: device.id,
+			this.logger.error(`Failed to write status to storage id=${deviceId} error=${err.message}`, {
+				resource: deviceId,
 				stack: err.stack,
 			});
 		}

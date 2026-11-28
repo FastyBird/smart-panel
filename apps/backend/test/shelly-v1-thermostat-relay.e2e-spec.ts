@@ -23,13 +23,27 @@ import { DeviceMapperService } from '../src/plugins/devices-shelly-v1/services/d
 import { ShellyV1AdoptionService } from '../src/plugins/devices-shelly-v1/services/shelly-v1-adoption.service';
 import { ShellyV1Service } from '../src/plugins/devices-shelly-v1/services/shelly-v1.service';
 
-describe('a pinned Shelly Gen1 thermostat relay', () => {
+describe.each(['DDEEFF', 'shelly1-AABBCCDDEEFF'])('a Shelly Gen1 thermostat relay adopted as %s', (identifier) => {
 	it('routes commands, independent reads and incoming changes to the same renamed output', async () => {
 		const mac = 'AABBCCDDEEFF';
 		const rawId = 'DDEEFF';
 		const type = 'SHSW-1';
 		const requests: string[] = [];
 		let relayOn = true;
+		let malformedRelays = false;
+		const sensorMac = '112233DDEEFF';
+		const sensor = createServer((request, response) => {
+			response.setHeader('Content-Type', 'application/json');
+			switch (request.url) {
+				case '/shelly':
+					return response.end(JSON.stringify({ type: 'SHHT-1', mac: sensorMac }));
+				case '/status':
+					return response.end(JSON.stringify({ mac: sensorMac }));
+				default:
+					response.writeHead(404);
+					return response.end();
+			}
+		});
 		const server = createServer((request, response) => {
 			requests.push(request.url);
 			response.setHeader('Content-Type', 'application/json');
@@ -40,7 +54,9 @@ describe('a pinned Shelly Gen1 thermostat relay', () => {
 					relayOn = false;
 					return response.end(JSON.stringify({ ison: relayOn }));
 				case '/status':
-					return response.end(JSON.stringify({ mac, relays: [{ ison: relayOn }] }));
+					return response.end(
+						JSON.stringify({ mac, relays: malformedRelays ? { 0: { ison: relayOn } } : [{ ison: relayOn }] }),
+					);
 				default:
 					response.writeHead(404);
 					return response.end();
@@ -61,12 +77,15 @@ describe('a pinned Shelly Gen1 thermostat relay', () => {
 		try {
 			await once(server.listen(0, '127.0.0.1'), 'listening');
 			const host = `127.0.0.1:${(server.address() as AddressInfo).port}`;
+			await once(sensor.listen(0, '127.0.0.1'), 'listening');
+			const sensorHost = `127.0.0.1:${(sensor.address() as AddressInfo).port}`;
 			useContainer(fixture, { fallbackOnErrors: true });
 			await fixture.init();
 			await connector.start();
-			const [adopted] = await fixture.get(ShellyV1AdoptionService).adopt([
+			const adoption = fixture.get(ShellyV1AdoptionService);
+			const [adopted] = await adoption.adopt([
 				{
-					identifier: rawId,
+					identifier,
 					hostname: host,
 					name: 'Heating relay',
 					category: DeviceCategory.SWITCHER,
@@ -88,7 +107,29 @@ describe('a pinned Shelly Gen1 thermostat relay', () => {
 				expect(mapper).toHaveBeenCalledTimes(1);
 				await expect(mapper.mock.results[0].value).resolves.toMatchObject({ id: adopted.deviceId });
 			};
+			const announceUnverifiedSensor = async () => {
+				mapper.mockClear();
+				// The H&T uses the same CoIoT ID, but /shelly at this endpoint identifies a relay.
+				receiver.emit('statusUpdate', { deviceType: 'SHHT-1', deviceId: rawId, host, serial: 1, payload: { G: [] } });
+				expect(mapper).toHaveBeenCalledTimes(1);
+				const mapping = mapper.mock.results[0].value as ReturnType<DeviceMapperService['mapDevice']>;
+				await expect(mapping.catch(() => null)).resolves.toBeNull();
+			};
 			await discover();
+			const [probe] = await adoption.adopt([
+				{ identifier: sensorMac, hostname: sensorHost, name: 'Room sensor', category: DeviceCategory.SENSOR },
+			]);
+			expect(probe.status).toBe('created');
+			mapper.mockClear();
+			receiver.emit('statusUpdate', {
+				deviceType: 'SHHT-1',
+				deviceId: rawId,
+				host: sensorHost,
+				serial: 1,
+				payload: { G: [] },
+			});
+			expect(mapper).toHaveBeenCalledTimes(1);
+			await expect(mapper.mock.results[0].value).resolves.toMatchObject({ id: probe.deviceId });
 			const channel = await fixture
 				.get(ChannelsService)
 				.findOneBy('identifier', 'relay_0', adopted.deviceId, DEVICES_SHELLY_V1_TYPE);
@@ -101,17 +142,25 @@ describe('a pinned Shelly Gen1 thermostat relay', () => {
 			});
 			const registry = fixture.get(PlatformRegistryService);
 			const target = { device, channel, property };
+			await announceUnverifiedSensor();
 			await expect(registry.get(device).processBatch([{ ...target, value: false }])).resolves.toBe(true);
 			expect(requests).toContain('/relay/0?turn=off');
 			await connector.stop();
 			await connector.start();
 			await discover();
+			await announceUnverifiedSensor();
+			const values = fixture.get(PropertyValueService);
+			const prior = values.readQualifiedSample(property, 30_000)?.ingressSequence;
+			malformedRelays = true;
+			await expect(registry.requestPropertyRead({ ...target, dispatching: jest.fn() })).resolves.toBe(true);
+			expect(values.readQualifiedSample(property, 30_000)?.ingressSequence).toBe(prior);
+			malformedRelays = false;
 			requests.length = 0;
 			const dispatching = jest.fn();
 			await expect(registry.requestPropertyRead({ ...target, dispatching })).resolves.toBe(true);
 			expect(requests).toContain('/status');
 			expect(dispatching).toHaveBeenCalledTimes(1);
-			expect(fixture.get(PropertyValueService).readQualifiedSample(property, 30_000)).toMatchObject({
+			expect(values.readQualifiedSample(property, 30_000)).toMatchObject({
 				propertyId: property.id,
 				value: false,
 				provenance: 'live',
@@ -130,6 +179,7 @@ describe('a pinned Shelly Gen1 thermostat relay', () => {
 			} finally {
 				jest.restoreAllMocks();
 				if (server.listening) await once(server.close(), 'close');
+				if (sensor.listening) await once(sensor.close(), 'close');
 			}
 		}
 	});

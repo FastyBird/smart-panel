@@ -117,7 +117,7 @@ export class ShellyV1PropertyReportsService {
 			device.enabled &&
 			registration.enabled &&
 			this.adapter.getRegisteredDeviceForCatalog(device) === registration &&
-			this.adapter.getRegisteredDevice(registration.id) === registration &&
+			this.adapter.getRegisteredDevice(registration.id, registration.type) === registration &&
 			this.adapter.getDevice(registration.type, registration.id) === peer &&
 			peer.online &&
 			peer.id === registration.id &&
@@ -221,8 +221,9 @@ export class ShellyV1PropertyReportsService {
 		let origin = this.temperatureOrigins.get(report);
 		if (!origin) {
 			const generation = this.generation;
-			const registration = this.adapter.getRegisteredDevice(report.deviceId);
-			if (!registration?.enabled || registration.id !== report.deviceId) return false;
+			const registration = this.adapter.getRegisteredDevice(report.deviceId, report.deviceType);
+			if (!registration?.enabled || registration.id !== report.deviceId || registration.type !== report.deviceType)
+				return false;
 			const catalog = registration.catalog;
 			const device = await this.devices.findOneBy<ShellyV1DeviceEntity>(
 				catalog ? 'id' : 'identifier',
@@ -241,7 +242,8 @@ export class ShellyV1PropertyReportsService {
 		}
 		if (!origin.source.isCurrent() || !report.isLatest() || origin.mappedIsCurrent?.() === false) return false;
 		const address = shellyV1Address(report.deviceId);
-		if (!address || report.deviceId !== origin.source.peer.id) return false;
+		if (!address || report.deviceId !== origin.source.peer.id || report.deviceType !== origin.source.peer.type)
+			return false;
 		if (!(await this.verifyTemperatureHost(origin.source, address))) return false;
 		if (!origin.source.isCurrent() || !report.isLatest()) return false;
 		return this.reportBinding(origin.source, origin.binding, report.value, report.receivedAt, undefined, report);
@@ -287,7 +289,15 @@ export class ShellyV1PropertyReportsService {
 	): Promise<void> {
 		const mac = typeof status?.mac === 'string' ? status.mac.toUpperCase() : null;
 		const address = shellyV1Address(source.peer.id);
-		if (!mac || !address || !/^[0-9A-F]{12}$/.test(mac) || !mac.endsWith(address) || !source.isCurrent()) return;
+		if (
+			!Array.isArray(status?.relays) ||
+			!mac ||
+			!address ||
+			!/^[0-9A-F]{12}$/.test(mac) ||
+			!mac.endsWith(address) ||
+			!source.isCurrent()
+		)
+			return;
 		const catalog = source.registration.catalog;
 		const matches = catalog
 			? catalog.mac === mac && (await this.boundPinIsCurrent(source))
@@ -301,7 +311,7 @@ export class ShellyV1PropertyReportsService {
 			)
 				continue;
 			if (binding.category !== PropertyCategory.ON) continue;
-			const value = status.relays?.[Number(binding.shelliesProperty.slice('relay'.length))]?.ison;
+			const value = status.relays[Number(binding.shelliesProperty.slice('relay'.length))]?.ison;
 			if (typeof value !== 'boolean') continue;
 			await this.reportBinding(source, binding, value, receivedAt, target);
 		}

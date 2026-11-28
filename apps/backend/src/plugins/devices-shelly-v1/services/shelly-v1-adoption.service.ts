@@ -87,7 +87,7 @@ export class ShellyV1AdoptionService {
 						throw new Error('Shelly hardware identity does not match the selected device.');
 				}
 			}
-			existing = shellyV1DiscoveryOwner(candidates, mac);
+			existing = shellyV1DiscoveryOwner(candidates, mac, hostname);
 
 			if (!existing) {
 				try {
@@ -118,7 +118,7 @@ export class ShellyV1AdoptionService {
 				...(password == null ? {} : { password }),
 				...selection,
 			};
-			await this.identities.updateDevice(existing, update, mac);
+			await this.identities.updateDevice(existing, update, mac, { reportedIdentifier: identifier });
 			return { ...selection, status: 'updated', error: null, deviceId: existing.id };
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error('Device could not be adopted');

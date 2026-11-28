@@ -101,7 +101,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 			return false;
 		}
-		const { id, type, host } = registered;
+		const { id, type, host, catalog } = registered;
 		const target: CommandTarget = {
 			peer: shellyDevice,
 			registration: registered,
@@ -113,6 +113,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				registered.id === id &&
 				registered.type === type &&
 				registered.host === host &&
+				registered.catalog === catalog &&
 				shellyDevice.id === id &&
 				shellyDevice.type === type &&
 				shellyDevice.host === host &&
@@ -259,7 +260,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		// Find the state property
 		const stateUpdate = propertyUpdates.find((u) => u.property.identifier === 'state');
 
-		if (!stateUpdate || !target.isCurrent()) {
+		if (!stateUpdate || !shellyV1Address(device.identifier)) {
 			return false;
 		}
 
@@ -268,31 +269,28 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			resource: device.id,
 		});
 
-		return this.dispatch(device, target, () => shellyDevice.setRelay(index, boolValue), true);
+		return this.dispatch(device, target, () => shellyDevice.setRelay(index, boolValue));
 	}
 
 	private async dispatch(
 		device: ShellyV1DeviceEntity,
 		target: CommandTarget,
 		command: () => Promise<void>,
-		relay = false,
 	): Promise<boolean> {
 		if (!target.isCurrent()) return false;
-		if (target.registration.catalog || relay) {
-			const address = shellyV1Address(device.identifier);
-			if (!address) return false;
-			const pin = await this.identities.findPin(device.id);
-			if (!target.isCurrent() || !shellyV1RegistrationMatchesPin(target.registration, device, pin)) return false;
-			if (pin && !shellyV1PinMatches(address, pin.mac)) return false;
-			if (!pin && address.length !== 12 && device.hostname !== target.host) return false;
-			if (pin && pin.verifiedHost !== target.host) {
-				// Upgrade a legacy pin only at the configured host or for a matching full-address peer.
-				const confirmationHost = device.hostname ?? (address.length === 12 ? target.host : null);
-				if (pin.verifiedHost !== null || confirmationHost !== target.host) return false;
-				const info = await this.http.getDeviceInfo(target.host);
-				if (!target.isCurrent() || shellyV1ReportedMac(address, target.peer.type, info) !== pin.mac) return false;
-				if (!(await this.identities.confirmHost(device.id, pin.mac, target.host, null, pin.revision))) return false;
-			}
+		const pin = await this.identities.findPin(device.id);
+		if (!target.isCurrent() || !shellyV1RegistrationMatchesPin(target.registration, device, pin)) return false;
+		const address = shellyV1Address(device.identifier);
+		if (pin && !shellyV1PinMatches(address, pin.mac)) return false;
+		// Direct short and legacy identifiers can only identify an unpinned device at its configured host.
+		if (!pin && address?.length !== 12 && device.hostname !== target.host) return false;
+		if (pin && pin.verifiedHost !== target.host) {
+			// Upgrade a legacy pin only at the configured host or for a matching full-address peer.
+			const confirmationHost = device.hostname ?? (address?.length === 12 ? target.host : null);
+			if (pin.verifiedHost !== null || confirmationHost !== target.host) return false;
+			const info = await this.http.getDeviceInfo(target.host);
+			if (!target.isCurrent() || shellyV1ReportedMac(address, target.peer.type, info) !== pin.mac) return false;
+			if (!(await this.identities.confirmHost(device.id, pin.mac, target.host, null, pin.revision))) return false;
 		}
 
 		if (!target.isCurrent()) return false;
@@ -423,90 +421,39 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			}
 		}
 
-		if (hasWhiteProperties) {
-			// White/brightness mode
-			if (!shellyDevice.setWhite) {
-				this.logger.warn(`Device ${device.identifier} does not support setWhite method`, { resource: device.id });
-			} else {
-				// Use current device values as defaults if not provided in the command
-				const currentBrightness = shellyDevice[`brightness${index}`] ?? shellyDevice['brightness'];
-				const currentSwitch = shellyDevice[`switch${index}`] ?? shellyDevice['switch'];
+		const stateOnly = !executed && values.state !== undefined;
+		if (shellyDevice.setWhite && (hasWhiteProperties || (stateOnly && !shellyDevice.setColor))) {
+			this.logger.log(`Setting white light ${index} on device ${device.identifier}`, { resource: device.id });
+			return this.dispatch(device, target, () => {
+				// The SDK can receive new state while dispatch verifies the peer. Preserve the latest omitted values.
+				const rawBrightness = values.brightness ?? shellyDevice[`brightness${index}`] ?? shellyDevice.brightness;
+				const rawSwitch = values.state ?? shellyDevice[`switch${index}`] ?? shellyDevice.switch;
+				const brightness = typeof rawBrightness === 'number' ? rawBrightness : 100;
+				const on = typeof rawSwitch === 'boolean' ? rawSwitch : true;
 
-				const brightness = values.brightness ?? (typeof currentBrightness === 'number' ? currentBrightness : 100);
-				const on = values.state ?? (typeof currentSwitch === 'boolean' ? currentSwitch : true);
-
-				// Check if a device has multi-channel lights
-				const isMultiChannel = descriptor.instance?.multiChannelLights ?? false;
-
-				// Check if a device supports color temperature
-				if (values.temperature !== undefined) {
-					// Device with temperature control: setWhite(temperature, brightness, on)
-					const temperature = values.temperature;
-
-					this.logger.log(
-						`Setting light ${index} white with temperature (temp=${temperature}, brightness=${brightness}, on=${on}) on device ${device.identifier}`,
-						{ resource: device.id },
-					);
-
-					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(temperature, brightness, on))))
-						return false;
-				} else if (isMultiChannel) {
-					// Multi-channel device without temperature: setWhite(index, brightness, on)
-					this.logger.log(
-						`Setting light ${index} white multi-channel (index=${index}, brightness=${brightness}, on=${on}) on device ${device.identifier}`,
-						{ resource: device.id },
-					);
-
-					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(index, brightness, on)))) return false;
-				} else {
-					// Single-channel device without temperature: setWhite(brightness, on)
-					this.logger.log(
-						`Setting light white single-channel (brightness=${brightness}, on=${on}) on device ${device.identifier}`,
-						{ resource: device.id },
-					);
-
-					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(brightness, on)))) return false;
+				if (values.temperature !== undefined) return shellyDevice.setWhite(values.temperature, brightness, on);
+				const temperatureBinding = getShellyV1Bindings(descriptor, shellyDevice).find(
+					(binding) =>
+						binding.channelIdentifier === `light_${index}` && binding.propertyIdentifier === 'color_temperature',
+				);
+				if (temperatureBinding) {
+					const current = shellyDevice[temperatureBinding.shelliesProperty];
+					const temperature = typeof current === 'number' && current >= 2700 && current <= 6500 ? current : 3000;
+					return shellyDevice.setWhite(temperature, brightness, on);
 				}
-
-				executed = true;
-			}
+				if (descriptor.instance?.multiChannelLights) return shellyDevice.setWhite(index, brightness, on);
+				return shellyDevice.setWhite(brightness, on);
+			});
 		}
 
-		if (!executed && values.state !== undefined) {
-			// Only state change, try setColor first, then setWhite
-			if (shellyDevice.setColor) {
-				this.logger.log(
-					`Setting light ${index} state to ${values.state ? 'ON' : 'OFF'} on device ${device.identifier}`,
-					{ resource: device.id },
-				);
-
-				if (!(await this.dispatch(device, target, () => shellyDevice.setColor({ switch: values.state })))) return false;
-				executed = true;
-			} else if (shellyDevice.setWhite) {
-				// Check if a device has multi-channel lights
-				const isMultiChannel = descriptor.instance?.multiChannelLights ?? false;
-
-				// Use current brightness from device or fallback to 100
-				const currentBrightness = shellyDevice[`brightness${index}`] ?? shellyDevice['brightness'];
-				const brightness = typeof currentBrightness === 'number' ? currentBrightness : 100;
-
-				this.logger.log(
-					`Setting light ${index} state to ${values.state ? 'ON' : 'OFF'} on device ${device.identifier}`,
-					{ resource: device.id },
-				);
-
-				if (isMultiChannel) {
-					// Multi-channel: use index signature
-					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(index, brightness, values.state))))
-						return false;
-				} else {
-					// Single-channel: use a simple signature
-					if (!(await this.dispatch(device, target, () => shellyDevice.setWhite(brightness, values.state))))
-						return false;
-				}
-
-				executed = true;
-			}
+		if (hasWhiteProperties && !shellyDevice.setWhite) {
+			this.logger.warn(`Device ${device.identifier} does not support setWhite method`, { resource: device.id });
+		}
+		if (stateOnly && shellyDevice.setColor) {
+			this.logger.log(`Setting light ${index} state to ${values.state ? 'ON' : 'OFF'} on device ${device.identifier}`, {
+				resource: device.id,
+			});
+			return this.dispatch(device, target, () => shellyDevice.setColor({ switch: values.state }));
 		}
 
 		if (!executed) {

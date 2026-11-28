@@ -79,7 +79,7 @@ export interface RegisteredDevice {
 	host: string;
 	enabled: boolean; // Whether a device is enabled for updates
 	/** A full hardware MAC verified for this SDK peer, host and catalog UUID by discovery. */
-	catalog?: Readonly<{ deviceId: string; mac: string }>;
+	catalog?: Readonly<{ deviceId: string; mac: string; revision?: number }>;
 	/** Changes synchronously whenever the SDK peer's credentials are cleared or replaced. */
 	credentialRevision?: number;
 }
@@ -100,6 +100,7 @@ export interface NormalizedDeviceEvent {
  */
 export interface NormalizedDeviceChangeEvent {
 	id: string;
+	type: string;
 	property: string;
 	newValue: string | number | boolean;
 	oldValue: string | number | boolean | null;
@@ -122,6 +123,7 @@ export enum ShelliesAdapterEventType {
  */
 export interface ShellyTemperatureReport {
 	deviceId: string;
+	deviceType: string;
 	value: number | null;
 	receivedAt: Date;
 	ingressSequence: number;
