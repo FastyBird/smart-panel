@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: EPIC-VIRTUAL-DEVICE-CAPABILITIES
-Status: implemented, in review
+Status: done — merged #1696, #1781 and #1782
 
 ## 1. Business goal
 

@@ -8,4 +8,6 @@ IEEE reassignment, a changed exposed unit/measurement contract, or an omitted co
 
 Bound commands and strict composite batches check the current identity lease again immediately before MQTT publication or WebSocket send. Quarantine refuses dispatch. Truly unbound ordinary commands retain their existing behavior.
 
-Physical identity and transport provenance are separate requirements. Qualified samples also require verified current `advanced.cache_state=false`, an explicitly present field, and a live packet. Retained/cache-merged startup state never renews control freshness. WebSocket frames additionally require a trustworthy post-connection measurement timestamp. This implementation does not change gateway configuration or infer hardware qualification from brand/model metadata.
+For a bound measurement, MQTT and WebSocket use the same freshness rules. A live report refreshes the fields it carries. With the Zigbee2MQTT default `advanced.cache_state: true`, a battery report can carry the last temperature and refresh it as well. With `advanced.cache_state: false`, Zigbee2MQTT omits those cached fields.
+
+A retained message or startup replay with a usable `last_seen` keeps the device's report time. An untimed replay provides a display value only. A live report without a usable `last_seen` is timed by arrival after the startup replay window. Relay OFF confirmation excludes replays and marked command acknowledgements. The operator controls the gateway configuration. Brand and model metadata alone cannot establish hardware qualification.
