@@ -39,7 +39,7 @@
 //   - CONTROL STATE & CALLBACKS: [_onDataChanged], [_groupTargetsByRole], [_onIntentChanged].
 //   - BUILD: scaffold, loading/empty/content; [Consumer] for [DevicesService].
 //   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], [_getLightOptimisticOn].
-//   - HEADER: [_buildHeader], [_getStatusColor], [_getModeName].
+//   - HEADER: [_buildHeader], [_headerStateLine], [_getModeName].
 //   - SHEETS: [_showRoleLightsSheet], [_showScenesSheet].
 //   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleLights], [_toggleLight].
 //   - HERO CONTROLS: [_onHeroValueChanged], [_heroSetBrightness], [_heroSetColor], etc.
@@ -48,6 +48,7 @@
 // - **PRIVATE WIDGETS** — [_HeroGradients], [_LightsHeroCard], [_SceneTile].
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/foundation.dart';
@@ -60,19 +61,19 @@ import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_catego
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_dialog.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/outcome_indicator.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/domain_view.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
-import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
-import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
@@ -82,6 +83,7 @@ import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/lightin
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/intent_result.dart';
@@ -438,6 +440,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// True when a hero intent was in flight; used to detect unlock.
   bool _heroWasSpaceLocked = false;
+
+  /// Bumped whenever the hero's state is reset (a role switch): a request
+  /// that started for the previous hero leaves the current one alone.
+  int _heroGeneration = 0;
 
   /// Notifier bumped after [_toggleLight] so the role-lights sheet rebuilds.
   final ValueNotifier<int> _roleLightsSheetNotifier = ValueNotifier<int>(0);
@@ -969,6 +975,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Reset hero control state (when switching roles).
   void _resetHeroControlState() {
+    _heroGeneration++;
     for (final channelId in _heroControlChannelIds) {
       _heroControlStateService.setIdle(channelId);
     }
@@ -1250,7 +1257,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       icon: currentOption.icon,
       label: currentOption.label,
       title: AppLocalizations.of(context)!.mode_title_lights,
-      color: currentOption.color ?? ThemeColors.neutral,
+      color: ThemeColors.lights,
       popupBuilder: _buildModePopupContent,
     ));
   }
@@ -1258,99 +1265,39 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
     final localizations = AppLocalizations.of(context)!;
     final modes = _getLightingModeOptions(context, localizations);
-    final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
-    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+    final (activeValue, matchedValue, lastIntentValue) =
+        _getLightingModeSelectorValues();
+    final isModeLocked = _modeControlStateService.isLocked(
+      LightingConstants.modeChannelId,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacings.scale(DeckModePopupMetrics.gap),
       children: [
         for (final mode in modes)
-          _buildPopupModeItem(
-            context,
-            mode: mode,
-            isActive: activeValue == mode.value,
-            isMatched: matchedValue == mode.value,
-            isLastIntent: lastIntentValue == mode.value,
-            isLocked: isModeLocked,
-            onTap: () {
-              _setLightingMode(mode.value);
-              _registerModeConfig();
-              dismiss();
-            },
+          DeckModePopupOption(
+            icon: mode.icon,
+            label: mode.label,
+            color: ThemeColors.lights,
+            isSelected: activeValue == mode.value,
+            // The room matches this mode without it being applied, or it was
+            // the last one applied before a change by hand.
+            statusIcon: matchedValue == mode.value
+                ? MdiIcons.syncIcon
+                : lastIntentValue == mode.value
+                ? MdiIcons.history
+                : null,
+            onTap: isModeLocked
+                ? null
+                : () {
+                    _setLightingMode(mode.value);
+                    _registerModeConfig();
+                    dismiss();
+                  },
           ),
       ],
-    );
-  }
-
-  Widget _buildPopupModeItem(
-    BuildContext context, {
-    required ModeOption<LightingModeUI> mode,
-    required bool isActive,
-    required bool isMatched,
-    required bool isLastIntent,
-    required bool isLocked,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final modeColorFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      mode.color ?? ThemeColors.neutral,
-    );
-    final neutralColorFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.neutral,
-    );
-
-    // Active (check) uses intent color; history uses neutral; sync has no highlight.
-    final isHighlighted = isActive || isLastIntent;
-    final colorFamily = isLastIntent ? neutralColorFamily : modeColorFamily;
-    final defaultIconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final defaultTextColor = isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
-
-    return GestureDetector(
-      onTap: isLocked ? null : onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacings.pMd,
-          horizontal: AppSpacings.pMd,
-        ),
-        margin: EdgeInsets.only(bottom: AppSpacings.pXs),
-        decoration: BoxDecoration(
-          color: isHighlighted ? colorFamily.light9 : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppBorderRadius.small),
-          border: isHighlighted
-              ? Border.all(color: colorFamily.light7, width: AppSpacings.scale(1))
-              : null,
-        ),
-        child: Row(
-          spacing: AppSpacings.pMd,
-          children: [
-            Icon(
-              mode.icon,
-              color: isHighlighted ? colorFamily.base : defaultIconColor,
-              size: AppSpacings.scale(20),
-            ),
-            Expanded(
-              child: Text(
-                mode.label,
-                style: TextStyle(
-                  fontSize: AppFontSize.base,
-                  fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w400,
-                  color: isHighlighted ? colorFamily.base : defaultTextColor,
-                ),
-              ),
-            ),
-            if (isActive)
-              Icon(MdiIcons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
-            if (isMatched)
-              Icon(MdiIcons.syncIcon, color: modeColorFamily.base, size: AppSpacings.scale(16)),
-            if (isLastIntent)
-              Icon(MdiIcons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1597,147 +1544,510 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // --------------------------------------------------------------------------
   // BUILD
   // --------------------------------------------------------------------------
+  // [DomainViewLayout]: the header, the hero for the selected role, the role
+  // tiles and the lighting scene pills (docs/display-ui-design-spec.md §4,
+  // §6; design canvas "3 · Domain views").
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    // Handle loading and error states using DomainStateView
-    final loadState = _isLoading
-        ? DomainLoadState.loading
-        : _hasError
-            ? DomainLoadState.error
-            : DomainLoadState.loaded;
-
-    if (loadState != DomainLoadState.loaded) {
-      return DomainStateView(
-        state: loadState,
-        onRetry: _retryLoad,
-        domainName: localizations.domain_lights,
-        child: const SizedBox.shrink(),
+    if (_isLoading || _hasError) {
+      return DomainViewLayout(
+        header: _buildHeader(
+          context,
+          subtitle: _isLoading ? localizations.state_loading : null,
+        ),
+        hero: _isLoading
+            ? const DomainHeroState.loading()
+            : DomainHeroState(
+                state: AppScreenState.error,
+                title: localizations.domain_data_load_failed(
+                  localizations.domain_lights,
+                ),
+                message: localizations.domain_data_load_failed_description,
+                onAction: _retryLoad,
+              ),
       );
     }
 
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
-        final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+        final lightTargets =
+            _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
 
-        // Build role data (already excludes unconfigured/hidden targets)
-        final roles = _buildRoleDataList(lightTargets, devicesService, localizations);
+        // Already excludes unconfigured and hidden targets.
+        final roles = _buildRoleDataList(
+          lightTargets,
+          devicesService,
+          localizations,
+        );
 
-        // No configured roles — show not-configured state with header
         if (roles.isEmpty) {
-          return Scaffold(
-            backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? AppBgColorDark.page
-                : AppBgColorLight.page,
-            body: SafeArea(
-              child: Column(
-                children: [
-                  PageHeader(
-                    title: localizations.domain_lights,
-                    subtitle: localizations.domain_not_configured_subtitle,
-                    leading: HeaderMainIcon(
-                      icon: MdiIcons.lightbulbOutline,
-                    ),
-                  ),
-                  Expanded(
-                    child: DomainStateView(
-                      state: DomainLoadState.notConfigured,
-                      onRetry: _retryLoad,
-                      domainName: localizations.domain_lights,
-                      notConfiguredIcon: MdiIcons.lightbulbOffOutline,
-                      notConfiguredTitle: localizations.domain_lights_empty_title,
-                      notConfiguredDescription: localizations.domain_lights_empty_description,
-                      child: const SizedBox.shrink(),
-                    ),
-                  ),
-                ],
-              ),
+          return DomainViewLayout(
+            header: _buildHeader(
+              context,
+              subtitle: localizations.domain_not_configured_subtitle,
+            ),
+            hero: DomainHeroState(
+              state: AppScreenState.notConfigured,
+              title: localizations.domain_lights_empty_title,
+              message: localizations.domain_lights_empty_description,
+              icon: MdiIcons.lightbulbOutline,
+              domain: ThemeColors.lights,
             ),
           );
         }
-        // Calculate totals from defined roles (excludes unconfigured/hidden targets)
+
         final totalLights = roles.fold<int>(0, (sum, r) => sum + r.totalCount);
         final lightsOn = roles.fold<int>(0, (sum, r) => sum + r.onCount);
 
-        // Auto-select first role and build hero state
-        final effectiveRole = _selectedRole ??
-            (roles.isNotEmpty ? roles.first.role : null);
-        _LightHeroState? heroState;
-        if (effectiveRole != null) {
-          final selectedRoleData = _getRoleDataForRole(roles, effectiveRole);
-          if (selectedRoleData != null) {
-            heroState = _buildHeroState(selectedRoleData, devicesService, localizations);
-            heroState = _applyHeroOptimisticOverrides(heroState!, localizations);
-          }
-        }
+        final effectiveRole = _selectedRole ?? roles.first.role;
+        final roleData =
+            _getRoleDataForRole(roles, effectiveRole) ?? roles.first;
+        final heroState = _applyHeroOptimisticOverrides(
+          _buildHeroState(roleData, devicesService, localizations) ??
+              _LightHeroState(
+                roleName: roleData.name,
+                deviceCount: roleData.totalCount,
+                isOn: roleData.hasLightsOn,
+              ),
+          localizations,
+        );
 
-        return Scaffold(
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? AppBgColorDark.page
-              : AppBgColorLight.page,
-          body: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isLandscape = locator<ScreenService>().isLandscape;
+        final scenes = _lightingScenes;
+        // Compact keeps the scenes behind the header button (spec §4).
+        final showScenes = scenes.isNotEmpty && !_screenService.isCompact;
 
-                // Pre-calculate whether scenes fit inline in landscape
-                final hasScenes = _lightingScenes.isNotEmpty;
-                bool landscapeScenesInline = true;
-                if (isLandscape && hasScenes && roles.length > 1) {
-                  final tileHeight =
-                      AppSpacings.scale(AppTileHeight.horizontal * 0.85);
-                  final headerHeight = 2 * AppSpacings.pMd +
-                      AppFontSize.large * 1.4 +
-                      AppFontSize.small * 1.4;
-                  final columnHeight =
-                      constraints.maxHeight - headerHeight - AppSpacings.pMd;
-                  final rolesHeight = roles.length * tileHeight +
-                      (roles.length > 1
-                          ? (roles.length - 1) * AppSpacings.pSm
-                          : 0);
-                  final remaining =
-                      columnHeight - rolesHeight - AppSpacings.pMd;
-                  final titleHeight = AppFontSize.base * 1.4;
-                  final minScenesHeight = titleHeight +
-                      AppSpacings.pMd +
-                      2 * tileHeight +
-                      AppSpacings.pSm;
-                  landscapeScenesInline = remaining >= minScenesHeight;
-                }
-
-                final showScenesButton =
-                    isLandscape && hasScenes && !landscapeScenesInline;
-
-                return Column(
-                  children: [
-                    _buildHeader(
-                      context, lightsOn, totalLights,
-                      showScenesButton: showScenesButton,
-                    ),
-                    Expanded(
-                      child: isLandscape
-                          ? _buildLandscapeLayout(
-                              context, roles, localizations,
-                              heroState: heroState,
-                              effectiveRole: effectiveRole,
-                              showScenes: landscapeScenesInline,
-                            )
-                          : _buildPortraitLayout(
-                              context, roles, localizations,
-                              heroState: heroState,
-                              effectiveRole: effectiveRole,
-                            ),
-                    ),
-                  ],
-                );
-              },
-            ),
+        return DomainViewLayout(
+          header: _buildHeader(
+            context,
+            lightsOn: lightsOn,
+            totalLights: totalLights,
+            roles: roles,
+            effectiveRole: roleData.role,
           ),
+          hero: _buildHero(context, roles, roleData, heroState),
+          tiles: roles.length > 1
+              ? [
+                  for (final role in roles)
+                    _buildRoleTile(context, role, roleData.role),
+                ]
+              : const [],
+          below: showScenes ? _buildScenePills(scenes) : null,
+          belowLabel: localizations.lights_scenes_label,
         );
       },
     );
+  }
+
+  // --------------------------------------------------------------------------
+  // ROLE TILES AND SCENES
+  // --------------------------------------------------------------------------
+
+  /// One role's value: "Off", "On" or its brightness.
+  String _roleValueText(
+    LightingRoleData roleData,
+    bool? pendingOn,
+    AppLocalizations localizations,
+  ) {
+    if (pendingOn != null) {
+      return pendingOn
+          ? localizations.light_state_on
+          : localizations.light_state_off;
+    }
+    if (roleData.onCount == 0) return localizations.light_state_off;
+    final brightness = roleData.brightness;
+
+    return brightness != null ? '$brightness %' : localizations.light_state_on;
+  }
+
+  Widget _buildRoleTile(
+    BuildContext context,
+    LightingRoleData roleData,
+    LightTargetRole effectiveRole,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final pendingState = _getRolePendingState(roleData.role);
+    final tilePending = _roleTilePendingOnStates[roleData.role];
+    final isOn = tilePending ?? pendingState ?? roleData.hasLightsOn;
+    final value = _roleValueText(roleData, tilePending, localizations);
+
+    return DomainTile(
+      key: ValueKey('lights-role-${roleData.role.name}'),
+      name: roleData.name,
+      value: value,
+      color: ThemeColors.lights,
+      selected: roleData.role == effectiveRole,
+      valueMuted: !isOn,
+      onTap: () => _selectRole(roleData.role),
+      // Landscape role tiles switch their role at once and never lock
+      // (spec §7, "Control feedback").
+      leading: _screenService.isLandscape
+          ? DomainTileToggle(
+              icon: roleData.icon,
+              on: isOn,
+              color: ThemeColors.lights,
+              semanticLabel: isOn
+                  ? localizations.lights_role_turn_off(roleData.name)
+                  : localizations.lights_role_turn_on(roleData.name),
+              onTap: () => _toggleRoleFromTile(
+                roleData,
+                !isOn,
+                updateHero: roleData.role == effectiveRole,
+              ),
+            )
+          : null,
+    );
+  }
+
+  void _selectRole(LightTargetRole role) {
+    _resetHeroControlState();
+    setState(() {
+      _selectedRole = role;
+      _activeHeroMode = null;
+    });
+  }
+
+  void _toggleRoleFromTile(
+    LightingRoleData roleData,
+    bool turnOn, {
+    required bool updateHero,
+  }) {
+    _roleTilePendingTimers[roleData.role]?.cancel();
+    setState(() {
+      _roleTilePendingOnStates[roleData.role] = turnOn;
+    });
+    _roleTilePendingTimers[roleData.role] = Timer(
+      const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
+      () {
+        if (mounted) {
+          setState(() {
+            _roleTilePendingOnStates.remove(roleData.role);
+          });
+        }
+      },
+    );
+    _toggleRoleLights(roleData, turnOn, updateHero: updateHero);
+  }
+
+  /// The role chooser on the square, where the role tiles do not fit.
+  Future<void> _showRolesChooser(
+    List<LightingRoleData> roles,
+    LightTargetRole effectiveRole,
+  ) async {
+    final localizations = AppLocalizations.of(context)!;
+    final role = await showAppSelectionDialog<LightTargetRole>(
+      context: context,
+      title: localizations.lights_roles_title,
+      currentValue: effectiveRole,
+      options: [
+        for (final roleData in roles)
+          SelectionOption(
+            value: roleData.role,
+            label:
+                '${roleData.name} · ${_roleValueText(roleData, null, localizations)}',
+          ),
+      ],
+    );
+    if (role != null && mounted && role != effectiveRole) _selectRole(role);
+  }
+
+  Widget _buildScenePills(List<SceneView> scenes) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return DomainPillRow(
+      pills: [
+        for (final scene in scenes)
+          DomainPillData(
+            label: scene.name,
+            semanticLabel: localizations.lights_scene_run(scene.name),
+            onTap: _isSceneTriggering ? null : () => _activateScene(scene),
+          ),
+      ],
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // HERO
+  // --------------------------------------------------------------------------
+  // [HeroCard.slots]: the role badge (opens the role's lights), the value of
+  // the light property shown, the property line (a chooser when the role has
+  // more than one), the property's slider and its preset buttons.
+
+  /// The light property the hero shows and sets.
+  LightHeroCapability? _heroMode(_LightHeroState state) {
+    if (state.capabilities.isEmpty) return null;
+    final active = state.activeMode;
+    if (active != null && state.capabilities.contains(active)) return active;
+    final caps = state.capabilities.toList()
+      ..sort((a, b) => a.index.compareTo(b.index));
+
+    return caps.first;
+  }
+
+  /// The hero control's feedback state for [channelId].
+  ControlState _heroControlState(String channelId) {
+    if (_heroControlStateService.isMixed(channelId)) {
+      return ControlState.unconfirmed;
+    }
+    if (_heroControlStateService.isLocked(channelId)) {
+      return ControlState.pending;
+    }
+
+    return ControlState.idle;
+  }
+
+  static String _channelFor(LightHeroCapability mode) => switch (mode) {
+    LightHeroCapability.brightness => LightingConstants.brightnessChannelId,
+    LightHeroCapability.colorTemp => LightingConstants.temperatureChannelId,
+    LightHeroCapability.hue => LightingConstants.hueChannelId,
+    LightHeroCapability.saturation => LightingConstants.saturationChannelId,
+    LightHeroCapability.whiteChannel => LightingConstants.whiteChannelId,
+  };
+
+  Widget _buildHero(
+    BuildContext context,
+    List<LightingRoleData> roles,
+    LightingRoleData roleData,
+    _LightHeroState state,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mode = _heroMode(state);
+    final onOffState = _heroControlState(LightingConstants.onOffChannelId);
+    final valueState = mode == null ? onOffState : _heroControlState(_channelFor(mode));
+    final controlState = onOffState == ControlState.idle ? valueState : onOffState;
+
+    // On the square the role tiles do not fit and the badge chooses the
+    // role (design canvas, the square boards); elsewhere it opens the
+    // role's lights.
+    final badge = HeroBadge(
+      key: const ValueKey('lights-hero-badge'),
+      icon: roleData.icon,
+      label: roleData.name,
+      color: ThemeColors.lights,
+      onTap: _screenService.isSquare && roles.length > 1
+          ? () => _showRolesChooser(roles, roleData.role)
+          : () => _showRoleLightsSheet(roleData),
+    );
+
+    final value = _LightsHeroValue.of(state, mode, localizations);
+
+    Widget feedback;
+    if (controlState == ControlState.unconfirmed) {
+      feedback = OutcomeIndicator(
+        outcome: AppOutcome.notConfirmed,
+        onDetails: () => _showRoleLightsSheet(roleData),
+      );
+    } else if (controlState == ControlState.pending) {
+      feedback = HeroFeedback(
+        text: localizations.outcome_setting,
+        icon: MdiIcons.refresh,
+      );
+    } else {
+      final caps = state.capabilities.toList()
+        ..sort((a, b) => a.index.compareTo(b.index));
+      final line = mode == null
+          ? roleData.name
+          : '${_LightsHeroValue.capLabel(mode, localizations)} · ${roleData.name}';
+      feedback = HeroFeedback(
+        key: const ValueKey('lights-hero-property'),
+        text: line,
+        semanticLabel: localizations.lights_property_choose(line),
+        onTap: caps.length >= 2
+            ? () => _chooseHeroMode(caps, mode ?? caps.first)
+            : null,
+      );
+    }
+
+    Widget? slider;
+    if (mode != null) {
+      final params = _LightsHeroValue.slider(state, mode, isDark);
+      slider = AppSlider(
+        key: const ValueKey('lights-hero-slider'),
+        value: params.position,
+        hero: true,
+        color: ThemeColors.lights,
+        trackGradient: params.track,
+        thumbColor: params.thumb,
+        state: state.isOn ? controlState : ControlState.disabled,
+        semanticLabel: _LightsHeroValue.capLabel(mode, localizations),
+        semanticFormatter: (v) => _LightsHeroValue.format(
+          mode,
+          _LightsHeroValue.toActual(state, mode, v),
+          localizations,
+        ),
+        onChanged: state.isOn
+            ? (v) {
+                HapticFeedback.selectionClick();
+                _onHeroValueChanged(
+                  mode,
+                  _LightsHeroValue.toActual(state, mode, v),
+                  roleData.role,
+                  state,
+                );
+              }
+            : null,
+      );
+    }
+
+    return HeroCard.slots(
+      key: const ValueKey('lights-hero'),
+      fill: true,
+      value: value.text,
+      unit: value.unit,
+      swatch: value.swatch,
+      dimmed: !state.isOn || controlState == ControlState.pending,
+      badge: badge,
+      feedback: feedback,
+      slider: slider,
+      buttons: HeroButtonRow(
+        color: ThemeColors.lights,
+        buttons: _heroButtons(roleData, state, mode, localizations),
+      ),
+    );
+  }
+
+  Future<void> _chooseHeroMode(
+    List<LightHeroCapability> caps,
+    LightHeroCapability current,
+  ) async {
+    final localizations = AppLocalizations.of(context)!;
+    final mode = await showAppSelectionDialog<LightHeroCapability>(
+      context: context,
+      title: localizations.lights_property_title,
+      currentValue: current,
+      options: [
+        for (final cap in caps)
+          SelectionOption(
+            value: cap,
+            label: _LightsHeroValue.capLabel(cap, localizations),
+          ),
+      ],
+    );
+    if (mode != null && mounted) setState(() => _activeHeroMode = mode);
+  }
+
+  /// The hero's preset buttons for [mode]: Off and four levels for
+  /// brightness, Off and warm to cool for colour temperature, Off and named
+  /// colours for hue. Every property leads with Off, and a preset on an off
+  /// role turns it on first, so the role's power is one tap away whichever
+  /// property the hero shows. An on/off-only role gets Off and On.
+  List<HeroButtonData> _heroButtons(
+    LightingRoleData roleData,
+    _LightHeroState state,
+    LightHeroCapability? mode,
+    AppLocalizations localizations,
+  ) {
+    void turn(bool on) {
+      HapticFeedback.mediumImpact();
+      _toggleRoleLights(roleData, on);
+    }
+
+    // An off role turns on, then takes the value, unless the hero has moved
+    // to another role meanwhile: the value would land on the new role's
+    // hero state.
+    VoidCallback preset(LightHeroCapability m, double v) => () async {
+          if (!state.isOn) {
+            final generation = _heroGeneration;
+            await _toggleRoleLights(roleData, true);
+            if (!mounted || generation != _heroGeneration) return;
+          }
+          HapticFeedback.selectionClick();
+          _onHeroValueChanged(m, v, roleData.role, state);
+        };
+
+    final off = HeroButtonData(
+      label: localizations.light_state_off,
+      selected: !state.isOn,
+      onTap: state.isOn ? () => turn(false) : null,
+    );
+
+    switch (mode) {
+      case null:
+        return [
+          off,
+          HeroButtonData(
+            label: localizations.light_state_on,
+            selected: state.isOn,
+            onTap: state.isOn ? null : () => turn(true),
+          ),
+        ];
+      case LightHeroCapability.brightness:
+        HeroButtonData level(int v, {bool optional = false}) => HeroButtonData(
+              label: '$v%',
+              optional: optional,
+              selected: state.isOn && state.brightness.round() == v,
+              onTap: preset(LightHeroCapability.brightness, v.toDouble()),
+            );
+
+        return [
+          off,
+          level(25, optional: true),
+          level(50),
+          level(75, optional: true),
+          level(100),
+        ];
+      case LightHeroCapability.colorTemp:
+        final mid = (state.minColorTemp + state.maxColorTemp) / 2;
+        HeroButtonData temp(String label, double v) => HeroButtonData(
+              label: label,
+              selected: state.isOn && (state.colorTemp - v).abs() < 100,
+              onTap: preset(LightHeroCapability.colorTemp, v),
+            );
+
+        return [
+          off,
+          temp(localizations.light_preset_warm, state.minColorTemp),
+          temp(localizations.light_preset_neutral, mid),
+          temp(localizations.light_preset_cool, state.maxColorTemp),
+        ];
+      case LightHeroCapability.hue:
+        HeroButtonData colour(String label, double v, {bool optional = false}) {
+          final distance = (state.hue - v).abs() % 360;
+          return HeroButtonData(
+            label: label,
+            optional: optional,
+            selected: state.isOn && math.min(distance, 360 - distance) < 15,
+            onTap: preset(LightHeroCapability.hue, v),
+          );
+        }
+
+        return [
+          off,
+          colour(localizations.light_color_red, 10),
+          colour(localizations.light_color_orange, 30, optional: true),
+          colour(localizations.light_color_green, 120),
+          colour(localizations.light_color_blue, 210),
+          colour(localizations.light_color_purple, 280, optional: true),
+        ];
+      case LightHeroCapability.saturation:
+        HeroButtonData sat(int v, {bool optional = false}) => HeroButtonData(
+              label: '$v%',
+              optional: optional,
+              selected: state.isOn && state.saturation.round() == v,
+              onTap: preset(LightHeroCapability.saturation, v.toDouble()),
+            );
+
+        return [
+          off,
+          sat(25, optional: true),
+          sat(50),
+          sat(75, optional: true),
+          sat(100),
+        ];
+      case LightHeroCapability.whiteChannel:
+        // The white channel's own 0 is "0%", not Off: Off is the role's
+        // power.
+        HeroButtonData white(int v) => HeroButtonData(
+              label: '$v%',
+              selected: state.isOn && state.whiteChannel.round() == v,
+              onTap: preset(LightHeroCapability.whiteChannel, v.toDouble()),
+            );
+
+        return [off, white(0), white(50), white(100)];
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -1745,7 +2055,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // --------------------------------------------------------------------------
   // [_buildRoleDataList]: group targets by role, compute onCount/brightness
   // (with optional lookup maps for large lists). [_buildOtherLights],
-  // [_countLightsOn], [_getRoleName], [_getRoleIcon]. [_getLightOptimisticOn]
+  // [_getRoleName], [_getRoleIcon]. [_getLightOptimisticOn]
   // for single-light optimistic on/off.
 
   /// Builds a list of [LightingRoleData] from the given targets.
@@ -1852,21 +2162,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
 
     return lights;
-  }
-
-  int _countLightsOn(List<LightTargetView> targets, DevicesService devicesService) {
-    int count = 0;
-    for (final target in targets) {
-      final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-        if (channel.on) count++;
-      }
-    }
-    return count;
   }
 
   String _getRoleName(LightTargetRole role, AppLocalizations localizations) {
@@ -2074,43 +2369,100 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // HEADER
   // --------------------------------------------------------------------------
 
-  /// Single source of theme color for the page based on lights on/off state.
-  /// - All on: success; all off: neutral; mixed: warning.
-  ThemeColors _getStatusColor(BuildContext context) {
-    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-    final devicesService = context.read<DevicesService>();
-    final configured = targets.where((t) =>
-        t.role != null &&
-        t.role != LightTargetRole.other &&
-        t.role != LightTargetRole.hidden);
-    final totalLights = configured.length;
-    final lightsOn = _countLightsOn(configured.toList(), devicesService);
-    if ((_lightingState?.unknownLights ?? 0) > 0) return ThemeColors.warning;
-    if (lightsOn == totalLights && totalLights > 0) return ThemeColors.success;
-    if (lightsOn == 0) return ThemeColors.neutral;
-    return ThemeColors.warning;
-  }
-
-  /// Resolved color family for the current status color and brightness.
-  ThemeColorFamily _getStatusColorFamily(BuildContext context) =>
-      ThemeColorFamily.get(Theme.of(context).brightness, _getStatusColor(context));
-
+  /// The header: the Lights icon tile in the domain colour, the live-state
+  /// line, the mode chip in landscape, on the square a role button and on
+  /// Compact a scenes button.
   Widget _buildHeader(
-    BuildContext context,
-    int lightsOn,
-    int totalLights, {
-    bool showScenesButton = false,
+    BuildContext context, {
+    int? lightsOn,
+    int? totalLights,
+    String? subtitle,
+    List<LightingRoleData> roles = const [],
+    LightTargetRole? effectiveRole,
   }) {
     final localizations = AppLocalizations.of(context)!;
-    final statusColorFamily = _getStatusColorFamily(context);
+    final hasLightsOn = (lightsOn ?? 0) > 0;
+    final unknown = _lightingState?.unknownLights ?? 0;
+    final selectedRole = effectiveRole == null
+        ? null
+        : roles.where((r) => r.role == effectiveRole).firstOrNull;
 
-    // Build subtitle: intent-aware mode name or lights count
+    final line =
+        subtitle ??
+        (lightsOn != null && totalLights != null
+            ? _headerStateLine(localizations, lightsOn, totalLights)
+            : null);
+
+    final actions = <Widget>[
+      // The square has no room for the role tiles, and its hero may be too
+      // short for the badge: the role chooser sits in the header.
+      if (_screenService.isSquare && roles.length > 1 && effectiveRole != null)
+        HeaderIconButton(
+          key: const ValueKey('lights-roles-button'),
+          icon: MdiIcons.lightbulbGroupOutline,
+          semanticLabel: localizations.lights_roles_title,
+          onTap: () => _showRolesChooser(roles, effectiveRole),
+        ),
+      // The hero badge is how a role's lights open elsewhere. Compact
+      // landscape drops it (spec §4, "Domain hero"), and on the square it
+      // chooses the role, when there are several, or may not fit: the
+      // header takes the lights.
+      if (_screenService.isCompact &&
+          _screenService.isLandscape &&
+          selectedRole != null &&
+          (!_screenService.isSquare || roles.length > 1))
+        HeaderIconButton(
+          key: const ValueKey('lights-role-lights-button'),
+          icon: MdiIcons.lightbulbGroup,
+          semanticLabel: localizations.lights_role_lights(selectedRole.name),
+          onTap: () => _showRoleLightsSheet(selectedRole),
+        ),
+      if (_screenService.isCompact &&
+          lightsOn != null &&
+          _lightingScenes.isNotEmpty)
+        HeaderIconButton(
+          key: const ValueKey('lights-scenes-button'),
+          icon: MdiIcons.starOutline,
+          semanticLabel: localizations.lights_scenes_label,
+          onTap: _showScenesSheet,
+        ),
+    ];
+
+    return PageHeader(
+      title: localizations.domain_lights,
+      subtitle: line,
+      subtitleColor: unknown > 0
+          ? Theme.of(context).status(AppStatus.warning).text
+          : null,
+      leading: HeaderMainIcon(
+        icon: hasLightsOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+        color: ThemeColors.lights,
+      ),
+      landscapeAction: lightsOn != null ? const DeckModeChip() : null,
+      trailing: actions.isEmpty
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: actions,
+            ),
+    );
+  }
+
+  /// "Work · 3 on" while a mode is active or pending, "Custom · 3 on" once
+  /// changed by hand, else "3 of 7"; unknown lights are added at the end.
+  String _headerStateLine(
+    AppLocalizations localizations,
+    int lightsOn,
+    int totalLights,
+  ) {
     String subtitle;
-    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+    final isModeLocked = _modeControlStateService.isLocked(
+      LightingConstants.modeChannelId,
+    );
     final state = _lightingState;
 
     if (isModeLocked) {
-      // Optimistic UI: show locked mode name
       final desiredIndex = _modeControlStateService
           .getDesiredValue(LightingConstants.modeChannelId)
           ?.toInt();
@@ -2121,61 +2473,43 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         final modeName = _getModeName(lockedMode, localizations);
         subtitle = localizations.light_header_mode_count(modeName, lightsOn);
       } else {
-        subtitle = localizations.light_header_count_of_total(lightsOn, totalLights);
+        subtitle = localizations.light_header_count_of_total(
+          lightsOn,
+          totalLights,
+        );
       }
     } else if (state != null &&
         state.isModeFromIntent &&
         !_modeOverriddenByManualChange &&
         state.detectedMode != null) {
-      // Intent active and matching: show detected mode name
       final detectedModeUI = _toLightingModeUI(state.detectedMode);
       if (detectedModeUI != null && detectedModeUI != LightingModeUI.off) {
         final modeName = _getModeName(detectedModeUI, localizations);
         subtitle = localizations.light_header_mode_count(modeName, lightsOn);
       } else {
-        subtitle = localizations.light_header_count_of_total(lightsOn, totalLights);
+        subtitle = localizations.light_header_count_of_total(
+          lightsOn,
+          totalLights,
+        );
       }
     } else if (state?.lastAppliedMode != null && lightsOn > 0) {
-      // Intent exists but overridden and lights are on: show "Custom"
-      subtitle = localizations.light_header_mode_count(localizations.domain_mode_custom, lightsOn);
+      subtitle = localizations.light_header_mode_count(
+        localizations.domain_mode_custom,
+        lightsOn,
+      );
     } else {
-      // No intent or all lights off: show count
-      subtitle = localizations.light_header_count_of_total(lightsOn, totalLights);
+      subtitle = localizations.light_header_count_of_total(
+        lightsOn,
+        totalLights,
+      );
     }
 
     if ((state?.unknownLights ?? 0) > 0) {
-      subtitle = '$subtitle · ${localizations.filter_status_unknown}: ${state!.unknownLights}';
+      subtitle =
+          '$subtitle · ${localizations.filter_status_unknown}: ${state!.unknownLights}';
     }
 
-    // Use actual light state for icon, not pending mode
-    final hasLightsOn = lightsOn > 0;
-
-    // Build trailing widget(s)
-    final List<Widget> trailingWidgets = [
-      if (showScenesButton)
-        HeaderIconButton(
-          icon: MdiIcons.autoFix,
-          onTap: _showScenesSheet,
-        ),
-    ];
-
-    return PageHeader(
-      title: localizations.domain_lights,
-      subtitle: subtitle,
-      subtitleColor: hasLightsOn ? statusColorFamily.base : null,
-      leading: HeaderMainIcon(
-        icon: hasLightsOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-        color: _getStatusColor(context),
-      ),
-      landscapeAction: const DeckModeChip(),
-      trailing: trailingWidgets.isNotEmpty
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpacings.pMd,
-              children: trailingWidgets,
-            )
-          : null,
-    );
+    return subtitle;
   }
 
   /// Get localized name for lighting mode
@@ -2550,538 +2884,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return null;
   }
 
-  // --------------------------------------------------------------------------
-  // ROLE SELECTOR
-  // --------------------------------------------------------------------------
-
-  Widget _buildRoleSelector(
-    BuildContext context,
-    List<LightingRoleData> roles, {
-    bool isLandscape = false,
-    LightTargetRole? effectiveRole,
-  }) {
-    final localizations = AppLocalizations.of(context)!;
-    final statusColor = _getStatusColor(context);
-    final statusColorFamily = _getStatusColorFamily(context);
-
-    // Build status icons for roles with lights on
-    final Map<LightTargetRole, (IconData, Color)> statusIcons = {};
-    for (final role in roles) {
-      final pendingState = _getRolePendingState(role.role);
-      final isActive = pendingState ?? role.hasLightsOn;
-      if (isActive) {
-        statusIcons[role.role] = (MdiIcons.circle, statusColorFamily.base);
-      }
-    }
-
-    return ModeSelector<LightTargetRole>(
-      modes: roles.map((roleData) {
-        // Value line: brightness when on, "Off" when all off
-        final valueText = roleData.onCount == 0
-            ? localizations.light_state_off
-            : roleData.brightness != null
-                ? '${roleData.brightness}%'
-                : localizations.light_state_on;
-
-        return ModeOption<LightTargetRole>(
-          value: roleData.role,
-          icon: roleData.icon,
-          label: roleData.name,
-          color: statusColor,
-          iconSize: AppSpacings.scale(18),
-          semanticValue: valueText,
-          labelBuilder: (isSelected, contentColor) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  roleData.name,
-                  style: TextStyle(
-                    color: contentColor,
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w500,
-                    height: 1,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  valueText,
-                  style: TextStyle(
-                    color: contentColor,
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                  ),
-                  maxLines: 1,
-                ),
-              ],
-            );
-          },
-        );
-      }).toList(),
-      selectedValue: effectiveRole,
-      onChanged: (role) {
-        _resetHeroControlState();
-        setState(() {
-          _selectedRole = role;
-          // Reset hero mode when switching roles
-          _activeHeroMode = null;
-        });
-      },
-      orientation: isLandscape
-          ? ModeSelectorOrientation.vertical
-          : ModeSelectorOrientation.horizontal,
-      iconPlacement: ModeSelectorIconPlacement.top,
-      color: statusColor,
-      statusIcons: statusIcons,
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // PORTRAIT LAYOUT
-  // --------------------------------------------------------------------------
-
-  Widget _buildPortraitLayout(
-    BuildContext context,
-    List<LightingRoleData> roles,
-    AppLocalizations localizations, {
-    _LightHeroState? heroState,
-    LightTargetRole? effectiveRole,
-  }) {
-    final hasScenes = _lightingScenes.isNotEmpty;
-    final statusColor = _getStatusColor(context);
-
-    return PortraitViewLayout(
-      scrollable: false,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Hero card for selected role
-          if (heroState != null)
-            _LightsHeroCard(
-              state: heroState,
-              statusColor: statusColor,
-              screenService: _screenService,
-              isPortrait: true,
-              onModeChanged: (mode) {
-                setState(() => _activeHeroMode = mode);
-              },
-              onToggle: effectiveRole != null
-                  ? (turnOn) {
-                      final roleData = _getRoleDataForRole(roles, effectiveRole);
-                      if (roleData != null) _toggleRoleLights(roleData, turnOn);
-                    }
-                  : null,
-              onShowLights: effectiveRole != null
-                  ? () {
-                      final roleData = _getRoleDataForRole(roles, effectiveRole);
-                      if (roleData != null) _showRoleLightsSheet(roleData);
-                    }
-                  : null,
-              onValueChanged: effectiveRole != null
-                  ? (mode, value) {
-                      _onHeroValueChanged(
-                          mode, value, effectiveRole, heroState);
-                    }
-                  : null,
-            ),
-
-          if (roles.length > 1) ...[
-            AppSpacings.spacingMdVertical,
-            _buildRoleSelector(context, roles, effectiveRole: effectiveRole),
-          ],
-
-          if (hasScenes) ...[
-            AppSpacings.spacingMdVertical,
-            Expanded(child: _buildPortraitScenesGrid(context)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // LANDSCAPE LAYOUT
-  // --------------------------------------------------------------------------
-
-  Widget _buildLandscapeLayout(
-    BuildContext context,
-    List<LightingRoleData> roles,
-    AppLocalizations localizations, {
-    _LightHeroState? heroState,
-    LightTargetRole? effectiveRole,
-    bool showScenes = true,
-  }) {
-    final hasScenes = showScenes && _lightingScenes.isNotEmpty;
-
-    return LandscapeViewLayout(
-      mainContentPadding: EdgeInsets.only(
-        right: AppSpacings.pMd,
-        left: AppSpacings.pMd,
-        bottom: AppSpacings.pMd,
-      ),
-      mainContent: _buildLandscapeMainContent(
-        context, roles,
-        heroState: heroState,
-        effectiveRole: effectiveRole,
-      ),
-      additionalContentScrollable: false,
-      additionalContentPadding: EdgeInsets.only(
-        left: AppSpacings.pMd,
-        bottom: AppSpacings.pMd,
-      ),
-      additionalContent: (roles.length > 1 || hasScenes)
-          ? _buildLandscapeAdditionalColumn(
-              context, roles, localizations,
-              effectiveRole: effectiveRole,
-              showScenes: hasScenes,
-            )
-          : null,
-    );
-  }
-
-  Widget _buildLandscapeMainContent(
-    BuildContext context,
-    List<LightingRoleData> roles, {
-    _LightHeroState? heroState,
-    LightTargetRole? effectiveRole,
-  }) {
-    final statusColor = _getStatusColor(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Hero card for selected role
-        if (heroState != null)
-          Expanded(
-            child: _LightsHeroCard(
-              state: heroState,
-              statusColor: statusColor,
-              screenService: _screenService,
-              onModeChanged: (mode) {
-                setState(() => _activeHeroMode = mode);
-              },
-              onToggle: effectiveRole != null
-                  ? (turnOn) {
-                      final roleData = _getRoleDataForRole(roles, effectiveRole);
-                      if (roleData != null) _toggleRoleLights(roleData, turnOn);
-                    }
-                  : null,
-              onShowLights: effectiveRole != null
-                  ? () {
-                      final roleData = _getRoleDataForRole(roles, effectiveRole);
-                      if (roleData != null) _showRoleLightsSheet(roleData);
-                    }
-                  : null,
-              onValueChanged: effectiveRole != null
-                  ? (mode, value) {
-                      _onHeroValueChanged(
-                          mode, value, effectiveRole, heroState);
-                    }
-                  : null,
-            ),
-          ),
-
-      ],
-    );
-  }
-
-  Widget _buildLandscapeAdditionalColumn(
-    BuildContext context,
-    List<LightingRoleData> roles,
-    AppLocalizations localizations, {
-    LightTargetRole? effectiveRole,
-    bool showScenes = true,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (roles.length > 1)
-          _buildLandscapeRolesCard(
-            context, roles,
-            effectiveRole: effectiveRole,
-          ),
-        if (showScenes) ...[
-          if (roles.length > 1) AppSpacings.spacingMdVertical,
-          Expanded(
-            child: _buildLandscapeScenesColumn(context, localizations),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildLandscapeRolesCard(
-    BuildContext context,
-    List<LightingRoleData> roles, {
-    LightTargetRole? effectiveRole,
-  }) {
-    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
-
-    return Column(
-      spacing: AppSpacings.pSm,
-      children: roles
-          .map((role) => _buildRoleTileHorizontal(
-                context, role, tileHeight,
-                effectiveRole: effectiveRole,
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _buildRoleTileHorizontal(
-    BuildContext context,
-    LightingRoleData roleData,
-    double height, {
-    LightTargetRole? effectiveRole,
-  }) {
-    final localizations = AppLocalizations.of(context)!;
-    final statusColor = _getStatusColor(context);
-
-    final pendingState = _getRolePendingState(roleData.role);
-    final tilePending = _roleTilePendingOnStates[roleData.role];
-    final isOn = tilePending ?? pendingState ?? roleData.hasLightsOn;
-
-    final valueText = (tilePending != null)
-        ? (tilePending
-            ? localizations.light_state_on
-            : localizations.light_state_off)
-        : roleData.onCount == 0
-            ? localizations.light_state_off
-            : roleData.brightness != null
-                ? '${roleData.brightness}%'
-                : localizations.light_state_on;
-
-    return SizedBox(
-      height: height,
-      child: UniversalTile(
-        layout: TileLayout.horizontal,
-        icon: roleData.icon,
-        name: valueText,
-        status: roleData.name,
-        iconAccentColor: isOn ? statusColor : null,
-        isActive: roleData.role == effectiveRole,
-        activeColor: statusColor,
-        showGlow: false,
-        showDoubleBorder: false,
-        showInactiveBorder: false,
-        onIconTap: () {
-          final turnOn = !isOn;
-          _roleTilePendingTimers[roleData.role]?.cancel();
-          setState(() {
-            _roleTilePendingOnStates[roleData.role] = turnOn;
-          });
-          _roleTilePendingTimers[roleData.role] = Timer(
-            const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
-            () {
-              if (mounted) {
-                setState(() {
-                  _roleTilePendingOnStates.remove(roleData.role);
-                });
-              }
-            },
-          );
-          _toggleRoleLights(
-            roleData, turnOn,
-            updateHero: roleData.role == effectiveRole,
-          );
-        },
-        onTileTap: () {
-          _resetHeroControlState();
-          setState(() {
-            _selectedRole = roleData.role;
-            _activeHeroMode = null;
-          });
-        },
-      ),
-    );
-  }
-
-  Widget _buildLandscapeScenesColumn(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
-    final scenes = _lightingScenes;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
-        final minSpacing = AppSpacings.pSm;
-        // Reserve space for SectionTitle + gap below it
-        final titleAreaHeight = AppFontSize.small * 1.4 + AppSpacings.pMd;
-        final availableHeight = constraints.maxHeight - titleAreaHeight;
-
-        final tileCount = ((availableHeight + minSpacing) /
-                (tileHeight + minSpacing))
-            .floor()
-            .clamp(1, scenes.length);
-
-        final hasOverflow = scenes.length > tileCount;
-        final displayCount = hasOverflow ? tileCount : scenes.length;
-
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionTitle(
-              title: localizations.space_scenes_title,
-              icon: MdiIcons.autoFix,
-            ),
-            AppSpacings.spacingMdVertical,
-            ...List.generate(displayCount, (index) {
-              final isLast = index == displayCount - 1;
-
-              if (hasOverflow && isLast) {
-                return Padding(
-                  padding: EdgeInsets.only(
-                    top: index > 0 ? minSpacing : 0,
-                  ),
-                  child: _buildMoreScenesTileHorizontal(
-                    context,
-                    scenes.length - (tileCount - 1),
-                    tileHeight,
-                    localizations,
-                  ),
-                );
-              }
-
-              final scene = scenes[index];
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  top: index > 0 ? minSpacing : 0,
-                ),
-                child: SizedBox(
-                  height: tileHeight,
-                  child: UniversalTile(
-                    layout: TileLayout.horizontal,
-                    icon: scene.iconData,
-                    name: scene.name,
-                    isActive: _triggeringSceneId == scene.id,
-                    activeColor: _getStatusColor(context),
-                    showGlow: false,
-                    showDoubleBorder: false,
-                    showInactiveBorder: false,
-                    onTileTap: _isSceneTriggering ? null : () => _activateScene(scene),
-                  ),
-                ),
-              );
-            }),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildMoreScenesTileHorizontal(
-    BuildContext context,
-    int overflowCount,
-    double height,
-    AppLocalizations localizations,
-  ) {
-    return SizedBox(
-      height: height,
-      child: UniversalTile(
-        layout: TileLayout.horizontal,
-        icon: MdiIcons.dotsHorizontal,
-        name: '+$overflowCount',
-        status: localizations.lights_more_scenes,
-        isActive: false,
-        showGlow: false,
-        showDoubleBorder: false,
-        showInactiveBorder: false,
-        onTileTap: _showScenesSheet,
-      ),
-    );
-  }
-
-  Widget _buildPortraitScenesGrid(BuildContext context) {
-    final isSmallScreen = _screenService.isSmallScreen;
-    final scenes = _lightingScenes;
-    final crossAxisCount = isSmallScreen ? 2 : 3;
-    final spacing = AppSpacings.pSm;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableHeight = constraints.maxHeight;
-        final gridWidth = constraints.maxWidth;
-        final cellWidth =
-            (gridWidth - spacing * (crossAxisCount - 1)) / crossAxisCount;
-
-        final double childAspectRatio;
-        if (isSmallScreen) {
-          final tileHeight =
-              AppSpacings.scale(AppTileHeight.horizontal * 0.85);
-          childAspectRatio = cellWidth / tileHeight;
-        } else {
-          childAspectRatio = 1.3;
-        }
-
-        final cellHeight = cellWidth / childAspectRatio;
-        final maxRows = ((availableHeight + spacing) / (cellHeight + spacing))
-            .floor()
-            .clamp(1, 100);
-        final maxVisible =
-            (maxRows * crossAxisCount).clamp(1, scenes.length);
-        final hasOverflow = scenes.length > maxVisible;
-        final displayCount = hasOverflow ? maxVisible : scenes.length;
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: childAspectRatio,
-            crossAxisSpacing: spacing,
-            mainAxisSpacing: spacing,
-          ),
-          itemCount: displayCount,
-          itemBuilder: (context, index) {
-            if (hasOverflow && index == displayCount - 1) {
-              return _buildMoreScenesTile(
-                context,
-                scenes.length - (maxVisible - 1),
-              );
-            }
-            final scene = scenes[index];
-            return _SceneTile(
-              scene: scene,
-              icon: scene.iconData,
-              onTap: _isSceneTriggering ? null : () => _activateScene(scene),
-              isVertical: !isSmallScreen,
-              isTriggering: _triggeringSceneId == scene.id,
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildMoreScenesTile(BuildContext context, int overflowCount) {
-    final localizations = AppLocalizations.of(context)!;
-    final isSmallScreen = _screenService.isSmallScreen;
-    final compactPadding = isSmallScreen
-        ? EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-            vertical: AppSpacings.pXs,
-          )
-        : null;
-
-    return UniversalTile(
-      layout: isSmallScreen ? TileLayout.horizontal : TileLayout.vertical,
-      icon: MdiIcons.dotsHorizontal,
-      name: '+$overflowCount',
-      status: localizations.space_scenes_title,
-      iconAccentColor: null,
-      isActive: false,
-      showGlow: false,
-      showInactiveBorder: false,
-      contentPadding: compactPadding,
-      onTileTap: _showScenesSheet,
-    );
-  }
-
   void _showScenesSheet() {
     final scenes = _lightingScenes;
     if (scenes.isEmpty) return;
@@ -3232,7 +3034,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     AppLocalizations localizations,
   ) {
-    final statusColor = _getStatusColor(context);
+    const statusColor = ThemeColors.lights;
     return [
       ModeOption(
         value: LightingModeUI.work,
@@ -3347,6 +3149,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final stateRole = mapTargetRoleToStateRole(roleData.role);
     if (stateRole == null) return;
+    final generation = _heroGeneration;
+    // After the request, the hero is only this role's if no switch happened.
+    bool heroStillOurs() => updateHero && generation == _heroGeneration;
 
     try {
       if (updateHero) {
@@ -3381,13 +3186,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       if (!success) {
         Toast.showError(context, message: localizations.action_failed);
-        if (updateHero) {
+        if (heroStillOurs()) {
           _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
           setState(() {
             _heroPendingOnState = null;
           });
         }
-      } else if (updateHero) {
+      } else if (heroStillOurs()) {
         _heroPendingOnStateClearTimer = Timer(
           const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
           () {
@@ -3402,7 +3207,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     } catch (e) {
       if (!mounted) return;
       Toast.showError(context, message: localizations.action_failed);
-      if (updateHero) {
+      if (heroStillOurs()) {
         _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
         setState(() {
           _heroPendingOnState = null;
@@ -3769,914 +3574,132 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 }
 
 // =============================================================================
-// PRIVATE WIDGETS — HERO GRADIENT DEFINITIONS
+// PRIVATE WIDGETS — HERO VALUE
 // =============================================================================
 
-class _HeroGradients {
-  _HeroGradients._();
+/// What the lights hero shows for a light property: the numeral and its
+/// unit, a colour swatch, the slider's track and position.
+@immutable
+class _LightsHeroValue {
+  const _LightsHeroValue(this.text, {this.unit, this.swatch});
 
-  /// Brightness: dark fill → white (matches _BrightnessPanel).
-  static List<Color> brightness(bool isDark) => [
-        isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
-        AppColors.white,
-      ];
+  final String text;
+  final String? unit;
+  final Color? swatch;
 
-  /// Color temperature: warm orange → ivory → cool blue (matches _ColorTempPanel).
-  static const colorTemp = [
-    Color(0xFFFF9800),
-    Color(0xFFFFFAF0),
-    Color(0xFFE3F2FD),
-    Color(0xFF64B5F6),
-  ];
-
-  /// Hue: full spectrum rainbow (standard hue wheel: 0°=red → 360°=red).
-  static const hue = [
-    Color(0xFFFF0000),
-    Color(0xFFFFFF00),
-    Color(0xFF00FF00),
-    Color(0xFF00FFFF),
-    Color(0xFF0000FF),
-    Color(0xFFFF00FF),
-    Color(0xFFFF0000),
-  ];
-
-  /// Saturation: white → current hue color (matches _ColorPanel sat slider).
-  static List<Color> saturation(Color hueColor) => [
-        AppColors.white,
-        hueColor,
-      ];
-
-  /// White channel: dark fill → white (matches _WhitePanel).
-  static List<Color> whiteChannel(bool isDark) => [
-        isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
-        AppColors.white,
-      ];
-}
-
-// =============================================================================
-// PRIVATE WIDGETS — LIGHTS HERO CARD
-// =============================================================================
-// Hero display for a selected light role. Shows value display, capability
-// mode switcher, gradient slider track with thumb, presets, and on/off toggle.
-
-class _LightsHeroCard extends StatelessWidget {
-  final _LightHeroState state;
-  final ThemeColors statusColor;
-  final ScreenService screenService;
-  final bool isPortrait;
-  final ValueChanged<LightHeroCapability>? onModeChanged;
-  final ValueChanged<bool>? onToggle;
-  final VoidCallback? onShowLights;
-  final void Function(LightHeroCapability mode, double value)? onValueChanged;
-
-  const _LightsHeroCard({
-    required this.state,
-    required this.statusColor,
-    required this.screenService,
-    this.isPortrait = false,
-    this.onModeChanged,
-    this.onToggle,
-    this.onShowLights,
-    this.onValueChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final screenService = this.screenService;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light, statusColor);
-
-    return HeroCard(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isCompactFont = screenService.isPortrait
-              ? screenService.isSmallScreen
-              : screenService.isSmallScreen || screenService.isMediumScreen;
-          final fontSize = isCompactFont
-              ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
-              : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
-
-          final localizations = AppLocalizations.of(context)!;
-
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (state.isOnOffOnly) ...[
-                _buildOnOffHero(isDark, colorFamily, localizations),
-              ] else ...[
-                _buildHeroRow(isDark, colorFamily, fontSize),
-                if (state.showModeSwitcher) ...[
-                  AppSpacings.spacingLgVertical,
-                  _buildModeSwitcher(isDark, colorFamily, localizations),
-                  AppSpacings.spacingMdVertical,
-                ],
-                AppSpacings.spacingMdVertical,
-                _buildActiveSlider(isDark, colorFamily, localizations),
-              ],
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  // ── Hero Row (badge on left, giant value on right) ───────────
-
-  Widget _buildHeroRow(
-    bool isDark,
-    ThemeColorFamily colorFamily,
-    double fontSize,
-  ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      spacing: AppSpacings.pSm,
-      children: [
-        _buildBadge(isDark, colorFamily),
-        _buildGiantValue(isDark, fontSize),
-      ],
-    );
-  }
-
-  // ── Badge (split: left = power toggle, right = device count → sheet) ──
-
-  Widget _buildBadge(bool isDark, ThemeColorFamily colorFamily) {
-    final screenService = this.screenService;
-    final useBaseFontSize = screenService.isLandscape
-        ? screenService.isLargeScreen
-        : !screenService.isSmallScreen;
-    final fontSize =
-        useBaseFontSize ? AppFontSize.base : AppFontSize.small;
-
-    final onColor = colorFamily.base;
-    final offColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final onBg = colorFamily.light9;
-    final offBg = isDark ? AppFillColorDark.base : AppFillColorLight.lighter;
-
-    final isOn = state.isOn;
-    final activeColor = isOn ? onColor : offColor;
-    final activeBg = isOn ? onBg : offBg;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Left part: power icon + role name → toggle
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            onToggle?.call(!isOn);
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pXs,
-            ),
-            height: AppSpacings.scale(24),
-            decoration: BoxDecoration(
-              color: activeBg,
-              borderRadius: BorderRadius.horizontal(
-                left: Radius.circular(AppBorderRadius.round),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpacings.pSm,
-              children: [
-                Icon(
-                  MdiIcons.power,
-                  size: fontSize,
-                  color: activeColor,
-                ),
-                Text(
-                  state.roleName.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w700,
-                    color: activeColor,
-                    letterSpacing: AppSpacings.scale(0.3),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        // Divider between left and right parts
-        Container(
-          width: AppSpacings.scale(1),
-          color: activeColor.withValues(alpha: 0.3),
-          height: fontSize + AppSpacings.pXs * 2,
-        ),
-        // Right part: status icon + count circle → show lights sheet
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onShowLights,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pXs,
-            ),
-            height: AppSpacings.scale(24),
-            decoration: BoxDecoration(
-              color: activeBg,
-              borderRadius: BorderRadius.horizontal(
-                right: Radius.circular(AppBorderRadius.round),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpacings.pSm,
-              children: [
-                Icon(
-                  state.statusIcon,
-                  size: fontSize,
-                  color: activeColor,
-                ),
-                Container(
-                  width: fontSize,
-                  height: fontSize,
-                  decoration: BoxDecoration(
-                    color: activeColor,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '${state.deviceCount}',
-                    style: TextStyle(
-                      fontSize: fontSize * 0.6,
-                      fontWeight: FontWeight.w700,
-                      color: activeBg,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Giant Value (number with unit at top-right, color swatch at bottom-right)
-
-  Widget _buildGiantValue(bool isDark, double fontSize) {
-    final unitFontSize = fontSize * 0.27;
-    final swatchSize = fontSize * 0.22;
-
-    // Always show brightness; fallback: colorTemp → whiteChannel
-    final String value;
-    final bool useIcon;
-    if (state.capabilities.contains(LightHeroCapability.brightness)) {
-      value = state.brightness.round().toString();
-      useIcon = true;
-    } else if (state.capabilities.contains(LightHeroCapability.colorTemp)) {
-      value = state.colorTemp.round().toString();
-      useIcon = false;
-    } else if (state.capabilities.contains(LightHeroCapability.whiteChannel)) {
-      value = state.whiteChannel.round().toString();
-      useIcon = true;
-    } else {
-      value = state.brightness.round().toString();
-      useIcon = true;
-    }
-
-    final textColor =
-        isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
-    final unitColor =
-        isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
-
-    // Color swatch: show HSV color for hue-capable, colorTemp color for temp-capable
-    Color? swatchColor;
-    if (state.capabilities.contains(LightHeroCapability.hue)) {
-      swatchColor = state.currentColor;
-    } else if (state.capabilities.contains(LightHeroCapability.colorTemp)) {
-      final tempRange = state.maxColorTemp - state.minColorTemp;
-      final t = tempRange > 0
-          ? (state.colorTemp - state.minColorTemp) / tempRange
-          : 0.5;
-      swatchColor = _sampleGradient(_HeroGradients.colorTemp, t);
-    }
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: AppNumeralFont.display,
-            fontFamily: AppNumeralFont.family,
-            color: textColor,
-            height: 0.7,
-          ),
-        ),
-        Positioned(
-          top: 0,
-          right: -unitFontSize,
-          child: useIcon
-              ? Icon(
-                  MdiIcons.weatherSunny,
-                  size: unitFontSize,
-                  color: unitColor,
-                )
-              : Text(
-                  'K',
-                  style: TextStyle(
-                    fontSize: unitFontSize,
-                    fontWeight: FontWeight.w200,
-                    color: unitColor,
-                  ),
-                ),
-        ),
-        if (swatchColor != null)
-          Positioned(
-            bottom: 0,
-            right: -unitFontSize * 1.1,
-            child: Container(
-              width: swatchSize,
-              height: swatchSize,
-              decoration: BoxDecoration(
-                color: swatchColor,
-                borderRadius: BorderRadius.circular(AppBorderRadius.small),
-                border: !isDark
-                    ? Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      )
-                    : null,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  // ── Mode Switcher (ModeSelector) ──────────────────────────────
-
-  Widget _buildModeSwitcher(bool isDark, ThemeColorFamily colorFamily, AppLocalizations localizations) {
-    final caps = state.capabilities.toList();
-    caps.sort((a, b) => a.index.compareTo(b.index));
-
-    final isSmallPortrait = isPortrait && screenService.isSmallScreen;
-
-    return ModeSelector<LightHeroCapability>(
-      modes: caps.map((cap) => ModeOption<LightHeroCapability>(
-        value: cap,
-        icon: _capIcon(cap),
-        label: _capLabel(cap, localizations),
-      )).toList(),
-      selectedValue: state.activeMode ?? caps.first,
-      onChanged: (cap) => onModeChanged?.call(cap),
-      orientation: ModeSelectorOrientation.horizontal,
-      iconPlacement: isSmallPortrait
-          ? ModeSelectorIconPlacement.left
-          : ModeSelectorIconPlacement.top,
-      showLabels: isSmallPortrait || !isPortrait ? false : null,
-      color: statusColor,
-    );
-  }
-
-  IconData _capIcon(LightHeroCapability cap) {
-    return switch (cap) {
-      LightHeroCapability.brightness => MdiIcons.weatherSunny,
-      LightHeroCapability.colorTemp => MdiIcons.thermometer,
-      LightHeroCapability.hue => MdiIcons.paletteOutline,
-      LightHeroCapability.saturation => MdiIcons.opacity,
-      LightHeroCapability.whiteChannel => MdiIcons.squareRounded,
-    };
-  }
-
-  String _capLabel(LightHeroCapability cap, AppLocalizations l) {
-    return switch (cap) {
-      LightHeroCapability.brightness => l.light_cap_brightness,
-      LightHeroCapability.colorTemp => l.light_cap_color_temp,
-      LightHeroCapability.hue => l.light_cap_hue,
-      LightHeroCapability.saturation => l.light_cap_saturation,
-      LightHeroCapability.whiteChannel => l.light_cap_white,
-    };
-  }
-
-  // ── Active Slider (SliderWithSteps) ───────────────────────────
-
-  Widget _buildActiveSlider(bool isDark, ThemeColorFamily colorFamily, AppLocalizations localizations) {
-    final mode = state.activeMode ??
-        (state.capabilities.isNotEmpty
-            ? state.capabilities.first
-            : LightHeroCapability.brightness);
-
-    final (gradientColors, thumbColor, position, steps) =
-        _sliderParams(isDark, colorFamily, mode, localizations);
-
-    return Column(
-      spacing: AppSpacings.pMd,
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-          ),
-          child: SliderWithSteps(
-            value: position.clamp(0.0, 1.0),
-            themeColor: ThemeColors.neutral,
-            trackGradientColors: gradientColors,
-            thumbBorderColor: thumbColor,
-            steps: steps,
-            enabled: state.isOn,
-            onChanged: state.isOn
-                ? (v) {
-                    HapticFeedback.selectionClick();
-                    onValueChanged?.call(
-                        mode, _sliderToActualValue(mode, v));
-                  }
-                : null,
-          ),
-        ),
-        _buildPresets(isDark, colorFamily, mode, localizations),
-      ],
-    );
-  }
-
-  /// Returns (gradientColors, thumbBorderColor, normalizedValue, stepLabels).
-  (List<Color>, Color?, double, List<String>) _sliderParams(
-    bool isDark,
-    ThemeColorFamily colorFamily,
-    LightHeroCapability mode,
+  static _LightsHeroValue of(
+    _LightHeroState state,
+    LightHeroCapability? mode,
     AppLocalizations localizations,
   ) {
-    final currentHueColor =
-        HSVColor.fromAHSV(1, state.hue.clamp(0, 360), 1, 1).toColor();
+    if (!state.isOn) return _LightsHeroValue(localizations.light_state_off);
+
+    return switch (mode) {
+      null => _LightsHeroValue(localizations.light_state_on),
+      LightHeroCapability.brightness => _LightsHeroValue(
+        '${state.brightness.round()}',
+        unit: ' %',
+      ),
+      LightHeroCapability.colorTemp => _LightsHeroValue(
+        '${state.colorTemp.round()}',
+        unit: ' K',
+      ),
+      LightHeroCapability.hue => _LightsHeroValue(
+        '${state.hue.round()}',
+        unit: '°',
+        swatch: state.currentColor,
+      ),
+      LightHeroCapability.saturation => _LightsHeroValue(
+        '${state.saturation.round()}',
+        unit: ' %',
+        swatch: state.currentColor,
+      ),
+      LightHeroCapability.whiteChannel => _LightsHeroValue(
+        '${state.whiteChannel.round()}',
+        unit: ' %',
+      ),
+    };
+  }
+
+  static String capLabel(LightHeroCapability cap, AppLocalizations l) =>
+      switch (cap) {
+        LightHeroCapability.brightness => l.light_cap_brightness,
+        LightHeroCapability.colorTemp => l.light_cap_color_temp,
+        LightHeroCapability.hue => l.light_cap_hue,
+        LightHeroCapability.saturation => l.light_cap_saturation,
+        LightHeroCapability.whiteChannel => l.light_cap_white,
+      };
+
+  /// [value] in the property's unit, for a screen reader.
+  static String format(
+    LightHeroCapability mode,
+    double value,
+    AppLocalizations localizations,
+  ) => switch (mode) {
+    LightHeroCapability.colorTemp => '${value.round()} K',
+    LightHeroCapability.hue => '${value.round()}°',
+    _ => '${value.round()} %',
+  };
+
+  /// The slider's track, thumb ring and position (0–1) for [mode].
+  static ({List<Color> track, Color? thumb, double position}) slider(
+    _LightHeroState state,
+    LightHeroCapability mode,
+    bool isDark,
+  ) {
+    final hueColor = HSVColor.fromAHSV(1, state.hue.clamp(0, 360), 1, 1).toColor();
     final tempRange = state.maxColorTemp - state.minColorTemp;
     final hueRange = state.maxHue - state.minHue;
-    final tempPosition = tempRange > 0
-        ? (state.colorTemp - state.minColorTemp) / tempRange
-        : 0.5;
 
     return switch (mode) {
       LightHeroCapability.brightness => (
-          _HeroGradients.brightness(isDark),
-          null,
-          state.brightness / 100,
-          ['0%', '25%', '50%', '75%', '100%'],
+        track: AppHeroTracks.brightness(
+          isDark ? Brightness.dark : Brightness.light,
         ),
+        thumb: null,
+        position: (state.brightness / 100).clamp(0.0, 1.0),
+      ),
       LightHeroCapability.colorTemp => (
-          _HeroGradients.colorTemp,
-          _sampleGradient(_HeroGradients.colorTemp, tempPosition),
-          tempPosition,
-          [
-            '${state.minColorTemp.round()}K',
-            '${((state.minColorTemp + state.maxColorTemp) / 2).round()}K',
-            '${state.maxColorTemp.round()}K',
-          ],
-        ),
+        track: AppHeroTracks.colorTemperature,
+        thumb: null,
+        position: tempRange > 0
+            ? ((state.colorTemp - state.minColorTemp) / tempRange).clamp(
+                0.0,
+                1.0,
+              )
+            : 0.5,
+      ),
       LightHeroCapability.hue => (
-          _HeroGradients.hue,
-          currentHueColor,
-          hueRange > 0 ? (state.hue - state.minHue) / hueRange : 0.0,
-          ['0°', '120°', '240°', '359°'],
-        ),
+        track: AppHeroTracks.hue,
+        thumb: null,
+        position: hueRange > 0
+            ? ((state.hue - state.minHue) / hueRange).clamp(0.0, 1.0)
+            : 0.0,
+      ),
       LightHeroCapability.saturation => (
-          _HeroGradients.saturation(currentHueColor),
-          currentHueColor,
-          state.saturation / 100,
-          ['0%', '25%', '50%', '75%', '100%'],
-        ),
+        track: AppHeroTracks.saturation(hueColor),
+        thumb: null,
+        position: (state.saturation / 100).clamp(0.0, 1.0),
+      ),
       LightHeroCapability.whiteChannel => (
-          _HeroGradients.whiteChannel(isDark),
-          null,
-          state.whiteChannel / 100,
-          [localizations.on_state_off, '25%', '50%', '75%', '100%'],
-        ),
+        track: AppHeroTracks.white,
+        thumb: null,
+        position: (state.whiteChannel / 100).clamp(0.0, 1.0),
+      ),
     };
   }
 
-  /// Sample a color from a gradient at normalized position [t] (0.0–1.0).
-  /// Colors are evenly distributed along the gradient.
-  Color _sampleGradient(List<Color> colors, double t) {
-    assert(colors.length >= 2);
-    t = t.clamp(0.0, 1.0);
-    final segments = colors.length - 1;
-    final segment = (t * segments).floor().clamp(0, segments - 1);
-    final localT = (t * segments - segment).clamp(0.0, 1.0);
-    return Color.lerp(colors[segment], colors[segment + 1], localT)!;
-  }
-
-  /// Convert a 0.0–1.0 slider position back to the actual domain value.
-  double _sliderToActualValue(LightHeroCapability mode, double v) {
-    return switch (mode) {
-      LightHeroCapability.brightness => v * 100,
-      LightHeroCapability.colorTemp =>
-        state.minColorTemp + (state.maxColorTemp - state.minColorTemp) * v,
-      LightHeroCapability.hue =>
-        state.minHue + (state.maxHue - state.minHue) * v,
-      LightHeroCapability.saturation => v * 100,
-      LightHeroCapability.whiteChannel => v * 100,
-    };
-  }
-
-  // ── Presets ────────────────────────────────────────────────────
-
-  Widget _buildPresets(
-    bool isDark,
-    ThemeColorFamily colorFamily,
+  /// A slider position (0–1) as the property's value.
+  static double toActual(
+    _LightHeroState state,
     LightHeroCapability mode,
-    AppLocalizations localizations,
-  ) {
-    final items = mode == LightHeroCapability.hue
-        ? _colorPresetItems(isDark, colorFamily, localizations)
-        : _chipPresetItems(isDark, colorFamily, mode, localizations);
-
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    final cardColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-      ),
-      child: HorizontalScrollWithGradient(
-        height: AppSpacings.scale(20),
-        layoutPadding: AppSpacings.pLg,
-        itemCount: items.length,
-        separatorWidth: AppSpacings.pMd,
-        backgroundColor: cardColor,
-        itemBuilder: (context, index) => items[index],
-      ),
-    );
-  }
-
-  List<SliderPreset> _presetsForMode(LightHeroCapability mode, AppLocalizations localizations) {
-    return switch (mode) {
-      LightHeroCapability.brightness => [
-          SliderPreset(
-            label: '10%',
-            value: 10,
-            isActive: state.brightness.round() == 10,
-          ),
-          SliderPreset(
-            label: '25%',
-            value: 25,
-            isActive: state.brightness.round() == 25,
-          ),
-          SliderPreset(
-            label: '50%',
-            value: 50,
-            isActive: state.brightness.round() == 50,
-          ),
-          SliderPreset(
-            label: '75%',
-            value: 75,
-            isActive: state.brightness.round() == 75,
-          ),
-          SliderPreset(
-            label: '100%',
-            value: 100,
-            isActive: state.brightness.round() == 100,
-          ),
-        ],
-      LightHeroCapability.colorTemp => [
-          SliderPreset(
-            label: localizations.light_preset_candle,
-            value: 2700,
-            isActive: state.colorTemp.round() == 2700,
-          ),
-          SliderPreset(
-            label: localizations.light_preset_warm_white,
-            value: 3200,
-            isActive: state.colorTemp.round() == 3200,
-          ),
-          SliderPreset(
-            label: localizations.light_preset_neutral,
-            value: 4000,
-            isActive: state.colorTemp.round() == 4000,
-          ),
-          SliderPreset(
-            label: localizations.light_preset_daylight,
-            value: 5000,
-            isActive: state.colorTemp.round() == 5000,
-          ),
-          SliderPreset(
-            label: localizations.light_preset_cool_white,
-            value: 6500,
-            isActive: state.colorTemp.round() == 6500,
-          ),
-        ],
-      LightHeroCapability.saturation => [
-          SliderPreset(
-            label: '25%',
-            value: 25,
-            isActive: state.saturation.round() == 25,
-          ),
-          SliderPreset(
-            label: '50%',
-            value: 50,
-            isActive: state.saturation.round() == 50,
-          ),
-          SliderPreset(
-            label: '75%',
-            value: 75,
-            isActive: state.saturation.round() == 75,
-          ),
-          SliderPreset(
-            label: '85%',
-            value: 85,
-            isActive: state.saturation.round() == 85,
-          ),
-          SliderPreset(
-            label: '100%',
-            value: 100,
-            isActive: state.saturation.round() == 100,
-          ),
-        ],
-      LightHeroCapability.whiteChannel => [
-          SliderPreset(
-            label: localizations.on_state_off,
-            value: 0,
-            isActive: state.whiteChannel.round() == 0,
-          ),
-          SliderPreset(
-            label: '25%',
-            value: 25,
-            isActive: state.whiteChannel.round() == 25,
-          ),
-          SliderPreset(
-            label: '50%',
-            value: 50,
-            isActive: state.whiteChannel.round() == 50,
-          ),
-          SliderPreset(
-            label: '75%',
-            value: 75,
-            isActive: state.whiteChannel.round() == 75,
-          ),
-          SliderPreset(
-            label: '100%',
-            value: 100,
-            isActive: state.whiteChannel.round() == 100,
-          ),
-        ],
-      _ => [],
-    };
-  }
-
-  List<Widget> _chipPresetItems(
-    bool isDark,
-    ThemeColorFamily colorFamily,
-    LightHeroCapability mode,
-    AppLocalizations localizations,
-  ) {
-    final presets = _presetsForMode(mode, localizations);
-
-    final textSecondary =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final surfaceDim =
-        isDark ? AppFillColorDark.base : AppFillColorLight.lighter;
-
-    return presets.map((p) {
-      return GestureDetector(
-        onTap: state.isOn
-            ? () {
-                HapticFeedback.selectionClick();
-                onValueChanged?.call(mode, p.value);
-              }
-            : null,
-        child: Container(
-          width: AppSpacings.scale(62),
-          height: AppSpacings.scale(20),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: p.isActive ? colorFamily.light9 : surfaceDim,
-            borderRadius: BorderRadius.circular(AppBorderRadius.small),
-            border: Border.all(
-              color: p.isActive
-                  ? colorFamily.base
-                  : (isDark ? AppBorderColorDark.darker : AppBorderColorLight.darker),
-              width: AppSpacings.scale(1),
-            ),
-          ),
-          child: Text(
-            p.label,
-            style: TextStyle(
-              fontSize: AppFontSize.extraExtraSmall,
-              fontWeight: FontWeight.w600,
-              color: p.isActive ? colorFamily.base : textSecondary,
-            ),
-          ),
-        ),
-      );
-    }).toList();
-  }
-
-  List<Widget> _colorPresetItems(bool isDark, ThemeColorFamily colorFamily, AppLocalizations localizations) {
-    final presets = [
-      ColorPreset(
-        color: const Color(0xFFE85A4F),
-        name: localizations.light_color_red,
-        hueValue: 10,
-        isActive: state.hue < 15,
-      ),
-      ColorPreset(
-        color: const Color(0xFFFF9800),
-        name: localizations.light_color_orange,
-        hueValue: 30,
-      ),
-      ColorPreset(
-        color: const Color(0xFFFFEB3B),
-        name: localizations.light_color_yellow,
-        hueValue: 60,
-      ),
-      ColorPreset(
-        color: const Color(0xFF4CAF50),
-        name: localizations.light_color_green,
-        hueValue: 120,
-      ),
-      ColorPreset(
-        color: const Color(0xFF42A5F5),
-        name: localizations.light_color_blue,
-        hueValue: 210,
-      ),
-      ColorPreset(
-        color: const Color(0xFF7B1FA2),
-        name: localizations.light_color_purple,
-        hueValue: 280,
-      ),
-      ColorPreset(
-        color: const Color(0xFFE91E63),
-        name: localizations.light_color_pink,
-        hueValue: 340,
-      ),
-      ColorPreset(
-        color: const Color(0xFFFFFAF0),
-        name: localizations.light_color_white,
-        hueValue: 0,
-      ),
-    ];
-
-    return presets.map((p) {
-      final isLight = p.color.computeLuminance() > 0.85;
-      final borderColor =
-          isLight && !isDark ? AppBorderColorLight.darker : p.color;
-
-      return GestureDetector(
-        onTap: state.isOn
-            ? () {
-                HapticFeedback.selectionClick();
-                onValueChanged?.call(LightHeroCapability.hue, p.hueValue);
-              }
-            : null,
-        child: Container(
-          width: AppSpacings.scale(38),
-          height: AppSpacings.scale(20),
-          decoration: BoxDecoration(
-            color: p.color,
-            borderRadius: BorderRadius.circular(AppBorderRadius.small),
-            border: Border.all(
-              color: borderColor,
-              width: AppSpacings.scale(1),
-            ),
-            boxShadow: p.isActive
-                ? [
-                    BoxShadow(
-                      color: p.color.withValues(alpha: 0.6),
-                      blurRadius: AppSpacings.scale(8),
-                      spreadRadius: AppSpacings.scale(2),
-                    ),
-                  ]
-                : null,
-          ),
-        ),
-      );
-    }).toList();
-  }
-
-  // ── On/Off Hero (no slider capabilities) ──────────────────────
-
-  Widget _buildOnOffHero(bool isDark, ThemeColorFamily colorFamily, AppLocalizations localizations) {
-    final primaryColor =
-        isDark ? AppColorsDark.primary : AppColorsLight.primary;
-    final primaryBgColor =
-        isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
-    final inactiveBgColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    final inactiveColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        spacing: AppSpacings.pLg,
-        children: [
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              onToggle?.call(!state.isOn);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: AppSpacings.scale(160),
-              height: AppSpacings.scale(160),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: state.isOn ? primaryBgColor : inactiveBgColor,
-                border: Border.all(
-                  color: state.isOn
-                      ? primaryColor
-                      : (isDark
-                          ? AppColors.blank
-                          : AppBorderColorLight.darker),
-                  width: state.isOn
-                      ? AppSpacings.scale(4)
-                      : AppSpacings.scale(1),
-                ),
-                boxShadow: state.isOn
-                    ? [
-                        BoxShadow(
-                          color: primaryColor.withValues(alpha: 0.3),
-                          blurRadius: AppSpacings.scale(40),
-                          spreadRadius: 0,
-                        ),
-                        BoxShadow(
-                          color: AppShadowColor.light,
-                          blurRadius: AppSpacings.scale(20),
-                          offset: Offset(0, AppSpacings.scale(4)),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: AppShadowColor.light,
-                          blurRadius: AppSpacings.scale(20),
-                          offset: Offset(0, AppSpacings.scale(4)),
-                        ),
-                      ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: AppSpacings.pMd,
-                children: [
-                  Icon(
-                    MdiIcons.power,
-                    size: AppSpacings.scale(44),
-                    color: state.isOn ? primaryColor : inactiveColor,
-                  ),
-                  Text(
-                    state.isOn ? localizations.on_state_on.toUpperCase() : localizations.on_state_off.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: AppFontSize.extraSmall,
-                      fontWeight: FontWeight.w600,
-                      color: state.isOn ? primaryColor : inactiveColor,
-                      letterSpacing: AppSpacings.scale(1),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Text(
-            state.isOn ? localizations.power_hint_tap_to_turn_off : localizations.power_hint_tap_to_turn_on,
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              color: inactiveColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// PRIVATE WIDGETS — SCENE TILE
-// =============================================================================
-// One lighting scene. No active state; tap triggers scene via [ScenesService].
-
-class _SceneTile extends StatelessWidget {
-  final SceneView scene;
-  final IconData icon;
-  final VoidCallback? onTap;
-  final bool isVertical;
-  final bool isTriggering;
-
-  const _SceneTile({
-    required this.scene,
-    required this.icon,
-    this.onTap,
-    this.isVertical = true,
-    this.isTriggering = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return UniversalTile(
-      layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
-      icon: icon,
-      name: scene.name,
-      isActive: isTriggering,
-      onTileTap: onTap,
-      showGlow: false,
-      showWarningBadge: false,
-      showInactiveBorder: false,
-    );
-  }
+    double v,
+  ) => switch (mode) {
+    LightHeroCapability.brightness => v * 100,
+    LightHeroCapability.colorTemp =>
+      state.minColorTemp + (state.maxColorTemp - state.minColorTemp) * v,
+    LightHeroCapability.hue => state.minHue + (state.maxHue - state.minHue) * v,
+    LightHeroCapability.saturation => v * 100,
+    LightHeroCapability.whiteChannel => v * 100,
+  };
 }

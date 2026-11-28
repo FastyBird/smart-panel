@@ -4,7 +4,11 @@ import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/w
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/screen_service.dart';
+
 void main() {
+  setUpAll(registerTestScreenService);
+
   ClimateStateModel parse(Map<String, dynamic> extra) =>
       ClimateStateModel.fromJson({
         'has_climate': true,

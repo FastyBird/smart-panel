@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -208,6 +210,48 @@ class OutcomeIndicator extends StatelessWidget {
 
   /// The class to size for; defaults to the screen's.
   final ScreenSizeClass? sizeClass;
+
+  /// The height the indicator lays out at, in logical px, with the reader's
+  /// text size: the line, the pill around it, and the touch zone when it
+  /// opens details. A layout that must keep the indicator, such as the
+  /// hero's feedback slot, budgets with it.
+  double heightIn(BuildContext context) {
+    final style = OutcomeStyle.of(Theme.of(context), outcome);
+    final resolvedClass = sizeClass ?? locator<ScreenService>().sizeClass;
+    final painter = TextPainter(
+      text: TextSpan(
+        text: 'Ag',
+        style: DefaultTextStyle.of(context).style.merge(
+          TextStyle(
+            fontSize: AppSpacings.scale(OutcomeMetrics.fontFor(resolvedClass)),
+            fontWeight: style.isPill ? FontWeight.w500 : FontWeight.w400,
+          ),
+        ),
+      ),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    var height = math.max(
+      painter.height,
+      AppSpacings.scale(OutcomeMetrics.icon),
+    );
+    painter.dispose();
+
+    if (style.isPill) {
+      height = math.max(
+        AppSpacings.scale(OutcomeMetrics.pillHeight),
+        height +
+            2 * AppSpacings.scale(OutcomeMetrics.pillVerticalPadding) +
+            2 * AppSpacings.scale(1),
+      );
+    }
+    if (onDetails != null) {
+      height = math.max(AppSpacings.scale(OutcomeMetrics.touch), height);
+    }
+
+    return height;
+  }
 
   @override
   Widget build(BuildContext context) {

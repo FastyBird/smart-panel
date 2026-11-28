@@ -63,17 +63,21 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_dialog.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/control_colors.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
-import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/core/widgets/list_row.dart';
+import 'package:fastybird_smart_panel/core/widgets/outcome_indicator.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/domain_view.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -577,7 +581,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         icon: currentOption.icon,
         label: currentOption.label,
         title: AppLocalizations.of(context)!.mode_title_shading,
-        color: currentOption.color ?? ThemeColors.neutral,
+        color: ThemeColors.shading,
         popupBuilder: _buildModePopupContent,
       ),
     );
@@ -594,113 +598,31 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacings.scale(DeckModePopupMetrics.gap),
       children: [
         for (final mode in modes)
-          _buildPopupModeItem(
-            context,
-            mode: mode,
-            isActive: activeValue == mode.value,
-            isMatched: matchedValue == mode.value,
-            isLastIntent: lastIntentValue == mode.value,
-            isLocked: isModeLocked,
-            onTap: () async {
-              dismiss();
-              await _setCoversMode(mode.value);
-              if (mounted) _registerModeConfig();
-            },
+          DeckModePopupOption(
+            icon: mode.icon,
+            label: mode.label,
+            color: ThemeColors.shading,
+            isSelected: activeValue == mode.value,
+            // The room matches this mode without it being applied, or it was
+            // the last one applied before a change by hand.
+            statusIcon: matchedValue == mode.value
+                ? MdiIcons.syncIcon
+                : lastIntentValue == mode.value
+                ? MdiIcons.history
+                : null,
+            onTap: isModeLocked
+                ? null
+                : () async {
+                    dismiss();
+                    await _setCoversMode(mode.value);
+                    if (mounted) _registerModeConfig();
+                  },
           ),
       ],
-    );
-  }
-
-  Widget _buildPopupModeItem(
-    BuildContext context, {
-    required ModeOption<CoversMode> mode,
-    required bool isActive,
-    required bool isMatched,
-    required bool isLastIntent,
-    required bool isLocked,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final modeColorFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      mode.color ?? ThemeColors.neutral,
-    );
-    final neutralColorFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.neutral,
-    );
-
-    // Active (check) uses intent color; history uses neutral; sync has no highlight.
-    final isHighlighted = isActive || isLastIntent;
-    final colorFamily = isLastIntent ? neutralColorFamily : modeColorFamily;
-    final defaultIconColor = isDark
-        ? AppTextColorDark.secondary
-        : AppTextColorLight.secondary;
-    final defaultTextColor = isDark
-        ? AppTextColorDark.regular
-        : AppTextColorLight.regular;
-
-    return GestureDetector(
-      onTap: isLocked ? null : onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacings.pMd,
-          horizontal: AppSpacings.pMd,
-        ),
-        margin: EdgeInsets.only(bottom: AppSpacings.pXs),
-        decoration: BoxDecoration(
-          color: isHighlighted ? colorFamily.light9 : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppBorderRadius.small),
-          border: isHighlighted
-              ? Border.all(
-                  color: colorFamily.light7,
-                  width: AppSpacings.scale(1),
-                )
-              : null,
-        ),
-        child: Row(
-          spacing: AppSpacings.pMd,
-          children: [
-            Icon(
-              mode.icon,
-              color: isHighlighted ? colorFamily.base : defaultIconColor,
-              size: AppSpacings.scale(20),
-            ),
-            Expanded(
-              child: Text(
-                mode.label,
-                style: TextStyle(
-                  fontSize: AppFontSize.base,
-                  fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w400,
-                  color: isHighlighted ? colorFamily.base : defaultTextColor,
-                ),
-              ),
-            ),
-            if (isActive)
-              Icon(
-                MdiIcons.check,
-                color: colorFamily.base,
-                size: AppSpacings.scale(16),
-              ),
-            if (isMatched)
-              Icon(
-                MdiIcons.syncIcon,
-                color: modeColorFamily.base,
-                size: AppSpacings.scale(16),
-              ),
-            if (isLastIntent)
-              Icon(
-                MdiIcons.history,
-                color: colorFamily.base,
-                size: AppSpacings.scale(16),
-              ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -787,25 +709,31 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // --------------------------------------------------------------------------
   // BUILD
   // --------------------------------------------------------------------------
+  // [DomainViewLayout]: the header, the hero for the selected role and the
+  // role tiles (docs/display-ui-design-spec.md §4, §6; design canvas "3 ·
+  // Domain views"). A room with grouped covers gets
+  // [GroupedCoversRoomControls] on the same layout.
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
 
-    // Handle loading and error states using DomainStateView
-    final loadState = _isLoading
-        ? DomainLoadState.loading
-        : _hasError
-        ? DomainLoadState.error
-        : DomainLoadState.loaded;
-
-    if (loadState != DomainLoadState.loaded) {
-      return DomainStateView(
-        state: loadState,
-        onRetry: _retryLoad,
-        domainName: localizations.domain_shading,
-        child: const SizedBox.shrink(),
+    if (_isLoading || _hasError) {
+      return DomainViewLayout(
+        header: _buildHeader(
+          context,
+          subtitle: _isLoading ? localizations.state_loading : null,
+        ),
+        hero: _isLoading
+            ? const DomainHeroState.loading()
+            : DomainHeroState(
+                state: AppScreenState.error,
+                title: localizations.domain_data_load_failed(
+                  localizations.domain_shading,
+                ),
+                message: localizations.domain_data_load_failed_description,
+                onAction: _retryLoad,
+              ),
       );
     }
 
@@ -819,8 +747,18 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         },
         reload: () async => _spacesService?.fetchCoversState(_roomId),
         showDevices: _showGroupCoverDevices,
+        members: [
+          for (final device in _groupCoverDevices())
+            GroupedCoverMember(
+              name: device.name,
+              position: device.isOnline
+                  ? device.isWindowCoveringPercentage
+                  : null,
+            ),
+        ],
       );
     }
+
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
         final targets = _coversTargets;
@@ -828,45 +766,21 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             ? _buildRoleDataList(targets)
             : <_CoverRoleData>[];
 
-        // No configured roles — show not-configured state with header
         if (roleDataList.isEmpty) {
-          return Scaffold(
-            backgroundColor: isDark
-                ? AppBgColorDark.page
-                : AppBgColorLight.page,
-            body: SafeArea(
-              child: Column(
-                children: [
-                  PageHeader(
-                    title: localizations.domain_shading,
-                    subtitle: localizations.domain_not_configured_subtitle,
-                    leading: HeaderMainIcon(
-                      icon: MdiIcons.blindsHorizontalClosed,
-                    ),
-                  ),
-                  Expanded(
-                    child: DomainStateView(
-                      state: DomainLoadState.notConfigured,
-                      onRetry: _retryLoad,
-                      domainName: localizations.domain_shading,
-                      notConfiguredIcon: MdiIcons.blindsHorizontalClosed,
-                      notConfiguredTitle:
-                          localizations.domain_shading_empty_title,
-                      notConfiguredDescription:
-                          localizations.domain_shading_empty_description,
-                      child: const SizedBox.shrink(),
-                    ),
-                  ),
-                ],
-              ),
+          return DomainViewLayout(
+            header: _buildHeader(
+              context,
+              subtitle: localizations.domain_not_configured_subtitle,
+            ),
+            hero: DomainHeroState(
+              state: AppScreenState.notConfigured,
+              title: localizations.domain_shading_empty_title,
+              message: localizations.domain_shading_empty_description,
+              icon: MdiIcons.blindsHorizontal,
+              domain: ThemeColors.shading,
             ),
           );
         }
-
-        final totalDevices = roleDataList.fold<int>(
-          0,
-          (sum, r) => sum + r.deviceCount,
-        );
 
         // Clear stale selection if the role no longer exists in data
         if (_selectedRole != null &&
@@ -875,39 +789,24 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         }
 
         final effectiveRole = _selectedRole ?? roleDataList.first.role;
+        final roleData = roleDataList.firstWhere(
+          (r) => r.role == effectiveRole,
+          orElse: () => roleDataList.first,
+        );
 
-        return Scaffold(
-          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(
-                  context,
-                  totalDevices,
-                  roleDataList,
-                  effectiveRole,
-                ),
-                Expanded(
-                  child: OrientationBuilder(
-                    builder: (context, orientation) {
-                      final isLandscape = orientation == Orientation.landscape;
-                      return isLandscape
-                          ? _buildLandscapeLayout(
-                              context,
-                              roleDataList,
-                              effectiveRole,
-                            )
-                          : _buildPortraitLayout(
-                              context,
-                              roleDataList,
-                              effectiveRole,
-                            );
-                    },
-                  ),
-                ),
-              ],
-            ),
+        return DomainViewLayout(
+          header: _buildHeader(
+            context,
+            roles: roleDataList,
+            effectiveRole: effectiveRole,
           ),
+          hero: _buildHero(context, roleDataList, roleData),
+          tiles: roleDataList.length > 1
+              ? [
+                  for (final role in roleDataList)
+                    _buildRoleTile(context, role, effectiveRole),
+                ]
+              : const [],
         );
       },
     );
@@ -917,29 +816,86 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // HEADER
   // --------------------------------------------------------------------------
 
+  /// The header: the Shading icon tile, the live-state line, on the square
+  /// a role button, the covers button, and the mode chip in landscape.
   Widget _buildHeader(
-    BuildContext context,
-    int totalDevices,
-    List<_CoverRoleData> roleDataList,
-    CoversTargetRole effectiveRole,
-  ) {
+    BuildContext context, {
+    String? subtitle,
+    List<_CoverRoleData> roles = const [],
+    CoversTargetRole? effectiveRole,
+  }) {
     final localizations = AppLocalizations.of(context)!;
-    final roleData = roleDataList.firstWhere(
-      (r) => r.role == effectiveRole,
-      orElse: () => roleDataList.first,
-    );
-    final position = _getRolePosition(roleData, effectiveRole);
-    final positionColorFamily = _getPositionColorFamily(context, position);
+    final loaded = subtitle == null && roles.isNotEmpty;
+    final totalDevices = roles.fold<int>(0, (sum, r) => sum + r.deviceCount);
 
-    // Build subtitle: intent-aware mode name or position-based text
-    String subtitle;
+    int position = 0;
+    if (loaded) {
+      final roleData = roles.firstWhere(
+        (r) => r.role == effectiveRole,
+        orElse: () => roles.first,
+      );
+      position = _getRolePosition(roleData, effectiveRole);
+    }
+
+    final actions = <Widget>[
+      // The square has no room for the role tiles, and its hero may be too
+      // short for the badge: the role chooser sits in the header.
+      if (loaded &&
+          _screenService.isSquare &&
+          roles.length > 1 &&
+          effectiveRole != null)
+        HeaderIconButton(
+          key: const ValueKey('shading-roles-button'),
+          icon: MdiIcons.viewGridOutline,
+          semanticLabel: localizations.shading_roles_title,
+          onTap: () => _showRolesChooser(roles, effectiveRole),
+        ),
+      if (loaded && totalDevices > 0)
+        HeaderIconButton(
+          key: const ValueKey('shading-devices-button'),
+          icon: MdiIcons.windowShutterSettings,
+          semanticLabel: localizations.shading_devices_title,
+          onTap: _showShadingDevicesSheet,
+        ),
+    ];
+
+    return PageHeader(
+      title: localizations.domain_shading,
+      subtitle:
+          subtitle ??
+          (loaded
+              ? _headerStateLine(localizations, position, totalDevices)
+              : null),
+      leading: HeaderMainIcon(
+        icon: position > 0
+            ? MdiIcons.blindsHorizontal
+            : MdiIcons.blindsHorizontalClosed,
+        color: ThemeColors.shading,
+      ),
+      landscapeAction: loaded ? const DeckModeChip() : null,
+      trailing: actions.isEmpty
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: actions,
+            ),
+    );
+  }
+
+  /// The mode name or "Custom" with the device count while a mode applies,
+  /// else the position.
+  String _headerStateLine(
+    AppLocalizations localizations,
+    int position,
+    int totalDevices,
+  ) {
     final isModeLocked = _modeControlStateService.isLocked(
       ShadingConstants.modeChannelId,
     );
     final state = _coversState;
 
     if (isModeLocked) {
-      // Optimistic UI: show locked mode name
       final desiredIndex = _modeControlStateService
           .getDesiredValue(ShadingConstants.modeChannelId)
           ?.toInt();
@@ -947,51 +903,242 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           desiredIndex >= 0 &&
           desiredIndex < CoversMode.values.length) {
         final lockedMode = CoversMode.values[desiredIndex];
-        subtitle =
-            '${_getCoversModeName(lockedMode, localizations)} \u2022 $totalDevices';
-      } else {
-        subtitle = '$totalDevices';
+        return '${_getCoversModeName(lockedMode, localizations)} · $totalDevices';
       }
-    } else if (state != null &&
+
+      return '$totalDevices';
+    }
+    if (state != null &&
         state.isModeFromIntent &&
         !_modeOverriddenByManualChange &&
         state.detectedMode != null) {
-      // Intent active and matching: show detected mode name
-      subtitle =
-          '${_getCoversModeName(state.detectedMode!, localizations)} \u2022 $totalDevices';
-    } else if (state?.lastAppliedMode != null) {
-      // Intent exists but overridden: show "Custom"
-      subtitle = '${localizations.domain_mode_custom} \u2022 $totalDevices';
-    } else {
-      // No intent ever set: show position-based text
-      if (position == 100) {
-        subtitle = '${localizations.shading_state_open} \u2022 $totalDevices';
-      } else if (position == 0) {
-        subtitle = '${localizations.shading_state_closed} \u2022 $totalDevices';
-      } else {
-        subtitle = '$position% \u2022 $totalDevices';
-      }
+      return '${_getCoversModeName(state.detectedMode!, localizations)} · $totalDevices';
+    }
+    if (state?.lastAppliedMode != null) {
+      return '${localizations.domain_mode_custom} · $totalDevices';
     }
 
-    final showDevicesButton = totalDevices > 0;
+    return '${_positionLabel(localizations, position)} · $totalDevices';
+  }
 
-    return PageHeader(
-      title: localizations.domain_shading,
-      subtitle: subtitle,
-      subtitleColor: position > 0 ? positionColorFamily.base : null,
-      leading: HeaderMainIcon(
-        icon: position > 0
-            ? MdiIcons.blindsHorizontal
-            : MdiIcons.blindsHorizontalClosed,
-        color: _getPositionThemeColor(position),
-      ),
-      landscapeAction: const DeckModeChip(),
-      trailing: showDevicesButton
-          ? HeaderIconButton(
-              icon: MdiIcons.windowShutterSettings,
-              onTap: _showShadingDevicesSheet,
+  /// "Open", "Closed" or the position.
+  String _positionLabel(AppLocalizations localizations, int position) =>
+      position == 100
+      ? localizations.shading_state_open
+      : position == 0
+      ? localizations.shading_state_closed
+      : '$position %';
+
+  // --------------------------------------------------------------------------
+  // ROLE TILES
+  // --------------------------------------------------------------------------
+
+  Widget _buildRoleTile(
+    BuildContext context,
+    _CoverRoleData roleData,
+    CoversTargetRole effectiveRole,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final basePosition = _getRolePosition(roleData, effectiveRole);
+    final position = _roleTilePendingPositions[roleData.role] ?? basePosition;
+    final open = position > 0;
+
+    return DomainTile(
+      key: ValueKey('shading-role-${roleData.role.name}'),
+      name: roleData.name,
+      value: _positionLabel(localizations, position),
+      color: ThemeColors.shading,
+      selected: roleData.role == effectiveRole,
+      valueMuted: position == 0,
+      onTap: () => _selectRole(roleData.role),
+      // Landscape role tiles open or close their role at once and never
+      // lock (spec §7, "Control feedback").
+      leading: _screenService.isLandscape
+          ? DomainTileToggle(
+              icon: roleData.icon,
+              on: open,
+              color: ThemeColors.shading,
+              semanticLabel: position >= 50
+                  ? localizations.shading_role_close(roleData.name)
+                  : localizations.shading_role_open(roleData.name),
+              onTap: () =>
+                  _toggleRoleFromTile(roleData, position, effectiveRole),
             )
           : null,
+    );
+  }
+
+  void _selectRole(CoversTargetRole role) {
+    _heroControlStateService.clear(ShadingConstants.positionChannelId);
+    setState(() {
+      _selectedRole = role;
+    });
+  }
+
+  /// Opens a role under half open, closes it otherwise.
+  void _toggleRoleFromTile(
+    _CoverRoleData roleData,
+    int position,
+    CoversTargetRole effectiveRole,
+  ) {
+    final targetPosition = position >= 50 ? 0 : 100;
+    _roleTilePendingTimers[roleData.role]?.cancel();
+    setState(() {
+      _roleTilePendingPositions[roleData.role] = targetPosition;
+    });
+    _roleTilePendingTimers[roleData.role] = Timer(
+      const Duration(milliseconds: ShadingConstants.settlingWindowMs),
+      () {
+        if (mounted) {
+          setState(() {
+            _roleTilePendingPositions.remove(roleData.role);
+          });
+        }
+      },
+    );
+    if (roleData.role == effectiveRole) {
+      _setRolePositionImmediate(roleData.role, targetPosition);
+    } else {
+      // Non-selected role: skip the hero state so it does not leak.
+      _modeOverriddenByManualChange = true;
+      _lastAppliedAtWhenOverridden = _coversState?.lastAppliedAt;
+      _setRolePosition(roleData.role, targetPosition);
+    }
+  }
+
+  /// The role chooser on the square, where the role tiles do not fit.
+  Future<void> _showRolesChooser(
+    List<_CoverRoleData> roles,
+    CoversTargetRole effectiveRole,
+  ) async {
+    final localizations = AppLocalizations.of(context)!;
+    final role = await showAppSelectionDialog<CoversTargetRole>(
+      context: context,
+      title: localizations.shading_roles_title,
+      currentValue: effectiveRole,
+      options: [
+        for (final roleData in roles)
+          SelectionOption(
+            value: roleData.role,
+            label:
+                '${roleData.name} · ${_positionLabel(localizations, _getRolePosition(roleData, effectiveRole))}',
+          ),
+      ],
+    );
+    if (role != null && mounted && role != effectiveRole) _selectRole(role);
+  }
+
+  // --------------------------------------------------------------------------
+  // HERO
+  // --------------------------------------------------------------------------
+  // [HeroCard.slots]: the role badge (opens the role's covers), the position,
+  // its state line, the position slider and Open, Stop and Close.
+
+  ControlState get _positionControlState {
+    if (_heroControlStateService.isMixed(ShadingConstants.positionChannelId)) {
+      return ControlState.unconfirmed;
+    }
+    if (_heroControlStateService.isLocked(ShadingConstants.positionChannelId)) {
+      return ControlState.pending;
+    }
+
+    return ControlState.idle;
+  }
+
+  Widget _buildHero(
+    BuildContext context,
+    List<_CoverRoleData> roles,
+    _CoverRoleData roleData,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final position = _getRolePosition(roleData, roleData.role);
+    final controlState = _positionControlState;
+    void showDevices() => _showShadingDevicesSheet(
+      role: roleData.role,
+      roleTargets: roleData.targets,
+    );
+
+    final Widget feedback = switch (controlState) {
+      ControlState.unconfirmed => OutcomeIndicator(
+        outcome: AppOutcome.notConfirmed,
+        onDetails: showDevices,
+      ),
+      ControlState.pending => HeroFeedback(
+        text: localizations.outcome_setting,
+        icon: MdiIcons.refresh,
+      ),
+      _ => HeroFeedback(
+        text: position == 100
+            ? localizations.shading_state_open
+            : position == 0
+            ? localizations.shading_state_closed
+            : localizations.shading_state_partial(position),
+      ),
+    };
+
+    return HeroCard.slots(
+      key: const ValueKey('shading-hero'),
+      fill: true,
+      value: '$position',
+      unit: ' %',
+      dimmed: controlState == ControlState.pending,
+      badge: HeroBadge(
+        key: const ValueKey('shading-hero-badge'),
+        icon: roleData.icon,
+        label: roleData.name,
+        color: ThemeColors.shading,
+        // On the square the role tiles do not fit and the badge chooses the
+        // role; elsewhere it opens the role's covers.
+        onTap: _screenService.isSquare && roles.length > 1
+            ? () => _showRolesChooser(roles, roleData.role)
+            : showDevices,
+      ),
+      feedback: feedback,
+      slider: AppSlider(
+        key: const ValueKey('shading-hero-slider'),
+        value: (position / 100).clamp(0.0, 1.0),
+        hero: true,
+        color: ThemeColors.shading,
+        state: controlState,
+        semanticLabel: localizations.shading_position,
+        semanticFormatter: (v) => '${(v * 100).round()} %',
+        onChanged: (v) =>
+            _onHeroPositionChanged(roleData.role, (v * 100).round()),
+      ),
+      buttons: HeroButtonRow(
+        color: ThemeColors.shading,
+        buttons: [
+          HeroButtonData(
+            key: const ValueKey('shading-open'),
+            label: localizations.shading_action_open,
+            icon: MdiIcons.arrowUp,
+            selected: position == 100,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _setRolePositionImmediate(roleData.role, 100);
+            },
+          ),
+          HeroButtonData(
+            key: const ValueKey('shading-stop'),
+            label: localizations.shading_action_stop,
+            icon: MdiIcons.stop,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _stopCovers();
+            },
+          ),
+          HeroButtonData(
+            key: const ValueKey('shading-close'),
+            label: localizations.shading_action_close,
+            icon: MdiIcons.arrowDown,
+            selected: position == 0,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _setRolePositionImmediate(roleData.role, 0);
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -1173,289 +1320,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       default:
         return MdiIcons.blindsHorizontal;
     }
-  }
-
-  // --------------------------------------------------------------------------
-  // LANDSCAPE LAYOUT
-  // --------------------------------------------------------------------------
-
-  Widget _buildLandscapeLayout(
-    BuildContext context,
-    List<_CoverRoleData> roleDataList,
-    CoversTargetRole effectiveRole,
-  ) {
-    final roleData = roleDataList.firstWhere(
-      (r) => r.role == effectiveRole,
-      orElse: () => roleDataList.first,
-    );
-    final position = _getRolePosition(roleData, effectiveRole);
-
-    return LandscapeViewLayout(
-      mainContentPadding: EdgeInsets.only(
-        right: AppSpacings.pMd,
-        left: AppSpacings.pMd,
-        bottom: AppSpacings.pMd,
-      ),
-      mainContent: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _ShadingHeroCard(
-              roleName: roleData.name,
-              roleIcon: roleData.icon,
-              deviceCount: roleData.deviceCount,
-              position: position,
-              positionThemeColor: _getPositionThemeColor(position),
-              screenService: _screenService,
-              statusIcon: _getRoleStatusIcon(roleData),
-              onPositionChanged: (value) =>
-                  _onHeroPositionChanged(roleData.role, (value * 100).round()),
-              onOpen: () => _setRolePositionImmediate(roleData.role, 100),
-              onStop: _stopCovers,
-              onClose: () => _setRolePositionImmediate(roleData.role, 0),
-              onShowDevices: () => _showShadingDevicesSheet(
-                role: roleData.role,
-                roleTargets: roleData.targets,
-              ),
-            ),
-          ),
-        ],
-      ),
-      additionalContentScrollable: false,
-      additionalContentPadding: EdgeInsets.only(
-        left: AppSpacings.pMd,
-        bottom: AppSpacings.pMd,
-      ),
-      additionalContent: roleDataList.length > 1
-          ? _buildLandscapeRolesCard(
-              context,
-              roleDataList,
-              effectiveRole: effectiveRole,
-            )
-          : null,
-    );
-  }
-
-  Widget _buildLandscapeRolesCard(
-    BuildContext context,
-    List<_CoverRoleData> roleDataList, {
-    CoversTargetRole? effectiveRole,
-  }) {
-    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
-
-    return Column(
-      spacing: AppSpacings.pSm,
-      children: roleDataList
-          .map(
-            (roleData) => _buildRoleTileHorizontal(
-              context,
-              roleData,
-              tileHeight,
-              effectiveRole: effectiveRole,
-            ),
-          )
-          .toList(),
-    );
-  }
-
-  Widget _buildRoleTileHorizontal(
-    BuildContext context,
-    _CoverRoleData roleData,
-    double height, {
-    CoversTargetRole? effectiveRole,
-  }) {
-    final localizations = AppLocalizations.of(context)!;
-    final basePosition = _getRolePosition(roleData, effectiveRole);
-    final position = _roleTilePendingPositions[roleData.role] ?? basePosition;
-    final positionColor = _getPositionThemeColor(position);
-
-    final valueText = position == 100
-        ? localizations.shading_state_open
-        : position == 0
-        ? localizations.shading_state_closed
-        : '$position%';
-
-    return SizedBox(
-      height: height,
-      child: UniversalTile(
-        layout: TileLayout.horizontal,
-        icon: roleData.icon,
-        name: valueText,
-        status: roleData.name,
-        iconAccentColor: position > 0 ? positionColor : null,
-        isActive: roleData.role == effectiveRole,
-        activeColor: positionColor,
-        showGlow: false,
-        showDoubleBorder: false,
-        showInactiveBorder: false,
-        onIconTap: () {
-          // Toggle: if position >= 50 → close, if < 50 → open
-          final targetPosition = position >= 50 ? 0 : 100;
-          _roleTilePendingTimers[roleData.role]?.cancel();
-          setState(() {
-            _roleTilePendingPositions[roleData.role] = targetPosition;
-          });
-          _roleTilePendingTimers[roleData.role] = Timer(
-            const Duration(milliseconds: ShadingConstants.settlingWindowMs),
-            () {
-              if (mounted) {
-                setState(() {
-                  _roleTilePendingPositions.remove(roleData.role);
-                });
-              }
-            },
-          );
-          if (roleData.role == effectiveRole) {
-            _setRolePositionImmediate(roleData.role, targetPosition);
-          } else {
-            // Non-selected role: skip hero state update to avoid leaking
-            _modeOverriddenByManualChange = true;
-            _lastAppliedAtWhenOverridden = _coversState?.lastAppliedAt;
-            _setRolePosition(roleData.role, targetPosition);
-          }
-        },
-        onTileTap: () {
-          _heroControlStateService.clear(ShadingConstants.positionChannelId);
-          setState(() {
-            _selectedRole = roleData.role;
-          });
-        },
-      ),
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // PORTRAIT LAYOUT
-  // --------------------------------------------------------------------------
-
-  Widget _buildPortraitLayout(
-    BuildContext context,
-    List<_CoverRoleData> roleDataList,
-    CoversTargetRole effectiveRole,
-  ) {
-    final roleData = roleDataList.firstWhere(
-      (r) => r.role == effectiveRole,
-      orElse: () => roleDataList.first,
-    );
-    final position = _getRolePosition(roleData, effectiveRole);
-    final hasMultipleRoles = roleDataList.length > 1;
-
-    return PortraitViewLayout(
-      scrollable: false,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _ShadingHeroCard(
-            roleName: roleData.name,
-            roleIcon: roleData.icon,
-            deviceCount: roleData.deviceCount,
-            position: position,
-            positionThemeColor: _getPositionThemeColor(position),
-            screenService: _screenService,
-            isPortrait: true,
-            statusIcon: _getRoleStatusIcon(roleData),
-            onPositionChanged: (value) =>
-                _onHeroPositionChanged(roleData.role, (value * 100).round()),
-            onOpen: () => _setRolePositionImmediate(roleData.role, 100),
-            onStop: _stopCovers,
-            onClose: () => _setRolePositionImmediate(roleData.role, 0),
-            onShowDevices: () => _showShadingDevicesSheet(
-              role: roleData.role,
-              roleTargets: roleData.targets,
-            ),
-          ),
-          if (hasMultipleRoles) ...[
-            AppSpacings.spacingMdVertical,
-            _buildRoleSelector(
-              context,
-              roleDataList,
-              effectiveRole: effectiveRole,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // ROLE SELECTOR
-  // --------------------------------------------------------------------------
-
-  Widget _buildRoleSelector(
-    BuildContext context,
-    List<_CoverRoleData> roleDataList, {
-    CoversTargetRole? effectiveRole,
-  }) {
-    final localizations = AppLocalizations.of(context)!;
-
-    // Build status icons for roles with open covers
-    final Map<CoversTargetRole, (IconData, Color)> statusIcons = {};
-    for (final roleData in roleDataList) {
-      final position = _getRolePosition(roleData, effectiveRole);
-      if (position > 0) {
-        final colorFamily = _getPositionColorFamily(context, position);
-        statusIcons[roleData.role] = (MdiIcons.circle, colorFamily.base);
-      }
-    }
-
-    return ModeSelector<CoversTargetRole>(
-      modes: roleDataList.map((roleData) {
-        final position = _getRolePosition(roleData, effectiveRole);
-        final valueText = position == 100
-            ? localizations.shading_state_open
-            : position == 0
-            ? localizations.shading_state_closed
-            : '$position%';
-
-        return ModeOption<CoversTargetRole>(
-          value: roleData.role,
-          icon: roleData.icon,
-          label: roleData.name,
-          color: _getPositionThemeColor(position),
-          iconSize: AppSpacings.scale(18),
-          semanticValue: valueText,
-          labelBuilder: (isSelected, contentColor) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  roleData.name,
-                  style: TextStyle(
-                    color: contentColor,
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w500,
-                    height: 1,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  valueText,
-                  style: TextStyle(
-                    color: contentColor,
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                  ),
-                  maxLines: 1,
-                ),
-              ],
-            );
-          },
-        );
-      }).toList(),
-      selectedValue: effectiveRole,
-      onChanged: (role) {
-        _heroControlStateService.clear(ShadingConstants.positionChannelId);
-        setState(() {
-          _selectedRole = role;
-        });
-      },
-      orientation: ModeSelectorOrientation.horizontal,
-      iconPlacement: ModeSelectorIconPlacement.top,
-      color: ThemeColors.primary,
-      statusIcons: statusIcons,
-    );
   }
 
   // --------------------------------------------------------------------------
@@ -1900,40 +1764,61 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // NAVIGATION
   // --------------------------------------------------------------------------
 
+  /// The room's covers when they form a group.
+  List<WindowCoveringDeviceView> _groupCoverDevices() =>
+      _devicesService?.devicesList
+          .whereType<WindowCoveringDeviceView>()
+          .where(
+            (device) =>
+                device.roomId == _roomId || device.zoneIds.contains(_roomId),
+          )
+          .toList() ??
+      const <WindowCoveringDeviceView>[];
+
   void _showGroupCoverDevices() {
-    final devices =
-        _devicesService?.devicesList
-            .whereType<WindowCoveringDeviceView>()
-            .where(
-              (device) =>
-                  device.roomId == _roomId || device.zoneIds.contains(_roomId),
-            )
-            .toList() ??
-        const <WindowCoveringDeviceView>[];
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final device in devices)
-              ListTile(
-                title: Text(device.name),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => DeviceDetailPage(device.id),
-                    ),
-                  );
-                },
-              ),
-          ],
-        ),
-      ),
-    );
+    final devices = _groupCoverDevices();
+    if (devices.isEmpty) return;
+    final localizations = AppLocalizations.of(context)!;
+
+    Widget row(BuildContext sheetContext, int index) {
+      final device = devices[index];
+
+      return AppListRow(
+        icon: MdiIcons.blindsHorizontal,
+        title: device.name,
+        subtitle: device.isOnline
+            ? '${device.isWindowCoveringPercentage} %'
+            : localizations.device_status_offline,
+        trailing: Icon(MdiIcons.chevronRight),
+        onTap: () {
+          Navigator.pop(sheetContext);
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => DeviceDetailPage(device.id),
+            ),
+          );
+        },
+      );
+    }
+
+    if (_screenService.isLandscape) {
+      DeckItemDrawer.showItemDrawer(
+        context,
+        title: localizations.shading_devices_title,
+        icon: MdiIcons.windowShutterSettings,
+        itemCount: devices.length,
+        itemBuilder: row,
+      );
+    } else {
+      DeckItemSheet.showItemSheet(
+        context,
+        title: localizations.shading_devices_title,
+        icon: MdiIcons.windowShutterSettings,
+        itemCount: devices.length,
+        itemBuilder: row,
+      );
+    }
   }
 
   void _openDeviceDetail(BuildContext context, _CoverDeviceData device) {
@@ -1960,15 +1845,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     if (position == 0) return ThemeColors.info;
     return ThemeColors.warning;
   }
-
-  /// Color family for position (header subtitle, role icons).
-  ThemeColorFamily _getPositionColorFamily(
-    BuildContext context,
-    int position,
-  ) => ThemeColorFamily.get(
-    Theme.of(context).brightness,
-    _getPositionThemeColor(position),
-  );
 
   /// Computes offline and position-mixed state for a list of targets.
   /// Used by [_getRoleStatusIcon] and [_buildDevicesSheetFooter].
@@ -2004,490 +1880,5 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return (hasOffline: hasOffline, isPositionMixed: isPositionMixed);
   }
 
-  /// Status icon for a role: offline → alert, mixed positions → tune, synced → settings.
-  ///
-  /// Matches the lighting domain's hero card status icon pattern.
-  IconData _getRoleStatusIcon(_CoverRoleData roleData) {
-    final health = _computeTargetsHealth(roleData.targets);
-    if (health.hasOffline) return MdiIcons.alert;
-    if (health.isPositionMixed) return MdiIcons.tune;
-    return MdiIcons.windowShutterSettings;
-  }
-
   // --------------------------------------------------------------------------
-}
-
-// =============================================================================
-// PRIVATE WIDGETS
-// =============================================================================
-
-/// Hero card for the selected shading role. Shows badge row, giant position
-/// number, position slider, and quick action buttons (open/stop/close).
-class _ShadingHeroCard extends StatelessWidget {
-  final String roleName;
-  final IconData roleIcon;
-  final int deviceCount;
-  final int position;
-  final ThemeColors positionThemeColor;
-  final ScreenService screenService;
-  final bool isPortrait;
-  final ValueChanged<double> onPositionChanged;
-  final VoidCallback onOpen;
-  final VoidCallback onStop;
-  final VoidCallback onClose;
-  final IconData statusIcon;
-  final VoidCallback onShowDevices;
-
-  const _ShadingHeroCard({
-    required this.roleName,
-    required this.roleIcon,
-    required this.deviceCount,
-    required this.position,
-    required this.positionThemeColor,
-    required this.screenService,
-    this.isPortrait = false,
-    required this.statusIcon,
-    required this.onPositionChanged,
-    required this.onOpen,
-    required this.onStop,
-    required this.onClose,
-    required this.onShowDevices,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final screenService = this.screenService;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      positionThemeColor,
-    );
-    final localizations = AppLocalizations.of(context)!;
-
-    return HeroCard(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isCompactFont = screenService.isPortrait
-              ? screenService.isSmallScreen
-              : screenService.isSmallScreen || screenService.isMediumScreen;
-          final fontSize = isCompactFont
-              ? (constraints.maxHeight * 0.25).clamp(
-                  AppSpacings.scale(48),
-                  AppSpacings.scale(160),
-                )
-              : (constraints.maxHeight * 0.35).clamp(
-                  AppSpacings.scale(48),
-                  AppSpacings.scale(160),
-                );
-
-          final hidePositionLabel =
-              !isPortrait &&
-              (screenService.isSmallScreen || screenService.isMediumScreen);
-
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildHeroRow(isDark, colorFamily, fontSize),
-              if (!hidePositionLabel) ...[
-                AppSpacings.spacingMdVertical,
-                Text(
-                  position == 100
-                      ? localizations.shading_state_open.toUpperCase()
-                      : position == 0
-                      ? localizations.shading_state_closed.toUpperCase()
-                      : localizations
-                            .shading_state_partial(position)
-                            .toUpperCase(),
-                  style: TextStyle(
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w600,
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                  ),
-                ),
-              ],
-              AppSpacings.spacingMdVertical,
-              _buildPositionSlider(isDark, localizations),
-              AppSpacings.spacingLgVertical,
-              _buildQuickActions(
-                context,
-                localizations,
-                isCompact: isPortrait
-                    ? screenService.isSmallScreen
-                    : screenService.isSmallScreen ||
-                          screenService.isMediumScreen,
-              ),
-              AppSpacings.spacingLgVertical,
-              _buildPresets(isDark, colorFamily, localizations),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  // ── Hero Row (badge on left, giant value on right) ───────────
-
-  Widget _buildHeroRow(
-    bool isDark,
-    ThemeColorFamily colorFamily,
-    double fontSize,
-  ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      spacing: AppSpacings.pSm,
-      children: [
-        _buildBadge(isDark, colorFamily),
-        _buildGiantValue(isDark, fontSize),
-      ],
-    );
-  }
-
-  // ── Badge (split: left = role name, right = device count → sheet) ──
-
-  Widget _buildBadge(bool isDark, ThemeColorFamily colorFamily) {
-    final screenService = this.screenService;
-    final useBaseFontSize = screenService.isLandscape
-        ? screenService.isLargeScreen
-        : !screenService.isSmallScreen;
-    final fontSize = useBaseFontSize ? AppFontSize.base : AppFontSize.small;
-
-    final activeColor = colorFamily.base;
-    final activeBg = colorFamily.light9;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Left part: role icon + role name → show devices sheet
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onShowDevices,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pXs,
-            ),
-            height: AppSpacings.scale(24),
-            decoration: BoxDecoration(
-              color: activeBg,
-              borderRadius: BorderRadius.horizontal(
-                left: Radius.circular(AppBorderRadius.round),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpacings.pSm,
-              children: [
-                Icon(roleIcon, size: fontSize, color: activeColor),
-                Text(
-                  roleName.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w700,
-                    color: activeColor,
-                    letterSpacing: AppSpacings.scale(0.3),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        // Divider between left and right parts
-        Container(
-          width: AppSpacings.scale(1),
-          color: activeColor.withValues(alpha: 0.3),
-          height: fontSize + AppSpacings.pXs * 2,
-        ),
-        // Right part: settings icon + count circle → show devices sheet
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onShowDevices,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pXs,
-            ),
-            height: AppSpacings.scale(24),
-            decoration: BoxDecoration(
-              color: activeBg,
-              borderRadius: BorderRadius.horizontal(
-                right: Radius.circular(AppBorderRadius.round),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpacings.pSm,
-              children: [
-                Icon(statusIcon, size: fontSize, color: activeColor),
-                Container(
-                  width: fontSize,
-                  height: fontSize,
-                  decoration: BoxDecoration(
-                    color: activeColor,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '$deviceCount',
-                    style: TextStyle(
-                      fontSize: fontSize * 0.6,
-                      fontWeight: FontWeight.w700,
-                      color: activeBg,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Giant Value (position number with icon at top-right) ──
-
-  Widget _buildGiantValue(bool isDark, double fontSize) {
-    final unitFontSize = fontSize * 0.27;
-    final textColor = isDark
-        ? AppTextColorDark.regular
-        : AppTextColorLight.regular;
-    final unitColor = isDark
-        ? AppTextColorDark.placeholder
-        : AppTextColorLight.placeholder;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Text(
-          '$position',
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: AppNumeralFont.display,
-            fontFamily: AppNumeralFont.family,
-            color: textColor,
-            height: 0.7,
-          ),
-        ),
-        Positioned(
-          top: 0,
-          right: -unitFontSize,
-          child: Text(
-            '%',
-            style: TextStyle(
-              fontSize: unitFontSize,
-              fontWeight: FontWeight.w200,
-              color: unitColor,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Position Slider ──
-
-  Widget _buildPositionSlider(bool isDark, AppLocalizations localizations) {
-    final normalizedValue = position / 100.0;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-      child: SliderWithSteps(
-        value: normalizedValue,
-        themeColor: ThemeColors.neutral,
-        trackGradientColors: [
-          isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
-          AppColors.white,
-        ],
-        steps: [
-          localizations.shading_state_closed,
-          '25%',
-          '50%',
-          '75%',
-          localizations.shading_state_open,
-        ],
-        onChanged: onPositionChanged,
-      ),
-    );
-  }
-
-  // ── Quick Action Buttons (Open / Stop / Close) ──
-
-  Widget _buildQuickActions(
-    BuildContext context,
-    AppLocalizations localizations, {
-    bool isCompact = false,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      spacing: AppSpacings.pSm,
-      children: [
-        Expanded(
-          child: _buildQuickActionButton(
-            isDark,
-            label: localizations.shading_action_open,
-            icon: MdiIcons.chevronUp,
-            isActive: position == 100,
-            onTap: onOpen,
-            isCompact: isCompact,
-          ),
-        ),
-        Expanded(
-          child: _buildQuickActionButton(
-            isDark,
-            label: localizations.shading_action_stop,
-            icon: MdiIcons.stop,
-            isActive: false,
-            onTap: onStop,
-            isCompact: isCompact,
-          ),
-        ),
-        Expanded(
-          child: _buildQuickActionButton(
-            isDark,
-            label: localizations.shading_action_close,
-            icon: MdiIcons.chevronDown,
-            isActive: position == 0,
-            onTap: onClose,
-            isCompact: isCompact,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActionButton(
-    bool isDark, {
-    required String label,
-    required IconData icon,
-    required bool isActive,
-    required VoidCallback onTap,
-    bool isCompact = false,
-  }) {
-    final themeData = isActive
-        ? ThemeData(
-            filledButtonTheme: isDark
-                ? AppFilledButtonsDarkThemes.primary
-                : AppFilledButtonsLightThemes.primary,
-          )
-        : ThemeData(
-            filledButtonTheme: isDark
-                ? AppFilledButtonsDarkThemes.neutral
-                : AppFilledButtonsLightThemes.neutral,
-          );
-    final iconColor = isActive
-        ? (isDark
-              ? AppFilledButtonsDarkThemes.primaryForegroundColor
-              : AppFilledButtonsLightThemes.primaryForegroundColor)
-        : (isDark
-              ? AppFilledButtonsDarkThemes.neutralForegroundColor
-              : AppFilledButtonsLightThemes.neutralForegroundColor);
-
-    return SizedBox(
-      width: double.infinity,
-      child: Theme(
-        data: themeData,
-        child: FilledButton.icon(
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            onTap();
-          },
-          icon: Icon(
-            icon,
-            size: isCompact ? AppFontSize.small : AppFontSize.base,
-            color: iconColor,
-          ),
-          label: Text(
-            label,
-            style: TextStyle(
-              fontSize: isCompact ? AppFontSize.small : AppFontSize.base,
-            ),
-          ),
-          style: FilledButton.styleFrom(
-            padding: EdgeInsets.symmetric(
-              horizontal: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
-              vertical: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Presets ──
-
-  Widget _buildPresets(
-    bool isDark,
-    ThemeColorFamily colorFamily,
-    AppLocalizations localizations,
-  ) {
-    final textSecondary = isDark
-        ? AppTextColorDark.secondary
-        : AppTextColorLight.secondary;
-    final surfaceDim = isDark
-        ? AppFillColorDark.base
-        : AppFillColorLight.lighter;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-
-    final presets = [
-      (label: localizations.shading_state_closed, value: 0),
-      (label: '10%', value: 10),
-      (label: '25%', value: 25),
-      (label: '50%', value: 50),
-      (label: '75%', value: 75),
-      (label: '90%', value: 90),
-      (label: localizations.shading_state_open, value: 100),
-    ];
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-      child: HorizontalScrollWithGradient(
-        height: AppSpacings.scale(20),
-        layoutPadding: AppSpacings.pLg,
-        itemCount: presets.length,
-        separatorWidth: AppSpacings.pMd,
-        backgroundColor: cardColor,
-        itemBuilder: (context, index) {
-          final preset = presets[index];
-          final isActive = position == preset.value;
-
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              onPositionChanged(preset.value / 100.0);
-            },
-            child: Container(
-              width: AppSpacings.scale(62),
-              height: AppSpacings.scale(20),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isActive ? colorFamily.light9 : surfaceDim,
-                borderRadius: BorderRadius.circular(AppBorderRadius.small),
-                border: Border.all(
-                  color: isActive
-                      ? colorFamily.base
-                      : (isDark
-                            ? AppBorderColorDark.darker
-                            : AppBorderColorLight.darker),
-                  width: AppSpacings.scale(1),
-                ),
-              ),
-              child: Text(
-                preset.label,
-                style: TextStyle(
-                  fontSize: AppFontSize.extraExtraSmall,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? colorFamily.base : textSecondary,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 }

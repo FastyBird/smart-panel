@@ -152,12 +152,17 @@ class DeckModePopupOption extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     this.color,
+    this.statusIcon,
     this.sizeClass,
   });
 
   final IconData icon;
   final String label;
   final bool isSelected;
+
+  /// A hint at the end of an option that is not selected, such as the mode
+  /// the room matches without it being applied.
+  final IconData? statusIcon;
 
   /// Null disables the option.
   final VoidCallback? onTap;
@@ -227,6 +232,12 @@ class DeckModePopupOption extends StatelessWidget {
                       MdiIcons.check,
                       size: AppSpacings.scale(16),
                       color: iconColor,
+                    )
+                  else if (statusIcon != null)
+                    Icon(
+                      statusIcon,
+                      size: AppSpacings.scale(16),
+                      color: neutrals.textSecondary,
                     ),
                 ],
               ),
@@ -248,13 +259,11 @@ class _DeckModePopupOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenService = locator<ScreenService>();
     final isLandscape = screenService.isLandscape;
-    final pagePadding = AppSpacings.scale(
-      switch (screenService.sizeClass) {
-        ScreenSizeClass.compact => 6,
-        ScreenSizeClass.regular => 8,
-        ScreenSizeClass.expanded => 12,
-      },
-    );
+    final pagePadding = AppSpacings.scale(switch (screenService.sizeClass) {
+      ScreenSizeClass.compact => 6,
+      ScreenSizeClass.regular => 8,
+      ScreenSizeClass.expanded => 12,
+    });
 
     // Landscape: under the trigger (DeckModeChip passes its own context so
     // triggerRect is accurate). Portrait: above the bottom bar, because the

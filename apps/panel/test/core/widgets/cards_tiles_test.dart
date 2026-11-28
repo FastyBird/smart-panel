@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/offline_note.dart';
+import 'package:fastybird_smart_panel/core/widgets/outcome_indicator.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
@@ -38,6 +39,7 @@ Future<void> _pump(
   WidgetTester tester,
   Widget child, {
   Brightness brightness = Brightness.light,
+  double textScale = 1,
 }) async {
   tester.view.physicalSize = const Size(1280, 800);
   tester.view.devicePixelRatio = 1;
@@ -54,7 +56,12 @@ Future<void> _pump(
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       locale: const Locale('en'),
-      home: Scaffold(body: Align(alignment: Alignment.topLeft, child: child)),
+      home: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: Scaffold(body: Align(alignment: Alignment.topLeft, child: child)),
+        ),
+      ),
     ),
   );
 }
@@ -87,6 +94,8 @@ Widget _hero(
   bool offline = false,
   bool dimmed = false,
   Orientation orientation = Orientation.landscape,
+  VoidCallback? onFeedbackTap,
+  Widget? feedback,
 }) =>
     SizedBox(
       width: 600,
@@ -108,7 +117,7 @@ Widget _hero(
                 sizeClass: sizeClass,
               )
             : null,
-        feedback: HeroFeedback(text: 'Brightness · Main', sizeClass: sizeClass),
+        feedback: feedback ?? HeroFeedback(text: 'Brightness · Main', onTap: onFeedbackTap, sizeClass: sizeClass),
         slider: const SizedBox.expand(key: ValueKey('slider')),
         buttons: const SizedBox.expand(key: ValueKey('buttons')),
       ),
@@ -247,6 +256,112 @@ void main() {
       );
       expect(find.text('Brightness · Main'), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+
+    for (final (sizeClass, orientation) in [
+      (ScreenSizeClass.compact, Orientation.landscape),
+      (ScreenSizeClass.regular, Orientation.landscape),
+      (ScreenSizeClass.compact, Orientation.portrait),
+    ]) {
+      testWidgets('keeps a tappable feedback line reachable at every height at ${sizeClass.name} ${orientation.name}',
+          (tester) async {
+        // The light property chooser lives on this line: the inline, small
+        // and scrolling layouts must not drop it like a plain caption.
+        for (var height = 120.0; height <= 300; height += 6) {
+          var taps = 0;
+          await _pump(
+            tester,
+            _hero(sizeClass, height: height, orientation: orientation, onFeedbackTap: () => taps++),
+          );
+          expect(tester.takeException(), isNull, reason: 'at $height');
+          final line = find.text('Brightness · Main');
+          expect(line, findsOneWidget, reason: 'at $height');
+          await tester.ensureVisible(line);
+          await tester.pumpAndSettle();
+          await tester.tap(line);
+          expect(taps, 1, reason: 'at $height');
+        }
+      });
+    }
+
+    for (final (sizeClass, orientation) in [
+      (ScreenSizeClass.compact, Orientation.landscape),
+      (ScreenSizeClass.regular, Orientation.landscape),
+      (ScreenSizeClass.compact, Orientation.portrait),
+    ]) {
+      testWidgets('keeps an unconfirmed outcome and its details at every height at ${sizeClass.name} ${orientation.name}',
+          (tester) async {
+        // A setpoint that never confirmed: the warning and its details must
+        // survive the inline, small and scrolling layouts.
+        for (var height = 120.0; height <= 300; height += 6) {
+          var details = 0;
+          await _pump(
+            tester,
+            _hero(
+              sizeClass,
+              height: height,
+              orientation: orientation,
+              feedback: OutcomeIndicator(
+                outcome: AppOutcome.notConfirmed,
+                onDetails: () => details++,
+                sizeClass: sizeClass,
+              ),
+            ),
+          );
+          expect(tester.takeException(), isNull, reason: 'at $height');
+          final outcome = find.byType(OutcomeIndicator);
+          expect(outcome, findsOneWidget, reason: 'at $height');
+          await tester.ensureVisible(outcome);
+          await tester.pumpAndSettle();
+          await tester.tap(outcome);
+          expect(details, 1, reason: 'at $height');
+        }
+      });
+    }
+
+    for (final (sizeClass, orientation) in [
+      (ScreenSizeClass.compact, Orientation.landscape),
+      (ScreenSizeClass.regular, Orientation.landscape),
+    ]) {
+      testWidgets('budgets an outcome pill grown by 3× text at every height at ${sizeClass.name} ${orientation.name}',
+          (tester) async {
+        // 3× text makes the pill taller than the 36 px touch target: the
+        // hero must budget its real height, scrolling rather than
+        // overflowing.
+        for (final outcome in [AppOutcome.notConfirmed, AppOutcome.failed]) {
+          for (var height = 120.0; height <= 300; height += 6) {
+            await _pump(
+              tester,
+              _hero(
+                sizeClass,
+                height: height,
+                orientation: orientation,
+                feedback: OutcomeIndicator(
+                  outcome: outcome,
+                  onDetails: outcome == AppOutcome.notConfirmed ? () {} : null,
+                  sizeClass: sizeClass,
+                ),
+              ),
+              textScale: 3,
+            );
+            expect(tester.takeException(), isNull, reason: '${outcome.name} at $height');
+            expect(find.byType(OutcomeIndicator), findsOneWidget, reason: '${outcome.name} at $height');
+          }
+        }
+      });
+    }
+
+    testWidgets('keeps a failed warning without details on a short hero', (tester) async {
+      await _pump(
+        tester,
+        _hero(
+          ScreenSizeClass.compact,
+          height: 150,
+          feedback: const OutcomeIndicator(outcome: AppOutcome.failed, sizeClass: ScreenSizeClass.compact),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byType(OutcomeIndicator), findsOneWidget);
     });
 
     testWidgets('drops the role badge in Compact landscape only', (tester) async {

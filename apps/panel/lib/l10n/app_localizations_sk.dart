@@ -5297,4 +5297,85 @@ class AppLocalizationsSk extends AppLocalizations {
   String sky_room_readings(String readings) {
     return 'V miestnosti: $readings';
   }
+
+  @override
+  String get lights_scenes_label => 'Svetelné scény';
+
+  @override
+  String get lights_roles_title => 'Role svetiel';
+
+  @override
+  String lights_role_turn_on(String role) {
+    return 'Zapnúť $role';
+  }
+
+  @override
+  String lights_role_turn_off(String role) {
+    return 'Vypnúť $role';
+  }
+
+  @override
+  String lights_scene_run(String scene) {
+    return 'Spustiť scénu $scene';
+  }
+
+  @override
+  String get lights_property_title => 'Vlastnosť svetla';
+
+  @override
+  String lights_property_choose(String property) {
+    return '$property. Vybrať, čo nastaviť';
+  }
+
+  @override
+  String get climate_aux_only_title =>
+      'V tejto miestnosti nie je kúrenie ani chladenie';
+
+  @override
+  String get climate_aux_only_message =>
+      'Vzduchové zariadenia tu fungujú samostatne.';
+
+  @override
+  String climate_aux_on_count(int on, int total) {
+    return 'Zapnuté $on z $total';
+  }
+
+  @override
+  String climate_aux_power(String name) {
+    return 'Napájanie: $name';
+  }
+
+  @override
+  String climate_target_lower(String step) {
+    return 'Znížiť cieľ o $step';
+  }
+
+  @override
+  String climate_target_raise(String step) {
+    return 'Zvýšiť cieľ o $step';
+  }
+
+  @override
+  String get shading_roles_title => 'Role tienenia';
+
+  @override
+  String shading_role_open(String role) {
+    return 'Otvoriť $role';
+  }
+
+  @override
+  String shading_role_close(String role) {
+    return 'Zatvoriť $role';
+  }
+
+  @override
+  String get shading_group_label => 'Skupina tienenia';
+
+  @override
+  String get shading_group_positions_differ => 'polohy sa líšia';
+
+  @override
+  String lights_role_lights(String role) {
+    return 'Zobraziť svetlá: $role';
+  }
 }

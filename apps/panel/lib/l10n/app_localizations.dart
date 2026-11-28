@@ -9489,6 +9489,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'In the room: {readings}'**
   String sky_room_readings(String readings);
+
+  /// Label over the lighting scene pills in the Lights view, and the header button that opens them
+  ///
+  /// In en, this message translates to:
+  /// **'Lighting scenes'**
+  String get lights_scenes_label;
+
+  /// Title of the role chooser on the square panel, and its header button
+  ///
+  /// In en, this message translates to:
+  /// **'Light roles'**
+  String get lights_roles_title;
+
+  /// Screen reader label of a role tile's on/off button while the role is off
+  ///
+  /// In en, this message translates to:
+  /// **'Turn {role} on'**
+  String lights_role_turn_on(String role);
+
+  /// Screen reader label of a role tile's on/off button while the role is on
+  ///
+  /// In en, this message translates to:
+  /// **'Turn {role} off'**
+  String lights_role_turn_off(String role);
+
+  /// Screen reader label of a lighting scene pill
+  ///
+  /// In en, this message translates to:
+  /// **'Run scene {scene}'**
+  String lights_scene_run(String scene);
+
+  /// Title of the chooser between brightness, colour temperature, colour and white in the Lights hero
+  ///
+  /// In en, this message translates to:
+  /// **'Light property'**
+  String get lights_property_title;
+
+  /// Screen reader label of the Lights hero's property line when it opens the property chooser
+  ///
+  /// In en, this message translates to:
+  /// **'{property}. Choose what to set'**
+  String lights_property_choose(String property);
+
+  /// Climate view of a room with only air devices (fans, purifiers, humidifiers)
+  ///
+  /// In en, this message translates to:
+  /// **'No heating or cooling in this room'**
+  String get climate_aux_only_title;
+
+  /// Line under climate_aux_only_title
+  ///
+  /// In en, this message translates to:
+  /// **'Air devices here work on their own.'**
+  String get climate_aux_only_message;
+
+  /// Climate header line of a room with only air devices
+  ///
+  /// In en, this message translates to:
+  /// **'{on} of {total} on'**
+  String climate_aux_on_count(int on, int total);
+
+  /// Screen reader label of an air device's switch
+  ///
+  /// In en, this message translates to:
+  /// **'{name} power'**
+  String climate_aux_power(String name);
+
+  /// Screen reader label of the Climate hero's minus button; step is 0.5 °C or 1 °F
+  ///
+  /// In en, this message translates to:
+  /// **'Lower target by {step}'**
+  String climate_target_lower(String step);
+
+  /// Screen reader label of the Climate hero's plus button; step is 0.5 °C or 1 °F
+  ///
+  /// In en, this message translates to:
+  /// **'Raise target by {step}'**
+  String climate_target_raise(String step);
+
+  /// Title of the cover role chooser on the square panel, and its header button
+  ///
+  /// In en, this message translates to:
+  /// **'Cover roles'**
+  String get shading_roles_title;
+
+  /// Screen reader label of a cover role tile's button while the role is mostly closed
+  ///
+  /// In en, this message translates to:
+  /// **'Open {role}'**
+  String shading_role_open(String role);
+
+  /// Screen reader label of a cover role tile's button while the role is mostly open
+  ///
+  /// In en, this message translates to:
+  /// **'Close {role}'**
+  String shading_role_close(String role);
+
+  /// Shading header line of a room whose covers form a group
+  ///
+  /// In en, this message translates to:
+  /// **'Cover group'**
+  String get shading_group_label;
+
+  /// Added to shading_group_label when the group's covers report different positions
+  ///
+  /// In en, this message translates to:
+  /// **'positions differ'**
+  String get shading_group_positions_differ;
+
+  /// Header button on Compact landscape that opens the selected light role's lights; role is the role name
+  ///
+  /// In en, this message translates to:
+  /// **'Show {role} lights'**
+  String lights_role_lights(String role);
 }
 
 class _AppLocalizationsDelegate

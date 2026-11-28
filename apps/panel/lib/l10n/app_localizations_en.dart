@@ -5243,4 +5243,83 @@ class AppLocalizationsEn extends AppLocalizations {
   String sky_room_readings(String readings) {
     return 'In the room: $readings';
   }
+
+  @override
+  String get lights_scenes_label => 'Lighting scenes';
+
+  @override
+  String get lights_roles_title => 'Light roles';
+
+  @override
+  String lights_role_turn_on(String role) {
+    return 'Turn $role on';
+  }
+
+  @override
+  String lights_role_turn_off(String role) {
+    return 'Turn $role off';
+  }
+
+  @override
+  String lights_scene_run(String scene) {
+    return 'Run scene $scene';
+  }
+
+  @override
+  String get lights_property_title => 'Light property';
+
+  @override
+  String lights_property_choose(String property) {
+    return '$property. Choose what to set';
+  }
+
+  @override
+  String get climate_aux_only_title => 'No heating or cooling in this room';
+
+  @override
+  String get climate_aux_only_message => 'Air devices here work on their own.';
+
+  @override
+  String climate_aux_on_count(int on, int total) {
+    return '$on of $total on';
+  }
+
+  @override
+  String climate_aux_power(String name) {
+    return '$name power';
+  }
+
+  @override
+  String climate_target_lower(String step) {
+    return 'Lower target by $step';
+  }
+
+  @override
+  String climate_target_raise(String step) {
+    return 'Raise target by $step';
+  }
+
+  @override
+  String get shading_roles_title => 'Cover roles';
+
+  @override
+  String shading_role_open(String role) {
+    return 'Open $role';
+  }
+
+  @override
+  String shading_role_close(String role) {
+    return 'Close $role';
+  }
+
+  @override
+  String get shading_group_label => 'Cover group';
+
+  @override
+  String get shading_group_positions_differ => 'positions differ';
+
+  @override
+  String lights_role_lights(String role) {
+    return 'Show $role lights';
+  }
 }
