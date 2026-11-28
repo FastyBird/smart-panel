@@ -68,7 +68,7 @@ function describeSource(property: ChannelPropertyEntity | null) {
 		? [transform.policy.outputRange.minimum, transform.policy.outputRange.maximum]
 		: property.format;
 	let domain: { minimum: number; maximum: number } | null = null;
-	if (format != null) {
+	if (format !== null && format !== undefined) {
 		if (!Array.isArray(format) || format.length !== 2) return reject();
 		const [minimum, maximum] = format;
 		if (

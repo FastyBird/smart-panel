@@ -101,24 +101,24 @@ export function qualifyShellyThermostat(raw: InstalledThermostatEvidence): Shell
 		profile.testedLeaseSeconds.max < profile.testedLeaseSeconds.min
 	)
 		throw new DevicesValidationException('Installed actuator qualification is incomplete.');
+
+	const qualifiedProfile = {
+		...profile,
+		testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
+	};
+	const guard = profile.guardScript;
+	if (guard) {
+		const guardScript = { ...guard };
+		if (guard.installationMetadata) {
+			guardScript.installationMetadata = Object.freeze({ ...guard.installationMetadata });
+		}
+		qualifiedProfile.guardScript = Object.freeze(guardScript);
+	}
 	return Object.freeze({
 		...evidence,
 		contractVersion: 1,
 		providerProfile: Object.freeze({ id: SHELLY_GUARDED_PROFILE, version: SHELLY_GUARDED_PROFILE_VERSION }),
-		profile: Object.freeze({
-			...profile,
-			testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
-			...(profile.guardScript
-				? {
-						guardScript: Object.freeze({
-							...profile.guardScript,
-							...(profile.guardScript.installationMetadata
-								? { installationMetadata: Object.freeze({ ...profile.guardScript.installationMetadata }) }
-								: {}),
-						}),
-					}
-				: {}),
-		}),
+		profile: Object.freeze(qualifiedProfile),
 	});
 }
 
