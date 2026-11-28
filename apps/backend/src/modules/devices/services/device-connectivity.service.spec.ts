@@ -1,7 +1,8 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { VirtualChannelPropertyEntity } from '../../../plugins/devices-virtual/entities/devices-virtual.entity';
-import { ConnectionState } from '../devices.constants';
+import { StorageService } from '../../storage/services/storage.service';
+import { ConnectionState, EventType, PropertyCategory } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
@@ -25,6 +26,12 @@ describe('DeviceConnectivityService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		deviceConnectionStateService.write.mockImplementation(
+			(_device, _property, _status, onAdmitted: (at: Date) => void) => {
+				onAdmitted(new Date());
+				return Promise.resolve();
+			},
+		);
 		service = new DeviceConnectivityService(
 			devicesService as unknown as DevicesService,
 			channelsService as unknown as ChannelsService,
@@ -65,6 +72,71 @@ describe('DeviceConnectivityService', () => {
 		expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		expect(deviceConnectionStateService.write).not.toHaveBeenCalled();
 		expect(eventEmitter.emit).not.toHaveBeenCalled();
+	});
+
+	it('publishes admitted transitions in order even when the first history write outlives its endpoint', async () => {
+		let started: () => void;
+		let release: () => void;
+		const writing = new Promise<void>((resolve) => (started = resolve));
+		const history = new Promise<void>((resolve) => (release = resolve));
+		const storage = {
+			isConnected: () => true,
+			query: jest.fn().mockResolvedValue([]),
+			writePoints: jest
+				.fn()
+				.mockImplementationOnce(() => {
+					started();
+					return history;
+				})
+				.mockResolvedValue(undefined),
+		};
+		const statuses = new DeviceConnectionStateService(storage as unknown as StorageService);
+		const device = Object.assign(new DeviceEntity(), { id: 'device' });
+		const channel = Object.assign(new ChannelEntity(), { id: 'channel' });
+		const property = Object.assign(new ChannelPropertyEntity(), { id: 'status', category: PropertyCategory.STATUS });
+		devicesService.findOne.mockResolvedValue(device);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		channelsPropertiesService.findOneBy.mockResolvedValue(property);
+		channelsPropertiesService.update.mockImplementation((_id, update: { value: ConnectionState }) => {
+			property.value = { ...property.value, value: update.value };
+			return Promise.resolve(property);
+		});
+		const connectivity = new DeviceConnectivityService(
+			devicesService as unknown as DevicesService,
+			channelsService as unknown as ChannelsService,
+			channelsPropertiesService as unknown as ChannelsPropertiesService,
+			statuses,
+			eventEmitter as unknown as EventEmitter2,
+		);
+		let current = true;
+		const first = connectivity.trySetConnectionState(device.id, { state: ConnectionState.CONNECTED }, () => current);
+		try {
+			await writing;
+			current = false;
+			expect((await statuses.readLatest(device)).status).toBe(ConnectionState.CONNECTED);
+			await expect(connectivity.trySetConnectionState(device.id, { state: ConnectionState.CONNECTED })).resolves.toBe(
+				true,
+			);
+			await expect(
+				connectivity.trySetConnectionState(device.id, { state: ConnectionState.DISCONNECTED }),
+			).resolves.toBe(true);
+		} finally {
+			release();
+			await first;
+		}
+		await expect(first).resolves.toBe(true);
+		expect(eventEmitter.emit).toHaveBeenCalledTimes(2);
+		expect(eventEmitter.emit).toHaveBeenNthCalledWith(
+			1,
+			EventType.DEVICE_CONNECTION_CHANGED,
+			expect.objectContaining({ state: ConnectionState.CONNECTED }),
+		);
+		expect(eventEmitter.emit).toHaveBeenNthCalledWith(
+			2,
+			EventType.DEVICE_CONNECTION_CHANGED,
+			expect.objectContaining({ state: ConnectionState.DISCONNECTED }),
+		);
+		expect(storage.writePoints).toHaveBeenCalledTimes(2);
 	});
 
 	it.each(['stable', 'property lookup', 'state lookup'])(
@@ -121,7 +193,6 @@ describe('DeviceConnectivityService', () => {
 		channelsPropertiesService.findOneBy.mockResolvedValue(property);
 		channelsPropertiesService.update.mockResolvedValue(property);
 		deviceConnectionStateService.readLatest.mockResolvedValue({ status: ConnectionState.UNKNOWN });
-		deviceConnectionStateService.write.mockResolvedValue(undefined);
 		const originalWrite = deviceConnectionStateService.write;
 		const originalEmit = eventEmitter.emit;
 		const replacementWrite = jest.fn();
@@ -152,6 +223,7 @@ describe('DeviceConnectivityService', () => {
 				expect.objectContaining({ id: 'original-device' }),
 				expect.objectContaining({ id: 'original-property' }),
 				ConnectionState.CONNECTED,
+				expect.any(Function),
 			);
 			expect(originalEmit).toHaveBeenCalledWith(
 				expect.any(String),
