@@ -17,7 +17,7 @@ import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { ControllerPublicationContext, ownControllerEffectValue } from './controller-publication-context';
 import { CreationCapture, captureCreation } from './creation-capture';
-import { DeviceConnectionStateService } from './device-connection-state.service';
+import { DeviceConnectionStateService, DeviceConnectionStateValue } from './device-connection-state.service';
 import { DevicesService } from './devices.service';
 
 interface ConnectivityDestinations {
@@ -41,13 +41,15 @@ export class DeviceConnectivityService {
 	async setConnectionState(
 		deviceId: DeviceEntity['id'],
 		state: { state: ConnectionState; reason?: string; ts?: number },
+		isCurrent?: () => boolean,
 	): Promise<void> {
-		await this.trySetConnectionState(deviceId, state);
+		await this.trySetConnectionState(deviceId, state, isCurrent);
 	}
 
 	async trySetConnectionState(
 		deviceId: DeviceEntity['id'],
 		state: { state: ConnectionState; reason?: string; ts?: number },
+		isCurrent?: () => boolean,
 	): Promise<boolean> {
 		const destinations: ConnectivityDestinations | undefined = ControllerPublicationContext.current()
 			? {
@@ -84,51 +86,44 @@ export class DeviceConnectivityService {
 				return false;
 			}
 
-			if (!property) {
+			if (!property || isCurrent?.() === false) {
 				// Property not found - skip
 				return false;
 			}
 
-			const last = property.value?.value;
-
-			let changed = false;
-
-			if (last !== String(state.state)) {
+			const propertyChanged = property.value?.value !== String(state.state);
+			if (propertyChanged) {
 				try {
 					const update = { type: property.type, value: String(state.state) };
-					await (destinations
-						? destinations.properties.values.update.call(destinations.properties.receiver, property.id, update)
-						: this.channelsPropertiesService.update(property.id, update));
-
-					changed = true;
+					const properties = destinations?.properties.values ?? this.channelsPropertiesService;
+					const receiver = destinations?.properties.receiver ?? this.channelsPropertiesService;
+					if (isCurrent) {
+						await properties.update.call(receiver, property.id, update, { valueIsCurrent: isCurrent });
+					} else {
+						await properties.update.call(receiver, property.id, update);
+					}
 				} catch {
 					// Property may have been deleted or doesn't exist - skip
 					return false;
 				}
 			}
 
+			let connection: DeviceConnectionStateValue;
 			try {
-				const connection = await (destinations
+				connection = await (destinations
 					? destinations.state.values.readLatest.call(destinations.state.receiver, device)
 					: this.deviceConnectionStateService.readLatest(device));
-
-				if (connection.status !== state.state) {
-					await (destinations
-						? destinations.state.values.write.call(destinations.state.receiver, device, property, state.state)
-						: this.deviceConnectionStateService.write(device, property, state.state));
-
-					changed = true;
-				}
 			} catch {
-				// Connection state service error - skip
 				return false;
 			}
+			if (isCurrent?.() === false) return false;
 
-			if (changed) {
-				// Update device status before emitting so the event contains the new values
+			let admitted = false;
+			const publish = (lastChanged: Date): void => {
+				admitted = true;
 				device.status.online = OnlineDeviceState.includes(state.state);
 				device.status.status = state.state;
-				device.status.lastChanged = new Date();
+				device.status.lastChanged = new Date(lastChanged);
 
 				const payload = { device, state: state.state, reason: state.reason };
 				if (destinations)
@@ -138,8 +133,20 @@ export class DeviceConnectivityService {
 						payload,
 					);
 				else this.eventEmitter.emit(EventType.DEVICE_CONNECTION_CHANGED, payload);
-			}
+			};
 
+			if (connection.status === state.state) {
+				if (propertyChanged) publish(new Date());
+				return true;
+			}
+			try {
+				await (destinations
+					? destinations.state.values.write.call(destinations.state.receiver, device, property, state.state, publish)
+					: this.deviceConnectionStateService.write(device, property, state.state, publish));
+			} catch (error) {
+				if (admitted) throw error;
+				return false;
+			}
 			return true;
 		});
 	}

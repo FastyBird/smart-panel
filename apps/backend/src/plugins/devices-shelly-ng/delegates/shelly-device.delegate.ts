@@ -578,6 +578,76 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		return (await this.rpcWithTimeout(() => this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'), timeoutMs)).ok;
 	}
 
+	/** An explicit RPC read publishes the same raw output report as a native status notification. */
+	async requestSwitchOutput(
+		componentId: number,
+		canonicalMac: string | null,
+		dispatching: () => void,
+		bound: () => boolean,
+		revisionCurrent: () => boolean,
+	): Promise<boolean> {
+		const key = `switch:${componentId}`;
+		const component = this.switches.get(componentId);
+		const rpc = this.shelly.rpcHandler;
+		const generation = this.connectionGeneration;
+		const binding = this.sampleBindingGeneration;
+		const revision = this.notificationRevisions.get(key) ?? 0;
+		const current = () =>
+			bound() &&
+			this.connected &&
+			rpc.connected &&
+			rpc === this.shelly.rpcHandler &&
+			generation === this.connectionGeneration &&
+			binding === this.sampleBindingGeneration &&
+			this.sampleComponentKeys.has(key) &&
+			this.switches.get(componentId) === component &&
+			(!canonicalMac || canonicalMac.toUpperCase() === this.shelly.macAddress?.toUpperCase());
+		// The normal WebSocket handler exposes the physical send boundary, including an SDK connect wait and digest retry.
+		if (!component || !(rpc instanceof GuardedShellyRpcHandler) || !current()) return false;
+		let observedAt: Date | undefined;
+		let ingressSequence: number | undefined;
+		let pending = true;
+		const expires = Date.now() + 5000;
+		const result = await this.rpcWithTimeout(
+			() =>
+				rpc.withSendGuard(
+					() => pending && Date.now() < expires && current(),
+					() => rpc.request<Record<string, unknown>>('Switch.GetStatus', { id: componentId }),
+					() => {
+						if (observedAt) return;
+						dispatching();
+						observedAt = new Date();
+						ingressSequence = nextSampleIngress();
+					},
+				),
+			5000,
+		);
+		pending = false;
+		if (!observedAt || ingressSequence === undefined) return false;
+		if (!result.ok || !current() || !revisionCurrent() || (this.notificationRevisions.get(key) ?? 0) !== revision)
+			return true;
+		const status = result.value;
+		if (
+			!status ||
+			status.id !== componentId ||
+			typeof status.output !== 'boolean' ||
+			(status.errors !== undefined && (!Array.isArray(status.errors) || status.errors.length))
+		)
+			return true;
+		this.notificationRevisions.set(key, revision + 1);
+		this.emitRawSample(
+			key,
+			{ output: status.output },
+			{
+				...shellySampleEvidence(undefined, observedAt),
+				ingressSequence,
+				sourceIsCurrent: current,
+				isCurrent: () => current() && this.notificationRevisions.get(key) === revision + 1,
+			},
+		);
+		return true;
+	}
+
 	/**
 	 * Polls the device with the public Shelly.GetStatus API.  The library's loadStatus()
 	 * cannot distinguish a poll update from a concurrent WebSocket notification, so apply the

@@ -617,6 +617,12 @@ async function verifyThermostatWire(
 			originalHook = mapping.beforeCreate;
 		const values = moduleRef.get(PropertyValueService);
 		const ambientProperty = await dataSource.manager.findOneByOrFail(ChannelPropertyEntity, { id: ambient });
+		if (storageAudit) {
+			// Influx SELECT * projects measurement-wide fields, including those used only by other properties.
+			// Persist a boolean relay reading so the first ambient snapshot already has the stringValue column.
+			const relayProperty = await dataSource.manager.findOneByOrFail(ChannelPropertyEntity, { id: relay });
+			await values.write(relayProperty, false);
+		}
 		await values.write(ambientProperty, 18);
 		const historyBefore = await values.readLatest(ambientProperty);
 		expect(historyBefore?.value).toBe(18);
@@ -3238,47 +3244,28 @@ describe('devices-virtual plugin (e2e)', () => {
 				})
 				.expect(201);
 			const deviceId = (created.body as { data: DeviceBody }).data.id;
-			const statusPropertyId = await waitUntil<string>(async () => {
-				const response = await authGet(`/modules/devices/devices/${deviceId}/channels`);
-				const status =
-					response.status === 200
-						? (response.body as { data: ChannelBody[] }).data
-								.find((candidate) => candidate.category === String(ChannelCategory.DEVICE_INFORMATION))
-								?.properties.find((property) => property.category === PropertyCategory.STATUS)
-						: undefined;
+			// The creation listener writes manufacturer, model and serial number after it creates the status row.
+			await linkSetupCompletion.finish();
+			const channels = await authGet(`/modules/devices/devices/${deviceId}/channels`).expect(200);
+			const status = (channels.body as { data: ChannelBody[] }).data
+				.find((channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION))
+				?.properties.find((property) => property.category === PropertyCategory.STATUS);
+			expect(status).toBeDefined();
 
-				return { done: !!status, value: status?.id ?? '' };
-			}, 'the synthesized connection state property');
-			const revision = async (): Promise<number> =>
-				(
-					await dataSource.query<{ revision: number }[]>(
-						'SELECT "revision" FROM "devices_virtual_graph_revision" WHERE "id" = 1',
-					)
-				)[0]?.revision ?? 0;
+			const graph = moduleRef.get(VirtualDependencyGraphService);
 			const properties = moduleRef.get<ChannelsPropertiesService>(ChannelsPropertiesService);
-			// The device information synthesis that follows creation is fire-and-forget and each of its
-			// rows is a structural write, so the baseline is the revision once it has stopped moving.
-			let before = await revision();
-			for (let quiet = 0; quiet < 4; ) {
-				await new Promise((resolve) => setTimeout(resolve, 250));
-				const current = await revision();
-				quiet = current === before ? quiet + 1 : 0;
-				before = current;
-			}
+			// The revision is shared by every device. Keep unrelated catalog writers outside this measurement.
+			await moduleRef.get(DeviceStructureLockService).runExclusive(async () => {
+				const before = await graph.revision();
+				for (const state of [ConnectionState.DISCONNECTED, ConnectionState.CONNECTED, ConnectionState.DISCONNECTED]) {
+					await properties.update(status.id, { type: DEVICES_VIRTUAL_TYPE, value: String(state) });
+					expect(await graph.revision()).toBe(before);
+				}
+				expect((await properties.getOneOrThrow(status.id)).value?.value).toBe(String(ConnectionState.DISCONNECTED));
 
-			// The write DeviceConnectivityService issues for every status change: type and value only.
-			for (const state of [ConnectionState.DISCONNECTED, ConnectionState.CONNECTED, ConnectionState.DISCONNECTED])
-				await properties.update(statusPropertyId, { type: DEVICES_VIRTUAL_TYPE, value: String(state) });
-
-			expect((await properties.getOneOrThrow(statusPropertyId)).value?.value).toBe(
-				String(ConnectionState.DISCONNECTED),
-			);
-			expect(await revision()).toBe(before);
-
-			// A stored field of the same row is a change to the catalog and keeps advancing.
-			await properties.update(statusPropertyId, { type: DEVICES_VIRTUAL_TYPE, name: 'Renamed status' });
-
-			expect(await revision()).toBe(before + 1);
+				await properties.update(status.id, { type: DEVICES_VIRTUAL_TYPE, name: 'Renamed status' });
+				expect(await graph.revision()).toBe(before + 1);
+			});
 		});
 	});
 
@@ -5159,7 +5146,8 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		});
 		try {
 			const expectedNames = prepared.migrations.map((migration) => migration.name ?? migration.constructor.name).sort();
-			expect(expectedNames).toHaveLength(61);
+			// Pin the historical chain while allowing new migrations to run in this HTTP fixture.
+			expect(expectedNames.filter((name) => Number(name.slice(-13)) <= 1000000000060)).toHaveLength(61);
 			expect(expectedNames).toContain('FenceClimateAutomationLifecycle1000000000049');
 			expect(expectedNames).toContain('AddSpaceModeSchedules1000000000050');
 			expect(expectedNames).toContain('AddSpaceOccupancy1000000000051');
@@ -5172,6 +5160,9 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			expect(expectedNames).toContain('AddModbusLongPress1000000000058');
 			expect(expectedNames).toContain('AddDetectionCategories1000000000059');
 			expect(expectedNames).toContain('AddUnifiProtectIdentity1000000000060');
+			expect(expectedNames).toContain('AddShellyV1AdoptedIdentity1000000000062');
+			expect(expectedNames).toContain('AddShellyV1VerifiedHost1000000000063');
+			expect(expectedNames).toContain('AddShellyV1IdentityRevision1000000000064');
 			const applied = await prepared.runMigrations({ transaction: 'each' });
 			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {

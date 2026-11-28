@@ -1,7 +1,7 @@
 import { instanceToPlain } from 'class-transformer';
 import { validate } from 'class-validator';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -65,13 +65,18 @@ export interface HomeAssistantDiscoveredInventory {
 }
 
 @Injectable()
-export class HomeAssistantHttpService {
+export class HomeAssistantHttpService implements OnModuleDestroy {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 		'HomeAssistantHttpService',
 	);
 
 	private pluginConfig: HomeAssistantConfigModel | null = null;
+	private readonly shutdown = new AbortController();
+
+	onModuleDestroy(): void {
+		this.shutdown.abort();
+	}
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -121,13 +126,13 @@ export class HomeAssistantHttpService {
 		throw new DevicesHomeAssistantNotFoundException('Home Assistant discovered device detail could not be loaded');
 	}
 
-	async getDiscoveredDevices(): Promise<HomeAssistantDiscoveredDeviceModel[]> {
+	async getDiscoveredDevices(signal?: AbortSignal): Promise<HomeAssistantDiscoveredDeviceModel[]> {
 		this.ensureApiKey();
 
 		try {
 			this.logger.debug('Fetching all Home Assistant discovered devices list');
 
-			const [devices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
+			const [devices, states] = await Promise.all([this.fetchListHaDevices(signal), this.fetchListHaStates(signal)]);
 
 			if (devices && states) {
 				const panelDevices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
@@ -830,16 +835,16 @@ export class HomeAssistantHttpService {
 
 	private readonly HTTP_TIMEOUT_MS = 15_000;
 
-	/**
-	 * Fetch wrapper with AbortController timeout.
-	 * Prevents hanging requests when HA is unresponsive.
-	 */
-	private async fetchWithTimeout(url: URL | string, init?: RequestInit): Promise<Response> {
-		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), this.HTTP_TIMEOUT_MS);
-
+	/** Keep the request deadline active while reading the response body. */
+	private async fetchJson(url: URL, init: RequestInit): Promise<{ response: Response; data: unknown }> {
+		const deadline = new AbortController();
+		const timeoutId = setTimeout(() => deadline.abort(), this.HTTP_TIMEOUT_MS);
+		const signals = [deadline.signal, this.shutdown.signal];
+		if (init.signal) signals.push(init.signal);
 		try {
-			return await fetch(url, { ...init, signal: controller.signal });
+			const response = await fetch(url, { ...init, signal: AbortSignal.any(signals) });
+			const data: unknown = await response.json();
+			return { response, data };
 		} finally {
 			clearTimeout(timeoutId);
 		}
@@ -890,7 +895,7 @@ export class HomeAssistantHttpService {
 		try {
 			const url = new URL(`${this.baseUrl}/api/template`);
 
-			const response = await this.fetchWithTimeout(url, {
+			const { response, data } = await this.fetchJson(url, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
@@ -903,8 +908,6 @@ export class HomeAssistantHttpService {
 					},
 				}),
 			});
-
-			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
 				this.logger.error('Home Assistant API template request failed', { response: data });
@@ -943,11 +946,12 @@ export class HomeAssistantHttpService {
 		}
 	}
 
-	private async fetchListHaDevices(): Promise<HomeAssistantDiscoveredDeviceDto[] | null> {
+	private async fetchListHaDevices(signal?: AbortSignal): Promise<HomeAssistantDiscoveredDeviceDto[] | null> {
 		try {
 			const url = new URL(`${this.baseUrl}/api/template`);
 
-			const response = await this.fetchWithTimeout(url, {
+			const { response, data } = await this.fetchJson(url, {
+				signal,
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
@@ -957,8 +961,6 @@ export class HomeAssistantHttpService {
 					template: DISCOVERED_DEVICES_TEMPLATE,
 				}),
 			});
-
-			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
 				this.logger.error('Home Assistant API template request failed', { response: data });
@@ -997,15 +999,13 @@ export class HomeAssistantHttpService {
 		try {
 			const url = new URL(`${this.baseUrl}/api/states/${entityId}`);
 
-			const response = await this.fetchWithTimeout(url, {
+			const { response, data } = await this.fetchJson(url, {
 				method: 'GET',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
 					'Content-Type': 'application/json',
 				},
 			});
-
-			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
 				this.logger.error('Home Assistant state API request failed', { response: data });
@@ -1038,19 +1038,18 @@ export class HomeAssistantHttpService {
 		}
 	}
 
-	private async fetchListHaStates(): Promise<HomeAssistantStateDto[] | null> {
+	private async fetchListHaStates(signal?: AbortSignal): Promise<HomeAssistantStateDto[] | null> {
 		try {
 			const url = new URL(`${this.baseUrl}/api/states`);
 
-			const response = await this.fetchWithTimeout(url, {
+			const { response, data } = await this.fetchJson(url, {
+				signal,
 				method: 'GET',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
 					'Content-Type': 'application/json',
 				},
 			});
-
-			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
 				this.logger.error('Home Assistant states API request failed', { response: data });
@@ -1089,7 +1088,7 @@ export class HomeAssistantHttpService {
 		try {
 			const url = new URL(`${this.baseUrl}/api/template`);
 
-			const response = await this.fetchWithTimeout(url, {
+			const { response, data } = await this.fetchJson(url, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${this.apiKey}`,
@@ -1099,8 +1098,6 @@ export class HomeAssistantHttpService {
 					template: DISCOVERED_HELPERS_TEMPLATE,
 				}),
 			});
-
-			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
 				this.logger.error('Home Assistant API template request failed', { response: data });

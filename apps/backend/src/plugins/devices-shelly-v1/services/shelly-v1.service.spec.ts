@@ -26,14 +26,18 @@ import {
 import {
 	NormalizedDeviceChangeEvent,
 	NormalizedDeviceEvent,
+	RegisteredDevice,
 	ShelliesAdapterCallbacks,
+	ShellyDevice,
 } from '../interfaces/shellies.interface';
-import { ShellyDevice } from '../interfaces/shellies.interface';
+import { ShellyInfoResponse, ShellyLoginResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import { ShellyV1AdoptedIdentityService, shellyV1AdoptionState } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
+import { ShellyV1PropertyReportsService } from './shelly-v1-property-reports.service';
 import { ShellyV1Service } from './shelly-v1.service';
 
 describe('ShellyV1Service', () => {
@@ -51,6 +55,7 @@ describe('ShellyV1Service', () => {
 	const mockDevice = {
 		id: 'device-uuid',
 		identifier: 'shelly1pm-ABC123',
+		enabled: true,
 		type: 'SHSW-PM', // Device model type
 	} as unknown as ShellyV1DeviceEntity;
 
@@ -116,8 +121,31 @@ describe('ShellyV1Service', () => {
 	} as ShellyV1ChannelPropertyEntity;
 
 	beforeEach(async () => {
+		const registration: RegisteredDevice = {
+			id: mockDevice.identifier,
+			type: 'SHSW-PM',
+			host: '192.168.1.100',
+			enabled: true,
+		};
+		const peer = {
+			id: registration.id,
+			type: registration.type,
+			host: registration.host,
+			online: true,
+		} as ShellyDevice;
 		module = await Test.createTestingModule({
 			providers: [
+				{
+					provide: ShellyV1PropertyReportsService,
+					useValue: {
+						supports: jest.fn().mockReturnValue(false),
+						capture: jest.fn(),
+						publish: jest.fn(),
+						refresh: jest.fn(),
+						temperature: jest.fn(),
+					},
+				},
+				{ provide: ShellyV1AdoptedIdentityService, useValue: { findPin: jest.fn(), captureDevice: jest.fn() } },
 				ShellyV1Service,
 				{
 					provide: ChannelInputOccurrencesService,
@@ -140,10 +168,10 @@ describe('ShellyV1Service', () => {
 					useValue: {
 						start: jest.fn(),
 						stop: jest.fn(),
-						getDevice: jest.fn(),
-						getRegisteredDevice: jest
-							.fn()
-							.mockReturnValue({ id: 'shelly1pm-ABC123', type: 'SHSW-PM', host: '192.168.1.100', enabled: true }),
+						isRunning: jest.fn().mockReturnValue(true),
+						getDevice: jest.fn((type, id) => (type === registration.type && id === registration.id ? peer : undefined)),
+						getRegisteredDevice: jest.fn((id) => (registration.id === id ? registration : undefined)),
+						getRegisteredDeviceForCatalog: jest.fn(),
 						getRegisteredDevices: jest.fn().mockReturnValue([]),
 						updateDeviceEnabledStatus: jest.fn(),
 						setCallbacks: jest.fn().mockImplementation((callbacks: ShelliesAdapterCallbacks) => {
@@ -187,6 +215,7 @@ describe('ShellyV1Service', () => {
 					provide: ShellyV1HttpClientService,
 					useValue: {
 						getDeviceInfo: jest.fn(),
+						getLoginSettings: jest.fn(),
 						getDeviceStatus: jest.fn(),
 						getDeviceSettings: jest.fn(),
 					},
@@ -201,6 +230,14 @@ describe('ShellyV1Service', () => {
 		deviceConnectivityService = module.get(DeviceConnectivityService);
 		deviceMapper = module.get(DeviceMapperService);
 		shelliesAdapter = module.get(ShelliesAdapterService);
+		shelliesAdapter.getRegisteredDeviceForCatalog.mockImplementation((device) => {
+			const bound = shelliesAdapter
+				.getRegisteredDevices()
+				.find((candidate) => candidate.catalog?.deviceId === device.id);
+			if (bound) return bound;
+			const exact = shelliesAdapter.getRegisteredDevice(device.identifier);
+			return exact?.id === device.identifier && !exact.catalog ? exact : undefined;
+		});
 		channelInputOccurrencesService = module.get(ChannelInputOccurrencesService);
 	});
 
@@ -215,6 +252,7 @@ describe('ShellyV1Service', () => {
 		it('should update property value when device, channel, and property are found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,
@@ -265,12 +303,14 @@ describe('ShellyV1Service', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				'property-uuid',
 				expect.objectContaining({ value: true }),
+				{ valueIsCurrent: expect.any(Function) as () => boolean },
 			);
 		});
 
 		it('should skip update if device is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
-				id: 'unknown-device',
+				id: mockDevice.identifier,
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,
@@ -280,7 +320,11 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceChanged?.(changeEvent);
 
-			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'unknown-device', DEVICES_SHELLY_V1_TYPE);
+			expect(devicesService.findOneBy).toHaveBeenCalledWith(
+				'identifier',
+				mockDevice.identifier,
+				DEVICES_SHELLY_V1_TYPE,
+			);
 			expect(channelsService.findOneBy).not.toHaveBeenCalled();
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
@@ -288,6 +332,7 @@ describe('ShellyV1Service', () => {
 		it('should skip update if channel is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,
@@ -313,6 +358,7 @@ describe('ShellyV1Service', () => {
 		it('should skip update if property is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'power0',
 				newValue: 100,
 				oldValue: 0,
@@ -340,6 +386,7 @@ describe('ShellyV1Service', () => {
 		it('should skip update if binding is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'unknownProperty',
 				newValue: true,
 				oldValue: false,
@@ -364,6 +411,7 @@ describe('ShellyV1Service', () => {
 		it('should handle errors gracefully', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'relay0',
 				newValue: true,
 				oldValue: false,
@@ -386,12 +434,15 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockResolvedValue(mockDevice);
 
+			shelliesAdapter.getDevice(offlineEvent.type, offlineEvent.id).online = false;
 			await adapterCallbacks.onDeviceOffline?.(offlineEvent);
 
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
-			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-uuid', {
-				state: ConnectionState.DISCONNECTED,
-			});
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(
+				'device-uuid',
+				{ state: ConnectionState.DISCONNECTED },
+				expect.any(Function),
+			);
 		});
 
 		it('should skip if device is not found', async () => {
@@ -437,9 +488,11 @@ describe('ShellyV1Service', () => {
 			await adapterCallbacks.onDeviceOnline?.(onlineEvent);
 
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
-			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-uuid', {
-				state: ConnectionState.CONNECTED,
-			});
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(
+				'device-uuid',
+				{ state: ConnectionState.CONNECTED },
+				expect.any(Function),
+			);
 		});
 
 		it('should skip if device is not found', async () => {
@@ -468,6 +521,369 @@ describe('ShellyV1Service', () => {
 			devicesService.findOneBy.mockRejectedValue(new Error('Database error'));
 
 			await expect(adapterCallbacks.onDeviceOnline?.(onlineEvent)).resolves.not.toThrow();
+		});
+	});
+
+	describe('incoming activity on a verified catalog alias', () => {
+		function arrange() {
+			const rawId = 'shelly25-ABC123';
+			const mac = 'AABBCCABC123';
+			const device = Object.assign(new ShellyV1DeviceEntity(), {
+				id: 'panel-uuid',
+				identifier: `shelly25-${mac}`,
+				enabled: true,
+				hostname: '192.168.1.80',
+			});
+			const registration: RegisteredDevice = {
+				id: rawId,
+				type: 'SHSW-25',
+				host: device.hostname,
+				enabled: true,
+				catalog: { deviceId: device.id, mac },
+			};
+			const peer = { ...registration, online: true, mode: 'relay', inputEvent0: 'S' } as unknown as ShellyDevice;
+			shelliesAdapter.getRegisteredDevices.mockReturnValue([registration]);
+			shelliesAdapter.getRegisteredDevice.mockImplementation((id) => (id === rawId ? registration : undefined));
+			shelliesAdapter.getDevice.mockImplementation((type, id) =>
+				type === registration.type && id === rawId ? peer : undefined,
+			);
+			const identities = module.get<jest.Mocked<ShellyV1AdoptedIdentityService>>(ShellyV1AdoptedIdentityService);
+			const pin = { deviceId: device.id, mac, verifiedHost: registration.host, revision: 1, device };
+			identities.findPin.mockResolvedValue(pin);
+			devicesService.findOneBy.mockImplementation((column, value) =>
+				Promise.resolve(column === 'id' && value === device.id ? device : null),
+			);
+			channelsService.findOneBy.mockImplementation((_column, identifier) =>
+				Promise.resolve(
+					identifier === 'device_information'
+						? mockDeviceInfoChannel
+						: identifier === 'input_0'
+							? mockInputChannel
+							: mockChannel,
+				),
+			);
+			const modelProperty = Object.assign(new ShellyV1ChannelPropertyEntity(), {
+				id: mockModelProperty.id,
+				identifier: 'model',
+				value: new PropertyValueState('SHSW-25'),
+			});
+			channelsPropertiesService.findOneBy.mockImplementation((_column, identifier) =>
+				Promise.resolve(
+					identifier === 'model' ? modelProperty : identifier === 'event' ? mockEventProperty : mockProperty,
+				),
+			);
+			const reports = module.get<jest.Mocked<ShellyV1PropertyReportsService>>(ShellyV1PropertyReportsService);
+			reports.supports.mockReturnValue(true);
+			const change = { id: rawId, type: peer.type, property: 'relay0', oldValue: false, newValue: true };
+			return { device, registration, peer, identities, pin, change, reports, modelProperty };
+		}
+
+		it('routes relay-mode changes, button events and connection changes from the reported ID to the catalog UUID', async () => {
+			const f = arrange();
+			await adapterCallbacks.onDeviceChanged(f.change);
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				mockProperty.id,
+				expect.objectContaining({ value: true }),
+				{ valueIsCurrent: expect.any(Function) as () => boolean },
+			);
+			expect(f.reports.refresh).toHaveBeenCalledWith(f.device, expect.any(Function));
+			expect(shelliesAdapter.getDevice).not.toHaveBeenCalledWith(f.registration.type, f.device.identifier);
+
+			const counter = { id: f.peer.id, type: f.peer.type, property: 'inputEventCounter0', oldValue: 0, newValue: 1 };
+			await adapterCallbacks.onDeviceChanged(counter);
+			await adapterCallbacks.onDeviceChanged({ ...counter, oldValue: 1, newValue: 2 });
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({ deviceId: f.device.id, channelId: mockInputChannel.id, nativeEventType: 'S' }),
+			);
+
+			const connection = { id: f.peer.id, host: f.peer.host, type: f.peer.type, online: true };
+			await adapterCallbacks.onDeviceOnline(connection);
+			f.peer.online = false;
+			await adapterCallbacks.onDeviceOffline({ ...connection, online: false });
+			expect(deviceConnectivityService.setConnectionState.mock.calls.map(([id, state]) => [id, state.state])).toEqual([
+				[f.device.id, ConnectionState.CONNECTED],
+				[f.device.id, ConnectionState.DISCONNECTED],
+			]);
+			expect(
+				devicesService.findOneBy.mock.calls.every(([column, value]) => column === 'id' && value === f.device.id),
+			).toBe(true);
+			const [onlineCurrent, offlineCurrent] = deviceConnectivityService.setConnectionState.mock.calls.map(
+				(call) => call[2],
+			);
+			expect(onlineCurrent()).toBe(false);
+			expect(offlineCurrent()).toBe(true);
+			shelliesAdapter.getDevice.mockReturnValue({ ...f.peer } as ShellyDevice);
+			expect(offlineCurrent()).toBe(false);
+		});
+
+		it('rejects incoming events for a different same-suffix pin and work outlived by its registration', async () => {
+			const f = arrange();
+			f.identities.findPin.mockResolvedValue({ ...f.pin, mac: '112233ABC123' });
+			await adapterCallbacks.onDeviceChanged(f.change);
+			await adapterCallbacks.onDeviceOnline({ id: f.peer.id, host: f.peer.host, type: f.peer.type, online: true });
+			expect(channelsService.findOneBy).not.toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+			f.identities.findPin.mockResolvedValue(f.pin);
+			channelsPropertiesService.findOneBy.mockResolvedValueOnce(f.modelProperty).mockImplementationOnce(() => {
+				shelliesAdapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
+				return Promise.resolve(mockProperty);
+			});
+			await adapterCallbacks.onDeviceChanged(f.change);
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			expect(f.reports.refresh).not.toHaveBeenCalled();
+		});
+
+		it('keeps a colliding unclaimed SDK model out of the verified relay catalog and its button counters', async () => {
+			const f = arrange();
+			const sensor: RegisteredDevice = { id: f.peer.id, type: 'SHHT-1', host: '192.168.1.88', enabled: true };
+			const sensorPeer = { ...sensor, online: true, inputEvent0: 'L' } as unknown as ShellyDevice;
+			shelliesAdapter.getRegisteredDevices.mockReturnValue([sensor, f.registration]);
+			shelliesAdapter.getRegisteredDevice.mockImplementation((id, type) =>
+				id === sensor.id ? [sensor, f.registration].find((item) => item.type === type) : undefined,
+			);
+			shelliesAdapter.getDevice.mockImplementation((type, id) =>
+				id === sensor.id ? [sensorPeer, f.peer].find((item) => item.type === type) : undefined,
+			);
+			devicesService.findOneBy.mockResolvedValue(f.device);
+			const counter = { id: sensor.id, type: sensor.type, property: 'inputEventCounter0', oldValue: 0, newValue: 1 };
+			await adapterCallbacks.onDeviceChanged(counter);
+			await adapterCallbacks.onDeviceOnline({ ...sensor, online: true });
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+			await adapterCallbacks.onDeviceChanged({ ...counter, type: f.peer.type });
+			await adapterCallbacks.onDeviceChanged({ ...counter, type: f.peer.type, oldValue: 1, newValue: 2 });
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({ deviceId: f.device.id, nativeEventType: 'S' }),
+			);
+		});
+	});
+
+	describe('scheduled signal strength and firmware polling', () => {
+		const host = '192.168.1.80';
+		const previousHost = '192.168.1.20';
+		const mac = 'AABBCCABC123';
+		const foreign = '112233ABC123';
+		const poll = (): Promise<void> => service['updateDevicesSignalStrength']();
+
+		async function arrange(configuredHost: string | null = previousHost, expected: string | null = mac) {
+			devicesService.findAll.mockResolvedValue([]);
+			await service.start();
+			const registration: RegisteredDevice = { id: 'shelly1pm-ABC123', type: 'SHSW-PM', host, enabled: true };
+			const peer = { id: registration.id, type: registration.type, host, online: true } as ShellyDevice;
+			const device = Object.assign(new ShellyV1DeviceEntity(), {
+				id: 'device-uuid',
+				identifier: registration.id,
+				enabled: true,
+				hostname: configuredHost,
+				password: 'stored-secret',
+			});
+			const info = { type: registration.type, mac, fw: 'fresh-fw', auth: true, longid: 1 };
+			const status = { mac, wifi_sta: { rssi: -70 } } as ShellyStatusResponse;
+			const http = module.get<jest.Mocked<ShellyV1HttpClientService>>(ShellyV1HttpClientService);
+			const identities = module.get<jest.Mocked<ShellyV1AdoptedIdentityService>>(ShellyV1AdoptedIdentityService);
+			const reports = module.get<jest.Mocked<ShellyV1PropertyReportsService>>(ShellyV1PropertyReportsService);
+			const source = { device, peer } as ReturnType<ShellyV1PropertyReportsService['capture']>;
+			reports.capture.mockReturnValue(source);
+			shelliesAdapter.getRegisteredDevices.mockReturnValue([registration]);
+			shelliesAdapter.getRegisteredDevice.mockReturnValue(registration);
+			shelliesAdapter.getDevice.mockReturnValue(peer);
+			devicesService.findOneBy.mockResolvedValue(device);
+			http.getDeviceInfo.mockResolvedValue(info);
+			http.getLoginSettings.mockResolvedValue({ username: 'operator', enabled: true, unprotected: false });
+			http.getDeviceStatus.mockResolvedValue(status);
+			const pin = expected
+				? { deviceId: device.id, mac: expected, verifiedHost: configuredHost, revision: 1, device }
+				: null;
+			identities.findPin.mockResolvedValue(pin);
+			const adoption = shellyV1AdoptionState(device, pin);
+			identities.captureDevice.mockResolvedValue(adoption);
+			channelsService.findOneBy.mockResolvedValue(mockDeviceInfoChannel);
+			channelsPropertiesService.findOneBy.mockResolvedValue(mockProperty);
+			return { registration, peer, device, info, status, http, identities, reports, source, pin, adoption };
+		}
+
+		it.each([
+			{ label: 'pinned moved endpoint', configuredHost: previousHost, expected: mac },
+			{ label: 'pinned endpoint without a stored host', configuredHost: null, expected: mac },
+			{ label: 'legacy configured endpoint', configuredHost: host, expected: null },
+		])('verifies the $label before login and reuses one status response', async ({ configuredHost, expected }) => {
+			const f = await arrange(configuredHost, expected);
+			let release: (info: ShellyInfoResponse) => void;
+			f.http.getDeviceInfo.mockReturnValueOnce(
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+			);
+			const updating = poll();
+			await new Promise(setImmediate);
+			expect(f.http.getDeviceInfo).toHaveBeenCalledWith(host);
+			expect(f.http.getLoginSettings).not.toHaveBeenCalled();
+			expect(f.http.getDeviceStatus).not.toHaveBeenCalled();
+			release(f.info);
+			await updating;
+			expect(f.identities.findPin).toHaveBeenCalledWith(f.device.id);
+			expect(f.http.getLoginSettings).toHaveBeenCalledWith(host);
+			expect(f.http.getDeviceStatus).toHaveBeenCalledTimes(1);
+			expect(f.http.getDeviceStatus).toHaveBeenCalledWith(host, undefined, 'operator', f.device.password);
+			if (expected) expect(f.reports.publish).toHaveBeenCalledWith(f.source, f.status, expect.any(Date));
+			else expect(f.reports.publish).not.toHaveBeenCalled();
+			expect(channelsPropertiesService.update.mock.calls.map(([, update]) => update.value)).toEqual([60, f.info.fw]);
+		});
+
+		it.each([
+			{
+				label: 'mismatched pinned MAC with matching suffix',
+				configuredHost: host,
+				expected: mac,
+				reportedMac: foreign,
+				type: 'SHSW-PM',
+			},
+			{
+				label: 'stored pin for a previous identifier',
+				configuredHost: host,
+				expected: 'AABBCCDDEEFF',
+				reportedMac: mac,
+				type: 'SHSW-PM',
+			},
+			{ label: 'wrong model', configuredHost: host, expected: mac, reportedMac: mac, type: 'SHHT-1' },
+			{ label: 'abbreviated MAC', configuredHost: host, expected: null, reportedMac: 'ABC123', type: 'SHSW-PM' },
+			{
+				label: 'foreign legacy suffix',
+				configuredHost: host,
+				expected: null,
+				reportedMac: 'AABBCCAABBCC',
+				type: 'SHSW-PM',
+			},
+			{ label: 'unpinned moved host', configuredHost: previousHost, expected: null, reportedMac: mac, type: 'SHSW-PM' },
+			{ label: 'unpinned missing hostname', configuredHost: null, expected: null, reportedMac: mac, type: 'SHSW-PM' },
+		])(
+			'rejects $label before requesting login settings or sending credentials',
+			async ({ configuredHost, expected, reportedMac, type }) => {
+				const f = await arrange(configuredHost, expected);
+				f.http.getDeviceInfo.mockResolvedValue({ ...f.info, mac: reportedMac, type });
+				await poll();
+				expect(f.http.getLoginSettings).not.toHaveBeenCalled();
+				expect(f.http.getDeviceStatus).not.toHaveBeenCalled();
+				expect(f.reports.publish).not.toHaveBeenCalled();
+				expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			},
+		);
+
+		it('revokes a replaced registration during identity lookup and a moved peer during login fallback', async () => {
+			const f = await arrange();
+			f.identities.findPin.mockImplementationOnce(() => {
+				shelliesAdapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
+				return Promise.resolve(f.pin);
+			});
+			await poll();
+			expect(f.http.getLoginSettings).not.toHaveBeenCalled();
+			shelliesAdapter.getRegisteredDevice.mockReturnValue(f.registration);
+			f.http.getLoginSettings.mockImplementationOnce(() => {
+				f.peer.host = previousHost;
+				return Promise.reject(new Error('login settings unavailable'));
+			});
+			await poll();
+			expect(f.http.getLoginSettings).toHaveBeenCalledWith(host);
+			expect(f.http.getDeviceStatus).not.toHaveBeenCalled();
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
+		it.each(['pin moved and returned', 'legacy host changed', 'legacy row replaced'])(
+			'ends the pending login when the %s',
+			async (change) => {
+				const f = await arrange(host, change === 'pin moved and returned' ? mac : null);
+				f.http.getLoginSettings.mockImplementationOnce(() => {
+					const updated = { ...f.adoption };
+					if (change === 'pin moved and returned') updated.pin = { ...f.pin, revision: 3 };
+					if (change === 'legacy host changed') updated.hostname = previousHost;
+					if (change === 'legacy row replaced') updated.id = 'new-device-uuid';
+					f.identities.captureDevice.mockResolvedValue(updated);
+					return Promise.resolve({ username: 'operator', enabled: true, unprotected: false });
+				});
+				await poll();
+				expect(f.http.getLoginSettings).toHaveBeenCalledTimes(1);
+				expect(f.http.getDeviceStatus).not.toHaveBeenCalled();
+				expect(f.reports.publish).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['rotated', 'cleared', 'disabled', 'reconciled', 'stable'])(
+			'rechecks %s credentials after the pending login request and before status dispatch',
+			async (change) => {
+				const f = await arrange();
+				let finish: (login: ShellyLoginResponse) => void;
+				f.http.getLoginSettings.mockReturnValueOnce(
+					new Promise((resolve) => {
+						finish = resolve;
+					}),
+				);
+				const updating = poll();
+				await new Promise(setImmediate);
+				expect(f.http.getLoginSettings).toHaveBeenCalledTimes(1);
+				const updated = { ...f.adoption };
+				if (change === 'rotated') updated.password = 'new-password';
+				if (change === 'cleared') updated.password = null;
+				if (change === 'disabled') updated.enabled = false;
+				if (change === 'reconciled') f.registration.credentialRevision = (f.registration.credentialRevision ?? 0) + 1;
+				f.identities.captureDevice.mockResolvedValue(updated);
+				finish({ username: 'operator', enabled: true, unprotected: false });
+				await updating;
+				if (change === 'stable') {
+					expect(f.http.getDeviceStatus).toHaveBeenCalledWith(host, undefined, 'operator', f.device.password);
+					expect(f.reports.publish).toHaveBeenCalledTimes(1);
+				} else {
+					expect(f.http.getDeviceStatus).not.toHaveBeenCalled();
+					expect(f.reports.publish).not.toHaveBeenCalled();
+					expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+				}
+			},
+		);
+
+		it('polls a renamed device by the verified catalog UUID and rejects a foreign same-suffix association', async () => {
+			const f = await arrange(host);
+			f.registration.catalog = { deviceId: f.device.id, mac };
+			f.device.identifier = `shelly1pm-${mac}`;
+			devicesService.findOneBy.mockImplementation((column, value) =>
+				Promise.resolve(column === 'id' && value === f.device.id ? f.device : null),
+			);
+			f.identities.captureDevice.mockResolvedValue({ ...f.adoption, identifier: f.device.identifier });
+			await poll();
+			expect(devicesService.findOneBy).toHaveBeenCalledWith('id', f.device.id, DEVICES_SHELLY_V1_TYPE);
+			expect(f.identities.captureDevice).toHaveBeenCalledWith(f.device.identifier);
+			expect(f.http.getDeviceStatus).toHaveBeenCalledWith(host, undefined, 'operator', f.device.password);
+			expect(f.reports.publish).toHaveBeenCalledTimes(1);
+			f.identities.findPin.mockResolvedValue({ ...f.pin, mac: foreign });
+			await poll();
+			expect(f.http.getDeviceInfo).toHaveBeenCalledTimes(1);
+			expect(f.http.getDeviceStatus).toHaveBeenCalledTimes(1);
+			expect(f.reports.publish).toHaveBeenCalledTimes(1);
+		});
+
+		it.each(['different MAC', 'replaced peer'])(
+			'withdraws a status response with %s before publishing',
+			async (change) => {
+				const f = await arrange();
+				f.http.getDeviceStatus.mockImplementationOnce(() => {
+					if (change === 'replaced peer') shelliesAdapter.getDevice.mockReturnValue({ ...f.peer } as ShellyDevice);
+					return Promise.resolve({ ...f.status, mac: change === 'different MAC' ? foreign : mac });
+				});
+				await poll();
+				expect(f.http.getDeviceStatus).toHaveBeenCalledTimes(1);
+				expect(f.reports.publish).not.toHaveBeenCalled();
+				expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			},
+		);
+
+		it('withdraws metadata when the physical registration changes while resolving its property', async () => {
+			const f = await arrange();
+			channelsPropertiesService.findOneBy.mockImplementationOnce(() => {
+				shelliesAdapter.getRegisteredDevice.mockReturnValue({ ...f.registration });
+				return Promise.resolve(mockProperty);
+			});
+			await poll();
+			expect(f.reports.publish).toHaveBeenCalledTimes(1);
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 	});
 
@@ -527,8 +943,7 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
-			// Discovery is enabled by default, should call mapDevice for new devices
-			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent, true);
 		});
 
 		it('should ignore new devices when discovery is disabled', async () => {
@@ -549,15 +964,11 @@ describe('ShellyV1Service', () => {
 				online: true,
 			};
 
-			// Mock that device does not exist in database (new device)
-			devicesService.findOneBy.mockResolvedValue(null);
-			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
+			deviceMapper.mapDevice.mockResolvedValue(null);
 
 			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
-			// Discovery is disabled, should NOT call mapDevice for new devices
-			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-NEW123', DEVICES_SHELLY_V1_TYPE);
-			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent, false);
 		});
 
 		it('should still process existing devices when discovery is disabled', async () => {
@@ -578,15 +989,11 @@ describe('ShellyV1Service', () => {
 				online: true,
 			};
 
-			// Mock that device exists in database (existing device)
-			devicesService.findOneBy.mockResolvedValue(mockDevice);
 			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
 
 			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
-			// Discovery is disabled, but device exists, should still call mapDevice
-			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
-			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent, false);
 		});
 	});
 
@@ -604,7 +1011,7 @@ describe('ShellyV1Service', () => {
 			);
 
 			await expect(adapterCallbacks.onDeviceDiscovered?.(discoveryEvent)).resolves.not.toThrow();
-			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent, true);
 		});
 	});
 
@@ -657,6 +1064,7 @@ describe('ShellyV1Service', () => {
 			const shellyDevice = {
 				id: 'shelly1pm-ABC123',
 				type: 'SHSW-PM',
+				host: '192.168.1.100',
 				inputEvent0: 'S',
 				inputEventCounter0: 1,
 			};
@@ -669,6 +1077,7 @@ describe('ShellyV1Service', () => {
 			// First counter event baselines the tracker (counter=1)
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 1,
 				oldValue: 0,
@@ -680,6 +1089,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 2;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 1,
@@ -698,6 +1108,7 @@ describe('ShellyV1Service', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				'prop-event-uuid',
 				expect.objectContaining({ value: 'press' }),
+				{ valueIsCurrent: expect.any(Function) as () => boolean },
 			);
 		});
 
@@ -705,6 +1116,7 @@ describe('ShellyV1Service', () => {
 			const shellyDevice = {
 				id: 'shelly1pm-ABC123',
 				type: 'SHSW-PM',
+				host: '192.168.1.100',
 				inputEvent0: 'S',
 				inputEventCounter0: 5,
 			};
@@ -715,6 +1127,7 @@ describe('ShellyV1Service', () => {
 			// Baseline at 5
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 5,
 				oldValue: 5,
@@ -723,6 +1136,7 @@ describe('ShellyV1Service', () => {
 			// Repeated multicast with counter still 5
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 5,
 				oldValue: 5,
@@ -735,6 +1149,7 @@ describe('ShellyV1Service', () => {
 			const shellyDevice = {
 				id: 'shelly1pm-ABC123',
 				type: 'SHSW-PM',
+				host: '192.168.1.100',
 				inputEvent0: 'S',
 				inputEventCounter0: 10,
 			};
@@ -747,6 +1162,7 @@ describe('ShellyV1Service', () => {
 			// Baseline at 10
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 10,
 				oldValue: 10,
@@ -756,6 +1172,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 11;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 11,
 				oldValue: 10,
@@ -765,6 +1182,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 12;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 12,
 				oldValue: 11,
@@ -792,6 +1210,7 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'input0',
 				newValue: 1,
 				oldValue: 0,
@@ -800,6 +1219,7 @@ describe('ShellyV1Service', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				'prop-detected-uuid',
 				expect.objectContaining({ value: true }),
+				{ valueIsCurrent: expect.any(Function) as () => boolean },
 			);
 		});
 
@@ -807,6 +1227,7 @@ describe('ShellyV1Service', () => {
 			const shellyDevice = {
 				id: 'shelly1pm-ABC123',
 				type: 'SHSW-PM',
+				host: '192.168.1.100',
 				inputEvent0: 'S',
 				inputEventCounter0: 1,
 			};
@@ -819,6 +1240,7 @@ describe('ShellyV1Service', () => {
 			devicesService.findOneBy.mockResolvedValueOnce(mockDevice);
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 1,
 				oldValue: 0,
@@ -835,6 +1257,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 2;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 1,
@@ -854,6 +1277,7 @@ describe('ShellyV1Service', () => {
 			const shellyDevice = {
 				id: 'shelly1pm-ABC123',
 				type: 'SHSW-PM',
+				host: '192.168.1.100',
 				inputEvent0: 'S',
 				inputEventCounter0: 1,
 			};
@@ -866,6 +1290,7 @@ describe('ShellyV1Service', () => {
 			// Baseline at 1
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 1,
 				oldValue: 0,
@@ -877,6 +1302,7 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 1,
@@ -886,6 +1312,7 @@ describe('ShellyV1Service', () => {
 			channelInputOccurrencesService.publishOccurrence.mockResolvedValueOnce(undefined);
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 1,
@@ -897,6 +1324,7 @@ describe('ShellyV1Service', () => {
 			// Once succeeded, subsequent repeated call with counter 2 is suppressed
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 2,
 				oldValue: 2,
@@ -909,6 +1337,7 @@ describe('ShellyV1Service', () => {
 			const shellyDevice = {
 				id: 'shelly1pm-ABC123',
 				type: 'SHSW-PM',
+				host: '192.168.1.100',
 				inputEvent0: 'S',
 				inputEventCounter0: 50,
 			};
@@ -921,6 +1350,7 @@ describe('ShellyV1Service', () => {
 			// Baseline at counter 50
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 50,
 				oldValue: 0,
@@ -930,6 +1360,7 @@ describe('ShellyV1Service', () => {
 			shellyDevice.inputEventCounter0 = 1;
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEventCounter0',
 				newValue: 1,
 				oldValue: 50,
@@ -949,6 +1380,7 @@ describe('ShellyV1Service', () => {
 
 			await adapterCallbacks.onDeviceChanged?.({
 				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
 				property: 'inputEvent0',
 				newValue: 'S',
 				oldValue: '',

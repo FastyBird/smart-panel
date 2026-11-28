@@ -75,7 +75,8 @@ class FakeTransport implements ModbusTransport {
 		return this.open;
 	}
 
-	read(request: ModbusReadRequest): Promise<boolean[] | number[]> {
+	read(request: ModbusReadRequest, beforeDispatch?: () => void): Promise<boolean[] | number[]> {
+		beforeDispatch?.();
 		return this.push('read', request.address);
 	}
 
@@ -268,6 +269,33 @@ describe('EndpointConnection', () => {
 		await flush();
 
 		expect(transports[0].addresses()).toEqual([1, 2, 3]);
+	});
+
+	it('marks reads at dispatch and leaves withdrawn queue entries out of the wire request count', async () => {
+		const { connection, transports } = setup();
+		connection.start();
+		await flush();
+
+		const first = connection.read(readRequest(1));
+		const withdrawn = jest.fn(() => {
+			throw new ModbusEndpointUnavailableError('Withdrawn');
+		});
+		const second = settle(connection.read(readRequest(2), withdrawn));
+		const dispatched = jest.fn();
+		const third = connection.read(readRequest(3), dispatched);
+		expect(withdrawn).not.toHaveBeenCalled();
+		expect(dispatched).not.toHaveBeenCalled();
+		expect(connection.getHealth().requests).toBe(1);
+
+		transports[0].sent[0].resolve([1]);
+		await first;
+		await expect(second).rejects.toBeInstanceOf(ModbusEndpointUnavailableError);
+		await flush();
+		expect(dispatched).toHaveBeenCalledTimes(1);
+		expect(transports[0].addresses()).toEqual([1, 3]);
+		expect(connection.getHealth().requests).toBe(2);
+		transports[0].sent[1].resolve([3]);
+		await expect(third).resolves.toEqual([3]);
 	});
 
 	it('puts writes ahead of queued reads', async () => {

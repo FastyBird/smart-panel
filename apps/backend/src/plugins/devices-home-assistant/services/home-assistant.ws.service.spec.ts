@@ -15,7 +15,7 @@ import { HomeAssistantConfigModel } from '../models/config.model';
 
 import { HaSupervisorService } from './ha-supervisor.service';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
-import { HomeAssistantWsService } from './home-assistant.ws.service';
+import { HomeAssistantEventIngress, HomeAssistantWsService } from './home-assistant.ws.service';
 
 jest.mock('ws');
 
@@ -135,7 +135,7 @@ describe('HomeAssistantWsService', () => {
 		expect(() => service.registerEventsHandler('test', handler)).toThrow(DevicesHomeAssistantException);
 	});
 
-	it.each(['state_changed', 'entity_registry_updated', 'core_config_updated'])(
+	it.each(['state_changed', 'entity_registry_updated', 'device_registry_updated', 'core_config_updated'])(
 		'keeps native capture unavailable if HA rejects the %s subscription',
 		async (rejected) => {
 			const starting = service.start();
@@ -177,6 +177,56 @@ describe('HomeAssistantWsService', () => {
 		await accept();
 		expect(service.captureNativeClimateConnection()?.isCurrent()).toBe(true);
 		expect(original?.isCurrent()).toBe(false);
+	});
+
+	it('ties physical state ingress to the original socket and adopted entity registry', async () => {
+		const handler = {
+			event: 'state_changed',
+			handleRegistryChange: jest.fn(),
+			handle: jest.fn<Promise<void>, [unknown, HomeAssistantEventIngress?]>(),
+		};
+		service.registerEventsHandler(handler.event, handler);
+		const starting = service.start();
+		await flush();
+		await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+		await starting;
+		for (const [data] of mockWs.send.mock.calls as [string][]) {
+			const packet = JSON.parse(data) as { id: number; type: string };
+			if (packet.type === 'subscribe_events')
+				await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+		}
+		const report = { type: 'event', event: { event_type: 'state_changed', data: { new_state: null } } };
+		await service['handleMessage'](JSON.stringify(report));
+		const first = handler.handle.mock.calls[0][1] as { isCurrent(): boolean; ingressSequence: number; session: string };
+		expect(first.isCurrent()).toBe(true);
+		await service['handleMessage'](
+			JSON.stringify({
+				type: 'event',
+				event: {
+					event_type: 'entity_registry_updated',
+					data: { entity_id: 'sensor.new', old_entity_id: 'sensor.old' },
+				},
+			}),
+		);
+		expect(handler.handleRegistryChange).toHaveBeenLastCalledWith({ entityIds: ['sensor.new', 'sensor.old'] });
+		await service['handleMessage'](
+			JSON.stringify({
+				type: 'event',
+				event: { event_type: 'device_registry_updated', data: { device_id: 'registry-device' } },
+			}),
+		);
+		expect(handler.handleRegistryChange).toHaveBeenLastCalledWith({ deviceId: 'registry-device' });
+		expect(first.isCurrent()).toBe(true);
+
+		await service['handleMessage'](JSON.stringify({ type: 'event', event: { event_type: 'entity_registry_updated' } }));
+		expect(first.isCurrent()).toBe(false);
+		await service['handleMessage'](JSON.stringify(report));
+		const next = handler.handle.mock.calls[1][1] as typeof first;
+		expect(next.session).not.toBe(first.session);
+		expect(next.ingressSequence).toBeGreaterThan(first.ingressSequence);
+		expect(next.isCurrent()).toBe(true);
+		service['invalidateNativeSubscriptions']();
+		expect(next.isCurrent()).toBe(false);
 	});
 
 	it('reconnects after a lost subscription acknowledgement and accepts only the new subscription epoch', async () => {

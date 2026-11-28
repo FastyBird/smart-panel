@@ -1,4 +1,5 @@
-import { DESCRIPTORS, DeviceDescriptor } from '../devices-shelly-v1.constants';
+import { DESCRIPTORS, DeviceDescriptor, PropertyBinding } from '../devices-shelly-v1.constants';
+import { ShellyDevice } from '../interfaces/shellies.interface';
 
 /**
  * Resolve the descriptor for a Shelly Gen 1 device's reported type. Used by every
@@ -39,3 +40,11 @@ export const findShellyV1Descriptor = (deviceType: string | null | undefined): D
 
 	return null;
 };
+
+export function getShellyV1Bindings(descriptor: DeviceDescriptor, device: ShellyDevice): PropertyBinding[] {
+	if (descriptor.instance?.modeProperty && descriptor.modes) {
+		const mode = device[descriptor.instance.modeProperty];
+		return descriptor.modes.find((profile) => profile.modeValue === mode)?.bindings ?? [];
+	}
+	return descriptor.bindings ?? [];
+}

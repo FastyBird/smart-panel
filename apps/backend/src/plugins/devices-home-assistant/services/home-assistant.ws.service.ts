@@ -6,6 +6,7 @@ import { Injectable } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import {
 	ConfigChangeResult,
@@ -32,13 +33,43 @@ import {
 	HomeAssistantEntityRegistryModel,
 	HomeAssistantEntityRegistryResultModel,
 } from '../models/home-assistant.model';
+import { isHaEntityId } from '../utils/ha-event.utils';
 
 import { HaSupervisorService } from './ha-supervisor.service';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
+export interface HomeAssistantEventIngress {
+	session: string;
+	receivedAt: Date;
+	ingressSequence: number;
+	isCurrent: () => boolean;
+}
+
+export interface HomeAssistantRegistryChange {
+	entityIds?: string[];
+	deviceId?: string;
+}
+
+/** HA includes the old entity ID when an entity is renamed. */
+function registryChange(eventType: string, payload: unknown): HomeAssistantRegistryChange | null {
+	if (!payload || typeof payload !== 'object') return null;
+	const data = payload as Record<string, unknown>;
+	if (eventType === 'device_registry_updated' && typeof data.device_id === 'string' && data.device_id)
+		return { deviceId: data.device_id };
+	if (eventType !== 'entity_registry_updated' || !isHaEntityId(data.entity_id)) return null;
+	if (data.old_entity_id !== undefined && !isHaEntityId(data.old_entity_id)) return null;
+	return {
+		entityIds: typeof data.old_entity_id === 'string' ? [data.entity_id, data.old_entity_id] : [data.entity_id],
+	};
+}
+
 export interface WsEventService {
 	get event(): string;
-	handle(event: HomeAssistantStateChangedEventDto | Record<string, unknown>): Promise<void>;
+	handleRegistryChange?(change: HomeAssistantRegistryChange | null): void;
+	handle(
+		event: HomeAssistantStateChangedEventDto | Record<string, unknown>,
+		ingress?: HomeAssistantEventIngress,
+	): Promise<void>;
 }
 
 /**
@@ -110,6 +141,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	private readonly nativeSubscriptionEvents = new Set([
 		'state_changed',
 		'entity_registry_updated',
+		'device_registry_updated',
 		'core_config_updated',
 	]);
 	private readonly subscriptionRequests = new Map<
@@ -118,6 +150,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	>();
 	private readonly acceptedNativeSubscriptions = new Set<string>();
 	private nativeSubscriptionGeneration = 0;
+	private registryGeneration = 0;
 	private nativeSubscriptionsReady(): boolean {
 		return [...this.nativeSubscriptionEvents].every((event) => this.acceptedNativeSubscriptions.has(event));
 	}
@@ -837,6 +870,15 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 				typeof msg.event.event_type === 'string'
 			) {
 				const eventType = msg.event.event_type;
+				if (
+					eventType === 'entity_registry_updated' ||
+					eventType === 'device_registry_updated' ||
+					eventType === 'core_config_updated'
+				) {
+					const change = registryChange(eventType, 'data' in msg.event ? msg.event.data : null);
+					if (!change) this.registryGeneration++;
+					this.eventsHandlers.get('state_changed')?.handleRegistryChange?.(change);
+				}
 				for (const listener of this.nativeClimateListeners) listener(msg.event as Record<string, unknown>);
 				const handler = this.eventsHandlers.get(eventType) ?? this.eventsHandlers.get('*');
 
@@ -848,7 +890,19 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 							excludeExtraneousValues: false,
 						});
 
-						await handler.handle(event);
+						const connection = this.captureNativeClimateConnection();
+						const generation = this.registryGeneration;
+						await handler.handle(
+							event,
+							connection
+								? {
+										session: `${connection.identity}:${generation}`,
+										receivedAt: new Date(),
+										ingressSequence: nextSampleIngress(),
+										isCurrent: () => connection.isCurrent() && generation === this.registryGeneration,
+									}
+								: undefined,
+						);
 					} else {
 						await handler.handle(msg.event as unknown as Record<string, unknown>);
 					}

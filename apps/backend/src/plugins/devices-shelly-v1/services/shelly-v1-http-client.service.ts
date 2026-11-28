@@ -109,11 +109,10 @@ export class ShellyV1HttpClientService {
 		try {
 			const response = await fetch(url, {
 				method: 'GET',
+				redirect: 'error',
 				headers,
 				signal: controller.signal,
 			});
-
-			clearTimeout(timeoutId);
 
 			if (!response.ok) {
 				throw new DevicesShellyV1Exception(`HTTP request failed: ${response.status} ${response.statusText}`);
@@ -125,17 +124,17 @@ export class ShellyV1HttpClientService {
 
 			return data;
 		} catch (error) {
-			clearTimeout(timeoutId);
+			if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+				throw new DevicesShellyV1Exception(`Request timeout after ${requestTimeout}ms for ${url}`);
+			}
 
 			if (error instanceof Error) {
-				if (error.name === 'AbortError') {
-					throw new DevicesShellyV1Exception(`Request timeout after ${requestTimeout}ms for ${url}`);
-				}
-
 				throw new DevicesShellyV1Exception(`HTTP request failed: ${error.message}`);
 			}
 
 			throw new DevicesShellyV1Exception(`HTTP request failed: ${String(error)}`);
+		} finally {
+			clearTimeout(timeoutId);
 		}
 	}
 }

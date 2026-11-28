@@ -4,7 +4,12 @@ import WebSocket from 'ws';
 
 import { Logger } from '@nestjs/common';
 
-import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { PropertySampleEvidence } from '../../../modules/devices/models/property-sample.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -19,6 +24,7 @@ import {
 } from '../entities/devices-shelly-ng.entity';
 import { ShellySampleSourceEntity } from '../entities/shelly-sample-source.entity';
 import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
+import { ShellyNgDevicePlatform } from '../platforms/shelly-ng.device.platform';
 import { DeviceAddressService } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
@@ -1036,11 +1042,48 @@ describe('qualified Shelly adapter boundaries', () => {
 		await flush();
 		rpc.notify({ 'switch:0': { output: null } });
 		await flush();
+		rpc.notify({ 'switch:0': { output: 0 } });
+		await flush();
 		expect(fixture.reportSample.mock.calls.map((call: unknown[]) => (call[1] as { value: unknown }).value)).toEqual([
 			true,
 			true,
 			null,
+			null,
 		]);
 		expect(fixture.update).not.toHaveBeenCalled();
+	});
+	it('requests fresh reads only for the linked readable switch and withdraws its lease on remap', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		const fixture = await managerFixture(physical, 'switch');
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		const platform = new ShellyNgDevicePlatform(manager);
+		const { device, channel, property } = fixture;
+		const dispatching = jest.fn();
+		property.permissions = [PermissionType.READ_ONLY, PermissionType.WRITE_ONLY];
+		property.dataType = DataTypeType.BOOL;
+		const send = jest.spyOn(delegate, 'requestSwitchOutput').mockResolvedValue(true);
+		const target = { device, channel, property, dispatching };
+		const staleProperty = Object.assign(new ShellyNgChannelPropertyEntity(), property, { id: 'replaced' });
+		await expect(platform.requestPropertyRead({ ...target, property: staleProperty })).resolves.toBe(false);
+		await expect(
+			platform.requestPropertyRead({
+				...target,
+				property: Object.assign(new ShellyNgChannelPropertyEntity(), property, {
+					permissions: [PermissionType.WRITE_ONLY],
+				}),
+			}),
+		).resolves.toBe(false);
+		expect(send).not.toHaveBeenCalled();
+		await expect(platform.requestPropertyRead(target)).resolves.toBe(true);
+		expect(send).toHaveBeenCalledTimes(1);
+		const [id, mac, boundary, bound, revisionCurrent] = send.mock.calls[0];
+		expect([id, mac, boundary]).toEqual([0, device.canonicalMac, dispatching]);
+		expect(bound()).toBe(true);
+		expect(revisionCurrent()).toBe(true);
+		rpc.notify({ 'switch:0': { output: true } });
+		expect(revisionCurrent()).toBe(false);
+		await manager.detach();
+		expect(bound()).toBe(false);
 	});
 });

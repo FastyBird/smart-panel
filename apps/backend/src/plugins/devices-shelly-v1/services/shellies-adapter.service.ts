@@ -5,6 +5,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 import {
 	NormalizedDeviceChangeEvent,
@@ -13,11 +14,46 @@ import {
 	ShelliesAdapterCallbacks,
 	ShelliesLibrary,
 	ShellyDevice,
+	ShellyTemperatureReport,
 } from '../interfaces/shellies.interface';
-import shellies from '../lib/shellies';
+import shellies, { clearShellyCredentials, readShellyTemperature, subscribeShellyTemperatures } from '../lib/shellies';
 import { ShellyV1ConfigModel } from '../models/config.model';
+import { shellyV1PinMatches } from '../utils/shelly-v1-address.utils';
 
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
+
+// RFC 7252 §4.8.2: the default lifetime of a non-confirmable CoAP publication, including retransmission.
+const COAP_NON_LIFETIME_MS = 145_000;
+type TemperatureDelivery = {
+	report: ShellyTemperatureReport;
+	state: 'ready' | 'publishing' | 'published';
+	repeated: boolean;
+};
+type TemperatureSession = {
+	serial: number;
+	advancedAt: number;
+	verifyUntil: number;
+	oldPacketsExpireAt: number;
+	checking: boolean;
+	delivery?: TemperatureDelivery;
+};
+type RemovedTemperaturePeer = {
+	baseline: TemperatureSession;
+	expiresAt: number;
+	timer: NodeJS.Timeout;
+};
+type CatalogDevice = { id: string; identifier: string | null; hostname?: string | null };
+const temperaturePeerKey = ({ type, id, host }: RegisteredDevice): string => JSON.stringify([type, id, host]);
+const temperatureBaseline = (session: TemperatureSession): TemperatureSession => ({
+	serial: session.serial,
+	advancedAt: session.advancedAt,
+	verifyUntil: session.verifyUntil,
+	oldPacketsExpireAt: session.oldPacketsExpireAt,
+	checking: false,
+});
+// Only an adjacent wrap is unambiguous. A jump from a high counter to a low one could also be a reboot.
+const serialAdvances = (from: number, to: number): boolean =>
+	(from === 65535 && to === 1) || (to > from && to - from < 32768);
 
 @Injectable()
 export class ShelliesAdapterService {
@@ -28,15 +64,21 @@ export class ShelliesAdapterService {
 
 	private shellies: ShelliesLibrary | null = null;
 	private isStarted = false;
+	private unsubscribeTemperature?: () => void;
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
-	private statusCheckRunning = false;
+	private statusCheck?: symbol;
 
 	/**
 	 * Registry of discovered devices
-	 * Key: device ID, Value: device info (id, type, host)
+	 * The SDK addresses devices by model and raw ID. A short CoIoT ID can occur in several models.
 	 */
-	private readonly devicesRegistry = new Map<string, RegisteredDevice>();
+	private readonly devicesRegistry = new Map<string, Map<string, RegisteredDevice>>();
+	private readonly registeredPeers = new WeakMap<RegisteredDevice, ShellyDevice>();
+	private readonly catalogPeers = new Map<string, Set<ShellyDevice>>();
+	private readonly peerOwners = new WeakMap<ShellyDevice, string>();
+	private readonly temperatureSessions = new WeakMap<RegisteredDevice, TemperatureSession>();
+	private readonly removedTemperatures = new Map<string, RemovedTemperaturePeer>();
 
 	/**
 	 * External 'add' subscribers that should receive every device discovered while
@@ -80,6 +122,7 @@ export class ShelliesAdapterService {
 			this.shellies = shellies;
 
 			shellies.request.timeout(this.config.timeouts.requestTimeout * 1000);
+			shellies.request.redirects(0);
 			shellies.staleTimeout = this.config.timeouts.staleTimeout * 1000;
 
 			// Register event handlers
@@ -87,6 +130,10 @@ export class ShelliesAdapterService {
 
 			//this.shellies.on('discover', deviceDiscoveredHandler);
 			this.shellies.on('add', deviceDiscoveredHandler); // Synonym in Gen 1
+			this.shellies.on('remove', (device: ShellyDevice) => this.handleDeviceRemoved(device));
+			this.unsubscribeTemperature = subscribeShellyTemperatures(
+				(device, serial, value) => void this.handleTemperatureReport(device, serial, value),
+			);
 
 			// Re-attach external 'add' subscribers (wizard discovery sessions) that registered
 			// while we were stopped/restarting. `subscribeToAddedDevice` keeps them in the set
@@ -112,6 +159,8 @@ export class ShelliesAdapterService {
 				stack: error instanceof Error ? error.stack : undefined,
 			});
 
+			this.unsubscribeTemperature?.();
+			this.unsubscribeTemperature = undefined;
 			void this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
 
 			throw error;
@@ -129,28 +178,28 @@ export class ShelliesAdapterService {
 		try {
 			this.logger.log('Stopping Shellies adapter');
 
-			// Remove per-device event listeners registered in handleDeviceDiscovered()
-			// to prevent listener accumulation across stop/start cycles.
-			for (const registeredDevice of this.devicesRegistry.values()) {
-				const device = this.shellies.getDevice(registeredDevice.type, registeredDevice.id);
-
-				if (device) {
-					device.removeAllListeners();
-				}
-			}
-
-			// Remove shellies-level event listeners
-			this.shellies.removeAllListeners();
-
-			// Stop discovery
+			this.isStarted = false;
+			this.statusCheck = undefined;
+			this.unsubscribeTemperature?.();
+			this.unsubscribeTemperature = undefined;
+			const peers = this.getKnownDevices();
+			this.shellies.removeAllListeners('add');
 			this.shellies.stop();
-
-			// Clear devices registry
+			// The SDK's 'remove' listeners cancel offline peers' pending stale-removal timers.
+			this.shellies.removeAllDevices();
+			this.shellies.removeAllListeners();
+			for (const removed of this.removedTemperatures.values()) clearTimeout(removed.timer);
+			this.removedTemperatures.clear();
+			for (const peer of peers) {
+				this.peerOwners.delete(peer);
+				clearShellyCredentials(peer);
+				peer.ttl = 0;
+				peer.removeAllListeners();
+			}
 			this.devicesRegistry.clear();
+			this.catalogPeers.clear();
 
 			this.shellies = null;
-			this.isStarted = false;
-			this.statusCheckRunning = false;
 
 			this.logger.log('Shellies adapter stopped successfully');
 		} catch (error) {
@@ -178,14 +227,122 @@ export class ShelliesAdapterService {
 	 * Get all registered devices
 	 */
 	getRegisteredDevices(): RegisteredDevice[] {
-		return Array.from(this.devicesRegistry.values());
+		return Array.from(this.devicesRegistry.values()).flatMap((models) => Array.from(models.values()));
 	}
 
 	/**
-	 * Get a registered device by ID
+	 * Without an SDK model, resolve only an unambiguous raw ID.
 	 */
-	getRegisteredDevice(deviceId: string): RegisteredDevice | undefined {
-		return this.devicesRegistry.get(deviceId);
+	getRegisteredDevice(deviceId: string, type?: string): RegisteredDevice | undefined {
+		const models = this.devicesRegistry.get(deviceId);
+		if (type !== undefined) return models?.get(type);
+		return models?.size === 1 ? Array.from(models.values())[0] : undefined;
+	}
+
+	/** Resolve the catalog UUID without treating a shared CoIoT suffix as a hardware identity. */
+	getRegisteredDeviceForCatalog(device: CatalogDevice): RegisteredDevice | undefined {
+		if (!device.identifier) return undefined;
+		const candidates = this.catalogPeers.get(device.id);
+		if (candidates && candidates.size !== 1) return undefined;
+		const [bound] = candidates ?? [];
+		const exact = this.getRegisteredDevice(device.identifier, bound?.type);
+		const peer = bound ?? (exact && this.registeredPeers.get(exact));
+		if (!peer) return undefined;
+		const registration = this.getRegisteredDevice(peer.id, peer.type);
+		if (!this.isRegisteredPeer(registration, peer) || peer.host !== registration.host) return undefined;
+		if (!candidates) return this.peerOwners.has(peer) ? undefined : registration;
+		if (
+			registration.catalog?.deviceId !== device.id ||
+			(device.hostname && device.hostname !== registration.host) ||
+			!shellyV1PinMatches(device.identifier, registration.catalog.mac) ||
+			(exact &&
+				exact !== registration &&
+				exact.host === registration.host &&
+				this.isRegisteredPeer(exact, this.registeredPeers.get(exact)))
+		)
+			return undefined;
+		return registration;
+	}
+
+	/** Called only after discovery has checked the catalog pin and the endpoint's full MAC. */
+	bindCatalogDevice(
+		registration: RegisteredDevice,
+		peer: ShellyDevice,
+		device: CatalogDevice,
+		mac: string,
+		pinRevision?: number,
+	): boolean {
+		const owner = this.peerOwners.get(peer);
+		if (
+			this.getRegisteredDevice(peer.id, peer.type) !== registration ||
+			this.registeredPeers.get(registration) !== peer ||
+			this.getDevice(registration.type, registration.id) !== peer ||
+			peer.host !== registration.host ||
+			device.hostname !== registration.host ||
+			!shellyV1PinMatches(registration.id, mac) ||
+			!shellyV1PinMatches(device.identifier, mac) ||
+			(owner && owner !== device.id) ||
+			(registration.catalog && registration.catalog.mac !== mac)
+		)
+			return false;
+		const candidates = this.catalogPeers.get(device.id) ?? new Set<ShellyDevice>();
+		for (const previous of candidates) {
+			if (previous !== peer && previous.host !== peer.host) {
+				// The pin now confirms this host. Retire SDK objects left behind at the old endpoint.
+				this.suspendCatalogPeer(previous);
+				this.detachCatalogPeer(previous);
+			}
+		}
+		const exact = this.getRegisteredDevice(device.identifier, peer.type);
+		if (exact && exact !== registration && exact.host === registration.host) {
+			const other = this.registeredPeers.get(exact);
+			if (this.isRegisteredPeer(exact, other)) {
+				if (this.peerOwners.has(other) && this.peerOwners.get(other) !== device.id) return false;
+				candidates.add(other);
+			}
+		}
+		candidates.add(peer);
+		this.catalogPeers.set(device.id, candidates);
+		for (const candidate of candidates) this.peerOwners.set(candidate, device.id);
+		if (candidates.size > 1) {
+			// Two SDK IDs at this host would make raw events and commands disagree about the peer.
+			for (const candidate of candidates) this.suspendCatalogPeer(candidate);
+			return false;
+		}
+		// Preserve the physical session and its pending CoIoT sample on first adoption.
+		if (!registration.catalog || (pinRevision !== undefined && registration.catalog.revision !== pinRevision))
+			registration.catalog = { deviceId: device.id, mac, revision: pinRevision };
+		return true;
+	}
+
+	/** Deletion or a configured endpoint change withdraws all claims, including ambiguous duplicates. */
+	releaseCatalogDevice(deviceId: string): void {
+		for (const peer of this.catalogPeers.get(deviceId) ?? []) {
+			this.suspendCatalogPeer(peer);
+			this.detachCatalogPeer(peer);
+		}
+	}
+
+	private suspendCatalogPeer(peer: ShellyDevice): void {
+		clearShellyCredentials(peer);
+		const registration = this.getRegisteredDevice(peer.id, peer.type);
+		if (registration && this.registeredPeers.get(registration) === peer)
+			this.replaceRegistration(registration, { ...registration, enabled: false, catalog: undefined });
+	}
+
+	private detachCatalogPeer(peer: ShellyDevice): ShellyDevice | undefined {
+		const owner = this.peerOwners.get(peer);
+		if (!owner) return undefined;
+		this.peerOwners.delete(peer);
+		const candidates = this.catalogPeers.get(owner);
+		candidates?.delete(peer);
+		if (!candidates?.size) this.catalogPeers.delete(owner);
+		return candidates?.size === 1 ? Array.from(candidates)[0] : undefined;
+	}
+
+	private rediscoverRemainingPeer(peer: ShellyDevice | undefined): void {
+		if (peer?.online && this.isRunning() && this.isRegisteredPeer(this.getRegisteredDevice(peer.id, peer.type), peer))
+			void this.callbacks.onDeviceDiscovered?.({ id: peer.id, type: peer.type, host: peer.host, online: true });
 	}
 
 	/**
@@ -200,7 +357,7 @@ export class ShelliesAdapterService {
 			return devices;
 		}
 
-		for (const registered of this.devicesRegistry.values()) {
+		for (const registered of this.getRegisteredDevices()) {
 			const device = this.shellies.getDevice(registered.type, registered.id);
 
 			if (device) {
@@ -233,26 +390,49 @@ export class ShelliesAdapterService {
 	/**
 	 * Update the enabled flag for a registered device
 	 */
-	updateDeviceEnabledStatus(deviceId: string, enabled: boolean): void {
-		const device = this.devicesRegistry.get(deviceId);
+	updateDeviceEnabledStatus(deviceId: string, enabled: boolean, type?: string): void {
+		const device = this.getRegisteredDevice(deviceId, type);
 
-		if (device) {
-			device.enabled = enabled;
-			this.devicesRegistry.set(deviceId, device);
+		if (device && device.enabled !== enabled) {
+			this.renewRegistration(device, enabled);
 		}
+	}
+
+	/** A connection or enablement change revokes callbacks, but the same physical peer still owns its counter. */
+	private renewRegistration(device: RegisteredDevice, enabled = device.enabled): void {
+		const next = { ...device, enabled };
+		const session = this.temperatureSessions.get(device);
+		if (session) this.temperatureSessions.set(next, temperatureBaseline(session));
+		this.replaceRegistration(device, next);
+	}
+
+	private replaceRegistration(device: RegisteredDevice, next: RegisteredDevice): void {
+		const peer = this.registeredPeers.get(device);
+		if (peer) this.registeredPeers.set(next, peer);
+		this.devicesRegistry.get(device.id).set(device.type, next);
 	}
 
 	/**
 	 * Set authentication credentials for a device
 	 */
-	setDeviceAuthCredentials(deviceType: string, deviceId: string, username: string, password: string): void {
-		const device = this.getDevice(deviceType, deviceId);
-
-		if (device && device.setAuthCredentials) {
-			device.setAuthCredentials(username, password);
-		} else if (!device) {
-			this.logger.warn(`Cannot set auth credentials - device not found: ${deviceId}`, { resource: deviceId });
+	setDeviceAuthCredentials(peer: ShellyDevice, host: string, username: string, password: string | null): boolean {
+		if (peer.host !== host || this.getDevice(peer.type, peer.id) !== peer) return false;
+		const registration = this.getRegisteredDevice(peer.id, peer.type);
+		if (
+			!registration ||
+			(password && !registration.enabled) ||
+			registration.type !== peer.type ||
+			registration.host !== host ||
+			this.registeredPeers.get(registration) !== peer
+		)
+			return false;
+		registration.credentialRevision = (registration.credentialRevision ?? 0) + 1;
+		clearShellyCredentials(peer);
+		if (password) {
+			if (!peer.setAuthCredentials) return false;
+			peer.setAuthCredentials(username, password);
 		}
+		return true;
 	}
 
 	/**
@@ -260,12 +440,28 @@ export class ShelliesAdapterService {
 	 */
 	private handleDeviceDiscovered(device: ShellyDevice): void {
 		// Add a device to a registry (default enabled = true, will be updated by mapper)
-		this.devicesRegistry.set(device.id, {
+		const models = this.devicesRegistry.get(device.id) ?? new Map<string, RegisteredDevice>();
+		const previous = models.get(device.type);
+		const previousPeer = previous && this.registeredPeers.get(previous);
+		const remaining = previousPeer && this.detachCatalogPeer(previousPeer);
+		if (previousPeer) clearShellyCredentials(previousPeer);
+		const registration = {
 			id: device.id,
 			type: device.type,
 			host: device.host,
-			enabled: true,
-		});
+			enabled: !previous?.catalog,
+		};
+		const key = temperaturePeerKey(registration);
+		const removed = this.removedTemperatures.get(key);
+		if (removed) {
+			clearTimeout(removed.timer);
+			this.removedTemperatures.delete(key);
+			if (performance.now() < removed.expiresAt) this.temperatureSessions.set(registration, removed.baseline);
+		}
+		this.registeredPeers.set(registration, device);
+		models.set(device.type, registration);
+		this.devicesRegistry.set(device.id, models);
+		this.rediscoverRemainingPeer(remaining);
 
 		// Register device-specific event handlers
 		device.on(
@@ -308,8 +504,29 @@ export class ShelliesAdapterService {
 		newValue: string | number | boolean,
 		oldValue: string | number | boolean | null,
 	): void {
+		const registered = this.getRegisteredDevice(device.id, device.type);
+		if (property === 'host') clearShellyCredentials(device);
+		if (!this.isRegisteredPeer(registered, device)) return;
+		if (property === 'host' || property === 'mode') {
+			const remaining = property === 'host' ? this.detachCatalogPeer(device) : undefined;
+			this.replaceRegistration(
+				registered,
+				property === 'host'
+					? { ...registered, host: device.host, catalog: undefined, enabled: registered.enabled && !registered.catalog }
+					: { ...registered },
+			);
+			this.rediscoverRemainingPeer(remaining);
+			if (property === 'host')
+				void this.callbacks.onDeviceDiscovered?.({
+					id: device.id,
+					type: device.type,
+					host: device.host,
+					online: device.online,
+				});
+		}
 		const normalizedEvent: NormalizedDeviceChangeEvent = {
 			id: device.id,
+			type: device.type,
 			property,
 			newValue,
 			oldValue,
@@ -318,10 +535,110 @@ export class ShelliesAdapterService {
 		void this.callbacks.onDeviceChanged?.(normalizedEvent);
 	}
 
+	// Only original CoIoT temperature fields enter this path.
+	// Sleeping probes may already be unreachable by HTTP by the time their change callback runs.
+	private async handleTemperatureReport(peer: ShellyDevice, serial: number, value: unknown): Promise<void> {
+		const registration = this.getRegisteredDevice(peer.id, peer.type);
+		if (!registration?.enabled || !Number.isInteger(serial) || serial <= 0 || serial > 65535) return;
+		const host = peer.host;
+		const peerIsCurrent = (): boolean =>
+			this.isRunning() &&
+			peer.online &&
+			peer.host === host &&
+			this.getRegisteredDevice(peer.id, peer.type) === registration &&
+			this.getDevice(peer.type, peer.id) === peer;
+		if (!peerIsCurrent()) return;
+		const previous = this.temperatureSessions.get(registration);
+		const started = performance.now();
+		const withinPacketLifetime = previous !== undefined && started - previous.advancedAt <= COAP_NON_LIFETIME_MS;
+		if (withinPacketLifetime && previous.serial === serial) return this.deliverTemperature(previous.delivery);
+		const receivedAt = new Date();
+		const ingressSequence = nextSampleIngress();
+		if (
+			previous &&
+			(started < previous.verifyUntil || (withinPacketLifetime && !serialAdvances(previous.serial, serial)))
+		) {
+			// A delayed packet and a reboot can look identical. During this window only a correlated
+			// unicast reply can establish an observation; never use the ambiguous packet's value.
+			if (previous.checking) return;
+			if (started >= previous.verifyUntil) previous.verifyUntil = started + COAP_NON_LIFETIME_MS;
+			const last = previous.serial;
+			previous.checking = true;
+			const checked = await readShellyTemperature(peer).catch((): null => null);
+			previous.checking = false;
+			if (
+				!checked ||
+				!peerIsCurrent() ||
+				this.temperatureSessions.get(registration) !== previous ||
+				previous.serial !== last ||
+				performance.now() - started >= COAP_NON_LIFETIME_MS
+			)
+				return;
+			previous.verifyUntil = previous.oldPacketsExpireAt;
+			if (withinPacketLifetime && checked.serial === last) return this.deliverTemperature(previous.delivery);
+			({ serial, value } = checked);
+		}
+		// After the packet lifetime, a sleeping device can start a new session even if it reuses the last serial.
+		const reset = previous && !serialAdvances(previous.serial, serial);
+		const acceptedAt = performance.now();
+		const oldPacketsExpireAt = reset ? acceptedAt + COAP_NON_LIFETIME_MS : 0;
+		const session: TemperatureSession =
+			!previous || reset
+				? { serial, advancedAt: acceptedAt, verifyUntil: oldPacketsExpireAt, oldPacketsExpireAt, checking: false }
+				: previous;
+		session.serial = serial;
+		session.advancedAt = acceptedAt;
+		this.temperatureSessions.set(registration, session);
+		session.delivery = {
+			state: 'ready',
+			repeated: false,
+			report: {
+				deviceId: peer.id,
+				deviceType: peer.type,
+				value: typeof value === 'number' && Number.isFinite(value) && value !== 999 ? value : null,
+				receivedAt,
+				ingressSequence,
+				isCurrent: () => peerIsCurrent() && this.temperatureSessions.get(registration) === session,
+				isLatest: () => session.delivery?.report.ingressSequence === ingressSequence,
+			},
+		};
+		return this.deliverTemperature(session.delivery);
+	}
+
+	private async deliverTemperature(delivery?: TemperatureDelivery): Promise<void> {
+		if (!delivery || delivery.state === 'published' || !delivery.report.isCurrent() || !delivery.report.isLatest())
+			return;
+		if (delivery.state === 'publishing') {
+			delivery.repeated = true;
+			return;
+		}
+		delivery.state = 'publishing';
+		do {
+			delivery.repeated = false;
+			try {
+				if (await this.callbacks.onTemperatureReport?.(delivery.report)) {
+					delivery.state = 'published';
+					return;
+				}
+			} catch (error) {
+				this.logger.warn('Failed to record Shelly temperature report', {
+					resource: delivery.report.deviceId,
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
+			// One retry covers all repeats received during a failed attempt.
+		} while (delivery.repeated && delivery.report.isCurrent() && delivery.report.isLatest());
+		delivery.state = 'ready';
+	}
+
 	/**
 	 * Handle device offline event
 	 */
 	private handleDeviceOffline(device: ShellyDevice): void {
+		const registered = this.getRegisteredDevice(device.id, device.type);
+		if (!this.isRegisteredPeer(registered, device) || registered.host !== device.host) return;
+		this.renewRegistration(registered);
+
 		const normalizedEvent: NormalizedDeviceEvent = {
 			id: device.id,
 			type: device.type,
@@ -336,6 +653,10 @@ export class ShelliesAdapterService {
 	 * Handle device online event
 	 */
 	private handleDeviceOnline(device: ShellyDevice): void {
+		const registered = this.getRegisteredDevice(device.id, device.type);
+		if (!this.isRegisteredPeer(registered, device) || registered.host !== device.host) return;
+		const owner = this.peerOwners.get(device);
+		if (owner && !registered.catalog && this.catalogPeers.get(owner)?.size === 1) this.rediscoverRemainingPeer(device);
 		const normalizedEvent: NormalizedDeviceEvent = {
 			id: device.id,
 			type: device.type,
@@ -346,12 +667,39 @@ export class ShelliesAdapterService {
 		void this.callbacks.onDeviceOnline?.(normalizedEvent);
 	}
 
+	private isRegisteredPeer(registered: RegisteredDevice | undefined, peer: ShellyDevice | undefined): boolean {
+		return (
+			!!registered &&
+			!!peer &&
+			this.registeredPeers.get(registered) === peer &&
+			this.getDevice(registered.type, registered.id) === peer
+		);
+	}
+
 	/**
 	 * Handle device removed event
 	 */
 	private handleDeviceRemoved(device: ShellyDevice): void {
-		// Remove device from registry
-		this.devicesRegistry.delete(device.id);
+		const models = this.devicesRegistry.get(device.id);
+		const registration = models?.get(device.type);
+		if (!registration || this.registeredPeers.get(registration) !== device || registration.host !== device.host) return;
+		const current = this.getDevice(registration.type, registration.id);
+		if (current && current !== device) return;
+		const remaining = this.detachCatalogPeer(device);
+		clearShellyCredentials(device);
+		const previous = this.temperatureSessions.get(registration);
+		if (previous && this.isRunning()) {
+			// shellies may remove an offline peer before in-flight packets expire, then rediscover
+			// it as a new object. Retain only the counter, never a report or a callback.
+			const key = temperaturePeerKey(registration);
+			const expiresAt = performance.now() + COAP_NON_LIFETIME_MS;
+			const timer = setTimeout(() => this.removedTemperatures.delete(key), COAP_NON_LIFETIME_MS);
+			timer.unref();
+			this.removedTemperatures.set(key, { baseline: temperatureBaseline(previous), expiresAt, timer });
+		}
+		models.delete(device.type);
+		if (!models.size) this.devicesRegistry.delete(device.id);
+		this.rediscoverRemainingPeer(remaining);
 	}
 
 	private get config(): ShellyV1ConfigModel {
@@ -372,33 +720,33 @@ export class ShelliesAdapterService {
 	 */
 	@Cron(CronExpression.EVERY_5_SECONDS)
 	async checkDevicesStatus(): Promise<void> {
-		if (!this.isStarted || !this.shellies || this.statusCheckRunning) {
+		if (!this.isStarted || !this.shellies || this.statusCheck) {
 			return;
 		}
 
-		this.statusCheckRunning = true;
+		const check = Symbol();
+		this.statusCheck = check;
 
 		try {
 			const now = Date.now();
 			const staleTimeout = this.config.timeouts.staleTimeout * 1000;
+			// shellies exposes lastSeen as a Date, while an HTTP keepalive can supply epoch milliseconds.
+			const isStale = (device: ShellyDevice, at: number): boolean =>
+				device.online && device.lastSeen != null && at - Number(device.lastSeen) > staleTimeout;
 
 			// Collect stale devices that need an HTTP ping
-			const staleCandidates: Array<{ device: ShellyDevice; host: string }> = [];
+			const staleCandidates: Array<{
+				device: ShellyDevice;
+				registration: RegisteredDevice;
+				lastSeen: ShellyDevice['lastSeen'];
+			}> = [];
 
-			for (const registeredDevice of this.devicesRegistry.values()) {
+			for (const registeredDevice of this.getRegisteredDevices()) {
 				const device = this.shellies.getDevice(registeredDevice.type, registeredDevice.id);
 
-				if (!device) {
-					continue;
-				}
-
-				if (device.lastSeen && typeof device.lastSeen === 'number') {
-					const timeSinceLastSeen = now - device.lastSeen;
-
-					if (timeSinceLastSeen > staleTimeout && device.online) {
-						staleCandidates.push({ device, host: registeredDevice.host });
-					}
-				}
+				// shellies replaces the Date object even for unchanged CoIoT data in the same millisecond.
+				if (device && device.host === registeredDevice.host && isStale(device, now))
+					staleCandidates.push({ device, registration: registeredDevice, lastSeen: device.lastSeen });
 			}
 
 			if (staleCandidates.length === 0) {
@@ -407,23 +755,23 @@ export class ShelliesAdapterService {
 
 			// Ping all stale devices concurrently to avoid sequential 3s timeouts
 			const results = await Promise.all(
-				staleCandidates.map(async ({ device, host }) => {
-					const alive = await this.pingDevice(host);
-
-					return { device, alive };
-				}),
+				staleCandidates.map(async (candidate) => ({
+					...candidate,
+					alive: await this.pingDevice(candidate.registration.host),
+				})),
 			);
 
 			const recheckNow = Date.now();
 
-			for (const { device, alive } of results) {
-				// Re-check online — another invocation or event may have changed it
-				if (!device.online) {
-					continue;
-				}
-
-				// Re-check lastSeen — CoAP may have resumed during the HTTP ping window
-				if (device.lastSeen && typeof device.lastSeen === 'number' && recheckNow - device.lastSeen <= staleTimeout) {
+			for (const { device, registration, lastSeen, alive } of results) {
+				if (
+					this.statusCheck !== check ||
+					this.getRegisteredDevice(registration.id, registration.type) !== registration ||
+					this.getDevice(registration.type, registration.id) !== device ||
+					device.host !== registration.host ||
+					device.lastSeen !== lastSeen ||
+					!isStale(device, recheckNow)
+				) {
 					continue;
 				}
 
@@ -438,7 +786,7 @@ export class ShelliesAdapterService {
 						resource: device.id,
 					});
 
-					this.handleDeviceOffline(device);
+					// The SDK's online setter emits the offline event and rotates the registration once.
 					device.online = false;
 				}
 			}
@@ -447,7 +795,7 @@ export class ShelliesAdapterService {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		} finally {
-			this.statusCheckRunning = false;
+			if (this.statusCheck === check) this.statusCheck = undefined;
 		}
 	}
 

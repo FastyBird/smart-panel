@@ -2,6 +2,8 @@ import { EventEmitter } from 'events';
 import { ShellyPlus1Pm, ShellyPlusDimmer } from 'shellies-ds9';
 import WebSocket from 'ws';
 
+import { nextSampleIngress } from '../../../modules/devices/services/property-sample-ingress';
+import { ShellyRawSample } from '../contracts/native-temperature.contract';
 import { ShellyDeviceDelegate } from '../delegates/shelly-device.delegate';
 
 import { GuardedShellyRpcHandler } from './guarded-shelly-rpc';
@@ -57,6 +59,107 @@ const fixture = (): FixtureTransport => {
 };
 
 describe('guarded Shelly transport at real SDK send and authentication retry', () => {
+	const ordinarySwitch = () => {
+		const rpc = fixture();
+		const physical = new ShellyPlus1Pm({ id: 'physical', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		const delegate = new ShellyDeviceDelegate(physical);
+		delegate.setSampleComponentKeys(['switch:0']);
+		const samples: ShellyRawSample[] = [];
+		delegate.on('sample', (sample: ShellyRawSample) => samples.push(sample));
+		return { rpc, delegate, samples };
+	};
+	it('sends a fresh switch read without an installation and numbers its raw sample at physical dispatch', async () => {
+		const { rpc, delegate, samples } = ordinarySwitch();
+		try {
+			let release!: () => void;
+			rpc.gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			let boundary: number;
+			const dispatching = jest.fn(() => {
+				boundary = nextSampleIngress();
+			});
+			const read = delegate.requestSwitchOutput(
+				0,
+				'000000000001',
+				dispatching,
+				() => true,
+				() => true,
+			);
+			await flush();
+			expect(dispatching).not.toHaveBeenCalled();
+			release();
+			await flush();
+			expect(rpc.frames).toEqual([expect.objectContaining({ method: 'Switch.GetStatus', params: { id: 0 } })]);
+			expect(dispatching).toHaveBeenCalledTimes(1);
+			const later = nextSampleIngress();
+			rpc.answer(undefined, { id: 0, output: false });
+			await expect(read).resolves.toBe(true);
+			expect(samples).toHaveLength(1);
+			expect(samples[0]).toMatchObject({
+				componentKey: 'switch:0',
+				values: { output: false },
+				evidence: { provenance: 'live' },
+			});
+			expect(samples[0].evidence.ingressSequence).toBeGreaterThan(boundary);
+			expect(samples[0].evidence.ingressSequence).toBeLessThan(later);
+			expect(samples[0].evidence.isCurrent()).toBe(true);
+			delegate.setSampleComponentKeys(['switch:0']);
+			expect(samples[0].evidence.isCurrent()).toBe(false);
+		} finally {
+			delegate.destroy();
+			await rpc.destroy();
+		}
+	});
+	it.each<[string, Record<string, unknown>]>([
+		['numeric', { id: 0, output: 0 }],
+		['text', { id: 0, output: 'false' }],
+		['other component', { id: 1, output: false }],
+		['write acknowledgement', { was_on: false }],
+		['device fault', { id: 0, output: false, errors: ['overpower'] }],
+	])('rejects %s as a switch readback', async (_name, response: Record<string, unknown>) => {
+		const { rpc, delegate, samples } = ordinarySwitch();
+		try {
+			const read = delegate.requestSwitchOutput(
+				0,
+				null,
+				jest.fn(),
+				() => true,
+				() => true,
+			);
+			await flush();
+			rpc.answer(undefined, response);
+			await expect(read).resolves.toBe(true);
+			expect(samples).toHaveLength(0);
+		} finally {
+			delegate.destroy();
+			await rpc.destroy();
+		}
+	});
+	it.each(['remapping', 'newer report', 'binding generation'])('discards an in-flight OFF after %s', async (change) => {
+		const { rpc, delegate, samples } = ordinarySwitch();
+		try {
+			let bound = true,
+				unchanged = true;
+			const read = delegate.requestSwitchOutput(
+				0,
+				null,
+				jest.fn(),
+				() => bound,
+				() => unchanged,
+			);
+			await flush();
+			if (change === 'remapping') bound = false;
+			if (change === 'newer report') unchanged = false;
+			if (change === 'binding generation') delegate.setSampleComponentKeys(['switch:0']);
+			rpc.answer(undefined, { id: 0, output: false });
+			await expect(read).resolves.toBe(true);
+			expect(samples).toHaveLength(0);
+		} finally {
+			delegate.destroy();
+			await rpc.destroy();
+		}
+	});
 	it.each([false, true])(
 		'does not send a settled SDK request after connect resumes (authority=%s)',
 		async (guarded) => {

@@ -178,6 +178,13 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		return Promise.resolve();
 	}
 
+	/** Use only the current poller's own read bindings. Its sample ingress is stamped before the bus read. */
+	async requestPropertyRead(deviceId: string, propertyId: string, dispatching: () => void): Promise<boolean> {
+		const entry = this.devices.get(deviceId);
+		if (!entry?.poller || !entry.readPropertyIds.includes(propertyId)) return false;
+		return entry.poller.pollNow([propertyId], dispatching);
+	}
+
 	/** Reads the given properties from the device now and reports them. */
 	async readBack(deviceId: string, propertyIds: string[]): Promise<void> {
 		const poller = this.devices.get(deviceId)?.poller;

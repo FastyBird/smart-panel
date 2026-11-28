@@ -25,8 +25,11 @@ export interface ModbusTransport {
 	/** Idempotent and safe when never connected or still connecting; outstanding requests reject with `ModbusConnectionError`. */
 	close(): Promise<void>;
 	isOpen(): boolean;
-	/** Resolves with exactly `count` values: booleans for coils and discrete inputs, numbers for registers. */
-	read(request: ModbusReadRequest): Promise<boolean[] | number[]>;
+	/**
+	 * Resolves with exactly `count` coil/input bits or register values. Calls beforeDispatch after local checks,
+	 * immediately before issuing the read. Throwing from the callback cancels the read.
+	 */
+	read(request: ModbusReadRequest, beforeDispatch?: () => void): Promise<boolean[] | number[]>;
 	write(request: ModbusWriteRequest): Promise<void>;
 	/** Fires once per established connection on every close, explicit `close()` included, with the socket error if any. */
 	onClose(listener: (error?: Error) => void): void;

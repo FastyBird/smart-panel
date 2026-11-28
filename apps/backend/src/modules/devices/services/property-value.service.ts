@@ -255,17 +255,20 @@ export class PropertyValueService {
 		property: ChannelPropertyEntity,
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
+		isCurrent?: () => boolean,
 	): Promise<PropertyValueWriteResult> {
 		// A shared-writer lease must cover actual persistence, not just local buffer admission.
-		if (this.valueLock.isEnabled()) {
-			return this.writeWithState(property, value, valueTimestamp);
-		}
+		const shared = this.valueLock.isEnabled();
+		if (shared && !isCurrent) return this.writeWithState(property, value, valueTimestamp);
 		const key = this.resolveBestEffort(property, 'write');
 		if (key === null) return { changed: false, state: null };
 		return this.withValueLock(
 			key,
-			() => this.writeInternal(property, key, value, false, undefined, valueTimestamp, true),
-			false,
+			() =>
+				isCurrent?.() === false
+					? Promise.resolve({ changed: false, state: null })
+					: this.writeInternal(property, key, value, false, undefined, valueTimestamp, !shared),
+			shared,
 		);
 	}
 
@@ -287,6 +290,7 @@ export class PropertyValueService {
 				const sampledAt = evidence.sampledAt.getTime();
 				const receivedAt = evidence.receivedAt.getTime();
 				const watermark = this.liveWatermarks.get(key);
+				if (evidence.seedOnly && (watermark || this.valuesMap.has(key))) return { changed: false, state: null };
 				// A command acknowledgement shows what Smart Panel asked for, not the device's state: it is
 				// displayed like a replay, but never qualifies, never moves the live watermark and withdraws a
 				// qualified value it contradicts until an ordinary report restores it.
@@ -375,6 +379,12 @@ export class PropertyValueService {
 					if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
 						return { changed: false, state: null };
 					baseline = this.observedAt(stored);
+				}
+				if (evidence.seedOnly) {
+					if (stored || this.valuesMap.has(key)) return { changed: false, state: null };
+					await evidence.seedOnly.assertCurrent();
+					if (this.valuesMap.has(key) || evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
+						return { changed: false, state: null };
 				}
 				// A replay is also checked against the cached observation (read after the lookup, since
 				// another reader may have warmed the cache meanwhile). Ordinary reports are not: with a

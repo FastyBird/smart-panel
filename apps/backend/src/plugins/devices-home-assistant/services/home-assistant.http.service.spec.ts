@@ -165,6 +165,42 @@ describe('HomeAssistantHttpService', () => {
 	});
 
 	describe('getDiscoveredDevices', () => {
+		it.each(['deadline', 'mapping cancellation', 'provider shutdown'])(
+			'aborts stalled response bodies on %s',
+			async (cause) => {
+				jest.useFakeTimers();
+				const signals: AbortSignal[] = [];
+				const cancellation = new AbortController();
+				const fetch = jest.spyOn(globalThis, 'fetch').mockImplementation((_, init) =>
+					Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () =>
+							new Promise((_, reject) => {
+								const signal = init.signal;
+								signals.push(signal);
+								signal.addEventListener('abort', () => reject(new Error('body aborted')), { once: true });
+							}),
+					} as Response),
+				);
+				try {
+					const pending = expect(service.getDiscoveredDevices(cancellation.signal)).rejects.toThrow(
+						DevicesHomeAssistantNotFoundException,
+					);
+					await jest.advanceTimersByTimeAsync(0);
+					expect(signals).toHaveLength(2);
+					expect(signals.every((signal) => !signal.aborted)).toBe(true);
+					if (cause === 'deadline') await jest.advanceTimersByTimeAsync(15_000);
+					if (cause === 'mapping cancellation') cancellation.abort();
+					if (cause === 'provider shutdown') service.onModuleDestroy();
+					expect(signals.every((signal) => signal.aborted)).toBe(true);
+					await pending;
+				} finally {
+					fetch.mockRestore();
+					jest.useRealTimers();
+				}
+			},
+		);
 		it('should return list of discovered devices', async () => {
 			const mockDevice: HomeAssistantDiscoveredDeviceDto = {
 				id: 'device_1',

@@ -50,7 +50,8 @@ export interface DeviceTypeMapping<
 	/** The route a refused generic creation is pointed at; only read when `requiresCreationContext` is set. */
 	creationRoute?: string;
 	afterCreate?: (device: TDevice, createDto?: TCreateDTO) => Promise<TDevice>;
-	afterUpdate?: (device: TDevice) => Promise<TDevice>;
+	/** Runs after a save. `changed` indicates whether the device update event will be published. */
+	afterUpdate?: (device: TDevice, changed?: boolean) => Promise<TDevice>;
 }
 
 @Injectable()

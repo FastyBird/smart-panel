@@ -15,6 +15,13 @@ import { telnetReceiveBuffer } from './telnet-receive-buffer';
 
 type LibraryCallback<T> = (error: unknown, result: T) => void;
 
+const READ_FUNCTIONS = {
+	[ModbusRegisterType.COIL]: 'writeFC1',
+	[ModbusRegisterType.DISCRETE_INPUT]: 'writeFC2',
+	[ModbusRegisterType.HOLDING_REGISTER]: 'writeFC3',
+	[ModbusRegisterType.INPUT_REGISTER]: 'writeFC4',
+} as const;
+
 interface PendingRequest {
 	reject: (error: Error) => void;
 }
@@ -133,30 +140,38 @@ class ModbusSerialTransport implements ModbusTransport {
 	}
 
 	isOpen(): boolean {
-		return this.socket !== null && this.client !== null && this.connecting === null;
+		return this.socket !== null && !this.socket.destroyed && this.client?.isOpen === true && this.connecting === null;
 	}
 
 	onClose(listener: (error?: Error) => void): void {
 		this.closeListeners.push(listener);
 	}
 
-	async read(request: ModbusReadRequest): Promise<boolean[] | number[]> {
+	async read(request: ModbusReadRequest, beforeDispatch?: () => void): Promise<boolean[] | number[]> {
 		const { unitId, registerType, address, count } = request;
+		const readFunction = READ_FUNCTIONS[registerType];
 
-		const result = await this.request<{ data: boolean[] | number[] }>((client, callback) => {
-			switch (registerType) {
-				case ModbusRegisterType.COIL:
-					return client.writeFC1(unitId, address, count, callback);
-				case ModbusRegisterType.DISCRETE_INPUT:
-					return client.writeFC2(unitId, address, count, callback);
-				case ModbusRegisterType.HOLDING_REGISTER:
-					return client.writeFC3(unitId, address, count, callback);
-				case ModbusRegisterType.INPUT_REGISTER:
-					return client.writeFC4(unitId, address, count, callback);
-				default:
-					throw new RangeError(`Unsupported register type for read: ${String(registerType)}`);
-			}
-		});
+		if (!readFunction) {
+			throw new RangeError(`Unsupported register type for read: ${String(registerType)}`);
+		}
+		if (!Number.isInteger(unitId) || unitId < 0 || unitId > 255) {
+			throw new RangeError('A Modbus unit ID must fit in one byte');
+		}
+		if (
+			!Number.isInteger(address) ||
+			address < 0 ||
+			address > 65535 ||
+			!Number.isInteger(count) ||
+			count < 1 ||
+			count > 65535
+		) {
+			throw new RangeError('A Modbus read needs a 16-bit address and a positive 16-bit count');
+		}
+
+		const result = await this.request<{ data: boolean[] | number[] }>(
+			(client, callback) => client[readFunction](unitId, address, count, callback),
+			beforeDispatch,
+		);
 
 		// Bit reads are decoded a whole byte at a time, so the library pads them to a multiple of 8.
 		return result.data.slice(0, count);
@@ -272,7 +287,10 @@ class ModbusSerialTransport implements ModbusTransport {
 		}
 	}
 
-	private request<T>(issue: (client: ModbusRTU, callback: LibraryCallback<T>) => void): Promise<T> {
+	private request<T>(
+		issue: (client: ModbusRTU, callback: LibraryCallback<T>) => void,
+		beforeDispatch?: () => void,
+	): Promise<T> {
 		const client = this.client;
 
 		if (!client || !this.isOpen()) {
@@ -283,6 +301,8 @@ class ModbusSerialTransport implements ModbusTransport {
 		if (this.options.framing === ModbusFraming.RTU_OVER_TCP && this.pending.size > 0) {
 			return Promise.reject(new Error('RTU over TCP carries one request at a time; serialise requests'));
 		}
+
+		beforeDispatch?.();
 
 		const stale = this.rtuReceiveBuffer?.discard() ?? 0;
 

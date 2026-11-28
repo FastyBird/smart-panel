@@ -702,16 +702,20 @@ describe('manual thermostat selection: reserved native intent', () => {
 			releaseFinal = gate();
 		const input = await fence();
 		const order: string[] = [];
-		let holding = false;
+		const reserveWriter = 'UPDATE "devices_virtual_graph_revision" SET "revision"="revision" WHERE 0';
+		let pauseNextQuery = false;
 		let bDone = false;
 		database.subscribers.push({
-			afterQuery: async (event) => {
-				if (!holding && event.query === 'UPDATE "devices_virtual_graph_revision" SET "revision"="revision" WHERE 0') {
-					holding = true;
-					order.push('A-reserved');
-					reserved.resolve();
-					await releaseA.promise;
-				}
+			afterQuery: ({ query, success }) => {
+				if (success && query === reserveWriter) pauseNextQuery = true;
+			},
+			beforeQuery: async () => {
+				// TypeORM awaits beforeQuery before submitting the next statement on A's connection.
+				if (!pauseNextQuery) return;
+				pauseNextQuery = false;
+				order.push('A-reserved');
+				reserved.resolve();
+				await releaseA.promise;
 			},
 		});
 		otherSource.subscribers.push({
@@ -733,6 +737,10 @@ describe('manual thermostat selection: reserved native intent', () => {
 		let b: Promise<void> | undefined;
 		try {
 			await Promise.race([reserved.promise, a]);
+			await otherSource.query('PRAGMA busy_timeout = 0');
+			await expect(otherSource.query(reserveWriter)).rejects.toMatchObject({ driverError: { code: 'SQLITE_BUSY' } });
+			// The actual B transaction should wait for A to commit, including under coverage.
+			await otherSource.query('PRAGMA busy_timeout = 5000');
 			b = other.lock.runExclusive(async () => {
 				await other.graph.withStructuralWrite(async (manager) => {
 					order.push('B-reserved');
@@ -744,12 +752,11 @@ describe('manual thermostat selection: reserved native intent', () => {
 				});
 				bDone = true;
 			});
-			await bAttempted.promise;
+			await Promise.race([bAttempted.promise, b]);
 			expect(bDone).toBe(false);
 			expect(order).not.toContain('B-reserved');
 			releaseA.resolve();
-			await Promise.race([aAck.promise, a]);
-			await b;
+			await Promise.all([Promise.race([aAck.promise, a]), b]);
 			expect(bDone).toBe(true);
 			releaseFinal.resolve();
 			const result = await a;

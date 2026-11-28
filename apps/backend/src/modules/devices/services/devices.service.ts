@@ -1,14 +1,19 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { SqliteCommitGuardReceipt, observeSqliteOuterOutcome } from '../../../common/database/sqlite-data-source';
+import {
+	SqliteCommitGuardReceipt,
+	SqliteDataSource,
+	observeSqliteOuterOutcome,
+	registerSqliteCommitGuard,
+} from '../../../common/database/sqlite-data-source';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance, toSnakeCase, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
@@ -925,6 +930,11 @@ export class DevicesService {
 	async update<TDevice extends DeviceEntity, TUpdateDTO extends UpdateDeviceDto>(
 		id: string,
 		updateDto: TUpdateDTO,
+		related?: {
+			/** Use this manager for the provider rows that must commit with the catalog. Return true to publish a change. */
+			persist: (manager: EntityManager) => Promise<boolean>;
+			assertCurrent?: () => void;
+		},
 	): Promise<TDevice> {
 		this.logger.debug(`Updating device with id=${id}`);
 
@@ -1071,7 +1081,15 @@ export class DevicesService {
 		// this save would never be judged at all, leaving the device advertising a category its own
 		// structure does not satisfy. The structural writes take the same lock (see
 		// DeviceStructureLockService).
-		await this.structureLock.runExclusive(async (): Promise<void> => {
+		const persistUpdate = async (context?: DeviceCreationContext): Promise<void> => {
+			const writeRepository = context ? context.manager.getRepository(mapping.class) : repository;
+			if (related?.assertCurrent && this.dataSource instanceof SqliteDataSource) {
+				registerSqliteCommitGuard(context.manager, () => {
+					related.assertCurrent();
+					return true;
+				});
+			}
+			related?.assertCurrent?.();
 			// Written through a row carrying no relations, not through the entity the decisions above were
 			// made on. `DeviceEntity.channels` is `cascade: true`, so saving the loaded entity re-saves
 			// whatever channels it happens to hold — and TypeORM reads a child that is *missing* from a
@@ -1087,7 +1105,7 @@ export class DevicesService {
 			//
 			// A re-read is enough: without the collection loaded there is no cascade to run, and the write
 			// is the one UPDATE this method was always meant to make.
-			const row = await repository.findOne({
+			const row = await writeRepository.findOne({
 				where: { id: device.id } as FindOptionsWhere<TDevice>,
 				loadEagerRelations: false,
 			});
@@ -1167,6 +1185,11 @@ export class DevicesService {
 				await mapping.beforeUpdate(row, persistedPrevious);
 			}
 
+			if (related) {
+				const changed = await related.persist(context.manager);
+				entityFieldsChanged ||= changed;
+			}
+
 			// Zones before the fields, and both inside the lock, because a PATCH is one thing to the
 			// caller. Written after the fields and outside the lock, a refusal here — a zone that is
 			// really a floor, or another request hiding the device in the meantime — left the ordinary
@@ -1176,16 +1199,31 @@ export class DevicesService {
 			// putting the zone half first means a refusal it raises for any other reason leaves nothing
 			// behind either.
 			if (zoneIds !== undefined) {
-				await this.deviceZonesService.setDeviceZones(device.id, zoneIds);
+				if (context) await this.deviceZonesService.setDeviceZones(device.id, zoneIds, { creation: context });
+				else await this.deviceZonesService.setDeviceZones(device.id, zoneIds);
 			}
 
-			await repository.save(row);
-		});
+			await writeRepository.save(row);
+			related?.assertCurrent?.();
+		};
+		await this.structureLock.runExclusive(() =>
+			related
+				? DeviceCreationContext.run(
+						(work) =>
+							this.dataSource instanceof SqliteDataSource
+								? this.dataSource.transactionWithWriteIntent(work)
+								: this.dataSource.transaction(work),
+						device.type,
+						persistUpdate,
+						() => undefined,
+					)
+				: persistUpdate(),
+		);
 
 		let updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 
 		if (mapping.afterUpdate) {
-			await mapping.afterUpdate(updatedDevice);
+			await mapping.afterUpdate(updatedDevice, entityFieldsChanged);
 
 			updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 		}
