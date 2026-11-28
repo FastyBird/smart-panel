@@ -1837,18 +1837,18 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const branch = context.branches.get(claim.id),
 				commands = context.commands.filter((command) => command.claimId === claim.id && unresolved(command));
 			const target = context.targets.get(claim.id);
-			const readinessFault =
-				claim.providerProfile === SUPERVISED_SWITCH_PROFILE && !claim.independentProtectionAcknowledged
-					? 'independent_protection_acknowledgement_required'
-					: !target
-						? 'actuator_missing'
-						: !this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))
-							? 'hardware_qualification_missing'
-							: !this.values.readQualifiedSample(target.property, 30_000)
-								? 'feedback_unavailable'
-								: claim.state !== 'reserved'
-									? `actuator_${claim.state}`
-									: null;
+			let readinessFault: string | null = null;
+			if (claim.providerProfile === SUPERVISED_SWITCH_PROFILE && !claim.independentProtectionAcknowledged) {
+				readinessFault = 'independent_protection_acknowledgement_required';
+			} else if (!target) {
+				readinessFault = 'actuator_missing';
+			} else if (!this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))) {
+				readinessFault = 'hardware_qualification_missing';
+			} else if (!this.values.readQualifiedSample(target.property, 30_000)) {
+				readinessFault = 'feedback_unavailable';
+			} else if (claim.state !== 'reserved') {
+				readinessFault = `actuator_${claim.state}`;
+			}
 			return {
 				protection: context.memberProtection.find((entry) => entry.claim === claim.id) ?? null,
 				cooling_protection: context.coolingProtection.find((entry) => entry.claim === claim.id) ?? null,
