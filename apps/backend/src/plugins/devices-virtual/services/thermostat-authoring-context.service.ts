@@ -92,11 +92,12 @@ export class ThermostatAuthoringContextService {
 				}
 			}
 			const withInstallation = safetyExtensions.filter(({ installation_path }) => installation_path);
-			const metadata = claim
-				? withInstallation.find((extension) => extension.id === claim.providerProfile)
-				: withInstallation.length === 1
-					? withInstallation[0]
-					: null;
+			let metadata: ThermostatSafetyExtensionModel | null = null;
+			if (claim) {
+				metadata = withInstallation.find((extension) => extension.id === claim.providerProfile) ?? null;
+			} else if (withInstallation.length === 1) {
+				metadata = withInstallation[0];
+			}
 
 			const revision = await this.graph.revision();
 			return {
