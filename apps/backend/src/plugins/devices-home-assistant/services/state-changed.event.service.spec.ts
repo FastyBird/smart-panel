@@ -18,6 +18,7 @@ import { ChannelInputOccurrencesService } from '../../../modules/devices/service
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PropertyStateCoordinatorService } from '../../../modules/devices/services/property-state-coordinator.service';
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
 import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
@@ -145,6 +146,21 @@ describe('StateChangedEventService', () => {
 			ingressSequence: 12,
 			isCurrent: jest.fn(() => true),
 		});
+		const holdValueWrite = (propertyId: string) => {
+			const queued = gate();
+			const release = gate();
+			const admitted: [string, UpdateHomeAssistantChannelPropertyDto['value']][] = [];
+			const coordinator = new PropertyStateCoordinatorService();
+			void coordinator.run(propertyId, () => release.promise);
+			channelsPropertiesService.update.mockImplementation((id, update, options) => {
+				if (id === propertyId) queued.release();
+				return coordinator.run(id, () => {
+					if (options?.valueIsCurrent?.() !== false) admitted.push([id, update.value]);
+					return Promise.resolve({ id } as HomeAssistantChannelPropertyEntity);
+				});
+			});
+			return { queued: queued.promise, release: release.release, admitted };
+		};
 		const arrange = (entity: string, value: boolean | number, category = PropertyCategory.ON) => {
 			httpService.getDiscoveredDevices.mockResolvedValue([
 				{ id: 'original-device', entities: [entity] } as HomeAssistantDiscoveredDeviceModel,
@@ -244,29 +260,21 @@ describe('StateChangedEventService', () => {
 						],
 					];
 				});
-				return { mapped, channels };
+				return { mapped, channels, properties };
 			};
 
-			it('waits for a submitted virtual write before applying the newer transition', async () => {
-				const virtualStarted = gate();
-				const allowVirtualWrite = gate();
+			it('rejects a queued virtual write at admission after a newer control transition', async () => {
 				const { mapped } = setup(() => Promise.resolve());
-				channelsPropertiesService.update.mockImplementation(async (id, update) => {
-					if (id === heater + '/virtual' && update.value === 'first') {
-						virtualStarted.release();
-						await allowVirtualWrite.promise;
-					}
-					return { id } as HomeAssistantChannelPropertyEntity;
-				});
+				const pending = holdValueWrite(heater + '/virtual');
 				const first = service.handle(transition('first', true), ingress());
-				await virtualStarted.promise;
+				await pending.queued;
 				const previous = channelsPropertiesService.reportSample.mock.calls[0][2].sourceIsCurrent;
 				const qualifiedBeforeTransition = previous();
 				const second = service.handle(transition('second', false), { ...ingress(), ingressSequence: 13 });
 				const stillQualified = previous();
 				await jest.advanceTimersByTimeAsync(0);
 				const whileWritingVirtual = [...mapped];
-				allowVirtualWrite.release();
+				pending.release();
 				await Promise.all([first, second]);
 
 				expect(qualifiedBeforeTransition).toBe(true);
@@ -276,12 +284,46 @@ describe('StateChangedEventService', () => {
 					[heater, true, 12],
 					[heater, false, 13],
 				]);
-				expect(writes()).toEqual([
+				expect(pending.admitted).toEqual([
 					[heater + '/attribute', 'first'],
-					[heater + '/virtual', 'first'],
 					[heater + '/attribute', 'second'],
 					[heater + '/virtual', 'second'],
 				]);
+			});
+
+			it.each(['attribute', 'virtual'])('rejects a queued %s write after its property is reassigned', async (kind) => {
+				const replacement = 'switch.replacement';
+				const { properties } = setup(() => Promise.resolve(), [heater, replacement]);
+				const propertyId = heater + '/' + kind;
+				const property = properties.find((item) => item.id === propertyId);
+				// A consolidated channel can derive a virtual value from another member's state.
+				if (kind === 'virtual') property.haEntityId = 'switch.channel_member';
+				const pending = holdValueWrite(propertyId);
+				const old = service.handle(transition('old', true), ingress());
+				await pending.queued;
+				const guard = channelsPropertiesService.update.mock.lastCall[2]?.valueIsCurrent;
+				// The unrelated local property's ID happens to match our remote device ID.
+				service.handleDevicesUpdatedEvent({
+					id: 'ha-device',
+					haEntityId: 'sensor.unrelated',
+					channel: { id: 'other-channel', device: 'other-device' },
+				});
+				const currentBeforeEdit = guard?.();
+				const reassigned = Object.assign(new HomeAssistantChannelPropertyEntity(), property, {
+					haEntityId: replacement,
+				});
+				channelsPropertiesService.findAll.mockResolvedValue([reassigned]);
+				mapperService.mapFromHA.mockResolvedValue(
+					kind === 'attribute' ? [[{ property: reassigned, value: 'current' }]] : [],
+				);
+				service.handleDevicesUpdatedEvent(reassigned);
+				pending.release();
+				await old;
+				await service.handle(transition('current', false, replacement), ingress());
+
+				expect(currentBeforeEdit).toBe(true);
+				expect(guard?.()).toBe(false);
+				expect(pending.admitted.filter(([id]) => id === propertyId)).toEqual([[propertyId, 'current']]);
 			});
 
 			it('supersedes debounced presentations even after the timer fired behind a pending transition', async () => {
@@ -494,6 +536,7 @@ describe('StateChangedEventService', () => {
 				expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 					'property',
 					expect.objectContaining({ value: 20 }),
+					expect.any(Object),
 				);
 				arrange(sensor, 21, PropertyCategory.TEMPERATURE);
 				await service.handle(event(sensor, '20', '21', attributes), ingress());
@@ -514,6 +557,7 @@ describe('StateChangedEventService', () => {
 				expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 					'property',
 					expect.objectContaining({ value: false }),
+					expect.any(Object),
 				);
 			},
 		);
@@ -545,6 +589,7 @@ describe('StateChangedEventService', () => {
 				expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 					'property',
 					expect.objectContaining({ value: true }),
+					expect.any(Object),
 				);
 				arrange(heater, false);
 				const valid = event(heater, 'on', 'off');
@@ -703,6 +748,28 @@ describe('StateChangedEventService', () => {
 					.mockResolvedValueOnce([])
 					.mockResolvedValue([discovered('remote-relay', relay)]);
 			};
+
+			it.each(['owner-a', 'owner-b'])('rechecks a queued scalar when discovery resolves %s', async (owner) => {
+				setupPartial();
+				setAdoptions('owner-a', 'owner-b', 'unresolved');
+				httpService.getDiscoveredDevices
+					.mockReset()
+					.mockResolvedValueOnce([discovered('owner-a', relay)])
+					.mockResolvedValue([discovered(owner, relay)]);
+				const pending = holdValueWrite(relay);
+				await service.handle(event(relay, 'off', 'off'), ingress());
+				await jest.advanceTimersByTimeAsync(500);
+				await pending.queued;
+
+				const refresh = service.handle(event('switch.trigger', 'off', 'on'), ingress());
+				await jest.advanceTimersByTimeAsync(5000);
+				await refresh;
+				pending.release();
+				await jest.advanceTimersByTimeAsync(0);
+
+				expect(httpService.getDiscoveredDevices).toHaveBeenCalledTimes(2);
+				expect(pending.admitted).toEqual(owner === 'owner-a' ? [[relay, false]] : []);
+			});
 
 			it('coalesces different misses at most once per retry interval and keeps known routes live', async () => {
 				setupPartial();
@@ -999,14 +1066,16 @@ describe('StateChangedEventService', () => {
 
 		await jest.runAllTimersAsync(); // fast-forward debounce
 
-		expect(channelsPropertiesService.update).toHaveBeenCalledWith(
-			property.id,
+		const [id, update, options] = channelsPropertiesService.update.mock.lastCall;
+		expect(id).toBe(property.id);
+		expect(update).toEqual(
 			toInstance(UpdateHomeAssistantChannelPropertyDto, {
 				type: 'devices-home-assistant',
 				value: 25,
 			}),
 		);
-		expect(Object.keys(channelsPropertiesService.update.mock.calls[0][1]).sort()).toEqual(['type', 'value']);
+		expect(Object.keys(update).sort()).toEqual(['type', 'value']);
+		expect(options.valueIsCurrent()).toBe(true);
 	});
 
 	describe('event.* entities handling', () => {

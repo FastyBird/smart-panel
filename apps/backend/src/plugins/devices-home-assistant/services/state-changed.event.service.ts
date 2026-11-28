@@ -96,6 +96,8 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 	private readonly propertyEntities = new Map<string, string>();
 	// A device change can arrive while discovery is still resolving a pending entity's owner.
 	private readonly deviceRevisions = new Map<string, number>();
+	// A virtual write can target a property bound to another entity on the same channel.
+	private readonly propertyRevisions = new Map<string, number>();
 
 	private readonly entityWork = new Map<string, EntityStateWork>();
 	private destroyed = false;
@@ -149,6 +151,9 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		else if (entityIds.length) this.invalidateBindings({ entityIds }, previous ? undefined : panelDeviceId);
 		else if (panelDeviceId) this.invalidateBindings({}, panelDeviceId);
 		else this.invalidateBindings(null);
+		if (entity?.id && ('haEntityId' in entity || entity.channel)) {
+			this.propertyRevisions.set(entity.id, this.mappingRevision);
+		}
 	}
 
 	handleRegistryChange(change: HomeAssistantRegistryChange | null): void {
@@ -178,6 +183,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 			this.bindingGeneration++;
 			this.missingDevices.clear();
 			this.deviceRevisions.clear();
+			this.propertyRevisions.clear();
 		}
 		this.retireBindings(change ? affected : undefined);
 		// A request already reading unchanged metadata can finish for its original entity.
@@ -320,12 +326,17 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 				await this.handleHardwareEventEntity(event, device, isCurrent);
 				return;
 			}
+			const valueIsCurrent = (propertyId?: string): boolean =>
+				isCurrent() &&
+				ownerIsCurrent() &&
+				(propertyId === undefined || (this.propertyRevisions.get(propertyId) ?? 0) <= revision);
 
 			const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [state]);
 			for (const entries of resultMaps) {
 				for (const { property, value } of entries) {
-					if (!isCurrent()) return;
-					if (property.haEntityId === entityId) this.propertyEntities.set(property.id, entityId);
+					const propertyId = property.id;
+					if (!valueIsCurrent(propertyId)) continue;
+					if (property.haEntityId === entityId) this.propertyEntities.set(propertyId, entityId);
 					const update = toInstance(UpdateHomeAssistantChannelPropertyDto, {
 						type: DEVICES_HOME_ASSISTANT_TYPE,
 						value,
@@ -340,7 +351,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 						value === physicalValue
 					) {
 						if (sourceIsCurrent())
-							await this.channelsPropertiesService.reportSample(property.id, update, {
+							await this.channelsPropertiesService.reportSample(propertyId, update, {
 								sampledAt: changedAt,
 								receivedAt: ingress.receivedAt,
 								observedAt: ingress.receivedAt,
@@ -349,11 +360,13 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 								sourceIsCurrent,
 							});
 					} else {
-						await this.channelsPropertiesService.update(property.id, update);
+						await this.channelsPropertiesService.update(propertyId, update, {
+							valueIsCurrent: () => valueIsCurrent(propertyId),
+						});
 					}
 				}
 			}
-			if (isCurrent()) await this.updateVirtualPropertiesForEntity(device.id, entityId, state, isCurrent);
+			if (valueIsCurrent()) await this.updateVirtualPropertiesForEntity(device.id, entityId, state, valueIsCurrent);
 		};
 		// Claim the entity's place before any asynchronous lookup or mapping. A newer
 		// transition can cancel a pending presentation, including one waiting in the queue.
@@ -486,7 +499,7 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 		deviceId: string,
 		entityId: string,
 		state: HomeAssistantStateDto,
-		isCurrent: () => boolean,
+		isCurrent: (propertyId?: string) => boolean,
 	): Promise<void> {
 		// Get channels from cache or load and cache them
 		const channels = await this.getChannelsForDevice(deviceId);
@@ -557,7 +570,8 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 
 			// Update each virtual property
 			for (const virtualProp of virtualProps) {
-				if (!isCurrent()) return;
+				const propertyId = virtualProp.id;
+				if (!isCurrent(propertyId)) continue;
 				const virtualDef = virtualDefs.find((vd) => vd.propertyCategory === virtualProp.category);
 
 				if (!virtualDef || virtualDef.virtualType === 'command') {
@@ -567,16 +581,18 @@ export class StateChangedEventService implements WsEventService, OnModuleDestroy
 				const resolved = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, context);
 
 				if (resolved.value !== null) {
+					if (isHaEntityId(virtualProp.haEntityId)) this.propertyEntities.set(propertyId, virtualProp.haEntityId);
 					await this.channelsPropertiesService.update(
-						virtualProp.id,
+						propertyId,
 						toInstance(UpdateHomeAssistantChannelPropertyDto, {
 							type: DEVICES_HOME_ASSISTANT_TYPE,
 							value: resolved.value,
 						}),
+						{ valueIsCurrent: () => isCurrent(propertyId) },
 					);
 
 					this.logger.debug(
-						`Updated virtual property ${virtualProp.category} = ${String(resolved.value)} for channel ${channel.category}`,
+						`Resolved virtual property ${virtualProp.category} = ${String(resolved.value)} for channel ${channel.category}`,
 					);
 				}
 			}
