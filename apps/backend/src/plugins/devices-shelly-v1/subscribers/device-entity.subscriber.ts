@@ -14,6 +14,7 @@ import {
 	ShellyV1AdoptedIdentityService,
 	shellyV1Address,
 	shellyV1PinMatches,
+	shellyV1RegistrationMatchesPin,
 	shellyV1ReportedMac,
 } from '../services/shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
@@ -45,19 +46,22 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		return ShellyV1DeviceEntity;
 	}
 
-	private credentialTarget(identifier: string, hostname: string | null) {
-		const registration = this.shelliesAdapter.getRegisteredDevice(identifier);
-		const host = hostname ?? (shellyV1Address(identifier)?.length === 12 ? registration?.host : null);
+	private credentialTarget(id: string, identifier: string, hostname: string | null) {
+		const catalog = { id, identifier, hostname };
+		const registration = this.shelliesAdapter.getRegisteredDeviceForCatalog(catalog);
+		const host =
+			hostname ?? (registration?.catalog || shellyV1Address(identifier)?.length === 12 ? registration?.host : null);
 		if (!host || !registration || registration.host !== host) return null;
 		const { type, credentialRevision } = registration;
-		const peer = this.shelliesAdapter.getDevice(type, identifier);
-		if (!peer || peer.host !== host || peer.id !== identifier || peer.type !== type) return null;
+		const peer = this.shelliesAdapter.getDevice(type, registration.id);
+		if (!peer || peer.host !== host || peer.id !== registration.id || peer.type !== type) return null;
 		return {
 			peer,
 			host,
+			registration,
 			isCurrent: () =>
-				this.shelliesAdapter.getRegisteredDevice(identifier) === registration &&
-				this.shelliesAdapter.getDevice(type, identifier) === peer &&
+				this.shelliesAdapter.getRegisteredDeviceForCatalog(catalog) === registration &&
+				this.shelliesAdapter.getDevice(type, registration.id) === peer &&
 				registration.host === host &&
 				registration.type === type &&
 				registration.credentialRevision === credentialRevision &&
@@ -69,12 +73,17 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 	private async configureCredentials(device: ShellyV1DeviceEntity, settings: CredentialSettings): Promise<boolean> {
 		const { id, identifier, password } = device;
 		if (!identifier || !password) return false;
-		const target = this.credentialTarget(identifier, device.hostname);
+		const target = this.credentialTarget(id, identifier, device.hostname);
 		if (!target) return false;
 		const { peer, host } = target;
 		const current = () => this.settings.get(id) === settings && target.isCurrent();
 		const pin = await this.identities.findPin(id);
-		if (!current() || (pin && !shellyV1PinMatches(identifier, pin.mac))) return false;
+		if (
+			!current() ||
+			!shellyV1RegistrationMatchesPin(target.registration, device, pin) ||
+			(pin && !shellyV1PinMatches(identifier, pin.mac))
+		)
+			return false;
 		if (pin && pin.verifiedHost !== host) {
 			const info = await this.httpClient.getDeviceInfo(host).catch((): null => null);
 			if (!current() || shellyV1ReportedMac(identifier, peer.type, info) !== pin.mac) return false;
@@ -116,9 +125,9 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 			this.settings.set(previous.id, this.snapshot(previous));
 	}
 
-	private clearCredentials(identifier: string | null, hostname: string | null): void {
+	private clearCredentials(id: string, identifier: string | null, hostname: string | null): void {
 		if (!identifier) return;
-		const target = this.credentialTarget(identifier, hostname);
+		const target = this.credentialTarget(id, identifier, hostname);
 		if (target) this.shelliesAdapter.setDeviceAuthCredentials(target.peer, target.host, SHELLY_AUTH_USERNAME, null);
 	}
 
@@ -161,13 +170,21 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		// Replace the snapshot before any await. An intervening password, endpoint or lifetime change
 		// revokes pending lookups even when a later edit restores the original values.
 		this.settings.set(device.id, next);
+		const registration = this.shelliesAdapter.getRegisteredDeviceForCatalog(device);
 		if (previous && !unchanged) {
-			this.clearCredentials(previous.identifier, previous.hostname);
-			if (previous.identifier && previous.identifier !== next.identifier)
-				this.shelliesAdapter.updateDeviceEnabledStatus(previous.identifier, false);
+			this.clearCredentials(device.id, previous.identifier, previous.hostname);
+			const previousRegistration = this.shelliesAdapter.getRegisteredDeviceForCatalog({
+				id: device.id,
+				identifier: previous.identifier,
+				hostname: previous.hostname,
+			});
+			if (previousRegistration && previousRegistration !== registration) {
+				this.shelliesAdapter.updateDeviceEnabledStatus(previousRegistration.id, false);
+				if (previousRegistration.catalog) this.shelliesAdapter.releaseCatalogDevice(device.id);
+			}
 		}
 		if (!next.identifier) return;
-		this.shelliesAdapter.updateDeviceEnabledStatus(next.identifier, next.enabled);
+		if (registration) this.shelliesAdapter.updateDeviceEnabledStatus(registration.id, next.enabled);
 		if (next.enabled && device.password) {
 			let configured = false;
 			try {
@@ -177,15 +194,17 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 				next.retry = !configured;
 			}
 		} else if (!previous || previous.identifier !== next.identifier || previous.hostname !== next.hostname)
-			this.clearCredentials(next.identifier, next.hostname);
+			this.clearCredentials(device.id, next.identifier, next.hostname);
 	}
 
 	@OnEvent(EventType.DEVICE_DELETED)
 	deviceDeleted(device: ShellyV1DeviceEntity): void {
 		if (!(device instanceof ShellyV1DeviceEntity)) return;
 		this.settings.delete(device.id);
-		this.clearCredentials(device.identifier, device.hostname);
-		if (device.identifier) this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, false);
+		this.clearCredentials(device.id, device.identifier, device.hostname);
+		const registration = this.shelliesAdapter.getRegisteredDeviceForCatalog(device);
+		if (registration) this.shelliesAdapter.updateDeviceEnabledStatus(registration.id, false);
+		this.shelliesAdapter.releaseCatalogDevice(device.id);
 	}
 
 	onModuleDestroy(): void {

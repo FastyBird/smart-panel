@@ -20,12 +20,13 @@ import {
 	ShellyV1AdoptedIdentityService,
 	shellyV1Address,
 	shellyV1PinMatches,
+	shellyV1RegistrationMatchesPin,
 	shellyV1ReportedMac,
 } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 type Metadata = { id?: string; type?: string; channel?: string | Metadata; device?: string | Metadata };
-type PendingRefresh = { next?: ShellyV1DeviceEntity; completion: Promise<boolean> };
+type PendingRefresh = { next?: () => Promise<boolean>; completion: Promise<boolean> };
 
 type StatusObservation = {
 	device: ShellyV1DeviceEntity;
@@ -99,7 +100,7 @@ export class ShellyV1PropertyReportsService {
 	}
 
 	capture(device: ShellyV1DeviceEntity, generation = this.generation): StatusObservation | null {
-		const registration = this.adapter.getRegisteredDevice(device.identifier);
+		const registration = this.adapter.getRegisteredDeviceForCatalog(device);
 		const peer = registration && this.adapter.getDevice(registration.type, registration.id);
 		const descriptor = peer && findShellyV1Descriptor(peer.type);
 		if (!device.enabled || !registration?.enabled || !peer?.online || !descriptor || registration.host !== peer.host)
@@ -113,9 +114,15 @@ export class ShellyV1PropertyReportsService {
 			this.unknownChange <= generation &&
 			unchanged('device', device.id) &&
 			this.adapter.isRunning() &&
-			this.adapter.getRegisteredDevice(device.identifier) === registration &&
+			device.enabled &&
+			registration.enabled &&
+			this.adapter.getRegisteredDeviceForCatalog(device) === registration &&
+			this.adapter.getRegisteredDevice(registration.id) === registration &&
 			this.adapter.getDevice(registration.type, registration.id) === peer &&
 			peer.online &&
+			peer.id === registration.id &&
+			peer.type === registration.type &&
+			registration.host === host &&
 			peer.host === host &&
 			peer.mode === mode;
 		if (!isCurrent()) return null;
@@ -132,21 +139,22 @@ export class ShellyV1PropertyReportsService {
 		};
 	}
 
-	refresh(device: ShellyV1DeviceEntity): Promise<boolean> {
+	refresh(device: ShellyV1DeviceEntity, isCurrent?: () => boolean): Promise<boolean> {
+		const read = () => (isCurrent?.() === false ? Promise.resolve(false) : this.read(device));
 		const pending = this.pending.get(device.id);
 		if (pending) {
-			pending.next = device;
+			pending.next = read;
 			return pending.completion;
 		}
 		const work: PendingRefresh = {
-			next: device,
+			next: read,
 			completion: Promise.resolve().then(async () => {
 				let sent = false;
 				try {
 					while (work.next) {
 						const next = work.next;
 						work.next = undefined;
-						sent = (await this.read(next).catch(() => false)) || sent;
+						sent = (await next().catch(() => false)) || sent;
 					}
 					return sent;
 				} finally {
@@ -173,6 +181,8 @@ export class ShellyV1PropertyReportsService {
 			)
 		)
 			return false;
+		if (source.registration.catalog && !(await this.boundPinIsCurrent(source))) return false;
+		if (!source.isCurrent()) return false;
 		// A new request boundary is needed even if an earlier ordinary refresh is pending.
 		const read = await readShellyRelayStatus(source.peer, () => {
 			target?.dispatching();
@@ -211,14 +221,17 @@ export class ShellyV1PropertyReportsService {
 		let origin = this.temperatureOrigins.get(report);
 		if (!origin) {
 			const generation = this.generation;
+			const registration = this.adapter.getRegisteredDevice(report.deviceId);
+			if (!registration?.enabled || registration.id !== report.deviceId) return false;
+			const catalog = registration.catalog;
 			const device = await this.devices.findOneBy<ShellyV1DeviceEntity>(
-				'identifier',
-				report.deviceId,
+				catalog ? 'id' : 'identifier',
+				catalog?.deviceId ?? report.deviceId,
 				DEVICES_SHELLY_V1_TYPE,
 			);
 			const source = device && this.capture(device, generation);
 			const binding = source?.bindings.find((item) => item.shelliesProperty === 'temperature');
-			if (!source || !binding) return false;
+			if (!source || source.registration !== registration || !binding) return false;
 			const peerIsCurrent = source.isCurrent;
 			source.isCurrent = () => peerIsCurrent() && report.isCurrent();
 			source.observedAt = report.receivedAt;
@@ -228,12 +241,7 @@ export class ShellyV1PropertyReportsService {
 		}
 		if (!origin.source.isCurrent() || !report.isLatest() || origin.mappedIsCurrent?.() === false) return false;
 		const address = shellyV1Address(report.deviceId);
-		if (
-			!address ||
-			address !== shellyV1Address(origin.source.peer.id) ||
-			address !== shellyV1Address(origin.source.device.identifier)
-		)
-			return false;
+		if (!address || report.deviceId !== origin.source.peer.id) return false;
 		if (!(await this.verifyTemperatureHost(origin.source, address))) return false;
 		if (!origin.source.isCurrent() || !report.isLatest()) return false;
 		return this.reportBinding(origin.source, origin.binding, report.value, report.receivedAt, undefined, report);
@@ -242,7 +250,12 @@ export class ShellyV1PropertyReportsService {
 	private async verifyTemperatureHost(source: StatusObservation, address: string): Promise<boolean> {
 		const { device, registration, host, isCurrent } = source;
 		const pin = await this.identities.findPin(device.id);
-		if (!isCurrent() || (pin && !shellyV1PinMatches(address, pin.mac))) return false;
+		if (
+			!isCurrent() ||
+			!shellyV1RegistrationMatchesPin(registration, device, pin) ||
+			(pin && !shellyV1PinMatches(address, pin.mac))
+		)
+			return false;
 		if (address.length === 12) return true;
 		// A legacy installation may keep using its configured sensor until explicitly adopted.
 		if (!pin) return !!host && device.hostname === host;
@@ -261,6 +274,11 @@ export class ShellyV1PropertyReportsService {
 		return this.identities.confirmHost(device.id, pin.mac, host, pin.verifiedHost, pin.revision);
 	}
 
+	private async boundPinIsCurrent(source: StatusObservation): Promise<boolean> {
+		const pin = await this.identities.findPin(source.device.id).catch((): null => null);
+		return source.isCurrent() && shellyV1RegistrationMatchesPin(source.registration, source.device, pin);
+	}
+
 	async publish(
 		source: StatusObservation,
 		status: ShellyStatusResponse,
@@ -270,8 +288,11 @@ export class ShellyV1PropertyReportsService {
 		const mac = typeof status?.mac === 'string' ? status.mac.toUpperCase() : null;
 		const address = shellyV1Address(source.peer.id);
 		if (!mac || !address || !/^[0-9A-F]{12}$/.test(mac) || !mac.endsWith(address) || !source.isCurrent()) return;
-		const expected = await this.identities.expected(source.device.id, source.device.identifier);
-		if (expected !== mac || !source.isCurrent()) return;
+		const catalog = source.registration.catalog;
+		const matches = catalog
+			? catalog.mac === mac && (await this.boundPinIsCurrent(source))
+			: (await this.identities.expected(source.device.id, source.device.identifier)) === mac;
+		if (!matches || !source.isCurrent()) return;
 		for (const binding of source.bindings) {
 			if (
 				target &&

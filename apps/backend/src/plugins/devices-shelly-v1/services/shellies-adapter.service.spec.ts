@@ -10,13 +10,17 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import type { DataSource } from 'typeorm';
 
 import { Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 import { ShelliesAdapterCallbacks, ShellyDevice } from '../interfaces/shellies.interface';
+import { DeviceEntitySubscriber } from '../subscribers/device-entity.subscriber';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import { ShellyV1AdoptedIdentityService } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 // Mock the shellies library
@@ -239,6 +243,163 @@ describe('ShelliesAdapterService', () => {
 			expect(service.getRegisteredDevice('shelly1pm-ABC123')).toBeDefined();
 			expect(service.getRegisteredDevice('shellyrgbw2-DEF456')).toBeDefined();
 		});
+	});
+
+	describe('verified catalog registrations', () => {
+		const mac = 'AABBCCDDEEFF';
+		const firstHost = '192.168.1.100';
+		const rawId = 'DDEEFF';
+		const fullId = 'shelly1-' + mac.toLowerCase();
+		const row = (identifier = fullId, hostname = firstHost) =>
+			Object.assign(new ShellyV1DeviceEntity(), { id: 'catalog', identifier, hostname, enabled: true });
+
+		async function registry() {
+			const sdk = new Map<string, ShellyDevice>();
+			mockShelliesLibrary.getDevice.mockImplementation((_type: string, id: string) => sdk.get(id));
+			await service.start();
+			const { create } = jest.requireActual<{ create(type: string, id: string, host: string): ShellyDevice }>(
+				'shellies/lib/devices',
+			);
+			const add = (id = rawId, host = firstHost) => {
+				const peer = create('SHSW-1', id, host);
+				peer.online = true;
+				sdk.set(id, peer);
+				mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'add')[1](peer);
+				return peer;
+			};
+			const remove = (peer: ShellyDevice) => {
+				sdk.delete(peer.id);
+				mockShelliesLibrary.on.mock.calls.find(([event]) => event === 'remove')[1](peer);
+			};
+			const bind = (peer: ShellyDevice, catalog = row()) =>
+				service.bindCatalogDevice(service.getRegisteredDevice(peer.id), peer, catalog, mac);
+			return { add, remove, bind };
+		}
+
+		it('keeps an exact verified peer through compatible renames, mode, connection and enablement changes', async () => {
+			const { add, bind } = await registry();
+			const peer = add();
+			const raw = service.getRegisteredDevice(rawId);
+			expect(bind(peer, row(rawId))).toBe(true);
+			expect(service.getRegisteredDeviceForCatalog(row())).toBe(raw);
+			expect(service.getRegisteredDeviceForCatalog({ id: 'other', identifier: rawId })).toBeUndefined();
+			expect(service.getRegisteredDeviceForCatalog(row('unrelated-123456'))).toBeUndefined();
+			expect(service.getRegisteredDeviceForCatalog(row(fullId, 'wrong-host'))).toBeUndefined();
+			peer.emit('change', 'mode', 'relay', 'roller');
+			expect(service.getRegisteredDeviceForCatalog(row())).not.toBe(raw);
+			peer.online = false;
+			peer.online = true;
+			service.updateDeviceEnabledStatus(rawId, false);
+			expect(service.getRegisteredDeviceForCatalog(row())).toMatchObject({
+				enabled: false,
+				catalog: { deviceId: 'catalog', mac },
+			});
+			service.updateDeviceEnabledStatus(rawId, true);
+			expect(service.getRegisteredDeviceForCatalog(row())).toBe(service.getRegisteredDevice(rawId));
+			service.releaseCatalogDevice('catalog');
+			expect(service.getRegisteredDeviceForCatalog(row())).toBeUndefined();
+			expect(service.getRegisteredDevice(rawId)).toMatchObject({ enabled: false });
+		});
+
+		it('rejects two SDK IDs at one host and re-verifies the remaining peer when the duplicate leaves', async () => {
+			const { add, remove, bind } = await registry();
+			const first = add();
+			expect(bind(first)).toBe(true);
+			service.setDeviceAuthCredentials(first, firstHost, 'operator', 'fixture');
+			const duplicate = add(mac);
+			expect(bind(duplicate)).toBe(false);
+			expect(service.getRegisteredDeviceForCatalog(row())).toBeUndefined();
+			expect(service.getRegisteredDeviceForCatalog({ id: 'other', identifier: duplicate.id })).toBeUndefined();
+			expect(service.getRegisteredDevice(duplicate.id).catalog).toBeUndefined();
+			expect(first._request).toBeNull();
+			callbacks.onDeviceDiscovered.mockClear().mockImplementationOnce(() => {
+				expect(bind(first)).toBe(true);
+				service.updateDeviceEnabledStatus(first.id, true);
+			});
+			remove(duplicate);
+			expect(callbacks.onDeviceDiscovered).toHaveBeenCalledWith({
+				id: rawId,
+				host: firstHost,
+				type: first.type,
+				online: true,
+			});
+			expect(service.getRegisteredDeviceForCatalog(row())).toBe(service.getRegisteredDevice(first.id));
+			expect(service.getRegisteredDevice(first.id).enabled).toBe(true);
+		});
+
+		it('retires the previous raw ID and credentials on a verified move while the old SDK peer still exists', async () => {
+			const { add, bind } = await registry();
+			const old = add();
+			expect(bind(old, row(rawId))).toBe(true);
+			service.setDeviceAuthCredentials(old, old.host, 'operator', 'fixture');
+			const current = add(mac, '192.168.1.200');
+			const moved = row(rawId, current.host);
+			callbacks.onDeviceDiscovered.mockClear();
+			expect(bind(current, moved)).toBe(true);
+			expect(callbacks.onDeviceDiscovered).not.toHaveBeenCalled();
+			expect(service.getRegisteredDeviceForCatalog(moved)).toBe(service.getRegisteredDevice(current.id));
+			expect(service.getRegisteredDevice(old.id)).toMatchObject({ enabled: false });
+			expect(service.getRegisteredDevice(old.id).catalog).toBeUndefined();
+			expect(old._request).toBeNull();
+			expect(service.setDeviceAuthCredentials(old, old.host, 'operator', 'retired')).toBe(false);
+		});
+
+		it('revokes an alias when its SDK host changes and ignores callbacks from a replaced object', async () => {
+			const { add, bind } = await registry();
+			const old = add();
+			expect(bind(old)).toBe(true);
+			old.host = '192.168.1.101';
+			expect(service.getRegisteredDeviceForCatalog(row())).toBeUndefined();
+			const replacement = add(rawId, old.host);
+			const moved = row(fullId, old.host);
+			expect(bind(replacement, moved)).toBe(true);
+			callbacks.onDeviceChanged.mockClear();
+			old.emit('change', 'relay0', true, false);
+			old.emit('offline');
+			old.emit('online');
+			old.emit('remove');
+			expect(callbacks.onDeviceChanged).not.toHaveBeenCalled();
+			expect(callbacks.onDeviceOffline).not.toHaveBeenCalled();
+			expect(callbacks.onDeviceOnline).not.toHaveBeenCalled();
+			expect(service.getRegisteredDeviceForCatalog(moved)).toBe(service.getRegisteredDevice(rawId));
+		});
+
+		it.each(['verified', 'other MAC with the same suffix', 'other host', 'lost pin'])(
+			'installs a rotated password on the real SDK peer after a catalog rename only for a current pin (%s)',
+			async (scenario) => {
+				const { add, bind } = await registry();
+				const peer = add();
+				const initial = Object.assign(row(rawId), { password: 'old' });
+				expect(bind(peer, initial)).toBe(true);
+				const setter = jest.spyOn(peer, 'setAuthCredentials');
+				const pin = { mac, verifiedHost: firstHost, revision: 1 };
+				const findPin = jest.fn().mockResolvedValue(pin);
+				const subscriber = new DeviceEntitySubscriber(
+					{ subscribers: [] } as unknown as DataSource,
+					service,
+					{
+						getLoginSettings: jest.fn().mockResolvedValue({ username: 'operator' }),
+					} as unknown as ShellyV1HttpClientService,
+					{ findPin } as unknown as ShellyV1AdoptedIdentityService,
+				);
+				await subscriber.deviceCreated(initial);
+				expect(setter).toHaveBeenLastCalledWith('operator', 'old');
+				setter.mockClear();
+				if (scenario === 'other MAC with the same suffix') findPin.mockResolvedValue({ ...pin, mac: '112233DDEEFF' });
+				if (scenario === 'other host') findPin.mockResolvedValue({ ...pin, verifiedHost: '192.168.1.99' });
+				if (scenario === 'lost pin') findPin.mockResolvedValue(null);
+				const renamed = Object.assign(row(), { password: 'rotated' });
+				await subscriber.deviceUpdated(renamed);
+				if (scenario === 'verified') expect(setter).toHaveBeenCalledWith('operator', 'rotated');
+				else {
+					expect(setter).not.toHaveBeenCalled();
+					expect(peer._request).toBeNull();
+				}
+				subscriber.deviceDeleted(renamed);
+				expect(service.getRegisteredDeviceForCatalog(renamed)).toBeUndefined();
+				expect(peer._request).toBeNull();
+			},
+		);
 	});
 
 	describe('getDevice', () => {
@@ -752,6 +913,7 @@ describe('ShelliesAdapterService', () => {
 			await service.start();
 
 			const device = makeShellyDevice('shelly1pm-ABC123');
+			mockShelliesLibrary.getDevice.mockReturnValue(device);
 			const addHandler = mockShelliesLibrary.on.mock.calls.find((call) => call[0] === 'add')?.[1];
 			addHandler?.(device);
 
@@ -772,6 +934,7 @@ describe('ShelliesAdapterService', () => {
 			await service.start();
 
 			const device = makeShellyDevice('shelly1pm-ABC123');
+			mockShelliesLibrary.getDevice.mockReturnValue(device);
 			const addHandler = mockShelliesLibrary.on.mock.calls.find((call) => call[0] === 'add')?.[1];
 			addHandler?.(device);
 
@@ -790,6 +953,7 @@ describe('ShelliesAdapterService', () => {
 			await service.start();
 
 			const device = makeShellyDevice('shelly1pm-ABC123');
+			mockShelliesLibrary.getDevice.mockReturnValue(device);
 			const addHandler = mockShelliesLibrary.on.mock.calls.find((call) => call[0] === 'add')?.[1];
 			addHandler?.(device);
 

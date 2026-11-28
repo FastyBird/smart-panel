@@ -14,17 +14,11 @@ import { CreateShellyV1DeviceDto } from '../dto/create-device.dto';
 import { UpdateShellyV1DeviceDto } from '../dto/update-device.dto';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 import { ShellyV1AdoptedIdentityEntity } from '../entities/shelly-v1-adopted-identity.entity';
+import type { RegisteredDevice } from '../interfaces/shellies.interface';
 import type { ShellyInfoResponse } from '../interfaces/shelly-http.interface';
+import { shellyV1Address, shellyV1PinMatches } from '../utils/shelly-v1-address.utils';
 
-export function shellyV1Address(identifier: string | null | undefined): string | null {
-	const suffix = identifier?.split('-').at(-1)?.toUpperCase();
-	return suffix && /^(?:[0-9A-F]{6}|[0-9A-F]{12})$/.test(suffix) ? suffix : null;
-}
-
-export function shellyV1PinMatches(identifier: string | null | undefined, mac: string): boolean {
-	const address = shellyV1Address(identifier);
-	return !!address && typeof mac === 'string' && /^[0-9A-F]{12}$/.test(mac) && mac.endsWith(address);
-}
+export { shellyV1Address, shellyV1PinMatches } from '../utils/shelly-v1-address.utils';
 
 type CatalogSettings = Pick<
 	ShellyV1DeviceEntity,
@@ -88,6 +82,23 @@ export function shellyV1ReportedMac(
 ): string | null {
 	const mac = typeof info?.mac === 'string' ? info.mac.toUpperCase() : null;
 	return mac && info?.type === type && shellyV1PinMatches(identifier, mac) ? mac : null;
+}
+
+/** A runtime alias belongs to the catalog UUID and full hardware pin verified at this endpoint. */
+export function shellyV1RegistrationMatchesPin(
+	registration: RegisteredDevice,
+	device: Pick<ShellyV1DeviceEntity, 'id' | 'identifier'>,
+	pin: Pick<ShellyV1AdoptedIdentityEntity, 'mac' | 'verifiedHost'> | null,
+): boolean {
+	const { catalog } = registration;
+	if (!catalog) return registration.id === device.identifier;
+	return (
+		catalog.deviceId === device.id &&
+		pin?.mac === catalog.mac &&
+		pin.verifiedHost === registration.host &&
+		shellyV1PinMatches(registration.id, catalog.mac) &&
+		shellyV1PinMatches(device.identifier, catalog.mac)
+	);
 }
 
 /** A short CoIoT address is unique only after adoption records the full hardware MAC. */
