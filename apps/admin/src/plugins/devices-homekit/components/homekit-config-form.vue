@@ -44,18 +44,6 @@
 			:disabled="isOutOfSync"
 			class="border-0 p-0 m-0 min-w-0"
 		>
-			<el-form-item
-				:label="t('devicesHomeKitPlugin.fields.config.enabled.title')"
-				prop="enabled"
-				label-position="left"
-				class="mt-3 mb-4"
-			>
-				<el-switch
-					v-model="model.enabled"
-					name="enabled"
-				/>
-			</el-form-item>
-
 			<!-- Bridge Status & Actions Card -->
 			<el-card
 				shadow="never"
@@ -263,7 +251,6 @@ import {
 	ElInput,
 	ElInputNumber,
 	ElMessageBox,
-	ElSwitch,
 	ElTag,
 	ElTooltip,
 	type FormRules,

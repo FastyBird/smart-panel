@@ -14,20 +14,9 @@
 		/>
 
 		<el-form-item
-			:label="t('remoteAccessCloudflareTunnelPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-form-item
 			:label="t('remoteAccessCloudflareTunnelPlugin.fields.config.publicHostname.title')"
 			prop="publicHostname"
+			class="mt-3"
 		>
 			<el-input
 				:model-value="model.publicHostname ?? ''"
@@ -78,7 +67,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { RemoteAccessCloudflareTunnelPluginProtocol } from '../../../openapi.constants';

@@ -13,19 +13,7 @@
 			:closable="false"
 		/>
 
-		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<hr />
+		<hr class="mt-3" />
 
 		<el-alert
 			type="info"

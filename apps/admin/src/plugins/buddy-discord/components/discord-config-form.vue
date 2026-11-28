@@ -14,20 +14,9 @@
 		/>
 
 		<el-form-item
-			:label="t('buddyDiscordPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-form-item
 			:label="t('buddyDiscordPlugin.fields.config.botToken.title')"
 			prop="botToken"
+			class="mt-3"
 		>
 			<config-secret-input
 				v-model="model.botToken"
@@ -141,7 +130,7 @@ import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Icon } from '@iconify/vue';
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { useSpaces } from '../../../modules/spaces';

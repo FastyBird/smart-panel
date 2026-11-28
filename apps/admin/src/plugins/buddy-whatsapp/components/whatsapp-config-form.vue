@@ -13,18 +13,6 @@
 			:closable="false"
 		/>
 
-		<el-form-item
-			:label="t('buddyWhatsappPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
 		<!-- Connection status & QR code -->
 		<div
 			v-if="model.enabled"
@@ -101,7 +89,7 @@ import QRCode from 'qrcode';
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
 import { useBackend } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';

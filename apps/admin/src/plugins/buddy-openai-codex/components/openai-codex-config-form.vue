@@ -13,18 +13,6 @@
 			:closable="false"
 		/>
 
-		<el-form-item
-			:label="t('buddyOpenaiCodexPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
 		<div class="mt-3 mb-4">
 			<div class="flex items-center gap-3">
 				<template v-if="!isConnected">
@@ -206,7 +194,6 @@ import {
 	ElInput,
 	ElOption,
 	ElSelect,
-	ElSwitch,
 	ElTag,
 	type FormRules,
 } from 'element-plus';

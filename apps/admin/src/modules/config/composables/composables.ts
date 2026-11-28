@@ -1,4 +1,5 @@
 export * from './useConfigApp';
+export * from './useConfigDiscard';
 // Language, weather, and system composables removed - these configs are now accessed via modules
 export * from './useConfigModule';
 export * from './useConfigModules';

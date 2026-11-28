@@ -13,19 +13,7 @@
 			:closable="false"
 		/>
 
-		<el-form-item
-			:label="t('devicesReTerminalPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<hr />
+		<hr class="mt-3" />
 
 		<el-alert
 			type="info"
@@ -53,7 +41,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInputNumber, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IReTerminalConfigEditForm } from '../schemas/config.types';

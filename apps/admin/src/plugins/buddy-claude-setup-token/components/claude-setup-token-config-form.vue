@@ -15,20 +15,9 @@
 		</el-alert>
 
 		<el-form-item
-			:label="t('buddyClaudeSetupTokenPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-form-item
 			:label="t('buddyClaudeSetupTokenPlugin.fields.config.accessToken.title')"
 			prop="accessToken"
+			class="mt-3"
 		>
 			<config-secret-input
 				v-model="model.accessToken"
@@ -81,7 +70,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { BUDDY_CLAUDE_SETUP_TOKEN_MODELS } from '../buddy-claude-setup-token.models';

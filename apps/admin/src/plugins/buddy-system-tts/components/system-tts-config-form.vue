@@ -14,20 +14,9 @@
 		/>
 
 		<el-form-item
-			:label="t('buddySystemTtsPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-form-item
 			:label="t('buddySystemTtsPlugin.fields.config.engine.title')"
 			prop="engine"
+			class="mt-3"
 		>
 			<el-input
 				v-model="model.engine"
@@ -61,7 +50,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { ISystemTtsConfigEditForm } from '../schemas/config.types';

@@ -145,7 +145,8 @@ describe('HomeKitConfigForm', () => {
 	it('renders all configuration fields', () => {
 		const { wrapper } = mountForm();
 
-		expect(wrapper.find('[name="enabled"]').exists()).toBe(true);
+		// The host's identity row carries the Enabled switch (spec section 7)
+		expect(wrapper.find('[name="enabled"]').exists()).toBe(false);
 		expect(wrapper.find('[name="bridgeName"]').exists()).toBe(true);
 		expect(wrapper.find('[name="port"]').exists()).toBe(true);
 		expect(wrapper.find('[name="pincode"]').exists()).toBe(true);

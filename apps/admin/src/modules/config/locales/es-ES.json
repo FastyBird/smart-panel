@@ -280,6 +280,9 @@
 		},
 		"keepSecret": {
 			"title": "Conservar"
+		},
+		"keepEditing": {
+			"title": "Seguir editando"
 		}
 	},
 	"languages": {
@@ -322,5 +325,56 @@
 		"error": "Error",
 		"fail": "Fallo",
 		"fatal": "Fatal"
+	},
+	"sections": {
+		"modules": {
+			"title": "Módulos",
+			"description": "Ajustes de las funciones principales"
+		}
+	},
+	"families": {
+		"devices": {
+			"title": "Integraciones de dispositivos",
+			"description": "Conexiones con las plataformas y protocolos de tus dispositivos"
+		},
+		"buddy": {
+			"title": "Proveedores y canales de Buddy",
+			"description": "Modelos de IA, voz y los chats en los que responde Buddy"
+		},
+		"notifications": {
+			"title": "Canales de notificación",
+			"description": "Dónde se entregan las notificaciones del sistema"
+		},
+		"storage": {
+			"title": "Almacenamiento y registros",
+			"description": "Dónde se guardan el historial y los registros"
+		},
+		"remoteAccess": {
+			"title": "Acceso remoto",
+			"description": "Formas de llegar a esta instalación desde fuera de la red local"
+		},
+		"weather": {
+			"title": "Proveedores meteorológicos",
+			"description": "Fuentes del tiempo y la previsión"
+		},
+		"other": {
+			"title": "Otros plugins",
+			"description": "Plugins de otros tipos"
+		}
+	},
+	"states": {
+		"enabled": "Activado",
+		"disabled": "Desactivado"
+	},
+	"identity": {
+		"enabled": "Activado"
+	},
+	"pluginStatus": {
+		"running": "En marcha",
+		"unhealthy": "No responde",
+		"starting": "Iniciando",
+		"stopping": "Deteniendo",
+		"stopped": "Detenido",
+		"error": "Error"
 	}
 }
