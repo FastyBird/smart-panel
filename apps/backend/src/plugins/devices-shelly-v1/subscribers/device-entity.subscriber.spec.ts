@@ -195,7 +195,7 @@ describe('Gen1 credential setup after catalog publication', () => {
 				change === 'new password' ? ['new'] : [],
 			);
 			if (change === 'disabled') {
-				expect(adapter.updateDeviceEnabledStatus).toHaveBeenLastCalledWith('DDEEFF', false);
+				expect(adapter.updateDeviceEnabledStatus).toHaveBeenLastCalledWith('DDEEFF', false, 'SHSW-1');
 				await subscriber.deviceUpdated(sampleDevice({ enabled: true }));
 				expect(adapter.setDeviceAuthCredentials.mock.lastCall[3]).toBe('old');
 			}

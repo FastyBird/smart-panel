@@ -55,9 +55,11 @@ import { VALUE_MAP_REGISTRY, mapValueToCanonical, validateEnumValue } from '../u
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import {
 	ShellyV1AdoptedIdentityService,
+	ShellyV1AdoptionState,
 	shellyV1Address,
 	shellyV1DiscoveryOwner,
 	shellyV1PinMatches,
+	shellyV1RegistrationMatchesPin,
 	shellyV1ReportedMac,
 } from './shelly-v1-adopted-identity.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -95,7 +97,7 @@ export class DeviceMapperService {
 	 */
 	async mapDevice(event: NormalizedDeviceEvent, createIfNotExists = true): Promise<ShellyV1DeviceEntity | null> {
 		const peer = this.shelliesAdapter.getDevice(event.type, event.id);
-		const registration = this.shelliesAdapter.getRegisteredDevice(event.id);
+		const registration = this.shelliesAdapter.getRegisteredDevice(event.id, event.type);
 		const inputBoundary = this.inputTracker?.captureBaseline();
 		const counters = [0, 1, 2].map((index) => peer?.[`inputEventCounter${index}`]);
 		return this.provisionQueue.enqueue(event.id, () =>
@@ -118,15 +120,17 @@ export class DeviceMapperService {
 
 		const { host, type, id } = event;
 		const mode = shellyDevice.mode;
-		let boundDevice: ShellyV1DeviceEntity | undefined;
+		let boundDevice: Pick<ShellyV1DeviceEntity, 'id' | 'identifier' | 'hostname'> | undefined;
+		let reusedClaim: RegisteredDevice['catalog'];
 		const isEndpointCurrent = (): boolean =>
-			registration.id === id &&
+			registration?.id === id &&
 			registration.type === type &&
 			registration.host === host &&
 			shellyDevice.host === host &&
 			shellyDevice.mode === mode &&
 			this.shelliesAdapter.getDevice(type, id) === shellyDevice &&
-			this.shelliesAdapter.getRegisteredDevice(id) === registration &&
+			this.shelliesAdapter.getRegisteredDevice(id, type) === registration &&
+			(!reusedClaim || registration.catalog === reusedClaim) &&
 			(!boundDevice || this.shelliesAdapter.getRegisteredDeviceForCatalog(boundDevice) === registration);
 		const assertEndpoint = (): void => {
 			if (!isEndpointCurrent())
@@ -136,15 +140,16 @@ export class DeviceMapperService {
 		const candidates = await this.identities.captureDiscovery(id);
 		assertEndpoint();
 		const claim = registration.catalog;
-		if (
-			claim &&
-			((candidates.exact && candidates.exact.id !== claim.deviceId) ||
-				![candidates.exact, ...candidates.aliases].some(
-					(row) => row?.id === claim.deviceId && row.pin?.mac === claim.mac,
-				))
-		) {
-			this.shelliesAdapter.releaseCatalogDevice(claim.deviceId);
-			throw new DevicesShellyV1NotSupportedException('The registered Shelly catalog identity has changed.');
+		let claimed: ShellyV1AdoptionState | null = null;
+		if (claim) {
+			try {
+				claimed = shellyV1DiscoveryOwner(candidates, claim.mac, host);
+				if (claimed?.id !== claim.deviceId || claimed.pin?.mac !== claim.mac)
+					throw new DevicesShellyV1NotSupportedException('The registered Shelly catalog identity has changed.');
+			} catch (error) {
+				this.shelliesAdapter.releaseCatalogDevice(claim.deviceId);
+				throw error;
+			}
 		}
 		if (!createIfNotExists && !candidates.exact && candidates.aliases.length === 0) return null;
 
@@ -167,7 +172,7 @@ export class DeviceMapperService {
 
 		const address = shellyV1Address(id);
 		const deviceInfo =
-			candidates.exact?.enabled === false && candidates.aliases.length === 0
+			candidates.exact?.enabled === false && candidates.exact.hostname === host && candidates.aliases.length === 0
 				? undefined
 				: await this.httpClient.getDeviceInfo(host).catch((): undefined => undefined);
 		const mac = shellyV1ReportedMac(id, type, deviceInfo);
@@ -176,7 +181,20 @@ export class DeviceMapperService {
 			this.shelliesAdapter.releaseCatalogDevice(claim.deviceId);
 			throw new DevicesShellyV1NotSupportedException('Discovered Shelly endpoint does not match the adopted identity.');
 		}
-		const adoptionState = shellyV1DiscoveryOwner(candidates, mac);
+		const verifiedClaim =
+			!deviceInfo &&
+			claimed &&
+			registration.catalog === claim &&
+			claim.revision === claimed.pin.revision &&
+			claimed.hostname === host &&
+			shellyV1RegistrationMatchesPin(registration, claimed, claimed.pin) &&
+			this.shelliesAdapter.getRegisteredDeviceForCatalog(claimed) === registration;
+		if (verifiedClaim) {
+			reusedClaim = claim;
+			boundDevice = claimed;
+		}
+		const ownerMac = mac ?? (verifiedClaim ? claim.mac : null);
+		const adoptionState = shellyV1DiscoveryOwner(candidates, ownerMac, host);
 		if (!adoptionState && !createIfNotExists) return null;
 		const catalogIdentifier = adoptionState?.identifier ?? id;
 		let device = adoptionState
@@ -193,12 +211,16 @@ export class DeviceMapperService {
 		)
 			throw new DevicesShellyV1NotSupportedException('Discovered Shelly endpoint changed during mapping.');
 		const pin = adoptionState?.pin;
-		let expected = pin?.mac ?? (device && address?.length === 12 ? address : null);
+		const catalogAddress = shellyV1Address(catalogIdentifier);
+		let expected = pin?.mac ?? (device && catalogAddress?.length === 12 ? catalogAddress : null);
 		let requiresPin = !!pin;
 		let revision = pin?.revision;
 		const assertVerifiedEndpoint = async (): Promise<void> => {
 			assertEndpoint();
-			const catalog = await this.identities.captureDevice(catalogIdentifier);
+			const catalog =
+				catalogIdentifier === id
+					? await this.identities.captureDevice(catalogIdentifier)
+					: shellyV1DiscoveryOwner(await this.identities.captureDiscovery(id), ownerMac, host);
 			assertEndpoint();
 			const current = catalog?.pin;
 			if (password !== undefined && catalog?.password !== password)
@@ -206,6 +228,7 @@ export class DeviceMapperService {
 			if (
 				!catalog ||
 				catalog.id !== device.id ||
+				(catalogIdentifier !== id && catalog.identifier !== catalogIdentifier) ||
 				catalog.enabled !== device.enabled ||
 				catalog.hostname !== host ||
 				!!current !== requiresPin ||
@@ -222,26 +245,26 @@ export class DeviceMapperService {
 			if (current) revision = current.revision;
 		};
 		const bindVerifiedPeer = (): void => {
-			if (requiresPin && mac && !this.shelliesAdapter.bindCatalogDevice(registration, shellyDevice, device, mac))
+			if (
+				requiresPin &&
+				mac &&
+				!this.shelliesAdapter.bindCatalogDevice(registration, shellyDevice, device, mac, revision)
+			)
 				throw new DevicesShellyV1NotSupportedException('Could not bind a unique Shelly peer to the catalog device.');
 			boundDevice = device;
 			assertEndpoint();
 		};
-
-		if (device && !device.enabled) {
-			if (pin && pin.mac === mac && pin.verifiedHost === host && device.hostname === host) {
-				await assertVerifiedEndpoint();
-				bindVerifiedPeer();
-			}
-			this.shelliesAdapter.updateDeviceEnabledStatus(event.id, false);
-			registration = this.shelliesAdapter.getRegisteredDevice(id);
+		const disablePeer = async (): Promise<ShellyV1DeviceEntity> => {
+			this.shelliesAdapter.updateDeviceEnabledStatus(id, false, type);
+			registration = this.shelliesAdapter.getRegisteredDevice(id, type);
 			await this.deviceConnectivityService.setConnectionState(
 				device.id,
 				{ state: ConnectionState.UNKNOWN },
 				isEndpointCurrent,
 			);
 			return device;
-		}
+		};
+
 		if (
 			(pin && (!shellyV1PinMatches(id, pin.mac) || !shellyV1PinMatches(catalogIdentifier, pin.mac))) ||
 			(deviceInfo && address && !mac) ||
@@ -250,6 +273,14 @@ export class DeviceMapperService {
 			(device && device.hostname !== host && (!address || !expected || mac !== expected))
 		)
 			throw new DevicesShellyV1NotSupportedException('Discovered Shelly endpoint does not match the adopted identity.');
+		const firstAlias = !!adoptionState && !pin && id !== catalogIdentifier;
+		if (device && !device.enabled && !(firstAlias && device.hostname === host)) {
+			if ((pin && pin.mac === mac && pin.verifiedHost === host && device.hostname === host) || verifiedClaim) {
+				await assertVerifiedEndpoint();
+				bindVerifiedPeer();
+			}
+			return disablePeer();
+		}
 
 		// lastSeen changes on every CoIoT packet. It can fence this snapshot but cannot date an individual value.
 		const bindings = getShellyV1Bindings(descriptor, shellyDevice);
@@ -313,13 +344,14 @@ export class DeviceMapperService {
 
 			this.logger.log(`Creating new device: ${event.id} with name: ${deviceName}`, { resource: device.id });
 		} else {
-			if (device.hostname !== host) {
+			if (device.hostname !== host || firstAlias) {
 				device = await this.identities.updateDevice(
 					adoptionState,
 					{ type: DEVICES_SHELLY_V1_TYPE, hostname: host },
-					pin || address?.length === 12 ? (mac ?? undefined) : undefined,
-					assertEndpoint,
+					expected ? (mac ?? undefined) : undefined,
+					{ assertEndpoint, reportedIdentifier: id },
 				);
+				if (firstAlias) requiresPin = true;
 				revision = undefined;
 				assertEndpoint();
 			} else if (pin && pin.verifiedHost !== host && mac && expected === mac) {
@@ -332,8 +364,9 @@ export class DeviceMapperService {
 
 		await assertVerifiedEndpoint();
 		bindVerifiedPeer();
-		this.shelliesAdapter.updateDeviceEnabledStatus(id, true);
-		registration = this.shelliesAdapter.getRegisteredDevice(id);
+		if (!device.enabled) return disablePeer();
+		this.shelliesAdapter.updateDeviceEnabledStatus(id, true, type);
+		registration = this.shelliesAdapter.getRegisteredDevice(id, type);
 		if (adoptionState && device.password) {
 			password = device.password;
 			credentialRevision = registration.credentialRevision;

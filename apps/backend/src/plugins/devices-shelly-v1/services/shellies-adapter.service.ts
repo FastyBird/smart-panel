@@ -71,9 +71,9 @@ export class ShelliesAdapterService {
 
 	/**
 	 * Registry of discovered devices
-	 * Key: device ID, Value: device info (id, type, host)
+	 * The SDK addresses devices by model and raw ID. A short CoIoT ID can occur in several models.
 	 */
-	private readonly devicesRegistry = new Map<string, RegisteredDevice>();
+	private readonly devicesRegistry = new Map<string, Map<string, RegisteredDevice>>();
 	private readonly registeredPeers = new WeakMap<RegisteredDevice, ShellyDevice>();
 	private readonly catalogPeers = new Map<string, Set<ShellyDevice>>();
 	private readonly peerOwners = new WeakMap<ShellyDevice, string>();
@@ -227,14 +227,16 @@ export class ShelliesAdapterService {
 	 * Get all registered devices
 	 */
 	getRegisteredDevices(): RegisteredDevice[] {
-		return Array.from(this.devicesRegistry.values());
+		return Array.from(this.devicesRegistry.values()).flatMap((models) => Array.from(models.values()));
 	}
 
 	/**
-	 * Get a registered device by ID
+	 * Without an SDK model, resolve only an unambiguous raw ID.
 	 */
-	getRegisteredDevice(deviceId: string): RegisteredDevice | undefined {
-		return this.devicesRegistry.get(deviceId);
+	getRegisteredDevice(deviceId: string, type?: string): RegisteredDevice | undefined {
+		const models = this.devicesRegistry.get(deviceId);
+		if (type !== undefined) return models?.get(type);
+		return models?.size === 1 ? Array.from(models.values())[0] : undefined;
 	}
 
 	/** Resolve the catalog UUID without treating a shared CoIoT suffix as a hardware identity. */
@@ -242,11 +244,11 @@ export class ShelliesAdapterService {
 		if (!device.identifier) return undefined;
 		const candidates = this.catalogPeers.get(device.id);
 		if (candidates && candidates.size !== 1) return undefined;
-		const exact = this.devicesRegistry.get(device.identifier);
 		const [bound] = candidates ?? [];
+		const exact = this.getRegisteredDevice(device.identifier, bound?.type);
 		const peer = bound ?? (exact && this.registeredPeers.get(exact));
 		if (!peer) return undefined;
-		const registration = this.devicesRegistry.get(peer.id);
+		const registration = this.getRegisteredDevice(peer.id, peer.type);
 		if (!this.isRegisteredPeer(registration, peer) || peer.host !== registration.host) return undefined;
 		if (!candidates) return this.peerOwners.has(peer) ? undefined : registration;
 		if (
@@ -263,10 +265,16 @@ export class ShelliesAdapterService {
 	}
 
 	/** Called only after discovery has checked the catalog pin and the endpoint's full MAC. */
-	bindCatalogDevice(registration: RegisteredDevice, peer: ShellyDevice, device: CatalogDevice, mac: string): boolean {
+	bindCatalogDevice(
+		registration: RegisteredDevice,
+		peer: ShellyDevice,
+		device: CatalogDevice,
+		mac: string,
+		pinRevision?: number,
+	): boolean {
 		const owner = this.peerOwners.get(peer);
 		if (
-			this.devicesRegistry.get(peer.id) !== registration ||
+			this.getRegisteredDevice(peer.id, peer.type) !== registration ||
 			this.registeredPeers.get(registration) !== peer ||
 			this.getDevice(registration.type, registration.id) !== peer ||
 			peer.host !== registration.host ||
@@ -285,7 +293,7 @@ export class ShelliesAdapterService {
 				this.detachCatalogPeer(previous);
 			}
 		}
-		const exact = this.devicesRegistry.get(device.identifier);
+		const exact = this.getRegisteredDevice(device.identifier, peer.type);
 		if (exact && exact !== registration && exact.host === registration.host) {
 			const other = this.registeredPeers.get(exact);
 			if (this.isRegisteredPeer(exact, other)) {
@@ -302,7 +310,8 @@ export class ShelliesAdapterService {
 			return false;
 		}
 		// Preserve the physical session and its pending CoIoT sample on first adoption.
-		registration.catalog ??= { deviceId: device.id, mac };
+		if (!registration.catalog || (pinRevision !== undefined && registration.catalog.revision !== pinRevision))
+			registration.catalog = { deviceId: device.id, mac, revision: pinRevision };
 		return true;
 	}
 
@@ -316,7 +325,7 @@ export class ShelliesAdapterService {
 
 	private suspendCatalogPeer(peer: ShellyDevice): void {
 		clearShellyCredentials(peer);
-		const registration = this.devicesRegistry.get(peer.id);
+		const registration = this.getRegisteredDevice(peer.id, peer.type);
 		if (registration && this.registeredPeers.get(registration) === peer)
 			this.replaceRegistration(registration, { ...registration, enabled: false, catalog: undefined });
 	}
@@ -332,7 +341,7 @@ export class ShelliesAdapterService {
 	}
 
 	private rediscoverRemainingPeer(peer: ShellyDevice | undefined): void {
-		if (peer?.online && this.isRunning() && this.isRegisteredPeer(this.devicesRegistry.get(peer.id), peer))
+		if (peer?.online && this.isRunning() && this.isRegisteredPeer(this.getRegisteredDevice(peer.id, peer.type), peer))
 			void this.callbacks.onDeviceDiscovered?.({ id: peer.id, type: peer.type, host: peer.host, online: true });
 	}
 
@@ -348,7 +357,7 @@ export class ShelliesAdapterService {
 			return devices;
 		}
 
-		for (const registered of this.devicesRegistry.values()) {
+		for (const registered of this.getRegisteredDevices()) {
 			const device = this.shellies.getDevice(registered.type, registered.id);
 
 			if (device) {
@@ -381,8 +390,8 @@ export class ShelliesAdapterService {
 	/**
 	 * Update the enabled flag for a registered device
 	 */
-	updateDeviceEnabledStatus(deviceId: string, enabled: boolean): void {
-		const device = this.devicesRegistry.get(deviceId);
+	updateDeviceEnabledStatus(deviceId: string, enabled: boolean, type?: string): void {
+		const device = this.getRegisteredDevice(deviceId, type);
 
 		if (device && device.enabled !== enabled) {
 			this.renewRegistration(device, enabled);
@@ -400,7 +409,7 @@ export class ShelliesAdapterService {
 	private replaceRegistration(device: RegisteredDevice, next: RegisteredDevice): void {
 		const peer = this.registeredPeers.get(device);
 		if (peer) this.registeredPeers.set(next, peer);
-		this.devicesRegistry.set(device.id, next);
+		this.devicesRegistry.get(device.id).set(device.type, next);
 	}
 
 	/**
@@ -408,7 +417,7 @@ export class ShelliesAdapterService {
 	 */
 	setDeviceAuthCredentials(peer: ShellyDevice, host: string, username: string, password: string | null): boolean {
 		if (peer.host !== host || this.getDevice(peer.type, peer.id) !== peer) return false;
-		const registration = this.devicesRegistry.get(peer.id);
+		const registration = this.getRegisteredDevice(peer.id, peer.type);
 		if (
 			!registration ||
 			(password && !registration.enabled) ||
@@ -431,7 +440,8 @@ export class ShelliesAdapterService {
 	 */
 	private handleDeviceDiscovered(device: ShellyDevice): void {
 		// Add a device to a registry (default enabled = true, will be updated by mapper)
-		const previous = this.devicesRegistry.get(device.id);
+		const models = this.devicesRegistry.get(device.id) ?? new Map<string, RegisteredDevice>();
+		const previous = models.get(device.type);
 		const previousPeer = previous && this.registeredPeers.get(previous);
 		const remaining = previousPeer && this.detachCatalogPeer(previousPeer);
 		if (previousPeer) clearShellyCredentials(previousPeer);
@@ -449,7 +459,8 @@ export class ShelliesAdapterService {
 			if (performance.now() < removed.expiresAt) this.temperatureSessions.set(registration, removed.baseline);
 		}
 		this.registeredPeers.set(registration, device);
-		this.devicesRegistry.set(device.id, registration);
+		models.set(device.type, registration);
+		this.devicesRegistry.set(device.id, models);
 		this.rediscoverRemainingPeer(remaining);
 
 		// Register device-specific event handlers
@@ -493,7 +504,7 @@ export class ShelliesAdapterService {
 		newValue: string | number | boolean,
 		oldValue: string | number | boolean | null,
 	): void {
-		const registered = this.devicesRegistry.get(device.id);
+		const registered = this.getRegisteredDevice(device.id, device.type);
 		if (property === 'host') clearShellyCredentials(device);
 		if (!this.isRegisteredPeer(registered, device)) return;
 		if (property === 'host' || property === 'mode') {
@@ -515,6 +526,7 @@ export class ShelliesAdapterService {
 		}
 		const normalizedEvent: NormalizedDeviceChangeEvent = {
 			id: device.id,
+			type: device.type,
 			property,
 			newValue,
 			oldValue,
@@ -526,14 +538,14 @@ export class ShelliesAdapterService {
 	// Only original CoIoT temperature fields enter this path.
 	// Sleeping probes may already be unreachable by HTTP by the time their change callback runs.
 	private async handleTemperatureReport(peer: ShellyDevice, serial: number, value: unknown): Promise<void> {
-		const registration = this.devicesRegistry.get(peer.id);
+		const registration = this.getRegisteredDevice(peer.id, peer.type);
 		if (!registration?.enabled || !Number.isInteger(serial) || serial <= 0 || serial > 65535) return;
 		const host = peer.host;
 		const peerIsCurrent = (): boolean =>
 			this.isRunning() &&
 			peer.online &&
 			peer.host === host &&
-			this.devicesRegistry.get(peer.id) === registration &&
+			this.getRegisteredDevice(peer.id, peer.type) === registration &&
 			this.getDevice(peer.type, peer.id) === peer;
 		if (!peerIsCurrent()) return;
 		const previous = this.temperatureSessions.get(registration);
@@ -583,6 +595,7 @@ export class ShelliesAdapterService {
 			repeated: false,
 			report: {
 				deviceId: peer.id,
+				deviceType: peer.type,
 				value: typeof value === 'number' && Number.isFinite(value) && value !== 999 ? value : null,
 				receivedAt,
 				ingressSequence,
@@ -623,7 +636,7 @@ export class ShelliesAdapterService {
 	 * Handle device offline event
 	 */
 	private handleDeviceOffline(device: ShellyDevice): void {
-		const registered = this.devicesRegistry.get(device.id);
+		const registered = this.getRegisteredDevice(device.id, device.type);
 		if (!this.isRegisteredPeer(registered, device) || registered.host !== device.host) return;
 		this.renewRegistration(registered);
 
@@ -641,7 +654,7 @@ export class ShelliesAdapterService {
 	 * Handle device online event
 	 */
 	private handleDeviceOnline(device: ShellyDevice): void {
-		const registered = this.devicesRegistry.get(device.id);
+		const registered = this.getRegisteredDevice(device.id, device.type);
 		if (!this.isRegisteredPeer(registered, device) || registered.host !== device.host) return;
 		const owner = this.peerOwners.get(device);
 		if (owner && !registered.catalog && this.catalogPeers.get(owner)?.size === 1) this.rediscoverRemainingPeer(device);
@@ -668,7 +681,8 @@ export class ShelliesAdapterService {
 	 * Handle device removed event
 	 */
 	private handleDeviceRemoved(device: ShellyDevice): void {
-		const registration = this.devicesRegistry.get(device.id);
+		const models = this.devicesRegistry.get(device.id);
+		const registration = models?.get(device.type);
 		if (!registration || this.registeredPeers.get(registration) !== device || registration.host !== device.host) return;
 		const current = this.getDevice(registration.type, registration.id);
 		if (current && current !== device) return;
@@ -684,7 +698,8 @@ export class ShelliesAdapterService {
 			timer.unref();
 			this.removedTemperatures.set(key, { baseline: temperatureBaseline(previous), expiresAt, timer });
 		}
-		this.devicesRegistry.delete(device.id);
+		models.delete(device.type);
+		if (!models.size) this.devicesRegistry.delete(device.id);
 		this.rediscoverRemainingPeer(remaining);
 	}
 
@@ -727,7 +742,7 @@ export class ShelliesAdapterService {
 				lastSeen: ShellyDevice['lastSeen'];
 			}> = [];
 
-			for (const registeredDevice of this.devicesRegistry.values()) {
+			for (const registeredDevice of this.getRegisteredDevices()) {
 				const device = this.shellies.getDevice(registeredDevice.type, registeredDevice.id);
 
 				// shellies replaces the Date object even for unchanged CoIoT data in the same millisecond.
@@ -752,7 +767,7 @@ export class ShelliesAdapterService {
 			for (const { device, registration, lastSeen, alive } of results) {
 				if (
 					this.statusCheck !== check ||
-					this.devicesRegistry.get(registration.id) !== registration ||
+					this.getRegisteredDevice(registration.id, registration.type) !== registration ||
 					this.getDevice(registration.type, registration.id) !== device ||
 					device.host !== registration.host ||
 					device.lastSeen !== lastSeen ||

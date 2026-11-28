@@ -179,12 +179,12 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 				hostname: previous.hostname,
 			});
 			if (previousRegistration && previousRegistration !== registration) {
-				this.shelliesAdapter.updateDeviceEnabledStatus(previousRegistration.id, false);
+				this.shelliesAdapter.updateDeviceEnabledStatus(previousRegistration.id, false, previousRegistration.type);
 				if (previousRegistration.catalog) this.shelliesAdapter.releaseCatalogDevice(device.id);
 			}
 		}
 		if (!next.identifier) return;
-		if (registration) this.shelliesAdapter.updateDeviceEnabledStatus(registration.id, next.enabled);
+		if (registration) this.shelliesAdapter.updateDeviceEnabledStatus(registration.id, next.enabled, registration.type);
 		if (next.enabled && device.password) {
 			let configured = false;
 			try {
@@ -203,7 +203,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		this.settings.delete(device.id);
 		this.clearCredentials(device.id, device.identifier, device.hostname);
 		const registration = this.shelliesAdapter.getRegisteredDeviceForCatalog(device);
-		if (registration) this.shelliesAdapter.updateDeviceEnabledStatus(registration.id, false);
+		if (registration) this.shelliesAdapter.updateDeviceEnabledStatus(registration.id, false, registration.type);
 		this.shelliesAdapter.releaseCatalogDevice(device.id);
 	}
 

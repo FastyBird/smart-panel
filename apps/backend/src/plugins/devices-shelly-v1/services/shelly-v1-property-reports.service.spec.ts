@@ -40,11 +40,11 @@ function setup(temperature = false, id = 'AABBCCDDEEFF', catalogIdentifier = id)
 	};
 	const adapter = {
 		isRunning: () => true,
-		getRegisteredDevice: jest.fn((rawId: string): RegisteredDevice | undefined =>
-			rawId === id ? registration : undefined,
+		getRegisteredDevice: jest.fn((rawId: string, type?: string): RegisteredDevice | undefined =>
+			rawId === id && (type === undefined || type === registration.type) ? registration : undefined,
 		),
 		getRegisteredDeviceForCatalog: jest.fn((row: ShellyV1DeviceEntity): RegisteredDevice | undefined => {
-			const active = adapter.getRegisteredDevice(id);
+			const active = adapter.getRegisteredDevice(id, registration.type);
 			return active && (active.catalog ? active.catalog.deviceId === row.id : active.id === row.identifier)
 				? active
 				: undefined;
@@ -130,7 +130,15 @@ function temperatureReport(
 	ingressSequence: number,
 	value: number | null = 20,
 ): ShellyTemperatureReport {
-	return { deviceId, value, receivedAt: new Date(), ingressSequence, isCurrent: () => true, isLatest: () => true };
+	return {
+		deviceId,
+		deviceType: 'SHHT-1',
+		value,
+		receivedAt: new Date(),
+		ingressSequence,
+		isCurrent: () => true,
+		isLatest: () => true,
+	};
 }
 
 describe('Shelly Gen1 physical property reports', () => {
@@ -212,6 +220,8 @@ describe('Shelly Gen1 physical property reports', () => {
 	it.each([
 		{ mac: 'BB99CCDDEEFF', relays: [{ ison: false }] },
 		{ mac: 'AABBCCDDEEFF', relays: [{ ison: 0 }] },
+		{ mac: 'AABBCCDDEEFF', relays: { 0: { ison: true } } },
+		{ mac: 'AABBCCDDEEFF', relays: true },
 		{ mac: 'AABBCCDDEEFF', lights: [{ ison: false }] },
 	])('withholds foreign, malformed and unrelated status values', async (status) => {
 		const f = setup();
@@ -308,6 +318,7 @@ describe('Shelly Gen1 physical property reports', () => {
 		let current = true;
 		const report = {
 			deviceId: f.id,
+			deviceType: f.peer.type,
 			value: 21.75,
 			receivedAt,
 			ingressSequence: 28,
@@ -331,6 +342,10 @@ describe('Shelly Gen1 physical property reports', () => {
 
 	it('reports sleeping sensor values and faults against the verified catalog UUID while the raw peer stays current', async () => {
 		const f = setup(true, 'shellyht-DDEEFF', 'shellyht-AABBCCDDEEFF');
+		// A relay with the same short ID makes an untyped SDK lookup ambiguous.
+		f.adapter.getRegisteredDevice.mockImplementation((id, type) =>
+			id === f.id && type === f.registration.type ? f.registration : undefined,
+		);
 		const value = temperatureReport(f.id, 17, 21);
 		const fault = temperatureReport(f.id, 18, null);
 		await f.service.temperature(value);
@@ -374,6 +389,7 @@ describe('Shelly Gen1 physical property reports', () => {
 		});
 		const admission = f.service.temperature({
 			deviceId: f.id,
+			deviceType: f.peer.type,
 			value: 21,
 			receivedAt: new Date(),
 			ingressSequence: 22,
@@ -496,6 +512,7 @@ describe('Shelly Gen1 physical property reports', () => {
 			let latest = true;
 			const report = {
 				deviceId: f.id,
+				deviceType: f.peer.type,
 				value,
 				receivedAt: new Date(),
 				ingressSequence: 9,
@@ -529,6 +546,7 @@ describe('Shelly Gen1 physical property reports', () => {
 		const f = setup(true);
 		const report = {
 			deviceId: f.id,
+			deviceType: f.peer.type,
 			value: 18,
 			receivedAt: new Date(),
 			ingressSequence: 42,
