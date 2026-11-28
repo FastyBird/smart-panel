@@ -253,10 +253,10 @@ describe('ShellyV1DevicePlatform', () => {
 			},
 		);
 
-		it.each(['registration', 'peer', 'host', 'disabled'])(
+		it.each(['registration', 'peer', 'host', 'disabled', 'catalog binding'])(
 			'rejects a %s change during the identity lookup',
 			async (change) => {
-				const { peer, registration, getRegisteredDevice, getDevice, identities, write } = relay();
+				const { device, peer, registration, getRegisteredDevice, getDevice, identities, write } = relay();
 				const entered = gate();
 				const release = gate();
 				identities.findPin.mockImplementationOnce(async () => {
@@ -271,6 +271,7 @@ describe('ShellyV1DevicePlatform', () => {
 				if (change === 'peer') getDevice.mockReturnValue(replacement);
 				if (change === 'host') registration.host = peer.host = movedHost;
 				if (change === 'disabled') registration.enabled = false;
+				if (change === 'catalog binding') registration.catalog = { deviceId: device.id, mac };
 				release.release();
 				expect(await pending).toBe(false);
 				expect(peer.setRelay).not.toHaveBeenCalled();
@@ -418,6 +419,55 @@ describe('ShellyV1DevicePlatform', () => {
 	});
 
 	describe('Light commands', () => {
+		it.each([
+			{ model: 'SHDM-2', index: 0, property: 'brightness', value: 0, expected: [0, false] },
+			{ model: 'SHDM-2', index: 0, property: 'state', value: true, expected: [74, true] },
+			{ model: 'SH2LED-1', index: 1, property: 'brightness', value: 0, expected: [1, 0, false] },
+			{ model: 'SH2LED-1', index: 1, property: 'state', value: true, expected: [1, 74, true] },
+			{ model: 'SHBDUO-1', index: 0, property: 'color_temperature', value: 5100, expected: [5100, 74, false] },
+			{ model: 'SHBDUO-1', index: 0, property: 'brightness', value: 0, expected: [4300, 0, false] },
+		])(
+			'reads live white-light defaults after identity verification for $model $property',
+			async ({ model, index, property, value, expected }) => {
+				const device = makeDevice('lamp', 'ABC123');
+				const peer = makeShellyDevice(model, device.identifier);
+				peer.setColor = undefined;
+				const switchKey = model === 'SH2LED-1' ? 'switch1' : 'switch';
+				const brightnessKey = model === 'SH2LED-1' ? 'brightness1' : 'brightness';
+				peer[switchKey] = true;
+				peer[brightnessKey] = 19;
+				peer.colorTemperature = 2900;
+				const mac = 'AABBCCABC123';
+				const registration: RegisteredDevice = {
+					type: model,
+					id: peer.id,
+					host: peer.host,
+					enabled: true,
+					catalog: { deviceId: device.id, mac },
+				};
+				const { platform, identities } = makePlatform({
+					getDevice: jest.fn().mockReturnValue(peer),
+					getRegisteredDevice: jest.fn().mockReturnValue(registration),
+				});
+				identities.findPin.mockImplementationOnce(async () => {
+					await Promise.resolve();
+					peer[switchKey] = false;
+					peer[brightnessKey] = 74;
+					peer.colorTemperature = 4300;
+					return { mac, verifiedHost: registration.host };
+				});
+
+				const ok = await platform.process({
+					device,
+					channel: makeChannel('light', `light_${index}`),
+					property: makeProp('property', property),
+					value,
+				});
+				expect(ok).toBe(true);
+				expect(peer.setWhite.mock.calls).toEqual([expected]);
+			},
+		);
+
 		it('should execute light state command', async () => {
 			const shellyDevice = makeShellyDevice('SHRGBW2');
 			shellyDevice.mode = 'color';
@@ -517,6 +567,79 @@ describe('ShellyV1DevicePlatform', () => {
 				green: 128,
 			});
 		});
+	});
+
+	describe('direct actuator registrations', () => {
+		const actions = [
+			{ model: 'SHRGBW2', channel: 'light_0', property: 'red', value: 28, setter: 'setColor' },
+			{ model: 'SH2LED-1', channel: 'light_1', property: 'brightness', value: 65, setter: 'setWhite' },
+			{ model: 'SHSW-25', channel: 'roller_0', property: 'position', value: 76, setter: 'setRollerPosition' },
+			{ model: 'SHSW-25', channel: 'roller_0', property: 'command', value: 'stop', setter: 'setRollerState' },
+		] as const;
+
+		const directActuator = (action: (typeof actions)[number], identifier = 'ABC123') => {
+			const device = makeDevice('physical', identifier);
+			const peer = makeShellyDevice(action.model, device.identifier);
+			if (action.model === 'SHSW-25') peer.mode = 'roller';
+			if (action.model === 'SHRGBW2') peer.mode = 'color';
+			const registration: RegisteredDevice = { type: peer.type, id: peer.id, host: peer.host, enabled: true };
+			const { platform, identities, http } = makePlatform({
+				getDevice: jest.fn().mockReturnValue(peer),
+				getRegisteredDevice: jest.fn().mockReturnValue(registration),
+			});
+			const write = () =>
+				platform.process({
+					device,
+					channel: makeChannel('channel', action.channel),
+					property: makeProp('property', action.property),
+					value: action.value,
+				});
+			return { device, peer, registration, identities, http, write };
+		};
+
+		it.each(actions)('checks the catalog pin or configured host for every direct short-ID $setter', async (action) => {
+			const { device, peer, registration, identities, http, write } = directActuator(action);
+			expect(await write()).toBe(true);
+			registration.host = peer.host = '192.168.1.101';
+			expect(await write()).toBe(false);
+			const mac = 'AABBCCABC123';
+			identities.findPin.mockResolvedValue({ mac, verifiedHost: device.hostname });
+			expect(await write()).toBe(false);
+			identities.findPin.mockResolvedValue({ mac: 'AABBCC331122', verifiedHost: peer.host });
+			expect(await write()).toBe(false);
+			identities.findPin.mockResolvedValue({ mac, verifiedHost: peer.host });
+			expect(await write()).toBe(true);
+			expect(peer[action.setter]).toHaveBeenCalledTimes(2);
+			expect(http.getDeviceInfo).not.toHaveBeenCalled();
+		});
+
+		it.each(actions)('rejects $setter when the peer changes while its pin is being checked', async (action) => {
+			const { peer, registration, identities, write } = directActuator(action);
+			identities.findPin.mockImplementationOnce(async () => {
+				await Promise.resolve();
+				registration.host = peer.host = '192.168.1.101';
+				return null;
+			});
+			expect(await write()).toBe(false);
+			expect(peer[action.setter]).not.toHaveBeenCalled();
+		});
+
+		it.each([actions[0], actions[3]])(
+			'keeps full-address and configured legacy controls working for $setter',
+			async (action) => {
+				const full = directActuator(action, 'AABBCCABC123');
+				full.device.hostname = null;
+				expect(await full.write()).toBe(true);
+				full.identities.findPin.mockResolvedValue({ mac: '112233ABC123', verifiedHost: full.peer.host });
+				expect(await full.write()).toBe(false);
+				expect(full.peer[action.setter]).toHaveBeenCalledTimes(1);
+				const legacy = directActuator(action, 'legacy-identifier');
+				expect(await legacy.write()).toBe(true);
+				legacy.device.hostname = null;
+				expect(await legacy.write()).toBe(false);
+				expect(legacy.peer[action.setter]).toHaveBeenCalledTimes(1);
+			},
+		);
 	});
 
 	describe('Roller commands', () => {
