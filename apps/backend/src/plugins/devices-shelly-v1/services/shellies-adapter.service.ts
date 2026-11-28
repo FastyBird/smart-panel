@@ -549,16 +549,16 @@ export class ShelliesAdapterService {
 			this.getDevice(peer.type, peer.id) === peer;
 		if (!peerIsCurrent()) return;
 		const previous = this.temperatureSessions.get(registration);
-		if (previous?.serial === serial) return this.deliverTemperature(previous.delivery);
 		const started = performance.now();
+		const withinPacketLifetime = previous !== undefined && started - previous.advancedAt <= COAP_NON_LIFETIME_MS;
+		if (withinPacketLifetime && previous.serial === serial) return this.deliverTemperature(previous.delivery);
 		const receivedAt = new Date();
 		const ingressSequence = nextSampleIngress();
 		if (
 			previous &&
-			(started < previous.verifyUntil ||
-				(!serialAdvances(previous.serial, serial) && started - previous.advancedAt <= COAP_NON_LIFETIME_MS))
+			(started < previous.verifyUntil || (withinPacketLifetime && !serialAdvances(previous.serial, serial)))
 		) {
-			// A delayed lower serial and a reboot look identical. During this window only a correlated
+			// A delayed packet and a reboot can look identical. During this window only a correlated
 			// unicast reply can establish an observation; never use the ambiguous packet's value.
 			if (previous.checking) return;
 			if (started >= previous.verifyUntil) previous.verifyUntil = started + COAP_NON_LIFETIME_MS;
@@ -575,11 +575,10 @@ export class ShelliesAdapterService {
 			)
 				return;
 			previous.verifyUntil = previous.oldPacketsExpireAt;
-			if (checked.serial === last) return this.deliverTemperature(previous.delivery);
+			if (withinPacketLifetime && checked.serial === last) return this.deliverTemperature(previous.delivery);
 			({ serial, value } = checked);
 		}
-		// After the publication lifetime a lower counter cannot be a delayed report from before our
-		// last advance. Sleeping devices can therefore recover on their next broadcast even if GET failed.
+		// After the packet lifetime, a sleeping device can start a new session even if it reuses the last serial.
 		const reset = previous && !serialAdvances(previous.serial, serial);
 		const acceptedAt = performance.now();
 		const oldPacketsExpireAt = reset ? acceptedAt + COAP_NON_LIFETIME_MS : 0;
