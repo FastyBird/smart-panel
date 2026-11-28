@@ -257,7 +257,7 @@ export abstract class Z2mBaseClientAdapter {
 		state: Record<string, unknown>,
 		observedAt: Date,
 		isRetained: boolean,
-		options?: Pick<Z2mDeviceStateMetadata, 'isDup' | 'packetId' | 'isCached' | 'isCurrent'>,
+		options?: StatePacketOptions,
 		decidedSourceTime?: Date | null,
 	): Z2mDeviceStateMetadata {
 		const generation = this.sourceGeneration;
@@ -286,6 +286,10 @@ export abstract class Z2mBaseClientAdapter {
 			isReplay,
 			...(sourceTime ? { sampledAt: sourceTime } : {}),
 			measurementFieldsAreLive: isLive,
+			reportScope:
+				online && this.cacheState === false && !isReplay && !options?.isDup && !options?.mayIncludeConnectSnapshot
+					? 'property'
+					: 'device',
 			sourceIdentity: identity ?? null,
 			qualificationReason: this.liveReportReason(online, sourceTime, isRetained, isCached, afterReplayWindow),
 			isCurrent: () =>
@@ -494,7 +498,7 @@ export abstract class Z2mBaseClientAdapter {
 		message: string,
 		isRelative = false,
 		isRetained = false,
-		options?: Pick<Z2mDeviceStateMetadata, 'isDup' | 'packetId' | 'isCached' | 'isCurrent'>,
+		options?: StatePacketOptions,
 	): void {
 		try {
 			const relativePath = isRelative ? topic : topic.replace(`${this.baseTopic}/`, '');
@@ -516,7 +520,8 @@ export abstract class Z2mBaseClientAdapter {
 
 			// Now safe to check for bridge messages (no known device matches this path)
 			if (topicParts[0] === 'bridge') {
-				this.handleBridgeMessage(topicParts[1], message, isRetained);
+				if (topicParts.length === 2)
+					this.handleBridgeMessage(topicParts[1], message, isRetained || options?.isDup === true);
 				return;
 			}
 
@@ -810,7 +815,7 @@ export abstract class Z2mBaseClientAdapter {
 		friendlyName: string,
 		message: string,
 		isRetained = false,
-		options?: Pick<Z2mDeviceStateMetadata, 'isDup' | 'packetId' | 'isCached' | 'isCurrent'>,
+		options?: StatePacketOptions,
 	): void {
 		const observedAt = new Date();
 		try {
@@ -974,6 +979,10 @@ export abstract class Z2mBaseClientAdapter {
 		return true;
 	}
 }
+
+type StatePacketOptions = Pick<Z2mDeviceStateMetadata, 'isDup' | 'packetId' | 'isCached' | 'isCurrent'> & {
+	mayIncludeConnectSnapshot?: boolean;
+};
 
 /** How a cached field was received; replays reuse it instead of re-deriving it. */
 interface CachedFieldEvidence {

@@ -25,8 +25,10 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
+import { PropertyReadProofService } from '../../../modules/devices/services/property-read-proof.service';
 import { PropertyStateCoordinatorService } from '../../../modules/devices/services/property-state-coordinator.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
@@ -43,6 +45,7 @@ import {
 } from '../entities/devices-zigbee2mqtt.entity';
 import { ZigbeeSampleSourceEntity } from '../entities/zigbee-sample-source.entity';
 import { Z2mDevice } from '../interfaces/zigbee2mqtt.interface';
+import { BUILTIN_TRANSFORMERS, TransformerRegistry } from '../mappings/transformers';
 import { Zigbee2mqttDevicePlatform } from '../platforms/zigbee2mqtt.device.platform';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
@@ -112,6 +115,7 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 	let values: PropertyValueService;
 	let reports: ChannelsPropertiesService;
 	let mapper: Z2mDeviceMapperService;
+	let events: EventEmitter2;
 	let registryPending: Promise<void>;
 	let samplePending: Promise<void>;
 	let devices: { findOneBy: jest.Mock };
@@ -173,7 +177,7 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 			queryStrict: jest.fn().mockResolvedValue([]),
 		};
 		const valueSources = new PropertyValueSourceRegistryService();
-		const events = new EventEmitter2();
+		events = new EventEmitter2();
 		values = new PropertyValueService(
 			storage as unknown as StorageService,
 			valueSources,
@@ -202,6 +206,8 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		);
 		sources = new ZigbeeSampleSourcesService(database.getRepository(ZigbeeSampleSourceEntity));
 		devices = { findOneBy: jest.fn().mockResolvedValue(device) };
+		const transformers = new TransformerRegistry();
+		transformers.register('state_on_off', BUILTIN_TRANSFORMERS.state_on_off);
 		mapper = new Z2mDeviceMapperService(
 			devices as unknown as DevicesService,
 			{ findAll: () => Promise.resolve([channel]) } as unknown as ChannelsService,
@@ -213,7 +219,7 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 			{} as never,
 			{ getDerivedPropertiesForChannel: () => [] } as never,
 			{} as never,
-			{} as never,
+			transformers,
 			{} as never,
 			undefined,
 			sources,
@@ -294,6 +300,71 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		await sources.observeRegistry([identity]);
 		await bind();
 		expect((await sources.getReadiness(property.id)).bound).toBe(true);
+	});
+
+	it('keeps a plug power report with cached OFF out of a pending switch read', async () => {
+		await database.getRepository(Zigbee2mqttChannelEntity).save(
+			Object.assign(channel, {
+				category: ChannelCategory.SWITCHER,
+				identifier: 'relay',
+			}),
+		);
+		await database.getRepository(Zigbee2mqttChannelPropertyEntity).save(
+			Object.assign(property, {
+				category: PropertyCategory.ON,
+				identifier: 'state',
+				dataType: DataTypeType.BOOL,
+				unit: null,
+				format: null,
+				permissions: [PermissionType.READ_WRITE],
+			}),
+		);
+		const plug = registry();
+		plug.definition.exposes = [
+			{ type: 'binary', property: 'state', name: 'state', access: 7, value_on: 'ON', value_off: 'OFF' },
+		];
+		adapter.feed('bridge/devices', [plug]);
+		await registryPending;
+		mapper.registerPropertyTransformer(property.id, 'state_on_off', 'state');
+		await sources.bindDevice(device.id, sources.getIdentity(device.identifier), [
+			{ property, mapping: { field: 'state', transformer: 'state_on_off' } },
+		]);
+		jest.setSystemTime(base + 1_000);
+		adapter.feed('bridge/info', { config: { advanced: { cache_state: true } } });
+		const platform = new Zigbee2mqttDevicePlatform(
+			{ getActiveAdapter: () => adapter } as unknown as Zigbee2mqttService,
+			{} as never,
+			{} as never,
+			mapper,
+		);
+		const platforms = new PlatformRegistryService();
+		platforms.register(platform);
+		const read = jest.spyOn(adapter, 'requestState');
+		const proof = new PropertyReadProofService(platforms, events).observeNextReport(
+			{ device, channel, property },
+			{ timeoutMs: 5_000 },
+		);
+		await Promise.resolve();
+		expect(read).toHaveBeenCalledWith(device.identifier, ['state']);
+		adapter.feed('floor', { state: 'OFF', power: 35 });
+		await samplePending;
+		expect(values.readQualifiedSample(property, 10_000)).toMatchObject({
+			value: false,
+			provenance: 'live',
+			reportScope: 'device',
+		});
+		// A new bridge setting cannot retroactively qualify the earlier packet.
+		adapter.feed('bridge/info', { config: { advanced: { cache_state: false } } });
+		adapter.feed('floor', { power: 30 });
+		await samplePending;
+		jest.setSystemTime(base + 2_000);
+		adapter.feed('floor', { state: 'ON' });
+		await samplePending;
+		await expect(proof).resolves.toMatchObject({
+			status: 'reported',
+			sample: { value: true, reportScope: 'property' },
+		});
+		platforms.onModuleDestroy();
 	});
 
 	it('requires deliberate initial binding for legacy properties and never guesses identity from a friendly name', async () => {

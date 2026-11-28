@@ -1505,6 +1505,7 @@ export class Z2mDeviceMapperService {
 			receivedAt: new Date(),
 			observedAt,
 			provenance,
+			reportScope: metadata?.reportScope ?? 'device',
 			...(metadata?.isReplay === true ? { replay: true } : {}),
 			// An untimed replay's arrival is not its measurement time: display it, never record it.
 			...(metadata?.isReplay === true && !timed ? { ageUnknown: true } : {}),

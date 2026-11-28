@@ -5,6 +5,8 @@ export interface PropertySampleEvidence {
 	readonly sampledAt: Date;
 	readonly receivedAt: Date;
 	readonly provenance: 'live' | 'cached' | 'retained';
+	/** A device-level report may carry cached fields. Ordinary property reports omit this or use 'property'. */
+	readonly reportScope?: 'property' | 'device';
 	/** Internal semantic classification; generic imperative cover mappings do not establish native movement state. */
 	readonly semanticOrigin?: 'native_cover_status' | 'native_cover_tilt_percentage';
 	/** Factual API field presence in a native status, not hardware qualification. */
@@ -62,6 +64,7 @@ export interface AcceptedPropertySample {
 	readonly sampledAt: Date;
 	readonly receivedAt: Date;
 	readonly provenance: PropertySampleEvidence['provenance'];
+	readonly reportScope?: PropertySampleEvidence['reportScope'];
 	readonly semanticOrigin?: PropertySampleEvidence['semanticOrigin'];
 	readonly nativeCoverTagPresent?: boolean;
 	/** Internal qualified readers only; omitted from sample events/history. */
@@ -92,4 +95,14 @@ export interface DerivedPropertyPublication {
 
 export interface QualifiedPropertySample extends AcceptedPropertySample {
 	readonly provenance: 'live';
+}
+
+/** Physical readback needs evidence about this property from a new, independent report. */
+export function isIndependentPropertyReport(sample: AcceptedPropertySample | null | undefined): boolean {
+	return (
+		sample?.provenance === 'live' &&
+		(sample.reportScope === undefined || sample.reportScope === 'property') &&
+		!sample.replay &&
+		!sample.commandEcho
+	);
 }

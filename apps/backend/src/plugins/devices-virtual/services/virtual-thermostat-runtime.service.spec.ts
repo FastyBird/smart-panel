@@ -678,7 +678,7 @@ describe('virtual thermostat durable runtime', () => {
 				activity_expires_at: null,
 			});
 		});
-		it.each(['quality', 'type', 'identity', 'missing', 'cached', 'future'] as const)(
+		it.each(['quality', 'type', 'identity', 'missing', 'cached', 'device-level', 'future'] as const)(
 			'never promotes %s physical feedback to current activity',
 			async (fault) => {
 				await settle();
@@ -689,6 +689,7 @@ describe('virtual thermostat durable runtime', () => {
 				if (fault === 'missing') samples.delete(relayId);
 				if (fault === 'cached')
 					samples.set(relayId, { ...physical, provenance: 'cached' } as unknown as QualifiedPropertySample);
+				if (fault === 'device-level') samples.set(relayId, { ...physical, reportScope: 'device' });
 				if (fault === 'future')
 					samples.set(relayId, {
 						...physical,
@@ -801,12 +802,16 @@ describe('virtual thermostat durable runtime', () => {
 			comfort,
 		);
 		issuedRuntimes.push(runtime);
-		const report = (id: string, value: boolean, echo = false) => {
+		const report = (
+			id: string,
+			value: boolean,
+			evidence: Pick<QualifiedPropertySample, 'commandEcho' | 'reportScope'> = {},
+		) => {
 			sample(id, value);
 			const current = {
 				...samples.get(id),
 				ingressSequence: nextSampleIngress(),
-				...(echo ? { commandEcho: true as const } : {}),
+				...evidence,
 			};
 			samples.set(id, current);
 			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: id, sample: current });
@@ -831,8 +836,8 @@ describe('virtual thermostat durable runtime', () => {
 					{ property: coolingId, on: false },
 				]),
 			);
-			report(relayId, false, true);
-			report(coolingId, false, true);
+			report(relayId, false, { commandEcho: true });
+			report(coolingId, false, { commandEcho: true });
 			await drive();
 			expect(commands.some(({ on }) => on)).toBe(false);
 			report(relayId, false);
@@ -852,7 +857,10 @@ describe('virtual thermostat durable runtime', () => {
 			sample(sensorId, 28);
 			await drive();
 			expect(commands.at(-1)).toEqual({ property: relayId, on: false });
-			report(relayId, false, true);
+			report(relayId, false, { commandEcho: true });
+			await drive();
+			expect(commands).not.toContainEqual({ property: coolingId, on: true });
+			report(relayId, false, { reportScope: 'device' });
 			await drive();
 			expect(commands).not.toContainEqual({ property: coolingId, on: true });
 			report(relayId, false);
@@ -869,8 +877,8 @@ describe('virtual thermostat durable runtime', () => {
 			);
 			const released = await configuration.requestRelease(controllerId, config.revision);
 			await drive();
-			report(relayId, false, true);
-			report(coolingId, false, true);
+			report(relayId, false, { reportScope: 'device' });
+			report(coolingId, false, { commandEcho: true });
 			await drive();
 			expect(
 				await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'releasing' }),

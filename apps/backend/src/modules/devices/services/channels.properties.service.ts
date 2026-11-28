@@ -974,6 +974,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			sampledAt: new Date(evidence.sampledAt),
 			receivedAt: new Date(evidence.receivedAt),
 			provenance: evidence.provenance,
+			...(evidence.reportScope ? { reportScope: evidence.reportScope } : {}),
 			...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
 			...(evidence.nativeCoverTagPresent !== undefined
 				? { nativeCoverTagPresent: evidence.nativeCoverTagPresent }
