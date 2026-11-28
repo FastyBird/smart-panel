@@ -210,6 +210,26 @@ describe('a software-supervised switch from a new device plugin', () => {
 		}
 	});
 
+	it('recovers the physical OFF reported during the command when a marked read fails to send', async () => {
+		const f = fixture(true);
+		let off: QualifiedPropertySample;
+		f.processBatch.mockImplementationOnce(() => {
+			off = f.report();
+			return Promise.resolve(true);
+		});
+		f.request.mockImplementationOnce((read) => {
+			read.dispatching();
+			return Promise.resolve(false);
+		});
+		try {
+			await f.adapter.send(f.target, f.claim, f.evidence, () => true, { commandId: 'off' });
+			expect(f.request).toHaveBeenCalledTimes(1);
+			expect((await f.drain(off))?.supervisedOffCommandId).toBe('off');
+		} finally {
+			f.supervisor.destroy();
+		}
+	});
+
 	it('accepts an infrequent report between the OFF retry deadline and the next evaluation', async () => {
 		const f = fixture(false);
 		jest.useFakeTimers();

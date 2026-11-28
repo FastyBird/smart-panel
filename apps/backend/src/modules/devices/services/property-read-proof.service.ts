@@ -109,8 +109,8 @@ export class PropertyReadProofService {
 				.then((sent) => {
 					if (settled) return;
 					read = sent ? 'sent' : 'not_sent';
-					if (!sent && boundary === null && options.unsolicited) {
-						// The command can trigger the device's only report while the caller is awaiting dispatch.
+					if (!sent && options.unsolicited) {
+						// A marked read can still fail to send. The command may already have elicited the only report.
 						boundary = options.unsolicited.afterIngress;
 						const sample = options.unsolicited.latest();
 						if (sample) onSample({ propertyId, sample });
