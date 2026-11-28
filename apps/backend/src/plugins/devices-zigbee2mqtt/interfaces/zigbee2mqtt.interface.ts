@@ -4,6 +4,7 @@
  * Based on Zigbee2MQTT MQTT API documentation.
  * https://www.zigbee2mqtt.io/guide/usage/mqtt_topics_and_messages.html
  */
+import type { PropertySampleEvidence } from '../../../modules/devices/models/property-sample.model';
 import type { ZigbeeSourceIdentity } from '../contracts/sample-source.contract';
 
 // =============================================================================
@@ -51,6 +52,8 @@ export interface Z2mDeviceStateMetadata {
 	 * Consumers that must reject replays check `isReplay`.
 	 */
 	measurementFieldsAreLive?: boolean;
+	/** Whether this packet establishes that its individual fields were reported at this ingress. */
+	reportScope?: PropertySampleEvidence['reportScope'];
 	/**
 	 * The packet replays earlier state rather than reporting something new: retained, our cached
 	 * replay, or inside the startup replay window. Replays never trigger input occurrences.

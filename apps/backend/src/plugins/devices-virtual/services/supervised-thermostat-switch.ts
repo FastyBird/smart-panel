@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
+import {
+	QualifiedPropertySample,
+	isIndependentPropertyReport,
+} from '../../../modules/devices/models/property-sample.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
@@ -77,13 +80,7 @@ export class SupervisedThermostatSwitch {
 		const sample =
 			observation.sampleSourceIsCurrent?.() && this.values.readQualifiedSample(observation.property, 30_000);
 		if (!sample) return false;
-		return (
-			sample?.value === false &&
-			sample.quality === 'good' &&
-			sample.provenance === 'live' &&
-			!sample.commandEcho &&
-			!sample.replay
-		);
+		return sample.value === false && sample.quality === 'good' && isIndependentPropertyReport(sample);
 	}
 
 	readiness(
@@ -197,8 +194,7 @@ export class SupervisedThermostatSwitch {
 					!canReconcile(leaf, scope.qualification) ||
 					off.value !== false ||
 					off.quality !== 'good' ||
-					off.replay ||
-					off.commandEcho ||
+					!isIndependentPropertyReport(off) ||
 					off.sampledAt.getTime() < witness.submittedAt.getTime() ||
 					off.ingressSequence === undefined ||
 					off.ingressSequence < witness.sample.ingressSequence

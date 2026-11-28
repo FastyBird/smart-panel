@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
 
 import { Injectable } from '@nestjs/common';
@@ -28,6 +29,7 @@ interface Z2mWsMessage {
 export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	private ws: WebSocket | null = null;
 	private connectionGeneration = 0;
+	private snapshotCheck: { transaction: string; complete: boolean } | null = null;
 	private config: Z2mWsConfig | null = null;
 
 	constructor() {
@@ -78,6 +80,11 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 
 					this.logger.log('Connected to Zigbee2MQTT WebSocket');
 					this.connected = true;
+					// The frontend sends its full cached snapshot on connect, even with cache_state disabled.
+					// Its reply to our request follows those frames on this socket.
+					const transaction = randomUUID();
+					this.snapshotCheck = { transaction, complete: false };
+					socket.send(JSON.stringify({ topic: 'bridge/request/health_check', payload: { transaction } }));
 
 					resolve();
 				});
@@ -134,6 +141,7 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	 */
 	async disconnect(): Promise<void> {
 		this.connectionGeneration++;
+		this.snapshotCheck = null;
 		this.clearReconnectTimer();
 
 		// Set flags before closing the socket to prevent the close-event handler
@@ -308,6 +316,21 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 				this.logger.debug('Received WS message without topic, ignoring');
 				return;
 			}
+			if (wsMessage.topic === 'bridge/response/health_check') {
+				const reply = (typeof wsMessage.payload === 'string' ? JSON.parse(wsMessage.payload) : wsMessage.payload) as {
+					transaction?: unknown;
+					status?: unknown;
+					data?: { healthy?: unknown };
+				} | null;
+				if (
+					this.snapshotCheck &&
+					reply?.transaction === this.snapshotCheck.transaction &&
+					reply.status === 'ok' &&
+					reply.data?.healthy === true
+				)
+					this.snapshotCheck.complete = true;
+				return;
+			}
 
 			// Convert payload to string for the shared message handler
 			const payloadStr = typeof wsMessage.payload === 'string' ? wsMessage.payload : JSON.stringify(wsMessage.payload);
@@ -319,6 +342,7 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 			const generation = this.connectionGeneration;
 			this.handleMessage(wsMessage.topic, payloadStr, true, false, {
 				isCurrent: () => generation === this.connectionGeneration,
+				mayIncludeConnectSnapshot: this.snapshotCheck?.complete !== true,
 			});
 		} catch (error) {
 			this.logger.warn('Failed to parse WebSocket message', {

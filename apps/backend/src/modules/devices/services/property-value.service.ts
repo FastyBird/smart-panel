@@ -419,6 +419,7 @@ export class PropertyValueService {
 						receivedAt: new Date(receivedAt),
 						// An acknowledgement is never presented as live to sample consumers.
 						provenance: evidence.provenance === 'live' && !live ? 'cached' : evidence.provenance,
+						...(evidence.reportScope ? { reportScope: evidence.reportScope } : {}),
 						...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
 						...(evidence.nativeCoverTagPresent !== undefined
 							? { nativeCoverTagPresent: evidence.nativeCoverTagPresent }
@@ -826,6 +827,7 @@ export class PropertyValueService {
 			sampledAt: new Date(evidence.sampledAt),
 			receivedAt: new Date(evidence.receivedAt),
 			provenance: evidence.provenance,
+			...(evidence.reportScope ? { reportScope: evidence.reportScope } : {}),
 			...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
 			...(evidence.replay === true ? { replay: true } : {}),

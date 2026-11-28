@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { EventType } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
-import { AcceptedPropertySample } from '../models/property-sample.model';
+import { AcceptedPropertySample, isIndependentPropertyReport } from '../models/property-sample.model';
 
 import { PlatformRegistryService } from './platform.registry.service';
 import { currentSampleIngress } from './property-sample-ingress';
@@ -43,8 +43,8 @@ export type PropertyReadProofOptions = (
  *
  * The platform is asked for a fresh read when it supports one; the boundary is the moment it sends the read
  * (after settling earlier commands). If no read is dispatched, the caller can supply the preceding action's
- * ingress boundary. Otherwise the wait starts when the platform declines the read. Command acknowledgements,
- * replays, non-live samples and reports received before the applicable boundary never count.
+ * ingress boundary. Otherwise the wait starts when the platform declines the read. Only an independent report
+ * of the requested property measured and received after the applicable boundary can provide proof.
  */
 @Injectable()
 export class PropertyReadProofService {
@@ -58,10 +58,16 @@ export class PropertyReadProofService {
 		options: PropertyReadProofOptions,
 	): Promise<PropertyReadProofOutcome> {
 		const propertyId = target.property.id;
-		const minimumSampledAt = options.minimumSampledAt?.getTime();
+		const actionStartedAt = options.minimumSampledAt?.getTime();
+		let minimumSampledAt = actionStartedAt;
 		let read: PropertyReadDispatch = 'pending';
 		/** Arrival number after which a report counts; none counts until it is known. */
 		let boundary: number | null = null;
+		const markReadBoundary = (): void => {
+			if (boundary !== null) return;
+			boundary = currentSampleIngress();
+			minimumSampledAt = Math.max(actionStartedAt ?? -Infinity, Date.now());
+		};
 
 		return new Promise<PropertyReadProofOutcome>((resolve) => {
 			let settled = false;
@@ -76,7 +82,7 @@ export class PropertyReadProofService {
 			const onSample = (payload?: { propertyId?: string; sample?: AcceptedPropertySample }): void => {
 				const sample = payload?.sample;
 				if (boundary === null || payload?.propertyId !== propertyId || sample?.propertyId !== propertyId) return;
-				if (sample.provenance !== 'live' || sample.replay === true || sample.commandEcho === true) return;
+				if (!isIndependentPropertyReport(sample)) return;
 				if (!Number.isSafeInteger(sample.ingressSequence) || sample.ingressSequence <= boundary) return;
 				if (
 					minimumSampledAt !== undefined &&
@@ -102,9 +108,7 @@ export class PropertyReadProofService {
 			void this.platformRegistry
 				.requestPropertyRead({
 					...target,
-					dispatching: () => {
-						boundary ??= currentSampleIngress();
-					},
+					dispatching: markReadBoundary,
 				})
 				.then((sent) => {
 					if (settled) return;
@@ -112,10 +116,11 @@ export class PropertyReadProofService {
 					if (!sent && options.unsolicited) {
 						// A marked read can still fail to send. The command may already have elicited the only report.
 						boundary = options.unsolicited.afterIngress;
+						minimumSampledAt = actionStartedAt;
 						const sample = options.unsolicited.latest();
 						if (sample) onSample({ propertyId, sample });
 					} else {
-						boundary ??= currentSampleIngress();
+						markReadBoundary();
 					}
 				})
 				.catch(() => finish(Object.freeze({ status: 'cancelled', read })));

@@ -41,8 +41,8 @@ class FixtureAdapter extends Z2mBaseClientAdapter {
 	setPermitJoin(): Promise<boolean> {
 		return Promise.resolve(true);
 	}
-	feed(topic: string, payload: unknown, retained = false): void {
-		this.handleMessage(`zigbee2mqtt/${topic}`, JSON.stringify(payload), false, retained);
+	feed(topic: string, payload: unknown, retained = false, isDup = false): void {
+		this.handleMessage(`zigbee2mqtt/${topic}`, JSON.stringify(payload), false, retained, { isDup });
 	}
 }
 
@@ -113,17 +113,17 @@ describe('Zigbee live device report contract', () => {
 	});
 
 	it.each([
-		{ mode: true, reason: 'zigbee_live_device_report_merged_state' },
-		{ mode: null, reason: 'zigbee_live_device_report_merged_state' },
-		{ mode: false, reason: 'zigbee_live_device_report' },
+		{ mode: true, reason: 'zigbee_live_device_report_merged_state', reportScope: 'device' },
+		{ mode: null, reason: 'zigbee_live_device_report_merged_state', reportScope: 'device' },
+		{ mode: false, reason: 'zigbee_live_device_report', reportScope: 'property' },
 	])(
 		'accepts any device report as live with cache_state $mode, including equal-value heartbeats',
-		({ mode, reason }) => {
+		({ mode, reason, reportScope }) => {
 			if (mode !== null) adapter.feed('bridge/info', cacheMode(mode));
 			passReplayWindow();
 			adapter.feed('ambient', { temperature: 25, battery: 80 });
 			const first = lastMetadata();
-			expect(first).toMatchObject({ measurementFieldsAreLive: true, qualificationReason: reason });
+			expect(first).toMatchObject({ measurementFieldsAreLive: true, qualificationReason: reason, reportScope });
 			expect(first.sourceIsCurrent()).toBe(true);
 			// Battery-only report: with cache_state the unchanged temperature rides along and is confirmed.
 			adapter.feed('ambient', { temperature: 25, battery: 79 });
@@ -131,6 +131,25 @@ describe('Zigbee live device report contract', () => {
 			expect(adapter.getMeasurementReadiness().reasons).toEqual([]);
 		},
 	);
+
+	it('requires current cache settings and a new packet for switch-specific evidence', () => {
+		passReplayWindow();
+		for (const topic of ['bridge/info', 'bridge/info/other']) {
+			adapter.feed(topic, cacheMode(false), topic === 'bridge/info');
+			adapter.feed('plug', { state: 'OFF' });
+			expect(lastMetadata().reportScope).toBe('device');
+		}
+		adapter.feed('bridge/info', cacheMode(false), false, true);
+		adapter.feed('plug', { state: 'OFF' });
+		expect(lastMetadata().reportScope).toBe('device');
+		adapter.feed('bridge/info', cacheMode(false));
+		adapter.feed('plug', { state: 'OFF' }, false, true);
+		expect(lastMetadata().reportScope).toBe('device');
+		adapter.feed('plug', { state: 'OFF' }, true);
+		expect(lastMetadata().reportScope).toBe('device');
+		adapter.feed('plug', { state: 'OFF' });
+		expect(lastMetadata().reportScope).toBe('property');
+	});
 
 	it('does not revoke live authority when the bridge reports a cache_state change', () => {
 		adapter.feed('bridge/info', cacheMode(false));

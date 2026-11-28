@@ -66,8 +66,11 @@ report immediately. Other platforms can provide it on their next poll or notific
 command echoes cannot confirm OFF. While a member's OFF is unconfirmed, its reservation and the interlock on the
 opposite branch stay in place.
 
-Zigbee2MQTT can request a fresh value through `/get` when the device supports it. Modbus uses the relay's read
-mapping and Shelly uses its status endpoint. Home Assistant can supply an independent live entity state change.
+Zigbee2MQTT can request a fresh value through `/get` when the device supports it. The default gateway settings
+merge cached fields into reports, so a power report can carry an old switch value and leave OFF unconfirmed.
+Once the gateway confirms `advanced.cache_state: false`, a new switch-field report can prove OFF.
+Modbus uses the relay's read mapping and Shelly uses its status endpoint. Home Assistant can supply an independent
+live entity state change.
 If Home Assistant has only its cached state after an idempotent OFF, the operator sees the same unconfirmed status
 as for an integration still waiting on its next device report. After an unavailable or unknown Home Assistant
 state, the first usable value establishes a display baseline. A subsequent independent state change can confirm OFF.

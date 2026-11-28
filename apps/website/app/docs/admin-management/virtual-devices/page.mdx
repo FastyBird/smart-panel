@@ -54,6 +54,8 @@ For condensation protection, bind a dew-point reading and a cooled-surface probe
 
 The thermostat detail shows requested mode, observed activity, input age and release status. After an OFF command, Smart Panel keeps the claim and blocks the opposite branch until it receives fresh evidence that the output is off. Plugins that can request a fresh read may confirm sooner. For other plugins, confirmation waits for the next device report or poll. A command acknowledgement alone leaves OFF unconfirmed. Shelly Gen1 relays can answer a direct status read. For a Home Assistant switch, confirmation waits for an independent state change from the physical switch. If the switch was already off and sends no new observation, the controller continues to show OFF as unconfirmed.
 
+With Zigbee2MQTT's default `advanced.cache_state: true`, a plug's power report can include a cached OFF value, even after Smart Panel requests a fresh switch reading with `/get`. The thermostat keeps the relay reserved and the opposite output blocked while OFF is unconfirmed. To confirm OFF through Zigbee2MQTT, set `advanced.cache_state: false` on the bridge. Once Smart Panel receives the current bridge settings, a new report of the switch field can confirm OFF. Ordinary temperature sensors work with either setting.
+
 Older Shelly Gen1 relays can have a six-character device ID. If the thermostat cannot confirm OFF after an upgrade,
 open Shelly Gen1 discovery, verify the relay's address, and select the registered device for adoption again. This
 records its full hardware MAC and keeps its existing device and thermostat bindings.

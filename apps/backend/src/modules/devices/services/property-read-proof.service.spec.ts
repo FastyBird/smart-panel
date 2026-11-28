@@ -95,6 +95,7 @@ describe('PropertyReadProofService', () => {
 
 	it.each<[string, Partial<AcceptedPropertySample>]>([
 		['a command acknowledgement', { commandEcho: true }],
+		['a device-level report carrying a possibly cached field', { reportScope: 'device' }],
 		['a replay', { replay: true }],
 		['a cached sample', { provenance: 'cached' }],
 		['a sample without an arrival number', { ingressSequence: undefined }],
@@ -112,6 +113,16 @@ describe('PropertyReadProofService', () => {
 		const result = proof.observeNextReport(target('without-read'), { timeoutMs: 5_000 });
 		await flush();
 		accept(early);
+		accept(arrive({ value: true }));
+		await expect(result).resolves.toMatchObject({ status: 'reported', sample: { value: true } });
+	});
+
+	it('rejects a delayed field measured before the read was dispatched', async () => {
+		const earlier = new Date();
+		jest.advanceTimersByTime(100);
+		const result = proof.observeNextReport(target('with-read'), { timeoutMs: 5_000, minimumSampledAt: earlier });
+		await flush();
+		accept(arrive({ sampledAt: earlier, value: false }));
 		accept(arrive({ value: true }));
 		await expect(result).resolves.toMatchObject({ status: 'reported', sample: { value: true } });
 	});

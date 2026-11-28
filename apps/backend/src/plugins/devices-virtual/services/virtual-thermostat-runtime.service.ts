@@ -14,7 +14,10 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { AcceptedPropertySample } from '../../../modules/devices/models/property-sample.model';
+import {
+	AcceptedPropertySample,
+	isIndependentPropertyReport,
+} from '../../../modules/devices/models/property-sample.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
@@ -922,7 +925,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const branch = context.branches.get(claim.id),
 			target = context.targets.get(claim.id);
 		const reported = target ? this.values.readQualifiedSample(target.property, 30_000, new Date(now)) : null;
-		const feedback = reported?.replay || reported?.commandEcho ? null : reported;
+		const feedback = isIndependentPropertyReport(reported) ? reported : null;
 		branch.activity = typeof feedback?.value === 'boolean' ? (feedback.value ? 'on' : 'off') : 'unknown';
 		// Detached I/O outcomes override a context loaded before their journal write acquired its lock.
 		const latest = new Map(context.commands.map((command) => [command.id, command]));
@@ -1560,8 +1563,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				pending.some(
 					(row) => row.id === proof.supervisedOffCommandId && row.action === 'off' && row.status === 'accepted',
 				) &&
-				!proof.offSample.commandEcho &&
-				!proof.offSample.replay &&
+				isIndependentPropertyReport(proof.offSample) &&
 				proof.offSample.ingressSequence !== undefined &&
 				proof.offSample.ingressSequence === acceptedOff?.ingressSequence
 			: proof?.externalWriterBarrier === true &&
@@ -1790,9 +1792,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (
 			!sample ||
 			sample.propertyId !== target.property.id ||
-			sample.provenance !== 'live' ||
-			sample.replay ||
-			sample.commandEcho ||
+			!isIndependentPropertyReport(sample) ||
 			sample.quality !== 'good' ||
 			typeof sample.value !== 'boolean'
 		)
@@ -1844,7 +1844,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				readinessFault = 'actuator_missing';
 			} else if (!this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))) {
 				readinessFault = 'hardware_qualification_missing';
-			} else if (!this.values.readQualifiedSample(target.property, 30_000)) {
+			} else if (!isIndependentPropertyReport(this.values.readQualifiedSample(target.property, 30_000))) {
 				readinessFault = 'feedback_unavailable';
 			} else if (claim.state !== 'reserved') {
 				readinessFault = `actuator_${claim.state}`;

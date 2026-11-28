@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: EPIC-VIRTUAL-DEVICE-CAPABILITIES
-Status: implemented, in review
+Status: done — merged #1696, #1781 and #1782
 
 ## 1. Business goal
 
@@ -85,8 +85,8 @@ features that a device's integration offers.
 - [x] `devices-virtual` contains no import from another plugin, enforced by a check.
 - [x] A writable switch of any plugin can be bound, qualified and activated as a heating or cooling output; tests use
       a stub platform with and without read-back, not only real plugins.
-- [x] OFF for any output is confirmed only by a read-back or report observed after the OFF command; an acknowledged
-      echo alone never releases a claim or allows the opposite output.
+- [x] OFF requires a fresh report of the switch property after the read or OFF command. An acknowledgement or a
+      device report carrying a cached switch value keeps the claim held and the opposite output blocked.
 - [x] Without a safety extension, the editor and detail page state that the output has no device-side failsafe, and
       activation requires the operator's acknowledgement of independent protection.
 - [x] A Shelly output with the Shelly safety extension still gets its device lease, fence and on-device floor limit.
@@ -99,8 +99,8 @@ features that a device's integration offers.
 1. Optional read-back capability on `IDevicePlatform` and its implementations in the plugins whose devices allow a
    fresh read; no plugin is required to implement it.
    - 1a: the contract (`requestPropertyRead`), the `commandEcho` sample mark, the generic proof
-     (`PropertyReadProofService`: first live, non-replay, non-echo report received after the call, with or without
-     read support) and the Zigbee2MQTT implementation (command echo windows and `/get`).
+     (`PropertyReadProofService` waits for the first independent, property-specific report after dispatch) and the
+     Zigbee2MQTT implementation (command echo windows and `/get`).
    - 1b: read support in further plugins (Shelly NG, Shelly v1, Home Assistant, Modbus, ...), each marking its own
      command acknowledgements where it publishes them as state.
 2. Safety extension contract and registry in `devices-virtual`; move the Shelly guarded profile, guard script artifact

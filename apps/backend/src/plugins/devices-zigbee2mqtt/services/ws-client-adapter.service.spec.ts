@@ -1,3 +1,7 @@
+import { once } from 'node:events';
+import { AddressInfo } from 'node:net';
+import WebSocket, { WebSocketServer } from 'ws';
+
 import { STARTUP_REPLAY_WINDOW_MS } from '../devices-zigbee2mqtt.constants';
 import { Z2mDeviceStateMetadata } from '../interfaces/zigbee2mqtt.interface';
 
@@ -71,4 +75,58 @@ describe('Zigbee frontend websocket sample evidence', () => {
 		send('bridge/state', { state: 'offline' });
 		expect(adapter.getMeasurementReadiness().reasons).toEqual(['zigbee_source_disconnected']);
 	});
+});
+
+it('requires the current socket to finish its connect snapshot before accepting switch-specific reports', async () => {
+	const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+	const adapter = new Z2mWsClientAdapterService();
+	try {
+		await once(server, 'listening');
+		const handshake = new Promise<{ peer: WebSocket; topic: string; transaction: string }>((resolve) => {
+			server.once('connection', (peer: WebSocket) =>
+				peer.once('message', (frame: Buffer) => {
+					const { topic, payload } = JSON.parse(frame.toString('utf8')) as {
+						topic: string;
+						payload: { transaction: string };
+					};
+					resolve({ peer, topic, transaction: payload.transaction });
+				}),
+			);
+		});
+		const scopes: Z2mDeviceStateMetadata['reportScope'][] = [];
+		const received = new Promise<void>((resolve) =>
+			adapter.setCallbacks({
+				onBridgeOnline: () =>
+					(adapter as unknown as { openStartupReplayWindow(ms: number): void }).openStartupReplayWindow(0),
+				onDeviceStateChanged: (_name, state, metadata) => {
+					scopes.push(metadata.reportScope);
+					if (state.power === 3) resolve();
+				},
+			}),
+		);
+		await adapter.connect({
+			host: '127.0.0.1',
+			port: (server.address() as AddressInfo).port,
+			secure: false,
+			baseTopic: 'zigbee2mqtt',
+			connectTimeout: 3000,
+			reconnectInterval: 0,
+		});
+		const { peer, topic, transaction } = await handshake;
+		expect(topic).toBe('bridge/request/health_check');
+		expect(transaction).toEqual(expect.any(String));
+		const send = (topic: string, payload: unknown) => peer.send(JSON.stringify({ topic, payload }));
+		send('bridge/state', { state: 'online' });
+		send('bridge/info', { config: { advanced: { cache_state: false } } });
+		send('plug', { state: 'OFF', power: 1 });
+		send('bridge/response/health_check', { status: 'ok', data: { healthy: true }, transaction: 'other-client' });
+		send('plug', { state: 'OFF', power: 2 });
+		send('bridge/response/health_check', { status: 'ok', data: { healthy: true }, transaction });
+		send('plug', { state: 'ON', power: 3 });
+		await received;
+		expect(scopes).toEqual(['device', 'device', 'property']);
+	} finally {
+		await adapter.disconnect();
+		await new Promise<void>((resolve) => server.close(() => resolve()));
+	}
 });

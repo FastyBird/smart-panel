@@ -126,7 +126,12 @@ describe('a software-supervised switch from a new device plugin', () => {
 		try {
 			await f.adapter.send(f.target, f.claim, f.evidence, () => true, { commandId: 'off' });
 			expect(f.request).toHaveBeenCalledTimes(readable ? 1 : 0);
-			for (const flags of [{ commandEcho: true as const }, { replay: true as const }, { sampledAt: new Date(0) }]) {
+			for (const flags of [
+				{ commandEcho: true as const },
+				{ replay: true as const },
+				{ reportScope: 'device' as const },
+				{ sampledAt: new Date(0) },
+			]) {
 				const echo = f.report(flags);
 				await expect(f.drain(echo)).resolves.toBeNull();
 			}
@@ -136,6 +141,9 @@ describe('a software-supervised switch from a new device plugin', () => {
 			expect(proof?.supervisedOffCommandId).toBe('off');
 			expect(proof?.sourceIsCurrent()).toBe(true);
 			expect(proof?.externalWriterBarrier).toBeUndefined();
+			// A later power report carrying cached OFF cannot renew a previously valid witness.
+			await expect(f.drain(f.report({ reportScope: 'device' }))).resolves.toBeNull();
+			expect(f.supervisor.awaitingReport(f.claim)).toBe(false);
 			f.registration.dispose();
 			expect(proof?.sourceIsCurrent()).toBe(false);
 		} finally {
@@ -211,6 +219,7 @@ describe('a software-supervised switch from a new device plugin', () => {
 	});
 
 	it('recovers the physical OFF reported during the command when a marked read fails to send', async () => {
+		jest.useFakeTimers();
 		const f = fixture(true);
 		let off: QualifiedPropertySample;
 		f.processBatch.mockImplementationOnce(() => {
@@ -218,6 +227,7 @@ describe('a software-supervised switch from a new device plugin', () => {
 			return Promise.resolve(true);
 		});
 		f.request.mockImplementationOnce((read) => {
+			jest.advanceTimersByTime(100);
 			read.dispatching();
 			return Promise.resolve(false);
 		});
@@ -227,6 +237,7 @@ describe('a software-supervised switch from a new device plugin', () => {
 			expect((await f.drain(off))?.supervisedOffCommandId).toBe('off');
 		} finally {
 			f.supervisor.destroy();
+			jest.useRealTimers();
 		}
 	});
 
