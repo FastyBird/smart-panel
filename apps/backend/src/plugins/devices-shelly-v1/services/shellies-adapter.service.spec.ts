@@ -955,6 +955,57 @@ describe('ShelliesAdapterService', () => {
 			}
 		});
 
+		it('accepts a sleeping sensor reusing serial 1 after the packet lifetime', async () => {
+			jest.useFakeTimers();
+			try {
+				const { push } = await temperatureProbe();
+				push(1, 22);
+				const original = callbacks.onTemperatureReport.mock.lastCall[0];
+				await jest.advanceTimersByTimeAsync(145_000);
+				push(1, 90);
+				expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
+
+				await jest.advanceTimersByTimeAsync(1);
+				push(1, 19);
+				const recovered = callbacks.onTemperatureReport.mock.lastCall[0];
+				expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([22, 19]);
+				expect(recovered.receivedAt.getTime() - original.receivedAt.getTime()).toBe(145_001);
+				expect(recovered.ingressSequence).toBeGreaterThan(original.ingressSequence);
+				expect(original.isCurrent()).toBe(false);
+				expect(recovered.isCurrent()).toBe(true);
+				expect(mockShelliesLibrary.readShellyTemperature).not.toHaveBeenCalled();
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('uses a correlated reply for an expired equal serial while packet ordering is uncertain', async () => {
+			jest.useFakeTimers();
+			try {
+				const { push } = await temperatureProbe();
+				const read = mockShelliesLibrary.readShellyTemperature;
+				callbacks.onTemperatureReport.mockResolvedValueOnce(false);
+				push(1, 22);
+				const pending = callbacks.onTemperatureReport.mock.lastCall[0];
+				await jest.advanceTimersByTimeAsync(144_999);
+				push(65_535, 90);
+				await jest.advanceTimersByTimeAsync(2);
+				push(1, 91);
+				await jest.advanceTimersByTimeAsync(0);
+				expect(read).toHaveBeenCalledTimes(2);
+				expect(callbacks.onTemperatureReport).toHaveBeenCalledTimes(1);
+
+				read.mockResolvedValueOnce({ serial: 1, value: 19 });
+				push(1, 92);
+				await jest.advanceTimersByTimeAsync(0);
+				expect(read).toHaveBeenCalledTimes(3);
+				expect(callbacks.onTemperatureReport.mock.calls.map(([report]) => report.value)).toEqual([22, 19]);
+				expect(pending.isCurrent()).toBe(false);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
 		it('wraps across the reserved zero, drops repeats and invalid serials, and withdraws a pending read when the mapping changes', async () => {
 			const { push } = await temperatureProbe();
 			push(65534, 23);
