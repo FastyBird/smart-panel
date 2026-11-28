@@ -48,7 +48,7 @@ describe('ShelliesAdapterService', () => {
 	let configService: jest.Mocked<ConfigService>;
 	let httpClient: jest.Mocked<ShellyV1HttpClientService>;
 	let callbacks: {
-		onTemperatureReport: jest.Mock;
+		onTemperatureReport: jest.MockedFunction<NonNullable<ShelliesAdapterCallbacks['onTemperatureReport']>>;
 		onDeviceDiscovered: jest.Mock;
 		onDeviceChanged: jest.Mock;
 		onDeviceOffline: jest.Mock;
